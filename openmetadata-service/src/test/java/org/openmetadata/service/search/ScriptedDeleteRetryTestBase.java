@@ -7,9 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -23,6 +21,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,13 +33,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.MockedStatic;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
-import org.openmetadata.search.IndexMapping;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.indexes.SearchIndex;
 import org.slf4j.LoggerFactory;
 
 public abstract class ScriptedDeleteRetryTestBase {
@@ -67,6 +60,13 @@ public abstract class ScriptedDeleteRetryTestBase {
   protected abstract void deleteOnce() throws Exception;
 
   protected abstract EntityManagementClient manager();
+
+  /**
+   * Sends one real bulk request updating {@code conflicted} with a stale sequence number and
+   * {@code rejected} with a broken script, and returns the manager's reading of its failed items.
+   */
+  protected abstract List<SearchUtils.BulkItemFailure> conflictingAndRejectedBulk(
+      String conflicted, String rejected) throws Exception;
 
   protected enum DeletePath {
     FIELDS,
@@ -312,38 +312,13 @@ public abstract class ScriptedDeleteRetryTestBase {
   }
 
   @Test
-  void aConflictedReindexIsQueuedAndLoggedAsAWarning() throws Exception {
-    writeFailure = WriteFailure.CONFLICT;
-    EntityReference table = reindexableTable();
-    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
-        MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
-      resolveForReindex(entities, table);
-
-      List<ILoggingEvent> logged = logsOf(() -> manager().reindexEntities(List.of(table)));
-
-      queue.verify(
-          () ->
-              SearchIndexRetryQueue.enqueue(
-                  eq(table.getId().toString()),
-                  eq(table.getFullyQualifiedName()),
-                  eq(Entity.TABLE),
-                  any()));
-      assertNoErrors(logged);
+  void aBulkUpdateThatLostARaceIsAConflictAndARejectedOneIsNot() throws Exception {
+    Map<String, Boolean> conflicts = new HashMap<>();
+    for (SearchUtils.BulkItemFailure failure : conflictingAndRejectedBulk("held", "keep")) {
+      conflicts.put(
+          failure.id(), SearchUtils.isVersionConflictType(failure.status(), failure.type()));
     }
-  }
-
-  @Test
-  void aRejectedReindexIsStillLoggedAsAnError() throws Exception {
-    writeFailure = WriteFailure.REJECTED;
-    EntityReference table = reindexableTable();
-    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
-        MockedStatic<SearchIndexRetryQueue> ignored = mockStatic(SearchIndexRetryQueue.class)) {
-      resolveForReindex(entities, table);
-
-      List<ILoggingEvent> logged = logsOf(() -> manager().reindexEntities(List.of(table)));
-
-      assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
-    }
+    assertEquals(Map.of("held", true, "keep", false), conflicts);
   }
 
   private void write(SingleDocumentWrite write) throws Exception {
@@ -356,38 +331,16 @@ public abstract class ScriptedDeleteRetryTestBase {
     }
   }
 
-  private EntityReference reindexableTable() throws Exception {
-    UUID id = UUID.randomUUID();
-    request("PUT", index + "/_doc/" + id + "?refresh=true", matchingDocument(1));
-    return new EntityReference()
-        .withId(id)
-        .withType(Entity.TABLE)
-        .withFullyQualifiedName("svc.db.schema.orders");
-  }
-
-  private void resolveForReindex(MockedStatic<Entity> entities, EntityReference table) {
-    EntityInterface<?> entity = mock(EntityInterface.class);
-    when(entity.getId()).thenReturn(table.getId());
-    entities
-        .when(() -> Entity.getEntity(any(EntityReference.class), eq("*"), eq(Include.ALL)))
-        .thenReturn(entity);
-    SearchRepository repository = mock(SearchRepository.class);
-    IndexMapping mapping = mock(IndexMapping.class);
-    when(repository.getIndexMapping(Entity.TABLE)).thenReturn(mapping);
-    when(repository.getClusterAlias()).thenReturn("");
-    when(mapping.getIndexName("")).thenReturn(index);
-    entities.when(Entity::getSearchRepository).thenReturn(repository);
-    SearchIndex searchIndex = mock(SearchIndex.class);
-    when(searchIndex.buildSearchIndexDoc()).thenReturn(Map.of("value", 4));
-    entities.when(() -> Entity.buildSearchIndex(Entity.TABLE, entity)).thenReturn(searchIndex);
-  }
-
-  /** Captures the manager's own log and the shared search helpers it logs through. */
+  /**
+   * Captures what this test's thread logs through the manager and the shared search helpers; other
+   * test classes may log through the same loggers concurrently.
+   */
   private List<ILoggingEvent> logsOf(ThrowingRunnable action) throws Exception {
     List<Logger> logs =
         List.of(
             (Logger) LoggerFactory.getLogger(manager().getClass()),
             (Logger) LoggerFactory.getLogger(SearchUtils.class));
+    String thread = Thread.currentThread().getName();
     ListAppender<ILoggingEvent> logged = new ListAppender<>();
     logged.start();
     logs.forEach(log -> log.addAppender(logged));
@@ -396,7 +349,7 @@ public abstract class ScriptedDeleteRetryTestBase {
     } finally {
       logs.forEach(log -> log.detachAppender(logged));
     }
-    return logged.list;
+    return logged.list.stream().filter(e -> thread.equals(e.getThreadName())).toList();
   }
 
   private static void assertNoErrors(List<ILoggingEvent> logged) {

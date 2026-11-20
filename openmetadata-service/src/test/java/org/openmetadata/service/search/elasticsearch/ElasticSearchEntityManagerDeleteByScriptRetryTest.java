@@ -9,8 +9,6 @@ import es.co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch._types.Script;
 import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
-import es.co.elastic.clients.elasticsearch.core.BulkRequest;
-import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryRequest;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.UpdateRequest;
@@ -24,6 +22,7 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.ScriptedDeleteRetryTestBase;
+import org.openmetadata.service.search.SearchUtils;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
@@ -90,22 +89,6 @@ class ElasticSearchEntityManagerDeleteByScriptRetryTest extends ScriptedDeleteRe
                 ? super.update(request, type)
                 : super.update((UpdateRequest<T, P>) failing(request.index(), request.id()), type);
           }
-
-          @Override
-          public BulkResponse bulk(BulkRequest request) throws IOException {
-            return !failThisWrite()
-                ? super.bulk(request)
-                : super.bulk(
-                    BulkRequest.of(
-                        b ->
-                            b.refresh(Refresh.True)
-                                .operations(
-                                    request.operations().stream()
-                                        .map(
-                                            op ->
-                                                failingBulk(op.update().index(), op.update().id()))
-                                        .toList())));
-          }
         };
     manager = new ElasticSearchEntityManager(client);
   }
@@ -120,18 +103,24 @@ class ElasticSearchEntityManagerDeleteByScriptRetryTest extends ScriptedDeleteRe
         });
   }
 
-  private BulkOperation failingBulk(String index, String id) {
-    return BulkOperation.of(
-        o ->
-            o.update(
-                u -> {
-                  u.index(index).id(id);
-                  return writeFailure == WriteFailure.CONFLICT
-                      ? u.ifSeqNo(STALE_SEQ_NO)
-                          .ifPrimaryTerm(1L)
-                          .action(a -> a.doc(Map.of("value", 0)))
-                      : u.action(a -> a.script(BROKEN_SCRIPT));
-                }));
+  @Override
+  protected List<SearchUtils.BulkItemFailure> conflictingAndRejectedBulk(
+      String conflicted, String rejected) throws IOException {
+    BulkOperation stale =
+        BulkOperation.of(
+            o ->
+                o.update(
+                    u ->
+                        u.index(index)
+                            .id(conflicted)
+                            .ifSeqNo(STALE_SEQ_NO)
+                            .ifPrimaryTerm(1L)
+                            .action(a -> a.doc(Map.of("value", 0)))));
+    BulkOperation broken =
+        BulkOperation.of(
+            o -> o.update(u -> u.index(index).id(rejected).action(a -> a.script(BROKEN_SCRIPT))));
+    return ElasticSearchEntityManager.bulkItemFailures(
+        client.bulk(b -> b.refresh(Refresh.True).operations(List.of(stale, broken))));
   }
 
   @Override

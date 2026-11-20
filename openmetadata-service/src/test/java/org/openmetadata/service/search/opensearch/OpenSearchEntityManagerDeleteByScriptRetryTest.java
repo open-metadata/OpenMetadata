@@ -12,6 +12,7 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.ScriptedDeleteRetryTestBase;
+import org.openmetadata.service.search.SearchUtils;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
@@ -20,8 +21,6 @@ import os.org.opensearch.client.opensearch._types.BuiltinScriptLanguage;
 import os.org.opensearch.client.opensearch._types.BulkByScrollFailure;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch._types.Script;
-import os.org.opensearch.client.opensearch.core.BulkRequest;
-import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.DeleteByQueryRequest;
 import os.org.opensearch.client.opensearch.core.DeleteByQueryResponse;
 import os.org.opensearch.client.opensearch.core.UpdateRequest;
@@ -95,22 +94,6 @@ class OpenSearchEntityManagerDeleteByScriptRetryTest extends ScriptedDeleteRetry
                 ? super.update(request, type)
                 : super.update((UpdateRequest<T, P>) failing(request.index(), request.id()), type);
           }
-
-          @Override
-          public BulkResponse bulk(BulkRequest request) throws IOException {
-            return !failThisWrite()
-                ? super.bulk(request)
-                : super.bulk(
-                    BulkRequest.of(
-                        b ->
-                            b.refresh(Refresh.True)
-                                .operations(
-                                    request.operations().stream()
-                                        .map(
-                                            op ->
-                                                failingBulk(op.update().index(), op.update().id()))
-                                        .toList())));
-          }
         };
     manager = new OpenSearchEntityManager(client);
   }
@@ -125,16 +108,23 @@ class OpenSearchEntityManagerDeleteByScriptRetryTest extends ScriptedDeleteRetry
         });
   }
 
-  private BulkOperation failingBulk(String index, String id) {
-    return BulkOperation.of(
-        o ->
-            o.update(
-                u -> {
-                  u.index(index).id(id);
-                  return writeFailure == WriteFailure.CONFLICT
-                      ? u.ifSeqNo(STALE_SEQ_NO).ifPrimaryTerm(1L).document(Map.of("value", 0))
-                      : u.script(BROKEN_SCRIPT);
-                }));
+  @Override
+  protected List<SearchUtils.BulkItemFailure> conflictingAndRejectedBulk(
+      String conflicted, String rejected) throws IOException {
+    BulkOperation stale =
+        BulkOperation.of(
+            o ->
+                o.update(
+                    u ->
+                        u.index(index)
+                            .id(conflicted)
+                            .ifSeqNo(STALE_SEQ_NO)
+                            .ifPrimaryTerm(1L)
+                            .document(Map.of("value", 0))));
+    BulkOperation broken =
+        BulkOperation.of(o -> o.update(u -> u.index(index).id(rejected).script(BROKEN_SCRIPT)));
+    return OpenSearchEntityManager.bulkItemFailures(
+        client.bulk(b -> b.refresh(Refresh.True).operations(List.of(stale, broken))));
   }
 
   @Override

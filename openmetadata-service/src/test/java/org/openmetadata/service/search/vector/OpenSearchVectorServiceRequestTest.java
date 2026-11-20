@@ -243,8 +243,10 @@ class OpenSearchVectorServiceRequestTest {
     assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
   }
 
+  /** Only this test's thread: other test classes may log through the service concurrently. */
   private List<ILoggingEvent> writeEmbeddings() {
     Logger log = (Logger) LoggerFactory.getLogger(OpenSearchVectorService.class);
+    String thread = Thread.currentThread().getName();
     ListAppender<ILoggingEvent> logged = new ListAppender<>();
     logged.start();
     log.addAppender(logged);
@@ -254,7 +256,7 @@ class OpenSearchVectorServiceRequestTest {
     } finally {
       log.detachAppender(logged);
     }
-    return logged.list;
+    return logged.list.stream().filter(e -> thread.equals(e.getThreadName())).toList();
   }
 
   private static Response response(int status, String json) throws IOException {

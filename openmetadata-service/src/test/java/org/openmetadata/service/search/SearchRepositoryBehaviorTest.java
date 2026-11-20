@@ -3792,8 +3792,10 @@ class SearchRepositoryBehaviorTest {
         ErrorResponse.of(r -> r.status(status).error(e -> e.type(type).reason("held"))));
   }
 
+  /** Only this test's thread: other test classes may log through SearchRepository concurrently. */
   private static List<ILoggingEvent> repositoryLogsOf(Runnable write) {
     Logger log = (Logger) LoggerFactory.getLogger(SearchRepository.class);
+    String thread = Thread.currentThread().getName();
     ListAppender<ILoggingEvent> logged = new ListAppender<>();
     logged.start();
     log.addAppender(logged);
@@ -3802,7 +3804,7 @@ class SearchRepositoryBehaviorTest {
     } finally {
       log.detachAppender(logged);
     }
-    return logged.list;
+    return logged.list.stream().filter(e -> thread.equals(e.getThreadName())).toList();
   }
 
   private static void assertWarnedWithoutErrors(List<ILoggingEvent> logged) {

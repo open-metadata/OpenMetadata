@@ -1586,18 +1586,20 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     BulkResponse response = client.bulk(b -> b.operations(operations).refresh(Refresh.True));
 
     if (response.errors()) {
-      SearchUtils.reportReindexFailures(
-          entities,
-          response.items().stream()
-              .filter(item -> item.error() != null)
-              .map(
-                  item ->
-                      new SearchUtils.BulkItemFailure(
-                          item.id(), item.status(), item.error().type(), item.error().reason()))
-              .toList());
+      SearchUtils.reportReindexFailures(entities, bulkItemFailures(response));
     } else {
       LOG.info("Successfully reindexed {} entities in ElasticSearch", entities.size());
     }
+  }
+
+  static List<SearchUtils.BulkItemFailure> bulkItemFailures(BulkResponse response) {
+    return response.items().stream()
+        .filter(item -> item.error() != null)
+        .map(
+            item ->
+                new SearchUtils.BulkItemFailure(
+                    item.id(), item.status(), item.error().type(), item.error().reason()))
+        .toList();
   }
 
   @Override

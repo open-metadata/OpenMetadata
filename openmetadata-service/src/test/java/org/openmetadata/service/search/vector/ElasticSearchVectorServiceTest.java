@@ -663,8 +663,10 @@ class ElasticSearchVectorServiceTest {
           + "\"version_conflict_engine_exception\",\"reason\":\"[t1]: version conflict\"},"
           + "\"status\":409}";
 
+  /** Only this test's thread: other test classes may log through the service concurrently. */
   private List<ILoggingEvent> writeEmbeddings() {
     Logger log = (Logger) LoggerFactory.getLogger(ElasticSearchVectorService.class);
+    String thread = Thread.currentThread().getName();
     ListAppender<ILoggingEvent> logged = new ListAppender<>();
     logged.start();
     log.addAppender(logged);
@@ -674,7 +676,7 @@ class ElasticSearchVectorServiceTest {
     } finally {
       log.detachAppender(logged);
     }
-    return logged.list;
+    return logged.list.stream().filter(e -> thread.equals(e.getThreadName())).toList();
   }
 
   private void mockRestClientResponse(int status, String responseJson) throws Exception {
