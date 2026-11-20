@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -29,6 +30,11 @@ import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFI
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.BadRequestException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,6 +43,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.IdentityProviderConfig;
+import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -70,6 +79,9 @@ class SystemRepositorySecuritySettingsTest {
   private static final String AUTH = AUTHENTICATION_CONFIGURATION.value();
   private static final String AUTHZ = AUTHORIZER_CONFIGURATION.value();
   private static final String SECRET = "oidc-s3cret";
+  private static final String IDP_CERTIFICATE = resource("/saml/mock-idp.crt");
+  private static final String NOT_A_CERTIFICATE =
+      "-----BEGIN CERTIFICATE-----\nnot-a-certificate\n-----END CERTIFICATE-----";
 
   private final Map<String, String> rows = new ConcurrentHashMap<>();
   private MockedStatic<Entity> entityMock;
@@ -243,7 +255,7 @@ class SystemRepositorySecuritySettingsTest {
         SystemSettingsException.class,
         () ->
             repository.prepareReconciled(
-                SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION, invalidUrl));
+                SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION, invalidUrl, null));
   }
 
   @Test
@@ -252,12 +264,39 @@ class SystemRepositorySecuritySettingsTest {
 
     for (String prepared :
         List.of(
-            repository.prepareReconciled(AUTHENTICATION_CONFIGURATION, value),
+            repository.prepareReconciled(AUTHENTICATION_CONFIGURATION, value, value),
             repository.prepareSeed(AUTHENTICATION_CONFIGURATION, value))) {
       assertTrue(
           Fernet.isTokenized(
               JsonUtils.readTree(prepared).at("/oidcConfiguration/secret").asText()));
     }
+  }
+
+  @Test
+  void refusesAReconciledOrSeededIdpCertificateThatASaveWouldRefuse() {
+    JsonNode unusable = JsonUtils.valueToTree(saml(NOT_A_CERTIFICATE));
+    JsonNode usable = JsonUtils.valueToTree(saml(IDP_CERTIFICATE));
+
+    BadRequestException reconciled =
+        assertThrows(
+            BadRequestException.class,
+            () -> repository.prepareReconciled(AUTHENTICATION_CONFIGURATION, unusable, usable));
+    assertTrue(reconciled.getMessage().contains("samlConfiguration.idp.idpX509Certificate"));
+    assertThrows(
+        BadRequestException.class,
+        () -> repository.prepareSeed(AUTHENTICATION_CONFIGURATION, unusable));
+  }
+
+  @Test
+  void preparesAUsableOrUnchangedIdpCertificate() {
+    JsonNode unusable = JsonUtils.valueToTree(saml(NOT_A_CERTIFICATE));
+    JsonNode usable = JsonUtils.valueToTree(saml(IDP_CERTIFICATE));
+
+    assertDoesNotThrow(() -> repository.prepareSeed(AUTHENTICATION_CONFIGURATION, usable));
+    assertDoesNotThrow(
+        () -> repository.prepareReconciled(AUTHENTICATION_CONFIGURATION, usable, unusable));
+    assertDoesNotThrow(
+        () -> repository.prepareReconciled(AUTHENTICATION_CONFIGURATION, unusable, unusable));
   }
 
   @Test
@@ -300,6 +339,33 @@ class SystemRepositorySecuritySettingsTest {
     return new Settings()
         .withConfigType(AUTHENTICATION_CONFIGURATION)
         .withConfigValue(authentication);
+  }
+
+  private static AuthenticationConfiguration saml(String idpCertificate) {
+    return new AuthenticationConfiguration()
+        .withProvider(AuthProvider.SAML)
+        .withProviderName("SAML")
+        .withSamlConfiguration(
+            new SamlSSOClientConfig()
+                .withIdp(
+                    new IdentityProviderConfig()
+                        .withEntityId("https://idp.example.com/metadata")
+                        .withSsoLoginUrl("https://idp.example.com/sso")
+                        .withIdpX509Certificate(idpCertificate))
+                .withSp(
+                    new ServiceProviderConfig()
+                        .withEntityId("http://localhost:8585/api/v1/saml/metadata")
+                        .withAcs("http://localhost:8585/api/v1/saml/acs")
+                        .withCallback("http://localhost:8585/saml/callback")));
+  }
+
+  private static String resource(String path) {
+    try (InputStream stream =
+        SystemRepositorySecuritySettingsTest.class.getResourceAsStream(path)) {
+      return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   private static AuthenticationConfiguration authentication(int maxActiveSessionsPerUser) {

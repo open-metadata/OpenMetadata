@@ -51,9 +51,23 @@ public final class DeploymentConfigReconciler {
     deployment.settings().forEach(setting -> reconcile(deployment, setting));
   }
 
-  /** Stores the deployment value of every setting the database does not have yet. */
+  /**
+   * Stores the deployment value of every setting the database does not have yet. A value that
+   * cannot be stored stops the start: there is no stored value to fall back to.
+   */
   public void seedMissing(DeploymentConfig deployment) {
-    deployment.settings().forEach(setting -> seedIfAbsent(deployment, setting));
+    deployment.settings().forEach(setting -> seedOrStopTheStart(deployment, setting));
+  }
+
+  private void seedOrStopTheStart(DeploymentConfig deployment, DeploymentSetting setting) {
+    try {
+      seedIfAbsent(deployment, setting);
+    } catch (JdbiException
+        | IllegalArgumentException
+        | IllegalStateException
+        | WebApplicationException failure) {
+      throw startStoppedBy(setting, failure);
+    }
   }
 
   /**
@@ -111,7 +125,8 @@ public final class DeploymentConfigReconciler {
       MergeResult result =
           merge.merge(inputOf(deployment, setting, ConfigSourceMode.ENV, row, previous));
       if (result.storedChanged()) {
-        preparer.prepareReconciled(setting.settingsType(), result.stored());
+        preparer.prepareReconciled(
+            setting.settingsType(), result.stored(), JsonUtils.readTree(row.json()));
       }
     }
   }
@@ -269,7 +284,8 @@ public final class DeploymentConfigReconciler {
 
   private boolean storeMerged(
       SettingsType type, StoredSettingRow row, MergeResult result, DeploymentSnapshot snapshot) {
-    String updatedJson = preparer.prepareReconciled(type, result.stored());
+    String updatedJson =
+        preparer.prepareReconciled(type, result.stored(), JsonUtils.readTree(row.json()));
     boolean written =
         dao.updateSettingsWithSnapshotIfCurrent(
                 type.value(), row.json(), updatedJson, snapshot.toJson())
