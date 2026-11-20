@@ -19,7 +19,7 @@ on `SuggestionTaskWorkflow`.
 ## Decision
 
 A `userApprovalTask` resolves assignees in this order, and stops at the first step that yields a
-user after team expansion: the task's own assignees; the asset's reviewers or its owners, own and
+user other than the requester after team expansion: the task's own assignees; the asset's reviewers or its owners, own and
 inherited; when its `cascadeOwners` option is on, the owners of the asset's service, then the
 owners of its domains; then `emptyAssigneeStrategy`. A team owner with no members yields nobody,
 so the next step runs. Owner auto-assignment turned off for the workflow skips the service and

@@ -181,6 +181,17 @@ class SetApprovalAssigneesImplTest {
   }
 
   @Test
+  void cascadeLooksPastOwnersWhoAreTheRequester() {
+    givenUnownedTable(List.of(user("dana")), List.of(user("steward")));
+    when(mockEntity.getOwners()).thenReturn(List.of(user("dana")));
+    when(execution.getVariable("global_updatedBy")).thenReturn("dana");
+    givenAdmins("root");
+    when(assigneesExpr.getValue(execution)).thenReturn(CASCADE);
+    delegate.execute(execution);
+    assertEquals("[\"<#E::user::steward>\"]", capturedVars.get("ApprovalTask_assignees"));
+  }
+
+  @Test
   void cascadeOnATypeWithoutDomainsStillAssignsItsOwners() {
     when(execution.getVariable("global_relatedEntity"))
         .thenReturn("<#E::dataContract::orders_contract>");

@@ -104,7 +104,6 @@ class MigrationArchitectureTest {
           JsonUtils.class,
           Relationship.class);
 
-  // No folder after 2.1.0 exists yet, so the rules may match no class.
   @ArchTest
   static final ArchRule versionedMigrationsUseOnlyAllowedClasses =
       classes()
@@ -113,8 +112,7 @@ class MigrationArchitectureTest {
           // A release's Migration calls its listed exceptions; their reasons are recorded above.
           .onlyDependOnClassesThat(
               CHECKED_STEPS.or(EXCEPTIONS).or(LIBRARIES).or(FRAMEWORK).or(CONTRACTS))
-          .as("A versioned migration step uses only the classes MigrationArchitectureTest allows")
-          .allowEmptyShould(true);
+          .as("A versioned migration step uses only the classes MigrationArchitectureTest allows");
 
   @ArchTest
   static final ArchRule versionedMigrationsDoNotReachWorkflowsThroughTheirBaseClass =
@@ -125,6 +123,5 @@ class MigrationArchitectureTest {
               target(owner(assignableTo(MigrationProcessImpl.class)))
                   .and(target(nameMatching("initializeWorkflowHandler|getPipelineServiceClient"))))
           .as(
-              "A versioned migration step does not reach workflows or pipelines from its base class")
-          .allowEmptyShould(true);
+              "A versioned migration step does not reach workflows or pipelines from its base class");
 }

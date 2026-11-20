@@ -109,6 +109,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
           taskAssignees);
       assignees.addAll(taskReviewers);
       assignees.addAll(taskAssignees);
+      Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
 
       if (!hasExplicitTaskAssignees) {
         assignees.addAll(
@@ -184,12 +185,18 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
             }
           }
         }
-        if (assignees.isEmpty() && ownersAssignable && cascadesOwners(assigneesConfig)) {
+        // A step that resolves only the requester counts as empty: they are removed below.
+        if (requesterEntityLinks.containsAll(assignees)
+            && ownersAssignable
+            && cascadesOwners(assigneesConfig)) {
           assignees.addAll(
               OwnerCascade.resolve(
                   entity,
                   entityLink.getEntityType(),
-                  this::getEntityLinkStringFromEntityReferenceWithTeamExpansion));
+                  owners ->
+                      getEntityLinkStringFromEntityReferenceWithTeamExpansion(owners).stream()
+                          .filter(owner -> !requesterEntityLinks.contains(owner))
+                          .toList()));
         }
       }
 
@@ -214,7 +221,6 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               .map(EmptyAssigneeStrategy::fromValue)
               .orElse(NONE);
       final boolean assignAdmins = emptyAssigneeStrategy == ASSIGN_ADMINS;
-      Set<String> requesterEntityLinks = resolveRequesterEntityLinks(varHandler, execution);
       List<String> preRemovalAssignees = new ArrayList<>(assigneeList);
       boolean removedRequester = assigneeList.removeAll(requesterEntityLinks);
       boolean reviewsChangeRequest = ChangeRequestRun.from(varHandler).isPresent();
