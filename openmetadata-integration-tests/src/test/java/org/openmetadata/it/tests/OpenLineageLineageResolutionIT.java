@@ -1129,6 +1129,43 @@ public class OpenLineageLineageResolutionIT {
             Entity.TOPIC, topic.getFullyQualifiedName(), schemaFqn + "." + outputName));
   }
 
+  @Test
+  @Order(30)
+  void eventTime_withNumericUtcOffsetAndMicroseconds_preservesTruncatedEpochMillis(TestNamespace ns)
+      throws Exception {
+    long expectedEpochMs = 1788856189711L; // 2026-09-08T08:29:49.711Z
+
+    String airflowInput = "ol_temporal_airflow_in_" + uniqueSuffix();
+    String airflowOutput = "ol_temporal_airflow_out_" + uniqueSuffix();
+    Tables.create().name(airflowInput).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+    Tables.create().name(airflowOutput).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    sendCompleteEvent(
+        ns,
+        "ol_airflow_offset_job",
+        airflowInput,
+        airflowOutput,
+        "2026-09-08T08:29:49.711594+00:00");
+
+    Map<?, ?> airflowDetails = fetchOpenLineageEdgeDetails(airflowInput, airflowOutput);
+    assertNotNull(airflowDetails);
+    assertEquals(expectedEpochMs, ((Number) airflowDetails.get("createdAt")).longValue());
+    assertEquals(expectedEpochMs, ((Number) airflowDetails.get("updatedAt")).longValue());
+
+    String sparkInput = "ol_temporal_spark_in_" + uniqueSuffix();
+    String sparkOutput = "ol_temporal_spark_out_" + uniqueSuffix();
+    Tables.create().name(sparkInput).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+    Tables.create().name(sparkOutput).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+
+    sendCompleteEvent(
+        ns, "ol_spark_micros_job", sparkInput, sparkOutput, "2026-09-08T08:29:49.711594Z");
+
+    Map<?, ?> sparkDetails = fetchOpenLineageEdgeDetails(sparkInput, sparkOutput);
+    assertNotNull(sparkDetails);
+    assertEquals(expectedEpochMs, ((Number) sparkDetails.get("createdAt")).longValue());
+    assertEquals(expectedEpochMs, ((Number) sparkDetails.get("updatedAt")).longValue());
+  }
+
   // ====================================================================================
   // Helpers
   // ====================================================================================

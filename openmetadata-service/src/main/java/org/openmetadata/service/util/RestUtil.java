@@ -57,9 +57,10 @@ public final class RestUtil {
   public static final DateTimeFormatter DATE_FORMAT;
 
   static {
-    // Quoted "Z" to indicate UTC, no timezone offset
-    DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
+    // Quoted "Z" to indicate UTC, millisecond precision matching java.util.Date
+    DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
     DATE_TIME_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+    DATE_TIME_FORMAT.setLenient(false);
 
     DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.of("UTC"));
   }
