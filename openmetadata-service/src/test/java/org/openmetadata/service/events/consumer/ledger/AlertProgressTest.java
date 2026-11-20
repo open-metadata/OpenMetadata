@@ -32,12 +32,13 @@ class AlertProgressTest {
   private final EventSubscriptionDAO subscriptions = mock(EventSubscriptionDAO.class);
 
   @Test
-  void switchedOffAlertHasNothingToReadWhateverItsPositionRowSays() {
+  void switchedOffAlertHasNothingToReadAndReportsWhereItStopped() {
     EventSubscription alert = alert(false);
 
     AlertProgress progress = withRows(alert, AlertProgress::of);
 
-    assertEquals(LATEST, progress.currentOffset());
+    assertEquals(STOPPED_AT, progress.currentOffset());
+    assertEquals(LATEST, progress.latestOffset());
     assertEquals(STOPPED_AT, progress.startingOffset());
     assertEquals(0L, progress.unread());
     assertTrue(progress.caughtUp());

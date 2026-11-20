@@ -1,4 +1,4 @@
-# A disabled alert has nothing pending, and its progress is read from its enabled flag
+# A disabled alert is not running: it has nothing pending, and every report says it is disabled
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-19 (initial)
@@ -24,15 +24,24 @@ before the 500 cap existed.
 
 Moving the row at disable time is not enough, because events keep arriving while the alert is off.
 Keeping the row at the latest offset would need a write for every change event, or a sweep, and
-would make a second copy of what the `enabled` flag already says.
+would make a second copy of what the `enabled` flag already says. Reporting a disabled alert as
+simply caught up is not enough either: its page would then look like a healthy alert with nothing
+to do, and the only response that said it was disabled was the scheduling view.
 
 ## Decision
 
+A disabled alert is not running. Pending means the events an alert will still process, so it is 0
+for a disabled alert, whose next run starts from the latest event; and every response that reports
+an alert's progress states the state explicitly, through the same `enabled` field the alert and its
+scheduling view already carry. No new status value is introduced, and every count stays a number.
+
 `AlertProgress.of` is the one read model of an alert's progress, and every reader of what is
-pending, unread or behind goes through it. It reads a disabled alert that reads change events as
-standing at the latest offset with nothing unread, whatever its position row says, the way it
-already reads a self-driven consumer. What the alert handled before it was switched off is still
-counted from its rows.
+pending, unread or behind goes through it. For a disabled alert that reads change events it
+reports nothing pending or unread and `hasProcessedAllEvents` true, as `processedEvents` does,
+whatever its position row says. It still reports `currentOffset` and `startingOffset` as stored,
+since support needs the real position. What the alert handled before it was switched off is still
+counted from its rows. The events record and the diagnostics carry `enabled`, so a client shows the
+alert as disabled rather than as idle.
 
 The position row itself is left as it is: it belongs to the alert's ticks, which only run while it
 is enabled, and `skipBacklog` on re-enable stays the one write that decides where the alert resumes.
@@ -58,3 +67,5 @@ An alert created switched off has no row until it is first switched on.
   backlog for a moment. The page's count is capped at 500, so the cost is bounded.
 - A new reader of an alert's progress must go through `AlertProgress`; reading the position row
   directly would bring the phantom backlog back for disabled alerts.
+- A screen that shows an alert's counts reads `enabled` beside them and says the alert is disabled;
+  a 0 pending count alone does not tell a disabled alert from an idle one.

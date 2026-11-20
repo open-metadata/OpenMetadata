@@ -15,8 +15,9 @@ import org.openmetadata.service.events.consumer.ConsumerKind;
  * consumer that reads change events is counted by the rows its events leave, and the events after
  * its position are still to read. One that makes its own work is counted by what it reported, and
  * reads no change event: none is still to read, and it stands at the latest offset whatever its
- * position row says. So does an alert that is switched off, since switching it back on starts it
- * from the latest offset (ADR:2026-11-19-a-disabled-alert-has-nothing-pending).
+ * position row says. An alert that is switched off is not running: none is still to read either,
+ * since switching it back on starts it from the latest offset, but it reports its position row as
+ * stored (ADR:2026-11-19-a-disabled-alert-has-nothing-pending).
  */
 public sealed interface AlertProgress {
 
@@ -128,7 +129,7 @@ public sealed interface AlertProgress {
     }
   }
 
-  /** Reads no change event: it stands at the latest offset and has nothing to read. */
+  /** Has no change event still to read, whatever its position row says. */
   sealed interface ReadsNothing extends AlertProgress {
 
     EventSubscriptionOffset position();
@@ -136,8 +137,13 @@ public sealed interface AlertProgress {
     long latest();
 
     @Override
-    default long currentOffset() {
-      return latest();
+    default long unread() {
+      return 0;
+    }
+
+    @Override
+    default boolean caughtUp() {
+      return true;
     }
 
     @Override
@@ -161,13 +167,18 @@ public sealed interface AlertProgress {
     }
   }
 
-  /** Keeps the rows of what it handled before it was switched off. */
+  /** Not running: keeps the rows of what it handled and the position where it stopped. */
   record SwitchedOff(UUID alertId, EventSubscriptionOffset position, long latest)
       implements ReadsNothing {
 
     @Override
     public Counts counts() {
       return countedFromRows(alertId);
+    }
+
+    @Override
+    public long currentOffset() {
+      return position.getCurrentOffset();
     }
   }
 
@@ -179,6 +190,11 @@ public sealed interface AlertProgress {
       AlertMetrics counters = AlertRecord.counters(alertId);
       return new Counts(
           counters.getTotalEvents(), counters.getSuccessEvents(), counters.getFailedEvents());
+    }
+
+    @Override
+    public long currentOffset() {
+      return latest;
     }
   }
 }
