@@ -1634,7 +1634,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   @Test
   void test_glossaryTermStatusTransitions(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    Glossary glossary = getOrCreateGlossary(ns);
+    Glossary glossary = GlossaryTestFactory.createForStatusTests(ns);
 
     // Create term
     CreateGlossaryTerm request =
@@ -3089,12 +3089,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   void test_listGlossaryTermsWithEntityStatusFilter(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Create a dedicated glossary for this test
-    CreateGlossary createGlossary =
-        new CreateGlossary()
-            .withName(ns.prefix("status_list_glossary"))
-            .withDescription("Glossary for entityStatus list filter test");
-    Glossary glossary = client.glossaries().create(createGlossary);
+    // The approval workflow would move the draft term back to Approved; the test bootstrap
+    // excludes the status-test glossary from it.
+    Glossary glossary = GlossaryTestFactory.createForStatusTests(ns);
 
     // Create two terms - both start as APPROVED (default status when no reviewers)
     CreateGlossaryTerm request1 =
@@ -3182,12 +3179,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   void test_glossaryTermEntityStatusFiltering(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Step 1: Create a dedicated glossary for this test to avoid interference
-    CreateGlossary createGlossary =
-        new CreateGlossary()
-            .withName(ns.prefix("status_filter_glossary"))
-            .withDescription("Glossary for entityStatus filtering test");
-    Glossary glossary = client.glossaries().create(createGlossary);
+    // Step 1: A glossary the test bootstrap excludes from the approval workflow, which would
+    // otherwise move the terms this test sets by hand back to Approved.
+    Glossary glossary = GlossaryTestFactory.createForStatusTests(ns);
 
     // Step 2: Create two terms - both should start as APPROVED (default status when no reviewers)
     CreateGlossaryTerm request1 =
