@@ -26,7 +26,7 @@ import java.util.function.Supplier;
  * provider's discovery document, and for a public client whose authority names an Entra ID tenant,
  * it comes from that tenant.
  */
-final class ProviderTokenValidator {
+public final class ProviderTokenValidator {
   private static final String TENANT_ID_PLACEHOLDER = "{tenantid}";
   private static final String TENANT_ID_CLAIM = "tid";
   private static final String GOOGLE_ISSUER = "https://accounts.google.com";
@@ -113,7 +113,7 @@ final class ProviderTokenValidator {
   }
 
   /** Google documents both forms as the issuer of its ID tokens. */
-  private static boolean isGoogleSchemelessIssuer(String expectedIssuer, String issuer) {
+  public static boolean isGoogleSchemelessIssuer(String expectedIssuer, String issuer) {
     return GOOGLE_ISSUER.equals(expectedIssuer) && GOOGLE_SCHEMELESS_ISSUER.equals(issuer);
   }
 }

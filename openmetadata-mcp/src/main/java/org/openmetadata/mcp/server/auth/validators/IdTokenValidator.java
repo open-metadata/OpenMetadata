@@ -37,6 +37,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.openmetadata.service.security.ProviderTokenValidator;
 
 /**
  * Validates ID tokens from OIDC providers using JWKS-based signature verification.
@@ -193,7 +194,8 @@ public class IdTokenValidator {
       throw new IdTokenValidationException("ID token is missing required 'iss' (issuer) claim");
     }
 
-    if (!expectedIssuer.equals(issuer)) {
+    if (!expectedIssuer.equals(issuer)
+        && !ProviderTokenValidator.isGoogleSchemelessIssuer(expectedIssuer, issuer)) {
       LOG.warn(
           "ID token issuer mismatch. Expected: {}, Got: {}. This may indicate a token from a different OIDC provider.",
           expectedIssuer,
