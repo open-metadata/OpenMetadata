@@ -51,23 +51,9 @@ public final class DeploymentConfigReconciler {
     deployment.settings().forEach(setting -> reconcile(deployment, setting));
   }
 
-  /**
-   * Stores the deployment value of every setting the database does not have yet. A value that
-   * cannot be stored stops the start: there is no stored value to fall back to.
-   */
+  /** Stores the deployment value of every setting the database does not have yet. */
   public void seedMissing(DeploymentConfig deployment) {
-    deployment.settings().forEach(setting -> seedOrStopTheStart(deployment, setting));
-  }
-
-  private void seedOrStopTheStart(DeploymentConfig deployment, DeploymentSetting setting) {
-    try {
-      seedIfAbsent(deployment, setting);
-    } catch (JdbiException
-        | IllegalArgumentException
-        | IllegalStateException
-        | WebApplicationException failure) {
-      throw startStoppedBy(setting, failure);
-    }
+    deployment.settings().forEach(setting -> seedIfAbsent(deployment, setting));
   }
 
   /**
@@ -122,11 +108,10 @@ public final class DeploymentConfigReconciler {
       DeploymentConfig deployment, DeploymentSetting setting, StoredSettingRow row) {
     Optional<DeploymentSnapshot> previous = DeploymentSnapshot.parse(row.snapshot());
     if (previous.filter(this::isFromNewerServer).isEmpty()) {
-      MergeResult result =
-          merge.merge(inputOf(deployment, setting, ConfigSourceMode.ENV, row, previous));
+      MergeInput input = inputOf(deployment, setting, ConfigSourceMode.ENV, row, previous);
+      MergeResult result = merge.merge(input);
       if (result.storedChanged()) {
-        preparer.prepareReconciled(
-            setting.settingsType(), result.stored(), JsonUtils.readTree(row.json()));
+        preparer.prepareReconciled(setting.settingsType(), result.stored(), input.stored());
       }
     }
   }
@@ -196,8 +181,8 @@ public final class DeploymentConfigReconciler {
               + "deployment configuration to it",
           setting.settingsType().value());
     } else {
-      MergeResult result = merge.merge(inputOf(deployment, setting, mode, row, previous));
-      done = store(setting, mode, row, previous, result);
+      MergeInput input = inputOf(deployment, setting, mode, row, previous);
+      done = store(setting, input, row, previous, merge.merge(input));
     }
     return done;
   }
@@ -240,11 +225,12 @@ public final class DeploymentConfigReconciler {
 
   private boolean store(
       DeploymentSetting setting,
-      ConfigSourceMode mode,
+      MergeInput input,
       StoredSettingRow row,
       Optional<DeploymentSnapshot> previous,
       MergeResult result) {
     SettingsType type = setting.settingsType();
+    ConfigSourceMode mode = input.mode();
     ReconcileLog log =
         ReconcileLog.of(setting, result, previous.map(this::warnedOf).orElse(List.of()));
     DeploymentSnapshot snapshot =
@@ -253,7 +239,7 @@ public final class DeploymentConfigReconciler {
             metaOf(mode, row, previous, log.warned()));
     boolean stored =
         result.storedChanged()
-            ? storeMerged(type, row, result, snapshot)
+            ? storeMerged(type, row, input.stored(), result, snapshot)
             : storeSnapshot(type, row, snapshot);
     if (stored) {
       ConfigSources.recordPersistedMode(type, mode);
@@ -282,10 +268,14 @@ public final class DeploymentConfigReconciler {
     return new DeploymentSnapshot.Meta(mode, appVersion, appliedJsonHash, warned, previousStored);
   }
 
+  /** {@code stored} is the decrypted stored value the merge started from. */
   private boolean storeMerged(
-      SettingsType type, StoredSettingRow row, MergeResult result, DeploymentSnapshot snapshot) {
-    String updatedJson =
-        preparer.prepareReconciled(type, result.stored(), JsonUtils.readTree(row.json()));
+      SettingsType type,
+      StoredSettingRow row,
+      JsonNode stored,
+      MergeResult result,
+      DeploymentSnapshot snapshot) {
+    String updatedJson = preparer.prepareReconciled(type, result.stored(), stored);
     boolean written =
         dao.updateSettingsWithSnapshotIfCurrent(
                 type.value(), row.json(), updatedJson, snapshot.toJson())

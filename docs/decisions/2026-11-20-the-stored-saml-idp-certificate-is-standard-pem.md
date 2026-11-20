@@ -56,6 +56,8 @@ bad one back. In `AUTO` mode an unchanged `SAML_IDP_CERTIFICATE` keeps the migra
 does the stored row on 2.0, where the deployment only seeds an empty database. After the migration
 the stored certificate differs from the deployment value last applied, as after an edit in the UI,
 so a later change of the variable in `AUTO` mode is reported as a conflict and the stored value
-wins; the UI applies it. In `ENV` mode an old-layout variable stops the start until it is fixed.
+wins; the UI applies it. In `ENV` mode the deployment value is applied on every start, so an old-layout
+`SAML_IDP_CERTIFICATE` stops the first start after the upgrade, although the migration fixed the
+stored copy, until it is given in standard PEM or as the base64 body alone.
 Revisit if the server ever has to accept these layouts again at runtime, for example from IdP
 metadata it fetches itself.
