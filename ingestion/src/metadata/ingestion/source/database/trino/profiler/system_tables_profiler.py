@@ -12,12 +12,13 @@
 System table profiler
 """
 
+import re
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
 from more_itertools import partition
-from pydantic import field_validator
+from pydantic import TypeAdapter, ValidationError, field_validator
 from sqlalchemy import Table, text
 from sqlalchemy.engine import Engine  # noqa: TC002
 
@@ -37,6 +38,10 @@ from metadata.utils.ssl_manager import get_ssl_connection
 from trino.sqlalchemy.dialect import TrinoDialect
 
 logger = profiler_logger()
+
+
+_BOUND_ADAPTER = TypeAdapter(int | float | datetime | Decimal)
+_TRAILING_ZONE = re.compile(r"\s+[A-Za-z][A-Za-z0-9_/+\-]*$")
 
 
 class ColumnStats(BaseModel):
@@ -61,9 +66,43 @@ class ColumnStats(BaseModel):
             return None
         return int(value)
 
+    @field_validator("low_value", "high_value", mode="before")
+    @classmethod
+    def bound_validator(cls, value):
+        """Coerce Trino min/max values that the strict union cannot parse.
+
+        Trino returns booleans as 'true'/'false' and `timestamp with time zone`
+        as strings with a zone-name suffix (e.g. '2014-03-06 08:00:00.000 UTC').
+        Values that still cannot be parsed are dropped instead of failing the
+        validation of the whole table's statistics.
+        """
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in ("true", "false"):
+                return int(lowered == "true")
+            value = _TRAILING_ZONE.sub("", value.strip())
+        try:
+            return _BOUND_ADAPTER.validate_python(value)
+        except ValidationError:
+            logger.debug(f"Ignoring unparseable Trino column bound: {value!r}")
+            return None
+
 
 class TableStats(BaseModel):
     row_count: int | None = None
+
+    @field_validator("row_count", mode="before")
+    @classmethod
+    def row_count_validator(cls, value):
+        """Trino row_count is an estimate and can be fractional"""
+        if value is None:
+            return None
+        return round(value)
+
     columns: dict[str, ColumnStats] = {}  # noqa: RUF012
 
 
