@@ -47,6 +47,13 @@ class TestSuiteProcessorConfig(ConfigModel):
 
 
 class TestCaseResultResponse(BaseModel):
+    """Internal workflow response carrying the result and optional sample updates.
+
+    A supplied failedRowsSample takes upload precedence over clearFailedRowsSample.
+    Without a sample, clearFailedRowsSample explicitly deletes the preceding snapshot;
+    False preserves it when collection was disabled or failed.
+    """
+
     testCaseResult: TestCaseResult  # noqa: N815
     testCase: TestCase  # noqa: N815
     failedRowsSample: TableData | None = None  # noqa: N815

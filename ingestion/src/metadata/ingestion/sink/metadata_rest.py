@@ -934,7 +934,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 self.metadata.delete_failed_rows_sample(record.testCase)
             except Exception:
                 logger.debug(traceback.format_exc())
-                logger.error(f"Failed to clear failed rows sample for {record.testCase.name.root}")
+                logger.error("Failed to clear failed rows sample for %s", record.testCase.name.root)
 
         if record.inspectionQuery is not None:
             try:

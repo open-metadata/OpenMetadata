@@ -19,10 +19,12 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 from typing import ClassVar
 from unittest.mock import patch
+from urllib.parse import parse_qs, unquote, urlsplit
 from uuid import uuid4
 
 import pandas as pd
 import pytest
+import requests
 from pandas.errors import UndefinedVariableError
 from sqlalchemy import Column, Integer, LargeBinary, String, create_engine
 from sqlalchemy.dialects.mysql.pymysql import MySQLDialect_pymysql
@@ -191,6 +193,15 @@ PANDAS_VARIANTS = [
 ]
 
 
+def sample_api_request_status(path: str, expected: str, sample_upload: bool) -> int:
+    request = urlsplit(path)
+    if unquote(request.path) != expected:
+        return 404
+    query = parse_qs(request.query, keep_blank_values=True)
+    allowed_query = {"validate": ["true"]} if sample_upload else {}
+    return 200 if query in ({}, allowed_query) else 400
+
+
 @pytest.fixture
 def sample_api():
     """A stateful HTTP boundary using the existing server endpoint shapes."""
@@ -206,14 +217,27 @@ def sample_api():
             self.end_headers()
             self.wfile.write(json.dumps(payload).encode())
 
+        def matches_route(self, suffix, *, sample_upload=False):
+            status = sample_api_request_status(self.path, f"/v1/dataQuality/testCases/{suffix}", sample_upload)
+            if status != 200:
+                self.respond(status, {"code": status, "message": "unsupported route, identity or column validation"})
+                return False
+            return True
+
         def do_POST(self):
+            if not self.matches_route(f"testCaseResults/{state['case']['fullyQualifiedName']}"):
+                return
             state["events"].append("result")
             state["result"] = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             self.respond(200, state["result"])
 
         def do_PUT(self):
+            sample_upload = urlsplit(self.path).path.endswith("/failedRowsSample")
+            endpoint = "failedRowsSample" if sample_upload else "inspectionQuery"
+            if not self.matches_route(f"{state['case']['id']}/{endpoint}", sample_upload=sample_upload):
+                return
             body = self.rfile.read(int(self.headers["Content-Length"]))
-            if "failedRowsSample" in self.path:
+            if sample_upload:
                 state["events"].append("sample")
                 state["sample"] = json.loads(body)
                 self.respond(200, {"failedRowsSample": state["sample"]})
@@ -223,6 +247,8 @@ def sample_api():
                 self.respond(200, state["case"])
 
         def do_DELETE(self):
+            if not self.matches_route(f"{state['case']['id']}/failedRowsSample"):
+                return
             state["events"].append("delete")
             code = state["delete_status"]
             if code == 200:
@@ -230,6 +256,8 @@ def sample_api():
             self.respond(code, {} if code == 200 else {"code": code, "message": "delete failed"})
 
         def do_GET(self):
+            if not self.matches_route(f"{state['case']['id']}/failedRowsSample"):
+                return
             self.respond(200 if state["sample"] else 404, state["sample"] or {"code": 404, "message": "absent"})
 
     server = HTTPServer(("127.0.0.1", 0), Handler)
@@ -248,6 +276,53 @@ def sample_api():
     server.shutdown()
     server.server_close()
     thread.join()
+
+
+@pytest.mark.parametrize(
+    ("method", "route", "expected_status"),
+    [
+        ("GET", "{case_id}/unknown", 404),
+        ("DELETE", "{case_id}/unknown", 404),
+        ("PUT", "{case_id}/unknown", 404),
+        ("POST", "unknown/{case_fqn}", 404),
+        ("GET", "{wrong_id}/failedRowsSample", 404),
+        ("DELETE", "{wrong_id}/failedRowsSample", 404),
+        ("PUT", "{wrong_id}/failedRowsSample", 404),
+        ("PUT", "{wrong_id}/inspectionQuery", 404),
+        ("POST", "testCaseResults/wrong.case", 404),
+        ("PUT", "{case_id}/failedRowsSample?validate=false", 400),
+    ],
+)
+def test_sample_api_rejects_invalid_requests_without_state_changes(sample_api, method, route, expected_status):
+    metadata, state = sample_api
+    case_id = str(uuid4())
+    case_fqn = "service.db.main.orders.no_negative_amounts"
+    state.update(
+        case={"id": case_id, "fullyQualifiedName": case_fqn},
+        sample={"columns": ["amount"], "rows": [[-1]]},
+        query=RULE_SQL,
+        result={"failedRows": NEGATIVE_ROWS},
+    )
+    before = json.loads(json.dumps(state))
+    route = route.format(case_id=case_id, case_fqn=case_fqn, wrong_id=uuid4())
+    response = requests.request(
+        method,
+        f"{metadata.config.hostPort}/v1/dataQuality/testCases/{route}",
+        json={"columns": ["amount"], "rows": [[-2]]},
+        timeout=5,
+    )
+    assert response.status_code == expected_status
+    assert state == before
+
+
+def test_delete_sample_without_persisted_case_preserves_http_state(sample_api):
+    metadata, state = sample_api
+    case = build_test_case(TABLE_LINK, RULE_SQL, EntityType.TABLE)
+    state["sample"] = {"columns": ["amount"], "rows": [[-1]]}
+    before = json.loads(json.dumps(state))
+    with pytest.raises(ValueError, match="persisted test case"):
+        metadata.delete_failed_rows_sample(case)
+    assert state == before
 
 
 @pytest.mark.parametrize(VARIANT_PARAMS, SQA_VARIANTS)

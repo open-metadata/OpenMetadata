@@ -13,6 +13,7 @@
 Validator for column value rule library SQL expression
 """
 
+from collections.abc import Sequence
 from typing import Any
 
 from metadata.data_quality.validations.mixins.failed_sample_validator_mixin import (
@@ -56,7 +57,7 @@ class ColumnRuleLibrarySqlExpressionValidator(FailedSampleValidatorMixin, RuleLi
 
     # Columns and first rows of what the rule returned, kept by `_run_results` so the failed rows
     # sample costs no second query. None when the rule returned nothing that can be stored.
-    _failed_rows: tuple[list[str], list[list[Any]]] | None = None
+    _failed_rows: tuple[list[str], Sequence[Any]] | None = None
 
     def _get_user_params(self) -> dict[str, str]:
         """Extract user-defined parameters from test case parameterValues.
@@ -109,7 +110,7 @@ class ColumnRuleLibrarySqlExpressionValidator(FailedSampleValidatorMixin, RuleLi
         if self._failed_rows is None:
             return None
         columns, rows = self._failed_rows
-        return TableData(columns=[ColumnName(column) for column in columns], rows=rows)
+        return TableData.model_validate({"columns": [ColumnName(column) for column in columns], "rows": rows})
 
     def get_column_name(self) -> str:
         """Get the column name from the test case entity link.

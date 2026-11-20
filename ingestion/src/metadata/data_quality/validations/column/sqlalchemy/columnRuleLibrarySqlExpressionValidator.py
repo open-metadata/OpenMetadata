@@ -11,7 +11,8 @@
 
 """SQLAlchemy validator for rule library SQL expression tests"""
 
-from typing import TYPE_CHECKING, cast
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, cast
 
 from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy import func, select, text
@@ -21,13 +22,11 @@ from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressio
 )
 from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
     FAILED_ROW_SAMPLE_SIZE,
-    render_literal_sql,
-    table_columns_sample,
 )
+from metadata.data_quality.validations.mixins.rule_library_sql_sample_mixin import RuleLibrarySqlSampleMixin
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
-from metadata.generated.schema.entity.data.table import TableData
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_utils import escape_identifier_for_text_clause
@@ -38,8 +37,10 @@ if TYPE_CHECKING:
 logger = test_suite_logger()
 
 
-class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
+class ColumnRuleLibrarySqlExpressionValidator(RuleLibrarySqlSampleMixin, BaseValidator, SQAValidatorMixin):
     """SQLAlchemy implementation of Column Rule Library SQL Expression validator."""
+
+    _failed_rows: tuple[list[str], Sequence[Any]] | None
 
     def get_table_name(self) -> str:
         """Use the same physical table and bind as the rule's row-count query."""
@@ -102,21 +103,6 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
         self._failed_rows = (list(result.keys()), rows[:FAILED_ROW_SAMPLE_SIZE])
         return len(rows)
 
-    def fetch_failed_rows_sample(self) -> TableData | None:
-        if self._failed_rows is None:
-            return None
-        runner = cast("QueryRunner", self.runner)
-        columns, rows = self._failed_rows
-        sample = table_columns_sample(
-            runner.table,
-            columns,
-            rows,
-            sql=self._executed_sql[0],
-            table_reference=runner.get_table_reference(),
-            dialect=runner.session.get_bind().dialect,
-        )
-        return TableData(columns=sample[0], rows=sample[1]) if sample else None
-
     def _run_row_count(self) -> int:
         """Count the rows of the unsampled, unpartitioned table, the rows the rule's SQL reads"""
         runner = cast("QueryRunner", self.runner)
@@ -125,10 +111,3 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
         except Exception:
             runner.session.rollback()
             raise
-
-    def get_inspection_query(self) -> str | None:
-        """The SQL `_run_results` executed, with its parameters written in"""
-        compiled_sql, bind_params = self._executed_sql
-        return render_literal_sql(
-            compiled_sql, bind_params, cast("QueryRunner", self.runner).session.get_bind().dialect
-        )
