@@ -267,6 +267,23 @@ jest.mock('../common/DomainFilterChip/DomainFilterChip.component', () => ({
 
 const mockIsAiMode = jest.fn().mockReturnValue(false);
 
+jest.mock('../Explore/ExploreSortDropdown/ExploreSortDropdown', () =>
+  jest.fn(
+    ({
+      onChange,
+    }: {
+      onChange: (sortField: string, sortOrder: string) => void;
+    }) => (
+      <button
+        data-testid="sorting-dropdown-label"
+        type="button"
+        onClick={() => onChange('displayName.keyword', 'desc')}>
+        ExploreSortDropdown
+      </button>
+    )
+  )
+);
+
 jest.mock('../../hooks/useAppMode', () => ({
   ...jest.requireActual('../../hooks/useAppMode'),
   useIsAiMode: () => mockIsAiMode(),
@@ -396,8 +413,7 @@ Object.defineProperty(window, 'location', {
 
 const onChangeAdvancedSearchQuickFilters = jest.fn();
 const onChangeSearchIndex = jest.fn();
-const onChangeSortOder = jest.fn();
-const onChangeSortValue = jest.fn();
+const onChangeSort = jest.fn();
 const onChangeShowDeleted = jest.fn();
 const onChangePage = jest.fn();
 const onChangePageSize = jest.fn();
@@ -427,9 +443,8 @@ const props = {
   searchIndex: SearchIndex.TABLE as ExploreSearchIndex,
   onChangeSearchIndex: onChangeSearchIndex,
   sortOrder: '',
-  onChangeSortOder: onChangeSortOder,
   sortValue: '',
-  onChangeSortValue: onChangeSortValue,
+  onChangeSort: onChangeSort,
   onChangeShowDeleted: onChangeShowDeleted,
   showDeleted: false,
   onChangePage: onChangePage,
@@ -594,12 +609,12 @@ describe('ExploreV1', () => {
     expect(onResetAllFilters).not.toHaveBeenCalled();
   });
 
-  it('changes sort order when sort button is clicked', () => {
+  it('passes the combined sort choice straight to onChangeSort', () => {
     render(<ExploreV1 {...props} />, { wrapper: Wrapper });
 
-    fireEvent.click(screen.getByTestId('sort-order-button'));
+    fireEvent.click(screen.getByTestId('sorting-dropdown-label'));
 
-    expect(onChangeSortOder).toHaveBeenCalled();
+    expect(onChangeSort).toHaveBeenCalledWith('displayName.keyword', 'desc');
   });
 
   it('uses parent header spacing and actions without persistent focus styles', () => {
@@ -616,17 +631,6 @@ describe('ExploreV1', () => {
     expect(
       screen.getByTestId('resizable-left-panel-title-text')
     ).toHaveAttribute('data-title-strong', 'false');
-    expect(screen.getByTestId('sorting-dropdown-label')).toHaveAttribute(
-      'data-size',
-      'sm'
-    );
-    expect(screen.getByTestId('sorting-dropdown-label')).toHaveAttribute(
-      'data-hide-focus-outline',
-      'true'
-    );
-    expect(screen.getByTestId('sorting-dropdown-label')).not.toHaveClass(
-      'quick-filter-dropdown-trigger-btn'
-    );
     expect(
       screen.getByText('label.tool-plural').closest('button')
     ).toHaveAttribute('data-size', 'sm');
