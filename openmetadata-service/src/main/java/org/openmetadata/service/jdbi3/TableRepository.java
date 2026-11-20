@@ -1450,7 +1450,7 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Transaction
-  public Table addDataModel(UUID tableId, DataModel dataModel) {
+  public Table addDataModel(UUID tableId, DataModel dataModel, String updatedBy) {
     Table table =
         get(
             null,
@@ -1511,7 +1511,7 @@ public class TableRepository extends EntityRepository<Table> {
     }
     applyColumnTags(table.getColumns());
     dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
-    storePendingGlossaryTerms(heldTerms, table.getUpdatedBy());
+    storePendingGlossaryTerms(heldTerms, updatedBy);
     // addDataModel bypasses the EntityRepository.update() path, so invalidateCachesAfterStore
     // never runs. Drop every cached variant manually so the next GET rebuilds with the freshly
     // merged tags/dataModel instead of stale pre-merge JSON. It also bypasses postUpdate, which is
@@ -2715,9 +2715,7 @@ public class TableRepository extends EntityRepository<Table> {
         try {
           JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, table);
           UUID pendingChangeRequestId =
-              repository
-                  .patchForImport(table.getId(), importedBy, jsonPatch)
-                  .pendingChangeRequestId();
+              repository.patch(null, table.getId(), importedBy, jsonPatch).pendingChangeRequestId();
           if (pendingChangeRequestId != null) {
             result = pendingApprovalDetail(pendingChangeRequestId);
           }

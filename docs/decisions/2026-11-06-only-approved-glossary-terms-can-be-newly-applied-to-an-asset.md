@@ -79,15 +79,20 @@ leaves pending rows out (`TagUsageDAO.NOT_PENDING`): entity and column reads, th
 filter, tag and term usage counts, ontology and knowledge center reads. No table or join is added.
 Because a pending row is an ordinary `tag_usage` row, renames, moves and deletes of the asset, its
 fields or the term already carry it. Writes that clear an asset's tags to write them again (CSV
-import, data model, bulk re-store) keep pending rows; a client never sees a pending term, so it
-cannot remove one.
+import, data model, bulk re-store) keep pending rows. A client never sees a pending term, so no
+write of the asset's labels removes one, by any user: a pending term leaves an asset only when the
+term is removed from it through the term's `assets/remove`, which drops its pending labels on the
+asset and on every field under it, or when the term is rejected. `GET
+/v1/glossaryTerms/{id}/pendingAssets` lists the assets a term is pending on, paged by an `after`
+cursor over target FQN hashes, leaving out assets the caller may not view.
 
 When the term moves to Approved, `GlossaryTermPendingLabels` flips its pending rows in batches of
 500, after the term is stored (`GlossaryTermRepository.postUpdate`, so a bulk update's status
 change is acted on only once it is saved): an automated label, as ingestion sends, comes back
 Suggested and any other comes back Confirmed. Each batch first finds the entities holding its
 targets, by FQN hash in the taggable entity tables in bounded chunks, then flips the rows and
-evicts and reindexes those entities. The asset gets no new version or change event for the term.
+evicts and reindexes those entities. An entity whose search document fails to index goes on the search
+retry queue (`search_index_retry_queue`), so search catches up with the API once it is back. The asset gets no new version or change event for the term.
 A target where the term would be mutually exclusive with a term it shows, counting the tags those
 terms imply, keeps the label pending. When the term is rejected, its pending rows are deleted.
 

@@ -55,6 +55,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
@@ -1182,7 +1183,13 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
         getResourceContextById(id));
     GlossaryTerm term = repository.get(uriInfo, id, repository.getFields(""));
-    return GlossaryTermPendingLabels.pendingAssets(term.getFullyQualifiedName(), after, limit);
+    ResultList<EntityReference> page =
+        GlossaryTermPendingLabels.pendingAssets(term.getFullyQualifiedName(), after, limit);
+    // A term can be pending on assets the caller may not see; only the viewable ones are listed.
+    Set<UUID> viewable = viewPermissionFilter.viewableIds(securityContext, page.getData());
+    List<EntityReference> shown =
+        page.getData().stream().filter(asset -> viewable.contains(asset.getId())).toList();
+    return new ResultList<>(shown, null, page.getPaging().getAfter(), shown.size());
   }
 
   @GET

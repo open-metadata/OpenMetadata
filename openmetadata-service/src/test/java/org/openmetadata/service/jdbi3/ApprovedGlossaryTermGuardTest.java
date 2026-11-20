@@ -23,12 +23,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import jakarta.json.Json;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,13 +36,11 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.schema.type.TagLabel.TagSource;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.HeldTerm;
 import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.TaggedEntity;
@@ -351,43 +347,6 @@ class ApprovedGlossaryTermGuardTest {
 
     assertEquals(TagLabel.State.PENDING, pending.getState());
     assertEquals(DEPRECATED.getFullyQualifiedName(), pending.getTagFQN());
-  }
-
-  /** A patch sends the labels of the targets its paths address, and no others. */
-  @Test
-  void aPatchSendsOnlyTheTargetsItsPathsAddress() {
-    Table table =
-        new Table()
-            .withFullyQualifiedName(TABLE_FQN)
-            .withDatabaseSchema(
-                new EntityReference()
-                    .withId(UUID.randomUUID())
-                    .withType("databaseSchema")
-                    .withFullyQualifiedName("svc.db.schema"))
-            .withColumns(
-                List.of(column("id", COLUMN_A, List.of()), column("total", COLUMN_B, List.of())));
-    TaggedEntity stored = new TaggedEntity(table, columnsOf(table));
-
-    assertEquals(
-        Set.of(TABLE_FQN), sent(stored, "[{\"op\":\"add\",\"path\":\"/tags/0\",\"value\":{}}]"));
-    assertEquals(
-        Set.of(COLUMN_B),
-        sent(stored, "[{\"op\":\"replace\",\"path\":\"/columns/1/tags\",\"value\":[]}]"));
-    assertEquals(
-        Set.of(),
-        sent(stored, "[{\"op\":\"replace\",\"path\":\"/columns/0/description\",\"value\":\"d\"}]"));
-    assertEquals(
-        Set.of(COLUMN_A, COLUMN_B),
-        sent(stored, "[{\"op\":\"replace\",\"path\":\"/columns\",\"value\":[]}]"));
-    assertEquals(
-        Set.of(),
-        sent(stored, "[{\"op\":\"replace\",\"path\":\"/databaseSchema\",\"value\":{}}]"),
-        "a reference to another entity is not one of the table's targets");
-  }
-
-  private static Set<String> sent(TaggedEntity stored, String patch) {
-    return ApprovedGlossaryTermGuard.targetsSent(
-        stored, Json.createPatch(JsonUtils.readJson(patch).asJsonArray()));
   }
 
   /** Queries spell the stored states and label types out; they must match the enums' ordinals. */

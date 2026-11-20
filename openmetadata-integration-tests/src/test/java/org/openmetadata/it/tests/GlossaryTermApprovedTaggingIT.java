@@ -630,21 +630,24 @@ public class GlossaryTermApprovedTaggingIT {
   }
 
   /**
-   * A pending term is not shown, so a client removes it by sending the target's labels without
-   * it. Only the user who applied it removes it that way; another user's write keeps it.
+   * A pending term is not shown, so a write that sends the asset's labels without it, by anyone,
+   * keeps it. Removing the term from the asset through the term's assets/remove takes it back, on
+   * the asset and on its columns.
    */
   @Test
-  void aWriteWithoutTheHeldTermRemovesItOnlyForTheUserWhoAppliedIt(TestNamespace ns) {
+  void onlyRemovingTheTermFromTheAssetDropsTheHeldTerm(TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
     GlossaryTerm term = deprecatedTerm(admin, ns);
-    Table table = admin.tables().create(tableRequest(ns, schema(ns), "remove_held"));
-    Table tagged = reread(admin, table);
-    tagged.setTags(List.of(label(term)));
-    admin.tables().update(table.getId().toString(), tagged);
-    assertEquals(1, pendingTargets(term).size());
+    CreateTable request = tableRequest(ns, schema(ns), "remove_held");
+    request.setTags(List.of(label(term)));
+    request.getColumns().get(0).setTags(List.of(label(term)));
+    Table table = admin.tables().create(request);
+    assertEquals(2, pendingTargets(term).size());
 
-    // A PATCH that sends the labels but changes nothing is answered from the stored version; the
-    // writer is still the one who sent it.
+    Table cleared = reread(admin, table);
+    cleared.setTags(List.of(SharedEntities.get().PII_SENSITIVE_TAG_LABEL));
+    cleared.getColumns().get(0).setTags(List.of());
+    admin.tables().update(table.getId().toString(), cleared);
     SdkClients.ingestionBotClient()
         .getHttpClient()
         .execute(
@@ -652,22 +655,19 @@ public class GlossaryTermApprovedTaggingIT {
             "/v1/tables/%s".formatted(table.getId()),
             JsonUtils.readTree("[{\"op\":\"add\",\"path\":\"/tags\",\"value\":[]}]"),
             JsonNode.class);
-    assertEquals(1, pendingTargets(term).size(), "another user's unchanged PATCH keeps it");
+    assertEquals(2, pendingTargets(term).size(), "writes that leave the term out keep it");
 
-    Table byOther = SdkClients.ingestionBotClient().tables().get(table.getId().toString(), "tags");
-    byOther.setTags(List.of(SharedEntities.get().PII_SENSITIVE_TAG_LABEL));
-    SdkClients.ingestionBotClient().tables().update(table.getId().toString(), byOther);
-    assertEquals(1, pendingTargets(term).size(), "another user's write keeps the pending term");
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/glossaryTerms/%s/assets/remove".formatted(term.getId()),
+            new AddGlossaryToAssetsRequest()
+                .withDryRun(false)
+                .withAssets(List.of(table.getEntityReference())),
+            BulkOperationResult.class);
 
-    Table described = reread(admin, table);
-    described.setDescription("an edit that does not send tags");
-    admin.tables().update(table.getId().toString(), described);
-    assertEquals(1, pendingTargets(term).size(), "a write that sends no tags keeps it");
-
-    Table cleared = reread(admin, table);
-    cleared.setTags(List.of());
-    admin.tables().update(table.getId().toString(), cleared);
-    assertTrue(pendingTargets(term).isEmpty(), "the applier's write without the term removes it");
+    assertTrue(pendingTargets(term).isEmpty(), "assets/remove drops it on the table and columns");
   }
 
   // A held term is answered as if it had not been sent: neither the write's answer nor a later read

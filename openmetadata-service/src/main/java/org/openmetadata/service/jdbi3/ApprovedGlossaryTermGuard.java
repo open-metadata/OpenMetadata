@@ -14,10 +14,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import jakarta.json.JsonObject;
-import jakarta.json.JsonPatch;
-import jakarta.json.JsonValue;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -50,8 +46,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * compared by FQN hash, the way they are stored and looked up, so quoting cannot disguise one.
  */
 public final class ApprovedGlossaryTermGuard {
-  private static final String FIELD_TAGS = "tags";
-  private static final String FQN_FIELD = "fullyQualifiedName";
 
   private ApprovedGlossaryTermGuard() {}
 
@@ -116,86 +110,6 @@ public final class ApprovedGlossaryTermGuard {
       dropHeld(newlyApplied, storedTermHashesByTarget(newlyApplied.keySet()));
     }
     return newlyApplied;
-  }
-
-  /** The FQNs of the entity and of every field under it that carries labels. */
-  public static Set<String> targetFqns(TaggedEntity entity) {
-    Set<String> fqns = new HashSet<>();
-    taggedTargets(entity.entity(), entity.fieldsByContainer()).stream()
-        .map(TaggedTarget::fqn)
-        .filter(Objects::nonNull)
-        .forEach(fqns::add);
-    return fqns;
-  }
-
-  /**
-   * The targets of {@code stored} whose labels a JSON patch sends: the entity for a path under
-   * {@code /tags}, a field for a path under that field's {@code tags}, and every field under a path
-   * that replaces a field or a list of fields. A path that only edits another attribute sends none.
-   */
-  public static Set<String> targetsSent(TaggedEntity stored, JsonPatch patch) {
-    JsonNode root = JsonUtils.valueToTree(stored.entity());
-    Set<String> sent = new HashSet<>();
-    for (JsonValue entry : patch.toJsonArray()) {
-      JsonObject op = entry.asJsonObject();
-      addTargetsSent(root, stored.entity().getFullyQualifiedName(), op.getString("path", ""), sent);
-      if (op.containsKey("from")) {
-        addTargetsSent(root, stored.entity().getFullyQualifiedName(), op.getString("from"), sent);
-      }
-    }
-    sent.retainAll(targetFqns(stored));
-    return sent;
-  }
-
-  private static void addTargetsSent(
-      JsonNode root, String entityFqn, String path, Set<String> sent) {
-    List<String> segments = pointerSegments(path);
-    if (!segments.isEmpty() && FIELD_TAGS.equals(segments.getFirst())) {
-      sent.add(entityFqn);
-    } else {
-      JsonNode node = root;
-      String fieldFqn = null;
-      boolean underTags = false;
-      for (int i = 0; i < segments.size() && node != null && !underTags; i++) {
-        underTags = fieldFqn != null && FIELD_TAGS.equals(segments.get(i)) && node.isObject();
-        node = underTags ? node : child(node, segments.get(i));
-        fieldFqn = node != null && node.has(FQN_FIELD) ? node.get(FQN_FIELD).asText() : fieldFqn;
-      }
-      if (underTags) {
-        sent.add(fieldFqn);
-      } else if (node != null) {
-        collectFieldFqns(node, sent);
-      }
-    }
-  }
-
-  private static JsonNode child(JsonNode node, String segment) {
-    JsonNode next = null;
-    if (node.isArray() && segment.chars().allMatch(Character::isDigit) && !segment.isEmpty()) {
-      next = node.get(Integer.parseInt(segment));
-    } else if (node.isObject()) {
-      next = node.get(segment);
-    }
-    return next;
-  }
-
-  private static void collectFieldFqns(JsonNode node, Set<String> fqns) {
-    if (node.isObject() && node.has(FQN_FIELD)) {
-      fqns.add(node.get(FQN_FIELD).asText());
-    }
-    if (node.isContainerNode()) {
-      node.forEach(child -> collectFieldFqns(child, fqns));
-    }
-  }
-
-  private static List<String> pointerSegments(String path) {
-    List<String> segments = new ArrayList<>();
-    for (String raw : path.split("/")) {
-      if (!raw.isEmpty()) {
-        segments.add(raw.replace("~1", "/").replace("~0", "~"));
-      }
-    }
-    return segments;
   }
 
   /** Removes the labels of the terms {@code termHashes} names from {@code tags}, returning them. */

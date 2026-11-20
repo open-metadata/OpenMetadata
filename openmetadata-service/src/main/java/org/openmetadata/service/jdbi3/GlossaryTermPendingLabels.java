@@ -79,6 +79,21 @@ public final class GlossaryTermPendingLabels implements Managed {
     schedule(term.getFullyQualifiedName(), 1, 0);
   }
 
+  /**
+   * Drops the term's pending labels on the assets and their fields. A pending term is not shown, so
+   * removing the term from an asset (the term's {@code assets/remove}) is how a client takes it back.
+   */
+  public static void dropPendingOn(GlossaryTerm term, List<EntityReference> assets) {
+    String termFqn = term.getFullyQualifiedName();
+    int dropped = 0;
+    for (EntityReference asset : assets) {
+      if (asset.getFullyQualifiedName() != null) {
+        dropped += dao().deletePendingUnder(GLOSSARY, termFqn, asset.getFullyQualifiedName());
+      }
+    }
+    LOG.debug("Dropped {} pending labels of glossary term {}", dropped, termFqn);
+  }
+
   /** Drops the term's pending labels: a rejected term is never shown on them. */
   public static void dropRejected(GlossaryTerm term) {
     int dropped =

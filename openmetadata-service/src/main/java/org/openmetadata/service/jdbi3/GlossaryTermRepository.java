@@ -2100,7 +2100,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public BulkOperationResult bulkRemoveGlossaryToAssets(
       UUID glossaryTermId, AddGlossaryToAssetsRequest request, PatchRequester requester) {
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id"));
-    return AssetTagLabelService.removeFromAssets(assetsRequest(term, request, requester));
+    BulkOperationResult result =
+        AssetTagLabelService.removeFromAssets(assetsRequest(term, request, requester));
+    if (!Boolean.TRUE.equals(request.getDryRun())) {
+      GlossaryTermPendingLabels.dropPendingOn(term, AssetEditService.succeededAssets(result));
+    }
+    return result;
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) {
