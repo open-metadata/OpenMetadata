@@ -16,8 +16,11 @@ from unittest.mock import MagicMock, patch
 from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
     ProgressUpdateType,
 )
+from metadata.ingestion.ometa.client import APIError, RestTransportError
 from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
+
+import pytest
 
 
 class _FakeStep:
@@ -99,3 +102,65 @@ class TestTotalAssetsIngested:
         harness._steps = []
         harness.send_progress_update()
         assert _sent_update(metadata).totalAssetsIngested is None
+
+
+class TestTerminalStatusWriteRetry:
+    def test_retries_transient_transport_failure_for_terminal_status(self):
+        metadata = MagicMock()
+        metadata.create_or_update_pipeline_status.side_effect = [
+            RestTransportError("PUT", "/pipelineStatus", TimeoutError("connection reset")),
+            None,
+        ]
+        harness = _Harness(ProgressRegistry(), metadata)
+        status = MagicMock()
+
+        with patch("metadata.workflow.workflow_status_mixin.sleep") as delay:
+            harness._write_pipeline_status("svc.pipeline", status, terminal=True)
+
+        assert metadata.create_or_update_pipeline_status.call_count == 2
+        metadata.create_or_update_pipeline_status.assert_called_with("svc.pipeline", status)
+        delay.assert_called_once()
+
+    def test_does_not_retry_running_status_or_forge_a_success(self):
+        metadata = MagicMock()
+        metadata.create_or_update_pipeline_status.side_effect = RestTransportError(
+            "PUT", "/pipelineStatus", TimeoutError("connection reset")
+        )
+        harness = _Harness(ProgressRegistry(), metadata)
+        status = MagicMock()
+
+        with patch("metadata.workflow.workflow_status_mixin.sleep") as delay:
+            with pytest.raises(RestTransportError):
+                harness._write_pipeline_status("svc.pipeline", status, terminal=False)
+
+        metadata.create_or_update_pipeline_status.assert_called_once()
+        delay.assert_not_called()
+
+    def test_non_retryable_api_error_fails_without_rewriting_status(self):
+        metadata = MagicMock()
+        metadata.create_or_update_pipeline_status.side_effect = APIError(
+            {"message": "Permission denied"}
+        )
+        harness = _Harness(ProgressRegistry(), metadata)
+        status = MagicMock()
+
+        with patch("metadata.workflow.workflow_status_mixin.sleep") as delay:
+            with pytest.raises(APIError):
+                harness._write_pipeline_status("svc.pipeline", status, terminal=True)
+
+        metadata.create_or_update_pipeline_status.assert_called_once()
+        delay.assert_not_called()
+
+    def test_terminal_status_retry_is_bounded(self):
+        metadata = MagicMock()
+        metadata.create_or_update_pipeline_status.side_effect = RestTransportError(
+            "PUT", "/pipelineStatus", TimeoutError("connection reset")
+        )
+        harness = _Harness(ProgressRegistry(), metadata)
+
+        with patch("metadata.workflow.workflow_status_mixin.sleep") as delay:
+            with pytest.raises(RestTransportError):
+                harness._write_pipeline_status("svc.pipeline", MagicMock(), terminal=True)
+
+        assert metadata.create_or_update_pipeline_status.call_count == 3
+        assert delay.call_count == 2
