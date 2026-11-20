@@ -17,6 +17,9 @@ from dataclasses import dataclass
 import pytest
 
 from metadata.data_quality.api.models import TestCaseDefinition
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    FAILED_ROW_SAMPLE_SIZE,
+)
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
@@ -139,6 +142,9 @@ class RuleLibraryTestParameter:
     entity_fqn: str
     test_case_definition: TestCaseDefinition
     expected_status: TestCaseStatus
+    # Rows in the stored failed rows sample, None when no sample is stored
+    expected_sample_rows: int | None
+    expected_inspection_query: SqlQuery | None
 
 
 @pytest.fixture(
@@ -149,9 +155,14 @@ class RuleLibraryTestParameter:
                 name="rule_library_customer_ids_greater_than_zero",
                 testDefinitionName="{test_def_name}",
                 columnName="customer_id",
+                computePassedFailedRowCount=True,
                 parameterValues=[{"name": "minValue", "value": "0"}],
             ),
             expected_status=TestCaseStatus.Failed,
+            expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
+            expected_inspection_query=SqlQuery(
+                root="SELECT customer_id FROM dvdrental.public.customer WHERE customer_id > '0'"
+            ),
         ),
         RuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
@@ -159,9 +170,12 @@ class RuleLibraryTestParameter:
                 name="rule_library_customer_ids_greater_than_max",
                 testDefinitionName="{test_def_name}",
                 columnName="customer_id",
+                computePassedFailedRowCount=True,
                 parameterValues=[{"name": "minValue", "value": "99999"}],
             ),
             expected_status=TestCaseStatus.Success,
+            expected_sample_rows=None,
+            expected_inspection_query=None,
         ),
         RuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
@@ -169,6 +183,7 @@ class RuleLibraryTestParameter:
                 name="rule_library_customer_ids_threshold_tolerated_as_percentage",
                 testDefinitionName="{test_def_name}",
                 columnName="customer_id",
+                computePassedFailedRowCount=True,
                 parameterValues=[
                     {"name": "minValue", "value": "0"},
                     {"name": "threshold", "value": "100"},
@@ -176,6 +191,10 @@ class RuleLibraryTestParameter:
                 ],
             ),
             expected_status=TestCaseStatus.Success,
+            expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
+            expected_inspection_query=SqlQuery(
+                root="SELECT customer_id FROM dvdrental.public.customer WHERE customer_id > '0'"
+            ),
         ),
         RuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
@@ -183,6 +202,7 @@ class RuleLibraryTestParameter:
                 name="rule_library_customer_ids_threshold_above_percentage",
                 testDefinitionName="{test_def_name}",
                 columnName="customer_id",
+                computePassedFailedRowCount=True,
                 parameterValues=[
                     {"name": "minValue", "value": "0"},
                     {"name": "threshold", "value": "99"},
@@ -190,6 +210,10 @@ class RuleLibraryTestParameter:
                 ],
             ),
             expected_status=TestCaseStatus.Failed,
+            expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
+            expected_inspection_query=SqlQuery(
+                root="SELECT customer_id FROM dvdrental.public.customer WHERE customer_id > '0'"
+            ),
         ),
         RuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
@@ -197,6 +221,7 @@ class RuleLibraryTestParameter:
                 name="rule_library_customer_ids_threshold_tolerated_as_absolute",
                 testDefinitionName="{test_def_name}",
                 columnName="customer_id",
+                computePassedFailedRowCount=True,
                 parameterValues=[
                     {"name": "minValue", "value": "0"},
                     {"name": "threshold", "value": "1000000"},
@@ -204,6 +229,10 @@ class RuleLibraryTestParameter:
                 ],
             ),
             expected_status=TestCaseStatus.Success,
+            expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
+            expected_inspection_query=SqlQuery(
+                root="SELECT customer_id FROM dvdrental.public.customer WHERE customer_id > '0'"
+            ),
         ),
     ],
     ids=lambda x: x.test_case_definition.name,
@@ -260,3 +289,12 @@ def test_rule_library_sql_expression_validator(
     assert test_case.testCaseResult is not None
     assert test_case.testCaseResult.testCaseStatus == rule_library_parameters.expected_status
     assert "Evaluated on the full table." in test_case.testCaseResult.result
+    assert test_case.inspectionQuery == rule_library_parameters.expected_inspection_query
+
+    failed_rows_sample = metadata.get_failed_rows_sample(test_case)
+    if rule_library_parameters.expected_sample_rows is None:
+        assert failed_rows_sample is None
+        return
+    assert failed_rows_sample is not None
+    assert [column.root for column in failed_rows_sample.columns] == ["customer_id"]
+    assert len(failed_rows_sample.rows) == rule_library_parameters.expected_sample_rows
