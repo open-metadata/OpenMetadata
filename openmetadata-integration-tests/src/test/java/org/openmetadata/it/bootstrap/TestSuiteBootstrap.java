@@ -312,6 +312,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
           // 256KB sort_buffer_size overflows with "Out of sort memory" (#27649). 8MB is plenty
           // for an integration-test workload and well under the 4GB overall limit.
           "--sort_buffer_size=8M",
+          // MySQL 8 turns the binary log on by default, in ROW format with FULL row images and a
+          // 30-day expiry, and keeps it in the datadir — the tmpfs below. That is a second,
+          // append-only copy of every write, kept for replication and point-in-time recovery that
+          // a throwaway single-node test database never uses.
+          "--skip-log-bin",
           // A deadlock error only names the statement that lost. InnoDB can log both
           // transactions and their locks, but writes the report as a Note, which the default
           // error-log verbosity of 2 drops.
@@ -323,7 +328,10 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
       if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
-        mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=2g"));
+        // The parallel lane outgrew 2g at its very tail: MySQL reports "Disk is full writing
+        // './binlog...'", every COMMIT then stalls, and the lane idles into its job timeout. tmpfs
+        // only consumes memory for what is written, so the larger cap costs nothing until needed.
+        mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=3g"));
       }
       mysql.withCreateContainerCmdModifier(
           cmd ->
