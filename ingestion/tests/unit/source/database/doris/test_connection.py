@@ -11,6 +11,7 @@
 """Unit tests for Doris connection handling."""
 
 import sys
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pydoris.sqlalchemy.dialect import DorisDialect
@@ -24,6 +25,7 @@ from metadata.generated.schema.entity.services.connections.database.dorisConnect
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.doris.connection import DorisConnection
+from metadata.ingestion.source.database.doris.queries import DORIS_TEST_GET_QUERIES
 from metadata.utils.sqa_utils import dispatch_to_date_or_datetime
 
 
@@ -95,3 +97,13 @@ def test_doris_engine_does_not_need_mysqlclient(
     with DorisConnection(doris_connection_config) as owned:
         assert owned.client.dialect.driver == "pymysql"
         assert isinstance(owned.client.dialect, DorisDialect)
+
+
+def test_test_connection_reads_the_query_log(doris_connection_config: DorisConnectionConfig):
+    with (
+        patch("metadata.ingestion.source.database.doris.connection.test_connection_db_schema_sources") as test_steps,
+        DorisConnection(doris_connection_config) as owned,
+    ):
+        owned.test_connection(MagicMock())
+
+    assert test_steps.call_args.kwargs["queries"] == {"GetQueries": DORIS_TEST_GET_QUERIES}
