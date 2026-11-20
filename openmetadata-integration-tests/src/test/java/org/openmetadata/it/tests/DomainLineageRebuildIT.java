@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.bootstrap.ForkedOperations;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.TestNamespace;
@@ -36,9 +37,11 @@ import org.openmetadata.service.migration.utils.v210.DomainLineageRebuild;
 import org.openmetadata.service.migration.utils.v210.DomainLineageRebuild.Change;
 
 /**
- * Covers the 2.1.0 repair that recounts domain lineage from the asset edges. Domains given to
- * services after their tables' lineage existed were never counted, and re-sending an edge created
- * the domain edge at one asset edge (#33961).
+ * Covers the 2.1.0 repair that recounts domain lineage from the asset edges, and the ops command
+ * that runs it. Before #33961 was fixed, domains given to services after their tables' lineage
+ * existed were never counted, and re-sending an edge created the domain edge at one asset edge. A
+ * server with the fix keeps the count, so these tests delete the domain edge a container's domain
+ * change wrote, which leaves the store as an older server did.
  */
 @Isolated(
     "invokes the v210 repair, which recounts and rewrites domain edges across the whole"
@@ -59,6 +62,23 @@ public class DomainLineageRebuildIT {
     LineageDetails rebuilt = edge(issue.d1(), issue.d2());
     assertEquals(3, rebuilt.getAssetEdges());
     assertEquals(LineageDetails.Source.CHILD_ASSETS, rebuilt.getSource());
+  }
+
+  /** {@code openmetadata-ops.sh rebuild-domain-lineage}, run in its own JVM as an operator would. */
+  @Test
+  void theOpsCommandRebuildsTheDomainEdgesAndIsAFixedPoint(TestNamespace ns) {
+    IssueTopology issue = IssueTopology.create(ns);
+    assertEdgeAbsent(issue.d1(), issue.d2());
+
+    assertEquals(
+        0,
+        ForkedOperations.run("rebuild-domain-lineage"),
+        "the ops command failed, see target/forked-ops-*.log");
+    String rebuilt = storedJson(issue.d1(), issue.d2());
+    assertEquals(3, assetEdges(issue.d1(), issue.d2()));
+    assertEquals(0, ForkedOperations.run("rebuild-domain-lineage"), "second run");
+
+    assertEquals(rebuilt, storedJson(issue.d1(), issue.d2()));
   }
 
   @Test
@@ -135,6 +155,7 @@ public class DomainLineageRebuildIT {
     Table t5 = table(ns, schemaA, "t5");
     putEdge(t1, x);
     setDomains(client().databaseServices(), serviceA.getId(), d0);
+    forgetDomainEdge(d0, dx);
     putEdge(t3, x);
     putEdge(t5, x);
     assertEquals(2, assetEdges(d0, dx), "t1's edge predates its service's domain");
@@ -151,8 +172,9 @@ public class DomainLineageRebuildIT {
 
   /**
    * The issue's topology: tables t1, t3, t5 in service A and t2, t4 in service B, with the edges
-   * t1→t2, t3→t2 and t5→t4 written before the services got domains D1 and D2, so no domain edge
-   * exists until an asset edge is sent again.
+   * t1→t2, t3→t2 and t5→t4 written before the services got domains D1 and D2. The domain edge is
+   * then forgotten, as an older server never wrote it, so none exists until an asset edge is sent
+   * again.
    */
   private record IssueTopology(
       Domain d1, Domain d2, Table t1, Table t2, Table t3, Table t4, Table t5) {
@@ -176,8 +198,15 @@ public class DomainLineageRebuildIT {
       putEdge(issue.t5(), issue.t4());
       setDomains(client().databaseServices(), serviceA.getId(), issue.d1());
       setDomains(client().databaseServices(), serviceB.getId(), issue.d2());
+      forgetDomainEdge(issue.d1(), issue.d2());
       return issue;
     }
+  }
+
+  private static void forgetDomainEdge(Domain from, Domain to) {
+    dao()
+        .relationshipDAO()
+        .delete(from.getId(), Entity.DOMAIN, to.getId(), Entity.DOMAIN, UPSTREAM);
   }
 
   private static void seed(Domain from, Domain to, String lineageJson) {

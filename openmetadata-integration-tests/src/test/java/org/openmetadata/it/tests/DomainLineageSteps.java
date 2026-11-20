@@ -1,23 +1,29 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.LineageDetails;
@@ -26,6 +32,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.EntityServiceBase;
 import org.openmetadata.service.Entity;
 
@@ -126,6 +133,49 @@ final class DomainLineageSteps {
                     .getHttpClient()
                     .executeForString(HttpMethod.GET, edgePath(from, to), null));
     assertEquals(404, notFound.getStatusCode());
+  }
+
+  static DataProduct dataProduct(TestNamespace ns, Domain domain) {
+    return client()
+        .dataProducts()
+        .create(
+            new CreateDataProduct()
+                .withName(ns.prefix("product"))
+                .withDescription("Domain lineage refcount")
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+  }
+
+  /** The domain view reads search, where the edge lives on the downstream domain's document. */
+  static void awaitPlatformLineage(Domain from, Domain to, boolean shown) {
+    Awaitility.await("domain view shows " + shown)
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertEquals(shown, platformLineageShows(from, to)));
+  }
+
+  private static boolean platformLineageShows(Domain from, Domain to) throws Exception {
+    String filter =
+        "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"id.keyword\":\"" + to.getId() + "\"}}]}}}";
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("view", Entity.DOMAIN)
+            .queryParam("query_filter", filter)
+            .build();
+    JsonNode result =
+        MAPPER.readTree(
+            client()
+                .getHttpClient()
+                .executeForString(HttpMethod.GET, "/v1/lineage/getPlatformLineage", null, options));
+    assertTrue(result.path("nodes").has(to.getFullyQualifiedName()), result.toString());
+    boolean shown = false;
+    for (JsonNode edge : result.path("upstreamEdges")) {
+      shown |=
+          from.getId().toString().equals(edge.path("fromEntity").path("id").asText())
+              && to.getId().toString().equals(edge.path("toEntity").path("id").asText());
+    }
+    assertFalse(result.path("upstreamEdges").isMissingNode(), result.toString());
+    return shown;
   }
 
   private static String edgePath(Domain from, Domain to) {

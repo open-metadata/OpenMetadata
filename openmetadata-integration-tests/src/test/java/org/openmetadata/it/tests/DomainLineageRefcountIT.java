@@ -1,12 +1,12 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.tests.DomainLineageSteps.MAPPER;
 import static org.openmetadata.it.tests.DomainLineageSteps.assertEdgeAbsent;
 import static org.openmetadata.it.tests.DomainLineageSteps.assetEdges;
+import static org.openmetadata.it.tests.DomainLineageSteps.awaitPlatformLineage;
 import static org.openmetadata.it.tests.DomainLineageSteps.client;
+import static org.openmetadata.it.tests.DomainLineageSteps.dataProduct;
 import static org.openmetadata.it.tests.DomainLineageSteps.deleteEdge;
 import static org.openmetadata.it.tests.DomainLineageSteps.domain;
 import static org.openmetadata.it.tests.DomainLineageSteps.edge;
@@ -19,9 +19,7 @@ import static org.openmetadata.it.tests.DomainLineageSteps.table;
 import static org.openmetadata.it.tests.DomainLineageSteps.tableRequest;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.time.Duration;
 import java.util.List;
-import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -32,7 +30,6 @@ import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateContainer;
-import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -46,8 +43,6 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
-import org.openmetadata.sdk.network.RequestOptions;
-import org.openmetadata.service.Entity;
 
 /**
  * A domain lineage edge counts, in {@code assetEdges}, the asset edges between the two domains'
@@ -410,16 +405,6 @@ public class DomainLineageRefcountIT {
     assertEquals(1, assetEdges(dc, dt));
   }
 
-  private static DataProduct dataProduct(TestNamespace ns, Domain domain) {
-    return client()
-        .dataProducts()
-        .create(
-            new CreateDataProduct()
-                .withName(ns.prefix("product"))
-                .withDescription("Domain lineage refcount")
-                .withDomains(List.of(domain.getFullyQualifiedName())));
-  }
-
   private static String csvRow(Table table, Domain domain) {
     return table.getName() + ",,,,,,,,,," + domain.getFullyQualifiedName() + ",";
   }
@@ -430,38 +415,5 @@ public class DomainLineageRefcountIT {
 
   private static void assertSucceeded(BulkOperationResult result) {
     assertEquals(ApiStatus.SUCCESS, result.getStatus(), JsonUtils.pojoToJson(result));
-  }
-
-  /** The domain view reads search, where the edge lives on the downstream domain's document. */
-  private static void awaitPlatformLineage(Domain from, Domain to, boolean shown) {
-    Awaitility.await("domain view shows " + shown)
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(1))
-        .ignoreExceptions()
-        .untilAsserted(() -> assertEquals(shown, platformLineageShows(from, to)));
-  }
-
-  private static boolean platformLineageShows(Domain from, Domain to) throws Exception {
-    String filter =
-        "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"id.keyword\":\"" + to.getId() + "\"}}]}}}";
-    RequestOptions options =
-        RequestOptions.builder()
-            .queryParam("view", Entity.DOMAIN)
-            .queryParam("query_filter", filter)
-            .build();
-    JsonNode result =
-        MAPPER.readTree(
-            client()
-                .getHttpClient()
-                .executeForString(HttpMethod.GET, "/v1/lineage/getPlatformLineage", null, options));
-    assertTrue(result.path("nodes").has(to.getFullyQualifiedName()), result.toString());
-    boolean shown = false;
-    for (JsonNode edge : result.path("upstreamEdges")) {
-      shown |=
-          from.getId().toString().equals(edge.path("fromEntity").path("id").asText())
-              && to.getId().toString().equals(edge.path("toEntity").path("id").asText());
-    }
-    assertFalse(result.path("upstreamEdges").isMissingNode(), result.toString());
-    return shown;
   }
 }
