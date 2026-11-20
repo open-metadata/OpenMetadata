@@ -260,8 +260,19 @@ def _line(stored: TaskStatus | None, update: RunUpdate) -> TaskStatus:
         taskId=update.job_run_id,
         executionStatus=_later(stored.executionStatus, update.status) if stored else update.status,
         startTime=_value(stored.startTime) if stored and stored.startTime else update.started_at,
-        endTime=_latest(_value(stored.endTime) if stored else None, update.ended_at),
+        endTime=_end_time(stored, update),
     )
+
+
+def _end_time(stored: TaskStatus | None, update: RunUpdate) -> int | None:
+    """A failed try ends when it failed. Spark sends COMPLETE after a SQL job's FAIL, so a later
+    end must not move the failure, or which step failed first would depend on the reading order."""
+    stored_end = _value(stored.endTime) if stored else None
+    stored_failed = stored is not None and stored.executionStatus == StatusType.Failed
+    if update.status == StatusType.Failed:
+        failures = [time for time in (stored_end if stored_failed else None, update.ended_at) if time is not None]
+        return min(failures, default=stored_end)
+    return stored_end if stored_failed else _latest(stored_end, update.ended_at)
 
 
 def _try_time(line: TaskStatus) -> int:

@@ -272,8 +272,8 @@ def test_failed_sql_job_fails_the_run_although_the_application_completes(source,
             1794900890123,
             1794900891812,
         ),
-        # Spark sends COMPLETE after this job's FAIL; the line keeps the failure.
-        ("deserialize_to_object", StatusType.Failed, 1794900890233, 1794900891811),
+        # Spark sends COMPLETE after this job's FAIL; the line keeps the failure and its time.
+        ("deserialize_to_object", StatusType.Failed, 1794900890233, 1794900891761),
     ]
     assert row.error.errorMessage == "Job aborted due to stage failure: ValueError: intentional failure"
     assert row.error.stackTrace.startswith("org.apache.spark.SparkException")
@@ -970,6 +970,16 @@ def spark_sql_job_of_the_failed_ones_name_succeeds(save_fails_at: str):
     return sorted(run, key=lambda ol_event: ol_event.event_time)
 
 
+def spark_sql_job_fails_between_another_jobs_fail_and_complete():
+    """deserialize_to_object fails, the save SQL job fails, then Spark sends deserialize_to_object's COMPLETE."""
+    run = [
+        *(event("failed_run", index) for index in range(6)),
+        failure("failed_run", 6, "save broke", eventTime="2026-11-17T07:34:51.790Z"),
+        event("failed_run", 7),
+    ]
+    return sorted(run, key=lambda ol_event: ol_event.event_time)
+
+
 SPARK_FAILURE = ("deserialize_to_object", "Job aborted due to stage failure: ValueError: intentional failure")
 
 
@@ -985,6 +995,11 @@ SPARK_FAILURE = ("deserialize_to_object", "Job aborted due to stage failure: Val
             id="airflow_task_failing_every_try",
         ),
         pytest.param(spark_sql_jobs_fail_one_after_the_other, SPARK_FAILURE, id="spark_sql_jobs_in_turn"),
+        pytest.param(
+            spark_sql_job_fails_between_another_jobs_fail_and_complete,
+            SPARK_FAILURE,
+            id="spark_sql_job_completing_after_its_failure",
+        ),
         pytest.param(
             lambda: spark_sql_job_of_the_failed_ones_name_succeeds("2026-11-17T07:34:51.812Z"),
             SPARK_FAILURE,
@@ -1005,6 +1020,43 @@ def test_step_that_failed_first_is_blamed_whatever_the_read_order(source, server
 
     [row] = server.statuses.values()
     assert (row.error.failedTask, row.error.errorMessage) == first_failure
+
+
+def load_fails_while_flaky_is_retried(retry_passes: bool):
+    """flaky fails, load fails while flaky's second try runs, and that try passes or fails again."""
+    second_try = event("retried_task", 4) if not retry_passes else event("retried_task", 4, eventType="COMPLETE")
+    run = [
+        *(event("retried_task", index) for index in range(4)),
+        second_try,
+        event("retried_task", 7, eventTime="2026-11-18T09:08:10.800000+00:00"),
+        failure("retried_task", 8, "load broke", eventTime="2026-11-18T09:08:11.000000+00:00"),
+        failure("retried_task", 9, "nightly_retry failed"),
+    ]
+    return sorted(run, key=lambda ol_event: ol_event.event_time)
+
+
+@pytest.mark.parametrize("reversed_order", [False, True], ids=["read_in_order", "read_in_reverse"])
+@pytest.mark.parametrize(
+    "retry_passes, blamed", [(True, "load"), (False, "flaky")], ids=["retry_passes", "retry_fails"]
+)
+def test_task_failing_while_another_is_retried_is_blamed_only_when_the_retry_passes(
+    source, server, retry_passes, blamed, reversed_order
+):
+    """Until flaky's retry ends, the row cannot know which failure stands: it ends on the right one."""
+    events = load_fails_while_flaky_is_retried(retry_passes)
+
+    ingest(source, server, events[::-1] if reversed_order else events)
+
+    [row] = server.statuses.values()
+    assert row.error.failedTask == blamed
+
+
+def test_task_failing_while_another_is_retried_keeps_its_message_when_the_retry_passes(source, server):
+    """Read as it happens, load's failure takes the error at once, so flaky's passing retry leaves it whole."""
+    ingest(source, server, load_fails_while_flaky_is_retried(retry_passes=True))
+
+    [row] = server.statuses.values()
+    assert (row.error.failedTask, row.error.errorMessage) == ("load", "load broke")
 
 
 def retried_run_where_load_fails(source, server, ingestions: list[list[int | str]]) -> PipelineStatus:
