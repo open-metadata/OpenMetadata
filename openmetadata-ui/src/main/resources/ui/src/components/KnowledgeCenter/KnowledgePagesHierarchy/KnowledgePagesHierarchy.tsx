@@ -24,7 +24,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Article,
-  DotsGrid,
   File06,
   ListCollapse,
   ListExpand,
@@ -730,13 +729,6 @@ const KnowledgePagesHierarchy = forwardRef<
             align="center"
             className="tw:min-w-0 tw:flex-1 tw:cursor-pointer"
             gap={2}>
-            {canEditAll && (
-              <DotsGrid
-                aria-hidden="true"
-                className="tw:size-3.5 tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary tw:opacity-0 tw:group-hover/tree-item:opacity-100"
-                data-testid="drag-handle-icon"
-              />
-            )}
             {isQuickLink ? (
               <QuickLink
                 className="tw:shrink-0 tw:text-quaternary"
@@ -785,31 +777,45 @@ const KnowledgePagesHierarchy = forwardRef<
               className="tw:gap-0.5 tw:pl-1"
               hasChildItems={hasChildren}
               indentPerLevel={24}>
-              {() =>
-                isQuickLink && onQuickLinkClick ? (
-                  <div className="custom-group tw:flex tw:items-center tw:justify-between tw:flex-1 tw:min-w-0">
-                    <button
-                      className="tw:gap-2 tw:cursor-pointer tw:border-none tw:bg-transparent tw:p-0 tw:text-left tw:truncate"
+              {() => (
+                <>
+                  {canEditAll && (
+                    <Tree.DragButton
+                      aria-label={t('label.move')}
+                      className="tw:opacity-0 tw:group-hover/tree-item:opacity-100 tw:focus-visible:opacity-100"
+                      data-testid="drag-handle-icon"
+                    />
+                  )}
+                  {isQuickLink && onQuickLinkClick ? (
+                    <Box
+                      align="center"
+                      className="custom-group tw:min-w-0 tw:flex-1"
+                      justify="between">
+                      <button
+                        className="tw:gap-2 tw:cursor-pointer tw:border-none tw:bg-transparent tw:p-0 tw:text-left tw:truncate"
+                        data-isactive={isActive}
+                        data-testid={`page-node-${displayName}`}
+                        onClick={() =>
+                          onQuickLinkClick(node.fullyQualifiedName)
+                        }>
+                        {nodeContent}
+                      </button>
+                      {deleteButton}
+                    </Box>
+                  ) : (
+                    <Link
+                      className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:cursor-pointer tw:hover:no-underline"
                       data-isactive={isActive}
                       data-testid={`page-node-${displayName}`}
-                      onClick={() => onQuickLinkClick(node.fullyQualifiedName)}>
+                      to={contextCenterClassBase.getArticlePath(
+                        node.fullyQualifiedName
+                      )}>
                       {nodeContent}
-                    </button>
-                    {deleteButton}
-                  </div>
-                ) : (
-                  <Link
-                    className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:cursor-pointer tw:hover:no-underline"
-                    data-isactive={isActive}
-                    data-testid={`page-node-${displayName}`}
-                    to={contextCenterClassBase.getArticlePath(
-                      node.fullyQualifiedName
-                    )}>
-                    {nodeContent}
-                    {deleteButton}
-                  </Link>
-                )
-              }
+                      {deleteButton}
+                    </Link>
+                  )}
+                </>
+              )}
             </Tree.ItemContent>
             {node.children?.map(renderNode)}
           </Tree.Item>

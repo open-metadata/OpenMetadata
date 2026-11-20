@@ -12,7 +12,7 @@
  */
 
 import { TFunction } from 'i18next';
-import { isEmpty, xorBy } from 'lodash';
+import { isEmpty, sortBy, xorBy } from 'lodash';
 import {
   Task,
   TaskAvailableTransition,
@@ -300,8 +300,53 @@ export const buildResolveBody = (
   };
 };
 
+const INCIDENT_STAGE_ORDER = ['new', 'ack', 'assigned', 'resolved'];
+
+const getIncidentStageRank = (stageId?: string) =>
+  INCIDENT_STAGE_ORDER.indexOf(stageId ?? '');
+
+/**
+ * An incident's transitions ranked by the stage each moves to, or undefined
+ * when the task is not in an incident stage
+ * (ADR:2026-11-20-incident-task-actions-lead-with-the-next-stage).
+ */
+export const rankByIncidentStage = <T>(
+  items: T[],
+  getTargetStageId: (item: T) => string | undefined,
+  stageId?: string
+): T[] | undefined => {
+  const currentRank = getIncidentStageRank(stageId);
+  const isIncidentStage =
+    currentRank >= 0 &&
+    items.every((item) => getIncidentStageRank(getTargetStageId(item)) >= 0);
+  if (!isIncidentStage) {
+    return undefined;
+  }
+
+  return sortBy(items, (item) => {
+    const step = getIncidentStageRank(getTargetStageId(item)) - currentRank;
+
+    return step > 0 ? step : INCIDENT_STAGE_ORDER.length - step;
+  });
+};
+
+const getDefaultSlots = (
+  actions: TaskResolveAction[]
+): (TaskResolveAction | undefined)[] => {
+  const approve = actions.find((action) => action.kind === 'approve');
+  const reject = actions.find((action) => action.kind === 'reject');
+  const assignee = actions.find((action) => action.kind === 'assignee');
+  const others = actions.filter((action) => action.kind === 'other');
+  const primary = approve ?? others[0];
+
+  return [
+    primary,
+    reject ?? (primary === others[0] ? others[1] : others[0]) ?? assignee,
+  ];
+};
+
 export interface TaskActionLayout {
-  /** The affirmative action, rendered as the header's filled button. */
+  /** The leading action, filled unless it opens the assignee picker. */
   primary?: TaskResolveAction;
   /** The counterpart action, rendered as the header's outlined button. */
   secondary?: TaskResolveAction;
@@ -316,19 +361,18 @@ export interface TaskActionLayout {
  * an incident resolving through `resolve`, a granted access request offering
  * only `revoke` — promotes its first transitions instead, so its real action is
  * never buried in the menu. A reassign only takes a slot once nothing else
- * claims it.
+ * claims it. An incident instead takes its two slots from `rankByIncidentStage`.
  */
 export const splitTaskActions = (
-  actions: TaskResolveAction[]
+  actions: TaskResolveAction[],
+  stageId?: string
 ): TaskActionLayout => {
-  const approve = actions.find((action) => action.kind === 'approve');
-  const reject = actions.find((action) => action.kind === 'reject');
-  const assignee = actions.find((action) => action.kind === 'assignee');
-  const others = actions.filter((action) => action.kind === 'other');
-
-  const primary = approve ?? others[0];
-  const secondary =
-    reject ?? (primary === others[0] ? others[1] : others[0]) ?? assignee;
+  const [primary, secondary] =
+    rankByIncidentStage(
+      actions,
+      (action) => action.transition?.targetStageId,
+      stageId
+    ) ?? getDefaultSlots(actions);
   const promoted = new Set(
     [primary?.id, secondary?.id].filter(Boolean) as string[]
   );

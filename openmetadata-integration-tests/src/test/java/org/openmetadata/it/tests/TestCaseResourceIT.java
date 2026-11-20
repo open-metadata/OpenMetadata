@@ -77,6 +77,7 @@ import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.DimensionValue;
+import org.openmetadata.schema.tests.type.TestCaseAppliedThreshold;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseErrorDetails;
 import org.openmetadata.schema.tests.type.TestCaseEvaluationScope;
@@ -85,6 +86,7 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestResultValue;
+import org.openmetadata.schema.tests.type.ThresholdUnit;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.BulkCreateConflictPolicy;
 import org.openmetadata.schema.type.BulkCreateItemResult;
@@ -5686,31 +5688,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   "bulk list derivation must also clear the pointer after resolve");
             });
 
-    client
-        .testCaseResolutionStatuses()
-        .create(
-            new CreateTestCaseResolutionStatus()
-                .withTestCaseReference(testCase.getFullyQualifiedName())
-                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
-
-    Awaitility.await("reopen restores the same incident pointer")
-        .atMost(90, TimeUnit.SECONDS)
-        .pollInterval(Duration.ofSeconds(2))
-        .untilAsserted(
-            () -> {
-              org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestStatus =
-                  latestIncidentStatus(client, testCase.getFullyQualifiedName());
-              assertEquals(
-                  TestCaseResolutionStatusTypes.Ack,
-                  latestStatus.getTestCaseResolutionStatusType());
-              assertEquals(stateId, latestStatus.getStateId());
-              TestCase fetched = client.testCases().get(testCase.getId().toString(), "incidentId");
-              assertEquals(stateId, fetched.getIncidentId());
-              assertEquals(
-                  stateId,
-                  bulkListedIncidentId(client, table, testCase),
-                  "bulk list derivation must agree with the single read");
-            });
+    CreateTestCaseResolutionStatus ackAfterResolve =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack);
+    assertThrows(
+        OpenMetadataException.class,
+        () -> client.testCaseResolutionStatuses().create(ackAfterResolve),
+        "a resolved incident is final and must not accept Ack");
+    assertNull(
+        client.testCases().get(testCase.getId().toString(), "incidentId").getIncidentId(),
+        "a rejected reopen must leave the incident closed");
 
     client
         .testCaseResults()
@@ -5718,6 +5706,29 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             testCase.getFullyQualifiedName(),
             new CreateTestCaseResult()
                 .withTimestamp(System.currentTimeMillis() + 1)
+                .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+                .withResult("Failing again after resolution"));
+
+    final UUID reopenedIncidentId =
+        Awaitility.await("a failure after resolution opens a new incident")
+            .atMost(90, TimeUnit.SECONDS)
+            .pollInterval(Duration.ofSeconds(2))
+            .until(
+                () ->
+                    client
+                        .testCases()
+                        .get(testCase.getId().toString(), "incidentId")
+                        .getIncidentId(),
+                java.util.Objects::nonNull);
+    assertNotEquals(
+        stateId, reopenedIncidentId, "the new failure must not reuse the resolved incident");
+
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis() + 2)
                 .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Success)
                 .withResult("Passing while incident open"));
 
@@ -5732,7 +5743,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               assertEquals(
                   org.openmetadata.schema.tests.type.TestCaseStatus.Success,
                   fetched.getTestCaseResult().getTestCaseStatus());
-              assertEquals(stateId, fetched.getIncidentId());
+              assertEquals(reopenedIncidentId, fetched.getIncidentId());
             });
   }
 
@@ -6320,6 +6331,83 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   "latest test case result must be returned once indexed");
               assertEquals(
                   scope, JsonUtils.readValue(response, TestCaseResult.class).getEvaluationScope());
+            });
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void test_thresholdSnapshotSurvivesPersistenceAndSearch(boolean applied, TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "threshold_snapshot_" + applied);
+    long timestamp = System.currentTimeMillis();
+    TestCaseAppliedThreshold threshold =
+        new TestCaseAppliedThreshold()
+            .withApplied(applied)
+            .withValue(5.0)
+            .withUnit(ThresholdUnit.PERCENTAGE);
+    CreateTestCaseResult create =
+        new CreateTestCaseResult()
+            .withTimestamp(timestamp)
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withAppliedThreshold(threshold)
+            .withConfiguredMaxBound(110.0)
+            .withMaxBound(115.5)
+            .withDimensionResults(
+                List.of(
+                    new TestCaseDimensionResult()
+                        .withId(UUID.randomUUID())
+                        .withTestCaseResultId(UUID.randomUUID())
+                        .withTimestamp(timestamp)
+                        .withDimensionKey("channel=web")
+                        .withDimensionValues(
+                            List.of(new DimensionValue().withName("channel").withValue("web")))
+                        .withTestCaseStatus(TestCaseStatus.Success)
+                        .withConfiguredMaxBound(110.0)
+                        .withMaxBound(115.5)));
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    TestCaseResult stored = listTestCaseResults(testCase.getFullyQualifiedName()).getFirst();
+    assertEquals(threshold, stored.getAppliedThreshold());
+    assertNull(stored.getConfiguredMinBound());
+    assertEquals(110.0, stored.getConfiguredMaxBound());
+    assertEquals(115.5, stored.getMaxBound());
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/dimensionResults/"
+                    + URLEncoder.encode(testCase.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                        .replace("+", "%20"),
+                null,
+                RequestOptions.builder()
+                    .queryParam("startTs", String.valueOf(timestamp - 1))
+                    .queryParam("endTs", String.valueOf(timestamp + 1))
+                    .build());
+    TestCaseDimensionResult dimension =
+        JsonUtils.readValue(response, new TypeReference<ResultList<TestCaseDimensionResult>>() {})
+            .getData()
+            .getFirst();
+    assertEquals(threshold, dimension.getAppliedThreshold());
+    assertNull(dimension.getConfiguredMinBound());
+    assertEquals(110.0, dimension.getConfiguredMaxBound());
+    assertEquals(115.5, dimension.getMaxBound());
+
+    Awaitility.await()
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              String latest =
+                  searchLatestTestCaseResult(
+                      testCase.getFullyQualifiedName(), TEST_CASE_RESULT_FIELDS);
+              assertTrue(latest != null && !latest.isBlank());
+              TestCaseResult indexed = JsonUtils.readValue(latest, TestCaseResult.class);
+              assertEquals(threshold, indexed.getAppliedThreshold());
+              assertNull(indexed.getConfiguredMinBound());
+              assertEquals(110.0, indexed.getConfiguredMaxBound());
+              assertEquals(115.5, indexed.getMaxBound());
             });
   }
 

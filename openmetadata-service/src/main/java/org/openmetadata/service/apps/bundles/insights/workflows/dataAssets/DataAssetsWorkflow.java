@@ -472,7 +472,8 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
               endTimestamp)
           : new TestCaseSnapshotStore.Coverage(Map.of());
     } catch (IOException e) {
-      throw snapshotFailure(e);
+      throw new SearchIndexException(
+          snapshotError(e).withSuccessCount(0).withFailedCount(batch.getData().size()));
     }
   }
 
@@ -494,8 +495,11 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
   }
 
   private static SearchIndexException snapshotFailure(IOException cause) {
-    return new SearchIndexException(
-        new IndexingError().withMessage("Test case snapshot failed: " + cause.getMessage()));
+    return new SearchIndexException(snapshotError(cause));
+  }
+
+  private static IndexingError snapshotError(IOException cause) {
+    return new IndexingError().withMessage("Test case snapshot failed: " + cause.getMessage());
   }
 
   private void recordSourceFailure(

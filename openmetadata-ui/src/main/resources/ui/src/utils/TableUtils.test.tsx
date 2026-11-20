@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { TagLabel } from '../generated/entity/data/container';
@@ -23,6 +24,7 @@ import {
 } from '../generated/entity/data/table';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
 import { getEntityIcon } from '../utils/EntityIconUtils';
 import { ExtraTableDropdownOptions } from '../utils/TableDropdownOptions';
@@ -32,6 +34,7 @@ import {
   findColumnByEntityLink,
   getCertificationTag,
   getColumnOptionsFromTableColumn,
+  getConstraintGroupLabel,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
   getNestedSectionTitle,
@@ -54,7 +57,11 @@ import { getTableDetailPageBaseTabs } from '../utils/TableTabsUtils';
 import EntityLink from './EntityLink';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { extractTableColumns } from './TablePureUtils';
-import { getConstraintIcon, getDataTypeBadgeColor } from './TableUtils';
+import {
+  getConstraintIcon,
+  getDataTypeBadgeColor,
+  prepareConstraintIcon,
+} from './TableUtils';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 
 type ParentFieldObject = {
@@ -1238,6 +1245,36 @@ describe('TableUtils', () => {
       expect(stringifyResult).toContain(
         '{"data-testid":"dbt-source-project-id","children":"--"}'
       );
+    });
+
+    it('knowledge graph tab is offered only to admins when RDF is enabled', () => {
+      const isKnowledgeGraphHidden = (
+        rdfEnabled: boolean,
+        isAdmin: boolean
+      ) => {
+        useApplicationStore.setState({
+          rdfEnabled,
+          currentUser: {
+            id: 'user-id',
+            name: 'user',
+            email: 'user@example.com',
+            isAdmin,
+          },
+        });
+
+        return getTableDetailPageBaseTabs(mockProps).find(
+          (tab) => tab.key === EntityTabs.KNOWLEDGE_GRAPH
+        )?.isHidden;
+      };
+
+      expect(isKnowledgeGraphHidden(true, true)).toBe(false);
+      expect(isKnowledgeGraphHidden(true, false)).toBe(true);
+      expect(isKnowledgeGraphHidden(false, true)).toBe(true);
+
+      useApplicationStore.setState({
+        rdfEnabled: false,
+        currentUser: undefined,
+      });
     });
   });
 
@@ -2606,7 +2643,179 @@ describe('getDataTypeBadgeColor', () => {
   });
 });
 
+describe('getConstraintGroupLabel', () => {
+  it.each([
+    [0, 'A'],
+    [25, 'Z'],
+    [26, 'AA'],
+    [51, 'AZ'],
+    [52, 'BA'],
+    [701, 'ZZ'],
+    [702, 'AAA'],
+  ])('labels group %i as %s', (index, expected) => {
+    expect(getConstraintGroupLabel(index)).toBe(expected);
+  });
+});
+
 describe('getConstraintIcon', () => {
+  it('shows a separate letter and tooltip for every composite unique group containing a column', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+    render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'item_code',
+          tableConstraints: [
+            {
+              constraintType: ConstraintType.Unique,
+              columns: ['warehouse_id', 'item_code'],
+            },
+            {
+              constraintType: ConstraintType.Unique,
+              columns: ['item_code', 'locale'],
+            },
+            {
+              constraintType: ConstraintType.Unique,
+              columns: ['external_ref', 'region'],
+            },
+          ],
+        })}
+      </>
+    );
+
+    expect(screen.getAllByTestId('constraint-icon-unique')).toHaveLength(2);
+    expect(screen.getByText('A')).toBeVisible();
+    expect(screen.getByText('B')).toBeVisible();
+
+    const groupA = screen.getByRole('button', {
+      name: /constraint A: warehouse_id, item_code/,
+    });
+    const groupB = screen.getByRole('button', {
+      name: /constraint B: item_code, locale/,
+    });
+
+    await user.tab();
+
+    expect(groupA).toHaveFocus();
+
+    const tooltip = await screen.findByRole('tooltip');
+
+    expect(tooltip).toHaveTextContent('warehouse_id + item_code');
+    expect(tooltip).not.toHaveTextContent('item_code + locale');
+    expect(tooltip).not.toHaveTextContent('external_ref');
+
+    await user.keyboard('{Escape}');
+    await user.tab();
+
+    expect(groupB).toHaveFocus();
+
+    const secondTooltip = await screen.findByRole('tooltip');
+
+    expect(secondTooltip).toHaveTextContent('item_code + locale');
+    expect(secondTooltip).not.toHaveTextContent('warehouse_id');
+  });
+
+  it('uses the same letter for a group across its member columns', () => {
+    const tableConstraints: Table['tableConstraints'] = [
+      { constraintType: ConstraintType.Unique, columns: ['external_ref'] },
+      {
+        constraintType: ConstraintType.Unique,
+        columns: ['warehouse_id', 'item_code'],
+      },
+      {
+        constraintType: ConstraintType.Unique,
+        columns: ['item_code', 'locale'],
+      },
+    ];
+    const { rerender } = render(
+      <>{prepareConstraintIcon({ columnName: 'locale', tableConstraints })}</>
+    );
+
+    expect(screen.getByText('B')).toBeVisible();
+    expect(screen.getByRole('img')).toHaveAccessibleName(
+      /constraint B: item_code, locale/
+    );
+
+    rerender(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'warehouse_id',
+          tableConstraints,
+        })}
+      </>
+    );
+
+    expect(screen.getByText('A')).toBeVisible();
+    expect(screen.getByRole('img')).toHaveAccessibleName(
+      /constraint A: warehouse_id, item_code/
+    );
+  });
+
+  it('keeps individual uniqueness distinct from composite membership', () => {
+    render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'external_ref',
+          tableConstraints: [
+            {
+              constraintType: ConstraintType.Unique,
+              columns: ['external_ref'],
+            },
+          ],
+        })}
+      </>
+    );
+
+    expect(screen.getByRole('img')).toHaveAccessibleName('label.unique');
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('preserves a column constraint alongside composite membership', () => {
+    render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'item_code',
+          columnConstraint: 'NOT_NULL',
+          tableConstraints: [
+            {
+              constraintType: ConstraintType.Unique,
+              columns: ['warehouse_id', 'item_code'],
+            },
+          ],
+        })}
+      </>
+    );
+
+    expect(screen.getByTestId('constraint-icon-not-null')).toBeInTheDocument();
+    expect(screen.getByTestId('constraint-icon-unique')).toHaveAccessibleName(
+      /warehouse_id, item_code/
+    );
+  });
+
+  it('shows individual uniqueness and composite membership when both are table constraints', () => {
+    render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'item_code',
+          tableConstraints: [
+            { constraintType: ConstraintType.Unique, columns: ['item_code'] },
+            {
+              constraintType: ConstraintType.Unique,
+              columns: ['warehouse_id', 'item_code'],
+            },
+          ],
+        })}
+      </>
+    );
+
+    expect(
+      screen.getByRole('img', { name: 'label.unique' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: /warehouse_id, item_code/ })
+    ).toBeInTheDocument();
+  });
+
   it.each([
     ['current', false],
     ['removed', true],

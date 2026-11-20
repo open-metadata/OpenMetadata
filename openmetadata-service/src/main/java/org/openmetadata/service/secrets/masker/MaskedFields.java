@@ -33,7 +33,10 @@ import org.openmetadata.annotations.MaskedField;
  */
 public final class MaskedFields {
 
-  private static final String SCHEMA_PACKAGE = "org.openmetadata.schema.";
+  // Collate's entities reach the same writers, and it generates them into more than one package
+  // under these two roots.
+  private static final List<String> SCHEMA_PACKAGES =
+      List.of("org.openmetadata.schema.", "io.collate.", "io.getcollate.");
   // One entry per class, so the caps are never reached; they are there to bound the caches.
   private static final Cache<Class<?>, Boolean> ANY_MASKED =
       Caffeine.newBuilder().maximumSize(1_000).build();
@@ -69,7 +72,8 @@ public final class MaskedFields {
   }
 
   private static boolean declaresMaskedField(final Class<?> type, final Set<Class<?>> seen) {
-    final boolean isSchemaType = type.getName().startsWith(SCHEMA_PACKAGE) && !type.isEnum();
+    final boolean isSchemaType =
+        SCHEMA_PACKAGES.stream().anyMatch(type.getName()::startsWith) && !type.isEnum();
     return isSchemaType
         && seen.add(type)
         && Arrays.stream(type.getDeclaredFields())

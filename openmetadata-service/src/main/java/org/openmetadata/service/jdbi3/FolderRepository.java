@@ -110,6 +110,12 @@ public class FolderRepository extends EntityRepository<Folder> {
             ContextFileRepository.CONTEXT_FILE_ENTITY);
   }
 
+  /** A top-level folder's FQN is its bare name, dots included. */
+  @Override
+  protected boolean nestsUnderUnrelatedFqns() {
+    return true;
+  }
+
   @Override
   public void setFullyQualifiedName(Folder folder) {
     if (folder.getParent() == null) {

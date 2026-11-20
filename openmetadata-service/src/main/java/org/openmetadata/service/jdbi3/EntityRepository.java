@@ -674,7 +674,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    *       {@code service.id} / parent-id in a single delete-by-query;
    *   <li>satellites: the root's {@code cleanup()} deletes field_relationship / tag_usage for the
    *       whole subtree by FQN prefix in a single statement (only valid when descendant FQNs are
-   *       nested under the root FQN).
+   *       nested under the root FQN). When an entity the delete leaves in place holds rows under
+   *       the root's FQN, the root keeps them and each descendant removes its own instead (see
+   *       {@code CASCADE_ROOT_FQN_SHARED}).
    * </ul>
    *
    * <p>When {@code true}, {@link #bulkHardDeleteSubtree(List, String)} skips the per-entity search
@@ -4021,6 +4023,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
+   * Set while a recursive hard delete cascades under a root that keeps some FQN-keyed rows under
+   * its FQN because an entity it leaves in place holds them: another type's entity with the same
+   * FQN, or one that nests under it. The root's prefix delete then misses its descendants' rows,
+   * so each descendant removes its own.
+   */
+  private static final ThreadLocal<Boolean> CASCADE_ROOT_FQN_SHARED = new ThreadLocal<>();
+
+  private boolean reliesOnCascadeRootFqnCleanup() {
+    return descendantsCoveredByAncestorCascade
+        && !Boolean.TRUE.equals(CASCADE_ROOT_FQN_SHARED.get());
+  }
+
+  /**
    * De-duplication key for a deferred Redis-L2 cache invalidation. Equality is on {@code
    * (entityType, id)} only so repeated relationship writes touching the same entity collapse to one
    * invalidation when the transaction ends; the {@code fqn} is carried along (best non-null wins) so
@@ -4320,7 +4335,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try {
       page =
           ReindexingUtil.findReferenceInElasticSearchAcrossAllIndexes(
-              "tags.tagFQN", ReindexingUtil.escapeDoubleQuotes(tagFqn), from);
+              "tags.tagFQN", ReindexingUtil.escapeQueryStringPhrase(tagFqn), from);
     } catch (Exception e) {
       LOG.warn("Search-based cache invalidation failed for tag={}", tagFqn, e);
       page = List.of();
@@ -5165,15 +5180,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommonWithOptimisticLocking(
-        original,
-        patch,
-        patchedFieldNames,
-        actor,
-        uriInfo,
-        changeSource,
-        useOptimisticLocking,
-        null);
+    return withInheritedTags(
+        patchCommonWithOptimisticLocking(
+            original,
+            patch,
+            patchedFieldNames,
+            actor,
+            uriInfo,
+            changeSource,
+            useOptimisticLocking,
+            null));
   }
 
   /**
@@ -5243,15 +5259,32 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommonWithOptimisticLocking(
-        original,
-        patch,
-        patchedFieldNames,
-        actor,
-        uriInfo,
-        changeSource,
-        useOptimisticLocking,
-        null);
+    return withInheritedTags(
+        patchCommonWithOptimisticLocking(
+            original,
+            patch,
+            patchedFieldNames,
+            actor,
+            uriInfo,
+            changeSource,
+            useOptimisticLocking,
+            null));
+  }
+
+  /**
+   * Answers a PATCH with the tags a read of the same entity returns. {@code prepareInternal} drops
+   * the DERIVED labels it is given, since none is stored, so the patched entity carries only its
+   * own tags and the ones they imply, while a read also merges in the tags it inherits from its
+   * parents. A client that renders the response would otherwise show the inherited tags as removed
+   * until it reads the entity again. A held change answers with the entity as it was read, which
+   * already carries them.
+   */
+  private PatchResponse<T> withInheritedTags(final PatchResponse<T> response) {
+    // ADR:2026-11-14-a-patch-answers-with-the-tags-a-read-returns
+    if (supportsTags && response.status() == Status.OK && response.entity() != null) {
+      setInheritedFields(response.entity(), getFields(FIELD_TAGS));
+    }
+    return response;
   }
 
   private PatchResponse<T> patchCommonWithOptimisticLocking(
@@ -5921,7 +5954,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
 
       try {
-        deleteChildren(original.getId(), recursive, hardDelete, deletedBy);
+        deleteChildrenOf(original, recursive, hardDelete, deletedBy);
 
         EventType changeType;
         T updated = loadForDelete(original.getId());
@@ -6025,6 +6058,26 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Validate entity
     T entity = find(id, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
+  }
+
+  /** Runs {@link #deleteChildren} with the cascade told whether this root's FQN is shared. */
+  private void deleteChildrenOf(T root, boolean recursive, boolean hardDelete, String deletedBy) {
+    Boolean outerCascadeRootShared = CASCADE_ROOT_FQN_SHARED.get();
+    CASCADE_ROOT_FQN_SHARED.set(
+        recursive && hardDelete && rootKeepsDescendantRows(root.getFullyQualifiedName()));
+    try {
+      deleteChildren(root.getId(), recursive, hardDelete, deletedBy);
+    } finally {
+      if (outerCascadeRootShared == null) {
+        CASCADE_ROOT_FQN_SHARED.remove();
+      } else {
+        CASCADE_ROOT_FQN_SHARED.set(outerCascadeRootShared);
+      }
+    }
+  }
+
+  private boolean rootKeepsDescendantRows(String fqn) {
+    return shouldCleanupFqnDependents() && fqnKeyedRowCleanup().rootKeepsDescendantRows(fqn);
   }
 
   @Transaction
@@ -6163,14 +6216,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // field_relationship in opposite orders is an AB-BA deadlock the database cannot avoid for us.
     // Neither table depends on the other here; only the feed-artifact ordering above is required.
     if (shouldCleanupFqnDependents()) {
-      daoCollection
-          .fieldRelationshipDAO()
-          .deleteAllByPrefix(entityInterface.getFullyQualifiedName(), entityType);
-      if (supportsTags) {
-        daoCollection
-            .tagUsageDAO()
-            .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
-      }
+      fqnKeyedRowCleanup().delete(List.of(entityInterface.getFullyQualifiedName()));
     }
     // Delete all the usage data
     daoCollection.usageDAO().delete(id);
@@ -6242,6 +6288,32 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   protected boolean shouldCleanupFqnDependents() {
     return supportsTags;
+  }
+
+  /**
+   * Whether an FQN of this type can nest under an FQN that none of its ancestors has: a bare name
+   * with dots ("sales.revenue"), or a fixed segment after the parent (data models under
+   * "service.model"). Such an entity sits under the FQN of an unrelated entity, so a hard delete of
+   * that entity keeps its FQN-keyed rows. Its own FQN can also equal a field's (a table column's),
+   * so its own hard delete keeps the rows of the fields it shares an FQN with (see {@link
+   * FqnKeyedRowCleanup}).
+   */
+  protected boolean nestsUnderUnrelatedFqns() {
+    return false;
+  }
+
+  /**
+   * For a type that {@link #nestsUnderUnrelatedFqns()}, the type whose cascade-covered descendants
+   * its entities are when their FQN nests under its FQN (data models under their dashboard service),
+   * or {@code null}. Before a recursive delete from such a parent, they do not count as unrelated, so
+   * its descendants keep relying on its single prefix delete.
+   */
+  protected String fqnParentType() {
+    return null;
+  }
+
+  private FqnKeyedRowCleanup fqnKeyedRowCleanup() {
+    return new FqnKeyedRowCleanup(daoCollection, this);
   }
 
   /**
@@ -6435,6 +6507,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /** Labels on the entity and its tagged inline fields, keyed by target FQN. */
   final Map<String, List<TagLabel>> glossaryTagsByTarget(T entity) {
     return ApprovedGlossaryTermGuard.tagsByTarget(entity, taggedFieldContainers(entity));
+  }
+
+  /**
+   * Whether entities of this type have inline fields that carry their own tags: the type-level
+   * answer to {@link #taggedFieldContainers}, so a repository that overrides that hook for fields
+   * outside the {@link ChildFieldResolver} registry overrides this one too.
+   */
+  protected boolean hasTaggedFields() {
+    return ChildFieldResolver.supports(entityType);
   }
 
   /**
@@ -8926,17 +9007,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // deleteTagLabelsByTargetPrefix
     // on the root FQN covers every descendant), making these per-entity calls redundant — N no-op
     // round-trips for an N-entity subtree. Skip them for cascade-covered types and rely on the root
-    // cleanup() prefix delete. Types not FQN-nested under their delete root (e.g. flat-FQN teams)
-    // keep the per-entity path.
-    if (shouldCleanupFqnDependents() && !descendantsCoveredByAncestorCascade) {
+    // cleanup() prefix delete, unless the root keeps rows under its FQN for an entity the delete
+    // leaves in place (CASCADE_ROOT_FQN_SHARED). Types not FQN-nested under their delete root
+    // (e.g. flat-FQN teams) keep the per-entity path.
+    if (shouldCleanupFqnDependents() && !reliesOnCascadeRootFqnCleanup()) {
       try (var ignored = phase("bulkHardDeleteFqnDependents")) {
-        for (T entity : entities) {
-          String fqn = entity.getFullyQualifiedName();
-          daoCollection.fieldRelationshipDAO().deleteAllByPrefix(fqn, entityType);
-          if (supportsTags) {
-            daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(fqn);
-          }
-        }
+        fqnKeyedRowCleanup()
+            .delete(entities.stream().map(EntityInterface::getFullyQualifiedName).toList());
       }
     }
     try (var ignored = phase("bulkHardDeleteUsage")) {
@@ -11484,14 +11561,24 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
       versionChanged = updateVersion(original.getVersion());
       if (!versionChanged && entityChanged) {
-        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
-          updated.setChangeDescription(original.getChangeDescription());
-        }
+        keepCurrentVersionAttribution();
       } else if (!versionChanged) {
         updated.setChangeDescription(original.getChangeDescription());
         updated.setUpdatedBy(original.getUpdatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());
       }
+    }
+
+    /**
+     * A non-versioned change (lifeCycle) keeps the current version's change description, author and
+     * timestamp; otherwise the writer's next PATCH consolidates over a version it did not make.
+     */
+    private void keepCurrentVersionAttribution() {
+      if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
+        updated.setChangeDescription(original.getChangeDescription());
+      }
+      updated.setUpdatedBy(original.getUpdatedBy());
+      updated.setUpdatedAt(original.getUpdatedAt());
     }
 
     public boolean isVersionChanged() {
@@ -12892,9 +12979,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           storeNewVersion(); // Store the update version of the entity
         }
       } else if (entityChanged) {
-        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
-          updated.setChangeDescription(original.getChangeDescription());
-        }
+        keepCurrentVersionAttribution();
         try (var ignored = phase("storeUpdateCurrent")) {
           storeNewVersion();
         }
@@ -12967,9 +13052,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           }
         }
       } else if (entityChanged) {
-        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
-          updated.setChangeDescription(original.getChangeDescription());
-        }
+        keepCurrentVersionAttribution();
         if (isConsolidating) {
           try (var ignored = phase("storeUpdateCurrent")) {
             storeNewVersion();

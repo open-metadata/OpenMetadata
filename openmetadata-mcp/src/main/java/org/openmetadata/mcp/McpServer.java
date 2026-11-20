@@ -401,6 +401,7 @@ public class McpServer implements McpServerProvider {
 
   /** FORWARD covers the SSO callback, which /callback forwards to /mcp/callback. */
   private static void registerAvailabilityFilter(Environment environment) {
+    McpAvailabilityFilter.startAppStateRefresh();
     environment
         .servlets()
         .addFilter("mcp-availability", new McpAvailabilityFilter())
