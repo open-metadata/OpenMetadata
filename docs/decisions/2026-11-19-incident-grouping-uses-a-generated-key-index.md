@@ -23,19 +23,19 @@ filters, ranking, paging and historical counts retain their existing semantics.
 MySQL uses a virtual generated column and a covering index on `(fqnHash, deleted, id,
 incidentTableFqn)`. The full indexed key fits InnoDB's 3072-byte limit because the existing hash
 column uses ASCII. The optimizer can read all grouping fields without fetching the large JSON
-row. No forced index hint is added. PostgreSQL stores the generated key and indexes `fqnHash`
-with `deleted` and `id` included; the potentially wide UTF-8 table key is excluded to avoid its
-smaller index-tuple limit. PostgreSQL still benefits from avoiding repeated JSON extraction.
+row. No forced index hint is added. PostgreSQL stores the generated key without adding another index. Its smaller index-tuple
+limit cannot safely cover arbitrary full UTF-8 table keys, and an incomplete covering index has
+no measured benefit to justify another index build. PostgreSQL still avoids repeated JSON extraction.
 
-Generated columns and indexes are maintained by the database for all writers and participate
+Generated columns and the MySQL index are maintained by the database for all writers and participate
 in transaction rollback. There is no separate projection table, backfill worker, synchronization
 hook or trigger privilege requirement. MySQL guarded DDL and PostgreSQL `IF NOT EXISTS` make
 the migration replayable, including after interruption between column and index creation.
 
 ## Consequences
 
-Index creation scans existing test cases once; PostgreSQL also rewrites the table to store the
-generated key. Upgrade time and DDL locking depend on catalog size. Writes maintain one additional
+MySQL index creation scans existing test cases once; PostgreSQL rewrites the table to store the
+generated key. Upgrade time and DDL locking depend on catalog size. MySQL writes maintain one additional
 index. Returning to older application code leaves additive columns/indexes in place safely.
 MySQL gains from a covering index; do not claim the same performance gain on PostgreSQL without
 measuring it. A change in grouping-key semantics requires a new migration.
