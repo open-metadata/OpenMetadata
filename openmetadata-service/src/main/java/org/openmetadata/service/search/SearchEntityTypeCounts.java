@@ -177,7 +177,8 @@ public final class SearchEntityTypeCounts {
     ObjectNode bucket = aggregations.putObject(settings.type());
     bucket.set("filter", indexFilter);
     if (settings.probe()) {
-      addPrecisionAggregations(bucket, broad, queries.build(perType, settings.precise()));
+      addPrecisionAggregations(
+          bucket, broad, queries.build(perType, settings.precise()), indexFilter);
     }
   }
 
@@ -211,10 +212,13 @@ public final class SearchEntityTypeCounts {
     return query;
   }
 
-  private void addPrecisionAggregations(ObjectNode bucket, ObjectNode broad, ObjectNode precise)
+  private void addPrecisionAggregations(
+      ObjectNode bucket, ObjectNode broad, ObjectNode precise, ObjectNode indexFilter)
       throws IOException {
     ObjectNode children = bucket.putObject("aggs");
-    children.putObject(PRECISE).set("filter", filteredQuery(precise));
+    ObjectNode scoped = children.putObject(PRECISE).putObject("filter").putObject("bool");
+    scoped.set("must", filteredQuery(precise));
+    scoped.set("filter", indexFilter);
     ObjectNode probe = children.putObject(PROBE).putObject("top_hits");
     probe.put("size", SearchRankingHelper.identityProbeSize()).put("track_scores", true);
     probe
