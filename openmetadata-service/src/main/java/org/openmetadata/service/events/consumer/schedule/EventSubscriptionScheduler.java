@@ -14,9 +14,11 @@
 package org.openmetadata.service.events.consumer.schedule;
 
 import io.dropwizard.db.DataSourceFactory;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -27,6 +29,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.events.AlertSchedulingInfo;
 import org.openmetadata.schema.api.events.TypedEvent;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
@@ -37,6 +40,7 @@ import org.openmetadata.service.events.consumer.AlertRows;
 import org.openmetadata.service.events.consumer.AlertingSettings;
 import org.openmetadata.service.events.consumer.ServerStopping;
 import org.openmetadata.service.events.consumer.ledger.AlertProgress;
+import org.openmetadata.service.events.consumer.ledger.AlertRecord;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory.PoolWorkload;
 import org.openmetadata.service.jdbi3.QuartzConnectionProvider;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -249,6 +253,12 @@ public class EventSubscriptionScheduler {
   }
 
   public List<TypedEvent> listEventsForSubscription(UUID subscriptionId, int limit, long offset) {
+    Optional<EventSubscriptionOffset> eventSubscriptionOffset =
+        getEventSubscriptionOffset(subscriptionId);
+    if (eventSubscriptionOffset.isEmpty()) {
+      return Collections.emptyList();
+    }
+
     return Entity.getCollectionDAO()
         .changeEventDAO()
         .listAllEventsWithStatuses(subscriptionId.toString(), limit, offset);
@@ -275,6 +285,11 @@ public class EventSubscriptionScheduler {
 
   public List<ChangeEvent> getSuccessfullySentChangeEventsForAlert(
       UUID id, int limit, int paginationOffset) {
+    Optional<EventSubscriptionOffset> eventSubscriptionOffset = getEventSubscriptionOffset(id);
+    if (eventSubscriptionOffset.isEmpty()) {
+      return Collections.emptyList();
+    }
+
     List<String> successfullySentChangeEvents =
         Entity.getCollectionDAO()
             .eventSubscriptionDAO()
@@ -284,6 +299,12 @@ public class EventSubscriptionScheduler {
         .map(e -> ChangeEventJsonUtils.readOrNull(e, ChangeEvent.class))
         .filter(Objects::nonNull)
         .collect(Collectors.toList());
+  }
+
+  // Reading never creates the row: an alert that has never run reports the latest offset as both
+  // its position and its start, and where it really starts is decided when it is first scheduled.
+  public Optional<EventSubscriptionOffset> getEventSubscriptionOffset(UUID subscriptionID) {
+    return Optional.of(AlertRecord.positionOrLatest(subscriptionID));
   }
 
   public int countTotalEvents(UUID id, TypedEvent.Status status) {

@@ -36,7 +36,9 @@ counted from its rows.
 
 The position row itself is left as it is: it belongs to the alert's ticks, which only run while it
 is enabled, and `skipBacklog` on re-enable stays the one write that decides where the alert resumes.
-Code outside the ledger does not read the position row to describe an alert's progress.
+Nothing that reports what an alert has pending, unread or behind reads the position row directly;
+`EventSubscriptionScheduler.getEventSubscriptionOffset` returns the stored row as it is, for tests
+and tools that need the raw position.
 
 Reading never writes a position. Only these write one: scheduling an enabled alert
 (`AlertJobs` calls `AlertRecord.start`, which inserts only when absent), its ticks (compare and set,
