@@ -1,0 +1,209 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+package org.openmetadata.service.jdbi3;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.io.File;
+import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.sqlobject.SqlObjectPlugin;
+import org.jdbi.v3.sqlobject.SqlObjects;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.api.MigrationProcessImpl;
+import org.openmetadata.service.migration.utils.MigrationFile;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+@Testcontainers(disabledWithoutDocker = true)
+@Execution(ExecutionMode.SAME_THREAD)
+class IncidentGroupingIndexSqlTest {
+  private static final String PASSWORD = "incident-groups-test";
+
+  @Test
+  void indexTracksSourceTransactionsOnPostgres() {
+    try (var database =
+        new GenericContainer<>("postgres:15")
+            .withEnv("POSTGRES_PASSWORD", PASSWORD)
+            .withExposedPorts(5432)
+            .waitingFor(
+                Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2))) {
+      database.start();
+      runChecks(
+          connect(
+              "jdbc:postgresql://%s:%d/postgres"
+                  .formatted(database.getHost(), database.getMappedPort(5432)),
+              "postgres",
+              "org.postgresql.Driver"),
+          false);
+    }
+  }
+
+  @Test
+  void indexTracksSourceTransactionsOnMysql() {
+    try (var database =
+        new GenericContainer<>("mysql:8.3.0")
+            .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
+            .withEnv("MYSQL_DATABASE", "incident_projection")
+            .withEnv("MYSQL_ROOT_HOST", "%")
+            .withEnv("MYSQL_USER", "incident_app")
+            .withEnv("MYSQL_PASSWORD", PASSWORD)
+            .withExposedPorts(3306)
+            .waitingFor(
+                Wait.forSuccessfulCommand(
+                    "mysql --protocol=TCP --host=127.0.0.1 --user=root --password="
+                        + PASSWORD
+                        + " --execute='SELECT 1'"))) {
+      database.start();
+      runChecks(
+          connect(
+              "jdbc:mysql://%s:%d/incident_projection?allowPublicKeyRetrieval=true&useSSL=false"
+                  .formatted(database.getHost(), database.getMappedPort(3306)),
+              "incident_app",
+              "com.mysql.cj.jdbc.Driver"),
+          true);
+    }
+  }
+
+  private Jdbi connect(String url, String username, String driver) {
+    var jdbi = Jdbi.create(url, username, PASSWORD).installPlugin(new SqlObjectPlugin());
+    jdbi.getConfig(SqlObjects.class).setSqlLocator(new ConnectionAwareAnnotationSqlLocator(driver));
+    return jdbi;
+  }
+
+  private void runChecks(Jdbi jdbi, boolean mysql) {
+    jdbi.useHandle(
+        handle -> {
+          String json = mysql ? "JSON" : "JSONB";
+          String id = mysql ? "JSON_UNQUOTE(JSON_EXTRACT(json,'$.id'))" : "json->>'id'";
+          String deleted = mysql ? "JSON_EXTRACT(json,'$.deleted')" : "(json->>'deleted')::boolean";
+          String hashType =
+              mysql ? "VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin" : "VARCHAR(768)";
+          handle.execute(
+              "CREATE TABLE SERVER_MIGRATION_SQL_LOGS (version VARCHAR(256), sqlStatement VARCHAR(10000), checksum VARCHAR(256) PRIMARY KEY, executedAt TIMESTAMP)");
+          handle.execute(
+              "CREATE TABLE test_case (json "
+                  + json
+                  + " NOT NULL, fqnHash "
+                  + hashType
+                  + " PRIMARY KEY, id VARCHAR(36) GENERATED ALWAYS AS ("
+                  + id
+                  + ") STORED, deleted BOOLEAN GENERATED ALWAYS AS ("
+                  + deleted
+                  + ") STORED)");
+          insertCase(handle, "before", "before", "<#E::table::table1::columns::column>", mysql);
+        });
+    applySchema(jdbi, mysql);
+    assertEquals("table1", table(jdbi, "before"));
+    jdbi.useHandle(handle -> insertCase(handle, "after", "after", "<#E::table::table2>", mysql));
+    assertEquals("table2", table(jdbi, "after"));
+    jdbi.useHandle(
+        handle ->
+            handle.execute(
+                "UPDATE test_case SET fqnHash='renamed',json="
+                    + (mysql
+                        ? "JSON_SET(json,'$.entityLink','<#E::table::renamed>','$.deleted',TRUE)"
+                        : "json || '{\"entityLink\":\"<#E::table::renamed>\",\"deleted\":true}'::jsonb")
+                    + " WHERE fqnHash='before'"));
+    assertEquals(null, table(jdbi, "before"));
+    assertEquals("renamed", table(jdbi, "renamed"));
+    assertEquals(true, deleted(jdbi));
+    jdbi.useHandle(
+        handle ->
+            handle.execute(
+                "UPDATE test_case SET json="
+                    + (mysql
+                        ? "JSON_SET(json,'$.deleted',FALSE)"
+                        : "json || '{\"deleted\":false}'::jsonb")
+                    + " WHERE fqnHash='renamed'"));
+    assertEquals(false, deleted(jdbi));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            jdbi.useTransaction(
+                handle -> {
+                  handle.execute("DELETE FROM test_case WHERE fqnHash='renamed'");
+                  insertCase(handle, "rollback", "rollback", "<#E::table::rollback>", mysql);
+                  throw new IllegalStateException("rollback");
+                }));
+    assertEquals("renamed", table(jdbi, "renamed"));
+    assertEquals(null, table(jdbi, "rollback"));
+    jdbi.useHandle(handle -> handle.execute("DELETE FROM test_case WHERE fqnHash='after'"));
+    assertEquals(null, table(jdbi, "after"));
+    String wide = "表".repeat(480);
+    jdbi.useHandle(
+        handle -> insertCase(handle, "a".repeat(768), "wide", "<#E::table::" + wide + ">", mysql));
+    assertEquals(wide, table(jdbi, "a".repeat(768)));
+    // Exercise guarded DDL itself, not just the native runner's completed-statement shortcut.
+    jdbi.useHandle(handle -> handle.execute("DELETE FROM SERVER_MIGRATION_SQL_LOGS"));
+    applySchema(jdbi, mysql);
+    applySchema(jdbi, mysql);
+    assertEquals("renamed", table(jdbi, "renamed"));
+    assertEquals(wide, table(jdbi, "a".repeat(768)));
+  }
+
+  private void applySchema(Jdbi jdbi, boolean mysql) {
+    File file =
+        new File(
+            "../bootstrap/sql/migrations/native/2.1.2/"
+                + (mysql ? "mysql" : "postgres")
+                + "/schemaChanges.sql");
+    jdbi.useHandle(
+        handle ->
+            MigrationProcessImpl.performSqlExecutionAndUpdate(
+                handle,
+                handle.attach(MigrationDAO.class),
+                MigrationFile.parseSqlUnits(
+                    file, mysql ? ConnectionType.MYSQL : ConnectionType.POSTGRES),
+                "2.1.2",
+                false));
+  }
+
+  private void insertCase(Handle handle, String hash, String id, String link, boolean mysql) {
+    String json = "{\"id\":\"" + id + "\",\"entityLink\":\"" + link + "\",\"deleted\":false}";
+    handle
+        .createUpdate(
+            "INSERT INTO test_case (fqnHash,json) VALUES (:hash,"
+                + (mysql ? ":json" : "CAST(:json AS jsonb)")
+                + ")")
+        .bind("hash", hash)
+        .bind("json", json)
+        .execute();
+  }
+
+  private String table(Jdbi jdbi, String hash) {
+    return jdbi.withHandle(
+        handle ->
+            handle
+                .createQuery("SELECT incidentTableFqn FROM test_case WHERE fqnHash=:hash")
+                .bind("hash", hash)
+                .mapTo(String.class)
+                .findOne()
+                .orElse(null));
+  }
+
+  private boolean deleted(Jdbi jdbi) {
+    return jdbi.withHandle(
+        handle ->
+            handle
+                .createQuery("SELECT deleted FROM test_case WHERE fqnHash='renamed'")
+                .mapTo(Boolean.class)
+                .one());
+  }
+}

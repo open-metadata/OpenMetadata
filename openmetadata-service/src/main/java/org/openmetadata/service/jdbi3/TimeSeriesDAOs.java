@@ -2618,7 +2618,7 @@ public interface TimeSeriesDAOs {
     String INCIDENT_GROUPS_FROM =
         """
         FROM test_case_incident i
-        INNER JOIN test_case_incident_dimension tc ON tc.fqnHash = i.entityFQNHash
+        INNER JOIN test_case tc ON tc.fqnHash = i.entityFQNHash
         <dimensionJoin>
         <cond> AND i.testCaseResolutionStatusType IN (<openStatuses>) AND tc.deleted = FALSE
         """;
@@ -2688,7 +2688,7 @@ public interface TimeSeriesDAOs {
         WITH scoped_incidents AS (
           SELECT DISTINCT <groupKey> AS groupKey, i.stateId
           FROM test_case_incident i
-          INNER JOIN test_case_incident_dimension tc ON tc.fqnHash = i.entityFQNHash
+          INNER JOIN test_case tc ON tc.fqnHash = i.entityFQNHash
           <dimensionJoin>
           <cond> AND tc.deleted = FALSE AND <groupKey> IN (<groupKeys>)
           AND i.createdAt <= :trendEnd
@@ -2921,14 +2921,18 @@ public interface TimeSeriesDAOs {
           : String.format("JSON_AGG(%s)", expression);
     }
 
-    // The projection preserves the table-level entityLink component even for column tests.
+    // This generated key preserves column tests' origin table and enables covering index reads.
     private static String tableFqnExpr() {
-      return "tc.tableFqn";
+      return "tc.incidentTableFqn";
     }
 
     // Outer, so an incident whose test case lost its definition relationship still counts, as it
     // still lists in the flat listing.
-    String TEST_DEFINITION_JOIN = "LEFT JOIN test_case_incident_definition tdr ON tdr.toId = tc.id";
+    String TEST_DEFINITION_JOIN =
+        String.format(
+            "LEFT JOIN entity_relationship tdr ON tdr.toId = tc.id AND tdr.relation = %d "
+                + "AND tdr.fromEntity = '%s' AND tdr.toEntity = '%s'",
+            CONTAINS.ordinal(), Entity.TEST_DEFINITION, Entity.TEST_CASE);
 
     String TEST_DEFINITION_ID = "tdr.fromId";
 
@@ -2968,11 +2972,10 @@ public interface TimeSeriesDAOs {
       }
 
       private static IncidentGroupDimension forTestDefinition() {
+        String definitions = String.format("er.fromEntity = '%s'", Entity.TEST_DEFINITION);
+        String join = relationshipJoin("INNER", CONTAINS, definitions);
         return new IncidentGroupDimension(
-            "er.fromId",
-            "'testDefinition'",
-            "er.fromId",
-            "INNER JOIN test_case_incident_definition er ON er.toId = tc.id");
+            "er.fromId", "er.fromEntity", "er.fromId, er.fromEntity", join);
       }
 
       // A test case always has a test definition, but it need not have an owner — and the

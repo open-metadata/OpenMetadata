@@ -1,7 +1,7 @@
 # Incident grouping reads compact projections maintained in source transactions
 
-- **Status:** Accepted
-- **Revisions:** v1 2026-11-19 (initial)
+- **Status:** Superseded by ADR:2026-11-19-incident-grouping-uses-a-generated-key-index
+- **Revisions:** v1 2026-11-19 (initial) · v2 2026-11-19 (replaced before deployment)
 - **Deciders:** Teddy Crepineau
 - **Guard:** `IncidentGroupingProjectionSqlTest`, `IncidentGroupQueriesSqlTest`, `IncidentGroupTrendSqlTest`
 - **Related:** https://github.com/open-metadata/OpenMetadata/pull/38164
@@ -43,3 +43,10 @@ Rolling back application code leaves additive tables and triggers in place; it d
 deleting source data. Changing projection semantics needs a new migration, including any repair
 backfill. Ordinary row operations synchronize the tables; administrative operations that bypass
 row triggers, such as `TRUNCATE`, must explicitly rebuild or clear the projections too.
+
+## Amendment: replaced before deployment
+
+Independent review found that MySQL binary logging can require global privileges to create
+triggers, while normal OpenMetadata accounts have schema-scoped grants. The implementation was
+replaced before shipping with ADR:2026-11-19-incident-grouping-uses-a-generated-key-index. No
+projection tables or triggers from this design are installed by the final migration.
