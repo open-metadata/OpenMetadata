@@ -1,9 +1,9 @@
-# An incident task's header leads with its next stage and folds steps back into the menu
+# An incident task leads with its next stage and folds steps back into the menu
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-20 (initial)
 - **Deciders:** Teddy Crepineau, Ram Narayan B
-- **Guard:** `taskResolve.utils.test.ts` (`splitTaskActions` › an incident stage), `TaskDetailHeader.test.tsx`, `InboxTaskMatrix.spec.ts`
+- **Guard:** `taskResolve.utils.test.ts` (`splitTaskActions` › an incident stage), `TaskDetailHeader.test.tsx`, `TaskTabNew.component.test.tsx`, `InboxTaskMatrix.spec.ts`
 - **Related:** ADR:2026-11-17-returning-incidents-to-triage-clears-assignees, [PR #37613](https://github.com/open-metadata/OpenMetadata/pull/37613)
 
 ## Context
@@ -30,7 +30,9 @@ action that misses a slot stays a button, since a menu item cannot host its pick
 | Acknowledged | Assign, Resolve | New |
 | Assigned | Resolve, Reassign | New, Acknowledge |
 
-Any other task keeps the workflow-order rule.
+The classic task tab's split button defaults to the first ranked transition for the same reason:
+in workflow order an Assigned incident defaulted to New, which needs no comment, so one click sent
+it back to triage. Any other task keeps the workflow-order rule.
 
 ## Consequences
 

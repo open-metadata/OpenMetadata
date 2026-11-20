@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { Task, TaskStatus } from '../../../../../generated/entity/tasks/task';
 import { TaskResolveAction } from '../taskResolve.utils';
 import TaskDetailHeader from './TaskDetailHeader';
@@ -111,5 +111,10 @@ describe('TaskDetailHeader', () => {
     expect(screen.getByTestId('task-actions-menu')).toBeVisible();
     expect(screen.queryByTestId('task-transition-new')).not.toBeInTheDocument();
     expect(screen.queryByTestId('task-transition-ack')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('task-actions-menu'));
+
+    expect(screen.getByTestId('task-transition-new')).toBeInTheDocument();
+    expect(screen.getByTestId('task-transition-ack')).toBeInTheDocument();
   });
 });
