@@ -216,32 +216,54 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(JSON.stringify(assetData.extraInfo)).toContain('formatted-0');
   });
 
-  it('shows the table creation time without its UTC offset and the full time on hover', async () => {
-    const createdAt = 1609459200000;
-    const { extraInfo } = getDataAssetsHeaderInfo(
-      EntityType.TABLE,
-      { ...MOCK_TABLE, lifeCycle: { created: { timestamp: createdAt } } },
-      'Redshift',
-      []
-    );
+  it.each([
+    {
+      entityType: EntityType.TABLE as const,
+      dataAsset: {
+        ...MOCK_TABLE,
+        lifeCycle: { created: { timestamp: 1609459200000 } },
+      },
+      testId: 'table-created-time',
+    },
+    {
+      entityType: EntityType.SPREADSHEET as const,
+      dataAsset: {
+        id: 'spreadsheet-123',
+        name: 'test-spreadsheet',
+        createdTime: 1609459200000,
+        service: { id: 'service-123', type: 'driveService' },
+      } as Spreadsheet,
+      testId: 'spreadsheet-created-time',
+    },
+  ])(
+    'shows the $entityType creation time without its UTC offset and the full time on hover',
+    async ({ entityType, dataAsset, testId }) => {
+      const createdAt = 1609459200000;
+      const { extraInfo } = getDataAssetsHeaderInfo(
+        entityType,
+        dataAsset,
+        'name',
+        []
+      );
 
-    render(<>{extraInfo}</>);
+      render(<>{extraInfo}</>);
 
-    const createdTime = screen.getByTestId('table-created-time');
+      const createdTime = screen.getByTestId(testId);
 
-    expect(createdTime).toHaveTextContent(
-      formatDateTimeLong(createdAt, DATE_TIME_12_HOUR_FORMAT)
-    );
-    expect(createdTime).not.toHaveTextContent('UTC');
+      expect(createdTime).toHaveTextContent(
+        formatDateTimeLong(createdAt, DATE_TIME_12_HOUR_FORMAT)
+      );
+      expect(createdTime).not.toHaveTextContent('UTC');
 
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-    fireEvent.mouseMove(document);
-    await user.hover(createdTime);
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      fireEvent.mouseMove(document);
+      await user.hover(createdTime);
 
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      `formatted-${createdAt}`
-    );
-  });
+      expect(await screen.findByRole('tooltip')).toHaveTextContent(
+        `formatted-${createdAt}`
+      );
+    }
+  );
 
   it('Function getDataAssetsHeaderInfo should hide a year-0001 placeholder table creation time', () => {
     const assetData = getDataAssetsHeaderInfo(

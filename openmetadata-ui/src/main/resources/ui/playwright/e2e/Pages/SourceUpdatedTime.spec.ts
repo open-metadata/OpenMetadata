@@ -87,7 +87,7 @@ test.describe('Asset source update time in the entity header', () => {
     }) => {
       await entity.visitEntityPage(page);
 
-      const header = page.getByTestId('data-assets-header');
+      const header = page.getByTestId('data-asset-header-metadata');
       const sourceUpdated = header.getByTestId('source-updated-at');
 
       await expect(header.getByText('Updated at source')).toBeVisible();
