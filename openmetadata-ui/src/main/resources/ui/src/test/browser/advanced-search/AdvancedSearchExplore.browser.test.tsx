@@ -20,6 +20,7 @@ import { describe, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { EntityStatus } from '../../../generated/entity/data/searchIndex';
 import { makeTable } from '../fixtures/table';
+import { networkIdle } from '../network';
 import { suiteTimeout } from '../timeouts';
 import {
   applyAdvancedSearch,
@@ -67,8 +68,9 @@ describe('Explore advanced search', suiteTimeout(60_000), () => {
       .toBeVisible();
 
     const fetched = explore.aggregates.length;
-    // The empty result must not trigger another fetch, let alone a loop.
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // The empty result must not trigger another fetch, let alone a loop: a
+    // loop never goes idle, and a single extra fetch changes the count.
+    await networkIdle();
 
     expect(explore.aggregates).toHaveLength(fetched);
   });
