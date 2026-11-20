@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: Python unit tests
+name: reusable-py-unit
 on:
   workflow_call:
     inputs:
@@ -17,6 +17,7 @@ on:
         type: string
         required: true
       ref:
+        description: Git commit SHA to check out and test
         type: string
         required: true
       collect-coverage:

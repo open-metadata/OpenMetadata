@@ -23,7 +23,7 @@ def summary_step(name):
 
 
 def shard_steps():
-    return workflow("playwright-e2e-reusable.yml")["jobs"]["playwright-ci"]["steps"]
+    return workflow("reusable-playwright-e2e.yml")["jobs"]["playwright-ci"]["steps"]
 
 
 @pytest.mark.parametrize(
@@ -212,7 +212,7 @@ def test_baseline_refresh_writes_the_data_branch_from_full_runs_on_main():
 
 
 def test_planning_reads_the_data_branch_baseline():
-    steps = workflow("playwright-e2e-reusable.yml")["jobs"]["plan-playwright"]["steps"]
+    steps = workflow("reusable-playwright-e2e.yml")["jobs"]["plan-playwright"]["steps"]
     names = [step["name"] for step in steps]
     fetch = names.index("Fetch auto-refreshed timing baseline")
     assert fetch < names.index("Build duration-aware shard plans")

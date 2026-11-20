@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: Python integration tests
+name: reusable-py-integration
 on:
   workflow_call:
     inputs:
@@ -17,6 +17,7 @@ on:
         type: string
         required: true
       ref:
+        description: Git commit SHA to test; must match the shared backend distribution
         type: string
         required: true
       collect-coverage:

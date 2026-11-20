@@ -17,7 +17,7 @@ and the explore page loses its fixed height. Re-enabling `cssCodeSplit` or reord
 stylesheets only moves the tie somewhere else.
 
 ## Decision
-- `visual` and `rdf` are lanes of `playwright-e2e-reusable.yml`, and their shards count toward
+- `visual` and `rdf` are lanes of `reusable-playwright-e2e.yml`, and their shards count toward
   `playwright-summary`, so a failure blocks the merge. `visual` runs when its UI path filter matches,
   `rdf` when its RDF path filter matches, and both run on every manual and scheduled run. Neither
   runs on `protocol=h2`, because both start plain-HTTP Docker servers.

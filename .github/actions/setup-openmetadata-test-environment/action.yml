@@ -1,15 +1,15 @@
 name: Prepare test environment
-description: Prepare Python dependencies and start the requested OpenMetadata server environment.
+description: Start an OpenMetadata test stack, with optional host Python setup or Playwright fixture restoration.
 
 inputs:
   python-version:
-    description: Python Version to install
+    description: Python version for host environment setup
     required: true
   profile:
-    description: Locked Python profile (dev, test, or test-classification)
+    description: Locked host Python profile (dev, test, or test-classification)
     default: test
   args:
-    description: Arguments to pass to run_local_docker.sh
+    description: Arguments passed to the server startup script
     required: false
     default: "-m no-ui -d mysql"  # Use "-d postgresql" for postgres and Opensearch
   startup-script:
@@ -17,7 +17,7 @@ inputs:
     required: false
     default: "./docker/run_local_docker.sh"
   ingestion_dependency:
-    description: Ingestion dependency to pass to run_local_docker.sh
+    description: Ingestion dependencies passed to the server startup script
     required: false
     default: "mysql,elasticsearch,sample-data"
   fast-mode:
@@ -37,7 +37,7 @@ inputs:
     required: false
     default: ""
   lightweight-ingestion:
-    description: Build the ingestion container without installing duplicate host dependencies
+    description: Use container ingestion without preparing host Python dependencies
     required: false
     default: "false"
 

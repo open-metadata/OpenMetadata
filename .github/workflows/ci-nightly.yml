@@ -31,9 +31,9 @@ jobs:
     name: Select Python workloads
     runs-on: ubuntu-latest
     outputs:
-      versions: ${{ steps.versions.outputs.versions }}
-      lowest: ${{ steps.versions.outputs.lowest }}
-      highest: ${{ steps.versions.outputs.highest }}
+      python-versions: ${{ steps.versions.outputs.versions }}
+      python-lowest: ${{ steps.versions.outputs.lowest }}
+      python-highest: ${{ steps.versions.outputs.highest }}
       ref: ${{ github.sha }}
       connectors: ${{ steps.connectors.outputs.connectors }}
     steps:
@@ -51,6 +51,14 @@ jobs:
         env:
           SELECTED_CONNECTORS: ${{ inputs.connectors }}
         run: python3 scripts/python_ci.py connectors --output "$GITHUB_OUTPUT"
+
+  backend:
+    name: Build Backend Distribution
+    needs: plan
+    uses: ./.github/workflows/reusable-build-backend.yml
+    with:
+      ref: ${{ needs.plan.outputs.ref }}
+
   py-checkstyle:
     name: py-checkstyle
     needs: plan
@@ -65,23 +73,17 @@ jobs:
       - name: Run formatting and lint
         uses: ./.github/actions/python-lint
         with:
-          python-version: ${{ needs.plan.outputs.highest }}
-  type-checks:
+          python-version: ${{ needs.plan.outputs.python-highest }}
+
+  python-types:
     name: Python type checks
     needs: plan
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ needs.plan.outputs.ref }}
-          persist-credentials: false
-          fetch-depth: 1
-      - name: Run type checks
-        uses: ./.github/actions/python-static-checks
-        with:
-          python-version: ${{ needs.plan.outputs.lowest }}
-  models:
+    uses: ./.github/workflows/reusable-py-types.yml
+    with:
+      ref: ${{ needs.plan.outputs.ref }}
+      python-version: ${{ needs.plan.outputs.python-lowest }}
+
+  classification-models:
     needs: plan
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -92,81 +94,63 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
       - uses: ./.github/actions/prepare-classification-models
-  backend:
-    name: Build Backend Distribution
-    needs: plan
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ needs.plan.outputs.ref }}
-          persist-credentials: false
-          fetch-depth: 1
-      - uses: ./.github/actions/build-backend
-        with:
-          maven-args: -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
-      - name: Upload backend distribution
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: openmetadata-backend-distribution
-          path: openmetadata-dist/target/openmetadata-*.tar.gz
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 1
-  unit:
+
+  python-unit:
     needs:
       - plan
-      - models
+      - classification-models
     strategy:
       fail-fast: false
       matrix:
-        python: ${{ fromJSON(needs.plan.outputs.versions) }}
-    uses: ./.github/workflows/py-unit.yml
+        python: ${{ fromJSON(needs.plan.outputs.python-versions) }}
+    uses: ./.github/workflows/reusable-py-unit.yml
     with:
       python-version: ${{ matrix.python }}
       ref: ${{ needs.plan.outputs.ref }}
-      collect-coverage: ${{ matrix.python == needs.plan.outputs.lowest }}
-      run-meta-tests: ${{ matrix.python == needs.plan.outputs.highest }}
-  integration:
+      collect-coverage: ${{ matrix.python == needs.plan.outputs.python-lowest }}
+      run-meta-tests: ${{ matrix.python == needs.plan.outputs.python-highest }}
+
+  python-integration:
     needs:
       - plan
-      - models
+      - classification-models
       - backend
     strategy:
       fail-fast: false
       matrix:
-        python: ${{ fromJSON(needs.plan.outputs.versions) }}
-    uses: ./.github/workflows/py-integration.yml
+        python: ${{ fromJSON(needs.plan.outputs.python-versions) }}
+    uses: ./.github/workflows/reusable-py-integration.yml
     with:
       python-version: ${{ matrix.python }}
       ref: ${{ needs.plan.outputs.ref }}
-      collect-coverage: ${{ matrix.python == needs.plan.outputs.lowest }}
-  cli-e2e:
+      collect-coverage: ${{ matrix.python == needs.plan.outputs.python-lowest }}
+
+  python-cli-e2e:
     needs:
       - plan
-      - models
+      - classification-models
       - backend
     permissions:
       contents: read
       id-token: write
-    uses: ./.github/workflows/py-cli-e2e-tests.yml
+    uses: ./.github/workflows/reusable-py-cli-e2e-tests.yml
     secrets: inherit
     with:
-      python-version: ${{ needs.plan.outputs.highest }}
+      python-version: ${{ needs.plan.outputs.python-highest }}
       ref: ${{ needs.plan.outputs.ref }}
       connectors: ${{ needs.plan.outputs.connectors }}
+
   py-tests-status:
     name: py-tests-status
     needs:
       - plan
       - py-checkstyle
-      - type-checks
-      - models
+      - python-types
+      - classification-models
       - backend
-      - unit
-      - integration
-      - cli-e2e
+      - python-unit
+      - python-integration
+      - python-cli-e2e
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
@@ -182,23 +166,24 @@ jobs:
             {
               "plan": "success",
               "py-checkstyle": "success",
-              "type-checks": "success",
-              "models": "success",
+              "python-types": "success",
+              "classification-models": "success",
               "backend": "success",
-              "unit": "success",
-              "integration": "success",
-              "cli-e2e": "success"
+              "python-unit": "success",
+              "python-integration": "success",
+              "python-cli-e2e": "success"
             }
         run: python3 scripts/python_ci.py verify
+
   sonar-cloud-coverage-upload:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
     needs:
       - plan
-      - unit
-      - integration
-      - cli-e2e
-    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && contains(fromJSON('["success", "failure"]'), needs.unit.result) }}
+      - python-unit
+      - python-integration
+      - python-cli-e2e
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && contains(fromJSON('["success", "failure"]'), needs.python-unit.result) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -209,7 +194,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
-          python-version: ${{ needs.plan.outputs.highest }}
+          python-version: ${{ needs.plan.outputs.python-highest }}
       - name: Install uv
         uses: ./.github/actions/setup-uv
       - name: Prepare Python tools
@@ -256,16 +241,17 @@ jobs:
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
         with:
           projectBaseDir: ingestion/
+
   notify:
     needs:
       - plan
       - py-checkstyle
-      - type-checks
-      - models
+      - python-types
+      - classification-models
       - backend
-      - unit
-      - integration
-      - cli-e2e
+      - python-unit
+      - python-integration
+      - python-cli-e2e
       - py-tests-status
       - sonar-cloud-coverage-upload
     if: ${{ always() && !cancelled() && (needs.py-tests-status.result == 'failure' || needs.sonar-cloud-coverage-upload.result == 'failure') }}
@@ -282,5 +268,5 @@ jobs:
           payload: |
             {
               "channel": "C03EYBDDX17",
-              "text": "<!subteam^S0AH093PEQL> Python CI nightly failed on `${{ github.ref_name }}`.\nSelection: ${{ needs.plan.result }}; lint: ${{ needs.py-checkstyle.result }}; types: ${{ needs.type-checks.result }}; models: ${{ needs.models.result }}; backend: ${{ needs.backend.result }}; units: ${{ needs.unit.result }}; integrations: ${{ needs.integration.result }}; CLI E2E: ${{ needs.cli-e2e.result }}; Sonar: ${{ needs.sonar-cloud-coverage-upload.result }}.\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "<!subteam^S0AH093PEQL> Python CI nightly failed on `${{ github.ref_name }}`.\nSelection: ${{ needs.plan.result }}; lint: ${{ needs.py-checkstyle.result }}; types: ${{ needs.python-types.result }}; models: ${{ needs.classification-models.result }}; backend: ${{ needs.backend.result }}; units: ${{ needs.python-unit.result }}; integrations: ${{ needs.python-integration.result }}; CLI E2E: ${{ needs.python-cli-e2e.result }}; Sonar: ${{ needs.sonar-cloud-coverage-upload.result }}.\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }

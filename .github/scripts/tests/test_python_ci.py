@@ -136,7 +136,7 @@ def test_gate_rejects_unexpected_results_and_dependencies():
 
 
 def test_nightly_artifact_names_are_unique_across_invocations():
-    unit_steps = workflow("py-unit.yml")["jobs"]["py-unit-tests"]["steps"]
+    unit_steps = workflow("reusable-py-unit.yml")["jobs"]["py-unit-tests"]["steps"]
     unit = {
         key: value
         for step in unit_steps
@@ -144,7 +144,7 @@ def test_nightly_artifact_names_are_unique_across_invocations():
         for key, value in step.get("with", {}).items()
         if key in {"artifact-name", "coverage-name"}
     }
-    integration = workflow("py-integration.yml")["jobs"]["py-integration-tests"]
+    integration = workflow("reusable-py-integration.yml")["jobs"]["py-integration-tests"]
     results = {
         key: value
         for step in integration["steps"]

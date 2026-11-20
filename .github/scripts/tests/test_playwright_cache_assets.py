@@ -468,7 +468,7 @@ def test_distribution_cache_validates_manifest_archive_and_bundle_mode(
 
 
 def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None:
-    workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+    workflow = (ROOT / ".github/workflows/reusable-playwright-e2e.yml").read_text()
     assert "restore-playwright-fixture:\n    needs: [cache-keys, plan-playwright]" in workflow
     assert "build:\n    needs: [check-changes, cache-keys]" in workflow
     assert "actions/cache/restore@v6" in workflow
@@ -520,7 +520,7 @@ def test_no_cache_is_saved_from_an_ephemeral_merge_queue_ref() -> None:
     the main-scoped copies runs actually restore. Measured before the guard:
     0/13 golden-fixture hits on merge_group, ~17 min rebuilt every time.
     """
-    workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+    workflow = (ROOT / ".github/workflows/reusable-playwright-e2e.yml").read_text()
     guard = "github.event_name != 'merge_group'"
 
     writers = workflow.count("uses: actions/cache/save@")
@@ -542,7 +542,7 @@ def test_no_cache_is_saved_from_an_ephemeral_merge_queue_ref() -> None:
     # replaces them, and its warm job must stop before the shards.
     warm = (ROOT / ".github/workflows/populate-playwright-caches.yml").read_text()
     assert "warm_caches_only: true" in warm
-    assert "uses: ./.github/workflows/playwright-e2e-reusable.yml" in warm
+    assert "uses: ./.github/workflows/reusable-playwright-e2e.yml" in warm
     assert "!inputs.warm_caches_only" in workflow
 
     # The push trigger must stay unfiltered: the fixture and distribution
@@ -744,7 +744,7 @@ def test_fixture_validator_requires_the_search_layout_of_the_fixture_database(
 
 
 def test_golden_fixture_cache_is_scoped_by_database() -> None:
-    workflow = (ROOT / ".github/workflows/playwright-e2e-reusable.yml").read_text()
+    workflow = (ROOT / ".github/workflows/reusable-playwright-e2e.yml").read_text()
     keys = [line.strip() for line in workflow.splitlines() if "key: playwright-golden-fixture-" in line]
     assert len(keys) == 2
     assert all("playwright-golden-fixture-v2-${{ inputs.database }}-" in key for key in keys)
@@ -754,7 +754,7 @@ def test_golden_fixture_cache_is_scoped_by_database() -> None:
 def test_visual_renders_the_regular_bundle_in_front_of_the_shared_server() -> None:
     # ADR:2026-10-23-playwright-visual-and-rdf-are-blocking-lanes-on-the-regular-bundle
     workflows = ROOT / ".github/workflows"
-    reusable = (workflows / "playwright-e2e-reusable.yml").read_text()
+    reusable = (workflows / "reusable-playwright-e2e.yml").read_text()
     outputs = reusable.split("  check-changes:", 1)[1].split("    steps:", 1)[0]
     visual = next(line for line in outputs.splitlines() if line.startswith("      visual:"))
     rdf = next(line for line in outputs.splitlines() if line.startswith("      rdf:"))
@@ -763,7 +763,7 @@ def test_visual_renders_the_regular_bundle_in_front_of_the_shared_server() -> No
     assert "inputs.protocol != 'h2'" in rdf
     assert visual.endswith("|| 'false' }}") and rdf.endswith("|| 'false' }}")
 
-    for workflow in ("playwright-e2e-reusable.yml", "playwright-postgresql-e2e.yml",
+    for workflow in ("reusable-playwright-e2e.yml", "playwright-postgresql-e2e.yml",
                      "postgresql-nightly-e2e.yml", "mysql-nightly-e2e.yml"):
         block = (workflows / workflow).read_text().split("      coarse_bundle:\n", 1)[1]
         assert block.split("default:", 1)[1].split("\n", 1)[0].strip() == "true", workflow

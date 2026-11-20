@@ -32,7 +32,7 @@ def load_script(name: str):
 
 def test_execution_budget_stays_below_hang_protection_wrapper():
     # The 1500 s execution target is the BUDGET the planner packs against;
-    # the `timeout … Nm` wrapper in playwright-e2e-reusable.yml is HANG
+    # the `timeout … Nm` wrapper in reusable-playwright-e2e.yml is HANG
     # PROTECTION and must sit well above it — at parity (the old 25m/1500s
     # pairing) the wrapper killed slow-but-green shards mid-report and
     # destroyed the results artifact (run 32500973433). If someone tightens
@@ -42,7 +42,7 @@ def test_execution_budget_stays_below_hang_protection_wrapper():
     assert budget["threshold"] == 1500
     assert budget["phase_field"] == "executionSeconds"
 
-    reusable = (WORKFLOWS / "playwright-e2e-reusable.yml").read_text()
+    reusable = (WORKFLOWS / "reusable-playwright-e2e.yml").read_text()
     match = re.search(
         # The visual lane swaps `npx` for a container runner array.
         r"timeout --signal=TERM --kill-after=30s (\d+)m\s*\\\s*\n"

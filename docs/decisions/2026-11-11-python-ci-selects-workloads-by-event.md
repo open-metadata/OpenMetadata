@@ -1,10 +1,10 @@
 # Python CI selects workloads by event and shares preparation across runners
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-11 (initial)
+- **Revisions:** v1 2026-11-11 (initial); v2 2026-11-20 (entrypoint ownership)
 - **Deciders:** Pablo Takara
 - **Guard:** reviewer; `actionlint`; `ingestion/tests/cli_e2e_v2/meta/test_ci_workflow.py`
-- **Related:** ADR:2026-11-09-python-classification-models-use-explicit-profiles-and-caches; https://github.com/open-metadata/OpenMetadata/issues/35889; https://github.com/open-metadata/OpenMetadata/pull/37562
+- **Related:** ADR:2026-11-09-python-classification-models-use-explicit-profiles-and-caches; https://github.com/open-metadata/OpenMetadata/issues/35889; https://github.com/open-metadata/OpenMetadata/pull/37562; https://github.com/open-metadata/OpenMetadata/pull/38105
 
 ## Context
 
@@ -26,16 +26,23 @@ uses numeric minimum/maximum versions rather than list order or separate version
 
 For relevant changes, select these workloads:
 
-| Event | Unit tests | MySQL/PostgreSQL integration tests | Legacy connector E2E | Static checks |
-| --- | --- | --- | --- | --- |
-| Pull request | Highest supported Python | Skipped | Skipped | Lowest supported Python |
-| Merge queue | Highest supported Python | Highest supported Python | Skipped | Lowest supported Python |
-| Nightly | Full supported matrix | Full supported matrix | Highest supported Python | Lowest supported Python |
+| Event | Unit tests | MySQL/PostgreSQL integration tests | Legacy connector E2E |
+| --- | --- | --- | --- |
+| Pull request | Highest supported Python | Skipped | Skipped |
+| Merge queue | Highest supported Python | Highest supported Python | Skipped |
+| Nightly | Full supported matrix | Full supported matrix | Highest supported Python |
 
-`py-tests.yml` owns event triggers, path selection and the required `py-tests-status` check.
-The nightly runs at 01:00 UTC. Manual dispatch selects `pull-request`, `merge-queue` or `nightly`
-workloads, defaulting to `nightly`; it bypasses path filtering and does not simulate a merge-group
-commit. Offline E2E framework meta-tests run only in scheduled and manual nightly workloads,
+Formatting and lint run on the highest supported Python; type checks run on the lowest.
+
+`ci-pr.yml`, `ci-merge-queue.yml` and `ci-nightly.yml` own their respective triggers, workload
+selection, Python matrices, dependencies, permissions and required `py-tests-status` check.
+The required `py-checkstyle` job also stays in the entrypoints. Reusable workflows execute
+the supplied Python version and source revision; they do not choose event policy. Shared
+backend construction and type checks use complete reusable jobs.
+
+The nightly runs at 01:00 UTC. Manual dispatch runs the selected entrypoint's workloads,
+bypassing path filtering without simulating a merge-group commit. CI helper and offline E2E
+framework meta-tests run only in scheduled and manual nightly workloads,
 once on the highest supported interpreter. They are distinct from connector E2E execution;
 their failures still fail the nightly status and trigger its Slack notification.
 
@@ -48,17 +55,17 @@ the final classification profile synchronization and verification.
 Build one backend distribution per selected integration/nightly run. Both reusable runners consume
 the same `openmetadata-backend-distribution` artifact, and server startup skips Maven. Unit tests
 run once per selected interpreter, independently of the integration database matrix. Static
-checks run once on the minimum interpreter.
+type checks run once on the minimum interpreter and formatting/lint once on the maximum.
 
-`py-cli-e2e-tests.yml` contains only connector E2E jobs. Preserve the 17 legacy connector lanes,
+`reusable-py-cli-e2e-tests.yml` contains only connector E2E jobs. Preserve the 17 legacy connector lanes,
 their test environment, cloud authentication, diagnostics, cleanup and Snowflake concurrency with
-V2. The default connector list lives in `py-tests.yml`; manual nightly runs may override it with
+V2. The default connector list lives in `ci-nightly.yml`; manual nightly runs may override it with
 a JSON array. The V2 workflow remains independent, and connector migration is a separate change.
 
 Selected jobs must succeed; unexpected failures and skips fail the required status. Scheduled
 and manual nightly failures notify ingestion Slack and mention `onduty-integrations`; successful
 or cancelled runs and PR/merge-queue modes stay silent. Preserve unit, integration and connector
-coverage and JUnit results, combining them after both runners finish before publishing to Sonar
+coverage and JUnit results, combining them after the test workflows finish before publishing to Sonar
 on main. Use distinct connector coverage and result names to avoid overwriting other lanes.
 
 ## Consequences

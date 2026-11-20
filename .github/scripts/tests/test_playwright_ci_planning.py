@@ -2380,7 +2380,7 @@ def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():
     fixture_builder = (SCRIPTS / "create_playwright_fixture.sh").read_text()
     fast_launcher = (SCRIPTS / "start_playwright_fast_environment.sh").read_text()
     workflow = (
-        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
+        SCRIPTS.parents[0] / "workflows/reusable-playwright-e2e.yml"
     ).read_text()
     fixture_job = workflow.split("  prepare-playwright-fixture:", 1)[1].split(
         "  playwright-ci:", 1
@@ -2398,7 +2398,7 @@ def test_fast_fixture_preserves_and_validates_the_search_cluster_alias():
 
 def test_planner_discovers_oss_only_specs():
     workflow = (
-        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
+        SCRIPTS.parents[0] / "workflows/reusable-playwright-e2e.yml"
     ).read_text()
     planner_job = workflow.split("  plan-playwright:", 1)[1].split(
         "  restore-playwright-fixture:", 1
@@ -2848,7 +2848,7 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
         SCRIPTS.parents[0] / "workflows/playwright-postgresql-e2e.yml"
     ).read_text()
     reusable = (
-        SCRIPTS.parents[0] / "workflows/playwright-e2e-reusable.yml"
+        SCRIPTS.parents[0] / "workflows/reusable-playwright-e2e.yml"
     ).read_text()
     summary_helper = (SCRIPTS / "render_playwright_summary.cjs").read_text()
     summary_job = workflow.split("  playwright-summary:", 1)[1]
@@ -4257,7 +4257,7 @@ def test_unmapped_code_escalation_records_all_unmapped_code_files_together(
 
 def test_is_code_path_covers_every_root_the_e2e_filter_matches():
     """
-    Kept in lock-step with the `e2e` paths in playwright-e2e-reusable.yml.
+    Kept in lock-step with the `e2e` paths in reusable-playwright-e2e.yml.
     If a root gets added to that filter but not to UNMAPPED_CODE_ROOTS, a
     change under it would reach the planner (check-changes passed) but not
     trigger an escalation, silently reintroducing the coverage gap this

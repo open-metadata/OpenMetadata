@@ -16,7 +16,7 @@
 # postgresql PR pipeline and the mysql nightly share one source of truth.
 # For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
 
-name: Playwright E2E (reusable)
+name: reusable-playwright-e2e
 on:
   workflow_call:
     inputs:
@@ -266,7 +266,7 @@ jobs:
               - '.github/scripts/tests/test_playwright_ci_planning.py'
               - '.github/scripts/tests/test_playwright_cache_assets.py'
               - '.github/scripts/verify_playwright_coverage.py'
-              - '.github/workflows/playwright-e2e-reusable.yml'
+              - '.github/workflows/reusable-playwright-e2e.yml'
               - '.github/workflows/playwright-postgresql-e2e.yml'
               - '.github/workflows/playwright-postgresql-nightly.yml'
               - '.github/workflows/playwright-mysql-nightly.yml'
@@ -297,7 +297,7 @@ jobs:
               - 'openmetadata-ui/src/main/resources/ui/playwright/constant/**'
               - 'openmetadata-ui/src/main/resources/ui/playwright/fixtures/**'
               - 'openmetadata-ui/src/main/resources/ui/playwright/test-data/**'
-              - '.github/workflows/playwright-e2e-reusable.yml'
+              - '.github/workflows/reusable-playwright-e2e.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
               - '.github/actions/prepare-python-environment/**'
               - '.github/actions/setup-uv/**'
@@ -309,7 +309,7 @@ jobs:
               - '.github/actions/prepare-python-environment/**'
               - '.github/actions/setup-uv/**'
               - 'scripts/python_tools.py'
-              - '.github/workflows/playwright-e2e-reusable.yml'
+              - '.github/workflows/reusable-playwright-e2e.yml'
               - 'docker/run_local_docker.sh'
               - 'docker/run_local_docker_common.sh'
               - 'docker/run_local_docker_rdf.sh'

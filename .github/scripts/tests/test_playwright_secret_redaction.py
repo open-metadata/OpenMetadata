@@ -126,7 +126,7 @@ def test_summary_gates_on_every_event_that_actually_runs_the_shard_matrix():
     assert match, "renderPlaywrightSummary no longer defines testsRequired"
     block = match.group(1)
     # Every event that triggers `playwright-postgresql-e2e.yml` (which reuses
-    # `playwright-e2e-reusable.yml` to run the shard matrix) belongs here.
+    # `reusable-playwright-e2e.yml` to run the shard matrix) belongs here.
     # If a new event is added to that workflow's `on:` block, add it here too
     # or the summary will silently green-light a red matrix under it.
     for event in (

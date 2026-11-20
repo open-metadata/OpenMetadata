@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: Run connector E2E tests
+name: reusable-py-cli-e2e-tests
 on:
   workflow_call:
     inputs:
@@ -22,6 +22,7 @@ on:
         required: true
         type: string
       ref:
+        description: Git commit SHA to test; must match the shared backend distribution
         type: string
         required: true
 permissions:

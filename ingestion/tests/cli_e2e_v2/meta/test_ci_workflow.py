@@ -23,7 +23,7 @@ import yaml
 _CONDITION_CLAUSE = re.compile(r"^matrix\.connector (==|!=) '([a-z]+)'$")
 _TEST_STEP_IDS = ("e2e-v2-test", "e2e-v2-bigquery-test", "e2e-v2-snowflake-test")
 _SECRET_REFERENCE = re.compile(r"secrets\.([A-Za-z0-9_]+)")
-_E2E_WORKFLOWS = (".github/workflows/py-cli-e2e-tests-v2.yml", ".github/workflows/py-cli-e2e-tests.yml")
+_E2E_WORKFLOWS = (".github/workflows/py-cli-e2e-tests-v2.yml", ".github/workflows/reusable-py-cli-e2e-tests.yml")
 _SNOWFLAKE_CONCURRENCY_GROUP = re.compile(
     r"^\$\{\{ matrix\.(?P<key>[a-z0-9-]+) == 'snowflake' && '(?P<group>[a-z0-9-]+)' "
     r"\|\| format\('\{0\}-\{1\}-\{2\}', github\.workflow, github\.run_id, matrix\.(?P=key)\) \}\}$"
@@ -181,10 +181,10 @@ def test_ci_queues_the_v1_and_v2_snowflake_jobs_in_one_group():
     groups = set()
     for workflow_file, job_id, matrix_key in (
         ("py-cli-e2e-tests-v2.yml", "py-cli-e2e-tests-v2", "connector"),
-        ("py-cli-e2e-tests.yml", "py-cli-e2e-tests", "e2e-test"),
+        ("reusable-py-cli-e2e-tests.yml", "py-cli-e2e-tests", "e2e-test"),
     ):
         job = yaml.safe_load((root / ".github/workflows" / workflow_file).read_text())["jobs"][job_id]
-        if workflow_file == "py-cli-e2e-tests.yml":
+        if workflow_file == "reusable-py-cli-e2e-tests.yml":
             entrypoint = yaml.load((root / ".github/workflows/ci-nightly.yml").read_text(), Loader=yaml.BaseLoader)
             connectors = json.loads(entrypoint["on"]["workflow_dispatch"]["inputs"]["connectors"]["default"])
         else:

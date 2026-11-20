@@ -140,7 +140,7 @@ BUDGET_TARGET_DETAILS: dict[str, dict[str, Any]] = {
     # step-level `timeout` wrappers on `install-deps` in the workflow are
     # bumped in lock-step to 8 min. Tighten back to 300 s once every
     # merge_group is a cache hit — see the shard-side comment in
-    # playwright-e2e-reusable.yml.
+    # reusable-playwright-e2e.yml.
     "environmentAtMostFiveMinutes": {
         "label": "Environment setup",
         "phase_field": "environmentSeconds",
@@ -150,7 +150,7 @@ BUDGET_TARGET_DETAILS: dict[str, dict[str, Any]] = {
     # The planner packs shards to a 19-minute predicted budget
     # (COMMON_SHARD_BUDGET_MS in build_playwright_shards.py); 1500 s is that
     # promise plus tail headroom. The hang-protection `timeout … 60m` wrapper
-    # in playwright-e2e-reusable.yml sits far above this on purpose: a shard
+    # in reusable-playwright-e2e.yml sits far above this on purpose: a shard
     # over 25 minutes breaches the budget (signal) but still finishes, uploads
     # results, and keeps the run green if tests passed. These two targets are
     # the "this shard is too slow" alert — they annotate the run and upsert the

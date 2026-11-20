@@ -186,7 +186,7 @@ Do not relax these expectations to report a green run. Running with ADC as a use
 `bigquery.tables.list` on the second project also fails `catalog.multi-project` on the region-scoped
 life-cycle query (403). That is a permission difference in the environment, not a product defect.
 
-Remove the v1 BigQuery tests and their `py-cli-e2e-tests.yml` matrix entries only after this suite has
+Remove the v1 BigQuery tests and their `ci-nightly.yml` default connector entries only after this suite has
 passed for the agreed stability window.
 The manually dispatched v2 workflow runs BigQuery with six workers and passes the existing test
 environment credentials only to its BigQuery matrix job.
@@ -251,7 +251,7 @@ Fixed while migrating, found by a strict assertion here: foreign keys were silen
 `get_foreign_keys` reported `referred_table` normalised while `get_table_names` returns the
 dictionary name verbatim, so the exact-FQN lookup never matched.
 
-Remove the v1 Oracle test and its `py-cli-e2e-tests.yml` matrix entry only after this suite has
+Remove the v1 Oracle test and its `ci-nightly.yml` default connector entry only after this suite has
 passed for the agreed stability window.
 
 ## Snowflake
@@ -342,8 +342,9 @@ The manually dispatched v2 workflow runs Snowflake with four workers and passes 
 test drops and recreates that database for every test, so the Snowflake jobs of both workflows share the
 concurrency group `cli-e2e-snowflake-database`, which runs one at a time and never cancels a running job.
 GitHub keeps one pending job per group, so a newer Snowflake run replaces a pending one, and a replaced
-v1 nightly leg reports as cancelled. Remove the v1 Snowflake test, its `py-cli-e2e-tests.yml` matrix entry
-and that workflow's concurrency group only after this suite has passed for the agreed stability window.
+v1 nightly leg reports as cancelled. Remove the v1 Snowflake test, its `ci-nightly.yml` default connector entry
+and the v1 Snowflake concurrency group in `reusable-py-cli-e2e-tests.yml` only after this suite has
+passed for the agreed stability window.
 
 ## MSSQL
 
@@ -436,5 +437,5 @@ generic `Run CLI E2E v2 tests` step, like Oracle and Postgres, because the suite
 through testcontainers and needs no secrets. The workflow is `workflow_dispatch` only, so the suite
 runs when it is dispatched rather than on every PR; the command above still runs it locally.
 
-Remove the v1 MSSQL test and its `py-cli-e2e-tests.yml` matrix entry only after this suite has passed
+Remove the v1 MSSQL test and its `ci-nightly.yml` default connector entry only after this suite has passed
 for the agreed stability window.

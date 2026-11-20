@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-# CLI E2E v2 — strangler-fig replacement for py-cli-e2e-tests.yml.
+# CLI E2E v2 — strangler-fig replacement for reusable-py-cli-e2e-tests.yml.
 #
 # Each connector lives under ingestion/tests/cli_e2e_v2/<connector>/ and
 # is a self-contained pytest module (no inheritance). The matrix below

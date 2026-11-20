@@ -27,10 +27,11 @@ concurrency:
 jobs:
   plan:
     name: Select Python workloads
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     outputs:
-      lowest: ${{ steps.versions.outputs.lowest }}
-      highest: ${{ steps.versions.outputs.highest }}
+      python-lowest: ${{ steps.versions.outputs.lowest }}
+      python-highest: ${{ steps.versions.outputs.highest }}
       ref: ${{ github.event.pull_request.head.sha || github.sha }}
       python: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' }}
       static: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.static == 'true' }}
@@ -49,7 +50,7 @@ jobs:
       - name: Read Python versions
         id: versions
         run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
-    if: ${{ !github.event.pull_request.draft }}
+
   py-checkstyle:
     name: py-checkstyle
     needs: plan
@@ -65,24 +66,18 @@ jobs:
       - name: Run formatting and lint
         uses: ./.github/actions/python-lint
         with:
-          python-version: ${{ needs.plan.outputs.highest }}
-  type-checks:
+          python-version: ${{ needs.plan.outputs.python-highest }}
+
+  python-types:
     name: Python type checks
     needs: plan
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ needs.plan.outputs.ref }}
-          persist-credentials: false
-          fetch-depth: 1
-      - name: Run type checks
-        uses: ./.github/actions/python-static-checks
-        with:
-          python-version: ${{ needs.plan.outputs.lowest }}
     if: ${{ needs.plan.outputs.python == 'true' }}
-  models:
+    uses: ./.github/workflows/reusable-py-types.yml
+    with:
+      ref: ${{ needs.plan.outputs.ref }}
+      python-version: ${{ needs.plan.outputs.python-lowest }}
+
+  classification-models:
     needs: plan
     if: ${{ needs.plan.outputs.python == 'true' }}
     runs-on: ubuntu-24.04
@@ -94,24 +89,26 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
       - uses: ./.github/actions/prepare-classification-models
-  unit:
+
+  python-unit:
     needs:
       - plan
-      - models
+      - classification-models
     if: ${{ needs.plan.outputs.python == 'true' }}
-    uses: ./.github/workflows/py-unit.yml
+    uses: ./.github/workflows/reusable-py-unit.yml
     with:
-      python-version: ${{ needs.plan.outputs.highest }}
+      python-version: ${{ needs.plan.outputs.python-highest }}
       ref: ${{ needs.plan.outputs.ref }}
       collect-coverage: false
+
   py-tests-status:
     name: py-tests-status
     needs:
       - plan
       - py-checkstyle
-      - type-checks
-      - models
-      - unit
+      - python-types
+      - classification-models
+      - python-unit
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
@@ -127,8 +124,8 @@ jobs:
             {
               "plan": "success",
               "py-checkstyle": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
-              "type-checks": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
-              "models": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
-              "unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}"
+              "python-types": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
+              "classification-models": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
+              "python-unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}"
             }
         run: python3 scripts/python_ci.py verify

@@ -12,7 +12,7 @@
 # Dispatcher for the postgresql Playwright E2E PR gate.
 #
 # The heavy lifting (gate → build → shard) lives in
-# `playwright-e2e-reusable.yml`; this file adds two top-level jobs that
+# `reusable-playwright-e2e.yml`; this file adds two top-level jobs that
 # MUST stay in the caller so branch protection can find them by their
 # UN-PREFIXED check names:
 #
@@ -81,7 +81,7 @@ permissions:
 jobs:
   playwright:
     if: ${{ github.event_name != 'pull_request' }}
-    uses: ./.github/workflows/playwright-e2e-reusable.yml
+    uses: ./.github/workflows/reusable-playwright-e2e.yml
     # secrets: inherit passes the full TEST_* / GITHUB_TOKEN set into the
     # reusable without re-listing each one; the reusable only reads what it
     # needs.
