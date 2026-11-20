@@ -4447,6 +4447,33 @@ class TestDbtLineageReusesParsedUpstream:
         assert results[0].right.lineage_request.edge.fromEntity.id.root == catalog[self.RAW_FQN].id.root
         source.status.warning.assert_not_called()
 
+    def test_a_table_used_as_model_and_upstream_is_searched_for_once(self):
+        """Issue #38288.
+
+        raw_orders is a model and the parent of orders, so parsing meets it twice.
+        It must cost no more searches than orders, which parsing meets once.
+        """
+        from metadata.ingestion.source.database.dbt.models import DbtObjects
+
+        catalog = self._catalog()
+        searches = []
+        self._ctx = SimpleNamespace()
+        source = self._source(catalog, searches)
+
+        with self.MANIFEST.open(encoding="utf-8") as manifest_file:
+            manifest = parse_manifest(json.load(manifest_file))
+
+        links = [item.right for item in source.yield_data_models(DbtObjects(dbt_manifest=manifest))]
+
+        orders = next(link for link in links if str(link.table_entity.fullyQualifiedName.root) == self.ORDERS_FQN)
+        assert orders.upstream_table_ids == {self.RAW_FQN: catalog[self.RAW_FQN].id.root}
+
+        def searched(table_name):
+            return sum(1 for search in searches if search.rsplit(".", 1)[-1] == table_name)
+
+        assert searched("orders") > 0
+        assert searched("raw_orders") == searched("orders"), searches
+
 
 class TestAddDbtTestResultFailureReporting:
     """The outer handler must report, not swallow at debug."""
