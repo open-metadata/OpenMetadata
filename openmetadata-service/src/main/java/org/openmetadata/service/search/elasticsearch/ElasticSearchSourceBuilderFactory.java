@@ -924,9 +924,8 @@ public class ElasticSearchSourceBuilderFactory
             }
           });
 
-      String fuzziness = getFuzziness(query);
+      String fuzziness = getFuzziness(query, fields.keySet());
       int maxExpansions = getMaxExpansions(query);
-      String analyzer = SearchRankingHelper.ngramSearchAnalyzer(fields.keySet());
 
       Query fuzzyQuery =
           Query.of(
@@ -942,7 +941,6 @@ public class ElasticSearchSourceBuilderFactory
                               .operator(Operator.Or)
                               .minimumShouldMatch(MINIMUM_SHOULD_MATCH)
                               .tieBreaker((double) DEFAULT_TIE_BREAKER)
-                              .analyzer(analyzer)
                               .boost(multiplier)));
       combinedQuery.should(fuzzyQuery);
     }
