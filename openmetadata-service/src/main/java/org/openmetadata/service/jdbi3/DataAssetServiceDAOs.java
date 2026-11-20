@@ -365,9 +365,9 @@ public interface DataAssetServiceDAOs {
         value =
             "SELECT c.json FROM <table> c "
                 + "INNER JOIN ("
-                + "SELECT ce.id FROM <table> ce "
+                + "SELECT <table>.id FROM <table> "
                 + "<sqlCondition> AND "
-                + "ce.parentFqnHash LIKE :serviceHashExact AND ce.parentFqnHash NOT LIKE '%.%' AND "
+                + "<table>.parentFqnHash LIKE :serviceHashExact AND <table>.parentFqnHash NOT LIKE '%.%' AND "
                 + "(name < :beforeName OR (name = :beforeName AND id < :beforeId)) "
                 + "ORDER BY name DESC, id DESC "
                 + "LIMIT :limit"
@@ -385,9 +385,9 @@ public interface DataAssetServiceDAOs {
         value =
             "SELECT c.json FROM <table> c "
                 + "INNER JOIN ("
-                + "SELECT ce.id FROM <table> ce "
+                + "SELECT <table>.id FROM <table> "
                 + "<sqlCondition> AND "
-                + "ce.parentFqnHash LIKE :serviceHashExact AND ce.parentFqnHash NOT LIKE '%.%' AND "
+                + "<table>.parentFqnHash LIKE :serviceHashExact AND <table>.parentFqnHash NOT LIKE '%.%' AND "
                 + "(name > :afterName OR (name = :afterName AND id > :afterId)) "
                 + "ORDER BY name, id "
                 + "LIMIT :limit"
@@ -403,15 +403,15 @@ public interface DataAssetServiceDAOs {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT count(<nameHashColumn>) FROM <table> ce "
-                + "<sqlCondition> AND ce.parentFqnHash LIKE :serviceHashExact "
-                + "AND ce.parentFqnHash NOT LIKE '%.%'",
+            "SELECT count(<nameHashColumn>) FROM <table> "
+                + "<sqlCondition> AND <table>.parentFqnHash LIKE :serviceHashExact "
+                + "AND <table>.parentFqnHash NOT LIKE '%.%'",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT count(*) FROM <table> ce "
-                + "<sqlCondition> AND ce.parentFqnHash LIKE :serviceHashExact "
-                + "AND ce.parentFqnHash NOT LIKE '%.%'",
+            "SELECT count(*) FROM <table> "
+                + "<sqlCondition> AND <table>.parentFqnHash LIKE :serviceHashExact "
+                + "AND <table>.parentFqnHash NOT LIKE '%.%'",
         connectionType = POSTGRES)
     int listRootCount(
         @Define("table") String table,

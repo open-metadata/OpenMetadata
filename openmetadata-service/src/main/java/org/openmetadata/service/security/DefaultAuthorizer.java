@@ -25,6 +25,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -32,6 +33,8 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.listaccess.CallerScope;
+import org.openmetadata.service.security.listaccess.ListAccess;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
@@ -174,6 +177,13 @@ public class DefaultAuthorizer implements Authorizer {
     if (!subjectContext.isAdmin() && !isReviewer(resourceContext, subjectContext)) {
       PolicyEvaluator.hasPermission(subjectContext, resourceContext, operationContext);
     }
+  }
+
+  /** Compiled from the same policies {@link #authorize} reads, deciding each row as it does. */
+  @Override
+  public CallerScope listScope(
+      SecurityContext securityContext, String entityType, List<MetadataOperation> operations) {
+    return ListAccess.forCaller(getSubjectContext(securityContext), entityType, operations);
   }
 
   public void authorizeRequests(
@@ -334,7 +344,7 @@ public class DefaultAuthorizer implements Authorizer {
 
   // Reviewers vote on an assigned review through the task; changing ontology content, capturing a
   // release and activating one need the matching edit right whether or not the user is listed.
-  private static final Set<String> EDIT_RIGHT_REQUIRED_RESOURCES =
+  public static final Set<String> EDIT_RIGHT_REQUIRED_RESOURCES =
       Set.of(
           Entity.ONTOLOGY,
           Entity.ONTOLOGY_CONCEPT,

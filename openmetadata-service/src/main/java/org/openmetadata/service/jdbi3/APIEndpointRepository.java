@@ -104,10 +104,21 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
     }
   }
 
+  /**
+   * Loads the collection as a listing does, with only its live owners, so the item read and the
+   * listing agree on whether the endpoint has an owner.
+   */
   @Override
   public void setInheritedFields(APIEndpoint endpoint, Fields fields) {
     hydrateParentReferencesForInheritance(List.of(endpoint), fields);
-    super.setInheritedFields(endpoint, fields);
+    if (requiresParentForInheritance(endpoint, fields)) {
+      APICollection collection =
+          loadInheritanceParentLeniently(
+              endpoint.getApiCollection(),
+              getInheritableFields(API_COLLECTION),
+              APICollection.class);
+      applyInheritance(endpoint, fields, collection);
+    }
   }
 
   @Override

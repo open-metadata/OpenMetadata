@@ -87,7 +87,7 @@ class ContainerChildrenQueryShapeTest {
       Method method = findMethod(methodName);
       for (String sql : declaredSql(method)) {
         assertTrue(
-            sql.contains("ce.parentFqnHash LIKE :serviceHashExact"),
+            sql.contains("parentFqnHash LIKE :serviceHashExact"),
             methodName
                 + " must select service-root containers via parentFqnHash so"
                 + " idx_storage_container_entity_parent_children can serve it. SQL: "

@@ -124,10 +124,21 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
             Relationship.UPSTREAM.ordinal());
   }
 
+  /**
+   * Loads the schema as a listing does, with only its live owners, so a schema whose owners are all
+   * soft-deleted passes its database's owners to the item read too.
+   */
   @Override
   public void setInheritedFields(StoredProcedure storedProcedure, EntityUtil.Fields fields) {
     hydrateParentReferencesForInheritance(List.of(storedProcedure), fields);
-    super.setInheritedFields(storedProcedure, fields);
+    if (requiresParentForInheritance(storedProcedure, fields)) {
+      DatabaseSchema schema =
+          loadInheritanceParentLeniently(
+              storedProcedure.getDatabaseSchema(),
+              getInheritableFields(DATABASE_SCHEMA),
+              DatabaseSchema.class);
+      applyInheritance(storedProcedure, fields, schema);
+    }
   }
 
   @Override

@@ -593,6 +593,7 @@
       "tests": [
         "*Permission*IT",
         "*Polic*IT",
+        "RowFilter*IT",
         "*Role*IT",
         "*Bot*IT",
         "*Auth*IT",
