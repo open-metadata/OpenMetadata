@@ -40,6 +40,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -105,6 +106,7 @@ class DeploymentConfigReconcilerTest {
 
   private final Map<String, StoredSettingRow> rows = new ConcurrentHashMap<>();
   private final AtomicBoolean rejectNextPreparedValue = new AtomicBoolean();
+  private final AtomicReference<JsonNode> storedSeenByPreparer = new AtomicReference<>();
   private SystemDAO dao;
 
   @BeforeEach
@@ -267,6 +269,24 @@ class DeploymentConfigReconcilerTest {
     assertFalse(stored().get("enableSelfSignup").asBoolean());
   }
 
+  /** The preparer compares against the stored value the merge used, with its secrets decrypted. */
+  @Test
+  void thePreparerReceivesTheStoredValueDecrypted() {
+    String withSecret =
+        "{'provider':'custom-oidc','oidcConfiguration':{'id':'om','secret':'s3cret'},%s}";
+    reconcile(ConfigSourceMode.AUTO, String.format(withSecret, "'maxActiveSessionsPerUser':5"));
+    assertTrue(
+        Fernet.isTokenized(
+            JsonUtils.readTree(rows.get(AUTH).json()).at("/oidcConfiguration/secret").asText()));
+
+    reconcile(ConfigSourceMode.AUTO, String.format(withSecret, "'maxActiveSessionsPerUser':6"));
+    assertEquals("s3cret", storedSeenByPreparer.get().at("/oidcConfiguration/secret").asText());
+
+    storedSeenByPreparer.set(null);
+    reconcile(ConfigSourceMode.ENV, String.format(withSecret, "'maxActiveSessionsPerUser':7"));
+    assertEquals("s3cret", storedSeenByPreparer.get().at("/oidcConfiguration/secret").asText());
+  }
+
   @Test
   void storesSecretsEncryptedInTheSnapshot() {
     reconcile(
@@ -358,9 +378,9 @@ class DeploymentConfigReconcilerTest {
 
   @Test
   void aFirstStartWithAnUnusableCertificateStoresNothingAndStopsTheStart() {
-    IllegalStateException stopped =
+    BadRequestException stopped =
         assertThrows(
-            IllegalStateException.class,
+            BadRequestException.class,
             () -> seedSaml(ConfigSourceMode.AUTO, saml(NOT_A_CERTIFICATE, true)));
 
     assertTrue(stopped.getMessage().contains("samlConfiguration.idp.idpX509Certificate"));
@@ -567,6 +587,9 @@ class DeploymentConfigReconcilerTest {
     public String prepareReconciled(SettingsType settingsType, JsonNode value, JsonNode stored) {
       if (rejectNextPreparedValue.getAndSet(false)) {
         throw new BadRequestException("Invalid security configuration");
+      }
+      if (stored != null) {
+        storedSeenByPreparer.set(stored);
       }
       if (settingsType == AUTHENTICATION_CONFIGURATION) {
         SamlIdpCertificateGate.requireUsable(authentication(value), authentication(stored));
