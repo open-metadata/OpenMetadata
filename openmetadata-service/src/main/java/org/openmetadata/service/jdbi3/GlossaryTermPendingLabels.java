@@ -192,16 +192,11 @@ public final class GlossaryTermPendingLabels implements Managed {
     for (TargetHolder holder :
         labelsByTarget.isEmpty() ? Set.<TargetHolder>of() : holders(targets)) {
       try {
-        EntityRepository<?> repository = Entity.getEntityRepository(holder.entityType());
-        if (repository.showApprovedTerm(holder.id(), labelsByTarget, GOVERNANCE_BOT)) {
-          shown++;
-        }
+        shown += showOnHolder(termFqn, holder, labelsByTarget);
       } catch (EntityNotFoundException gone) {
         // A deleted asset keeps its pending rows; the startup sweep shows them if it is restored.
         LOG.debug(
             "Skipped glossary term {} on missing {} {}", termFqn, holder.entityType(), holder.id());
-      } catch (IllegalArgumentException refused) {
-        shown += showTargetByTarget(termFqn, holder, labelsByTarget);
       } catch (RuntimeException e) {
         complete = false;
         LOG.warn(
@@ -213,6 +208,23 @@ public final class GlossaryTermPendingLabels implements Managed {
       }
     }
     return new Outcome(shown, complete);
+  }
+
+  // One edit for all the asset's targets; if the asset refuses it, one edit per target. Any other
+  // failure, from either, is the caller's to count.
+  private static int showOnHolder(
+      String termFqn, TargetHolder holder, Map<String, TagLabel> labelsByTarget) {
+    int shown;
+    try {
+      shown =
+          Entity.getEntityRepository(holder.entityType())
+                  .showApprovedTerm(holder.id(), labelsByTarget, GOVERNANCE_BOT)
+              ? 1
+              : 0;
+    } catch (IllegalArgumentException refused) {
+      shown = showTargetByTarget(termFqn, holder, labelsByTarget);
+    }
+    return shown;
   }
 
   /**
