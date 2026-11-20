@@ -925,7 +925,7 @@ def test_tile_reference_to_a_replaced_inline_view_resolves_to_the_view_file(omni
     ]
 
 
-@pytest.mark.parametrize("broken", ["dimensions: [id]", "dimensions: {id: 3}"])
+@pytest.mark.parametrize("broken", ["dimensions: [id]", "dimensions: {id: 3}", "label: {text: Orders}"])
 def test_parse_model_yaml_malformed_inline_view_is_skipped_alone(broken):
     """One inline view that cannot be parsed does not cost the model its other views."""
     indented = "\n".join(f"    {line}" for line in broken.splitlines())
@@ -972,6 +972,7 @@ def test_parse_model_yaml_inline_override_without_table_is_not_a_data_model():
         ("semantic_view: SV_ORDERS\nviews:\n  - a\n", (None, None, "SV_ORDERS")),
         ("semantic_view: SEMANTIC_VIEWS.SV_ORDERS\nviews:\n  broken: 3\n", (None, "SEMANTIC_VIEWS", "SV_ORDERS")),
         ("semantic_view: MY_DB.SEMANTIC_VIEWS.SV_ORDERS\nviews: {}\n", ("MY_DB", "SEMANTIC_VIEWS", "SV_ORDERS")),
+        ('semantic_view: MY_DB."MY.SCHEMA"."SV.ORDERS"\n', ("MY_DB", '"MY.SCHEMA"', '"SV.ORDERS"')),
     ],
 )
 def test_parse_model_yaml_semantic_view_topic_with_malformed_input(topic_yaml, expected):

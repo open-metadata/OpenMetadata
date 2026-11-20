@@ -42,6 +42,7 @@ from metadata.ingestion.source.dashboard.omni.models import (
     QueryPresentation,
     UsersResponse,
 )
+from metadata.utils import fqn
 from metadata.utils.constants import AUTHORIZATION_HEADER
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
@@ -244,7 +245,7 @@ class OmniApiClient:
     @staticmethod
     def _semantic_view_parts(topic_def: dict) -> list[str | None]:
         """Split a topic's ``semantic_view`` (``DB.SCHEMA.NAME``) into database, schema and name."""
-        parts = [part or None for part in str(topic_def.get("semantic_view") or "").rsplit(".", 2)]
+        parts = [part or None for part in fqn.split_raw_name(str(topic_def.get("semantic_view") or ""))[-3:]]
         return [None] * (3 - len(parts)) + parts
 
     @classmethod
@@ -257,9 +258,16 @@ class OmniApiClient:
         parsed = []
         for view_name, view_def in views.items():
             try:
-                parsed.append((str(view_name), cls._parse_view(view_def)))
+                view = cls._parse_view(view_def)
             except Exception as exc:  # pylint: disable=broad-except
                 logger.warning("Ignoring malformed view %s of topic %s: %s", view_name, topic_name, exc)
+                continue
+            if all(isinstance(view[key], (str, type(None))) for key in ("label", "schema", "table")):
+                parsed.append((str(view_name), view))
+            else:
+                logger.warning(
+                    "Ignoring view %s of topic %s: label, schema or table is not text", view_name, topic_name
+                )
         return parsed
 
     @staticmethod
