@@ -273,13 +273,23 @@ public class EntityRelationshipCleanup {
     boolean resolvable = true;
     if (!doEntityHaveAnyRepository(relationship.getFromEntity())) {
       LOG.error(
-          "No repository found for from entity type: {}, the entity will not be cleaned",
-          relationship.getFromEntity());
+          "No repository found for from entity type: {}, the entity will not be cleaned"
+              + " (fromId={}, toEntity={}, toId={}, relation={})",
+          relationship.getFromEntity(),
+          relationship.getFromId(),
+          relationship.getToEntity(),
+          relationship.getToId(),
+          relationship.getRelation());
       resolvable = false;
     } else if (!doEntityHaveAnyRepository(relationship.getToEntity())) {
       LOG.error(
-          "No repository found for to entity type: {}, the entity will not be cleaned",
-          relationship.getToEntity());
+          "No repository found for to entity type: {}, the entity will not be cleaned"
+              + " (toId={}, fromEntity={}, fromId={}, relation={})",
+          relationship.getToEntity(),
+          relationship.getToId(),
+          relationship.getFromEntity(),
+          relationship.getFromId(),
+          relationship.getRelation());
       resolvable = false;
     }
     return resolvable;
@@ -310,7 +320,8 @@ public class EntityRelationshipCleanup {
   private boolean doEntityHaveAnyRepository(String entityType) {
     return entityRepositories.containsKey(entityType)
         || entityTimeSeriesRepositoy.containsKey(entityType)
-        || entityType.equals(Entity.THREAD);
+        || entityType.equals(Entity.THREAD)
+        || entityType.equals(Entity.SUGGESTION);
   }
 
   private int deleteOrphanedRelationships(List<OrphanedRelationship> orphanedRelationships) {
