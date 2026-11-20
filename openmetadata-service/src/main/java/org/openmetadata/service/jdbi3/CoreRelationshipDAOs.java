@@ -2331,17 +2331,45 @@ public interface CoreRelationshipDAOs {
      * them; an entity of another type that shares the name leaves them alone.
      */
     default void deleteAllByPrefix(String fqn, String entityType) {
-      String prefix = String.format("%s%s%%", FullyQualifiedName.buildHash(fqn), Entity.SEPARATOR);
-      String typeCondition =
-          Entity.TYPE.equals(entityType)
-              ? " AND fromType = :typeRow AND toType = :typeRow"
-              : " AND fromType <> :typeRow AND toType <> :typeRow";
+      Map<String, String> bindMap = prefixBindings(fqn);
       String condition =
-          "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)" + typeCondition;
-      Map<String, String> bindMap = new HashMap<>();
-      bindMap.put("prefix", prefix);
-      bindMap.put("typeRow", Entity.TYPE);
+          "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)" + typeCondition(entityType);
       deleteAllByPrefixInternal(condition, bindMap);
+    }
+
+    /**
+     * {@link #deleteAllByPrefix} except the rows at and under the kept subtrees, which belong to
+     * entities a hard delete leaves in place.
+     */
+    default void deleteAllByPrefixOutside(
+        String fqn, String entityType, List<String> keptSubtreeHashes) {
+      Map<String, String> bindMap = prefixBindings(fqn);
+      String toOutside =
+          FqnKeyedRowCleanup.outsideKeptSubtrees("toFQNHash", keptSubtreeHashes, bindMap);
+      String fromOutside =
+          FqnKeyedRowCleanup.outsideKeptSubtrees("fromFQNHash", keptSubtreeHashes, bindMap);
+      String condition =
+          "WHERE ((toFQNHash LIKE :prefix"
+              + toOutside
+              + ") OR (fromFQNHash LIKE :prefix"
+              + fromOutside
+              + "))"
+              + typeCondition(entityType);
+      deleteAllByPrefixInternal(condition, bindMap);
+    }
+
+    private static Map<String, String> prefixBindings(String fqn) {
+      Map<String, String> bindMap = new HashMap<>();
+      bindMap.put(
+          "prefix", String.format("%s%s%%", FullyQualifiedName.buildHash(fqn), Entity.SEPARATOR));
+      bindMap.put("typeRow", Entity.TYPE);
+      return bindMap;
+    }
+
+    private static String typeCondition(String entityType) {
+      return Entity.TYPE.equals(entityType)
+          ? " AND fromType = :typeRow AND toType = :typeRow"
+          : " AND fromType <> :typeRow AND toType <> :typeRow";
     }
 
     @SqlUpdate("DELETE from field_relationship <cond>")

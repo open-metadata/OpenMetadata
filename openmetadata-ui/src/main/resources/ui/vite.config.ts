@@ -14,8 +14,7 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
-import type { PreRenderedAsset } from 'rollup';
-import { defineConfig, loadEnv, type PluginOption } from 'vite';
+import { defineConfig, loadEnv, type PluginOption, type Rolldown } from 'vite';
 import viteCompression from 'vite-plugin-compression';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgr from 'vite-plugin-svgr';
@@ -296,7 +295,7 @@ export default defineConfig(async ({ mode }) => {
           entryFileNames: isPlaywrightBuild
             ? 'assets/app-entry-[hash].js'
             : 'assets/[name]-[hash].js',
-          assetFileNames: (assetInfo: PreRenderedAsset) => {
+          assetFileNames: (assetInfo: Rolldown.PreRenderedAsset) => {
             const names = assetInfo.names ?? [];
             const fileName = names.length > 0 ? names[0] : '';
             const ext = fileName ? path.extname(fileName).toLowerCase() : '';

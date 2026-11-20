@@ -64,10 +64,12 @@ class RelationshipTypeReferencesTest {
   }
 
   @Test
-  void aReferenceBuiltFromANameAloneMatchesByName() {
+  void aReferenceStoredWithOnlyANameMatchesOnceReadWithItsFqn() {
     final EntityReference byName =
         new EntityReference().withType(Entity.RELATIONSHIP_TYPE).withName(target.getName());
-    final RelationshipType owner = type("namedOwner").withReplacedBy(byName);
+    final RelationshipType owner =
+        RelationshipTypeReferenceNames.withNamedReferences(
+            type("namedOwner").withReplacedBy(byName));
 
     assertEquals(1, RelationshipTypeReferences.referencesTo(target, List.of(owner)).size());
   }

@@ -147,3 +147,19 @@ Each table → data model edge now carries the column pairs the cube's SQL suppo
 - A failure while building column lineage drops the column pairs, never the table edge.
 - Attribute, logical-table and dataset-type reads are cached per id (`CACHE_SIZE` LRU): each is read
   at most once while it stays cached.
+
+## Amendment: v7 2026-11-17, a report dataset reads its source cube's SQL
+
+A dossier dataset can be a report rather than an Intelligent Cube, and `/v2/cubes/{id}/sqlView`
+answers it with HTTP 400 "Only cube is supported to get SQL view".
+
+- **A report built on an Intelligent Cube** (a subset report) names its cube in `source` of
+  `GET /v2/reports/{id}`, a read-only call that needs no modeling privilege. Its lineage is read from
+  that cube's SQL, and its objects are matched as the cube's are: a report on a Data Import cube is
+  matched on names, by the cube's subtype, not the report's.
+- **A report on warehouse tables** has SQL only once it runs. Running it would query the warehouse on
+  every ingestion, so it is not run: the dataset has no lineage, and one warning says so, naming it
+  a prompted report when it has prompts.
+- **A Live Intelligent Cube** keeps no copy of its data, and its SQL view answers "Live Intelligent
+  Cubes cannot be published". Its SQL too exists only once it queries the warehouse, so it is not
+  read either: no lineage, and one warning that says why.

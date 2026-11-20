@@ -37,10 +37,14 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * Connection workflow.
  *
  * <p>It reads only those version rows of {@code entity_extension}, by extension prefix, and changes
- * only a listed secret ({@link ServiceSecretPaths}) that is still plain text: encrypted values,
- * secret manager references and masked values stay as they are, so running it again changes
- * nothing. Old versions cannot be restored, so a masked secret loses nothing; the version endpoints
- * mask these fields anyway.
+ * only a listed secret ({@link ServiceSecretPaths}) that is still plain text: encrypted and masked
+ * values stay as they are, so running it again changes nothing. A {@code secret:} value is masked
+ * too: the database secrets manager reads it as part of a password, and a secret manager reference
+ * in an old version is never resolved. Old versions cannot be restored, so a masked secret loses
+ * nothing; the version endpoints mask these fields anyway.
+ *
+ * <p>It runs from 2.0.9 and again from 2.1.0, because a database that recorded 2.1.0 before this
+ * step existed never runs the 2.0.9 data migration again.
  */
 @Slf4j
 public final class ServiceVersionSecretsMasking {
@@ -48,7 +52,6 @@ public final class ServiceVersionSecretsMasking {
 
   static final String MASK = "*********";
   private static final String FERNET_PREFIX = "fernet:";
-  private static final String SECRET_REFERENCE_PREFIX = "secret:";
   private static final String VERSION_INFIX = ".version.";
   private static final String WORKFLOW = "workflow";
   private static final String EVERY_ELEMENT = "[]";
@@ -95,31 +98,34 @@ public final class ServiceVersionSecretsMasking {
   /** A stored connection config and the secret paths of its connection type. */
   private record Connection(JsonNode config, List<String> paths) {}
 
-  public static void maskPlainTextSecrets(Handle handle, ConnectionType connectionType) {
-    List<VersionKey> keys = readVersionKeys(handle);
+  public static void maskPlainTextSecrets(
+      final Handle handle, final ConnectionType connectionType) {
+    final List<VersionKey> keys = readVersionKeys(handle);
     int masked = 0;
-    for (VersionKey key : keys) {
+    for (final VersionKey key : keys) {
       masked += maskVersion(handle, connectionType, key) ? 1 : 0;
     }
     LOG.info("Masked plain text secrets in {} of {} versions", masked, keys.size());
   }
 
-  private static List<VersionKey> readVersionKeys(Handle handle) {
-    Query query = handle.createQuery(KEYS_SQL);
+  private static List<VersionKey> readVersionKeys(final Handle handle) {
+    final Query query = handle.createQuery(KEYS_SQL);
     VERSIONED_TYPES.forEach(type -> query.bind(type, type + VERSION_INFIX + "%"));
     return query
         .map((rs, ctx) -> new VersionKey(rs.getString("id"), rs.getString("extension")))
         .list();
   }
 
-  private static boolean maskVersion(Handle handle, ConnectionType connectionType, VersionKey key) {
-    JsonNode version = JsonUtils.readTree(readJson(handle, key));
-    Connection connection = connection(key.entityType(), version);
-    boolean masked = connection != null && maskSecrets(connection.config(), connection.paths());
-    if (masked) {
+  private static boolean maskVersion(
+      final Handle handle, final ConnectionType connectionType, final VersionKey key) {
+    final JsonNode version = JsonUtils.readTree(readJson(handle, key));
+    final Connection connection = connection(key.entityType(), version);
+    final boolean isMasked =
+        connection != null && maskSecrets(connection.config(), connection.paths());
+    if (isMasked) {
       update(handle, connectionType, key, JsonUtils.pojoToJson(version));
     }
-    return masked;
+    return isMasked;
   }
 
   /**
@@ -127,23 +133,23 @@ public final class ServiceVersionSecretsMasking {
    * the secret paths of its type. The type is the config's own {@code type}: the paths come from
    * the same schema, while the service type can name a different one.
    */
-  private static Connection connection(String entityType, JsonNode version) {
-    boolean workflow = WORKFLOW.equals(entityType);
-    JsonNode holder = workflow ? version.path("request") : version;
-    String serviceEntity =
-        workflow ? SERVICE_ENTITY_BY_TYPE.get(holder.path("serviceType").asText()) : entityType;
-    JsonNode config = holder.path("connection").path("config");
-    String fallbackType = holder.path(workflow ? "connectionType" : "serviceType").asText();
-    String type = config.path("type").asText(fallbackType);
+  private static Connection connection(final String entityType, final JsonNode version) {
+    final boolean isWorkflow = WORKFLOW.equals(entityType);
+    final JsonNode holder = isWorkflow ? version.path("request") : version;
+    final String serviceEntity =
+        isWorkflow ? SERVICE_ENTITY_BY_TYPE.get(holder.path("serviceType").asText()) : entityType;
+    final JsonNode config = holder.path("connection").path("config");
+    final String fallbackType = holder.path(isWorkflow ? "connectionType" : "serviceType").asText();
+    final String type = config.path("type").asText(fallbackType);
     // Only Test Connection requests name a service type; any other workflow (e.g. a query runner
     // request) or an unknown type has no listed paths, so it is left as it is.
-    Map<String, List<String>> pathsByType =
+    final Map<String, List<String>> pathsByType =
         serviceEntity == null ? Map.of() : SECRET_PATHS.getOrDefault(serviceEntity, Map.of());
-    List<String> paths = pathsByType.get(type);
+    final List<String> paths = pathsByType.get(type);
     return paths == null ? null : new Connection(config, paths);
   }
 
-  private static String readJson(Handle handle, VersionKey key) {
+  private static String readJson(final Handle handle, final VersionKey key) {
     return handle
         .createQuery(JSON_SQL)
         .bind("id", key.id())
@@ -153,32 +159,32 @@ public final class ServiceVersionSecretsMasking {
   }
 
   /** Masks every listed secret of one stored connection config that is still plain text. */
-  static boolean maskSecrets(JsonNode config, List<String> paths) {
-    boolean changed = false;
-    for (String path : paths) {
-      changed |= maskPath(config, path.split("/"), 0);
+  static boolean maskSecrets(final JsonNode config, final List<String> paths) {
+    boolean isChanged = false;
+    for (final String path : paths) {
+      isChanged |= maskPath(config, path.split("/"), 0);
     }
-    return changed;
+    return isChanged;
   }
 
-  private static boolean maskPath(JsonNode node, String[] segments, int index) {
-    boolean changed = false;
-    boolean leaf = index == segments.length - 1;
-    for (Child child : children(node, segments[index])) {
-      changed |= leaf ? child.maskIfPlainText() : maskPath(child.value(), segments, index + 1);
+  private static boolean maskPath(final JsonNode node, final String[] segments, final int index) {
+    boolean isChanged = false;
+    final boolean isLeaf = index == segments.length - 1;
+    for (final Child child : children(node, segments[index])) {
+      isChanged |= isLeaf ? child.maskIfPlainText() : maskPath(child.value(), segments, index + 1);
     }
-    return changed;
+    return isChanged;
   }
 
   /** The values a path segment names below {@code node}, each with the container holding it. */
-  private static List<Child> children(JsonNode node, String segment) {
-    List<Child> children = new ArrayList<>();
+  private static List<Child> children(final JsonNode node, final String segment) {
+    final List<Child> children = new ArrayList<>();
     if (EVERY_ELEMENT.equals(segment) && node instanceof ArrayNode array) {
       for (int i = 0; i < array.size(); i++) {
         children.add(new Child(array, null, i));
       }
     } else if (node instanceof ObjectNode object) {
-      List<String> fields =
+      final List<String> fields =
           EVERY_VALUE.equals(segment)
               ? object.properties().stream().map(Map.Entry::getKey).toList()
               : List.of(segment);
@@ -196,27 +202,28 @@ public final class ServiceVersionSecretsMasking {
     }
 
     boolean maskIfPlainText() {
-      boolean plainText = isPlainText(value());
-      if (plainText && field != null) {
+      final boolean isPlain = isPlainText(value());
+      if (isPlain && field != null) {
         ((ObjectNode) container).put(field, MASK);
-      } else if (plainText) {
+      } else if (isPlain) {
         ((ArrayNode) container).set(index, MASK);
       }
-      return plainText;
+      return isPlain;
     }
   }
 
-  static boolean isPlainText(JsonNode value) {
-    String text = value != null && value.isTextual() ? value.asText() : "";
-    return !text.isEmpty()
-        && !MASK.equals(text)
-        && !text.startsWith(FERNET_PREFIX)
-        && !text.startsWith(SECRET_REFERENCE_PREFIX);
+  static boolean isPlainText(final JsonNode value) {
+    final String text = value != null && value.isTextual() ? value.asText() : "";
+    return !text.isEmpty() && !MASK.equals(text) && !text.startsWith(FERNET_PREFIX);
   }
 
   private static void update(
-      Handle handle, ConnectionType connectionType, VersionKey key, String json) {
-    String jsonValue = connectionType == ConnectionType.POSTGRES ? "CAST(:json AS jsonb)" : ":json";
+      final Handle handle,
+      final ConnectionType connectionType,
+      final VersionKey key,
+      final String json) {
+    final String jsonValue =
+        connectionType == ConnectionType.POSTGRES ? "CAST(:json AS jsonb)" : ":json";
     handle
         .createUpdate(
             "UPDATE entity_extension SET json = "

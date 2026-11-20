@@ -870,12 +870,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void applyInverse(TermRelation relation) {
-    String inverseName = relationshipTypeResolver.inverseName(relation.getRelationType());
-    if (inverseName != null) {
-      RelationshipType inverse = relationshipTypeResolver.require(inverseName);
-      relation.setRelationType(inverseName);
-      relation.setRelationshipType(inverse.getEntityReference());
-    }
+    relationshipTypeResolver
+        .inverseOf(relationshipTypeResolver.require(relation.getRelationType()))
+        .ifPresent(
+            inverse -> {
+              relation.setRelationType(inverse.getName());
+              relation.setRelationshipType(inverse.getEntityReference());
+            });
   }
 
   private void populateTermRelations(
@@ -1474,13 +1475,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private String computeCanonicalRelationType(UUID fromId, UUID toId, String relationType) {
-    if (fromId.compareTo(toId) > 0) {
-      String inverse = getInverseRelationType(relationType);
-      if (inverse != null) {
-        return inverse;
-      }
-    }
-    return relationType;
+    String inverse = relationshipTypeResolver.requireInverseName(relationType);
+    return fromId.compareTo(toId) > 0 && inverse != null ? inverse : relationType;
   }
 
   private int getRelationCount(UUID termId, String relationType, Map<String, Integer> cache) {
