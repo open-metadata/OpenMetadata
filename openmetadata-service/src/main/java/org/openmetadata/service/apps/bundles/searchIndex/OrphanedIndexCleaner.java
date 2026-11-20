@@ -45,11 +45,7 @@ public class OrphanedIndexCleaner {
   private static final String REBUILD_PATTERN = "_rebuild_";
   private static final long MIN_AGE_MS = 30 * 60 * 1000L; // 30 minutes
 
-  public record OrphanedIndex(String indexName, Set<String> aliases) {
-    public boolean isOrphaned() {
-      return aliases == null || aliases.isEmpty();
-    }
-  }
+  public record OrphanedIndex(String indexName, Set<String> aliases) {}
 
   public record CleanupResult(int found, int deleted, int failed, List<String> deletedIndices) {}
 
@@ -123,10 +119,6 @@ public class OrphanedIndexCleaner {
     }
 
     return result;
-  }
-
-  public int countOrphanedIndices(SearchClient client) {
-    return findOrphanedRebuildIndices(client).size();
   }
 
   /**
@@ -246,10 +238,6 @@ public class OrphanedIndexCleaner {
     return aliases;
   }
 
-  public int countRebuildIndices(SearchClient client) {
-    return findAllRebuildIndices(client).size();
-  }
-
   int countRebuildIndices(List<IndexStats> indexStats) {
     return (int)
         indexStats.stream().filter(stats -> stats.name().contains(REBUILD_PATTERN)).count();
@@ -293,20 +281,6 @@ public class OrphanedIndexCleaner {
       return (now - timestamp) > MIN_AGE_MS;
     } catch (NumberFormatException e) {
       return true;
-    }
-  }
-
-  private boolean isOrphaned(SearchClient client, String indexName) {
-    if (!indexName.contains(REBUILD_PATTERN)) {
-      return false;
-    }
-
-    try {
-      Set<String> aliases = client.getAliases(indexName);
-      return aliases == null || aliases.isEmpty();
-    } catch (Exception e) {
-      LOG.warn("Failed to check if index {} is orphaned: {}", indexName, e.getMessage());
-      return false;
     }
   }
 }
