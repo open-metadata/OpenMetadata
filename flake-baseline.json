@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-19T10:43:34Z",
+  "generatedAt": "2026-11-20T03:05:55Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "43437005879",
-      "sourceSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "recordedAt": "2026-11-13T14:36:11Z"
-    },
     {
       "runId": "43482948785",
       "sourceSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
@@ -53,6 +48,11 @@
       "runId": "44502789545",
       "sourceSha": "eac56d0fd889168ae450ffd5faee3c0c026972cf",
       "recordedAt": "2026-11-19T10:43:34Z"
+    },
+    {
+      "runId": "44661891093",
+      "sourceSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
+      "recordedAt": "2026-11-20T03:05:55Z"
     }
   ],
   "entries": {
@@ -65,6 +65,16 @@
       "title": "Markdown \u203a should render markdown",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
+    },
+    "Basic :: Features/TeamsHierarchy.spec.ts :: Add Nested Teams and Test TeamsSelectable \u203a Add teams in hierarchy": {
+      "observations": [
+        "44661891093"
+      ],
+      "project": "Basic",
+      "file": "Features/TeamsHierarchy.spec.ts",
+      "title": "Add Nested Teams and Test TeamsSelectable \u203a Add teams in hierarchy",
+      "lastSeenSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
+      "hardFailure": false
     },
     "Basic :: Pages/Bots.spec.ts :: Bots Page should work properly \u203a Bots Page should work properly": {
       "observations": [
@@ -88,7 +98,6 @@
     },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a a bot writing the field supersedes the held edit": {
       "observations": [
-        "43437005879",
         "43617762853",
         "44224347886"
       ],
@@ -179,12 +188,13 @@
         "43793180722",
         "44004103039",
         "44224347886",
-        "44445461359"
+        "44445461359",
+        "44661891093"
       ],
       "project": "Ingestion",
       "file": "Features/DataQuality/AddTestCaseNewFlow.spec.ts",
       "title": "Add TestCase New Flow \u203a Add Column Test Case",
-      "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
+      "lastSeenSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
       "hardFailure": false
     },
     "Ingestion :: Flow/ServiceForm.spec.ts :: Service form functionality \u203a Superset \u203a Verify SSL cert upload with long filename and UI overflow handling": {
@@ -228,6 +238,66 @@
       "title": "Knowledge Graph \u203a the level dropdown is keyboard accessible, maps levels to depths 1, 1 and 2 and shows the entity profile at level 1",
       "lastSeenSha": "eac56d0fd889168ae450ffd5faee3c0c026972cf",
       "hardFailure": false
+    },
+    "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a a test case incident resolves through the reason dialog": {
+      "observations": [
+        "44661891093"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/InboxTaskMatrix.spec.ts",
+      "title": "Inbox task matrix \u203a a test case incident resolves through the reason dialog",
+      "lastSeenSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
+      "hardFailure": true
+    },
+    "chromium :: Features/AIMode/IncidentGroups.spec.ts :: AI mode Incident Manager \u2014 changing grouped incidents \u203a leaves assigned incidents as they are when acknowledging": {
+      "observations": [
+        "44661891093"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/IncidentGroups.spec.ts",
+      "title": "AI mode Incident Manager \u2014 changing grouped incidents \u203a leaves assigned incidents as they are when acknowledging",
+      "lastSeenSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
+      "hardFailure": true
+    },
+    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a Save & go saves the edits, then leaves": {
+      "observations": [
+        "44661891093"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/PersonaSettings.spec.ts",
+      "title": "Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a Save & go saves the edits, then leaves",
+      "lastSeenSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
+      "hardFailure": true
+    },
+    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a breadcrumb and side nav ask first and Escape keeps the edits": {
+      "observations": [
+        "44661891093"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/PersonaSettings.spec.ts",
+      "title": "Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a breadcrumb and side nav ask first and Escape keeps the edits",
+      "lastSeenSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
+      "hardFailure": true
+    },
+    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a footer Cancel asks in a popover and Discard returns to the persona detail": {
+      "observations": [
+        "44661891093"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/PersonaSettings.spec.ts",
+      "title": "Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a footer Cancel asks in a popover and Discard returns to the persona detail",
+      "lastSeenSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
+      "hardFailure": true
+    },
+    "chromium :: Features/AIMode/PersonaSettings.spec.ts :: Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a modal close asks first and Discard closes the settings modal": {
+      "observations": [
+        "44661891093"
+      ],
+      "project": "chromium",
+      "file": "Features/AIMode/PersonaSettings.spec.ts",
+      "title": "Persona settings \u2014 leaving an in-modal editor with unsaved changes \u203a modal close asks first and Discard closes the settings modal",
+      "lastSeenSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
+      "hardFailure": true
     },
     "chromium :: Features/ContextCenterPermission.spec.ts :: Context Center Permissions \u203a Documents Permissions \u203a user with createAll permission can see upload and folder create actions but no row actions, and can create a folder": {
       "observations": [
@@ -352,7 +422,6 @@
     },
     "chromium :: Features/OntologyNativeDataMode.spec.ts :: Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API": {
       "observations": [
-        "43437005879",
         "43482948785",
         "43547153622",
         "43617762853",
@@ -384,16 +453,6 @@
       "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": false
     },
-    "chromium :: Features/OntologyNativeOperations.spec.ts :: Native ontology operations \u203a links a table, binds a nested column, reloads, and unlinks it without changing the semantic model": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyNativeOperations.spec.ts",
-      "title": "Native ontology operations \u203a links a table, binds a nested column, reloads, and unlinks it without changing the semantic model",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "chromium :: Features/OntologyNativeRelations.spec.ts :: Native ontology relations \u203a offers registry relation types with their inverses": {
       "observations": [
         "43482948785"
@@ -424,26 +483,6 @@
       "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
       "hardFailure": true
     },
-    "chromium :: Features/OntologyNativeTreeShell.spec.ts :: Native tree and Studio shell \u203a keeps both parent placements, one selection and all header controls at 924 pixels": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyNativeTreeShell.spec.ts",
-      "title": "Native tree and Studio shell \u203a keeps both parent placements, one selection and all header controls at 924 pixels",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyNativeTreeShell.spec.ts :: Native tree and Studio shell \u203a shows three of seven linked assets and opens their Data graph from Tree": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyNativeTreeShell.spec.ts",
-      "title": "Native tree and Studio shell \u203a shows three of seven linked assets and opens their Data graph from Tree",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a fills history rows and compares two releases in ai mode": {
       "observations": [
         "43617762853"
@@ -467,7 +506,6 @@
     },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed": {
       "observations": [
-        "43437005879",
         "43482948785",
         "43547153622"
       ],
@@ -490,7 +528,6 @@
     },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a says there are no differences when a release is compared with itself": {
       "observations": [
-        "43437005879",
         "43482948785"
       ],
       "project": "chromium",
@@ -538,16 +575,6 @@
       "file": "Features/OntologyStudioFlows.spec.ts",
       "title": "Ontology Studio flows \u203a flow 7: a rejection shows its reason to the author, who edits and asks again, and withdraws the second request, in classic mode",
       "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyStudioPermissions.spec.ts :: Ontology Studio over the aggregate limit \u203a All ontologies shows only a message when the catalog passes the limit": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyStudioPermissions.spec.ts",
-      "title": "Ontology Studio over the aggregate limit \u203a All ontologies shows only a message when the catalog passes the limit",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "chromium :: Features/OntologyStudioPermissions.spec.ts :: Ontology Studio shows only the actions a user can take \u203a a user with only OntologyReviewer cannot edit or connect but opens Tasks": {
@@ -653,7 +680,6 @@
     },
     "chromium :: Pages/InputOutputPorts.spec.ts :: Input Output Ports \u203a Section 2: Adding Ports \u203a Add different entity types as ports": {
       "observations": [
-        "43437005879",
         "44004103039"
       ],
       "project": "chromium",
@@ -690,96 +716,6 @@
       "file": "../utils/visualScenarios.ts",
       "title": "Classic settings light \u203a classic-settings-notifications-announcements",
       "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-owners": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Contract states light \u203a contract-edit-owners",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-security": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Contract states light \u203a contract-edit-security",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-semantics": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Contract states light \u203a contract-edit-semantics",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-sla": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Contract states light \u203a contract-edit-sla",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-status-options": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Contract states light \u203a contract-edit-status-options",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-quality-filter": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Contract states light \u203a contract-quality-filter",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-read-only": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Contract states light \u203a contract-read-only",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-security-row-filter": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Contract states light \u203a contract-security-row-filter",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-semantic-validation": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Contract states light \u203a contract-semantic-validation",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Custom property configuration dark \u203a custom-property-config-no-search-results": {
@@ -822,426 +758,6 @@
       "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-apiEndpoint": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-apiEndpoint",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-container": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-container",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-dashboard": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-dashboard",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-dashboardDataModel": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-dashboardDataModel",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-database": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-database",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-databaseSchema": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-databaseSchema",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-directory": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-directory",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-file": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-file",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-glossary": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-glossary",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-glossaryTerm": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-glossaryTerm",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-metric": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-metric",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-mlmodel": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-mlmodel",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-pipeline": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-pipeline",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-searchIndex": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-searchIndex",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-spreadsheet": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-spreadsheet",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-storedProcedure": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-storedProcedure",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-table": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-table",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-topic": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-topic",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-worksheet": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities dark \u203a entity-worksheet",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-apiEndpoint": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-apiEndpoint",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-container": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-container",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-dashboard": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-dashboard",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-dashboardDataModel": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-dashboardDataModel",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-database": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-database",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-databaseSchema": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-databaseSchema",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-directory": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-directory",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-file": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-file",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-glossary": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-glossary",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-glossaryTerm": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-glossaryTerm",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-metric": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-metric",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-mlmodel": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-mlmodel",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-pipeline": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-pipeline",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-searchIndex": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-searchIndex",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-spreadsheet": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-spreadsheet",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-storedProcedure": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-storedProcedure",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-table": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-table",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-topic": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-topic",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-worksheet": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entities light \u203a entity-worksheet",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossary-tab-activity-feeds-tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a glossary-tab-activity-feeds-tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossary-tab-review": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a glossary-tab-review",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-activity-feeds-tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a glossaryTerm-tab-activity-feeds-tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-assets": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a glossaryTerm-tab-assets",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-custom-properties": {
       "observations": [
         "43793180722"
@@ -1254,7 +770,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-data-observability": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -1263,19 +778,8 @@
       "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-activity-feeds-tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a metric-tab-activity-feeds-tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-assets": {
       "observations": [
-        "43437005879",
         "44445461359"
       ],
       "project": "visual-regression",
@@ -1284,29 +788,8 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-custom-properties": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a metric-tab-custom-properties",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a metric-tab-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-dataProduct-assets": {
       "observations": [
-        "43437005879",
         "44445461359"
       ],
       "project": "visual-regression",
@@ -1315,55 +798,14 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-dataProduct-data-observability": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-dataProduct-data-observability",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-directory-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-directory-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-directory-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-directory-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-domain-assets": {
       "observations": [
-        "43437005879",
         "44445461359"
       ],
       "project": "visual-regression",
       "file": "../utils/visualScenarios.ts",
       "title": "Entity tabs dark \u203a tab-domain-assets",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-domain-data-observability": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-domain-data-observability",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-domain-data-products": {
@@ -1374,146 +816,6 @@
       "file": "../utils/visualScenarios.ts",
       "title": "Entity tabs dark \u203a tab-domain-data-products",
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-file-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-file-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-file-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-file-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-searchIndex-search-index-settings": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-searchIndex-search-index-settings",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-spreadsheet-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-spreadsheet-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-spreadsheet-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-spreadsheet-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-topic-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-topic-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-topic-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-topic-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-worksheet-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-worksheet-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-worksheet-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tab-worksheet-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tag-tab-data-observability": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs dark \u203a tag-tab-data-observability",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossary-tab-activity-feeds-tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a glossary-tab-activity-feeds-tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossary-tab-review": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a glossary-tab-review",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-activity-feeds-tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a glossaryTerm-tab-activity-feeds-tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-assets": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a glossaryTerm-tab-assets",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-custom-properties": {
@@ -1528,7 +830,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-data-observability": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -1547,155 +848,14 @@
       "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-activity-feeds-tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a metric-tab-activity-feeds-tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-assets": {
       "observations": [
-        "43437005879",
         "44445461359"
       ],
       "project": "visual-regression",
       "file": "../utils/visualScenarios.ts",
       "title": "Entity tabs light \u203a metric-tab-assets",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-custom-properties": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a metric-tab-custom-properties",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a metric-tab-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-apiEndpoint-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-apiEndpoint-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-apiEndpoint-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-apiEndpoint-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-container-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-container-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-container-custom-properties": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-container-custom-properties",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-container-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-container-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-dataProduct-assets": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-dataProduct-assets",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-dataProduct-data-observability": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-dataProduct-data-observability",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-directory-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-directory-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-directory-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-directory-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-domain-assets": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-domain-assets",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-domain-data-observability": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-domain-data-observability",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-domain-data-products": {
@@ -1708,86 +868,6 @@
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-file-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-file-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-file-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-file-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-mlmodel-custom-properties": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-mlmodel-custom-properties",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-searchIndex-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-searchIndex-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-sample-data": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-searchIndex-sample-data",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-search-index-settings": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-searchIndex-search-index-settings",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-spreadsheet-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-custom-properties": {
       "observations": [
         "43482948785",
@@ -1798,36 +878,6 @@
       "file": "../utils/visualScenarios.ts",
       "title": "Entity tabs light \u203a tab-spreadsheet-custom-properties",
       "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-spreadsheet-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-storedProcedure-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-storedProcedure-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-storedProcedure-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-storedProcedure-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-queries": {
@@ -1854,16 +904,6 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": false
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-topic-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-custom-properties": {
       "observations": [
         "43482948785",
@@ -1876,49 +916,8 @@
       "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-topic-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-worksheet-activity-feeds---tasks": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-worksheet-activity-feeds---tasks",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-worksheet-lineage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-worksheet-lineage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tag-tab-data-observability": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tag-tab-data-observability",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-export-dialog": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -1929,7 +928,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-library": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -1940,7 +938,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-native-graph": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -1992,7 +989,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-query": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -2003,7 +999,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-scope-menu": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -2014,7 +1009,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-tree": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -2025,7 +1019,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-export-dialog": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -2046,7 +1039,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-native-graph": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -2067,7 +1059,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-new-validation": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -2078,7 +1069,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-publish-changes": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -2089,7 +1079,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-publish-releases": {
       "observations": [
-        "43437005879",
         "43482948785",
         "43547153622",
         "43793180722"
@@ -2102,7 +1091,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-query": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -2123,7 +1111,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-tree": {
       "observations": [
-        "43437005879",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -2192,56 +1179,6 @@
       "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-add-case": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states dark \u203a quality-add-case",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-add-menu": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states dark \u203a quality-add-menu",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-add-suite": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states dark \u203a quality-add-suite",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-tab-test-cases": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states dark \u203a quality-tab-test-cases",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-tab-test-suites": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states dark \u203a quality-tab-test-suites",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a shell-mode-menu": {
       "observations": [
         "44445461359"
@@ -2280,56 +1217,6 @@
       "file": "../utils/visualScenarios.ts",
       "title": "Interaction states dark \u203a test-definition-validation",
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-add-case": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states light \u203a quality-add-case",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-add-menu": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states light \u203a quality-add-menu",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-add-suite": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states light \u203a quality-add-suite",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-tab-test-cases": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states light \u203a quality-tab-test-cases",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-tab-test-suites": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Interaction states light \u203a quality-tab-test-suites",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a shell-mode-menu": {
@@ -2372,56 +1259,6 @@
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-certification": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Overlays light \u203a table-overlay-certification",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-column-customize": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Overlays light \u203a table-overlay-column-customize",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-column-sort": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Overlays light \u203a table-overlay-column-sort",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-manage": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Overlays light \u203a table-overlay-manage",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Pages dark \u203a page-data-quality": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Pages dark \u203a page-data-quality",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Pages dark \u203a page-ontology": {
       "observations": [
         "43793180722"
@@ -2430,26 +1267,6 @@
       "file": "../utils/visualScenarios.ts",
       "title": "Pages dark \u203a page-ontology",
       "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Pages dark \u203a page-sparql": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Pages dark \u203a page-sparql",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Pages light \u203a page-data-quality": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Pages light \u203a page-data-quality",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Pages light \u203a page-explore": {
@@ -2472,16 +1289,6 @@
       "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Pages light \u203a page-sparql": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Pages light \u203a page-sparql",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Settings dark \u203a settings-audit-logs": {
       "observations": [
         "43482948785"
@@ -2491,16 +1298,6 @@
       "title": "Settings dark \u203a settings-audit-logs",
       "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": false
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: State variants light \u203a entity-table-narrow": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "State variants light \u203a entity-table-narrow",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectionBranches.spec.ts :: Connection branches dark \u203a connection-branch-dashboardServices-Tableau-root-authType-3512437263": {
       "observations": [
@@ -2554,7 +1351,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices MicroStrategy configuration form": {
       "observations": [
-        "43437005879",
         "43482948785",
         "43547153622",
         "43617762853"
@@ -2587,7 +1383,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Sigma configuration form": {
       "observations": [
-        "43437005879",
         "43482948785",
         "43547153622",
         "43617762853"
@@ -2600,7 +1395,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Tableau configuration form": {
       "observations": [
-        "43437005879",
         "44224347886"
       ],
       "project": "visual-regression",
@@ -2639,26 +1433,6 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Cassandra configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices Cassandra configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Databricks configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices Databricks configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices DynamoDB configuration form": {
       "observations": [
         "44445461359"
@@ -2679,86 +1453,6 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Greenplum configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices Greenplum configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Mysql configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices Mysql configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Postgres configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices Postgres configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Redshift configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices Redshift configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Snowflake configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices Snowflake configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Timescale configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices Timescale configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Trino configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices Trino configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices UnityCatalog configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a databaseServices UnityCatalog configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a driveServices GoogleDrive configuration form": {
       "observations": [
         "44445461359"
@@ -2771,33 +1465,12 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a driveServices Sftp configuration form": {
       "observations": [
-        "43437005879",
         "44445461359"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms dark \u203a driveServices Sftp configuration form",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a messagingServices Nats configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a messagingServices Nats configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a metadataServices AlationSink configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a metadataServices AlationSink configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a metadataServices Atlas configuration form": {
@@ -2820,16 +1493,6 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices DatabricksPipeline configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a pipelineServices DatabricksPipeline configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices OpenLineage configuration form": {
       "observations": [
         "44445461359"
@@ -2840,45 +1503,14 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices Prefect configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a pipelineServices Prefect configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices TableauPipeline configuration form": {
       "observations": [
-        "43437005879",
         "44224347886"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms dark \u203a pipelineServices TableauPipeline configuration form",
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a searchServices ElasticSearch configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a searchServices ElasticSearch configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a searchServices OpenSearch configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a searchServices OpenSearch configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a storageServices GCS configuration form": {
@@ -2903,7 +1535,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices MicroStrategy configuration form": {
       "observations": [
-        "43437005879",
         "43482948785",
         "43547153622",
         "43617762853"
@@ -2936,7 +1567,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Sigma configuration form": {
       "observations": [
-        "43437005879",
         "43482948785",
         "43547153622",
         "43617762853"
@@ -2949,7 +1579,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Tableau configuration form": {
       "observations": [
-        "43437005879",
         "44224347886"
       ],
       "project": "visual-regression",
@@ -2988,26 +1617,6 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Cassandra configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices Cassandra configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Databricks configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices Databricks configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices DynamoDB configuration form": {
       "observations": [
         "44445461359"
@@ -3028,86 +1637,6 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Greenplum configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices Greenplum configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Mysql configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices Mysql configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Postgres configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices Postgres configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Redshift configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices Redshift configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Snowflake configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices Snowflake configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Timescale configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices Timescale configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Trino configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices Trino configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices UnityCatalog configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a databaseServices UnityCatalog configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a driveServices GoogleDrive configuration form": {
       "observations": [
         "44445461359"
@@ -3116,46 +1645,6 @@
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms light \u203a driveServices GoogleDrive configuration form",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a driveServices Sftp configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a driveServices Sftp configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a messagingServices Nats configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a messagingServices Nats configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a metadataServices AlationSink configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a metadataServices AlationSink configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices DatabricksPipeline configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a pipelineServices DatabricksPipeline configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices OpenLineage configuration form": {
@@ -3168,45 +1657,14 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices Prefect configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a pipelineServices Prefect configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices TableauPipeline configuration form": {
       "observations": [
-        "43437005879",
         "44224347886"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms light \u203a pipelineServices TableauPipeline configuration form",
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a searchServices ElasticSearch configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a searchServices ElasticSearch configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a searchServices OpenSearch configuration form": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a searchServices OpenSearch configuration form",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a storageServices GCS configuration form": {
@@ -3231,23 +1689,12 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-extra-rule": {
       "observations": [
-        "43437005879",
         "44445461359"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/exploreInteractions.spec.ts",
       "title": "Explore interactions dark \u203a explore-advanced-extra-rule",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-initial": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/exploreInteractions.spec.ts",
-      "title": "Explore interactions dark \u203a explore-advanced-initial",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-nested-group": {
@@ -3258,36 +1705,6 @@
       "file": "VisualRegression/exploreInteractions.spec.ts",
       "title": "Explore interactions dark \u203a explore-advanced-nested-group",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-or": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/exploreInteractions.spec.ts",
-      "title": "Explore interactions dark \u203a explore-advanced-or",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-export-all": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/exploreInteractions.spec.ts",
-      "title": "Explore interactions dark \u203a explore-export-all",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-export-visible": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/exploreInteractions.spec.ts",
-      "title": "Explore interactions dark \u203a explore-export-visible",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-long-results": {
@@ -3313,7 +1730,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-tools-menu": {
       "observations": [
-        "43437005879",
         "44224347886"
       ],
       "project": "visual-regression",
@@ -3324,7 +1740,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-extra-rule": {
       "observations": [
-        "43437005879",
         "44445461359"
       ],
       "project": "visual-regression",
@@ -3335,7 +1750,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-nested-group": {
       "observations": [
-        "43437005879",
         "44445461359"
       ],
       "project": "visual-regression",
@@ -3344,19 +1758,8 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-long-results": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/exploreInteractions.spec.ts",
-      "title": "Explore interactions light \u203a explore-long-results",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-search-error": {
       "observations": [
-        "43437005879",
         "44004103039"
       ],
       "project": "visual-regression",
@@ -3377,7 +1780,6 @@
     },
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions dark \u203a glossary-late-activity-count": {
       "observations": [
-        "43437005879",
         "43482948785",
         "43547153622",
         "43617762853",
@@ -3391,7 +1793,6 @@
     },
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count": {
       "observations": [
-        "43437005879",
         "43482948785",
         "43547153622",
         "43617762853",
@@ -3437,7 +1838,6 @@
     },
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets light": {
       "observations": [
-        "43437005879",
         "44224347886",
         "44445461359"
       ],
@@ -3446,16 +1846,6 @@
       "title": "Metric interaction assets light",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction create-custom-unit dark": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/metricList.spec.ts",
-      "title": "Metric interaction create-custom-unit dark",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": false
     },
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction definition light": {
       "observations": [
@@ -3467,69 +1857,8 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction definition-save-error dark": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/metricList.spec.ts",
-      "title": "Metric interaction definition-save-error dark",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction definition-save-error light": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/metricList.spec.ts",
-      "title": "Metric interaction definition-save-error light",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction detail light": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/metricList.spec.ts",
-      "title": "Metric interaction detail light",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction related-metrics-edit dark": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/metricList.spec.ts",
-      "title": "Metric interaction related-metrics-edit dark",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-form-table-schema": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/settingsForms.spec.ts",
-      "title": "Settings form bodies dark \u203a settings-form-table-schema",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-adoption-confirmation": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/settingsForms.spec.ts",
-      "title": "Settings form bodies dark \u203a settings-source-adoption-confirmation",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-adoption-error": {
       "observations": [
-        "43437005879",
         "44004103039"
       ],
       "project": "visual-regression",
@@ -3540,23 +1869,12 @@
     },
     "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-fully-managed": {
       "observations": [
-        "43437005879",
         "44004103039"
       ],
       "project": "visual-regression",
       "file": "VisualRegression/settingsForms.spec.ts",
       "title": "Settings form bodies dark \u203a settings-source-fully-managed",
       "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-overridden": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/settingsForms.spec.ts",
-      "title": "Settings form bodies dark \u203a settings-source-overridden",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies light \u203a settings-source-adoption-error": {
@@ -3577,66 +1895,6 @@
       "file": "VisualRegression/settingsForms.spec.ts",
       "title": "Settings form bodies light \u203a settings-source-fully-managed",
       "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-brand": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/sharedControls.spec.ts",
-      "title": "Shared controls dark \u203a alert-brand",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-error": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/sharedControls.spec.ts",
-      "title": "Shared controls dark \u203a alert-error",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-gray": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/sharedControls.spec.ts",
-      "title": "Shared controls dark \u203a alert-gray",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-success": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/sharedControls.spec.ts",
-      "title": "Shared controls dark \u203a alert-success",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-warning": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/sharedControls.spec.ts",
-      "title": "Shared controls dark \u203a alert-warning",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls light \u203a autocomplete-selected": {
-      "observations": [
-        "43437005879"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/sharedControls.spec.ts",
-      "title": "Shared controls light \u203a autocomplete-selected",
-      "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: applications matches baseline": {
@@ -3671,7 +1929,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: database-services matches baseline": {
       "observations": [
-        "43437005879",
         "44224347886"
       ],
       "project": "visual-regression",
@@ -3682,7 +1939,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: explore matches baseline": {
       "observations": [
-        "43437005879",
         "44224347886"
       ],
       "project": "visual-regression",
@@ -3693,7 +1949,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: glossary matches baseline": {
       "observations": [
-        "43437005879",
         "43482948785",
         "43547153622",
         "43617762853",
@@ -3717,7 +1972,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: landing page with expanded sidebar matches baseline": {
       "observations": [
-        "43437005879",
         "44224347886"
       ],
       "project": "visual-regression",
@@ -3728,7 +1982,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: landing-page matches baseline": {
       "observations": [
-        "43437005879",
         "44224347886"
       ],
       "project": "visual-regression",
@@ -3739,7 +1992,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: roles matches baseline": {
       "observations": [
-        "43437005879",
         "44224347886"
       ],
       "project": "visual-regression",
@@ -3750,7 +2002,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: settings matches baseline": {
       "observations": [
-        "43437005879",
         "44224347886"
       ],
       "project": "visual-regression",
@@ -3761,7 +2012,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: teams matches baseline": {
       "observations": [
-        "43437005879",
         "44224347886",
         "44445461359"
       ],
@@ -3773,7 +2023,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: users matches baseline": {
       "observations": [
-        "43437005879",
         "44224347886"
       ],
       "project": "visual-regression",
@@ -3794,117 +2043,41 @@
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a fills history rows and compares two releases in classic mode",
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed",
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a reads Published without review on a directly published release row and detail",
-    "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a says there are no differences when a release is compared with itself",
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases",
     "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed",
-    "chromium :: Pages/InputOutputPorts.spec.ts :: Input Output Ports \u203a Section 2: Adding Ports \u203a Add different entity types as ports",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-dataProduct-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-domain-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-assets",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-custom-properties",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-schema-definition",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-export-dialog",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-library",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-native-graph",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-publish-releases",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-query",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-scope-menu",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-tree",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-export-dialog",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-native-graph",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-new-validation",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-publish-changes",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-publish-releases",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-query",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-tree",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices MicroStrategy configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Sigma configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Tableau configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a driveServices Sftp configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices TableauPipeline configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices MicroStrategy configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Sigma configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Tableau configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices TableauPipeline configuration form",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-extra-rule",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-long-results",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-tools-menu",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-extra-rule",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-nested-group",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-search-error",
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions dark \u203a glossary-late-activity-count",
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets dark",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets light",
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-adoption-error",
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-fully-managed",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: database-services matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: explore matches baseline",
     "visual-regression :: VisualRegression/staticPages.spec.ts :: glossary matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: landing page with expanded sidebar matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: landing-page matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: roles matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: settings matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: teams matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: users matches baseline"
+    "visual-regression :: VisualRegression/staticPages.spec.ts :: teams matches baseline"
   ],
   "hardFailureStableIds": [
     "chromium :: Features/McpAdministration.spec.ts :: admin controls MCP access and revokes registered clients",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-dataProduct-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-domain-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-assets",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-custom-properties",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-export-dialog",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-library",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-native-graph",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-publish-releases",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-query",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-scope-menu",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-tree",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-export-dialog",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-native-graph",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-new-validation",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-publish-changes",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-publish-releases",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-query",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-tree",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices MicroStrategy configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Sigma configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Tableau configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a driveServices Sftp configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices TableauPipeline configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices MicroStrategy configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Sigma configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Tableau configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices TableauPipeline configuration form",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-extra-rule",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-long-results",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-tools-menu",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-extra-rule",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-nested-group",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-search-error",
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions dark \u203a glossary-late-activity-count",
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets dark",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets light",
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-adoption-error",
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-fully-managed",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: database-services matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: explore matches baseline",
     "visual-regression :: VisualRegression/staticPages.spec.ts :: glossary matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: landing page with expanded sidebar matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: landing-page matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: roles matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: settings matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: teams matches baseline",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: users matches baseline"
+    "visual-regression :: VisualRegression/staticPages.spec.ts :: teams matches baseline"
   ]
 }
