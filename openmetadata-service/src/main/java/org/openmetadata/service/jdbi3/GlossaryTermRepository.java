@@ -103,6 +103,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RelationProvenance;
@@ -147,8 +148,11 @@ import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.ViewPermissionFilter;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -2103,9 +2107,57 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     BulkOperationResult result =
         AssetTagLabelService.removeFromAssets(assetsRequest(term, request, requester));
     if (!Boolean.TRUE.equals(request.getDryRun())) {
-      GlossaryTermPendingLabels.dropPendingOn(term, AssetEditService.succeededAssets(result));
+      dropPendingOnRemovedAssets(term, result, requester);
     }
     return result;
+  }
+
+  /**
+   * Drops the term's pending labels on the assets it was removed from, held ones included: a
+   * pending label is not shown, so taking it back is not a change a reviewer sees. A pending-only
+   * removal patches nothing, so the asset is not authorized by the patch; the caller must be allowed
+   * to edit the asset's glossary terms.
+   */
+  private void dropPendingOnRemovedAssets(
+      GlossaryTerm term, BulkOperationResult result, PatchRequester requester) {
+    for (BulkResponse response : listOrEmpty(result.getSuccessRequest())) {
+      if (response.getRequest() instanceof EntityReference asset && isAddressed(asset)) {
+        try {
+          requester
+              .authorizer()
+              .authorize(
+                  requester.securityContext(),
+                  new OperationContext(owningType(asset), MetadataOperation.EDIT_GLOSSARY_TERMS),
+                  new ResourceContext<>(owningType(asset), owningId(asset), null));
+          GlossaryTermPendingLabels.dropPendingOn(term, asset);
+        } catch (AuthorizationException e) {
+          LOG.debug(
+              "Kept pending term {} on {}: {}", term.getName(), asset.getId(), e.getMessage());
+        }
+      }
+    }
+  }
+
+  // A column is addressed by its FQN, any other asset by its id.
+  private static boolean isAddressed(EntityReference asset) {
+    return Entity.TABLE_COLUMN.equals(asset.getType())
+        ? asset.getFullyQualifiedName() != null
+        : asset.getId() != null;
+  }
+
+  // A column is authorized as its table.
+  private static String owningType(EntityReference asset) {
+    return Entity.TABLE_COLUMN.equals(asset.getType()) ? Entity.TABLE : asset.getType();
+  }
+
+  private static UUID owningId(EntityReference asset) {
+    return Entity.TABLE_COLUMN.equals(asset.getType())
+        ? Entity.getEntityReferenceByName(
+                Entity.TABLE,
+                ChildFieldResolver.parentFqnOf(asset.getFullyQualifiedName(), Entity.TABLE),
+                Include.NON_DELETED)
+            .getId()
+        : asset.getId();
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) {

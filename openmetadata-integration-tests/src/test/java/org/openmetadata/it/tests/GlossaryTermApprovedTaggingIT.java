@@ -70,6 +70,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContainerDataModel;
 import org.openmetadata.schema.type.DataModel;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
@@ -77,6 +78,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
@@ -668,6 +670,65 @@ public class GlossaryTermApprovedTaggingIT {
             BulkOperationResult.class);
 
     assertTrue(pendingTargets(term).isEmpty(), "assets/remove drops it on the table and columns");
+  }
+
+  /** A pending-only removal changes nothing visible, yet still needs permission to edit the asset. */
+  @Test
+  void aUserWhoCannotEditTheAssetCannotDropItsHeldTerm(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    GlossaryTerm term = deprecatedTerm(admin, ns);
+    CreateTable request = tableRequest(ns, schema(ns), "remove_denied");
+    request.setTags(List.of(label(term)));
+    Table table = admin.tables().create(request);
+    assertEquals(1, pendingTargets(term).size());
+
+    try {
+      SdkClients.dataConsumerClient()
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/glossaryTerms/%s/assets/remove".formatted(term.getId()),
+              new AddGlossaryToAssetsRequest()
+                  .withDryRun(false)
+                  .withAssets(List.of(table.getEntityReference())),
+              BulkOperationResult.class);
+    } catch (OpenMetadataException refused) {
+      // Refused outright is as good as refused per asset: either way the term stays held.
+    }
+
+    assertEquals(1, pendingTargets(term).size(), "the held term stays");
+  }
+
+  /**
+   * Removing a held term from a schema drops only the schema's own pending label; the tables under
+   * it are other assets and keep theirs. A reference sent with only its id is enough.
+   */
+  @Test
+  void removingTheTermFromAnAssetKeepsItOnAssetsNestedUnderIt(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    GlossaryTerm term = deprecatedTerm(admin, ns);
+    DatabaseSchema schema = schema(ns);
+    DatabaseSchema fetched = admin.databaseSchemas().get(schema.getId().toString(), "tags");
+    fetched.setTags(List.of(label(term)));
+    admin.databaseSchemas().update(schema.getId().toString(), fetched);
+    CreateTable request = tableRequest(ns, schema, "nested_held");
+    request.setTags(List.of(label(term)));
+    admin.tables().create(request);
+    assertEquals(2, pendingTargets(term).size());
+
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/glossaryTerms/%s/assets/remove".formatted(term.getId()),
+            new AddGlossaryToAssetsRequest()
+                .withDryRun(false)
+                .withAssets(
+                    List.of(
+                        new EntityReference().withId(schema.getId()).withType("databaseSchema"))),
+            BulkOperationResult.class);
+
+    assertEquals(1, pendingTargets(term).size(), "the table under the schema keeps its held term");
   }
 
   // A held term is answered as if it had not been sent: neither the write's answer nor a later read

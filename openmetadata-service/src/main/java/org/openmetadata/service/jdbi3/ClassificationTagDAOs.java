@@ -737,6 +737,21 @@ public interface ClassificationTagDAOs {
                 hash = true)
             String targetFQN);
 
+    @SqlUpdate(
+        "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND state = "
+            + PENDING_STATE
+            + " AND targetFQNHash IN (<targetFQNHashes>)")
+    int deletePendingOnTargetsInternal(
+        @Bind("source") int source,
+        @BindFQN("tagFQNHash") String tagFQN,
+        @BindListFQN("targetFQNHashes") List<String> targetFQNs);
+
+    /** Drops a term's pending labels on exactly the given targets. */
+    default void deletePendingOnTargets(int source, String tagFQN, List<String> targetFQNs) {
+      EntityDAO.updateInChunks(
+          targetFQNs, chunk -> deletePendingOnTargetsInternal(source, tagFQN, chunk));
+    }
+
     /** Drops a term's pending labels, when the term is rejected. */
     @SqlUpdate(
         "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND state = "

@@ -6524,6 +6524,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
+  /**
+   * The FQNs of the entity and of every inline field it holds labels on: its own targets, not those
+   * of other entities nested under its FQN.
+   */
+  public final Set<String> ownTargetFqns(UUID id) {
+    T entity = find(id, ALL);
+    return new HashSet<>(glossaryTagsByTarget(entity).keySet());
+  }
+
   /** Labels on the entity and its tagged inline fields, keyed by target FQN. */
   final Map<String, List<TagLabel>> glossaryTagsByTarget(T entity) {
     return ApprovedGlossaryTermGuard.tagsByTarget(entity, taggedFieldContainers(entity));

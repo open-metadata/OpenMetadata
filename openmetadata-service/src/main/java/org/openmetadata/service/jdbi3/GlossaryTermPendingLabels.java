@@ -80,18 +80,23 @@ public final class GlossaryTermPendingLabels implements Managed {
   }
 
   /**
-   * Drops the term's pending labels on the assets and their fields. A pending term is not shown, so
-   * removing the term from an asset (the term's {@code assets/remove}) is how a client takes it back.
+   * Drops the term's pending labels on an asset: on the entity and its own inline fields, or on a
+   * single column and the columns nested in it. Other entities nested under its FQN keep theirs. A
+   * pending term is not shown, so removing the term from an asset (the term's {@code assets/remove})
+   * is how a client takes it back.
    */
-  public static void dropPendingOn(GlossaryTerm term, List<EntityReference> assets) {
+  public static void dropPendingOn(GlossaryTerm term, EntityReference asset) {
     String termFqn = term.getFullyQualifiedName();
-    int dropped = 0;
-    for (EntityReference asset : assets) {
-      if (asset.getFullyQualifiedName() != null) {
-        dropped += dao().deletePendingUnder(GLOSSARY, termFqn, asset.getFullyQualifiedName());
+    // Only nested columns sit under a column's FQN, so its subtree is its own.
+    if (Entity.TABLE_COLUMN.equals(asset.getType())) {
+      dao().deletePendingUnder(GLOSSARY, termFqn, asset.getFullyQualifiedName());
+    } else {
+      List<String> targets =
+          List.copyOf(Entity.getEntityRepository(asset.getType()).ownTargetFqns(asset.getId()));
+      if (!targets.isEmpty()) {
+        dao().deletePendingOnTargets(GLOSSARY, termFqn, targets);
       }
     }
-    LOG.debug("Dropped {} pending labels of glossary term {}", dropped, termFqn);
   }
 
   /** Drops the term's pending labels: a rejected term is never shown on them. */
