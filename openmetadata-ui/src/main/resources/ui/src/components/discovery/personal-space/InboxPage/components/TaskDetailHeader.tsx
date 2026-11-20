@@ -133,7 +133,7 @@ const TaskActionButton = ({
  * The task's identity and what can be done about it: type chip, task id, the
  * state it is waiting in, and its actions.
  *
- * Two actions stay visible as buttons — the affirmative one filled — and the
+ * Two actions stay visible as buttons — the leading one filled — and the
  * rest fold into an overflow menu, so a task with many transitions does not
  * spread its header across the pane. An assignee action keeps its own picker
  * trigger, which a menu item cannot host.

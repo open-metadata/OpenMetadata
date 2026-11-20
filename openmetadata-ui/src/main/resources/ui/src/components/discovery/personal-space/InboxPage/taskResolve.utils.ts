@@ -305,23 +305,26 @@ const INCIDENT_STAGE_ORDER = ['new', 'ack', 'assigned', 'resolved'];
 const getIncidentStageRank = (stageId?: string) =>
   INCIDENT_STAGE_ORDER.indexOf(stageId ?? '');
 
-const rankIncidentActions = (
-  actions: TaskResolveAction[],
+/**
+ * An incident's transitions ranked by the stage each moves to, or undefined
+ * when the task is not in an incident stage
+ * (ADR:2026-11-20-incident-task-actions-lead-with-the-next-stage).
+ */
+export const rankByIncidentStage = <T>(
+  items: T[],
+  getTargetStageId: (item: T) => string | undefined,
   stageId?: string
-): TaskResolveAction[] | undefined => {
+): T[] | undefined => {
   const currentRank = getIncidentStageRank(stageId);
   const isIncidentStage =
     currentRank >= 0 &&
-    actions.every(
-      (action) => getIncidentStageRank(action.transition?.targetStageId) >= 0
-    );
+    items.every((item) => getIncidentStageRank(getTargetStageId(item)) >= 0);
   if (!isIncidentStage) {
     return undefined;
   }
 
-  return sortBy(actions, (action) => {
-    const step =
-      getIncidentStageRank(action.transition?.targetStageId) - currentRank;
+  return sortBy(items, (item) => {
+    const step = getIncidentStageRank(getTargetStageId(item)) - currentRank;
 
     return step > 0 ? step : INCIDENT_STAGE_ORDER.length - step;
   });
@@ -343,7 +346,7 @@ const getDefaultSlots = (
 };
 
 export interface TaskActionLayout {
-  /** The affirmative action, rendered as the header's filled button. */
+  /** The leading action, filled unless it opens the assignee picker. */
   primary?: TaskResolveAction;
   /** The counterpart action, rendered as the header's outlined button. */
   secondary?: TaskResolveAction;
@@ -358,15 +361,18 @@ export interface TaskActionLayout {
  * an incident resolving through `resolve`, a granted access request offering
  * only `revoke` — promotes its first transitions instead, so its real action is
  * never buried in the menu. A reassign only takes a slot once nothing else
- * claims it. An incident ranks its actions by stage
- * (ADR:2026-11-20-incident-task-actions-lead-with-the-next-stage).
+ * claims it. An incident instead takes its two slots from `rankByIncidentStage`.
  */
 export const splitTaskActions = (
   actions: TaskResolveAction[],
   stageId?: string
 ): TaskActionLayout => {
   const [primary, secondary] =
-    rankIncidentActions(actions, stageId) ?? getDefaultSlots(actions);
+    rankByIncidentStage(
+      actions,
+      (action) => action.transition?.targetStageId,
+      stageId
+    ) ?? getDefaultSlots(actions);
   const promoted = new Set(
     [primary?.id, secondary?.id].filter(Boolean) as string[]
   );
