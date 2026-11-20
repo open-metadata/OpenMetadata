@@ -59,11 +59,13 @@ class FailedSampleValidatorMixin(ABC):
         Attaches failedRowsSample and inspectionQuery directly on the
         TestCaseResult instance for the runner/sink to pick up.
         """
+        result.clearFailedRowsSample = False
         if not (getattr(result.testCase, "computePassedFailedRowCount", False) and self._has_failed_rows(result)):
             return
 
         try:
             result.failedRowsSample = self.fetch_failed_rows_sample()
+            result.clearFailedRowsSample = result.failedRowsSample is None
         except Exception:
             logger.debug(traceback.format_exc())
             logger.error("Failed to fetch failed rows sample")

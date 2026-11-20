@@ -50,6 +50,7 @@ class TestCaseResultResponse(BaseModel):
     testCaseResult: TestCaseResult  # noqa: N815
     testCase: TestCase  # noqa: N815
     failedRowsSample: TableData | None = None  # noqa: N815
+    clearFailedRowsSample: bool = False  # noqa: N815
     inspectionQuery: str | None = None  # noqa: N815
     validateColumns: bool = True  # noqa: N815
 

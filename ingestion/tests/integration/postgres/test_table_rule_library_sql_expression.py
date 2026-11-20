@@ -317,6 +317,22 @@ def test_aggregate_rule_output_is_not_stored_as_a_sample(
         computePassedFailedRowCount=True,
     )
 
+    original = aggregate_rule_library_test_definition.model_copy(deep=True)
+    supported = original.model_copy(deep=True)
+    supported.sqlExpression = SqlQuery(root="SELECT * FROM {{ table_name }}")
+    metadata.patch(TestDefinition, original, supported, skip_on_failure=False)
+    try:
+        run_workflow(TestSuiteWorkflow, get_table_rule_library_test_suite_config(entity_fqn, [test_case_definition]))
+        preceding: TestCase = metadata.get_by_name(
+            TestCase, f"{entity_fqn}.{test_case_definition.name}", fields=["*"], nullable=False
+        )
+        cleanup_fqns(TestCase, preceding.fullyQualifiedName.root)
+        sample = metadata.get_failed_rows_sample(preceding)
+        assert sample is not None
+        assert len(sample.rows) == FAILED_ROW_SAMPLE_SIZE
+    finally:
+        metadata.patch(TestDefinition, supported, original, skip_on_failure=False)
+
     run_workflow(TestSuiteWorkflow, get_table_rule_library_test_suite_config(entity_fqn, [test_case_definition]))
 
     test_case: TestCase = metadata.get_by_name(

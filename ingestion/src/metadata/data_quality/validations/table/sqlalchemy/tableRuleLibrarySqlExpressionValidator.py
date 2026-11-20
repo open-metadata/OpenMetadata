@@ -17,6 +17,7 @@ from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy import func, select, text
 
 from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    FAILED_ROW_SAMPLE_SIZE,
     render_literal_sql,
     table_columns_sample,
 )
@@ -26,6 +27,7 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
 from metadata.data_quality.validations.table.base.tableRuleLibrarySqlExpressionValidator import (
     TableRuleLibrarySqlExpressionValidator as BaseValidator,
 )
+from metadata.generated.schema.entity.data.table import TableData
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_utils import escape_identifier_for_text_clause
@@ -76,8 +78,23 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
             logger.exception(f"Error executing SQL expression: {exc}")  # noqa: TRY401
             raise exc  # noqa: TRY201
         self._executed_sql = sql_expression
-        self._failed_rows = table_columns_sample(cast("QueryRunner", self.runner).table, list(result.keys()), rows)
+        self._failed_rows = (list(result.keys()), rows[:FAILED_ROW_SAMPLE_SIZE])
         return len(rows)
+
+    def fetch_failed_rows_sample(self) -> TableData | None:
+        if self._failed_rows is None:
+            return None
+        runner = cast("QueryRunner", self.runner)
+        columns, rows = self._failed_rows
+        sample = table_columns_sample(
+            runner.table,
+            columns,
+            rows,
+            sql=self._executed_sql[0],
+            table_reference=runner.get_table_reference(),
+            dialect=runner.session.get_bind().dialect,
+        )
+        return TableData(columns=sample[0], rows=sample[1]) if sample else None
 
     def _run_row_count(self) -> int:
         """Count the rows of the unsampled, unpartitioned table, the rows the rule's SQL reads"""

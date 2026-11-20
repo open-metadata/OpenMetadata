@@ -912,6 +912,12 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             except Exception:
                 logger.debug(traceback.format_exc())
                 logger.error(f"Failed to ingest failed rows sample for {record.testCase.name.root}")
+        elif record.clearFailedRowsSample:
+            try:
+                self.metadata.delete_failed_rows_sample(record.testCase)
+            except Exception:
+                logger.debug(traceback.format_exc())
+                logger.error(f"Failed to clear failed rows sample for {record.testCase.name.root}")
 
         if record.inspectionQuery is not None:
             try:

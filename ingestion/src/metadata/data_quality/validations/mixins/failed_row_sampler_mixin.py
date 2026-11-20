@@ -19,9 +19,12 @@ PandasFailedRowSamplerMixin: DataFrame-based row sampling (filters chunks via df
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, cast
 
+import sqlglot
 from sqlalchemy import Table, inspect, text
 from sqlalchemy.engine import Dialect
 from sqlalchemy.engine.default import DefaultDialect
+from sqlglot import exp
+from sqlglot.optimizer.normalize_identifiers import normalize_identifiers
 
 from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 from metadata.profiler.processor.runner import QueryRunner
@@ -96,27 +99,92 @@ class SQARowSamplerMixin:
 
 
 def table_columns_sample(
-    table: Table, columns: list[str], rows: Sequence[Sequence[Any]]
+    table: Table, columns: list[str], rows: Sequence[Sequence[Any]], *, sql: str, table_reference: str, dialect: Dialect
 ) -> tuple[list[str], list[list[Any]]] | None:
-    """The first FAILED_ROW_SAMPLE_SIZE of `rows`, or None when an output column is not one of `table`'s
+    """Retain only output attributable to unchanged columns of the linked physical table.
 
-    The server masks a sample's PII by column name, so it refuses columns the table does not have.
-    Output under any other name, such as an aggregate or an alias to a new name, would be refused, so it is
-    not kept. An alias to another existing column is accepted and masked by that column's tags.
+    Server masking uses output names, so name membership alone cannot protect renamed sensitive values.
     See ADR:2026-11-12-rule-library-failed-rows-samples-keep-server-column-validation.
     """
     if not rows:
         return None
     table_columns = {column.name.lower() for column in inspect(table).c}
-    unmatched = [column for column in columns if column.lower() not in table_columns]
-    if unmatched:
+    if any(column.lower() not in table_columns for column in columns) or not _source_columns_only(
+        sql, table_reference, dialect, table_columns
+    ):
         logger.info(
-            "Rule output columns %s are not columns of the table: aggregate or aliased rule output"
-            " is not stored as a failed rows sample",
-            unmatched,
+            "Rule output cannot be attributed to unchanged source columns and is not stored as a failed rows sample"
         )
         return None
     return columns, [[_sample_value(value) for value in row] for row in rows[:FAILED_ROW_SAMPLE_SIZE]]
+
+
+def _source_columns_only(sql: str, table_reference: str, dialect: Dialect, columns: set[str]) -> bool:
+    """Fail closed on syntax or source identity that this bounded projection check cannot establish."""
+    # SQLGlot ignores MySQL/MariaDB executable comments, which can hide renamed projections.
+    if "/*!" in sql or "/*m!" in sql.lower():
+        return False
+    # MySQL's NO_BACKSLASH_ESCAPES changes literal boundaries independently of the parser's dialect.
+    if dialect.name in {"mysql", "mariadb"} and "\\" in sql:
+        return False
+    try:
+        name = {"postgresql": "postgres", "mssql": "tsql"}.get(dialect.name, dialect.name)
+        parsed = sqlglot.parse(sql, read=name, error_level=sqlglot.ErrorLevel.RAISE)
+        if len(parsed) != 1 or not isinstance(parsed[0], exp.Select):
+            return False
+        query = normalize_identifiers(parsed[0], dialect=name)
+        allowed = {"expressions", "from_", "where", "group", "having", "order", "limit", "offset", "distinct"}
+        if any(value and key not in allowed for key, value in query.args.items()):
+            return False
+        if len(list(query.find_all(exp.Select))) != 1 or query.find(exp.Subquery):
+            return False
+        tables = list(query.find_all(exp.Table))
+        source = query.args.get("from_")
+        if len(tables) != 1 or source is None or source.this is not tables[0]:
+            return False
+        table = tables[0]
+        if any(value and key not in {"this", "db", "catalog", "alias"} for key, value in table.args.items()):
+            return False
+        if not all(isinstance(part, exp.Identifier) for part in table.parts):
+            return False
+        expected = (
+            normalize_identifiers(sqlglot.parse_one(f"SELECT * FROM {table_reference}", read=name), dialect=name)
+            .args["from_"]
+            .this
+        )
+        if [part.name for part in table.parts] != [part.name for part in expected.parts]:
+            return False
+        alias = table.args.get("alias")
+        if alias and (alias.args.get("columns") or not isinstance(alias.this, exp.Identifier)):
+            return False
+        qualifiers = (
+            [[table.alias]]
+            if alias
+            else [[part.name for part in table.parts][-size:] for size in range(1, len(table.parts) + 1)]
+        )
+        return bool(query.expressions) and all(
+            _unchanged_projection(projection, qualifiers, columns) for projection in query.expressions
+        )
+    except Exception:
+        logger.debug("Could not establish rule sample source columns", exc_info=True)
+        return False
+
+
+def _unchanged_projection(projection: exp.Expression, qualifiers: list[list[str]], columns: set[str]) -> bool:
+    if isinstance(projection, exp.Alias):
+        if not isinstance(projection.this, exp.Column) or projection.alias != projection.this.name:
+            return False
+        projection = projection.this
+    if isinstance(projection, exp.Star):
+        return not any(projection.args.values())
+    if not isinstance(projection, exp.Column):
+        return False
+    parts = projection.parts
+    if len(parts) > 1 and [part.name for part in parts[:-1]] not in qualifiers:
+        return False
+    if isinstance(projection.this, exp.Star):
+        return not any(projection.this.args.values())
+    return isinstance(projection.this, exp.Identifier) and projection.name.lower() in columns
 
 
 def frame_sample_rows(frame: "DataFrame", columns: list[str], limit: int) -> list[list[Any]]:

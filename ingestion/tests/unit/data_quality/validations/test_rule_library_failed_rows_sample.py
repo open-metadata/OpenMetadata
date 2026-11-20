@@ -12,8 +12,13 @@
 Failed rows sample of rule-library `sqlExpression` tests: the rows the rule already returned are kept
 """
 
+import json
 import logging
 from datetime import datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from threading import Thread
+from typing import ClassVar
+from unittest.mock import patch
 from uuid import uuid4
 
 import pandas as pd
@@ -36,6 +41,7 @@ from metadata.data_quality.validations.column.sqlalchemy.columnRuleLibrarySqlExp
 from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
     FAILED_ROW_SAMPLE_SIZE,
     render_literal_sql,
+    table_columns_sample,
 )
 from metadata.data_quality.validations.models import (
     RuleLibrarySqlExpressionRuntimeParameters,
@@ -50,6 +56,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
     SQLiteConnection,
     SQLiteScheme,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import OpenMetadataConnection
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
@@ -59,8 +66,12 @@ from metadata.generated.schema.tests.testDefinition import (
     TestDefinition,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.sink.metadata_rest import MetadataRestSink, MetadataRestSinkConfig
 from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 from metadata.profiler.processor.runner import PandasRunner, QueryRunner
+from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import Loggers
 
 EXECUTION_DATE = int(datetime(2021, 7, 3).timestamp() * 1000)
@@ -79,6 +90,7 @@ Base = declarative_base()
 
 class Order(Base):
     __tablename__ = "orders"
+    __table_args__: ClassVar[dict] = {"schema": "main"}
     id = Column(Integer, primary_key=True)
     amount = Column(Integer)
     status = Column(String(16))
@@ -90,6 +102,7 @@ BINARY_VALUE = b"\x89PNG\xff\x00"
 
 class Attachment(BinaryBase):
     __tablename__ = "orders"
+    __table_args__: ClassVar[dict] = {"schema": "main"}
     id = Column(Integer, primary_key=True)
     amount = Column(Integer)
     payload = Column(LargeBinary)
@@ -178,7 +191,211 @@ PANDAS_VARIANTS = [
 ]
 
 
+@pytest.fixture
+def sample_api():
+    """A stateful HTTP boundary using the existing server endpoint shapes."""
+    state = {"sample": None, "query": None, "result": None, "delete_status": 200, "events": []}
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def respond(self, code, payload):
+            self.send_response(code)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(payload).encode())
+
+        def do_POST(self):
+            state["events"].append("result")
+            state["result"] = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            self.respond(200, state["result"])
+
+        def do_PUT(self):
+            body = self.rfile.read(int(self.headers["Content-Length"]))
+            if "failedRowsSample" in self.path:
+                state["events"].append("sample")
+                state["sample"] = json.loads(body)
+                self.respond(200, {"failedRowsSample": state["sample"]})
+            else:
+                state["events"].append("query")
+                state["query"] = body.decode()
+                self.respond(200, state["case"])
+
+        def do_DELETE(self):
+            state["events"].append("delete")
+            code = state["delete_status"]
+            if code == 200:
+                state["sample"] = None
+            self.respond(code, {} if code == 200 else {"code": code, "message": "delete failed"})
+
+        def do_GET(self):
+            self.respond(200 if state["sample"] else 404, state["sample"] or {"code": 404, "message": "absent"})
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    metadata = OpenMetadata(
+        OpenMetadataConnection(
+            hostPort=f"http://127.0.0.1:{server.server_port}",
+            authProvider="openmetadata",
+            securityConfig={"jwtToken": "test-token"},
+            enableVersionValidation=False,
+        )
+    )
+    yield metadata, state
+    metadata.close()
+    server.shutdown()
+    server.server_close()
+    thread.join()
+
+
+@pytest.mark.parametrize(VARIANT_PARAMS, SQA_VARIANTS)
+def test_unsupported_run_removes_preceding_sample_over_http(
+    sample_api, validator_class, entity_link, expression, entity_type
+):
+    metadata, state = sample_api
+    case = build_test_case(entity_link, expression, entity_type)
+    case = TestCase.model_validate(
+        {**case.model_dump(), "id": uuid4(), "fullyQualifiedName": "service.db.main.orders.no_negative_amounts"}
+    )
+    state["case"] = json.loads(case.model_dump_json())
+    sink = MetadataRestSink(MetadataRestSinkConfig(), metadata)
+    runner = query_runner(order_rows())
+    sink.write_test_case_results(run_with_samples(validator_class, runner, case))
+    assert metadata.get_failed_rows_sample(case).rows == [[1, -1, "ok"], [2, -2, "ok"], [3, -3, "ok"]]
+
+    unsupported = build_test_case(
+        entity_link, "SELECT amount AS status FROM {{ table_name }} WHERE amount < 0", entity_type
+    )
+    unsupported.id = case.id
+    unsupported.fullyQualifiedName = case.fullyQualifiedName
+    sink.write_test_case_results(run_with_samples(validator_class, runner, unsupported))
+
+    assert metadata.get_failed_rows_sample(case) is None
+    assert state["sample"] is None
+    assert state["result"]["failedRows"] == NEGATIVE_ROWS
+    assert state["query"] == "SELECT amount AS status FROM main.orders WHERE amount < 0"
+    assert state["events"] == ["result", "sample", "query", "result", "delete", "query"]
+
+
+@pytest.mark.parametrize("mode", ["disabled", "fetch-error"])
+def test_missing_sample_without_clear_intent_preserves_persisted_sample(sample_api, mode):
+    metadata, state = sample_api
+    case = TestCase.model_validate(
+        {
+            **build_test_case(
+                TABLE_LINK, "SELECT * FROM {{ table_name }} WHERE amount < 0", EntityType.TABLE
+            ).model_dump(),
+            "id": uuid4(),
+            "fullyQualifiedName": "service.db.main.orders.no_negative_amounts",
+        }
+    )
+    state["case"] = json.loads(case.model_dump_json())
+    sink = MetadataRestSink(MetadataRestSinkConfig(), metadata)
+    runner = query_runner(order_rows())
+    sink.write_test_case_results(run_with_samples(SQATableValidator, runner, case))
+    original = metadata.get_failed_rows_sample(case)
+    if mode == "disabled":
+        case.computePassedFailedRowCount = False
+        response = run_with_samples(SQATableValidator, runner, case)
+    else:
+        with patch.object(SQATableValidator, "fetch_failed_rows_sample", side_effect=RuntimeError("unavailable")):
+            response = run_with_samples(SQATableValidator, runner, case)
+    assert response.clearFailedRowsSample is False
+    sink.write_test_case_results(response)
+    assert metadata.get_failed_rows_sample(case) == original
+
+
+@pytest.mark.parametrize("delete_status", [404, 403])
+def test_delete_boundary_errors_preserve_results_and_inspection_query(sample_api, delete_status, caplog):
+    metadata, state = sample_api
+    case = TestCase.model_validate(
+        {
+            **build_test_case(
+                TABLE_LINK, "SELECT amount AS status FROM {{ table_name }} WHERE amount < 0", EntityType.TABLE
+            ).model_dump(),
+            "id": uuid4(),
+            "fullyQualifiedName": "service.db.main.orders.no_negative_amounts",
+        }
+    )
+    state["case"] = json.loads(case.model_dump_json())
+    state["delete_status"] = delete_status
+    response = run_with_samples(SQATableValidator, query_runner(order_rows()), case)
+    MetadataRestSink(MetadataRestSinkConfig(), metadata).write_test_case_results(response)
+    assert state["result"]["failedRows"] == NEGATIVE_ROWS
+    assert state["query"] == response.inspectionQuery
+    assert state["events"] == ["result", "delete", "query"]
+    if delete_status == 403:
+        assert "Failed to clear failed rows sample" in caplog.text
+        with pytest.raises(APIError):
+            metadata.delete_failed_rows_sample(case)
+    else:
+        metadata.delete_failed_rows_sample(case)
+
+
 class TestSQARuleLibraryFailedRowsSample:
+    @pytest.mark.parametrize(VARIANT_PARAMS, SQA_VARIANTS)
+    @pytest.mark.parametrize(
+        "unsafe_sql",
+        [
+            "SELECT amount AS status FROM {{ table_name }} WHERE amount < 0",
+            "SELECT amount status FROM {{ table_name }} WHERE amount < 0",
+            "SELECT amount + 1 AS status FROM {{ table_name }} WHERE amount < 0",
+            "SELECT a.amount FROM {{ table_name }} a JOIN {{ table_name }} b ON a.id = b.id WHERE a.amount < 0",
+            "WITH x AS (SELECT * FROM {{ table_name }}) SELECT * FROM x WHERE amount < 0",
+            "SELECT * FROM (SELECT * FROM {{ table_name }}) x WHERE amount < 0",
+            "SELECT amount FROM {{ table_name }} WHERE amount < 0 UNION ALL SELECT amount FROM {{ table_name }} WHERE 0",
+            "SELECT /*!50000 amount AS */ status FROM {{ table_name }} WHERE amount < 0",
+            "SELECT /*M!100100 amount AS */ status FROM {{ table_name }} WHERE amount < 0",
+        ],
+    )
+    def test_ambiguous_source_output_preserves_result_without_sample(
+        self, validator_class, entity_link, expression, entity_type, unsafe_sql
+    ):
+        response = run_with_samples(
+            validator_class, query_runner(order_rows()), build_test_case(entity_link, unsafe_sql, entity_type)
+        )
+        assert response.testCaseResult.testCaseStatus == TestCaseStatus.Failed
+        assert response.testCaseResult.failedRows == NEGATIVE_ROWS
+        assert response.failedRowsSample is None
+        assert response.clearFailedRowsSample is True
+        assert response.inspectionQuery == unsafe_sql.replace("{{ table_name }}", "main.orders")
+
+    @pytest.mark.parametrize(VARIANT_PARAMS, SQA_VARIANTS)
+    @pytest.mark.parametrize(
+        "safe_sql",
+        [
+            "SELECT * FROM {{ table_name }} WHERE amount < 0",
+            "SELECT o.* FROM {{ table_name }} o WHERE amount < 0",
+            "SELECT o.id, o.amount AS amount FROM {{ table_name }} AS o WHERE amount < 0",
+            'SELECT "id", "amount" AS "amount" FROM {{ table_name }} WHERE amount < 0',
+            "SELECT /* ordinary column documentation */ amount FROM {{ table_name }} WHERE amount < 0",
+        ],
+    )
+    def test_direct_source_output_is_sampled(self, validator_class, entity_link, expression, entity_type, safe_sql):
+        response = run_with_samples(
+            validator_class, query_runner(order_rows()), build_test_case(entity_link, safe_sql, entity_type)
+        )
+        assert response.testCaseResult.failedRows == NEGATIVE_ROWS
+        assert response.failedRowsSample is not None
+        assert len(response.failedRowsSample.rows) == NEGATIVE_ROWS
+        assert response.clearFailedRowsSample is False
+
+    @pytest.mark.parametrize(VARIANT_PARAMS, SQA_VARIANTS)
+    def test_sample_conversion_failure_cannot_change_count(self, validator_class, entity_link, expression, entity_type):
+        with patch(
+            "metadata.data_quality.validations.mixins.failed_row_sampler_mixin._sample_value",
+            side_effect=ValueError("conversion"),
+        ):
+            response = run_with_samples(
+                validator_class, query_runner(order_rows()), build_test_case(entity_link, expression, entity_type)
+            )
+        assert response.testCaseResult.failedRows == NEGATIVE_ROWS
+        assert response.testCaseResult.testCaseStatus == TestCaseStatus.Failed
+        assert response.failedRowsSample is None
+        assert response.clearFailedRowsSample is False
+
     @pytest.mark.parametrize(VARIANT_PARAMS, SQA_VARIANTS)
     def test_failed_run_stores_the_rows_it_counted(self, validator_class, entity_link, expression, entity_type):
         response = run_with_samples(
@@ -232,6 +449,7 @@ class TestSQARuleLibraryFailedRowsSample:
         assert response.testCaseResult.testCaseStatus == TestCaseStatus.Success
         assert response.failedRowsSample is None
         assert response.inspectionQuery is None
+        assert response.clearFailedRowsSample is False
 
     @pytest.mark.parametrize("compute_row_count", [False, None])
     @pytest.mark.parametrize(VARIANT_PARAMS, SQA_VARIANTS)
@@ -246,6 +464,7 @@ class TestSQARuleLibraryFailedRowsSample:
 
         assert response.testCaseResult.testCaseStatus == TestCaseStatus.Failed
         assert response.failedRowsSample is None
+        assert response.clearFailedRowsSample is False
 
     @pytest.mark.parametrize(
         "expression",
@@ -356,6 +575,70 @@ def test_inspection_query_shows_percent_signs_as_written(dialect):
     )
 
     assert rendered == "SELECT * FROM orders WHERE status LIKE 'o%' AND note = '50%'"
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT amount FROM other.orders",
+        "SELECT * EXCEPT (status) FROM main.orders",
+        "SELECT * REPLACE (amount AS status) FROM main.orders",
+        "SELECT amount FROM main.orders; SELECT amount FROM main.orders",
+        "SELECT amount FROM main.orders PIVOT (SUM(amount) FOR status IN ('ok'))",
+        "SELECT unknown.amount FROM main.orders",
+    ],
+)
+def test_unattributable_sql_is_not_sampled(sql):
+    assert (
+        table_columns_sample(
+            Order.__table__,
+            ["amount"],
+            [[-1]],
+            sql=sql,
+            table_reference="main.orders",
+            dialect=SQLiteDialect_pysqlite(),
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize("marker", ["/*!", "/*!50000", "/*M!", "/*M!100100", "/*m!100100"])
+def test_mysql_executable_comments_cannot_hide_renamed_source_values(marker):
+    sql = f"SELECT {marker} amount AS */ status FROM main.orders WHERE amount < 0"
+    assert is_safe_sql_query(sql)
+    # MySQL/MariaDB can execute the comment's projection; SQLGlot sees only `status`.
+    sample = table_columns_sample(
+        Order.__table__, ["status"], [[-1]], sql=sql, table_reference="main.orders", dialect=MySQLDialect_pymysql()
+    )
+    assert sample is None
+
+
+@pytest.mark.parametrize("backslash_escapes", [False, True, None])
+def test_mysql_mode_dependent_backslash_cannot_hide_a_union(backslash_escapes):
+    dialect = MySQLDialect_pymysql()
+    dialect._backslash_escapes = backslash_escapes
+    sql = "SELECT status FROM main.orders WHERE status = 'x\\' UNION SELECT amount FROM main.orders -- '"
+    assert is_safe_sql_query(sql)
+    sample = table_columns_sample(
+        Order.__table__, ["status"], [[-1]], sql=sql, table_reference="main.orders", dialect=dialect
+    )
+    assert sample is None
+
+
+@pytest.mark.parametrize(
+    "dialect,reference,sql,safe",
+    [
+        (PGDialect_psycopg2(), '"main"."orders"', 'SELECT "amount" FROM "main"."orders"', True),
+        (PGDialect_psycopg2(), '"main"."orders"', 'SELECT amount AS "Amount" FROM main.orders', False),
+        (MySQLDialect_pymysql(), "`main`.`orders`", "SELECT o.`amount` FROM `main`.`orders` o", True),
+        (SQLiteDialect_pysqlite(), "main.orders", "SELECT amount FROM orders", False),
+    ],
+)
+def test_source_matching_respects_execution_dialect(dialect, reference, sql, safe):
+    sample = table_columns_sample(
+        Order.__table__, ["amount"], [[-1]], sql=sql, table_reference=reference, dialect=dialect
+    )
+    assert (sample is not None) is safe
 
 
 class TestPandasRuleLibraryFailedRowsSample:
