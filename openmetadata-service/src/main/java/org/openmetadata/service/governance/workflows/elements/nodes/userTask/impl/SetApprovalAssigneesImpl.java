@@ -62,6 +62,14 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
+      // Returning an incident to triage must not immediately reassign its owner or candidates.
+      if (Boolean.TRUE.equals(
+          execution.getVariable(WorkflowStartVariables.INCIDENT_ASSIGNEES_CLEARED))) {
+        execution.setVariable(
+            assigneesVarNameExpr.getValue(execution).toString(), JsonUtils.pojoToJson(List.of()));
+        execution.setVariable("hasAssignees", true);
+        return;
+      }
       InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
       Map<String, Object> assigneesConfig =
           JsonUtils.readOrConvertValue(assigneesExpr.getValue(execution), Map.class);
@@ -106,6 +114,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
                 resolveCandidateIds(assigneesConfig.get("candidateIds"))));
         // Process addReviewers flag
         Boolean addReviewers = (Boolean) assigneesConfig.getOrDefault("addReviewers", true);
+        boolean ownersAssignable = isOwnerAutoAssignmentEnabled(execution);
         if (addReviewers) {
           List<EntityReference> effectiveReviewers =
               entitySupportsReviewers
@@ -115,14 +124,17 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
             List<String> reviewerAssignees =
                 getEntityLinkStringFromEntityReferenceWithTeamExpansion(effectiveReviewers);
             assignees.addAll(reviewerAssignees);
-          } else if (!entitySupportsReviewers
+          } else if (ownersAssignable
+              && !entitySupportsReviewers
               && entity.getOwners() != null
               && !entity.getOwners().isEmpty()) {
             // Fallback to owners if entity doesn't support reviewers
             List<String> ownerAssignees =
                 getEntityLinkStringFromEntityReferenceWithTeamExpansion(entity.getOwners());
             assignees.addAll(ownerAssignees);
-          } else if (addReviewers && entity.getOwners() != null && !entity.getOwners().isEmpty()) {
+          } else if (ownersAssignable
+              && entity.getOwners() != null
+              && !entity.getOwners().isEmpty()) {
             // Final fallback to owners if no reviewers exist and addReviewers is true
             List<String> ownerAssignees =
                 getEntityLinkStringFromEntityReferenceWithTeamExpansion(entity.getOwners());
@@ -132,7 +144,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
 
         // Process addOwners flag
         Boolean addOwners = (Boolean) assigneesConfig.getOrDefault("addOwners", false);
-        if (addOwners && entity.getOwners() != null) {
+        if (addOwners && ownersAssignable && entity.getOwners() != null) {
           List<String> ownerAssignees =
               getEntityLinkStringFromEntityReferenceWithTeamExpansion(entity.getOwners());
           assignees.addAll(ownerAssignees);
@@ -246,6 +258,11 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       varHandler.setGlobalVariable(EXCEPTION_VARIABLE, ExceptionUtils.getStackTrace(exc));
       throw new BpmnError(WORKFLOW_RUNTIME_EXCEPTION, exc.getMessage());
     }
+  }
+
+  // Unset means on: only a workflow that explicitly turned owner auto-assignment off skips owners.
+  private static boolean isOwnerAutoAssignmentEnabled(DelegateExecution execution) {
+    return !Boolean.FALSE.equals(execution.getVariable(WorkflowStartVariables.AUTO_ASSIGN_OWNERS));
   }
 
   private List<EntityReference> resolveDomainOwners(

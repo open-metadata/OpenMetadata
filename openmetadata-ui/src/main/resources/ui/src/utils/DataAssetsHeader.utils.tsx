@@ -59,7 +59,7 @@ import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize, getSafeHttpUrl } from './StringUtils';
 import { getUsagePercentile } from './TablePureUtils';
 
-// A creation time before the Unix epoch is the year-0001 placeholder older ingestion stored for a
+// A life cycle time before the Unix epoch is the year-0001 placeholder older ingestion stored for a
 // source that reported none (ADR:2026-10-29-lifecycle-timestamps-before-the-epoch-are-dropped-on-write).
 export const isRecordedLifeCycleTimestamp = (
   timestamp?: number
