@@ -67,6 +67,10 @@ MAX_DATABASES_TO_SCAN = 1000
 # Ingestion keeps the first 128 characters of a Glue table name and filters on that.
 TABLE_NAME_MAX_LENGTH = 128
 
+DATA_QUALITY_PERMISSIONS = (
+    "glue:ListDataQualityResults, glue:BatchGetDataQualityResult and glue:ListDataQualityRulesets"
+)
+
 
 # Only what is specific to Glue: its IAM actions and its not-found code.
 # Authentication, region, endpoint and network failures come from AWS_ERRORS.
@@ -74,7 +78,7 @@ GLUE_ERRORS = ErrorPack(
     when(aws_code("AccessDenied", "AccessDeniedException")).diagnose(
         "Not authorized",
         fix="Grant glue:GetDatabases and glue:GetTables to the identity used, and check any "
-        "Lake Formation permissions on the catalog.",
+        f"Lake Formation permissions on the catalog. Data Quality ingestion also needs {DATA_QUALITY_PERMISSIONS}.",
     ),
     # Only from GetTables; a GetDatabases listing returns an empty list instead.
     when(aws_code("EntityNotFoundException")).diagnose(
@@ -275,6 +279,27 @@ def list_tables(client: Any, filters: GlueFilters | None = None, limit: int = DE
     )
 
 
+def list_data_quality_results(client: Any) -> Evidence:
+    """Prove Data Quality results can be read. One page of one result is enough:
+    the step is optional and only matters when Data Quality ingestion is enabled."""
+    command = "glue:ListDataQualityResults"
+    try:
+        results = client.list_data_quality_results(MaxResults=1).get("Results", [])
+    except Exception as cause:
+        raise CheckError(cause, Evidence(command=command)) from cause
+    if not results:
+        return Evidence(
+            summary="no Data Quality results",
+            command=command,
+            caveat=Diagnosis(
+                title="No Data Quality results visible",
+                remediation="No Glue Data Quality ruleset has run in awsRegion yet, so Data Quality "
+                "ingestion would collect nothing.",
+            ),
+        )
+    return Evidence(summary="Data Quality results available", command=command)
+
+
 def _no_tables_caveat() -> Diagnosis:
     return Diagnosis(
         title="No tables visible",
@@ -329,9 +354,12 @@ class GlueChecks:
 
     errors = GLUE_ERRORS
 
-    def __init__(self, catalog: Borrowed[Any], filters: GlueFilters | None = None) -> None:
+    def __init__(
+        self, catalog: Borrowed[Any], filters: GlueFilters | None = None, include_data_quality: bool = False
+    ) -> None:
         self._catalog = catalog
         self._filters = filters or GlueFilters()
+        self._include_data_quality = include_data_quality
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
@@ -340,6 +368,13 @@ class GlueChecks:
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
         return list_tables(self._catalog.client, self._filters)
+
+    @check(DatabaseStep.GetDataQualityResults)
+    def get_data_quality_results(self) -> Evidence:
+        # Services that never enabled Data Quality may lack the permission; probing would warn them for nothing.
+        if not self._include_data_quality:
+            return Evidence(summary="Data Quality ingestion is disabled")
+        return list_data_quality_results(self._catalog.client)
 
 
 class GlueConnection(BaseConnection[GlueConnectionConfig, Any]):
@@ -355,7 +390,9 @@ class GlueConnection(BaseConnection[GlueConnectionConfig, Any]):
         self._filters = filters
 
     def checks(self) -> ChecksProvider:
+        data_quality = self.service_connection.dataQualityConfig
         return GlueChecks(
             catalog=self.borrow(),
             filters=self._filters or GlueFilters.of(self.service_connection),
+            include_data_quality=bool(data_quality and data_quality.includeDataQuality),
         )

@@ -69,8 +69,10 @@ def _paginator(pages: list[dict]) -> MagicMock:
     return paginator
 
 
-def _checks(client=None, **filters: FilterPattern) -> GlueChecks:
-    return GlueChecks(catalog=Borrowed.of(client), filters=GlueFilters(**filters))
+def _checks(client=None, *, include_data_quality: bool = True, **filters: FilterPattern) -> GlueChecks:
+    return GlueChecks(
+        catalog=Borrowed.of(client), filters=GlueFilters(**filters), include_data_quality=include_data_quality
+    )
 
 
 def _check_names() -> set[str]:
@@ -94,7 +96,7 @@ def test_get_client_builds_the_glue_client():
 
 
 def test_glue_checks_cover_expected_steps():
-    assert _check_names() == {"GetDatabases", "GetTables"}
+    assert _check_names() == {"GetDatabases", "GetTables", "GetDataQualityResults"}
 
 
 def test_glue_checks_match_definition_seed():
@@ -668,3 +670,53 @@ def test_error_pack_inherits_the_network_pack_through_aws_errors():
 
 def test_error_pack_unmatched_returns_none():
     assert GLUE_ERRORS.classify(Exception("novel error")) is None
+
+
+def test_get_data_quality_results_reports_available_results():
+    client = MagicMock()
+    client.list_data_quality_results.return_value = {"Results": [{"ResultId": "dqresult-1"}]}
+
+    evidence = _checks(client).get_data_quality_results()
+
+    client.list_data_quality_results.assert_called_once_with(MaxResults=1)
+    assert evidence.summary == "Data Quality results available"
+    assert evidence.caveat is None
+
+
+def test_get_data_quality_results_warns_when_no_ruleset_has_run():
+    client = MagicMock()
+    client.list_data_quality_results.return_value = {"Results": []}
+
+    evidence = _checks(client).get_data_quality_results()
+
+    assert evidence.caveat is not None
+    assert "No Data Quality results visible" in evidence.caveat.title
+
+
+@pytest.mark.parametrize("include_data_quality", [False, True])
+def test_data_quality_step_reads_aws_only_when_data_quality_ingestion_is_enabled(include_data_quality):
+    client = MagicMock()
+    client.list_data_quality_results.return_value = {"Results": [{"ResultId": "dqresult-1"}]}
+    config = GlueConnectionConfig.model_validate(
+        {"awsConfig": {"awsRegion": "us-east-1"}, "dataQualityConfig": {"includeDataQuality": include_data_quality}}
+    )
+
+    with patch.object(GlueConnection, "_get_client", return_value=client):
+        evidence = GlueConnection(config).checks().get_data_quality_results()
+
+    assert client.list_data_quality_results.called is include_data_quality
+    assert evidence.caveat is None
+    if not include_data_quality:
+        assert evidence.summary == "Data Quality ingestion is disabled"
+
+
+def test_get_data_quality_results_failure_reports_the_command_it_ran():
+    client = MagicMock()
+    cause = _client_error("AccessDeniedException", "ListDataQualityResults")
+    client.list_data_quality_results.side_effect = cause
+
+    with pytest.raises(CheckError) as failure:
+        _checks(client).get_data_quality_results()
+
+    assert failure.value.cause is cause
+    assert failure.value.evidence.command == "glue:ListDataQualityResults"

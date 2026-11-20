@@ -12,6 +12,8 @@
 Glue source models.
 """
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -73,3 +75,70 @@ class GlueTable(BaseModel):
 
 class TablePage(BaseModel):
     TableList: list[GlueTable] | None = []
+
+
+class GlueDataQualityTable(BaseModel):
+    DatabaseName: str
+    TableName: str
+    CatalogId: str | None = None
+
+
+class DataQualityDataSource(BaseModel):
+    GlueTable: GlueDataQualityTable | None = None
+    # Set instead of GlueTable when the ruleset runs with a pre-processing query.
+    DataQualityGlueTable: GlueDataQualityTable | None = None
+
+    @property
+    def table(self) -> GlueDataQualityTable | None:
+        return self.GlueTable or self.DataQualityGlueTable
+
+
+class DataQualityRuleResult(BaseModel):
+    Name: str
+    Result: str
+    Description: str | None = None
+    EvaluatedRule: str | None = None
+    EvaluationMessage: str | None = None
+    # Glue types the values NullableDouble.
+    EvaluatedMetrics: dict[str, float | None] | None = None
+
+    @property
+    def rule(self) -> str:
+        """The DQDL rule evaluated. ETL job runs report it in EvaluatedRule; catalog
+        ruleset runs leave that empty and report it in Description."""
+        return self.EvaluatedRule or self.Description or self.Name
+
+    @property
+    def rule_description(self) -> str | None:
+        return self.Description if self.Description != self.rule else None
+
+
+class DataQualityResult(BaseModel):
+    ResultId: str
+    Score: float | None = None
+    DataSource: DataQualityDataSource | None = None
+    RulesetName: str | None = None
+    EvaluationContext: str | None = None
+    JobName: str | None = None
+    StartedOn: datetime | None = None
+    CompletedOn: datetime | None = None
+    RuleResults: list[DataQualityRuleResult] | None = []
+
+    @property
+    def filter_name(self) -> str | None:
+        """What rulesetFilterPattern matches: the ruleset name, else the Data Quality node name."""
+        return self.RulesetName or self.EvaluationContext or self.JobName
+
+    @property
+    def scope(self) -> str | None:
+        """Groups the rules of one evaluation. An ETL job result may carry no ruleset name, and
+        its node name is unique only within its job, so the job name qualifies it."""
+        if self.RulesetName:
+            return self.RulesetName
+        if self.JobName and self.EvaluationContext:
+            return f"{self.JobName}_{self.EvaluationContext}"
+        return self.EvaluationContext or self.JobName
+
+    @property
+    def finished_at(self) -> datetime | None:
+        return self.CompletedOn or self.StartedOn
