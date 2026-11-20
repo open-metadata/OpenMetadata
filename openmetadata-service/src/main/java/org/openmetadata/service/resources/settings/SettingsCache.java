@@ -34,6 +34,7 @@ import com.cronutils.utils.StringUtils;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -78,6 +79,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.system.SearchSettingsHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.security.auth.validator.SamlIdpCertificateGate;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -98,6 +100,22 @@ public class SettingsCache {
     if (!initialized) {
       initialized = true;
       createDefaultConfiguration(config);
+    }
+  }
+
+  /**
+   * The first start stores the authentication configuration of openmetadata.yaml, and the stored
+   * copy wins from then on. A SAML IdP certificate a save would refuse is never stored: the start
+   * stops instead, while fixing the deployment value is still enough.
+   */
+  private static void requireUsableIdpCertificate(AuthenticationConfiguration authConfig) {
+    try {
+      SamlIdpCertificateGate.requireUsable(authConfig, null);
+    } catch (BadRequestException refused) {
+      throw new IllegalStateException(
+          "authenticationConfiguration from openmetadata.yaml was not stored: "
+              + refused.getMessage(),
+          refused);
     }
   }
 
@@ -271,6 +289,7 @@ public class SettingsCache {
     if (storedAuthConfig == null) {
       AuthenticationConfiguration authConfig = applicationConfig.getAuthenticationConfiguration();
       if (authConfig != null) {
+        requireUsableIdpCertificate(authConfig);
         Settings setting =
             new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
 
