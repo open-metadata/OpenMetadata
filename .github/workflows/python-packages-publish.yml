@@ -37,10 +37,9 @@ jobs:
           TWINE_USERNAME: '${{ secrets.TWINE_OPENMETADATA_INGESTION_USERNAME }}'
           TWINE_PASSWORD: '${{ secrets.TWINE_OPENMETADATA_INGESTION_PASSWORD }}'
         run: |
-          python3 -m venv env
-          source env/bin/activate
           sudo make install_antlr_cli
           make install_dev generate
+          source env/bin/activate
           cd ingestion; \
             python -m build; \
             twine check dist/*; \
@@ -50,9 +49,9 @@ jobs:
           TWINE_USERNAME: '${{ secrets.TWINE_OPENMETADATA_AIRFLOW_MANAGED_APIS_USERNAME }}'
           TWINE_PASSWORD: '${{ secrets.TWINE_OPENMETADATA_AIRFLOW_MANAGED_APIS_PASSWORD }}'
         run: |
-          python3 -m venv env
+          make install_dev
           source env/bin/activate
-          make install_dev install_apis
+          make install_apis
           cd openmetadata-airflow-apis; \
             python -m build; \
             twine check dist/*; \

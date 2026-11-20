@@ -41,8 +41,5 @@ runs:
       if: inputs.is_ingestion == 'true'
       shell: bash
       run: |-
-        python3 -m venv env
-        source env/bin/activate
-        pip install --upgrade pip
         sudo make install_antlr_cli
         make install_dev generate
