@@ -143,6 +143,22 @@ class TestListingErrorIsolation:
         assert uc_source.status.failures[0].name == "catalogs"
         assert "429 Too Many Requests" in uc_source.status.failures[0].error
 
+    def test_catalog_listing_includes_browse_only_catalogs(self, uc_source):
+        uc_source.client.catalogs.list.return_value = [
+            CatalogInfo(name="metadata_only", browse_only=True)
+        ]
+        assert list(uc_source.get_database_names_raw()) == ["metadata_only"]
+        uc_source.client.catalogs.list.assert_called_once_with(include_browse=True)
+
+    def test_schema_listing_includes_browse_only_schemas(self, uc_source):
+        uc_source.client.schemas.list.return_value = [
+            SchemaInfo(catalog_name="hive_metastore", name="metadata_only")
+        ]
+        assert list(uc_source.get_database_schema_names()) == ["metadata_only"]
+        uc_source.client.schemas.list.assert_called_once_with(
+            catalog_name="hive_metastore", include_browse=True
+        )
+
     def test_catalog_listing_immediate_failure_records_status(self, uc_source):
         uc_source.client.catalogs.list.side_effect = Exception("503 Service Unavailable")
 
