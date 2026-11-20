@@ -1,9 +1,9 @@
-# The stored SAML IdP certificate is standard PEM: the server reads it strictly, a migration rewrites older layouts once, and every way in from the deployment is checked
+# The stored SAML IdP certificate is standard PEM: the server reads it strictly, a migration rewrites older layouts once, and every way in is checked
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-20 (initial)
 - **Deciders:** Adrià Manero
-- **Guard:** `IdpCertificatePemTest` and `SamlIdpCertificateMigrationTest` (the layouts the step rewrites and the values it leaves alone); `SamlIdpCertificateGateTest` and the SAML cases of `DeploymentConfigReconcilerTest` (what reaches the database from the deployment)
+- **Guard:** `IdpCertificatePemTest` and `SamlIdpCertificateMigrationTest` (the layouts the step rewrites and the values it leaves alone); `SamlIdpCertificateGateTest`, the SAML cases of `DeploymentConfigReconcilerTest`, `OpenMetadataOperationsSecurityConfigTest` and `SsoSamlIdpCertificateIT` (what reaches the database from each way in)
 - **Related:** #37056; PR #38197, PR #38219 and PR #38302 (the strict reader); ADR:2026-11-11-a-data-migration-carries-its-own-logic
 
 ## Context
@@ -18,9 +18,10 @@ standard PEM (CRLF line breaks and lines of other lengths included) and bare bas
 those three layouts. The certificate is read while the server starts, so a stored value in one of
 them stops the server from starting after the upgrade.
 
-The certificate can also come from the deployment (`SAML_IDP_CERTIFICATE` in `openmetadata.yaml`).
-That value used to reach the database without the check a save runs: on the first start, which
-seeds the setting, and on main and 2.1 on every start that reconciles it.
+The UI saves the configuration with a PATCH, which runs the full validation, certificate included.
+Four other ways wrote it without that check: the first start, which seeds the setting from the
+deployment (`SAML_IDP_CERTIFICATE` in `openmetadata.yaml`); on main and 2.1 every start that
+reconciles it; a PUT of the security configuration; and the `update-security-config` command.
 
 ## Decision
 
@@ -36,16 +37,17 @@ seeds the setting, and on main and 2.1 on every start that reconciles it.
    of the authentication configuration changes.
 4. The step lives in 2.0.10 on every branch, so a database upgraded from 2.0.9 to 2.0.10 does not
    run it again on 2.1, and a database already on 2.1.0 runs it on its next upgrade.
-5. **A certificate from the deployment is stored only after it passed the check a save runs.**
-   `SamlIdpCertificateGate` calls `SamlValidator.validateIdpCertificate`, the same check, so there
-   is one rule. It runs when the first start seeds the setting and, on main and 2.1, when a start
-   reconciles it. It checks only a certificate that is new or differs from the stored one: a
-   stored certificate that expired since it was saved keeps working at runtime, and an unchanged
-   value must not stop a restart.
-6. **A refused certificate is never stored.** A first start stops with a message that names the
-   field. A reconciled value follows the setting's mode: in `AUTO` and `DB` the stored value stays
-   and the error is logged on every start until the deployment value is fixed; in `ENV` the start
-   stops.
+5. **Every way in checks the certificate before it is stored**: the UI and any PATCH (the full
+   validation), and a PUT, the `update-security-config` command, the first-start seed and, on main
+   and 2.1, the reconcile (`SamlIdpCertificateGate`). The gate calls
+   `SamlValidator.validateIdpCertificate`, the check the full validation runs, so there is one
+   rule. It checks only a certificate that is new or differs from the stored one: a stored
+   certificate that expired since it was saved keeps working at runtime, so sending it back
+   unchanged or restarting with it must not fail.
+6. **A refused certificate is never stored.** A PUT answers 400 and the command exits non-zero,
+   both naming the field. A first start stops with that message. A reconciled value follows the
+   setting's mode: in `AUTO` and `DB` the stored value stays and the error is logged on every
+   start until the deployment value is fixed; in `ENV` the start stops.
 
 ## Consequences
 
