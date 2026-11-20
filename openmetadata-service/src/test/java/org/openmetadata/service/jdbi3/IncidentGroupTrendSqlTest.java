@@ -101,7 +101,7 @@ class IncidentGroupTrendSqlTest {
     jdbi.useHandle(
         handle -> {
           handle.execute(
-              "CREATE TABLE test_case (fqnHash VARCHAR(36), tableFqn VARCHAR(36), deleted BOOLEAN)");
+              "CREATE TABLE test_case_incident_dimension (fqnHash VARCHAR(36), tableFqn VARCHAR(36), deleted BOOLEAN)");
           handle.execute(
               "CREATE TABLE test_case_incident (stateId VARCHAR(36) PRIMARY KEY, entityFQNHash VARCHAR(768), createdAt BIGINT, updatedAt BIGINT, latestRecordId VARCHAR(36), testCaseResolutionStatusType VARCHAR(36), assignee VARCHAR(256), severity VARCHAR(36))");
           handle.execute(
@@ -111,7 +111,7 @@ class IncidentGroupTrendSqlTest {
           handle.execute(
               "CREATE INDEX incident_history_state_timestamp ON test_case_resolution_status_time_series (stateId, timestamp)");
           handle.execute(
-              "INSERT INTO test_case VALUES ('test', 'table', FALSE), ('other', 'other_table', FALSE), ('deleted', 'table', TRUE)");
+              "INSERT INTO test_case_incident_dimension VALUES ('test', 'table', FALSE), ('other', 'other_table', FALSE), ('deleted', 'table', TRUE)");
           handle.execute(
               "INSERT INTO test_case_incident (stateId, entityFQNHash, createdAt) VALUES ('a','test',50),('b','test',110),('c','test',120),('d','test',700),('e','other',50),('f','deleted',50),"
                   + "('g','test',10),('h','test',10),('j','test',10),('k','test',10)");

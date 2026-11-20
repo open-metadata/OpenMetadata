@@ -93,7 +93,7 @@ class IncidentGroupQueriesSqlTest {
 
   private void runChecks(Jdbi jdbi, boolean mysql) {
     jdbi.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
-    createFixture(jdbi);
+    createFixture(jdbi, mysql);
     var config = mock(DatasourceConfig.class);
     when(config.isMySQL()).thenReturn(mysql);
     try (MockedStatic<DatasourceConfig> datasource = mockStatic(DatasourceConfig.class)) {
@@ -102,7 +102,7 @@ class IncidentGroupQueriesSqlTest {
     }
   }
 
-  private void createFixture(Jdbi jdbi) {
+  private void createFixture(Jdbi jdbi, boolean mysql) {
     jdbi.useHandle(
         handle -> {
           handle.execute(
@@ -117,6 +117,16 @@ class IncidentGroupQueriesSqlTest {
               "INSERT INTO entity_relationship VALUES ('d1','t1','testDefinition','testCase',0),('d2','t2','testDefinition','testCase',0),('d1','t4','testDefinition','testCase',0),('owner','t1','user','testCase',8),('owner','t2','user','testCase',8)");
           handle.execute(
               "INSERT INTO test_case_incident VALUES ('i1','f1','Assigned','Severity1','alice',1,2),('i2','f1','New','Severity2',NULL,2,3),('i3','f2','Ack','Severity2','alice',3,4),('i4','f3','New','Severity3',NULL,4,5),('i5','f1','Resolved','Severity1','alice',5,6),('i6','f4','New','Severity1',NULL,6,7)");
+          String tableFqn =
+              mysql
+                  ? "TRIM(TRAILING '>' FROM SUBSTRING_INDEX(SUBSTRING_INDEX(entityLink,'::',3),'::',-1))"
+                  : "TRIM(TRAILING '>' FROM SPLIT_PART(entityLink,'::',3))";
+          handle.execute(
+              "CREATE TABLE test_case_incident_dimension AS SELECT id,fqnHash,deleted,"
+                  + tableFqn
+                  + " AS tableFqn FROM test_case");
+          handle.execute(
+              "CREATE TABLE test_case_incident_definition AS SELECT fromId,toId FROM entity_relationship WHERE fromEntity='testDefinition' AND toEntity='testCase' AND relation=0");
         });
   }
 
