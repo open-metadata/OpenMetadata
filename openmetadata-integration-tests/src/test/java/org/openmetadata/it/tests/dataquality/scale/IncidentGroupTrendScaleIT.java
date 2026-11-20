@@ -73,6 +73,7 @@ class IncidentGroupTrendScaleIT {
       throws Exception {
     Jdbi jdbi = TestSuiteBootstrap.getJdbi();
     Fixture fixture = seedFixture(namespace, jdbi);
+    analyzeFixtureTables(jdbi);
     assertIntervalCount(jdbi, fixture);
     assertApplicationReadsFixture(fixture.tables().getFirst());
     List<Measurement> measurements = new ArrayList<>();
@@ -188,6 +189,24 @@ class IncidentGroupTrendScaleIT {
                     .withUpdatedAt((event + 1) * 100L)
                     .withTestCaseResolutionStatusType(statuses.get(event)))
         .toList();
+  }
+
+  // A bulk fixture can reach reads and cleanup before auto-analyze notices its new rows.
+  // Publish planner statistics explicitly so the run does not depend on that background timing.
+  private void analyzeFixtureTables(Jdbi jdbi) throws Exception {
+    String command =
+        TestSuiteBootstrap.getConnectionType() == ConnectionType.MYSQL
+            ? "ANALYZE TABLE "
+            : "ANALYZE ";
+    jdbi.useHandle(
+        handle -> {
+          try (var statement = handle.getConnection().createStatement()) {
+            statement.execute(
+                command
+                    + "test_case, test_case_incident, test_case_resolution_status_time_series, "
+                    + "test_case_incident_open_interval, entity_relationship");
+          }
+        });
   }
 
   private void assertIntervalCount(Jdbi jdbi, Fixture fixture) {
