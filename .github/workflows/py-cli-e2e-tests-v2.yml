@@ -90,7 +90,7 @@ jobs:
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: '3.10'
-          classification-models: 'true'
+          profile: test-classification
 
       - name: Run CLI E2E v2 tests
         id: e2e-v2-test

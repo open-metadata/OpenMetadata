@@ -1,0 +1,286 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: ci-nightly
+on:
+  schedule:
+    - cron: 0 1 * * *
+  workflow_dispatch:
+    inputs:
+      connectors:
+        description: CLI E2E connectors as a JSON array (subset of the default list)
+        type: string
+        default: &default-connectors '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol", "powerbi"]'
+permissions:
+  contents: read
+env:
+  DEFAULT_CONNECTORS: *default-connectors
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  plan:
+    name: Select Python workloads
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.versions.outputs.versions }}
+      lowest: ${{ steps.versions.outputs.lowest }}
+      highest: ${{ steps.versions.outputs.highest }}
+      ref: ${{ github.sha }}
+      connectors: ${{ steps.connectors.outputs.connectors }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+          filter: blob:none
+      - name: Read Python versions
+        id: versions
+        run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
+      - name: Select connectors
+        id: connectors
+        env:
+          SELECTED_CONNECTORS: ${{ inputs.connectors }}
+        run: python3 scripts/python_ci.py connectors --output "$GITHUB_OUTPUT"
+  py-checkstyle:
+    name: py-checkstyle
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Run formatting and lint
+        uses: ./.github/actions/python-lint
+        with:
+          python-version: ${{ needs.plan.outputs.highest }}
+  type-checks:
+    name: Python type checks
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Run type checks
+        uses: ./.github/actions/python-static-checks
+        with:
+          python-version: ${{ needs.plan.outputs.lowest }}
+  models:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: ./.github/actions/prepare-classification-models
+  backend:
+    name: Build Backend Distribution
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: ./.github/actions/build-backend
+        with:
+          maven-args: -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
+      - name: Upload backend distribution
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: openmetadata-backend-distribution
+          path: openmetadata-dist/target/openmetadata-*.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+  unit:
+    needs:
+      - plan
+      - models
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ${{ fromJSON(needs.plan.outputs.versions) }}
+    uses: ./.github/workflows/py-unit.yml
+    with:
+      python-version: ${{ matrix.python }}
+      ref: ${{ needs.plan.outputs.ref }}
+      collect-coverage: ${{ matrix.python == needs.plan.outputs.lowest }}
+      run-meta-tests: ${{ matrix.python == needs.plan.outputs.highest }}
+  integration:
+    needs:
+      - plan
+      - models
+      - backend
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ${{ fromJSON(needs.plan.outputs.versions) }}
+    uses: ./.github/workflows/py-integration.yml
+    with:
+      python-version: ${{ matrix.python }}
+      ref: ${{ needs.plan.outputs.ref }}
+      collect-coverage: ${{ matrix.python == needs.plan.outputs.lowest }}
+  cli-e2e:
+    needs:
+      - plan
+      - models
+      - backend
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/py-cli-e2e-tests.yml
+    secrets: inherit
+    with:
+      python-version: ${{ needs.plan.outputs.highest }}
+      ref: ${{ needs.plan.outputs.ref }}
+      connectors: ${{ needs.plan.outputs.connectors }}
+  py-tests-status:
+    name: py-tests-status
+    needs:
+      - plan
+      - py-checkstyle
+      - type-checks
+      - models
+      - backend
+      - unit
+      - integration
+      - cli-e2e
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Verify selected Python workloads
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+          EXPECTED_RESULTS: |
+            {
+              "plan": "success",
+              "py-checkstyle": "success",
+              "type-checks": "success",
+              "models": "success",
+              "backend": "success",
+              "unit": "success",
+              "integration": "success",
+              "cli-e2e": "success"
+            }
+        run: python3 scripts/python_ci.py verify
+  sonar-cloud-coverage-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - plan
+      - unit
+      - integration
+      - cli-e2e
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && contains(fromJSON('["success", "failure"]'), needs.unit.result) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+          # Sonar uses history for blame and new-code analysis.
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: ${{ needs.plan.outputs.highest }}
+      - name: Install uv
+        uses: ./.github/actions/setup-uv
+      - name: Prepare Python tools
+        run: make python_tools
+        shell: bash
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: '*coverage-*'
+          path: artifacts
+      - name: Download CLI test results
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: tests-*
+          path: test-artifacts
+      - name: Download unit and integration test results
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: py-*-test-results-*
+          path: test-artifacts
+      - name: Generate report
+        run: |
+          ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py -s combine-coverage -- \
+            --coverage-dir artifacts --results-dir test-artifacts
+        shell: bash
+      - name: Push Results to Sonar
+        id: push-to-sonar
+        continue-on-error: true
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ingestion/
+      - name: Wait to retry Sonar upload
+        if: ${{ !cancelled() && steps.push-to-sonar.outcome == 'failure' }}
+        run: sleep 20s
+        shell: bash
+      - name: Retry Sonar upload
+        if: ${{ !cancelled() && steps.push-to-sonar.outcome == 'failure' }}
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ingestion/
+  notify:
+    needs:
+      - plan
+      - py-checkstyle
+      - type-checks
+      - models
+      - backend
+      - unit
+      - integration
+      - cli-e2e
+      - py-tests-status
+      - sonar-cloud-coverage-upload
+    if: ${{ always() && !cancelled() && (needs.py-tests-status.result == 'failure' || needs.sonar-cloud-coverage-upload.result == 'failure') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Slack on nightly failure
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload: |
+            {
+              "channel": "C03EYBDDX17",
+              "text": "<!subteam^S0AH093PEQL> Python CI nightly failed on `${{ github.ref_name }}`.\nSelection: ${{ needs.plan.result }}; lint: ${{ needs.py-checkstyle.result }}; types: ${{ needs.type-checks.result }}; models: ${{ needs.models.result }}; backend: ${{ needs.backend.result }}; units: ${{ needs.unit.result }}; integrations: ${{ needs.integration.result }}; CLI E2E: ${{ needs.cli-e2e.result }}; Sonar: ${{ needs.sonar-cloud-coverage-upload.result }}.\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }

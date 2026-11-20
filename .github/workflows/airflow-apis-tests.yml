@@ -48,7 +48,7 @@ jobs:
       uses: actions/checkout@v7
       with:
         ref: ${{ github.event.pull_request.head.sha }}
-        fetch-depth: 0
+        fetch-depth: 1
         filter: blob:none
         persist-credentials: false
     - name: Set up JDK 21
@@ -61,6 +61,8 @@ jobs:
       uses: actions/setup-python@v6
       with:
         python-version: '3.10'
+    - name: Install uv
+      uses: ./.github/actions/setup-uv
 
     - name: Install Ubuntu dependencies
       run: |
@@ -69,17 +71,10 @@ jobs:
         sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
         librdkafka-dev unixodbc-dev libevent-dev libkrb5-dev
 
-    - name: Generate models
-      run: |
-        python3 -m venv env
-        source env/bin/activate
-        sudo make install_antlr_cli
-        make install_dev generate
-
     - name: Install open-metadata dependencies
       run: |
-        source env/bin/activate
-        make install_all install_test PYTHON_TEST_PROFILE=test
+        sudo make install_antlr_cli
+        make install_test PYTHON_TEST_PROFILE=test
 
     - name: Start Server and Ingest Sample Data
       uses: nick-fields/retry@v4

@@ -65,21 +65,23 @@ def assert_report_sources(module: Path) -> None:
         assert line.attrib["hits"] == "1"
 
 
-@pytest.mark.parametrize("from_root", [False, True], ids=["ingestion", "root"])
-def test_nox_coverage_preserves_source_paths(coverage_repository: Path, from_root: bool) -> None:
-    module = coverage_repository / "ingestion"
-    cwd = coverage_repository if from_root else module
+def combine_reports(repo: Path, from_root: bool, *args: str) -> subprocess.CompletedProcess:
     noxfile = "ingestion/noxfile.py" if from_root else "noxfile.py"
-    result = subprocess.run(
-        [sys.executable, "-m", "nox", "--no-venv", "-f", noxfile, "-s", "combine-coverage"],
-        cwd=cwd,
+    return subprocess.run(
+        [sys.executable, "-m", "nox", "--no-venv", "-f", noxfile, "-s", "combine-coverage", "--", *args],
+        cwd=repo if from_root else repo / "ingestion",
         capture_output=True,
         text=True,
         timeout=30,
         check=False,
     )
+
+
+@pytest.mark.parametrize("from_root", [False, True], ids=["ingestion", "root"])
+def test_nox_coverage_preserves_source_paths(coverage_repository: Path, from_root: bool) -> None:
+    result = combine_reports(coverage_repository, from_root)
     assert result.returncode == 0, result.stdout + result.stderr
-    assert_report_sources(module)
+    assert_report_sources(coverage_repository / "ingestion")
 
 
 @pytest.mark.parametrize("from_root", [False, True], ids=["ingestion", "root"])
@@ -105,22 +107,67 @@ def test_nox_coverage_rejects_missing_data(coverage_repository: Path, from_root:
     module = coverage_repository / "ingestion"
     (module / ".coverage.unit").unlink()
     (module / "ci-coverage.xml").write_text("<stale/>\n", encoding="utf-8")
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "nox",
-            "--no-venv",
-            "-f",
-            "ingestion/noxfile.py" if from_root else "noxfile.py",
-            "-s",
-            "combine-coverage",
-        ],
-        cwd=coverage_repository if from_root else module,
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
-    )
+    result = combine_reports(coverage_repository, from_root)
     assert result.returncode != 0, result.stdout + result.stderr
     assert "No data to combine" in result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("from_root", [False, True], ids=["ingestion", "root"])
+def test_coverage_collection_keeps_colliding_junit_names_and_combines_real_data(coverage_repository, from_root):
+    project = coverage_repository / "ingestion"
+    config = coverage_repository / "coverage.ini"
+    config.write_text("[run]\nrelative_files = True\n")
+    source = project / "src/metadata/utils/fqn.py"
+    source.write_text('import sys\nif sys.argv[1] == "unit":\n    result = 1\nelse:\n    result = 2\n')
+    for lane in ["unit", "integration"]:
+        artifact = coverage_repository / "artifacts" / lane
+        artifact.mkdir(parents=True)
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "coverage",
+                "run",
+                "--rcfile",
+                str(config),
+                "--data-file",
+                str(artifact / ".coverage"),
+                str(source),
+                lane,
+            ],
+            cwd=project,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+        assert result.returncode == 0, result.stdout + result.stderr
+        report = coverage_repository / "results" / lane
+        report.mkdir(parents=True)
+        (report / "test-results.xml").write_text(
+            f'<testsuite name="{lane}" tests="1"><testcase name="{lane}"/></testsuite>'
+        )
+    result = combine_reports(
+        coverage_repository,
+        from_root,
+        "--coverage-dir",
+        "artifacts" if from_root else "../artifacts",
+        "--results-dir",
+        "results" if from_root else "../results",
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    xml = ET.parse(project / "ci-coverage.xml").getroot()
+    assert xml.attrib["line-rate"] == "1"
+    assert {ET.parse(p).getroot().attrib["name"] for p in (project / "junit").glob("*.xml")} == {"unit", "integration"}
+
+
+@pytest.mark.parametrize("from_root", [False, True], ids=["ingestion", "root"])
+def test_coverage_collection_fails_without_downloads_despite_local_data(coverage_repository, from_root):
+    result = combine_reports(
+        coverage_repository,
+        from_root,
+        "--coverage-dir",
+        "empty" if from_root else "../empty",
+    )
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "No Python coverage artifacts" in result.stdout + result.stderr

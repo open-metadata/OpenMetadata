@@ -1,0 +1,48 @@
+name: Prepare Python environment
+description: Install Python tools, generate models, and synchronize the locked application dependencies.
+inputs:
+  python-version:
+    description: Python Version to install
+    required: true
+  profile:
+    description: Locked Python environment profile to install
+    default: test
+runs:
+  using: composite
+  steps:
+    - name: Install Ubuntu dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+        libevent-dev python3-dev libkrb5-dev tdsodbc && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
+      shell: bash
+    - name: Setup Python ${{ inputs.python-version }}
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install uv
+      uses: ./.github/actions/setup-uv
+    - name: Install ANTLR
+      run: sudo make install_antlr_cli
+      shell: bash
+    - name: Download classification model archives
+      if: inputs.profile == 'test-classification'
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+      with:
+        name: classification-models
+        path: ${{ runner.temp }}/classification-models
+    - name: Import classification model caches
+      if: inputs.profile == 'test-classification'
+      run: |
+        for archive in "$RUNNER_TEMP"/classification-models/*/model.tar; do
+          python scripts/prepare_classification_models.py import --archive "$archive" --cache-dir "$(uv cache dir)"
+        done
+      shell: bash
+    - name: Install Python dependencies
+      env:
+        PYTHON_PROFILE: ${{ inputs.profile }}
+      run: make install PYTHON_PROFILE="$PYTHON_PROFILE"
+      shell: bash
+    - name: Verify classification models
+      if: inputs.profile == 'test-classification'
+      run: env/bin/python scripts/prepare_classification_models.py verify --project ingestion
+      shell: bash

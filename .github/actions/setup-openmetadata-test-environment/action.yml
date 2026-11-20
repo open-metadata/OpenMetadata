@@ -1,16 +1,13 @@
-name: Setup OpenMetadata Test Environment
-description: Steps needed to have a coherent test environment
+name: Prepare test environment
+description: Prepare Python dependencies and start the requested OpenMetadata server environment.
 
 inputs:
   python-version:
     description: Python Version to install
     required: true
-  classification-models:
-    description: Import model archives and retain models in the test profile
-    default: 'false'
-  java-version:
-    description: Java Version to install
-    default: '21'
+  profile:
+    description: Locked Python profile (dev, test, or test-classification)
+    default: test
   args:
     description: Arguments to pass to run_local_docker.sh
     required: false
@@ -23,10 +20,6 @@ inputs:
     description: Ingestion dependency to pass to run_local_docker.sh
     required: false
     default: "mysql,elasticsearch,sample-data"
-  install-server:
-    description: Whether to install Java, Node, and the OpenMetadata server
-    required: false
-    default: "true"
   fast-mode:
     description: Restore a pre-seeded Playwright fixture (PostgreSQL/OpenSearch or MySQL/Elasticsearch) and start the server on the host
     required: false
@@ -47,96 +40,41 @@ inputs:
     description: Build the ingestion container without installing duplicate host dependencies
     required: false
     default: "false"
-  install-test-dependencies:
-    # Browser-only jobs use the ingestion container and can omit runner test dependencies.
-    description: Install the locked ingestion test dependencies on the runner
-    required: false
-    default: "true"
 
 runs:
   using: composite
   steps:
-    # ---- Install Ubuntu Dependencies ---------------------------------------------
-    - name: Install Ubuntu dependencies
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      run: |
-        sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        libevent-dev python3-dev libkrb5-dev tdsodbc && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
-      shell: bash
-    # ------------------------------------------------------------------------------
-
     # ---- Setup Java --------------------------------------------------------------
-    - name: Setup JDK ${{ inputs.java-version }}
-      if: ${{ inputs.install-server == 'true' && (inputs.fast-mode == 'true' || inputs.lightweight-ingestion != 'true') }}
+    - name: Setup JDK 21
+      if: ${{ inputs.fast-mode == 'true' || inputs.lightweight-ingestion != 'true' }}
       uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
       with:
-        java-version: ${{ inputs.java-version }}
+        java-version: '21'
         distribution: 'temurin'
     # ------------------------------------------------------------------------------
 
     # ---- Setup Node --------------------------------------------------------------
     - name: Use Node.js
-      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
       with:
         node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
 
     - name: Install yarn
-      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       run: corepack enable
       shell: bash
     # ------------------------------------------------------------------------------
 
-    # ---- Setup Python Test Environment -------------------------------------------
-    - name: Setup Python ${{ inputs.python-version }}
-      id: setup-python
+    - name: Prepare Python environment
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      uses: ./.github/actions/prepare-python-environment
       with:
         python-version: ${{ inputs.python-version }}
-
-    - name: Install uv
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
-      with:
-        enable-cache: false
-        version-file: ingestion/pyproject.toml
-
-    - name: Generate Models
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      run: |
-        python3 -m venv env
-        source env/bin/activate
-        sudo make install_antlr_cli
-        uv pip install "${{ github.workspace }}/ingestion[dev]"
-        make generate
-      shell: bash
-
-    - name: Install test dependencies
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
-      run: |
-        source env/bin/activate
-        make install_test PYTHON_TEST_PROFILE=test
-      shell: bash
-
-    - name: Download classification model archives
-      if: inputs.classification-models == 'true'
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-      with:
-        name: classification-models
-        path: ${{ runner.temp }}/classification-models
-
-    - name: Import classification model caches
-      if: inputs.classification-models == 'true'
-      run: |
-        for archive in "$RUNNER_TEMP"/classification-models/*/model.tar; do
-          python scripts/prepare_classification_models.py import --archive "$archive" --cache-dir "$(uv cache dir)"
-        done
-      shell: bash
+        profile: ${{ inputs.profile }}
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
     - name: Configure Test Session Limit
-      if: ${{ inputs.install-server == 'true' }}
       run: |
         if [ -z "${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-}" ]; then
           echo "AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER=10000" >> "$GITHUB_ENV"
@@ -144,7 +82,7 @@ runs:
       shell: bash
 
     - name: Start Server and Ingest Sample Data
-      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' }}
+      if: ${{ inputs.fast-mode != 'true' }}
       uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4
       env:
         INGESTION_DEPENDENCY: ${{ inputs.ingestion_dependency }}
@@ -156,7 +94,7 @@ runs:
 
     # ADR:2026-10-28-playwright-fast-mode-pulls-images-outside-the-startup-budget
     - name: Pull fast Playwright environment images
-      if: ${{ inputs.install-server == 'true' && inputs.fast-mode == 'true' }}
+      if: ${{ inputs.fast-mode == 'true' }}
       run: |
         # Assigned rather than read through process substitution, whose exit
         # status is lost: an unreadable fixture must fail here, not skip the pull.
@@ -168,7 +106,7 @@ runs:
       shell: bash
 
     - name: Restore fast Playwright environment
-      if: ${{ inputs.install-server == 'true' && inputs.fast-mode == 'true' }}
+      if: ${{ inputs.fast-mode == 'true' }}
       run: |
         if [[ -z "${{ inputs.fixture-path }}" || -z "${{ inputs.distribution-path }}" ]]; then
           echo "fixture-path and distribution-path are required in fast mode" >&2
@@ -186,19 +124,13 @@ runs:
       shell: bash
 
     - name: Synchronize test dependencies after server setup
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.profile != 'dev' }}
       env:
-        CLASSIFICATION_MODELS: ${{ inputs.classification-models }}
-      run: |
-        source env/bin/activate
-        profile=test
-        if [ "$CLASSIFICATION_MODELS" = 'true' ]; then
-          profile=test-classification
-        fi
-        make install_test PYTHON_TEST_PROFILE="$profile"
+        PYTHON_PROFILE: ${{ inputs.profile }}
+      run: make install PYTHON_PROFILE="$PYTHON_PROFILE"
       shell: bash
 
     - name: Verify classification models
-      if: inputs.classification-models == 'true'
+      if: inputs.profile == 'test-classification'
       run: env/bin/python scripts/prepare_classification_models.py verify --project ingestion
       shell: bash

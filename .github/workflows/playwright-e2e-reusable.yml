@@ -242,6 +242,9 @@ jobs:
               - 'pom.xml'
               - 'Makefile'
               - '.github/actions/setup-openmetadata-test-environment/**'
+              - '.github/actions/prepare-python-environment/**'
+              - '.github/actions/setup-uv/**'
+              - 'scripts/python_tools.py'
               - '.github/playwright/**'
               - '.github/scripts/build_playwright_shards.py'
               - '.github/scripts/capture_playwright_server_output.py'
@@ -300,10 +303,16 @@ jobs:
               - 'openmetadata-ui/src/main/resources/ui/playwright/test-data/**'
               - '.github/workflows/playwright-e2e-reusable.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
+              - '.github/actions/prepare-python-environment/**'
+              - '.github/actions/setup-uv/**'
+              - 'scripts/python_tools.py'
               - '.github/actions/cache-ui-dist/action.yml'
               - '.github/scripts/serve_playwright_ui.cjs'
             rdf:
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
+              - '.github/actions/prepare-python-environment/**'
+              - '.github/actions/setup-uv/**'
+              - 'scripts/python_tools.py'
               - '.github/workflows/playwright-e2e-reusable.yml'
               - 'docker/run_local_docker.sh'
               - 'docker/run_local_docker_common.sh'
@@ -1562,7 +1571,6 @@ jobs:
           fixture-path: ${{ steps.fast-inputs.outputs.fixture }}
           distribution-path: ${{ steps.fast-inputs.outputs.distribution }}
           ingestion-image-path: ${{ steps.fast-inputs.outputs.ingestion_image }}
-          install-test-dependencies: "false"
 
       # The visual and RDF lanes cannot use the shared fixture (see
       # PW_PRESEEDED_STATE above), so each seeds its own environment from
@@ -1606,7 +1614,7 @@ jobs:
           python-version: "3.10"
           args: "-d mysql -s true"
           ingestion_dependency: "playwright"
-          install-test-dependencies: "false"
+          profile: dev
 
       - name: Setup the RDF environment
         id: setup-rdf-environment
@@ -1617,7 +1625,7 @@ jobs:
           args: "-d postgresql -s true"
           startup-script: "./docker/run_local_docker_rdf.sh"
           ingestion_dependency: "playwright"
-          install-test-dependencies: "false"
+          profile: dev
 
       - name: Wait for Fuseki to be healthy
         if: ${{ matrix.lane == 'rdf' }}
