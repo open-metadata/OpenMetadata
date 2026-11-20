@@ -103,6 +103,17 @@ describe('ExploreSortDropdown', () => {
     ).toHaveAttribute('aria-checked', 'true');
   });
 
+  it('names the current field and order in a hover tooltip', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    render(<SortHarness onChange={jest.fn()} />);
+
+    await user.hover(screen.getByTestId('sorting-dropdown-label'));
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'message.sorted-by-field-order'
+    );
+  });
+
   it('falls back to the first field and its default order for a stale sort', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(

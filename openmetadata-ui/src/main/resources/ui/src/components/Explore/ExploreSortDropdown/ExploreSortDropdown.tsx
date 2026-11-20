@@ -96,8 +96,9 @@ const ExploreSortDropdown = ({
         data-testid="sorting-dropdown-label"
         iconLeading={SORT_ICONS[selectedOrder.icon]}
         iconTrailing={ChevronDown}
-        size="sm">
-        {/* Icon-only when the filter card is narrow; the aria-label still names the sort. */}
+        size="sm"
+        tooltip={sortTitle}>
+        {/* Icon-only when the filter card is narrow; the tooltip and aria-label still name the sort. */}
         <span className="tw:@max-[1100px]:sr-only">{selectedField?.name}</span>
       </Button>
 
