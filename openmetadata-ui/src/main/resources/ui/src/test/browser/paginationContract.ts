@@ -20,6 +20,7 @@ import {
   serveSearch,
 } from './fixtures/paging';
 import { worker } from './msw';
+import { networkIdle, until } from './network';
 import { currentUrl, renderApp } from './renderWithApp';
 import { scaled } from './timeouts';
 
@@ -70,42 +71,6 @@ export type ContractTest = 'navigation' | 'reload' | 'pageSize' | 'search';
 
 const urlOf = (route: string, params: Record<string, string>) =>
   `${route}?${new URLSearchParams(params).toString()}`;
-
-// Every API request MSW is answering, and when one last started or ended.
-const inFlight = new Set<string>();
-let lastActivity = Date.now();
-worker.events.on('request:start', ({ requestId }) => {
-  inFlight.add(requestId);
-  lastActivity = Date.now();
-});
-worker.events.on('request:end', ({ requestId }) => {
-  inFlight.delete(requestId);
-  lastActivity = Date.now();
-});
-
-/**
- * Waits until the page has stopped fetching: nothing in flight and no new
- * request for a short quiet window. A request count ("one fetch per page
- * change") is only final once this holds; there is no event for "no further
- * request is coming", so the quiet window is the condition.
- */
-/** Polls `ready` until it holds. expect.poll/element cannot run in beforeAll. */
-const until = async (ready: () => boolean, timeoutMs: number, what: string) => {
-  const deadline = Date.now() + timeoutMs;
-  while (!ready()) {
-    if (Date.now() > deadline) {
-      throw new Error(`Timed out after ${timeoutMs} ms waiting for ${what}`);
-    }
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-};
-
-const networkIdle = () =>
-  until(
-    () => inFlight.size === 0 && Date.now() - lastActivity >= 150,
-    10_000,
-    'requests to finish'
-  );
 
 export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
   const pageSize = spec.fixedPageSize ?? PAGE_SIZE_BASE;
