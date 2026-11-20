@@ -19,11 +19,11 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
+import { getMessageFromArgumentName } from '../../../utils/Alerts/AlertsUtilPure';
 import {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import { getMessageFromArgumentName } from '../../../utils/Alerts/AlertsUtilPure';
+} from '../../../utils/AlertsClassBase.interface';
 import {
   AlertAiFormValidationErrors,
   RuleSectionField,
@@ -125,7 +125,12 @@ const validateAlertAiRuleFields = ({
         'input'
       );
 
-      if (isRequiredValueMissing(argument.input)) {
+      // Rules shown from `filteringRules` carry no `input`: their values live in
+      // the stored SpEL condition, and the form keeps them read-only.
+      if (
+        argument.input !== undefined &&
+        isRequiredValueMissing(argument.input)
+      ) {
         errors[argumentPath] = argument.name
           ? getMessageFromArgumentName(argument.name)
           : getRequiredFieldMessage(t('label.value'), t);

@@ -25,6 +25,7 @@ interface SystemAnnouncementFormLoaderProps {
   id?: string;
   onCancel: () => void;
   onSaved: (announcement: AnnouncementEntity) => void;
+  centered?: boolean;
 }
 
 /**
@@ -37,6 +38,7 @@ const SystemAnnouncementFormLoader = ({
   id,
   onCancel,
   onSaved,
+  centered,
 }: SystemAnnouncementFormLoaderProps) => {
   const { t } = useTranslation();
   const needsSource = mode !== 'create';
@@ -66,6 +68,7 @@ const SystemAnnouncementFormLoader = ({
   return (
     <SystemAnnouncementForm
       announcement={needsSource ? data : undefined}
+      centered={centered}
       key={data?.id ?? 'new'}
       mode={mode}
       onCancel={onCancel}

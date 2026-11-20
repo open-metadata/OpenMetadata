@@ -24,22 +24,27 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
+import Loader from '../../../../../components/common/Loader/Loader';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
+import { INCIDENT_TASK_TYPES } from '../../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ClientErrors } from '../../../../../enums/Axios.enum';
 import { ResourceEntity } from '../../../../../enums/permissions.enum';
 import { Operation } from '../../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
   Task,
   TaskAvailableTransition,
   TaskCategory,
-  TaskType,
 } from '../../../../../generated/entity/tasks/task';
 import { EntityReference } from '../../../../../generated/entity/teams/user';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
 import {
   addTaskComment,
-  getTaskById,
+  getTask,
   resolveTask,
 } from '../../../../../rest/tasksAPI';
 import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
@@ -48,17 +53,26 @@ import {
   EXTENSION_POINTS,
   InboxTaskPanelContribution,
 } from '../../../../../utils/ExtensionPointTypes';
+import ontologyExplorerClassBase from '../../../../../utils/OntologyExplorerClassBase';
 import { getPermissionErrorText } from '../../../../../utils/StringUtils';
 import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUtils';
-import { getTaskAboutPath } from '../../../../../utils/TaskNavigationUtils';
-import { isOntologyReviewTask } from '../../../../../utils/TaskUtils';
+import {
+  getTaskAboutPath,
+  hasVotedInCurrentStage,
+  isAllowedDecider,
+} from '../../../../../utils/TaskNavigationUtils';
+import {
+  isAwaitingReviewPanel,
+  isOntologyReviewTask,
+} from '../../../../../utils/TaskUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import CommentComposer from '../../../../common/CommentComposer/CommentComposer';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
-import OntologyReviewPanel from '../../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
+import TaskReviewVotes from '../../../../Entity/Task/TaskReviewVotes/TaskReviewVotes';
 import { useApplicationsProvider } from '../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { formatInboxDate, isTaskOpen } from '../inbox.utils';
 import {
+  getProposingAgent,
   getTaskDetailDescriptor,
   resolveIncidentTestCaseFqn,
   withExistingValues,
@@ -78,14 +92,13 @@ import { getTaskTitleParts } from '../taskTitle.utils';
 import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useIsScrolled } from '../useIsScrolled';
 import { useTaskAboutEntity } from '../useTaskAboutEntity';
-import ClampedText from './ClampedText';
 import TaskActionCommentModal from './TaskActionCommentModal';
 import TaskActivityTimeline from './TaskActivityTimeline';
 import TaskAssetCard from './TaskAssetCard';
 import TaskDetailHeader from './TaskDetailHeader';
 import TaskDetailSkeleton from './TaskDetailSkeleton';
 import TaskDetailSummary from './TaskDetailSummary';
-import TaskTitleEntityBadge from './TaskTitleEntityBadge';
+import TaskTitle from './TaskTitle';
 
 const TASK_FIELDS =
   'about,createdBy,reviewers,assignees,resolution,approvedBy,approvedAt,availableTransitions,payload,comments';
@@ -113,6 +126,8 @@ export interface TaskDetailPanelProps {
   // Fired after a comment is added/edited/deleted with the reloaded task, so the
   // list row's comment count stays in sync.
   onCommentsChanged?: (task: Task) => void;
+  // Fired with the full task once it loads, and again whenever it changes.
+  onLoaded?: (task: Task) => void;
 }
 
 // Locate the whitespace-delimited token in the title that contains the asset
@@ -145,8 +160,8 @@ const matchAssetToken = (
 
 // The title reads as plain text in the heading's font and colour; only the
 // hover underline says it links to the asset. `!` beats the legacy
-// `.prose-typography a` rule (fonts.less), which makes Typography's links 14px
-// and blue.
+// `.prose-typography a` rule (fonts.less), which gives Typography's links a
+// medium weight and blue colour; `[font:inherit]` restores the heading weight.
 const TITLE_LINK_CLASS =
   'tw:[font:inherit]! tw:text-inherit! tw:no-underline! tw:hover:underline!';
 
@@ -241,6 +256,7 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
   // A closed task reads as its outcome — "Rejected by harsh.soni on Jul 21,
   // 2026" — led by whoever decided it, rather than by its request.
   const resolver = isTaskOpen(task) ? undefined : task.resolution?.resolvedBy;
+  const agent = resolver ? undefined : getProposingAgent(task, t);
   const person = resolver ?? task.createdBy;
   const text = resolver
     ? t('message.task-outcome-by-on', {
@@ -249,17 +265,18 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
         date: formatInboxDate(task.resolution?.resolvedAt),
       })
     : t(subtitleKey, {
-        user: getEntityName(task.createdBy),
+        user: agent ?? getEntityName(task.createdBy),
         time: getRelativeTime(task.createdAt),
       });
 
   return (
-    <Box align="center" gap={2}>
-      {person && (
+    <Box align="center" data-testid="task-byline" gap={2}>
+      {(agent || person) && (
         <ProfilePicture
           matchRingToFill
-          displayName={getEntityName(person)}
-          name={person.name ?? ''}
+          displayName={agent ?? getEntityName(person)}
+          isAgent={Boolean(agent)}
+          name={person?.name ?? ''}
           width="20"
         />
       )}
@@ -270,20 +287,96 @@ const TaskByline: React.FC<{ task: Task; subtitleKey: string }> = ({
   );
 };
 
+const getResolveDeniedMessageKey = (isFiler: boolean, isAssignee: boolean) => {
+  if (!isAssignee) {
+    return 'message.only-assignees-can-approve-or-reject';
+  }
+
+  return isFiler
+    ? 'message.no-permission-for-action'
+    : 'message.only-reviewers-can-approve-or-reject';
+};
+
+// A filer is denied their own task (self-approval); anyone else is not one of
+// its approvers. A workflow approval names its approvers as assignees, so a
+// reviewer added after it opened is told it is not assigned to them.
+const TaskResolveDeniedHint = ({
+  isFiler,
+  isAssignee,
+}: {
+  isFiler: boolean;
+  isAssignee: boolean;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Typography
+      className="tw:text-tertiary"
+      data-testid="task-resolve-denied-hint"
+      size="text-sm">
+      {t(getResolveDeniedMessageKey(isFiler, isAssignee))}
+    </Typography>
+  );
+};
+
+/** Why no task shows: only a 404 means it is gone; anything else failed to load. */
+const TaskUnavailable = ({
+  error,
+  onRetry,
+}: {
+  error?: AxiosError;
+  onRetry: () => void;
+}) => {
+  const { t } = useTranslation();
+  const status = error?.response?.status;
+  let placeholder = (
+    <SomethingWentWrongPlaceholder
+      description={t('server.entity-fetch-error', { entity: t('label.task') })}
+      onReload={onRetry}
+    />
+  );
+  if (!error || status === ClientErrors.NOT_FOUND) {
+    placeholder = (
+      <NoDataPlaceholder
+        data-testid="task-not-found"
+        description={t('message.no-task-found-desc')}
+        title={t('label.no-task-found')}
+      />
+    );
+  } else if (status === ClientErrors.FORBIDDEN) {
+    placeholder = (
+      <PermissionPlaceholder
+        permissionValue={t('label.view-entity', { entity: t('label.task') })}
+      />
+    );
+  }
+
+  return (
+    <div className="tw:flex tw:h-full tw:items-center tw:justify-center tw:p-8">
+      {placeholder}
+    </div>
+  );
+};
+
 const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   taskId,
   fallbackTask,
   onResolved,
   onTaskUpdated,
   onCommentsChanged,
+  onLoaded,
 }) => {
   const { t } = useTranslation();
   const { isScrolled: isBodyScrolled, onScroll: onBodyScroll } =
     useIsScrolled();
   const { getEntityPermission } = usePermissionProvider();
+  const currentUserId = useApplicationStore().currentUser?.id;
+  const currentUserIds = useCurrentUserIds();
   const { extensionRegistry } = useApplicationsProvider();
+  const ReviewPanel = ontologyExplorerClassBase.getReviewPanel();
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<AxiosError>();
   const [readyReviewTask, setReadyReviewTask] = useState<string>();
   const handleReviewReady = useCallback(
     (ready: boolean) => {
@@ -295,10 +388,14 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // lacks availableTransitions, so actions wait for it — but only the first
   // time: a reload after a comment keeps the buttons and status steady.
   const [loadedTaskId, setLoadedTaskId] = useState<string>();
-  // Gates DAR approve/reject/resolve so a self-approval deny (isTaskFiler) hides
-  // the buttons. Fail closed: false until the permission resolves so a self-filed
-  // DAR never flashes the buttons. Non-DAR tasks are never gated below.
-  const [canResolveTask, setCanResolveTask] = useState(false);
+  // A failed first load renders its own placeholder, even over the list row;
+  // only a failed reload of a fully loaded task needs the toast.
+  const hasTaskRef = useRef(false);
+  hasTaskRef.current = loadedTaskId === taskId;
+  // Gates approve/reject/resolve on the server's ResolveTask verdict (assignee,
+  // reviewer, owner; self-approval denied). Fail closed: undefined until the
+  // permission resolves so the buttons never flash for a user who can't act.
+  const [canResolveTask, setCanResolveTask] = useState<boolean>();
   const [loadingTransitionId, setLoadingTransitionId] = useState<string>();
   // Actions stay hidden while re-reading, so a consumed transition can't be
   // re-submitted — that hits a workflow with no active task (500).
@@ -314,12 +411,16 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     setIsLoading(true);
     let result: Task | undefined;
     try {
-      const res = await getTaskById(taskId, { fields: TASK_FIELDS });
+      const res = await getTask(taskId, { fields: TASK_FIELDS });
       setTask(res.data);
       setLoadedTaskId(taskId);
+      setLoadError(undefined);
       result = res.data;
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      setLoadError(error as AxiosError);
+      if (hasTaskRef.current) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -341,9 +442,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
   // The endpoint evaluates policy conditions (isTaskFiler) against this task, so
   // a requester who is also an assignee resolves false on their own request.
+  // Incident tasks are exempt: the server lets EditStatus/EditTests on the test
+  // case resolve them even when ResolveTask on the task is denied.
   useEffect(() => {
     let active = true;
-    if (!task?.id || task.type !== TaskType.DataAccessRequest) {
+    if (!task?.id || INCIDENT_TASK_TYPES.has(task.type)) {
       setCanResolveTask(true);
 
       return undefined;
@@ -351,7 +454,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
     // Fail closed while (re)resolving so switching to a self-filed DAR can't
     // briefly show the buttons with a stale allow from the previous task.
-    setCanResolveTask(false);
+    setCanResolveTask(undefined);
     getEntityPermission(ResourceEntity.TASK, task.id)
       .then(
         (perm: OperationPermission) =>
@@ -379,7 +482,14 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       return undefined;
     }
 
-    getResolvedTaskFormSchema(taskType, taskCategory)
+    getResolvedTaskFormSchema(taskType, taskCategory, {
+      // Suggestion tasks share one taskType+taskCategory binding across two
+      // seeded schemas; pass the stamped id (and payload for fallback
+      // disambiguation) so a tag-suggestion legacy task does not render the
+      // DescriptionSuggestion form. See TaskFormSchemaUtils.
+      taskFormSchemaId: task?.taskFormSchemaId,
+      payload: task?.payload,
+    })
       .then((schema) => active && setFormSchema(schema))
       // Without a schema the per-type defaults still produce a correct body.
       .catch(() => active && setFormSchema(undefined));
@@ -387,7 +497,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     return () => {
       active = false;
     };
-  }, [isLegacyTask, taskType, taskCategory]);
+  }, [
+    isLegacyTask,
+    taskType,
+    taskCategory,
+    task?.taskFormSchemaId,
+    task?.payload,
+  ]);
 
   // A plugin can refine how a task type it owns renders — its summary rows, its
   // stat tiles — without owning the pane. The first matching contribution wins.
@@ -414,9 +530,16 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // Actions wait for the full task: from the list row alone a workflow task
   // would offer the legacy resolve path.
   const hasFullTask = loadedTaskId === taskId;
-  const actions = useMemo(() => {
+
+  useEffect(() => {
+    if (task && hasFullTask) {
+      onLoaded?.(task);
+    }
+  }, [task, hasFullTask, onLoaded]);
+
+  const { actions, isResolveDenied } = useMemo(() => {
     if (!task || !hasFullTask || isSyncingTransitions) {
-      return [];
+      return { actions: [], isResolveDenied: false };
     }
     const effective = applyActionLabels(
       getTaskResolveActions(
@@ -427,28 +550,58 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       descriptor?.actionLabels
     ).filter((action) => !consumedTransitionIdsRef.current.has(action.id));
 
-    // Drop resolve actions when ResolveTask is denied (self-approval); keep
-    // assignee transitions — those are permissioned by EditTask, not ResolveTask.
-    if (task.type === TaskType.DataAccessRequest && !canResolveTask) {
-      return effective.filter(
+    // A voter waits for the other approvers; TaskReviewVotes says so. Checked
+    // before the assignee rule: the server drops a voter's own assignee entry
+    // after a vote that does not reach the threshold.
+    if (hasVotedInCurrentStage(task, { id: currentUserId })) {
+      return {
+        actions: effective.filter(
+          (action) =>
+            action.kind !== 'approve' &&
+            action.kind !== 'reject' &&
+            action.id !== 'resolve'
+        ),
+        isResolveDenied: false,
+      };
+    }
+
+    // ResolveTask lets a reviewer through, but the server lets only an
+    // assignee decide a workflow approval.
+    const canDecide = canResolveTask && isAllowedDecider(task, currentUserIds);
+
+    // Drop resolve actions when ResolveTask is denied; keep assignee
+    // transitions — those are permissioned by EditTask, not ResolveTask.
+    if (!canDecide) {
+      const permitted = effective.filter(
         (action) =>
           action.kind !== 'approve' &&
           action.kind !== 'reject' &&
           action.id !== 'resolve'
       );
+
+      return {
+        actions: permitted,
+        isResolveDenied:
+          canResolveTask !== undefined && permitted.length < effective.length,
+      };
     }
 
-    return isOntologyReviewTask(task) && readyReviewTask !== task.id
-      ? effective.filter(
-          (action) => action.kind !== 'approve' && action.kind !== 'reject'
-        )
-      : effective;
+    return {
+      actions: isAwaitingReviewPanel(task, readyReviewTask)
+        ? effective.filter(
+            (action) => action.kind !== 'approve' && action.kind !== 'reject'
+          )
+        : effective,
+      isResolveDenied: false,
+    };
   }, [
     readyReviewTask,
     task,
     hasFullTask,
     isSyncingTransitions,
     canResolveTask,
+    currentUserIds,
+    currentUserId,
     formSchema,
     descriptor,
     t,
@@ -485,7 +638,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         if (isStale()) {
           return true;
         }
-        const { data: fresh } = await getTaskById(taskId, {
+        const { data: fresh } = await getTask(taskId, {
           fields: TASK_FIELDS,
         });
         if (isStale()) {
@@ -642,22 +795,17 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
   const { about, isLoading: isAboutLoading } = useTaskAboutEntity(task);
 
-  const currentUserIds = useCurrentUserIds();
-
   if (!task || !descriptor) {
     return isLoading ? (
       <TaskDetailSkeleton />
     ) : (
-      <div className="tw:flex tw:h-full tw:items-center tw:justify-center tw:p-8">
-        <NoDataPlaceholder
-          description={t('message.no-task-found-desc')}
-          title={t('label.no-task-found')}
-        />
-      </div>
+      <TaskUnavailable error={loadError} onRetry={loadTask} />
     );
   }
 
-  const statusBadge = getTaskStatusLabel(task, currentUserIds, t);
+  // The list row has no assignees, so its badge would read "Unassigned".
+  const getStatusBadge = () =>
+    hasFullTask ? getTaskStatusLabel(task, currentUserIds, t) : undefined;
   // Titleless tasks (governance workflows) carry the taskId as their name, so
   // getTaskTitleParts composes a title from the task type and the entity it is about
   // instead of repeating the id.
@@ -668,19 +816,16 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // Two lines, the full title in a tooltip when clamped; see ClampedText for
   // why Typography's own `ellipsis` cannot hold the inline asset link.
   const title = titleText ? (
-    <ClampedText text={titleText}>
+    <TaskTitle entityType={titleEntityType} size="text-md" text={titleText}>
       <Typography size="text-md" weight="medium">
         {resolveTaskAboutTitle(task, titleText)}
       </Typography>
-      <TaskTitleEntityBadge entityType={titleEntityType} />
-    </ClampedText>
+    </TaskTitle>
   ) : null;
   const LegacyPanel = contribution?.component;
   const renderDetails = () => {
-    if (isOntologyReviewTask(task)) {
-      return (
-        <OntologyReviewPanel task={task} onReadyChange={handleReviewReady} />
-      );
+    if (isOntologyReviewTask(task) && ReviewPanel) {
+      return <ReviewPanel task={task} onReadyChange={handleReviewReady} />;
     }
 
     return (
@@ -700,6 +845,32 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
             rows={descriptor.rows}
           />
         )}
+        <TaskReviewVotes currentUserId={currentUserId} task={task} />
+      </>
+    );
+  };
+
+  // The list row carries only what the header needs; the details and timeline
+  // read fields (payload, assignees, ontologyReview) only the full task has.
+  const renderBody = () => {
+    if (!hasFullTask) {
+      return isLoading ? (
+        <Loader size="small" />
+      ) : (
+        <TaskUnavailable error={loadError} onRetry={loadTask} />
+      );
+    }
+
+    return (
+      <>
+        {renderDetails()}
+
+        <TaskActivityTimeline
+          createdEvent={descriptor.createdEvent}
+          incidentStatuses={about?.incidentStatuses}
+          task={task}
+          onCommentChanged={handleCommentMutated}
+        />
       </>
     );
   };
@@ -719,7 +890,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         <TaskDetailHeader
           actions={actions}
           loadingTransitionId={loadingTransitionId}
-          statusBadge={statusBadge}
+          statusBadge={getStatusBadge()}
           task={task}
           typeBadge={descriptor.typeBadge}
           onAssigneeUpdate={handleAssigneeTransition}
@@ -729,35 +900,35 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         <Box direction="col" gap={2}>
           {title}
           <TaskByline subtitleKey={descriptor.subtitleKey} task={task} />
+          {isResolveDenied && (
+            <TaskResolveDeniedHint
+              isAssignee={isAllowedDecider(task, currentUserIds)}
+              isFiler={currentUserIds.has(task.createdBy?.id)}
+            />
+          )}
         </Box>
       </Box>
 
       {/* Sections keep their height and the body scrolls: a flex child with
           overflow-hidden (the asset card) would otherwise shrink to nothing. */}
       <Box
-        className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-7 tw:py-6 tw:*:shrink-0"
+        className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-7 tw:pt-6 tw:pb-12 tw:*:shrink-0"
         direction="col"
         gap={6}
         onScroll={onBodyScroll}>
-        {renderDetails()}
-
-        <TaskActivityTimeline
-          createdEvent={descriptor.createdEvent}
-          incidentStatuses={about?.incidentStatuses}
-          task={task}
-          onCommentChanged={handleCommentMutated}
-        />
+        {renderBody()}
       </Box>
 
       <Box
-        className="tw:relative tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4 tw:dark:bg-secondary"
+        className="tw:relative tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-6 tw:py-4"
         direction="col"
         gap={2}>
-        {/* A soft shade above the footer, so the activity reads as scrolling
-            under the composer rather than stopping at a line. */}
+        {/* A soft fade into the card above the footer, so the activity reads
+            as scrolling under the composer rather than stopping at a line. The
+            body's bottom padding clears it, so nothing sits under it at rest. */}
         <span
           aria-hidden
-          className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-full tw:h-8 tw:bg-linear-to-t tw:from-secondary tw:to-transparent"
+          className="tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-full tw:h-8 tw:bg-linear-to-t tw:from-bg-surface tw:to-transparent"
         />
         <CommentComposer onSave={handleAddComment} />
       </Box>

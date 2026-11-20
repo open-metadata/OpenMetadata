@@ -20,6 +20,7 @@ import java.nio.channels.ClosedChannelException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.io.EofException;
 import org.eclipse.jetty.websocket.api.Callback;
@@ -39,13 +40,23 @@ import org.eclipse.jetty.websocket.api.exceptions.WebSocketTimeoutException;
 @WebSocket(autoDemand = true)
 public class Jetty12WebSocketHandler extends EngineIoWebSocket {
 
+  private static final String USER_ID_HEADER = "UserId";
+  private static final String SESSION_ID_HEADER = "SessionId";
+
   private final EngineIoServer server;
+  private final HandshakeIdentity handshakeIdentity;
   private Session session;
   private Map<String, String> query;
   private Map<String, List<String>> headers;
 
-  public Jetty12WebSocketHandler(EngineIoServer server) {
-    this.server = server;
+  /**
+   * The identity the WebSocket upgrade creator validated. The upgrade runs before the servlet
+   * filter chain, which is why nothing else stamps the engine.io socket this handler serves — the
+   * servlet filter's header stamping only ever covers the polling transport.
+   */
+  public Jetty12WebSocketHandler(EngineIoServer server, HandshakeIdentity handshakeIdentity) {
+    this.server = Objects.requireNonNull(server, "server");
+    this.handshakeIdentity = Objects.requireNonNull(handshakeIdentity, "handshakeIdentity");
   }
 
   @Override
@@ -84,28 +95,54 @@ public class Jetty12WebSocketHandler extends EngineIoWebSocket {
     this.session = session;
     LOG.info("WebSocket connection opened");
 
-    // Parse query parameters from upgrade request
+    // The upgrade URI and its parameters are never logged: the handshake query carries the token.
     this.query = new HashMap<>();
+    this.headers = new HashMap<>();
     var upgradeRequest = session.getUpgradeRequest();
     if (upgradeRequest != null) {
-      LOG.debug("UpgradeRequest URI: {}", upgradeRequest.getRequestURI());
       var parameterMap = upgradeRequest.getParameterMap();
       if (parameterMap != null) {
-        LOG.debug("Query parameters: {}", parameterMap);
         for (Map.Entry<String, List<String>> entry : parameterMap.entrySet()) {
           if (entry.getValue() != null && !entry.getValue().isEmpty()) {
             query.put(entry.getKey(), entry.getValue().get(0));
           }
         }
       }
-      this.headers = upgradeRequest.getHeaders();
+      Map<String, List<String>> upgradeHeaders = upgradeRequest.getHeaders();
+      if (upgradeHeaders != null) {
+        this.headers.putAll(upgradeHeaders);
+      }
     } else {
       LOG.warn("UpgradeRequest is null - query parameters will be empty");
-      this.headers = new HashMap<>();
     }
 
-    LOG.info("Parsed query params for Engine.IO: {}", query);
+    // The engine.io socket's identity comes from these headers (getInitialHeaders of the websocket
+    // transport); the raw upgrade headers are client-controlled, so the validated handshake
+    // identity is stamped exactly as the servlet filter stamps it for the polling transport.
+    stampValidatedIdentity(this.headers, this.handshakeIdentity);
+
+    LOG.info("Engine.IO socket opened for user {}", handshakeIdentity.userId());
     server.handleWebSocket(this);
+  }
+
+  /**
+   * Client-sent identity headers are dropped before stamping — WebSocketManager reads the first
+   * value of each, so a validated field that is absent must leave the header absent, never fall
+   * back to what the client sent.
+   */
+  private static void stampValidatedIdentity(
+      Map<String, List<String>> headers, HandshakeIdentity handshakeIdentity) {
+    headers
+        .keySet()
+        .removeIf(
+            name ->
+                USER_ID_HEADER.equalsIgnoreCase(name) || SESSION_ID_HEADER.equalsIgnoreCase(name));
+    if (handshakeIdentity.userId() != null && !handshakeIdentity.userId().isBlank()) {
+      headers.put(USER_ID_HEADER, List.of(handshakeIdentity.userId()));
+    }
+    if (handshakeIdentity.sessionId() != null && !handshakeIdentity.sessionId().isBlank()) {
+      headers.put(SESSION_ID_HEADER, List.of(handshakeIdentity.sessionId()));
+    }
   }
 
   @OnWebSocketMessage

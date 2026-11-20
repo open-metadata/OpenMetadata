@@ -373,13 +373,7 @@ class DataInsightsEntityEnricherProcessorTest {
           new EnrichmentContext(entityType, PROJECTION_FIELDS, WINDOW_START, WINDOW_END);
       EnrichmentTarget target =
           new EnrichmentTarget(
-              entity,
-              entityMap,
-              new HashMap<>(),
-              WINDOW_START,
-              WINDOW_END,
-              context,
-              VersionShape.LATEST_HYDRATED);
+              entity, entityMap, new HashMap<>(), context, VersionShape.LATEST_HYDRATED);
 
       processor.enrichEntity(target);
       return entityMap;

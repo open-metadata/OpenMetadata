@@ -22,6 +22,7 @@ const mockLocation = {
 };
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useNavigate: () => mockNavigate,
   useLocation: () => mockLocation,
 }));
@@ -56,7 +57,11 @@ describe('useWorkflowNavigationBlock', () => {
         'beforeunload',
         expect.any(Function)
       );
-      expect(globalSpy).toHaveBeenCalledWith('popstate', expect.any(Function));
+      expect(globalSpy).toHaveBeenCalledWith(
+        'popstate',
+        expect.any(Function),
+        true
+      );
       expect(docSpy).toHaveBeenCalledWith('click', expect.any(Function), true);
     });
 
@@ -74,7 +79,8 @@ describe('useWorkflowNavigationBlock', () => {
       );
       expect(globalSpy).not.toHaveBeenCalledWith(
         'popstate',
-        expect.any(Function)
+        expect.any(Function),
+        true
       );
       expect(docSpy).not.toHaveBeenCalledWith(
         'click',
@@ -99,7 +105,8 @@ describe('useWorkflowNavigationBlock', () => {
       );
       expect(globalRemoveSpy).toHaveBeenCalledWith(
         'popstate',
-        expect.any(Function)
+        expect.any(Function),
+        true
       );
       expect(docRemoveSpy).toHaveBeenCalledWith(
         'click',
@@ -110,6 +117,50 @@ describe('useWorkflowNavigationBlock', () => {
   });
 
   describe('link click interception', () => {
+    it.each([
+      { ctrlKey: true },
+      { metaKey: true },
+      { shiftKey: true },
+      { altKey: true },
+      { button: 1 },
+    ])('leaves modified clicks to the browser: %s', (options) => {
+      const { result } = renderHook(() =>
+        useWorkflowNavigationBlock({ enabled: true, onSaveWorkflow })
+      );
+      const anchor = document.createElement('a');
+      anchor.href = INTERNAL_HREF;
+      document.body.appendChild(anchor);
+      const click = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        ...options,
+      });
+      act(() => {
+        anchor.dispatchEvent(click);
+      });
+      anchor.remove();
+
+      expect(click.defaultPrevented).toBe(false);
+      expect(result.current.showModal).toBe(false);
+    });
+
+    it.each([{ target: '_blank' }, { download: 'ontology.ttl' }])(
+      'does not intercept links that leave the current editor open: %s',
+      (attributes) => {
+        const { result } = renderHook(() =>
+          useWorkflowNavigationBlock({ enabled: true, onSaveWorkflow })
+        );
+        const anchor = document.createElement('a');
+        anchor.href = INTERNAL_HREF;
+        Object.assign(anchor, attributes);
+        document.body.appendChild(anchor);
+        act(() => anchor.click());
+        anchor.remove();
+
+        expect(result.current.showModal).toBe(false);
+      }
+    );
+
     it('shows modal and prevents navigation for an internal link', () => {
       const { result } = renderHook(() =>
         useWorkflowNavigationBlock({ enabled: true, onSaveWorkflow })

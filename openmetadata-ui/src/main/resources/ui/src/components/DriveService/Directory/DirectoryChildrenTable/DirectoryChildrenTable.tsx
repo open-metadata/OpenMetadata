@@ -75,7 +75,7 @@ function DirectoryChildrenTable() {
           </Tooltip>
         ),
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<EntityReference>(),
     ],
     []
   );

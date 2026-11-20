@@ -32,7 +32,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -50,9 +52,11 @@ import org.mockito.quality.Strictness;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -113,6 +117,105 @@ class WorkflowEventConsumerTest {
       mockedEntity
           .when(() -> Entity.findByNameOrNull(eq(Entity.USER), eq("ingestion-bot"), any()))
           .thenReturn(new User().withName("ingestion-bot").withIsBot(true));
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_BotCreatingAnAutomationProposalStartsItsWorkflows() {
+    ChangeEvent event = createBotProposal("ingestion-bot", EventType.ENTITY_CREATED);
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockBotUser(mockedEntity, "ingestion-bot");
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(createEntityReference());
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, times(1))
+          .triggerWithSignal(eq("glossaryTerm-entityCreated"), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_AutomationProposalStoredAsAnObjectStartsItsWorkflows() {
+    ChangeEvent event = createBotProposal("ingestion-bot", EventType.ENTITY_CREATED);
+    event.setEntity(Map.of("name", "Revenue", "provider", "automation"));
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockBotUser(mockedEntity, "ingestion-bot");
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(createEntityReference());
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, times(1))
+          .triggerWithSignal(eq("glossaryTerm-entityCreated"), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_BotEditOfAnAutomationTermIsStillSkipped() {
+    ChangeEvent event = createBotProposal("ingestion-bot", EventType.ENTITY_UPDATED);
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockBotUser(mockedEntity, "ingestion-bot");
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_BotCreatingAnEntityOfItsOwnIsStillSkipped() {
+    ChangeEvent event = createBotProposal("ingestion-bot", EventType.ENTITY_CREATED);
+    event.setEntity("{\"name\":\"Revenue\",\"provider\":\"user\"}");
+
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockBotUser(mockedEntity, "ingestion-bot");
+
+      assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
+
+      verify(workflowHandler, never()).triggerWithSignal(anyString(), anyMap());
+    }
+  }
+
+  @Test
+  void testSendMessage_WorkflowCreatingAnAutomationEntityIsStillSkipped() {
+    assertNoWorkflowStarts(createBotProposal("governance-bot", EventType.ENTITY_CREATED));
+  }
+
+  @Test
+  void testSendMessage_WorkflowCreatingAnAutomationEntityForABotIsStillSkipped() {
+    ChangeEvent event = createBotProposal("ingestion-bot", EventType.ENTITY_CREATED);
+    event.setImpersonatedBy("governance-bot");
+
+    assertNoWorkflowStarts(event);
+  }
+
+  // The entity resolves, so only the bot rules can keep the workflows from starting.
+  private void assertNoWorkflowStarts(ChangeEvent event) {
+    try (MockedStatic<WorkflowHandler> mockedHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedHandler.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      mockBotUser(mockedEntity, "ingestion-bot");
+      mockedEntity
+          .when(() -> Entity.getEntityReferenceById(anyString(), any(UUID.class), any()))
+          .thenReturn(createEntityReference());
 
       assertDoesNotThrow(() -> consumer.sendMessage(event, Collections.emptySet()));
 
@@ -388,6 +491,19 @@ class WorkflowEventConsumerTest {
     return createChangeEvent(userName, eventType, "table");
   }
 
+  // As the REST filter stores it: the masked entity as a JSON string.
+  private ChangeEvent createBotProposal(String userName, EventType eventType) {
+    ChangeEvent event = createChangeEvent(userName, eventType, Entity.GLOSSARY_TERM);
+    event.setEntity("{\"name\":\"Revenue\",\"provider\":\"automation\"}");
+    return event;
+  }
+
+  private static void mockBotUser(MockedStatic<Entity> mockedEntity, String botName) {
+    mockedEntity
+        .when(() -> Entity.findByNameOrNull(eq(Entity.USER), eq(botName), any()))
+        .thenReturn(new User().withName(botName).withIsBot(true));
+  }
+
   private ChangeEvent createChangeEvent(String userName, EventType eventType, String entityType) {
     ChangeEvent event = new ChangeEvent();
     event.setUserName(userName);
@@ -405,5 +521,32 @@ class WorkflowEventConsumerTest {
     ref.setName("table");
     ref.setFullyQualifiedName("test.db.schema.table");
     return ref;
+  }
+
+  // A follow or a vote changes no field a workflow triggers on, so it starts no run; an edit, and
+  // any
+  // create, still does.
+  @Test
+  void changesNoTriggerField_followOrVote_true_editOrCreate_false() {
+    assertTrue(WorkflowEventConsumer.changesNoTriggerField(updateOf("followers")));
+    assertTrue(WorkflowEventConsumer.changesNoTriggerField(updateOf("votes")));
+    assertFalse(WorkflowEventConsumer.changesNoTriggerField(updateOf("tags")));
+    assertFalse(WorkflowEventConsumer.changesNoTriggerField(updateOf("followers", "description")));
+    assertFalse(
+        WorkflowEventConsumer.changesNoTriggerField(
+            updateOf("followers").withEventType(EventType.ENTITY_CREATED)));
+    assertFalse(
+        WorkflowEventConsumer.changesNoTriggerField(
+            new ChangeEvent().withEventType(EventType.ENTITY_UPDATED).withEntityType("table")));
+  }
+
+  private static ChangeEvent updateOf(String... fields) {
+    return new ChangeEvent()
+        .withEventType(EventType.ENTITY_UPDATED)
+        .withEntityType("table")
+        .withChangeDescription(
+            new ChangeDescription()
+                .withFieldsUpdated(
+                    Arrays.stream(fields).map(name -> new FieldChange().withName(name)).toList()));
   }
 }

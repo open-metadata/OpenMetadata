@@ -91,11 +91,9 @@ describe('ContractSchemaTable', () => {
     expect(
       screen.getByTestId('schema-column-property-success')
     ).toBeInTheDocument();
-
-    // Since being on second page
     expect(
-      screen.queryByTestId('schema-column-business-success')
-    ).not.toBeInTheDocument();
+      screen.getByTestId('schema-column-business-success')
+    ).toBeInTheDocument();
   });
 
   it('should render schema table with pagination', () => {

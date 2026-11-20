@@ -11,25 +11,34 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import TestCaseHeaderTitle from './TestCaseHeaderTitle.component';
 
-const mockOnCopy = jest.fn().mockResolvedValue(undefined);
+const mockWriteText = jest.fn().mockResolvedValue(undefined);
 const DISPLAY_NAME_TEST_ID = 'entity-header-display-name';
 const TECHNICAL_NAME_TEST_ID = 'entity-header-name';
 
 describe('TestCaseHeaderTitle', () => {
-  beforeEach(() => {
-    mockOnCopy.mockClear();
+  beforeAll(() => {
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      configurable: true,
+    });
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: mockWriteText },
+      configurable: true,
+    });
   });
 
-  it('renders display and technical names and invokes the copy action', () => {
+  beforeEach(() => {
+    mockWriteText.mockClear();
+  });
+
+  it('renders display and technical names and copies the page url', async () => {
     render(
       <TestCaseHeaderTitle
         displayName="Customer count check"
-        hasCopied={false}
         testCaseName="customer_count_check"
-        onCopy={mockOnCopy}
       />
     );
 
@@ -42,18 +51,18 @@ describe('TestCaseHeaderTitle', () => {
     );
     expect(screen.getByTestId(TECHNICAL_NAME_TEST_ID).tagName).toBe('SPAN');
 
-    fireEvent.click(screen.getByTestId('entity-header-copy-button'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('entity-header-copy-button'));
+    });
 
-    expect(mockOnCopy).toHaveBeenCalledTimes(1);
+    expect(mockWriteText).toHaveBeenCalledWith(globalThis.location.href);
   });
 
   it('renders the technical name as the heading without a display name', () => {
     render(
       <TestCaseHeaderTitle
         displayName={undefined}
-        hasCopied={false}
         testCaseName="customer_count_check"
-        onCopy={mockOnCopy}
       />
     );
 
@@ -63,4 +72,33 @@ describe('TestCaseHeaderTitle', () => {
     );
     expect(screen.getByTestId(TECHNICAL_NAME_TEST_ID).tagName).toBe('H2');
   });
+
+  it('shows the deleted badge for a deleted test case', () => {
+    render(
+      <TestCaseHeaderTitle
+        deleted
+        displayName={undefined}
+        testCaseName="customer_count_check"
+      />
+    );
+
+    expect(screen.getByTestId('deleted-badge')).toHaveTextContent(
+      'label.deleted'
+    );
+  });
+
+  it.each([false, undefined])(
+    'hides the deleted badge when deleted is %s',
+    (deleted) => {
+      render(
+        <TestCaseHeaderTitle
+          deleted={deleted}
+          displayName={undefined}
+          testCaseName="customer_count_check"
+        />
+      );
+
+      expect(screen.queryByTestId('deleted-badge')).not.toBeInTheDocument();
+    }
+  );
 });

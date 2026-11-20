@@ -31,9 +31,9 @@ import {
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import {
+  AdvancedSearch,
   ChevronDown,
   Download01,
-  FilterFunnel01,
   InfoCircle,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
@@ -47,11 +47,10 @@ import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider
 import AppliedFilterText from '../../components/Explore/AppliedFilterText/AppliedFilterText';
 import ExploreQueryFilterChips from '../../components/Explore/ExploreQueryFilterChips/ExploreQueryFilterChips.component';
 import ExploreQuickFilters from '../../components/Explore/ExploreQuickFilters';
-import SortingDropDown from '../../components/Explore/SortingDropDown';
+import ExploreSortDropdown from '../../components/Explore/ExploreSortDropdown/ExploreSortDropdown';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import {
   entitySortingFields,
@@ -59,11 +58,10 @@ import {
   TAG_FQN_KEY,
 } from '../../constants/explore.constants';
 import { EntityFields } from '../../enums/AdvancedSearch.enum';
-import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
-import { useFillViewportHeight } from '../../hooks/useFillViewportHeight';
 import { useQuickFilterLabels } from '../../hooks/useQuickFilterLabels';
 import { ExploreSearchIndex } from '../../interface/discovery/explore.interface';
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
@@ -95,8 +93,6 @@ import {
 import ExploreTree from '../Explore/ExploreTree/ExploreTree';
 import SearchedData from '../SearchedData/SearchedData';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
-import { ReactComponent as IconAscending } from './../../assets/svg/ic-ascending.svg';
-import { ReactComponent as IconDescending } from './../../assets/svg/ic-descending.svg';
 import './exploreV1.less';
 import { IndexNotFoundBanner } from './IndexNotFoundBanner';
 const EntitySummaryPanel = withSuspenseFallback(
@@ -109,12 +105,6 @@ const EntitySummaryPanel = withSuspenseFallback(
 );
 
 const EXPORT_ALL_ASSETS_LIMIT = 200000;
-const EXPLORE_PAGE_SIZE_OPTIONS = [
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  PAGE_SIZE_LARGE,
-];
-
 interface ExploreExportScopeModalProps {
   open: boolean;
   exportScope: 'visible' | 'all';
@@ -258,6 +248,7 @@ const ExploreExportScopeModal = ({
                 className="export-scope-option-card tw:flex-1 tw:p-4"
                 data-testid="export-scope-visible-card"
                 isSelected={exportScope === 'visible'}
+                variant="muted"
                 onClick={() => onExportScopeChange('visible')}>
                 <div className="d-flex items-start gap-1">
                   {/* Reproduces antd's 16x22 radio wrapper and its 8px gap. */}
@@ -301,6 +292,7 @@ const ExploreExportScopeModal = ({
                 className="export-scope-option-card tw:flex-1 tw:p-4"
                 data-testid="export-scope-all-card"
                 isSelected={exportScope === 'all'}
+                variant="muted"
                 onClick={() => onExportScopeChange('all')}>
                 <div className="d-flex items-start tw:gap-1">
                   {/* Reproduces antd's 16x22 radio wrapper and its 8px gap. */}
@@ -335,7 +327,7 @@ const ExploreExportScopeModal = ({
           </Dialog.Content>
           <Dialog.Footer className="tw:mt-0 tw:border-secondary tw:sm:mt-0 tw:*:gap-[13px]! tw:*:px-[23px]! tw:*:py-4!">
             <Button
-              className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--ant-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--ant-primary-color-hover)]"
+              className="tw:h-10 tw:rounded-lg tw:px-[15px] tw:py-0 tw:font-normal tw:text-[var(--theme-primary-color)] tw:hover:bg-transparent tw:hover:text-[var(--theme-primary-color-hover)]"
               color="tertiary"
               data-testid="export-scope-cancel-button"
               onPress={onCancel}>
@@ -395,6 +387,8 @@ const ExploreFilterStatusRow = ({
   onEditQueryFilter,
   t,
 }: ExploreFilterStatusRowProps) => {
+  const isAiMode = useIsAiMode();
+
   return (
     <>
       {shouldShowQueryFilterChips && (
@@ -411,7 +405,8 @@ const ExploreFilterStatusRow = ({
             onRemoveBrowseLevel={handleRemoveBrowseLevel}
             onRemoveValue={handleRemoveQuickFilterValue}
           />
-          <DomainFilterChip className="tw:mt-2" />
+          {/* AI mode shows the chip in its search header. */}
+          {!isAiMode && <DomainFilterChip className="tw:mt-2" />}
         </div>
       )}
       {isElasticSearchIssue ? (
@@ -438,6 +433,7 @@ interface ExploreResultsPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
+  additionalSearchResults: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
@@ -462,6 +458,7 @@ interface ExploreResultsListPanelProps {
   loading?: boolean;
   isElasticSearchIssue?: boolean;
   searchResults: ExploreProps['searchResults'];
+  additionalSearchResults: ExploreProps['additionalSearchResults'];
   parsedSearch: Qs.ParsedQs;
   handleSummaryPanelDisplay: (
     details: SearchedDataProps['data'][number]['_source']
@@ -483,6 +480,7 @@ const ExploreResultsListPanel = ({
   loading,
   isElasticSearchIssue,
   searchResults,
+  additionalSearchResults,
   parsedSearch,
   handleSummaryPanelDisplay,
   hasActiveFilters,
@@ -500,6 +498,7 @@ const ExploreResultsListPanel = ({
     <div className="h-full tw:flex tw:min-w-[300px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
       <CoreCard className="tw:min-h-0 tw:flex-1 tw:rounded-b-none tw:border-b-0 tw:border-utility-gray-blue-100 tw:dark:border-subtle">
         <div className="tw:h-full tw:overflow-y-auto tw:p-5">
+          {additionalSearchResults}
           {!loading && !isElasticSearchIssue ? (
             <SearchedData
               data={searchResults?.hits.hits ?? []}
@@ -522,7 +521,7 @@ const ExploreResultsListPanel = ({
         <PaginationCardWithControls
           page={validCurrentPage}
           pageSize={pageSize}
-          pageSizeOptions={EXPLORE_PAGE_SIZE_OPTIONS}
+          pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
           total={totalPages}
           onPageChange={handleExplorePageChange}
           onPageSizeChange={handleExplorePageSizeChange}
@@ -538,6 +537,7 @@ const ExploreResultsPanel = ({
   loading,
   isElasticSearchIssue,
   searchResults,
+  additionalSearchResults,
   parsedSearch,
   handleSummaryPanelDisplay,
   hasActiveFilters,
@@ -559,6 +559,7 @@ const ExploreResultsPanel = ({
       className="explore-results-row tw:h-full tw:min-w-0 tw:w-full"
       colGap={3}>
       <ExploreResultsListPanel
+        additionalSearchResults={additionalSearchResults}
         entityDetails={entityDetails}
         handleExplorePageChange={handleExplorePageChange}
         handleExplorePageSizeChange={handleExplorePageSizeChange}
@@ -608,15 +609,15 @@ const ExploreV1: React.FC<ExploreProps> = ({
   activeTabKey,
   tabItems = [],
   searchResults,
+  additionalSearchResults,
   showRankingDetails = false,
   onChangeShowRankingDetails,
   onChangeAdvancedSearchQuickFilters,
   searchIndex,
   sortOrder,
   currentPage = 1,
-  onChangeSortOder,
   sortValue,
-  onChangeSortValue,
+  onChangeSort,
   onChangeShowDeleted,
   onChangeSearchIndex,
   showDeleted,
@@ -631,7 +632,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   onTreeSelect = noop,
 }) => {
   const { t, i18n } = useTranslation();
-  const panelsRef = useFillViewportHeight<HTMLDivElement>();
   // getTabsInfo() bakes translated labels into its result, so recompute on a
   // language switch rather than freezing the first language for the mount.
   const tabsInfo = useMemo(
@@ -889,18 +889,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
   const handleClosePanel = () => {
     setShowSummaryPanel(false);
   };
-
-  const isAscSortOrder = useMemo(
-    () => sortOrder === SORT_ORDER.ASC,
-    [sortOrder]
-  );
-  const sortProps = useMemo(
-    () => ({
-      className: 'text-base tw:text-fg-secondary',
-      'data-testid': 'last-updated',
-    }),
-    []
-  );
 
   const handleSummaryPanelDisplay = useCallback(
     (details: SearchedDataProps['data'][number]['_source']) => {
@@ -1251,7 +1239,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   return (
     <div className="explore-page bg-grey" data-testid="explore-page">
       <CoreCard className="m-b-box tw:block tw:border-utility-gray-blue-100 tw:p-2 tw:dark:border-subtle">
-        <div className="tw:mr-2 tw:flex tw:flex-wrap tw:gap-y-2">
+        <div className="tw:@container tw:mr-2 tw:flex tw:flex-wrap tw:gap-y-2">
           {/* Zero flex-basis: with flex-wrap, a max-content basis would place
               the sort controls on their own row before shrinking is even
               considered; basis 0 keeps both columns on one line and lets the
@@ -1284,32 +1272,11 @@ const ExploreV1: React.FC<ExploreProps> = ({
               dividers — which are `self-stretch` — grow with it, towering over
               the controls they separate. */}
           <div className="d-flex items-start justify-end gap-3 tw:relative tw:mt-1 tw:min-h-px tw:max-w-full tw:flex-none tw:self-start">
-            <Button
-              aria-label={t('label.sort-order')}
-              className="tw:p-0"
-              color="tertiary"
-              data-testid="sort-order-button"
-              iconLeading={
-                isAscSortOrder ? (
-                  <IconAscending {...sortProps} />
-                ) : (
-                  <IconDescending {...sortProps} />
-                )
-              }
-              size="sm"
-              onPress={() =>
-                onChangeSortOder(
-                  isAscSortOrder ? SORT_ORDER.DESC : SORT_ORDER.ASC
-                )
-              }
-            />
-
-            <Divider className="tw:my-2" orientation="vertical" />
-
-            <SortingDropDown
+            <ExploreSortDropdown
               fieldList={translatedSortingFields}
-              handleFieldDropDown={onChangeSortValue}
               sortField={sortValue}
+              sortOrder={sortOrder}
+              onChange={onChangeSort}
             />
 
             <Divider className="tw:my-2" orientation="vertical" />
@@ -1348,7 +1315,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   </Dropdown.Item>
 
                   <Dropdown.Item
-                    icon={FilterFunnel01}
+                    icon={AdvancedSearch}
                     label={t('label.advanced-search')}
                     onPress={() => toggleModal(true)}
                   />
@@ -1391,7 +1358,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
         </div>
       </CoreCard>
 
-      <div ref={panelsRef}>
+      <div className="content-height-with-resizable-panel">
         <ResizableLeftPanels
           showLearningIcon
           className="tw:h-full"
@@ -1410,6 +1377,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
             minWidth: 800,
             children: (
               <ExploreResultsPanel
+                additionalSearchResults={additionalSearchResults}
                 entityDetails={entityDetails}
                 firstEntity={firstEntity}
                 handleClosePanel={handleClosePanel}

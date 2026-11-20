@@ -22,6 +22,16 @@ jest.mock('react-i18next', () => ({
 
 import MembersLanding from './MembersLanding';
 
+let mockPermissions: Record<string, unknown> = { all: { ViewAll: true } };
+let mockIsAdmin = true;
+jest.mock(
+  '../../../../../../context/PermissionProvider/PermissionProvider',
+  () => ({ usePermissionProvider: () => ({ permissions: mockPermissions }) })
+);
+jest.mock('../../../../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: mockIsAdmin }),
+}));
+
 // The landing grid reads contributed sections through this provider; default to
 // none so the built-in cards are asserted in isolation.
 const mockGetContributions = jest.fn().mockReturnValue([]);
@@ -37,6 +47,30 @@ jest.mock(
 describe('MembersLanding', () => {
   beforeEach(() => {
     mockGetContributions.mockReturnValue([]);
+    mockPermissions = { all: { ViewAll: true } };
+    mockIsAdmin = true;
+  });
+
+  it('keeps Online users to admins, as the classic settings do', () => {
+    mockIsAdmin = false;
+    render(<MembersLanding onNavigate={jest.fn()} />);
+
+    expect(screen.getByTestId('members-card-teams')).toBeInTheDocument();
+    expect(screen.getByTestId('members-card-users')).toBeInTheDocument();
+    expect(screen.getByTestId('members-card-admins')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('members-card-online-users')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows only the cards a non-admin may view', () => {
+    mockIsAdmin = false;
+    mockPermissions = { team: { ViewAll: true } };
+    render(<MembersLanding onNavigate={jest.fn()} />);
+
+    expect(screen.getByTestId('members-card-teams')).toBeInTheDocument();
+    expect(screen.queryByTestId('members-card-users')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('members-card-admins')).not.toBeInTheDocument();
   });
 
   it('renders 4 landing cards', () => {

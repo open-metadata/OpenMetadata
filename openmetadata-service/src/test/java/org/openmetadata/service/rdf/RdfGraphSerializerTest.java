@@ -14,9 +14,16 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.io.Writer;
 import org.apache.jena.graph.Graph;
 import org.apache.jena.graph.GraphMemFactory;
 import org.apache.jena.graph.Node;
@@ -24,7 +31,16 @@ import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.shared.JenaException;
+import org.apache.jena.rdf.model.RDFErrorHandler;
+import org.apache.jena.rdf.model.RDFWriterI;
+import org.apache.jena.rdf.model.impl.ModelCom;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.riot.RDFFormat;
+import org.apache.jena.shared.WrappedIOException;
+import org.apache.jena.vocabulary.OWL2;
+import org.apache.jena.vocabulary.RDF;
+import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -89,24 +105,27 @@ class RdfGraphSerializerTest {
   }
 
   /**
-   * RDF/XML cannot name a predicate it cannot split into an XML QName, so this plain RDF 1.1 graph
-   * fails to write. That failure has nothing to do with triple terms and must reach the caller as
-   * itself rather than as a claim that the result holds RDF 1.2 terms.
+   * RDF/XML cannot name a predicate it cannot split into an XML QName. That is a property of the
+   * requested format, not a server fault, so it is refused as a 400 that names the format and the
+   * writer's reason instead of surfacing as a 500.
    */
   @Test
-  void leavesWriterFailuresUnrelatedToTripleTermsUntouched() {
+  void refusesAPredicateRdfXmlCannotNameAsAClientError() {
     final Graph graph = GraphMemFactory.createDefaultGraph();
     graph.add(
         Triple.create(
             NodeFactory.createURI("urn:table:orders"),
-            NodeFactory.createURI("urn:p"),
+            NodeFactory.createURI("https://example.com/p/"),
             NodeFactory.createLiteralString("plain")));
 
-    assertThrows(
-        JenaException.class,
-        () ->
-            RdfGraphSerializer.asString(
-                ModelFactory.createModelForGraph(graph), RdfSerializationFormat.RDF_XML));
+    final UnsupportedRdfSerializationException failure =
+        assertThrows(
+            UnsupportedRdfSerializationException.class,
+            () ->
+                RdfGraphSerializer.asString(
+                    ModelFactory.createModelForGraph(graph), RdfSerializationFormat.RDF_XML));
+
+    assertTrue(failure.getMessage().startsWith("'rdfxml' cannot write this graph: "));
   }
 
   @Test
@@ -134,5 +153,104 @@ class RdfGraphSerializerTest {
         NodeFactory.createURI("https://example.com/subject"),
         NodeFactory.createURI("https://example.com/predicate"),
         NodeFactory.createLiteralDirLang("قطة", "ar", "rtl"));
+  }
+
+  @Test
+  void writesAnOntologyWhoseIriIsABareUrnInEveryFormatAndReadsItBack() {
+    final Model model = ModelFactory.createDefaultModel();
+    model
+        .createResource("urn:orders")
+        .addProperty(RDFS.label, "Orders")
+        .addProperty(RDF.type, OWL2.Ontology);
+
+    for (final RdfSerializationFormat format : RdfSerializationFormat.values()) {
+      final Model readBack =
+          new SafeRdfModelParser().parse(RdfGraphSerializer.asString(model, format), format);
+
+      assertTrue(
+          readBack.contains(readBack.createResource("urn:orders"), RDF.type, OWL2.Ontology),
+          format.externalName() + " keeps the ontology IRI");
+      assertTrue(
+          readBack.contains(readBack.createResource("urn:orders"), RDFS.label, "Orders"),
+          format.externalName() + " keeps the label");
+    }
+  }
+
+  @Test
+  void writesANamespacedUrnAsRdfXml() {
+    final Model model = ModelFactory.createDefaultModel();
+    model.createResource("urn:example:orders").addProperty(RDF.type, OWL2.Ontology);
+
+    assertTrue(
+        RdfGraphSerializer.asString(model, RdfSerializationFormat.RDF_XML)
+            .contains("rdf:about=\"urn:example:orders\""));
+  }
+
+  @Test
+  void writesAnHttpsOntologyAsTheSameGraphThePrettyWriterDid() {
+    final Model model = ModelFactory.createDefaultModel();
+    model.setNsPrefix("ex", "https://example.com/onto#");
+    final org.apache.jena.rdf.model.Resource ontology =
+        model.createResource("https://example.com/onto").addProperty(RDF.type, OWL2.Ontology);
+    model
+        .createResource("https://example.com/onto#Order")
+        .addProperty(RDF.type, OWL2.Class)
+        .addProperty(RDFS.label, "Order", "en")
+        .addProperty(RDFS.isDefinedBy, ontology);
+
+    final StringWriter legacy = new StringWriter();
+    RDFDataMgr.write(legacy, model, RDFFormat.RDFXML_PRETTY);
+    final Model before = ModelFactory.createDefaultModel();
+    before.read(new StringReader(legacy.toString()), null, Lang.RDFXML.getName());
+    final Model after =
+        new SafeRdfModelParser()
+            .parse(
+                RdfGraphSerializer.asString(model, RdfSerializationFormat.RDF_XML),
+                RdfSerializationFormat.RDF_XML);
+
+    assertTrue(before.isIsomorphicWith(after));
+    assertEquals(4, after.size());
+  }
+
+  @Test
+  void aWrappedIoFailureFromTheWriterIsNotRelabelledAsAnUnsupportedFormat() {
+    final WrappedIOException disconnect =
+        new WrappedIOException(new IOException("client disconnected"));
+    final Model model =
+        new ModelCom(GraphMemFactory.createDefaultGraph()) {
+          @Override
+          public RDFWriterI getWriter(final String lang) {
+            return new RDFWriterI() {
+              @Override
+              public void write(final Model m, final Writer out, final String base) {
+                throw disconnect;
+              }
+
+              @Override
+              public void write(final Model m, final OutputStream out, final String base) {
+                throw disconnect;
+              }
+
+              @Override
+              public Object setProperty(final String propName, final Object propValue) {
+                return null;
+              }
+
+              @Override
+              public RDFErrorHandler setErrorHandler(final RDFErrorHandler errHandler) {
+                return null;
+              }
+            };
+          }
+        };
+
+    final WrappedIOException thrown =
+        assertThrows(
+            WrappedIOException.class,
+            () ->
+                RdfGraphSerializer.write(
+                    new ByteArrayOutputStream(), model, RdfSerializationFormat.RDF_XML));
+
+    assertSame(disconnect, thrown);
   }
 }

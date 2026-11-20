@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -8,9 +9,12 @@ import static org.openmetadata.it.util.ApiAssertions.assertForbidden;
 import static org.openmetadata.it.util.UriTestUtils.assertHttpStatusFor;
 import static org.openmetadata.it.util.UriTestUtils.encodeURIComponent;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -22,9 +26,11 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.DenyPolicyPrincipals;
+import org.openmetadata.it.util.ImpersonatingClients;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -34,7 +40,9 @@ import org.openmetadata.schema.api.ai.CreateAIGovernanceFramework;
 import org.openmetadata.schema.api.ai.CreateAuditReport;
 import org.openmetadata.schema.api.ai.ForkAIGovernanceFrameworkRequest;
 import org.openmetadata.schema.api.data.CreateDataContract;
+import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.dataInsight.kpi.CreateKpiRequest;
 import org.openmetadata.schema.api.dataInsight.kpi.KpiDataInsightChart;
 import org.openmetadata.schema.api.domains.CreateDomain;
@@ -44,6 +52,7 @@ import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
+import org.openmetadata.schema.api.tests.CreateCustomMetric;
 import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.dataInsight.type.KpiTargetType;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
@@ -52,6 +61,7 @@ import org.openmetadata.schema.entity.ai.AuditReportStatus;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -65,9 +75,12 @@ import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.EntitiesEdge;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.RecognizerFeedback;
+import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -109,6 +122,84 @@ public class SubResourceAuthorizationIT {
     assertNotNull(adminGet(path));
   }
 
+  /**
+   * A column's profile needs ViewDataProfile on its table and its custom metrics ViewTests, as the
+   * table's own profile and metric reads do. Every column read returns the columns and leaves out
+   * the field the caller may not view.
+   */
+  @Test
+  void tableColumnReads_leaveOutProfilesAndMetricsTheCallerMayNotView(TestNamespace ns) {
+    Table table = createTable(ns);
+    addColumnProfileAndMetric(table, "id");
+    OpenMetadataClient noProfile =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("colprofile"), "table", MetadataOperation.VIEW_DATA_PROFILE);
+    OpenMetadataClient noTests =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("colmetric"), "table", MetadataOperation.VIEW_TESTS);
+    String fields = "fields=profile,customMetrics";
+    String fqn = encodeURIComponent(table.getFullyQualifiedName());
+    List<String> paths =
+        List.of(
+            "/v1/tables/" + table.getId() + "/columns?" + fields,
+            "/v1/tables/name/" + fqn + "/columns?" + fields,
+            "/v1/tables/" + table.getId() + "/columns/search?q=id&" + fields,
+            "/v1/tables/name/" + fqn + "/columns/search?q=id&" + fields,
+            "/v1/columns/name/"
+                + encodeURIComponent(table.getFullyQualifiedName() + ".id")
+                + "?entityType=table&"
+                + fields);
+
+    for (String path : paths) {
+      assertColumnFields(SdkClients.adminClient(), path, true, true);
+      assertColumnFields(noProfile, path, false, true);
+      assertColumnFields(noTests, path, true, false);
+    }
+  }
+
+  /**
+   * {@code fields=*} stands for the column fields each endpoint returns for it, each held to its own
+   * operation. A column search returns tags, custom metrics and extension for it, so a caller with
+   * ViewTests or ViewDataProfile alone still gets the tags; the other column reads return none of
+   * the restricted fields for it, to anyone.
+   */
+  @Test
+  void tableColumnWildcard_returnsTheColumnFieldsTheCallerMayView(TestNamespace ns) {
+    Table table = createTableWithTaggedId(ns);
+    addColumnProfileAndMetric(table, "id");
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient viewTestsOnly =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("starprofile"), "table", MetadataOperation.VIEW_DATA_PROFILE);
+    OpenMetadataClient viewDataProfileOnly =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("startests"), "table", MetadataOperation.VIEW_TESTS);
+    String fqn = encodeURIComponent(table.getFullyQualifiedName());
+    List<String> searches =
+        List.of(
+            "/v1/tables/" + table.getId() + "/columns/search?q=id&fields=*",
+            "/v1/tables/name/" + fqn + "/columns/search?q=id&fields=*");
+    List<String> reads =
+        List.of(
+            "/v1/tables/" + table.getId() + "/columns?fields=*",
+            "/v1/tables/name/" + fqn + "/columns?fields=*",
+            "/v1/columns/name/"
+                + encodeURIComponent(table.getFullyQualifiedName() + ".id")
+                + "?entityType=table&fields=*");
+
+    for (String path : searches) {
+      assertWildcardColumn(admin, path, true, true);
+      assertWildcardColumn(viewTestsOnly, path, true, true);
+      assertWildcardColumn(viewDataProfileOnly, path, true, false);
+    }
+    for (String path : reads) {
+      boolean adminGetsTags = !idColumn(admin, path).path("tags").isEmpty();
+      for (OpenMetadataClient client : List.of(admin, viewTestsOnly, viewDataProfileOnly)) {
+        assertWildcardColumn(client, path, adminGetsTags, false);
+      }
+    }
+  }
+
   @Test
   void tableEntityRelationship_requiresViewOnTheRootTable(TestNamespace ns) {
     Table table = createTable(ns);
@@ -122,6 +213,19 @@ public class SubResourceAuthorizationIT {
     assertHttpStatusFor(
         denied, 403, HttpMethod.GET, "/v1/tables/entityRelationship/Upstream" + fqnQuery, null);
     assertNotNull(adminGet("/v1/tables/entityRelationship" + fqnQuery));
+  }
+
+  /**
+   * The RDF diff reads stored versions directly, past the redaction each entity's own versions
+   * endpoint applies, so viewing the entity is not enough to read it.
+   */
+  @Test
+  void rdfEntityDiff_isAdminOnly(TestNamespace ns) {
+    Table table = createTable(ns);
+    String path = "/v1/rdf/entity/table/" + table.getId() + "/diff?fromVersion=0.1&toVersion=0.1";
+
+    assertHttpStatusFor(SdkClients.dataConsumerClient(), 403, HttpMethod.GET, path, null);
+    assertNotNull(adminGet(path));
   }
 
   @Test
@@ -567,6 +671,208 @@ public class SubResourceAuthorizationIT {
     }
   }
 
+  /**
+   * Search lineage checks the root, and must also leave out the neighbours the caller cannot view:
+   * their documents, the edges to them, and their entries in a kept node's upstream lineage.
+   */
+  @Test
+  void lineageSearch_leavesOutNeighboursTheCallerCannotView(TestNamespace ns) {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table open = createTable(ns, schema, "nb_open", List.of());
+    Table sensitive = createTable(ns, schema, "nb_sensitive", List.of(piiSensitiveTag()));
+    addLineage(sensitive, open);
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("neighbours"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('" + PII_SENSITIVE + "')");
+    String fqn = encodeURIComponent(open.getFullyQualifiedName());
+    List<String> paths =
+        List.of(
+            "/v1/lineage/getLineage?type=table&upstreamDepth=1&downstreamDepth=1&fqn=" + fqn,
+            "/v1/lineage/getLineage/Upstream?type=table&upstreamDepth=1&downstreamDepth=0&fqn="
+                + fqn,
+            "/v1/lineage/getLineageByEntityCount?entityType=table&direction=Upstream&nodeDepth=1&fqn="
+                + fqn,
+            "/v1/lineage/export?type=table&upstreamDepth=1&downstreamDepth=1&fqn=" + fqn);
+    Awaitility.await("the admin finds the upstream neighbour on every path")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              for (String path : paths) {
+                assertTrue(adminGet(path).contains(sensitive.getFullyQualifiedName()), path);
+              }
+            });
+
+    for (String path : paths) {
+      String view = denied.getHttpClient().executeForString(HttpMethod.GET, path, null);
+      assertFalse(view.contains(sensitive.getFullyQualifiedName()), path + " -> " + view);
+      assertFalse(view.contains(sensitive.getId().toString()), path + " -> " + view);
+    }
+    String graph = denied.getHttpClient().executeForString(HttpMethod.GET, paths.getFirst(), null);
+    assertTrue(graph.contains(open.getFullyQualifiedName()), graph);
+  }
+
+  /**
+   * An async lineage export runs after the request, as the user who asked. A deny that holds only
+   * for impersonated requests must hold for the export a bot started on that user's behalf too, on
+   * both export routes.
+   */
+  @Test
+  void lineageAsyncExport_keepsTheImpersonationItWasRequestedUnder(TestNamespace ns) {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table open = createTable(ns, schema, "imp_open", List.of());
+    Table sensitive = createTable(ns, schema, "imp_sensitive", List.of(piiSensitiveTag()));
+    addLineage(sensitive, open);
+    User target =
+        DenyPolicyPrincipals.userDeniedWhen(
+            ns.shortPrefix("impexport"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "isImpersonated() && matchAnyTag('" + PII_SENSITIVE + "')");
+    OpenMetadataClient botForTarget = ImpersonatingClients.actingAs(ns, target.getName());
+    String fqn = encodeURIComponent(open.getFullyQualifiedName());
+    String syncExport =
+        "/v1/lineage/export?type=table&upstreamDepth=1&downstreamDepth=1&fqn=" + fqn;
+    Awaitility.await("the admin export names the upstream neighbour")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertTrue(adminGet(syncExport).contains(sensitive.getFullyQualifiedName())));
+    assertFalse(
+        botForTarget
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, syncExport, null)
+            .contains(sensitive.getFullyQualifiedName()),
+        "the deny holds for the impersonated request itself");
+
+    for (String asyncExport :
+        List.of(
+            "/v1/lineage/exportAsync?type=table&upstreamDepth=1&downstreamDepth=1&fqn=" + fqn,
+            "/v1/lineage/exportByEntityCountAsync?entityType=table&direction=Upstream&nodeDepth=1&fqn="
+                + fqn)) {
+      String csv = asyncExportResult(botForTarget, asyncExport);
+      assertFalse(csv.contains(sensitive.getFullyQualifiedName()), asyncExport + " -> " + csv);
+    }
+  }
+
+  /**
+   * An entity-count page is one window of the nodes up to a depth, sorted by depth, so the node that
+   * links a deeper one to the root can sit on an earlier page. Reachability is decided on the whole
+   * graph before the page is cut; decided on the page, a node the caller can view would drop out.
+   */
+  @Test
+  void lineageByEntityCount_keepsANodeWhoseLinkToTheRootIsOnAnotherPage(TestNamespace ns) {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table root = createTable(ns, schema, "page_root", List.of());
+    Table middle = createTable(ns, schema, "page_middle", List.of());
+    Table leaf = createTable(ns, schema, "page_leaf", List.of());
+    addLineage(root, middle);
+    addLineage(middle, leaf);
+    OpenMetadataClient restricted =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("pagereach"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('" + PII_SENSITIVE + "')");
+    String secondPage =
+        "/v1/lineage/getLineageByEntityCount?entityType=table&direction=Downstream&nodeDepth=2"
+            + "&from=1&size=1&fqn="
+            + encodeURIComponent(root.getFullyQualifiedName());
+    Awaitility.await("the admin finds the second-depth node alone on the second page")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> assertTrue(adminGet(secondPage).contains(leaf.getFullyQualifiedName())));
+
+    String page = restricted.getHttpClient().executeForString(HttpMethod.GET, secondPage, null);
+
+    assertTrue(page.contains(leaf.getFullyQualifiedName()), page);
+  }
+
+  private static String asyncExportResult(OpenMetadataClient client, String exportPath) {
+    String jobId =
+        JsonUtils.readTree(
+                client.getHttpClient().executeForString(HttpMethod.GET, exportPath, null))
+            .path("jobId")
+            .asText();
+    String jobPath = "/v1/csvAsyncJobs/" + jobId;
+    Awaitility.await("export job " + jobId + " completes")
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () -> {
+              String status =
+                  JsonUtils.readTree(
+                          client.getHttpClient().executeForString(HttpMethod.GET, jobPath, null))
+                      .path("status")
+                      .asText();
+              assertNotEquals("FAILED", status, exportPath);
+              return "COMPLETED".equals(status);
+            });
+    return client.getHttpClient().executeForString(HttpMethod.GET, jobPath + "/result", null);
+  }
+
+  /**
+   * A pipeline shown as an edge is no end of the edges it carries, so its own lineage reaches its
+   * assets only through them: a caller who can view those assets sees them, as an admin does.
+   */
+  @Test
+  void lineageSearch_aPipelineReachesTheAssetsItsEdgesConnect(TestNamespace ns) {
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table source = createTable(ns, schema, "pl_source", List.of());
+    Table target = createTable(ns, schema, "pl_target", List.of());
+    Pipeline pipeline =
+        SdkClients.adminClient()
+            .pipelines()
+            .create(
+                new CreatePipeline()
+                    .withName(ns.prefix("pl_edge"))
+                    .withService(
+                        PipelineServiceTestFactory.createAirflow(ns).getFullyQualifiedName()));
+    addLineage(source, target, pipeline);
+    OpenMetadataClient restricted =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("pipelineroot"),
+            "table",
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('" + PII_SENSITIVE + "')");
+    String path =
+        "/v1/lineage/getLineage?type=pipeline&upstreamDepth=1&downstreamDepth=1&fqn="
+            + encodeURIComponent(pipeline.getFullyQualifiedName());
+    List<String> tables = List.of(source.getFullyQualifiedName(), target.getFullyQualifiedName());
+    Awaitility.await("the admin finds both tables in the pipeline's lineage")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertTrue(nodeKeys(adminGet(path)).containsAll(tables)));
+
+    Set<String> nodes =
+        nodeKeys(restricted.getHttpClient().executeForString(HttpMethod.GET, path, null));
+
+    assertTrue(nodes.containsAll(tables), nodes.toString());
+  }
+
+  private static Set<String> nodeKeys(String lineage) {
+    Set<String> keys = new HashSet<>();
+    JsonUtils.readTree(lineage).path("nodes").fieldNames().forEachRemaining(keys::add);
+    return keys;
+  }
+
+  /** Platform lineage is every asset's lineage at once, unfiltered, so it is admin only. */
+  @Test
+  void platformLineage_isAdminOnly() {
+    String path = "/v1/lineage/getPlatformLineage?view=service";
+
+    assertHttpStatusFor(SdkClients.dataConsumerClient(), 403, HttpMethod.GET, path, null);
+    assertNotNull(adminGet(path));
+  }
+
   /** Column search walks every table, so it must leave out the tables the caller cannot view. */
   @Test
   void columnSearch_leavesOutTablesTheCallerCannotView(TestNamespace ns) {
@@ -604,9 +910,97 @@ public class SubResourceAuthorizationIT {
     return SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, path, null);
   }
 
+  private static void addColumnProfileAndMetric(Table table, String columnName) {
+    long timestamp = System.currentTimeMillis();
+    CreateTableProfile profile =
+        new CreateTableProfile()
+            .withTableProfile(
+                new TableProfile().withTimestamp(timestamp).withRowCount(10.0).withColumnCount(2.0))
+            .withColumnProfile(
+                List.of(
+                    new ColumnProfile()
+                        .withName(columnName)
+                        .withTimestamp(timestamp)
+                        .withValuesCount(10.0)
+                        .withNullCount(1.0)));
+    OpenMetadataClient admin = SdkClients.adminClient();
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT, "/v1/tables/" + table.getId() + "/tableProfile", profile, Table.class);
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/tables/" + table.getId() + "/customMetric",
+            new CreateCustomMetric()
+                .withName("non_null_" + columnName)
+                .withColumnName(columnName)
+                .withExpression("count(" + columnName + ")"),
+            Table.class);
+  }
+
+  private static void assertColumnFields(
+      OpenMetadataClient client, String path, boolean hasProfile, boolean hasMetrics) {
+    JsonNode column = idColumn(client, path);
+    String context = path + " -> " + column;
+    assertEquals(hasProfile, column.hasNonNull("profile"), context);
+    assertEquals(hasMetrics, !column.path("customMetrics").isEmpty(), context);
+  }
+
+  /** {@code fields=*} never returns a column's profile, on any column endpoint. */
+  private static void assertWildcardColumn(
+      OpenMetadataClient client, String path, boolean hasTags, boolean hasMetrics) {
+    JsonNode column = idColumn(client, path);
+    String context = path + " -> " + column;
+    assertEquals(hasTags, !column.path("tags").isEmpty(), context);
+    assertEquals(hasMetrics, !column.path("customMetrics").isEmpty(), context);
+    assertFalse(column.hasNonNull("profile"), context);
+  }
+
+  /** {@code path} answers the {@code id} column, alone or in a page. */
+  private static JsonNode idColumn(OpenMetadataClient client, String path) {
+    JsonNode body =
+        JsonUtils.readTree(client.getHttpClient().executeForString(HttpMethod.GET, path, null));
+    JsonNode column = body;
+    for (JsonNode listed : body.path("data")) {
+      if ("id".equals(listed.path("name").asText())) {
+        column = listed;
+      }
+    }
+    assertEquals("id", column.path("name").asText(), path + " -> " + body);
+    return column;
+  }
+
   private static Table createTable(TestNamespace ns) {
     return TableTestFactory.createSimple(
         ns, DatabaseSchemaTestFactory.createSimple(ns).getFullyQualifiedName());
+  }
+
+  private static Table createTableWithTaggedId(TestNamespace ns) {
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("PII.NonSensitive")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    return SdkClients.adminClient()
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(ns.prefix("wildcard"))
+                .withDatabaseSchema(
+                    DatabaseSchemaTestFactory.createSimple(ns).getFullyQualifiedName())
+                .withColumns(
+                    List.of(
+                        new Column()
+                            .withName("id")
+                            .withDataType(ColumnDataType.BIGINT)
+                            .withTags(List.of(tag)),
+                        new Column()
+                            .withName("name")
+                            .withDataType(ColumnDataType.VARCHAR)
+                            .withDataLength(255))));
   }
 
   private static Table createTable(
@@ -631,12 +1025,22 @@ public class SubResourceAuthorizationIT {
   }
 
   private static void addLineage(Table from, Table to) {
-    AddLineage addLineage =
-        new AddLineage()
-            .withEdge(
-                new EntitiesEdge()
-                    .withFromEntity(from.getEntityReference())
-                    .withToEntity(to.getEntityReference()));
+    addLineage(
+        new EntitiesEdge()
+            .withFromEntity(from.getEntityReference())
+            .withToEntity(to.getEntityReference()));
+  }
+
+  private static void addLineage(Table from, Table to, Pipeline through) {
+    addLineage(
+        new EntitiesEdge()
+            .withFromEntity(from.getEntityReference())
+            .withToEntity(to.getEntityReference())
+            .withLineageDetails(new LineageDetails().withPipeline(through.getEntityReference())));
+  }
+
+  private static void addLineage(EntitiesEdge edge) {
+    AddLineage addLineage = new AddLineage().withEdge(edge);
     Awaitility.await("lineage edge between freshly created tables")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofSeconds(1))

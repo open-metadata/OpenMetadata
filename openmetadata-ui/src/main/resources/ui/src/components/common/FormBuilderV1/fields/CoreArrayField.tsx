@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, HintText, Label } from '@openmetadata/ui-core-components';
-import { Copy01, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  ButtonUtility,
+  HintText,
+  Label,
+} from '@openmetadata/ui-core-components';
+import { XClose } from '@openmetadata/ui-core-components/icons';
 import { FieldProps } from '@rjsf/utils';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -23,6 +27,7 @@ import { useClipboard } from '../../../../hooks/useClipBoard';
 import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
 import { splitCSV } from '../../../../utils/CSV/CSVPureUtils';
+import CopyButton from '../../CopyButton/CopyButton';
 // Clipboard text may be a JSON array (copied from this field) or a CSV-ish
 // string typed by hand; both shapes collapse to a list of strings here so the
 // key handler stays a plain dispatch.
@@ -108,13 +113,12 @@ const ArrayValueChip = ({
           tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-utility-brand-700 tw:outline-1 tw:-outline-offset-1 tw:outline-utility-brand-200">
       {value}
       {!isDisabled && (
-        <button
+        <ButtonUtility
           aria-label={t('label.remove-entity', { entity: value })}
-          className="tw:flex tw:cursor-pointer tw:items-center tw:text-utility-brand-400 tw:hover:text-utility-brand-700"
-          type="button"
-          onClick={onRemove}>
-          <XClose size={10} strokeWidth={2.5} />
-        </button>
+          icon={XClose}
+          size="xs"
+          onClick={onRemove}
+        />
       )}
     </span>
   );
@@ -154,9 +158,7 @@ const CoreArrayField = (props: FieldProps) => {
   );
   const [inputValue, setInputValue] = useState('');
 
-  const { onCopyToClipBoard, onPasteFromClipBoard, hasCopied } = useClipboard(
-    JSON.stringify(value)
-  );
+  const { onPasteFromClipBoard } = useClipboard(JSON.stringify(value));
 
   const isInvalid = !!rawErrors?.length;
 
@@ -244,17 +246,12 @@ const CoreArrayField = (props: FieldProps) => {
             onKeyDown={handleKeyDown}
           />
         )}
-        <Button
-          className="tw:ml-auto tw:rounded tw:p-0 tw:hover:bg-transparent"
-          color="tertiary"
-          iconLeading={Copy01}
-          tooltip={
-            hasCopied ? t('message.copied-to-clipboard') : t('label.copy')
-          }
-          onPress={async (e) => {
-            e.stopPropagation();
-            await onCopyToClipBoard();
-          }}
+        <CopyButton
+          className="tw:ml-auto"
+          size="sm"
+          testId="copy-array-field"
+          tooltip={t('label.copy')}
+          value={JSON.stringify(value)}
         />
       </div>
       <ArrayFieldError isInvalid={isInvalid} rawErrors={rawErrors} />

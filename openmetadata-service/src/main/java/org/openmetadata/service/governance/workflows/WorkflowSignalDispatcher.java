@@ -1,12 +1,19 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
+
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.flowable.engine.RepositoryService;
 import org.flowable.engine.RuntimeService;
@@ -16,6 +23,7 @@ import org.flowable.eventsubscription.api.EventSubscription;
 import org.openmetadata.service.jdbi3.DeadlockRetry;
 
 /** Delivers each signal subscription in its own retryable Flowable transaction. */
+@Slf4j
 final class WorkflowSignalDispatcher {
   private static final List<String> TRANSIENT_ERRORS =
       List.of(
@@ -33,6 +41,12 @@ final class WorkflowSignalDispatcher {
               .retryOnException(WorkflowSignalDispatcher::isTransientDatabaseError)
               .build());
 
+  // Each re-read follows one redeploy that happened during delivery
+  // (ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains).
+  private static final int MAX_REREADS = 3;
+  private static final String RELATED_ENTITY =
+      getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE);
+
   private final RuntimeService runtime;
   private final RepositoryService repository;
 
@@ -42,6 +56,41 @@ final class WorkflowSignalDispatcher {
   }
 
   void dispatch(final String signal, final Map<String, Object> variables) {
+    final Set<String> attempted = new HashSet<>();
+    RuntimeException failure = null;
+    List<EventSubscription> pending = read(signal, attempted, null);
+    // A workflow redeployed while the signal is delivered deletes the version a listed subscription
+    // belongs to, after replacing that subscription with one on the new version. Read again for the
+    // replacements only: a start event keeps its activity id across versions, and any other
+    // subscription has already had the signal.
+    for (int reread = 0; !pending.isEmpty(); reread++) {
+      final Delivery delivery = deliverToEach(pending, signal, variables);
+      failure = withSuppressed(failure, delivery.failure());
+      if (delivery.replacedStarts().isEmpty()) {
+        break;
+      }
+      pending =
+          reread < MAX_REREADS ? read(signal, attempted, delivery.replacedStarts()) : List.of();
+      if (pending.isEmpty()) {
+        LOG.warn(
+            "Signal {} reached deleted workflow version(s) {} and no replacement; workflows"
+                + " for {} did not start",
+            signal,
+            delivery.replacedStarts(),
+            variables.get(RELATED_ENTITY));
+      }
+    }
+    if (failure != null) {
+      throw failure;
+    }
+  }
+
+  /**
+   * The first read returns every subscription. A re-read returns only the not yet attempted start
+   * subscriptions of the given start events.
+   */
+  private List<EventSubscription> read(
+      final String signal, final Set<String> attempted, final Set<String> startActivityIds) {
     final List<EventSubscription> subscriptions =
         RETRY.executeSupplier(
             () ->
@@ -50,34 +99,52 @@ final class WorkflowSignalDispatcher {
                     .eventType("signal")
                     .eventName(signal)
                     .list());
-    final RuntimeException failure = deliverToEach(subscriptions, signal, variables);
-    if (failure != null) {
-      throw failure;
+    if (startActivityIds == null) {
+      subscriptions.forEach(subscription -> attempted.add(subscription.getId()));
+      return subscriptions;
     }
+    return subscriptions.stream()
+        .filter(subscription -> subscription.getExecutionId() == null)
+        .filter(subscription -> startActivityIds.contains(subscription.getActivityId()))
+        .filter(subscription -> attempted.add(subscription.getId()))
+        .toList();
   }
 
-  /** Returns the first delivery failure, with any later ones suppressed onto it. */
-  private RuntimeException deliverToEach(
+  /** The first delivery failure, with any later ones suppressed onto it. */
+  private static RuntimeException withSuppressed(
+      final RuntimeException failure, final RuntimeException next) {
+    if (failure == null) {
+      return next;
+    }
+    if (next != null) {
+      failure.addSuppressed(next);
+    }
+    return failure;
+  }
+
+  private Delivery deliverToEach(
       final List<EventSubscription> subscriptions,
       final String signal,
       final Map<String, Object> variables) {
     RuntimeException failure = null;
+    final Set<String> replacedStarts = new HashSet<>();
     for (EventSubscription subscription : subscriptions) {
       try {
         // Earlier subscribers have already committed; retry only the subscriber that failed.
-        RETRY.executeRunnable(() -> deliver(subscription, signal, variables));
+        if (!RETRY.executeSupplier(() -> deliver(subscription, signal, variables))
+            && subscription.getExecutionId() == null) {
+          replacedStarts.add(subscription.getActivityId());
+        }
       } catch (RuntimeException deliveryFailure) {
         // Each subscriber is an independent workflow, so one failing must not withhold the
         // signal from the others.
-        if (failure == null) {
-          failure = deliveryFailure;
-        } else {
-          failure.addSuppressed(deliveryFailure);
-        }
+        failure = withSuppressed(failure, deliveryFailure);
       }
     }
-    return failure;
+    return new Delivery(failure, replacedStarts);
   }
+
+  private record Delivery(RuntimeException failure, Set<String> replacedStarts) {}
 
   static boolean isTransientDatabaseError(final Throwable failure) {
     final String message = ExceptionUtils.getRootCauseMessage(failure).toLowerCase(Locale.ROOT);
@@ -85,24 +152,42 @@ final class WorkflowSignalDispatcher {
         || TRANSIENT_ERRORS.stream().anyMatch(message::contains);
   }
 
-  private void deliver(
+  /**
+   * Returns false when the subscription's workflow version has been deleted, so the signal is
+   * owed to the version that replaced it. A suspended workflow takes no signal by design.
+   */
+  private boolean deliver(
       final EventSubscription subscription,
       final String signal,
       final Map<String, Object> variables) {
-    final ProcessDefinition definition =
-        repository
-            .createProcessDefinitionQuery()
-            .processDefinitionId(subscription.getProcessDefinitionId())
-            .active()
-            .singleResult();
+    final ProcessDefinition definition = definitionOf(subscription);
     if (definition == null) {
-      return;
+      return false;
+    }
+    if (definition.isSuspended()) {
+      return true;
     }
     if (subscription.getExecutionId() == null) {
-      start(subscription, definition, variables);
+      try {
+        start(subscription, definition, variables);
+      } catch (RuntimeException startFailure) {
+        // A redeploy's drain can delete this version between the lookup and the start.
+        if (definitionOf(subscription) == null) {
+          return false;
+        }
+        throw startFailure;
+      }
     } else {
       resume(subscription, signal, variables);
     }
+    return true;
+  }
+
+  private ProcessDefinition definitionOf(final EventSubscription subscription) {
+    return repository
+        .createProcessDefinitionQuery()
+        .processDefinitionId(subscription.getProcessDefinitionId())
+        .singleResult();
   }
 
   private void start(

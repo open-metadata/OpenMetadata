@@ -15,12 +15,16 @@ import {
   Box,
   Button,
   ButtonUtility,
+  ConfirmPopover,
   PaginationCardWithControls,
-  SimpleModal,
   TableCard,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { RefreshCcw01, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  RefreshCcw01,
+  Trash01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import React, {
@@ -34,9 +38,8 @@ import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
+  pagingObject,
 } from '../../../../../../constants/constants';
 import { ADMIN_ONLY_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
@@ -45,14 +48,16 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../../../../../enums/entity.enum';
-import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { Include } from '../../../../../../generated/type/include';
+import { Paging } from '../../../../../../generated/type/paging';
 import { useAuth } from '../../../../../../hooks/authHooks';
-import { usePaging } from '../../../../../../hooks/paging/usePaging';
-import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import {
+  useHashPagingParams,
+  useSettingsHash,
+} from '../../../../../../hooks/useSettingsHash';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getUsers, restoreUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -62,11 +67,17 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
+import {
+  PageCursor,
+  useCursorPageJump,
+} from '../../../../../../hooks/paging/useCursorPageJump';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
+import { getUserIdentifier } from '../../../../../../utils/UsersPureUtils';
 import type { MembersUsersPanelProps } from './Members.types';
 import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
 import { profileHash } from './profileHash.utils';
@@ -90,21 +101,30 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleted, setShowDeleted] = useState(false);
   const [searchValue, setSearchValue] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User>();
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(false);
-  const latestSearchIdRef = useRef(0);
+  const latestLoadIdRef = useRef(0);
 
+  // Only page + size go to the settings hash; cursors stay in state, so a
+  // reloaded page > 1 has no cursor to resume from and restarts at page 1.
   const {
-    currentPage,
-    handlePageChange,
-    handlePageSizeChange,
-    handlePagingChange,
-    pageSize,
-    paging,
-    showPagination,
-  } = usePaging();
+    page: currentPage,
+    resolvedPageSize: pageSize,
+    savePageSize,
+    setPage: setHashPage,
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
+  const [paging, setPaging] = useState<Paging>(pagingObject);
+  const showPagination = shouldShowPager(users);
+
+  const handlePageChange = useCallback(
+    (page: number) => setHashPage(page, undefined, undefined, pageSize),
+    [setHashPage, pageSize]
+  );
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      savePageSize(size);
+      setHashPage(INITIAL_PAGING_VALUE, undefined, undefined, size);
+    },
+    [savePageSize, setHashPage]
+  );
 
   const canCreateUser = useMemo(
     () =>
@@ -114,36 +134,67 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     [isAdminUser, permissions]
   );
 
+  const listParams = useMemo(
+    () => ({
+      fields: USER_FIELDS,
+      limit: pageSize,
+      isAdmin: isAdmin || undefined,
+      isBot: false,
+      include: showDeleted ? Include.Deleted : Include.NonDeleted,
+    }),
+    [pageSize, isAdmin, showDeleted]
+  );
+  const fetchPaging = useCallback(
+    // A walk keeps only the cursors, so it skips the row fields.
+    async (after: string) =>
+      (await getUsers({ ...listParams, fields: undefined, after })).paging,
+    [listParams]
+  );
+  const {
+    cursorFor,
+    remember: rememberPage,
+    reset: resetPages,
+  } = useCursorPageJump(fetchPaging);
+
   const fetchUsers = useCallback(
-    async (params?: { after?: string; before?: string }) => {
+    async (params?: PageCursor, page = INITIAL_PAGING_VALUE) => {
+      // Only the latest list or search load may fill the table: the pager
+      // stays clickable while a page loads.
+      const loadId = ++latestLoadIdRef.current;
       setIsLoading(true);
       try {
-        const response = await getUsers({
-          fields: USER_FIELDS,
-          limit: pageSize,
-          isAdmin: isAdmin || undefined,
-          isBot: false,
-          include: showDeleted ? Include.Deleted : Include.NonDeleted,
-          ...params,
-        });
+        const response = await getUsers({ ...listParams, ...params });
+        if (loadId !== latestLoadIdRef.current) {
+          return;
+        }
+        // Page 1 is a fresh load (filter, size, restore), so older cursors
+        // may no longer line up.
+        if (page === INITIAL_PAGING_VALUE) {
+          resetPages();
+        }
+        rememberPage(page, response.paging);
         setUsers(response.data);
-        handlePagingChange(response.paging);
+        setPaging(response.paging);
       } catch (error) {
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-fetch-error', { entity: t('label.user') })
-        );
-        setUsers([]);
+        if (loadId === latestLoadIdRef.current) {
+          showErrorToast(
+            error as AxiosError,
+            t('server.entity-fetch-error', { entity: t('label.user') })
+          );
+          setUsers([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (loadId === latestLoadIdRef.current) {
+          setIsLoading(false);
+        }
       }
     },
-    [pageSize, isAdmin, showDeleted, handlePagingChange, t]
+    [listParams, rememberPage, resetPages, setPaging, t]
   );
 
   const searchUsers = useCallback(
     async (query: string, page = INITIAL_PAGING_VALUE) => {
-      const searchId = ++latestSearchIdRef.current;
+      const searchId = ++latestLoadIdRef.current;
       setIsLoading(true);
       try {
         const response = await searchQuery({
@@ -157,49 +208,58 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
             ...(isAdmin && { isAdmin: 'true' }),
           }),
         });
-        if (searchId !== latestSearchIdRef.current) {
+        if (searchId !== latestLoadIdRef.current) {
           return;
         }
         const data = response.hits.hits.map(({ _source }) => _source as User);
         setUsers(data);
-        handlePagingChange({ total: response.hits.total.value });
+        setPaging({ total: response.hits.total.value });
       } catch (error) {
-        showErrorToast(error as AxiosError);
-        setUsers([]);
+        if (searchId === latestLoadIdRef.current) {
+          showErrorToast(error as AxiosError);
+          setUsers([]);
+        }
       } finally {
-        setIsLoading(false);
+        if (searchId === latestLoadIdRef.current) {
+          setIsLoading(false);
+        }
       }
     },
-    [pageSize, isAdmin, showDeleted, handlePagingChange]
+    [pageSize, isAdmin, showDeleted, setPaging]
   );
+
+  // Writing an unchanged page to the hash is not free: it is a navigation.
+  const resetToFirstPage = useCallback(() => {
+    if (currentPage !== INITIAL_PAGING_VALUE) {
+      handlePageChange(INITIAL_PAGING_VALUE);
+    }
+  }, [currentPage, handlePageChange]);
 
   const handleSearch = useCallback(
     (value: string) => {
       setSearchValue(value);
-      handlePageChange(INITIAL_PAGING_VALUE);
+      // Drops a page jump still walking, so it cannot replace the results.
+      resetPages();
+      resetToFirstPage();
       if (value) {
         void searchUsers(value);
       } else {
         void fetchUsers();
       }
     },
-    [handlePageChange, fetchUsers, searchUsers]
+    [resetPages, resetToFirstPage, fetchUsers, searchUsers]
   );
 
   const handleShowDeletedChange = useCallback(
     (checked: boolean) => {
       setShowDeleted(checked);
-      handlePageChange(INITIAL_PAGING_VALUE);
+      resetToFirstPage();
       setSearchValue('');
     },
-    [handlePageChange]
+    [resetToFirstPage]
   );
 
-  const handlePageNavigation = (newPage: number) => {
-    if (newPage === currentPage) {
-      return;
-    }
-
+  const handlePageNavigation = async (newPage: number) => {
     if (searchValue) {
       handlePageChange(newPage);
       void searchUsers(searchValue, newPage);
@@ -207,38 +267,42 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       return;
     }
 
-    // ponytail: cursor paging only supports ±1 steps; numbered/jump beyond adjacent no-ops.
-    const cursorType =
-      newPage > currentPage ? CursorType.AFTER : CursorType.BEFORE;
-    const cursor = paging[cursorType];
+    let cursor: PageCursor | undefined;
+    try {
+      cursor = await cursorFor(newPage, currentPage);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-fetch-error', { entity: t('label.user') })
+      );
 
-    if (Math.abs(newPage - currentPage) !== 1 || !cursor) {
       return;
     }
-
+    if (!cursor) {
+      return;
+    }
     handlePageChange(newPage);
-    void fetchUsers({ [cursorType]: cursor });
+    void fetchUsers(cursor, newPage);
   };
 
-  const handleRestoreUser = useCallback(async () => {
-    if (!selectedUser) {
-      return;
-    }
-    setIsRestoring(true);
-    try {
-      await restoreUser(selectedUser.id);
-      showSuccessToast(
-        t('message.entity-restored-success', { entity: t('label.user') })
-      );
-      void fetchUsers();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsRestoring(false);
-      setShowRestoreModal(false);
-      setSelectedUser(undefined);
-    }
-  }, [selectedUser, t, fetchUsers]);
+  const handleRestoreUser = useCallback(
+    async (user: User): Promise<boolean> => {
+      try {
+        await restoreUser(user.id);
+        showSuccessToast(
+          t('message.entity-restored-success', { entity: t('label.user') })
+        );
+        void fetchUsers();
+
+        return true;
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+
+        return false;
+      }
+    },
+    [t, fetchUsers]
+  );
 
   // Latest refetch closure. The pageSize/deleted effect runs on those keys only
   // (plus mount) and must use the *current* search term + fetchers without
@@ -254,7 +318,9 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   };
 
   useEffect(() => {
+    resetToFirstPage();
     refetchUsers.current();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch on size/deleted only
   }, [pageSize, showDeleted]);
 
   useEffect(() => {
@@ -283,22 +349,22 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
   }, [canCreateUser, isAdmin, onNavigate, onSetHeader, t]);
 
   const columns: ColumnsType<User> = useMemo(() => {
-    const usernameColumn = {
-      title: t('label.username'),
-      dataIndex: 'username',
-      key: 'username',
+    const nameColumn = {
+      title: t('label.name'),
+      dataIndex: 'name',
+      key: 'name',
       ellipsis: true,
       render: (_: unknown, record: User) => (
         <UserNameCell goTo={goTo} record={record} />
       ),
     };
 
-    const nameColumn = {
-      title: t('label.name'),
-      dataIndex: 'name',
-      key: 'name',
+    const emailColumn = {
+      title: t('label.email'),
+      dataIndex: 'email',
+      key: 'email',
       ellipsis: true,
-      render: (_: unknown, record: User) => getEntityName(record),
+      render: (_: unknown, record: User) => getUserIdentifier(record),
     };
 
     const teamsColumn = {
@@ -338,51 +404,59 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       render: (_: unknown, record: User) => (
         <Box align="center" direction="row" gap={2}>
           {showDeleted && (
+            <ConfirmPopover
+              confirmText={t('label.restore')}
+              data-testid="restore-user-popover"
+              description={t('message.are-you-want-to-restore', {
+                entity: getEntityName(record),
+              })}
+              title={t('label.restore-entity', { entity: t('label.user') })}
+              variant="primary"
+              onConfirm={() => handleRestoreUser(record)}>
+              <ButtonUtility
+                aria-label={t('label.restore')}
+                data-testid={`restore-user-btn-${record.name}`}
+                icon={RefreshCcw01}
+                isDisabled={!isAdminUser}
+                size="lg"
+                tooltip={
+                  isAdminUser
+                    ? t('label.restore-entity', {
+                        entity: t('label.user'),
+                      })
+                    : t(ADMIN_ONLY_ACTION)
+                }
+              />
+            </ConfirmPopover>
+          )}
+
+          <DeleteEntityPopover
+            afterDeleteAction={() => handleSearch('')}
+            allowSoftDelete={!showDeleted}
+            data-testid="delete-user-popover"
+            entityId={record.id}
+            entityName={getEntityName(record)}
+            entityType={EntityType.USER}>
             <ButtonUtility
-              aria-label={t('label.restore')}
-              color="tertiary"
-              data-testid={`restore-user-btn-${record.name}`}
-              icon={<RefreshCcw01 className="tw:size-4" />}
+              aria-label={t('label.delete')}
+              data-testid={`delete-user-btn-${record.name}`}
+              icon={Trash01}
               isDisabled={!isAdminUser}
-              size="sm"
+              size="lg"
               tooltip={
                 isAdminUser
-                  ? t('label.restore-entity', {
+                  ? t('label.delete-entity', {
                       entity: t('label.user'),
                     })
                   : t(ADMIN_ONLY_ACTION)
               }
-              onPress={() => {
-                setSelectedUser(record);
-                setShowRestoreModal(true);
-              }}
             />
-          )}
-
-          <ButtonUtility
-            aria-label={t('label.delete')}
-            color="tertiary"
-            data-testid={`delete-user-btn-${record.name}`}
-            icon={<Trash01 className="tw:size-4" />}
-            isDisabled={!isAdminUser}
-            size="sm"
-            tooltip={
-              isAdminUser
-                ? t('label.delete-entity', {
-                    entity: t('label.user'),
-                  })
-                : t(ADMIN_ONLY_ACTION)
-            }
-            onPress={() => {
-              setSelectedUser(record);
-              setShowDeleteModal(true);
-            }}
-          />
+          </DeleteEntityPopover>
         </Box>
       ),
     };
 
-    const baseColumns = [usernameColumn, nameColumn, teamsColumn];
+    const baseColumns = [nameColumn, emailColumn, teamsColumn];
 
     if (!isAdmin) {
       baseColumns.push(rolesColumn);
@@ -391,9 +465,15 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     baseColumns.push(actionColumn);
 
     return baseColumns;
-  }, [showDeleted, isAdminUser, isAdmin, t, goTo]);
-
-  const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
+  }, [
+    showDeleted,
+    isAdminUser,
+    isAdmin,
+    t,
+    goTo,
+    handleRestoreUser,
+    handleSearch,
+  ]);
 
   return (
     <Box
@@ -401,8 +481,9 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       data-testid="users-list-container"
       direction="col">
       <TableCard.Root
-        className="tw:flex tw:flex-col tw:outline-none"
-        size="compact">
+        className="tw:flex tw:flex-col"
+        size="compact"
+        variant="muted">
         <div className="tw:overflow-y-auto">
           <Table
             className="user-list-table"
@@ -428,6 +509,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
                   className="tw:min-h-32 tw:relative"
                   justify="center">
                   <NoDataPlaceholder
+                    icon={<User01 />}
                     title={t('label.no-entity-found', {
                       entity: t('label.user-plural'),
                     })}
@@ -447,58 +529,22 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
               onSearch: handleSearch,
             }}
             size="small"
+            variant="muted"
           />
         </div>
         {showPagination && (
           <PaginationCardWithControls
+            // Same compact pager as the Teams list.
             minimal
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
-            total={totalPages}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
+            total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}
           />
         )}
       </TableCard.Root>
-      {showDeleteModal && selectedUser && (
-        <DeleteEntityModal
-          afterDeleteAction={() => {
-            handleSearch('');
-          }}
-          allowSoftDelete={!showDeleted}
-          entityId={selectedUser.id}
-          entityName={getEntityName(selectedUser)}
-          entityType={EntityType.USER}
-          visible={showDeleteModal}
-          onCancel={() => {
-            setShowDeleteModal(false);
-            setSelectedUser(undefined);
-          }}
-        />
-      )}
-
-      {showRestoreModal && selectedUser && (
-        <SimpleModal
-          data-testid="restore-user-modal"
-          isOkLoading={isRestoring}
-          isOpen={showRestoreModal}
-          okText={t('label.restore')}
-          title={t('label.restore-entity', { entity: t('label.user') })}
-          onCancel={() => {
-            setShowRestoreModal(false);
-            setSelectedUser(undefined);
-          }}
-          onOk={handleRestoreUser}>
-          {t('message.are-you-want-to-restore', {
-            entity: getEntityName(selectedUser),
-          })}
-        </SimpleModal>
-      )}
     </Box>
   );
 };

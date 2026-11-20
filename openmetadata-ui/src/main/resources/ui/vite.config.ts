@@ -14,13 +14,12 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
-import type { PreRenderedAsset } from 'rollup';
-import { defineConfig, loadEnv, type PluginOption } from 'vite';
+import { defineConfig, loadEnv, type PluginOption, type Rolldown } from 'vite';
 import viteCompression from 'vite-plugin-compression';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import svgr from 'vite-plugin-svgr';
 import tsconfigPaths from 'vite-tsconfig-paths';
-import { createChunkClassifier } from './vite/chunks';
+import { createChunkClassifier, type ModuleGraph } from './vite/chunks';
 import {
   bundleGraphReport,
   htmlBasePathTransform,
@@ -72,6 +71,9 @@ export default defineConfig(async ({ mode }) => {
   const isPlaywrightBundle = env.PW_E2E_BUNDLE === 'true';
   const isPlaywrightBuild = env.PW_E2E_BUILD === 'true' || isPlaywrightBundle;
   const classifyChunk = createChunkClassifier({ isPlaywrightBundle });
+  const SHELL_CHUNKS = new Set(['app-shell', 'app-auth-shared']);
+  const shellGroup = (chunk: string) => (id: string, graph: ModuleGraph) =>
+    classifyChunk(id, graph) === chunk ? chunk : null;
 
   // Use empty base so dynamic imports use relative paths
   // The actual BASE_PATH is injected at runtime by the Java backend via ${basePath} replacement
@@ -126,12 +128,6 @@ export default defineConfig(async ({ mode }) => {
         process: 'process/browser',
         Quill: path.resolve(__dirname, 'node_modules/quill'),
         '@': path.resolve(__dirname, 'src'),
-        '~antd': path.resolve(__dirname, 'node_modules/antd'),
-        antd: path.resolve(__dirname, 'node_modules/antd'),
-        '@deuex-solutions/react-tour': path.resolve(
-          __dirname,
-          'node_modules/@deuex-solutions/react-tour/dist/reacttour.min.js'
-        ),
         // Luxon ships both an ESM (build/es6/luxon.mjs) and a CJS (build/node/luxon.js)
         // entry. Without this alias, transitive deps that `require('luxon')` (via the
         // CJS path) and our own ESM `import { DateTime } from 'luxon'` end up pulling
@@ -299,7 +295,7 @@ export default defineConfig(async ({ mode }) => {
           entryFileNames: isPlaywrightBuild
             ? 'assets/app-entry-[hash].js'
             : 'assets/[name]-[hash].js',
-          assetFileNames: (assetInfo: PreRenderedAsset) => {
+          assetFileNames: (assetInfo: Rolldown.PreRenderedAsset) => {
             const names = assetInfo.names ?? [];
             const fileName = names.length > 0 ? names[0] : '';
             const ext = fileName ? path.extname(fileName).toLowerCase() : '';
@@ -343,9 +339,31 @@ export default defineConfig(async ({ mode }) => {
               // `experimentalMinChunkSize` merger for auto-split chunks; the
               // right next step is app-level (fewer `React.lazy` boundaries
               // around tiny modules, move shell-imported icons into a lazy
-              // group). We stay with just the vendor classifier and accept
+              // group). Beyond the vendor buckets we only group the entry's
+              // own static graph (`app-shell`, see vite/chunks.ts) and accept
               // ~1200 route-lazy chunks (mostly 1-20 KiB, HTTP/2-friendly).
-              { name: classifyChunk },
+              //
+              // Vendor buckets first: a group captures its members'
+              // dependencies, so whichever group claims a module first keeps
+              // it. Below them, `app-shell` would otherwise swallow React,
+              // the router and react-aria.
+              // ADR:2026-11-02-ui-bundle-groups-the-entry-graph-and-isolates-silent-callback
+              {
+                name: (id: string, graph: ModuleGraph) => {
+                  const chunk = classifyChunk(id, graph);
+
+                  return chunk && !SHELL_CHUNKS.has(chunk) ? chunk : null;
+                },
+                priority: 2,
+              },
+              // The /silent-callback modules are well under `minSize`; without
+              // an unthrottled group of their own they fall into `app-shell`.
+              {
+                name: shellGroup('app-auth-shared'),
+                minSize: 0,
+                priority: 1,
+              },
+              { name: shellGroup('app-shell') },
             ],
           },
         },
@@ -357,7 +375,6 @@ export default defineConfig(async ({ mode }) => {
         'antlr4',
         '@azure/msal-browser',
         '@azure/msal-react',
-        '@deuex-solutions/react-tour',
         // Force-prebundle react-hook-form so it shares the single optimized
         // React instance. Through a symlinked node_modules (worktree/linked
         // dev setups) Vite otherwise serves it raw via `@fs`, pulling a second

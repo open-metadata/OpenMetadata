@@ -5,6 +5,7 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.jackson.Jackson;
@@ -29,10 +30,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,11 +53,17 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.SdkClients;
@@ -84,7 +88,7 @@ import software.amazon.awssdk.services.s3.model.S3Object;
 class DriveFileUploadIT {
 
   private static final String S3_BUCKET = "test-bucket";
-  private static final String TIKA_TESSERACT_PATH_PROPERTY = "collate.tika.tesseract.path";
+  private static final String FILE_PATH = "v1/contextCenter/drive/files";
   private static final Duration EXTRACTION_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration SEARCH_VISIBLE_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
@@ -384,34 +388,6 @@ class DriveFileUploadIT {
     }
   }
 
-  private Path createFakeTesseractHome(String extractedText) throws IOException {
-    Path home = Files.createTempDirectory("fake-tesseract-home-");
-    Path executable = home.resolve("tesseract");
-    Files.writeString(
-        executable,
-        "#!/bin/sh\n"
-            + "if [ $# -eq 0 ] || [ \"$1\" = \"--version\" ]; then\n"
-            + "  echo \"tesseract 5.0.0\"\n"
-            + "  exit 0\n"
-            + "fi\n"
-            + "output_base=\"$2\"\n"
-            + "printf '%s\\n' \""
-            + extractedText
-            + "\" > \"${output_base}.txt\"\n",
-        StandardCharsets.UTF_8);
-    executable.toFile().setExecutable(true);
-    return home;
-  }
-
-  private void deleteRecursively(Path root) throws IOException {
-    if (root == null || Files.notExists(root)) {
-      return;
-    }
-    try (var paths = Files.walk(root)) {
-      paths.sorted(Comparator.reverseOrder()).forEach(path -> path.toFile().delete());
-    }
-  }
-
   @Test
   void testUploadPdfToS3(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-report.pdf");
@@ -539,40 +515,28 @@ class DriveFileUploadIT {
   }
 
   @Test
-  void testUploadedImageIsSearchableByOcrExtractedText(TestNamespace ns) throws Exception {
-    String uniqueToken =
-        "IMAGENEEDLE"
-            + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase();
-    Path fakeTesseractHome = createFakeTesseractHome("Revenue chart " + uniqueToken);
-    String originalPath = System.getProperty(TIKA_TESSERACT_PATH_PROPERTY);
+  void testUploadedImageIsStoredWithoutTextExtraction(TestNamespace ns) throws Exception {
+    byte[] content = createPngWithText("Revenue chart");
 
-    try {
-      System.setProperty(TIKA_TESSERACT_PATH_PROPERTY, fakeTesseractHome.toString());
-      byte[] content = createPngWithText(uniqueToken);
-
-      ContextFile file;
-      try (Response response =
-          uploadFile(
-              uniqueUploadedFileName(ns, "search-fixture.png"),
-              content,
-              ns.shortPrefix("Image Search"),
-              null)) {
-        String body = response.readEntity(String.class);
-        assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
-        file = JsonUtils.readValue(body, ContextFile.class);
-      }
-
-      awaitProcessed(file.getId(), uniqueToken);
-
-      assertSearchContainsFile(uniqueToken, file.getId());
-    } finally {
-      if (originalPath == null) {
-        System.clearProperty(TIKA_TESSERACT_PATH_PROPERTY);
-      } else {
-        System.setProperty(TIKA_TESSERACT_PATH_PROPERTY, originalPath);
-      }
-      deleteRecursively(fakeTesseractHome);
+    ContextFile file;
+    try (Response response =
+        uploadFile(
+            uniqueUploadedFileName(ns, "image-fixture.png"),
+            content,
+            ns.shortPrefix("Image Upload"),
+            null)) {
+      file = readCreatedContextFile(response, "Upload failed");
     }
+
+    UUID fileId = file.getId();
+    await()
+        .pollInterval(POLL_INTERVAL)
+        .atMost(EXTRACTION_TIMEOUT)
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    ProcessingStatus.Unsupported, fetchFile(fileId).getProcessingStatus()));
+    assertNull(fetchFile(fileId).getExtractedText());
   }
 
   @Test
@@ -602,6 +566,44 @@ class DriveFileUploadIT {
         rest.getById("v1/contextCenter/drive/files", file.getId(), "folder", ContextFile.class);
     assertNotNull(fetched.getFolder(), "File should be in folder");
     assertEquals(folder.getId(), fetched.getFolder().getId());
+  }
+
+  @Test
+  void testUploadIntoDomain(TestNamespace ns) throws Exception {
+    // The UI uploads under the navbar domain pick, so the file must not be left without a domain.
+    RestClient rest = RestClient.admin();
+    Domain domain =
+        rest.create(
+            "v1/domains",
+            new CreateDomain()
+                .withName(ns.prefix("upload-domain"))
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("upload target"),
+            Domain.class);
+
+    ContextFile file;
+    try (FormDataMultiPart multipart = new FormDataMultiPart()) {
+      multipart.field("domain", domain.getFullyQualifiedName());
+      multipart.bodyPart(
+          new StreamDataBodyPart(
+              "file",
+              new ByteArrayInputStream(readFixture("/drive/sample-report.pdf")),
+              uniqueUploadedFileName(ns, "/drive/sample-report.pdf"),
+              MediaType.APPLICATION_OCTET_STREAM_TYPE));
+      Response response =
+          uploadTarget
+              .request()
+              .headers(adminAuthHeaders())
+              .post(Entity.entity(multipart, multipart.getMediaType()));
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      file = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    ContextFile fetched =
+        rest.getById("v1/contextCenter/drive/files", file.getId(), "domains", ContextFile.class);
+    assertEquals(
+        List.of(domain.getId()), fetched.getDomains().stream().map(d -> d.getId()).toList());
   }
 
   @Test
@@ -952,6 +954,105 @@ class DriveFileUploadIT {
         InputStream downloaded = downloadResponse.readEntity(InputStream.class)) {
       assertEquals(200, downloadResponse.getStatus());
       assertArrayEquals(content, downloaded.readAllBytes());
+    }
+  }
+
+  @Test
+  void testMetadataUpdatesPreserveUploadedContent(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    byte[] content = readFixture("/drive/sample-notes.txt");
+    ContextFile uploaded;
+    try (Response response = uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Metadata edits")) {
+      uploaded = readCreatedContextFile(response, "Upload failed");
+    }
+    assertNotNull(uploaded.getAssetId());
+    assertNotNull(uploaded.getHeadContentId());
+
+    ContextFile updated =
+        rest.update(
+            FILE_PATH,
+            new CreateContextFile()
+                .withName(uploaded.getName())
+                .withDescription("Updated metadata"),
+            ContextFile.class);
+    assertContentReferences(uploaded, updated);
+    assertContentReferences(uploaded, fetchFile(uploaded.getId()));
+
+    String original = JsonUtils.pojoToJson(updated);
+    updated.withAssetId(null).withHeadContentId(null).withDescription("Cleared metadata fields");
+    updated = rest.patch(FILE_PATH, updated.getId(), original, updated, ContextFile.class);
+    assertContentReferences(uploaded, updated);
+    assertContentReferences(uploaded, fetchFile(uploaded.getId()));
+    assertArrayEquals(content, downloadContent(rest, uploaded.getId()));
+  }
+
+  @Test
+  void testMetadataOnlyFileKeepsIndependentContent(TestNamespace ns) throws Exception {
+    RestClient admin = RestClient.admin();
+    User owner = DriveTestUsers.createUser(ns, "metadata-owner");
+    RestClient ownerRest = RestClient.forUser(owner.getEmail(), new String[] {});
+    byte[] content = readFixture("/drive/sample-notes.txt");
+    ContextFile uploaded;
+    try (Response response = uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Stored content")) {
+      uploaded = readCreatedContextFile(response, "Upload failed");
+    }
+    String original = JsonUtils.pojoToJson(uploaded);
+    uploaded.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    uploaded = admin.patch(FILE_PATH, uploaded.getId(), original, uploaded, ContextFile.class);
+    try (Response response = ownerRest.rawGet(FILE_PATH + "/" + uploaded.getId() + "/download")) {
+      assertEquals(403, response.getStatus());
+    }
+    try (Response response =
+        ownerRest.rawDelete(FILE_PATH + "/" + uploaded.getId() + "?hardDelete=true")) {
+      assertEquals(403, response.getStatus());
+    }
+
+    ContextFile metadata =
+        admin.create(
+            FILE_PATH,
+            new CreateContextFile()
+                .withName(ns.prefix("metadata-only"))
+                .withOwners(List.of(owner.getEntityReference())),
+            ContextFile.class);
+    original = JsonUtils.pojoToJson(metadata);
+    metadata.withAssetId(uploaded.getAssetId()).withDescription("First metadata edit");
+    metadata = ownerRest.patch(FILE_PATH, metadata.getId(), original, metadata, ContextFile.class);
+    assertNull(metadata.getAssetId());
+    assertNull(fetchFile(metadata.getId()).getAssetId());
+
+    original = JsonUtils.pojoToJson(metadata);
+    metadata.withHeadContentId(uploaded.getHeadContentId()).withDescription("Second metadata edit");
+    metadata = ownerRest.patch(FILE_PATH, metadata.getId(), original, metadata, ContextFile.class);
+    assertNull(metadata.getHeadContentId());
+    assertNull(fetchFile(metadata.getId()).getHeadContentId());
+    try (Response response = ownerRest.rawGet(FILE_PATH + "/" + metadata.getId() + "/download")) {
+      assertEquals(404, response.getStatus());
+    }
+
+    UUID metadataId = metadata.getId();
+    ownerRest.hardDelete(FILE_PATH, metadataId);
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              try (Response response =
+                  admin.rawGet(FILE_PATH + "/" + metadataId + "?include=all")) {
+                assertEquals(404, response.getStatus());
+              }
+            });
+    assertArrayEquals(content, downloadContent(admin, uploaded.getId()));
+    assertStoredInS3(uploaded.getAssetId(), content);
+  }
+
+  private void assertContentReferences(ContextFile expected, ContextFile actual) {
+    assertEquals(expected.getAssetId(), actual.getAssetId());
+    assertEquals(expected.getHeadContentId(), actual.getHeadContentId());
+  }
+
+  private byte[] downloadContent(RestClient rest, UUID id) {
+    try (Response response = rest.rawGet(FILE_PATH + "/" + id + "/download?redirect=false")) {
+      assertEquals(200, response.getStatus());
+      return response.readEntity(byte[].class);
     }
   }
 

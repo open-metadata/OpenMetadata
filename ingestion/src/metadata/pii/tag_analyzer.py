@@ -11,6 +11,7 @@ from presidio_analyzer import (
     RecognizerResult,
 )
 from presidio_analyzer.nlp_engine import NlpEngine
+from presidio_analyzer.predefined_recognizers import SpacyRecognizer
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.classification.tag import Tag
@@ -23,6 +24,7 @@ from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException
 from metadata.pii.algorithms import presidio_constants
 from metadata.pii.algorithms.feature_extraction import split_column_name
+from metadata.pii.algorithms.preprocessing import ner_normalize_values
 from metadata.pii.algorithms.presidio_patches import (
     PresidioRecognizerResultPatcher,
     combine_patchers,
@@ -56,13 +58,17 @@ class _RecognitionEvidence:
     result: RecognizerResult
 
 
-def _is_uncontextualized_spacy_named_entity(result: RecognizerResult) -> bool:
+def _is_spacy_named_entity(result: RecognizerResult) -> bool:
     metadata = result.recognition_metadata or {}
     return (
         result.entity_type in _NAMED_ENTITY_TYPES
         and metadata.get(presidio_constants.RECOGNIZER_METADATA_NAME) == Name.SpacyRecognizer.value
-        and not metadata.get(RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY)
     )
+
+
+def _is_uncontextualized_spacy_named_entity(result: RecognizerResult) -> bool:
+    metadata = result.recognition_metadata or {}
+    return _is_spacy_named_entity(result) and not metadata.get(RecognizerResult.IS_SCORE_ENHANCED_BY_CONTEXT_KEY)
 
 
 def _normalized_match(evidence: _RecognitionEvidence) -> str:
@@ -270,6 +276,45 @@ class TagAnalyzer:
                 evidence.extend(_RecognitionEvidence(value=value, result=result) for result in patched_results)
         return evidence
 
+    def _analyze_upper_cased_names(
+        self,
+        str_values: Sequence[str],
+        content_recognizers: list[EntityRecognizer],
+        context: list[str],
+        result_patcher: PresidioRecognizerResultPatcher,
+    ) -> list[_RecognitionEvidence]:
+        """Re-run spaCy NER on title-cased copies of ALL-CAPS values.
+
+        spaCy NER is trained on mixed-case text and misses names such as "SERGE DUPONT".
+        Only spaCy named-entity recognizers and only values whose casing changed are
+        re-analyzed: pattern recognizers must keep seeing the original casing, and
+        unchanged values would only repeat the first pass.
+        """
+        ner_recognizers: list[EntityRecognizer] = [
+            rec
+            for rec in content_recognizers
+            if isinstance(rec, SpacyRecognizer) and _NAMED_ENTITY_TYPES.intersection(rec.supported_entities)
+        ]
+        if not ner_recognizers:
+            return []
+        normalized_values = [
+            normalized
+            for original, normalized in zip(str_values, ner_normalize_values(list(str_values)), strict=True)
+            if normalized != original
+        ]
+        if not normalized_values:
+            return []
+        return [
+            evidence
+            for evidence in self._analyze_with(
+                normalized_values,
+                ner_recognizers,
+                context=context,
+                result_patcher=result_patcher,
+            )
+            if _is_spacy_named_entity(evidence.result)
+        ]
+
     def analyze(
         self,
         str_values: Sequence[str],
@@ -281,11 +326,15 @@ class TagAnalyzer:
             content_recognizers = self.content_recognizers
             if content_recognizers:
                 context = split_column_name(self._column_name)
+                result_patcher = combine_patchers(date_time_patcher, named_entity_patcher)
                 content_evidence = self._analyze_with(
                     str_values,
                     content_recognizers,
                     context=context,
-                    result_patcher=combine_patchers(date_time_patcher, named_entity_patcher),
+                    result_patcher=result_patcher,
+                )
+                content_evidence += self._analyze_upper_cased_names(
+                    str_values, content_recognizers, context, result_patcher
                 )
                 content_results = _corroborated_content_results(content_evidence)
                 # Use the maximum individual recogniser score rather than the average over all

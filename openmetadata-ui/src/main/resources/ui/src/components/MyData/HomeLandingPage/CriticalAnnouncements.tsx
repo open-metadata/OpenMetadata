@@ -10,61 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, PaginationDot } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AnnouncementType } from '../../../generated/entity/feed/announcement';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useRailPager } from '../../../hooks/useRailPager';
+import { AnnouncementEntity } from '../../../rest/announcementsAPI';
 import {
-  AnnouncementEntity,
-  listAnnouncements,
-} from '../../../rest/announcementsAPI';
+  CRITICAL_ANNOUNCEMENTS_QUERY_KEY,
+  getCriticalAnnouncementsQueryOptions,
+} from '../../../rest/queries/criticalAnnouncementsQuery';
 import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
 import { useRouteActivation } from '../../platform/ai-shell/context/useRouteActivation';
 import CriticalAnnouncementBanner from './CriticalAnnouncementBanner';
-import {
-  CRITICAL_ANNOUNCEMENTS_GC_TIME_MS,
-  CRITICAL_ANNOUNCEMENTS_PAGE_SIZE,
-  CRITICAL_ANNOUNCEMENTS_QUERY_KEY,
-  CRITICAL_ANNOUNCEMENTS_TTL_MS,
-} from './CriticalAnnouncements.constants';
 import RailPager from './RailPager';
 import {
   DismissedAnnouncementsScope,
   useDismissedAnnouncements,
 } from './useDismissedAnnouncements';
-
-// Every live critical, newest first. The server pages in its own order, not by
-// start time, so the newest may sit on any page: sorting one page alone could
-// leave it out of the banner without a trace.
-const fetchCriticalAnnouncements = async (): Promise<AnnouncementEntity[]> => {
-  const announcements: AnnouncementEntity[] = [];
-  let after: string | undefined;
-
-  do {
-    // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- sequential page walk
-    const response = await listAnnouncements({
-      active: true,
-      after,
-      limit: CRITICAL_ANNOUNCEMENTS_PAGE_SIZE,
-      system: true,
-      type: AnnouncementType.Critical,
-    });
-    announcements.push(...(response.data ?? []));
-    after = response.paging?.after;
-  } while (after);
-
-  return announcements.sort((a, b) => b.startTime - a.startTime);
-};
-
-const getCriticalAnnouncementsQueryOptions = () => ({
-  gcTime: CRITICAL_ANNOUNCEMENTS_GC_TIME_MS,
-  queryFn: fetchCriticalAnnouncements,
-  queryKey: CRITICAL_ANNOUNCEMENTS_QUERY_KEY,
-  staleTime: CRITICAL_ANNOUNCEMENTS_TTL_MS,
-});
 
 export interface CriticalAnnouncementsProps {
   /** What holds the top slot while no critical announcement is live. */
@@ -77,8 +42,8 @@ export interface CriticalAnnouncementsProps {
  * announcements rail below it — the same pager, the same slide — moved only by
  * the user, so an outage notice never slides away mid-read.
  *
- * This is the only place users see system announcements; the rail below lists
- * asset announcements alone.
+ * The rail below lists every other live announcement, system ones included,
+ * and leaves these out so none appears twice.
  *
  * The banner takes the page's top slot, so whatever normally sits there is
  * passed as `fallback` and shown whenever no critical announcement is live.
@@ -130,7 +95,11 @@ const CriticalAnnouncements = ({
     syncScrollState,
     goToPrevious,
     goToNext,
+    goToPage,
   } = useRailPager(count);
+  // One banner fills the rail, so its page is the banner's position. Clamped:
+  // a dismissal can shorten the rail before it re-measures.
+  const position = Math.min(pageIndex, count - 1);
 
   if (count === 0) {
     return <>{fallback}</>;
@@ -153,14 +122,12 @@ const CriticalAnnouncements = ({
               onPrevious={goToPrevious}
             />
           </div>
-          {/* One banner fills the rail, so its page is the banner's position.
-          Clamped: a dismissal can shorten the rail before it re-measures. */}
           <span
             aria-live="polite"
             className="tw:sr-only"
             data-testid="critical-announcement-position">
             {t('label.current-of-total', {
-              current: Math.min(pageIndex, count - 1) + 1,
+              current: position + 1,
               total: count,
             })}
           </span>
@@ -185,6 +152,20 @@ const CriticalAnnouncements = ({
           </li>
         ))}
       </ul>
+
+      {count > 1 && (
+        <Box
+          className="tw:mt-3"
+          data-testid="critical-announcement-dots"
+          justify="center">
+          <PaginationDot
+            page={position + 1}
+            size="sm"
+            total={count}
+            onPageChange={(page) => goToPage(page - 1)}
+          />
+        </Box>
+      )}
     </section>
   );
 };

@@ -40,8 +40,7 @@ warn() { printf "\033[1;33m!! %s\033[0m\n" "$*" >&2; }
 die() { printf "\033[1;31m++ %s\033[0m\n" "$*" >&2; exit 1; }
 
 ensure_python_sdk() {
-  python -c "import metadata" >/dev/null 2>&1 \
-    || die "Python 'metadata' package not importable. Activate the repo's venv and run 'cd ingestion && make install_dev_env'."
+  make install_dev
 }
 
 stop_stack() {
@@ -99,7 +98,7 @@ fetch_token() {
 run_ingest() {
   local token="$1"
   log "Generating ${CONTAINERS} containers via ingest_100k_containers.py"
-  python scripts/ingest_100k_containers.py \
+  "${REPO_ROOT}/ingestion/.nox/bootstrap/bin/nox" -f "${REPO_ROOT}/ingestion/noxfile.py" -s reindex-perf-ingest -- \
     --server "${SERVER_URL}" \
     --token "${token}" \
     --service "${SERVICE_NAME}" \

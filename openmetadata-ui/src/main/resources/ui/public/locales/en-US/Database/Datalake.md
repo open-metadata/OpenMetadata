@@ -38,7 +38,7 @@ To execute metadata extraction GCP account should have enough access to fetch re
 - `storage.objects.get`
 - `storage.objects.list`
 
-You can find further information on the Data Lake connector in the <a href="https://docs.open-metadata.org/connectors/database/datalake" target="_blank">docs</a>.
+You can find further information on the Data Lake connector in the docs for <a href="https://docs.open-metadata.org/connectors/database/s3-datalake" target="_blank">S3</a>, <a href="https://docs.open-metadata.org/connectors/database/gcs-datalake" target="_blank">GCS</a> and <a href="https://docs.open-metadata.org/connectors/database/adls-datalake" target="_blank">ADLS</a>.
 
 ## Connection Details
 
@@ -307,4 +307,14 @@ Database Service > Database > Schema > Table
 ```
 
 In the case of the Data Lake, we won't have a Database as such. If you'd like to see your data in a database named something other than `default`, you can specify the name in this field.
+$$
+
+$$section
+### CSV Escape Character $(id="csvEscapeChar")
+
+The character used to escape quotes and delimiters inside CSV and TSV files, including compressed CSV. Defaults to a backslash (`\`).
+
+Leave the field empty if backslashes in your files are part of the data, such as Windows paths (`C:\temp`). With the default, those backslashes are removed, and a value can shift into the wrong column.
+
+Enter one character only. Other file formats are not affected.
 $$

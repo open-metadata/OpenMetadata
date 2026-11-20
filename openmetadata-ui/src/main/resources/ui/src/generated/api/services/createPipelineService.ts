@@ -68,7 +68,7 @@ export interface CreatePipelineService {
  * Pipeline Connection.
  */
 export interface PipelineConnection {
-    config?: any[] | boolean | number | null | Connection | string;
+    config?: any[] | boolean | number | null | AirflowConnectionObject | string;
 }
 
 /**
@@ -127,7 +127,7 @@ export interface PipelineConnection {
  *
  * Tableau Pipeline Connection Config
  */
-export interface Connection {
+export interface AirflowConnectionObject {
     /**
      * Choose between database connection or REST API connection to fetch metadata from
      * Airflow.
@@ -200,7 +200,7 @@ export interface Connection {
     /**
      * Underlying storage connection
      */
-    packageConnection?: S3Connection | string;
+    packageConnection?: S3ConnectionClass | string;
     awsConfig?:         AWSCredentials;
     /**
      * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
@@ -471,7 +471,9 @@ export interface Connection {
      */
     salesforceApiVersion?: string;
     /**
-     * Domain of Salesforce instance
+     * Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for
+     * `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain:
+     * Salesforce rejects `login` and `test`.
      */
     salesforceDomain?: string;
     /**
@@ -479,9 +481,15 @@ export interface Connection {
      * that holds it, used to resolve the upstream entity of a Data Stream. Example:
      * {"S3_Connector": "my-s3-service"}
      */
-    serviceMapping?:            string;
+    serviceMapping?: string;
+    /**
+     * Supports Lineage Extraction.
+     */
     supportsLineageExtraction?: boolean;
-    supportsUsageExtraction?:   boolean;
+    /**
+     * Supports Usage Extraction.
+     */
+    supportsUsageExtraction?: boolean;
     /**
      * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
      * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
@@ -574,6 +582,9 @@ export interface PurpleAuthentication {
  * Basic Auth Credentials
  *
  * Access Token Auth Credentials
+ *
+ * Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT
+ * with the secret and signs in as the given Tableau user.
  */
 export interface Authentication {
     /**
@@ -584,6 +595,8 @@ export interface Authentication {
     /**
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
+     *
+     * Client ID of the Tableau connected app.
      */
     clientId?: string;
     /**
@@ -626,6 +639,9 @@ export interface Authentication {
     password?: string;
     /**
      * Username to access the service.
+     *
+     * Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud
+     * this is the user's email address.
      */
     username?: string;
     /**
@@ -636,6 +652,14 @@ export interface Authentication {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+    /**
+     * ID of the connected app secret.
+     */
+    secretId?: string;
+    /**
+     * Value of the connected app secret.
+     */
+    secretValue?: string;
 }
 
 /**
@@ -874,6 +898,8 @@ export enum CloudProvider {
 /**
  * Azure Cloud Credentials
  *
+ * Azure Credentials
+ *
  * Available sources to fetch metadata.
  */
 export interface AzureCredentials {
@@ -936,7 +962,7 @@ export interface ConnectionClass {
     /**
      * Service Type
      */
-    type?: Type;
+    type?: ConnectionType;
     /**
      * Whether to verify SSL certificates when connecting to the Airflow API.
      */
@@ -1373,7 +1399,7 @@ export enum SSLMode {
  *
  * Service type.
  */
-export enum Type {
+export enum ConnectionType {
     Backend = "Backend",
     MatillionDPC = "MatillionDPC",
     MatillionETL = "MatillionETL",
@@ -1543,9 +1569,11 @@ export interface NifiCredentialsConfiguration {
 
 /**
  * S3 Connection.
+ *
+ * ADLS Connection.
  */
-export interface S3Connection {
-    awsConfig: AWSCredentials;
+export interface S3ConnectionClass {
+    awsConfig?: AWSCredentials;
     /**
      * Bucket Names of the data source.
      */
@@ -1565,15 +1593,26 @@ export interface S3Connection {
     /**
      * Service Type
      */
-    type?: S3Type;
+    type?: S3ConnectionType;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
+     * Azure Credentials
+     */
+    credentials?: AzureCredentials;
 }
 
 /**
  * Service Type
  *
  * S3 service type
+ *
+ * ADLS service type
  */
-export enum S3Type {
+export enum S3ConnectionType {
+    Adls = "ADLS",
     S3 = "S3",
 }
 

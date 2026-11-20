@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -25,8 +26,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -39,15 +42,21 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.api.domains.DomainStyles;
+import org.openmetadata.schema.api.domains.EntityStyle;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.CoverImage;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -63,6 +72,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for Domain entity operations.
@@ -222,6 +232,28 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     Domain child = createEntity(createChild);
     assertNotNull(child.getParent());
     assertEquals(parent.getId(), child.getParent().getId());
+  }
+
+  // domain_entity.fqnHash stores one 32-char hash per FQN level, so an eighth-level subdomain
+  // (263 chars) needs more than the varchar(256) the column was created with.
+  @Test
+  void test_createEighthLevelSubDomain(TestNamespace ns) {
+    Domain domain = null;
+    for (int level = 1; level <= 8; level++) {
+      CreateDomain create =
+          new CreateDomain()
+              .withName(level == 1 ? ns.prefix("deepDomain") : "l" + level)
+              .withDomainType(DomainType.AGGREGATE)
+              .withDescription("Deep domain");
+      if (domain != null) {
+        create.withParent(domain.getFullyQualifiedName());
+      }
+      domain = createEntity(create);
+    }
+
+    Domain fetched = SdkClients.adminClient().domains().getByName(domain.getFullyQualifiedName());
+
+    assertEquals(domain.getId(), fetched.getId());
   }
 
   @Test
@@ -1567,6 +1599,69 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
     // ...and the prefix-sharing sibling must stay exactly as it was (no double / no spillover).
     verifyDomainInSearch(siblingFqn, sibling.getId().toString());
+  }
+
+  // Domain and data product references carry no style, so chips look the colour and icon up by id
+  // from this list. ADR:2026-11-02-domain-chips-resolve-their-style-by-domain-id
+  @Test
+  void test_listStylesReturnsStyledDomainsAndDataProducts(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain styled =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("styled_domain"))
+                .withDomainType(DomainType.AGGREGATE)
+                .withDescription("Domain with a style")
+                .withStyle(
+                    new Style()
+                        .withColor("#F14C75")
+                        .withIconURL("Database01")
+                        .withCoverImage(
+                            new CoverImage().withUrl("https://example.com/cover.png"))));
+    Domain plain =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("plain_domain"))
+                .withDomainType(DomainType.AGGREGATE)
+                .withDescription("Domain without a style"));
+    DataProduct dataProduct =
+        client
+            .dataProducts()
+            .create(
+                new CreateDataProduct()
+                    .withName(ns.prefix("styled_dp"))
+                    .withDescription("Data product with a style")
+                    .withDomains(List.of(styled.getFullyQualifiedName()))
+                    .withStyle(new Style().withColor("#12B76A").withIconURL("Cube01")));
+
+    Map<UUID, EntityStyle> styles = listStylesById(client);
+
+    EntityStyle domainStyle = styles.get(styled.getId());
+    assertNotNull(domainStyle, "a styled domain is listed");
+    assertEquals(Entity.DOMAIN, domainStyle.getType());
+    assertEquals("#F14C75", domainStyle.getStyle().getColor());
+    assertEquals("Database01", domainStyle.getStyle().getIconURL());
+    assertNull(domainStyle.getStyle().getCoverImage(), "only the colour and icon");
+    assertFalse(styles.containsKey(plain.getId()), "a domain without a style is omitted");
+    assertEquals(Entity.DATA_PRODUCT, styles.get(dataProduct.getId()).getType());
+    assertEquals("#12B76A", styles.get(dataProduct.getId()).getStyle().getColor());
+
+    styled.setStyle(new Style().withColor("#1470EF").withIconURL("Globe01"));
+    patchEntity(styled.getId().toString(), styled);
+
+    assertEquals(
+        "#1470EF",
+        listStylesById(client).get(styled.getId()).getStyle().getColor(),
+        "a restyle shows on the next request");
+  }
+
+  private Map<UUID, EntityStyle> listStylesById(OpenMetadataClient client) {
+    DomainStyles styles =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, "/v1/domains/styles", null, DomainStyles.class);
+    return styles.getData().stream()
+        .collect(Collectors.toMap(EntityStyle::getId, Function.identity()));
   }
 
   private Table createTableInDomain(TestNamespace ns, String suffix, String domainFqn) {

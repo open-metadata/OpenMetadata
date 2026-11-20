@@ -45,6 +45,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       {children}
     </button>
   ),
+  ButtonUtility: ({
+    onClick,
+    tooltip,
+    'data-testid': testId,
+  }: {
+    onClick?: () => void;
+    tooltip?: string;
+    'data-testid'?: string;
+  }) => <button aria-label={tooltip} data-testid={testId} onClick={onClick} />,
 }));
 
 jest.mock('./FieldRow', () => ({
@@ -155,6 +164,19 @@ describe('InlineEditCard', () => {
 
     expect(mockShowErrorToast).toHaveBeenCalledWith(err);
     expect(screen.getByTestId('edit-form')).toBeInTheDocument();
+  });
+
+  it('stays in edit mode when the save reports it did not land', async () => {
+    // The shared update handler toasts and resolves to false on failure.
+    setup({ onSave: jest.fn().mockResolvedValue(false) });
+
+    fireEvent.click(screen.getByLabelText('label.edit'));
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.save-changes'));
+    });
+
+    expect(screen.getByTestId('edit-form')).toBeInTheDocument();
+    expect(screen.queryByTestId('view')).not.toBeInTheDocument();
   });
 
   it('cancels editing', () => {

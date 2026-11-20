@@ -117,7 +117,7 @@ describe('CustomPropertiesSection', () => {
       within(screen.getByTestId('custom-property-cost_center-row')).getByTestId(
         'property-value'
       )
-    ).toHaveTextContent('label.not-set');
+    ).toHaveTextContent('label.no-value-yet');
   });
 
   it('filters rows by name, display name and type, ignoring case', async () => {
@@ -147,7 +147,7 @@ describe('CustomPropertiesSection', () => {
 
     expect(
       screen.getByTestId('no-matching-custom-properties')
-    ).toHaveTextContent('message.no-entity-found-for-name');
+    ).toHaveTextContent('label.no-matching-result-plural');
     expect(
       screen.queryByTestId('custom-properties-list')
     ).not.toBeInTheDocument();

@@ -1,5 +1,5 @@
 import type { FC, HTMLAttributes, MouseEventHandler, ReactNode } from 'react';
-import { ChevronDown, Share04 } from '../../../../icons';
+import { ChevronDown, LinkExternal01 } from '../../../../icons';
 import { Link as AriaLink } from 'react-aria-components';
 import { Badge } from '@/components/base/badges/badges';
 import { cx, sortCx } from '@/utils/cx';
@@ -85,7 +85,9 @@ interface NavItemBaseProps {
   /** Type of the nav item. */
   type: 'link' | 'collapsible' | 'collapsible-child';
   /** Icon component to display. */
-  icon?: FC<HTMLAttributes<HTMLOrSVGElement>>;
+  icon?: FC<
+    Pick<HTMLAttributes<HTMLOrSVGElement>, 'className' | 'aria-hidden'>
+  >;
   /** Badge to display. */
   badge?: ReactNode;
   /** Whether the nav item is currently active. */
@@ -173,7 +175,7 @@ export const NavItemBase = ({
 
   const isExternal = href && href.startsWith('http');
   const externalIcon = isExternal && (
-    <Share04 className="tw:size-4 tw:stroke-[2.5px] tw:text-fg-quaternary" />
+    <LinkExternal01 className="tw:size-4 tw:stroke-[2.5px] tw:text-fg-quaternary" />
   );
 
   if (type === 'collapsible') {

@@ -10,16 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { User } from '../../../../../generated/entity/teams/user';
 import UserDescriptionRow from './UserDescriptionRow';
 
-jest.mock('../../../../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, opts?: Record<string, string>) =>
+      opts?.name ? `${key}:${opts.name}` : key,
+  }),
 }));
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+jest.mock('../../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: () => ({ currentUser: { name: 'harsh' } }),
 }));
 
 jest.mock(
@@ -49,14 +53,16 @@ jest.mock(
       <div data-testid="preview">{markdown}</div>
 );
 
+const JANE = { id: 'u1', name: 'jane' } as User;
+
 describe('UserDescriptionRow', () => {
   it('shows the placeholder, then saves a changed description', async () => {
-    const updateUserDetails = jest.fn().mockResolvedValue(undefined);
+    const updateUserDetails = jest.fn().mockResolvedValue(true);
     render(
       <UserDescriptionRow
         canEdit
         updateUserDetails={updateUserDetails}
-        userData={{ id: 'u1', name: 'jane' } as User}
+        userData={JANE}
       />
     );
 
@@ -79,14 +85,15 @@ describe('UserDescriptionRow', () => {
       { description: 'Data steward for sales' },
       'description'
     );
+    expect(screen.queryByTestId('editor')).not.toBeInTheDocument();
   });
 
   it('keeps the editor open with the draft when the save fails', async () => {
     render(
       <UserDescriptionRow
         canEdit
-        updateUserDetails={jest.fn().mockRejectedValue(new Error('boom'))}
-        userData={{ id: 'u1', name: 'jane' } as User}
+        updateUserDetails={jest.fn().mockResolvedValue(false)}
+        userData={JANE}
       />
     );
 
@@ -99,5 +106,23 @@ describe('UserDescriptionRow', () => {
     });
 
     expect(screen.getByTestId('editor')).toHaveValue('Unsaved draft');
+  });
+
+  it('shows another user’s description read-only, in third person', () => {
+    render(
+      <UserDescriptionRow
+        canEdit={false}
+        updateUserDetails={jest.fn()}
+        userData={{ ...JANE, description: 'Owns billing' }}
+      />
+    );
+
+    expect(screen.getByTestId('preview')).toHaveTextContent('Owns billing');
+    expect(screen.getByTestId('user-description')).toHaveTextContent(
+      'message.user-description-description'
+    );
+    expect(
+      screen.queryByTestId('user-description-edit')
+    ).not.toBeInTheDocument();
   });
 });

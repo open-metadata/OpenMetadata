@@ -58,7 +58,7 @@ export type IncidentSeed = {
   // The row count and column count incidents, both assigned to `assignee`.
   testCaseFqns: string[];
   rowCountName: string;
-  // Left unassigned, so it is still New: the one incident here Ack can move.
+  // Left unassigned, so it is still New.
   newIncidentFqn: string;
 };
 

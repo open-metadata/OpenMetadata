@@ -22,7 +22,6 @@ import {
   AlignLeft,
   ArrowDown,
   ChevronDownDouble,
-  Copy01,
   Download01,
   File02,
   Maximize01,
@@ -43,7 +42,7 @@ import {
 } from 'react';
 import { Dialog as AriaDialog } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { useClipboard } from '../../../hooks/useClipBoard';
+import CopyButton from '../CopyButton/CopyButton';
 import Loader from '../Loader/Loader';
 import './log-viewer-modal.less';
 import {
@@ -99,6 +98,7 @@ const LogViewerSearchBox: FunctionComponent<LogViewerSearchBoxProps> = ({
         aria-label={t('label.search-entity', {
           entity: t('label.log-lowercase-plural'),
         })}
+        autoComplete="off"
         className="lvm-search-input"
         data-testid="log-viewer-search"
         placeholder={t('label.search-entity', {
@@ -109,33 +109,6 @@ const LogViewerSearchBox: FunctionComponent<LogViewerSearchBoxProps> = ({
         onChange={onSearchChange}
       />
     </div>
-  );
-};
-
-interface LogViewerCopyButtonProps {
-  hasCopied: boolean;
-  onCopy: () => void;
-}
-
-const LogViewerCopyButton: FunctionComponent<LogViewerCopyButtonProps> = ({
-  hasCopied,
-  onCopy,
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <Tooltip
-      delay={500}
-      placement="top"
-      title={hasCopied ? t('label.copied') : t('label.copy')}>
-      <TooltipTrigger
-        className="lvm-copy-button"
-        data-testid="log-viewer-copy"
-        onPress={onCopy}>
-        <Copy01 aria-hidden className="lvm-copy-icon" />
-        <span>{hasCopied ? t('label.copied') : t('label.copy')}</span>
-      </TooltipTrigger>
-    </Tooltip>
   );
 };
 
@@ -175,8 +148,7 @@ interface LogViewerHeaderActionsProps {
   query: string;
   matchCount: number;
   enableCopy: boolean;
-  hasCopied: boolean;
-  onCopyToClipBoard: () => void;
+  copyValue: string;
   followTail: boolean;
   toggleFollow: () => void;
   handleJumpToEnd: () => void;
@@ -201,8 +173,7 @@ const LogViewerHeaderActions: FunctionComponent<
   query,
   matchCount,
   enableCopy,
-  hasCopied,
-  onCopyToClipBoard,
+  copyValue,
   followTail,
   toggleFollow,
   handleJumpToEnd,
@@ -232,7 +203,11 @@ const LogViewerHeaderActions: FunctionComponent<
         </span>
       )}
       {enableCopy && (
-        <LogViewerCopyButton hasCopied={hasCopied} onCopy={onCopyToClipBoard} />
+        <CopyButton
+          label={t('label.copy')}
+          testId="log-viewer-copy"
+          value={copyValue}
+        />
       )}
       {isLive && (
         <LogViewerToolbarToggle
@@ -500,8 +475,6 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     status || resolvedTotalLines !== undefined || runId || lastRun
   );
 
-  const { hasCopied, onCopyToClipBoard } = useClipboard(resolvedLogs);
-
   const query = searchText.trim().toLowerCase();
 
   const filteredLogs = useMemo(() => {
@@ -636,6 +609,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                 </span>
               </div>
               <LogViewerHeaderActions
+                copyValue={resolvedLogs}
                 downloading={downloading}
                 enableCopy={enableCopy}
                 enableSearch={enableSearch}
@@ -643,7 +617,6 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                 handleJumpToEnd={handleJumpToEnd}
                 handleToggleFullScreen={handleToggleFullScreen}
                 handleToggleWrap={handleToggleWrap}
-                hasCopied={hasCopied}
                 isFullScreen={isFullScreen}
                 isLive={isLive}
                 isReconnecting={isReconnecting}
@@ -654,7 +627,6 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                 toggleFollow={toggleFollow}
                 wrap={wrap}
                 onClose={onClose}
-                onCopyToClipBoard={() => onCopyToClipBoard(resolvedLogs)}
                 onDownload={onDownload}
                 onSearchChange={handleSearchChange}
               />

@@ -31,6 +31,8 @@ from _openmetadata_testutils.ometa import OM_JWT
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.workflow.metadata import MetadataWorkflow
 
+from ...utils.tableau_connected_app import CONNECTED_APP, PAT, sign_in  # noqa: TID252
+
 TABLEAU_HOST = "tableau-dashboard-it.example.com"
 DASHBOARD_SERVICE = "tableau_dashboard_it"
 NS = 'xmlns="http://tableau.com/api"'
@@ -71,6 +73,14 @@ VIEWS = {
 class FakeTableauSite:
     """A Tableau site answering the REST and Metadata API calls the dashboard connector makes."""
 
+    def __init__(self) -> None:
+        # Data sources per workbook id, in the Metadata API's shape. None by default.
+        self.datasources: dict[str, list[dict]] = {}
+        # While the store behind the Metadata API is rebuilt, every response carries the
+        # BACKFILL_RUNNING warning, and the workbooks it has not reached yet are missing.
+        self.backfill_running = False
+        self.not_indexed: set[str] = set()
+
     def answer(self, request: requests.PreparedRequest) -> requests.Response:
         path = urlparse(request.url).path
         status, body, content_type = 200, "", "text/xml"
@@ -80,10 +90,7 @@ class FakeTableauSite:
                 "<restApiVersion>3.23</restApiVersion></serverInfo></tsResponse>"
             )
         elif path.endswith("/auth/signin"):
-            body = (
-                f'<tsResponse {NS}><credentials token="t"><site id="site-it" contentUrl="it"/>'
-                '<user id="api-user"/></credentials></tsResponse>'
-            )
+            status, body = sign_in(request.body)
         elif path.endswith("/auth/signout"):
             status = 204
         elif path.endswith("/projects"):
@@ -114,20 +121,30 @@ class FakeTableauSite:
             f"<{element}>{''.join(items)}</{element}></tsResponse>"
         )
 
-    @staticmethod
-    def _graphql(query: str) -> dict:
-        if "customSQLTables" in query:
-            return {"data": {"customSQLTables": []}}
+    def _graphql(self, query: str) -> dict:
         luid = re.search(r'luid: "([^"]+)"', query)
-        if luid:
+        if "customSQLTables" in query:
+            response = {"data": {"customSQLTables": []}}
+        elif luid:
+            nodes = self.datasources.get(luid.group(1), [])
             workbook = {
                 "id": f"gql-{luid.group(1)}",
                 "luid": luid.group(1),
                 "name": luid.group(1),
-                "embeddedDatasourcesConnection": {"nodes": [], "totalCount": 0},
+                "embeddedDatasourcesConnection": {"nodes": nodes, "totalCount": len(nodes)},
             }
-            return {"data": {"workbooks": [workbook]}}
-        return {"data": {}}
+            response = {"data": {"workbooks": [] if luid.group(1) in self.not_indexed else [workbook]}}
+        else:
+            response = {"data": {}}
+        if self.backfill_running:
+            response["errors"] = [
+                {
+                    "message": "Still creating the Metadata API Store. "
+                    "Results from the query might be incomplete at this time.",
+                    "extensions": {"severity": "WARNING", "code": "BACKFILL_RUNNING"},
+                }
+            ]
+        return response
 
 
 @pytest.fixture(scope="module")
@@ -145,7 +162,7 @@ def tableau_site() -> Iterator[FakeTableauSite]:
         yield site
 
 
-def _workflow_config(override_lineage: bool) -> dict:
+def _workflow_config(override_lineage: bool, auth_type: dict = PAT) -> dict:
     return {
         "source": {
             "type": "tableau",
@@ -155,7 +172,7 @@ def _workflow_config(override_lineage: bool) -> dict:
                     "type": "Tableau",
                     "hostPort": f"https://{TABLEAU_HOST}",
                     "siteName": "it",
-                    "authType": {"personalAccessTokenName": "pat", "personalAccessTokenSecret": "secret"},
+                    "authType": auth_type,
                 }
             },
             "sourceConfig": {
@@ -184,14 +201,19 @@ def _delete_ingested(metadata) -> None:
         metadata.delete(entity=DashboardService, entity_id=service.id, recursive=True, hard_delete=True)
 
 
+@pytest.fixture(scope="module", params=[PAT, CONNECTED_APP], ids=["pat", "connected_app"])
+def auth_type(request) -> dict:
+    return request.param
+
+
 @pytest.fixture(scope="module")
-def ingest(metadata, run_workflow, tableau_site) -> Iterator[Callable[..., MetadataWorkflow]]:
+def ingest(metadata, run_workflow, tableau_site, auth_type) -> Iterator[Callable[..., MetadataWorkflow]]:
     """Runs the workflow and hands it back. The broken view is a source failure on
     every run, so the status is asserted by the tests instead of raised here."""
     _delete_ingested(metadata)
 
     def _ingest(override_lineage: bool = False) -> MetadataWorkflow:
-        return run_workflow(MetadataWorkflow, _workflow_config(override_lineage), raise_from_status=False)
+        return run_workflow(MetadataWorkflow, _workflow_config(override_lineage, auth_type), raise_from_status=False)
 
     try:
         yield _ingest

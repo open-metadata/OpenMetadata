@@ -14,7 +14,7 @@ import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
-import { redirectToHomePage, uuid } from './common';
+import { chooseSelectOption, redirectToHomePage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { expectScheduleFrequencySelected } from './scheduleInterval';
 import { sidebarClick } from './sidebar';
@@ -37,12 +37,20 @@ export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
  * picking the option — relying on the option being present in the full
  * (scrollable, height-capped) list is brittle and regresses whenever the
  * field's rendering changes. `label` is the test type's display name, which is
- * also what the option is matched by.
+ * also what the option is matched by. The test definitions are refetched as
+ * the level and column settle, so an option click can land as the list is
+ * replaced and pick nothing; retry until the picked chip shows.
  */
 export const selectTestType = async (page: Page, label: string) => {
-  await page.click('[id="root\\/testType"]');
+  const testType = page.getByTestId('test-type');
   await page.fill('[id="root\\/testType"]', label);
-  await page.getByRole('option').filter({ hasText: label }).first().click();
+  await chooseSelectOption(
+    testType,
+    page.getByRole('option').filter({ hasText: label }).first(),
+    testType
+      .getByTestId('autocomplete-selected-item')
+      .filter({ hasText: label })
+  );
 };
 
 /**
@@ -145,6 +153,11 @@ export async function clickPieChartSegmentByIndex(
   // late data refresh redraws the arcs) hits nothing and leaves the page on
   // the dashboard, so re-measure and click again until it navigates.
   await expect(async () => {
+    // ECharts lifts a hovered slice's z2, which moves its path to the end of
+    // the SVG and shifts every nth() index. The pointer can rest on the pie
+    // after the tier filter's Update click or a missed attempt, so park it
+    // off the chart; the stability poll below then waits out the downplay.
+    await page.mouse.move(0, 0);
     let previousGeometry: string | undefined;
     let stableSamples = 0;
     // Visibility and a stable bounding box do not mean the SVG arc has stopped animating.
@@ -375,14 +388,6 @@ export const addTestSuitePipeline = async (page: Page) => {
   const pipelineTab = page.getByRole('tab', { name: 'Pipeline' });
   await expect(pipelineTab).toBeVisible();
   await pipelineTab.click();
-  const testSuiteByNameResponse = waitForResponseWithStatus(
-    page,
-    (res) =>
-      res.request().method() === 'GET' &&
-      res.url().includes('/api/v1/dataQuality/testSuites/name/') &&
-      res.url().includes('fields=owners'),
-    200
-  );
   const emptyStateAddButton = page
     .getByTestId('empty-placeholder')
     .getByRole('button', { name: /add pipeline/i });
@@ -390,11 +395,13 @@ export const addTestSuitePipeline = async (page: Page) => {
   const addButton = emptyStateAddButton.or(addPipelineButton);
   await expect(addButton).toBeVisible();
   await addButton.click();
-  await testSuiteByNameResponse;
+
+  const pipelineDrawer = page.getByTestId('test-suite-pipeline-form-drawer');
+  await expect(pipelineDrawer).toBeVisible();
 
   // The pipeline form's toggle shares this testid with the test-case list's
   // checkbox; the toggle's wrapper is the one holding a switch.
-  const selectAllTestCases = page
+  const selectAllTestCases = pipelineDrawer
     .getByTestId('select-all-test-cases')
     .filter({ has: page.getByRole('switch') });
   await expect(selectAllTestCases).toBeVisible();
@@ -409,23 +416,11 @@ export const addTestSuitePipeline = async (page: Page) => {
       res.request().method() === 'POST',
     200
   );
-  await page.getByTestId('deploy-button').click();
+  await pipelineDrawer.getByTestId('deploy-button').click();
   await deployResponse;
 
-  await expect(page.getByTestId('view-service-button')).toBeVisible();
-  await expect(page.getByTestId('success-line')).toContainText(
-    /has been created and deployed successfully/
-  );
-
-  const testSuiteDetailsResponse = waitForResponseWithStatus(
-    page,
-    (res) =>
-      res.request().method() === 'GET' &&
-      res.url().includes('/api/v1/dataQuality/testSuites/name/'),
-    200
-  );
-  await page.getByTestId('view-service-button').click();
-  await testSuiteDetailsResponse;
+  await expect(pipelineDrawer).not.toBeVisible();
+  await expect(page.getByTestId('ingestion-list-table')).toBeVisible();
 };
 
 export const navigateToDataQualityTestCases = async (page: Page) => {

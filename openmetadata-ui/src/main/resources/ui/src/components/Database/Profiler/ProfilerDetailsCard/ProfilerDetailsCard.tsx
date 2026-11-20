@@ -31,6 +31,7 @@ import {
 } from '../../../../utils/DataQuality/CustomDQTooltip.component';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import { ProfileExecutionSource } from '../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 import {
   MetricChartType,
   ProfilerDetailsCardProps,
@@ -52,6 +53,8 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   isLoading,
   noDataPlaceholderText,
   chartType = 'line',
+  profiles,
+  isSharded,
 }: ProfilerDetailsCardProps) => {
   const { data, information } = chartCollection;
   const Chart = chartType === 'area' ? AreaChart : LineChart;
@@ -82,13 +85,20 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
     () => ({
       render: (items, row) => (
         <DQTooltipContent
+          footer={
+            <ProfileExecutionSource
+              isSharded={isSharded}
+              profiles={profiles}
+              timestamp={Number(row?.timestamp)}
+            />
+          }
           header={formatDateTimeLong(Number(row?.timestamp ?? 0))}
           rows={chartTooltipRows(items)}
           valueFormatter={(value) => tooltipFormatter(value, tickFormatter)}
         />
       ),
     }),
-    [tickFormatter]
+    [tickFormatter, profiles, isSharded]
   );
 
   if (isLoading) {

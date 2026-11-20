@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import { Task } from '../../../../../generated/entity/tasks/task';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { Task, TaskStatus } from '../../../../../generated/entity/tasks/task';
 import { TaskResolveAction } from '../taskResolve.utils';
 import TaskDetailHeader from './TaskDetailHeader';
 
@@ -62,5 +62,59 @@ describe('TaskDetailHeader', () => {
     renderHeader('approve');
 
     expect(screen.getByTestId('task-actions-menu')).toBeDisabled();
+  });
+
+  // Passed as an element, the icon kept its own 16px and the menu button sat
+  // 4px shorter than Reject and Approve beside it.
+  it('lets the button size the overflow icon like its neighbours', () => {
+    renderHeader();
+
+    expect(
+      screen.getByTestId('task-actions-menu').querySelector('[data-icon]')
+    ).toBeInTheDocument();
+  });
+
+  it('shows Resolve and Reassign on an assigned incident and folds the steps back', () => {
+    const transition = (id: string, targetStageId: string) => ({
+      ...action(id, id === 'reassign' ? 'assignee' : 'other'),
+      transition: {
+        id,
+        label: id,
+        targetStageId,
+        targetTaskStatus: TaskStatus.InProgress,
+      },
+    });
+
+    render(
+      <TaskDetailHeader
+        actions={[
+          transition('new', 'new'),
+          transition('ack', 'ack'),
+          transition('reassign', 'assigned'),
+          transition('resolve', 'resolved'),
+        ]}
+        task={
+          {
+            id: 'task-1',
+            taskId: 'TASK-1',
+            workflowStageId: 'assigned',
+          } as Task
+        }
+        typeBadge={{ label: 'Incident', color: 'gray', icon: 'incident' }}
+        onAssigneeUpdate={() => jest.fn()}
+        onTransition={() => jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('task-transition-resolve')).toBeVisible();
+    expect(screen.getByTestId('task-transition-reassign')).toBeVisible();
+    expect(screen.getByTestId('task-actions-menu')).toBeVisible();
+    expect(screen.queryByTestId('task-transition-new')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('task-transition-ack')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('task-actions-menu'));
+
+    expect(screen.getByTestId('task-transition-new')).toBeInTheDocument();
+    expect(screen.getByTestId('task-transition-ack')).toBeInTheDocument();
   });
 });

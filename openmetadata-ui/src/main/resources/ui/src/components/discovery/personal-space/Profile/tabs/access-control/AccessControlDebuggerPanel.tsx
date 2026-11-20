@@ -260,9 +260,7 @@ const AccessControlDebuggerPanel: FC = () => {
 
               return (
                 <Card
-                  className="tw:p-4 tw:bg-tertiary tw:border-l-4 tw:border-l-utility-gray-500"
-                  direction="col"
-                  gap={2}
+                  className="tw:flex tw:flex-col tw:gap-2 tw:p-4 tw:bg-tertiary tw:border-l-4 tw:border-l-utility-gray-500"
                   key={step.stepNumber}>
                   <Box align="center" direction="row" gap={2} wrap="wrap">
                     <Typography className="tw:text-secondary" size="text-sm">

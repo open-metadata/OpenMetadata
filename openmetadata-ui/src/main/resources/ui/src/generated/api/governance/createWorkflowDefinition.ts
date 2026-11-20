@@ -50,7 +50,12 @@ export interface CreateWorkflowDefinition {
  * Configuration for the Workflow Definition
  */
 export interface WorkflowConfiguration {
-    lifecycle?: LifecycleConfiguration;
+    /**
+     * If True, tasks created by this workflow are assigned to the owners of the entity they are
+     * about (for incidents, the test case owners). Defaults to True when not set.
+     */
+    autoAssignOwners?: boolean;
+    lifecycle?:        LifecycleConfiguration;
     /**
      * If True, all the stage status will be stored in the database.
      */
@@ -522,12 +527,14 @@ export interface ExpiryTimer {
     closeAsResolution?: ResolutionType;
     /**
      * Name of the process variable holding the absolute ISO 8601 date/time when the timer
-     * should fire (e.g. 'accessExpirationDate' → '2026-12-31T23:59:59Z').
+     * should fire (e.g. 'accessExpirationDate' → '2026-12-31T23:59:59Z'). Must be a bare
+     * variable name: letters, digits and '_', starting with a letter or underscore.
      */
     dateVariable?: string;
     /**
      * Name of the process variable holding the ISO 8601 duration (e.g. 'accessDuration' →
-     * 'P14D').
+     * 'P14D'). Must be a bare variable name: letters, digits and '_', starting with a letter or
+     * underscore.
      */
     durationVariable?: string;
     /**
@@ -729,24 +736,26 @@ export enum Event {
 /**
  * Entity-specific filters with optional default
  */
-export interface FilterConditionObject {
+export type FilterConditionObject = {
     /**
      * Default filter for entity types not explicitly configured
      */
     default?: string;
+} & {
     [property: string]: string;
-}
+};
 
 /**
  * Entity-specific filters with optional default
  */
-export interface FiltersObject {
+export type FiltersObject = {
     /**
      * Default filter for entity types not explicitly configured
      */
     default?: string;
+} & {
     [property: string]: string;
-}
+};
 
 export interface AppScheduleClass {
     /**

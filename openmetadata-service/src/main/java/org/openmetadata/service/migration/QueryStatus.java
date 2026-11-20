@@ -3,6 +3,7 @@ package org.openmetadata.service.migration;
 public class QueryStatus {
   public enum Status {
     SUCCESS,
+    SKIPPED,
     FAILURE
   }
 

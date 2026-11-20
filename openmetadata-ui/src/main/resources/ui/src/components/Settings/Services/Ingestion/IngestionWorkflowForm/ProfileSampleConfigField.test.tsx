@@ -94,6 +94,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+    ButtonUtility: ({
+      onClick,
+      tooltip,
+      'data-testid': testId,
+    }: {
+      onClick?: () => void;
+      tooltip?: string;
+      'data-testid'?: string;
+    }) => (
+      <button aria-label={tooltip} data-testid={testId} onClick={onClick} />
+    ),
     Card: CardMock,
     Grid: GridMock,
     Input: ({
@@ -549,6 +560,9 @@ describe('ProfileSampleConfigField', () => {
 
     it('raises a threshold profile sample below 1 to 1 on blur', () => {
       const threshold = dynamicFormData.config?.thresholds?.[0];
+      if (!threshold) {
+        throw new Error('Missing dynamic sampling threshold fixture');
+      }
       render(
         <ProfileSampleConfigField
           {...baseFieldProps}

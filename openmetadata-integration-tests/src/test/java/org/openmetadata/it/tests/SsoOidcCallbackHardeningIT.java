@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.openmetadata.it.sso.SsoFlows.ID_TOKEN;
+import static org.openmetadata.it.sso.SsoFlows.assertCallbackRefused;
 import static org.openmetadata.it.sso.SsoFlows.assertLoginRefused;
 import static org.openmetadata.it.sso.SsoFlows.editQuery;
 import static org.openmetadata.it.sso.SsoFlows.idTokenFrom;
@@ -44,6 +45,10 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 @ExtendWith(TestNamespaceExtension.class)
 class SsoOidcCallbackHardeningIT {
   private static final String EMAIL_DOMAIN = "@open-metadata.org";
+  private static final String STATE_MISMATCH =
+      "State parameter is different from the one sent in authentication request.";
+  private static final String NONCE_MISMATCH = "Unexpected JWT nonce (nonce) claim";
+  private static final String ISSUER_MISMATCH = "Issuer mismatch, possible mix-up attack.";
 
   private static MockOidcProvider provider;
   private static SecurityConfigSwap securityConfig;
@@ -97,7 +102,7 @@ class SsoOidcCallbackHardeningIT {
     SsoNavigation navigation =
         browser.navigate(editQuery(callback, query -> query.put("state", "forged-state")));
 
-    assertLoginRefused(browser, navigation);
+    assertCallbackRefused(browser, navigation, STATE_MISMATCH);
     assertTrue(provider.tokenRequests().isEmpty(), "the code must not be redeemed");
   }
 
@@ -111,6 +116,7 @@ class SsoOidcCallbackHardeningIT {
 
     SsoNavigation replay = browser.navigate(callback.toString());
 
+    assertEquals(URI.create(SsoServer.url("/signin")), replay.finalUrl(), replay.describe());
     assertTrue(replay.fragmentParameter(ID_TOKEN).isEmpty(), replay.describe());
     assertEquals(1, provider.tokenRequests().size(), "the code is redeemed exactly once");
   }
@@ -145,7 +151,7 @@ class SsoOidcCallbackHardeningIT {
 
     SsoNavigation navigation = login(browser);
 
-    assertLoginRefused(browser, navigation);
+    assertCallbackRefused(browser, navigation, NONCE_MISMATCH);
   }
 
   @Test
@@ -171,7 +177,7 @@ class SsoOidcCallbackHardeningIT {
             if (isAccepted) {
               idTokenFrom(navigation);
             } else {
-              assertLoginRefused(browser, navigation);
+              assertCallbackRefused(browser, navigation, ISSUER_MISMATCH);
             }
           } finally {
             provider.useIssuerParameter(IssuerParameter.NOT_ADVERTISED);

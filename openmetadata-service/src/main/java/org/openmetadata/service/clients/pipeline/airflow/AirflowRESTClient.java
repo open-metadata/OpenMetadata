@@ -376,6 +376,12 @@ public class AirflowRESTClient extends PipelineServiceClient {
     return true;
   }
 
+  /** The dag_id, and the DAG files DagDeployer writes, are the pipeline name alone. */
+  @Override
+  public boolean addressesPipelinesByName() {
+    return true;
+  }
+
   @Override
   public PipelineServiceClientResponse deployPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {

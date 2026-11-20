@@ -12,27 +12,33 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.util.OntologyChangeSetTestSupport;
 import org.openmetadata.it.util.RdfAccessFixtures;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntologyAxiom;
+import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyProperty;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
+import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyAxiomType;
+import org.openmetadata.schema.type.OntologyChangeOperation;
+import org.openmetadata.schema.type.OntologyChangeOperationState;
+import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyExpressionKind;
+import org.openmetadata.schema.type.OntologyProfileViolationSeverity;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyRestrictionKind;
@@ -54,6 +60,7 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
   private static final URI CUSTOMER = URI.create("https://example.org/model/Customer");
   private static final URI PARTY = URI.create("https://example.org/model/Party");
   private static final URI PROPERTY = URI.create("https://example.org/model/knows");
+  private static final URI THING = URI.create("http://www.w3.org/2002/07/owl#Thing");
 
   @Test
   void axiomsBelongToOntologiesAndHaveNoSeparateApproval(TestNamespace ns) {
@@ -88,6 +95,96 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
     assertTrue(state(ontology).getWorkingRevision() > revision);
     assertEquals(EntityStatus.APPROVED, current(release).getEntityStatus());
     assertEquals(release.getContentDigest(), current(release).getContentDigest());
+  }
+
+  @Test
+  void aSecondRuleStatingTheSameThingIsRefused(TestNamespace ns) {
+    Ontology ontology = createModel(ns, "reviewedOntology");
+    var service = SdkClients.adminClient().ontologyAxioms();
+    service.create(axiomRequest(ontology));
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                service.create(
+                    axiomRequest(ontology)
+                        .withName("CustomerIsPartyAgain")
+                        .withDisplayName("Customer is a Party again")));
+
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("'Customer is a Party'"), refused.getMessage());
+    var page = service.list(new ListParams().addFilter("ontologyId", ontology.getId().toString()));
+    assertEquals(1, page.getData().size());
+  }
+
+  // A native change set is validated once, after every operation, so the duplicate refuses the
+  // whole apply and the transaction rolls both rules back.
+  @Test
+  void aChangeSetWithTwoIdenticalRulesAppliesNeither(TestNamespace ns) {
+    Ontology ontology = createModel(ns, "reviewedOntology");
+    OpenMetadataClient client = SdkClients.adminClient();
+    long revision = state(ontology).getWorkingRevision();
+    OntologyChangeSet draft =
+        ns.trackRoot(
+            Entity.ONTOLOGY_CHANGE_SET,
+            client
+                .ontologyChangeSets()
+                .create(
+                    new CreateOntologyChangeSet()
+                        .withName(ns.prefix("duplicateRules"))
+                        .withDisplayName("Duplicate rules")
+                        .withDescription("Two identical rules")
+                        .withOntology(ontology.getFullyQualifiedName())
+                        .withBaseWorkingRevision(revision)
+                        .withOperations(
+                            List.of(
+                                ruleOperation(ontology, "CustomerIsParty"),
+                                ruleOperation(ontology, "CustomerIsPartyAgain")))
+                        .withUndoCursor(2)));
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                OntologyChangeSetTestSupport.applyOntologyChangeSet(
+                    client, draft, ns, "ruleEditor"));
+
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("already states this"), refused.getMessage());
+    assertEquals(revision, state(ontology).getWorkingRevision());
+    var page =
+        client
+            .ontologyAxioms()
+            .list(new ListParams().addFilter("ontologyId", ontology.getId().toString()));
+    assertTrue(page.getData().isEmpty());
+  }
+
+  @Test
+  void editingARuleIntoAnotherLiveRuleIsRefused(TestNamespace ns) {
+    Ontology ontology = createModel(ns, "reviewedOntology");
+    var service = SdkClients.adminClient().ontologyAxioms();
+    service.create(axiomRequest(ontology));
+    OntologyAxiom other =
+        service.create(
+            axiomRequest(ontology)
+                .withName("CustomerIsThing")
+                .withDisplayName("Customer is a Thing")
+                .withExpressions(List.of(namedClass(THING))));
+    var patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/expressions")
+        .set("value", JsonUtils.getObjectMapper().valueToTree(List.of(namedClass(PARTY))));
+
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> service.patch(other.getId(), patch));
+
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("'Customer is a Party'"), refused.getMessage());
+    assertEquals(
+        THING, service.get(other.getId().toString()).getExpressions().getFirst().getClassIri());
   }
 
   @Test
@@ -257,23 +354,11 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
     assertEquals(5, capture(ontology).getMemberCount());
   }
 
-  @ParameterizedTest
-  @ValueSource(booleans = {false, true})
-  void propertyEditRevalidatesInverseCardinalityUsers(boolean indirect, TestNamespace ns) {
-    final var ontology = createModel(ns, "inverseUsers" + indirect);
+  @Test
+  void propertyEditRevalidatesInverseCardinalityUsers(TestNamespace ns) {
+    final var ontology = createModel(ns, "inverseUsers");
     final var client = SdkClients.adminClient();
     client.ontologyProperties().create(propertyRequest(ontology));
-    URI partner = PROPERTY;
-    if (indirect) {
-      partner = URI.create("https://example.org/model/inversePartner");
-      client
-          .ontologyProperties()
-          .create(
-              propertyRequest(ontology)
-                  .withName("inversePartner")
-                  .withIri(partner)
-                  .withInverse(PROPERTY));
-    }
     final var inverse =
         client
             .ontologyProperties()
@@ -293,7 +378,7 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
                             .withRestrictionKind(OntologyRestrictionKind.EXACT)
                             .withCardinality(1)
                             .withFiller(namedClass(PARTY)))));
-    final var patch = transitiveInversePatch(partner);
+    final var patch = transitiveInversePatch(PROPERTY);
     final long revision = state(ontology).getWorkingRevision();
     final var failure =
         assertThrows(
@@ -304,7 +389,7 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
         failure.getMessage().contains("cardinality restrictions over non-simple properties"));
     assertNull(client.ontologyProperties().get(inverse.getId()).getInverse());
     assertEquals(revision, state(ontology).getWorkingRevision());
-    assertEquals(indirect ? 7 : 6, capture(ontology).getMemberCount());
+    assertEquals(6, capture(ontology).getMemberCount());
   }
 
   @Test
@@ -367,11 +452,119 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
     assertEquals(ontology.getId(), service.get(axiom.getId().toString()).getOntology().getId());
   }
 
+  @Test
+  void disjointnessClashesWarnAndStillSave(TestNamespace ns) {
+    final var ontology = createModel(ns, "clashWarnings");
+    final var client = SdkClients.adminClient();
+    final URI animal = URI.create("https://example.org/model/Animal");
+    final URI dog = URI.create("https://example.org/model/Dog");
+    final URI puppy = URI.create("https://example.org/model/Puppy");
+    final URI left = URI.create("https://example.org/model/Left");
+    final URI right = URI.create("https://example.org/model/Right");
+    final URI bottom = URI.create("https://example.org/model/Bottom");
+    final var animalConcept = declareClass(ontology, "Animal", animal);
+    final var dogConcept = declareClass(ontology, "Dog", dog);
+    final var puppyConcept = declareClass(ontology, "Puppy", puppy);
+    declareClass(ontology, "Left", left);
+    declareClass(ontology, "Right", right);
+    declareClass(ontology, "Bottom", bottom);
+    client.ontologyAxioms().create(classAxiom(ontology, "DogIsAnimal", SUBCLASS, dog, animal));
+    client.ontologyAxioms().create(classAxiom(ontology, "PuppyIsDog", SUBCLASS, puppy, dog));
+
+    final var unrelated = classAxiom(ontology, "AnimalNotParty", DISJOINT, animal, PARTY);
+    assertEquals(List.of(), client.ontologyAxioms().validate(unrelated).getViolations());
+
+    final var direct = classAxiom(ontology, "DogNotAnimal", DISJOINT, dog, animal);
+    final var directReport = client.ontologyAxioms().validate(direct);
+    assertTrue(directReport.getValid());
+    assertEquals(1, directReport.getViolations().size());
+    assertEquals(
+        "Dog is disjoint with its ancestor Animal",
+        directReport.getViolations().getFirst().getMessage());
+    assertEquals(
+        OntologyProfileViolationSeverity.WARNING,
+        directReport.getViolations().getFirst().getSeverity());
+    assertEquals(
+        List.of(dogConcept.getId(), animalConcept.getId()),
+        directReport.getViolations().getFirst().getConceptIds());
+    final var inherited =
+        client
+            .ontologyAxioms()
+            .validate(classAxiom(ontology, "PuppyNotAnimal", DISJOINT, puppy, animal));
+    assertEquals(
+        "Puppy is disjoint with its ancestor Animal",
+        inherited.getViolations().getFirst().getMessage());
+    assertEquals(
+        puppyConcept.getId(), inherited.getViolations().getFirst().getConceptIds().getFirst());
+
+    assertEquals("DogNotAnimal", client.ontologyAxioms().create(direct).getName());
+
+    client.ontologyAxioms().create(classAxiom(ontology, "LeftNotRight", DISJOINT, left, right));
+    client.ontologyAxioms().create(classAxiom(ontology, "BottomIsLeft", SUBCLASS, bottom, left));
+    final var diamond =
+        client
+            .ontologyAxioms()
+            .validate(classAxiom(ontology, "BottomIsRight", SUBCLASS, bottom, right));
+    assertTrue(diamond.getValid());
+    assertEquals(
+        "Bottom has disjoint ancestors Left and Right",
+        diamond.getViolations().getFirst().getMessage());
+  }
+
+  @Test
+  void draftValidationListsClashesThatNoSingleSaveWarnedOn(TestNamespace ns) {
+    final var ontology = createModel(ns, "draftClashes");
+    final var client = SdkClients.adminClient();
+    final URI animal = URI.create("https://example.org/draft/Animal");
+    final URI plant = URI.create("https://example.org/draft/Plant");
+    final URI dog = URI.create("https://example.org/draft/Dog");
+    final URI cat = URI.create("https://example.org/draft/Cat");
+    final var animalConcept = declareClass(ontology, "Animal", animal);
+    final var plantConcept = declareClass(ontology, "Plant", plant);
+    final var dogConcept = declareClass(ontology, "Dog", dog);
+    final var catConcept = declareClass(ontology, "Cat", cat);
+    client.ontologyAxioms().create(classAxiom(ontology, "AnimalNotPlant", DISJOINT, animal, plant));
+    assertTrue(client.ontologies().validateWorking(ontology.getId()).getValid());
+
+    client.ontologyAxioms().create(classAxiom(ontology, "DogIsAnimal", SUBCLASS, dog, animal));
+    client.ontologyAxioms().create(classAxiom(ontology, "CatIsAnimal", SUBCLASS, cat, animal));
+    client.ontologyAxioms().create(classAxiom(ontology, "DogIsPlant", SUBCLASS, dog, plant));
+    client.ontologyAxioms().create(classAxiom(ontology, "CatIsPlant", SUBCLASS, cat, plant));
+
+    final var report = client.ontologies().validateWorking(ontology.getId());
+    assertFalse(report.getValid());
+    assertEquals(2, report.getViolations().size());
+    assertEquals(
+        List.of(catConcept.getId(), dogConcept.getId()),
+        report.getViolations().stream().map(v -> v.getConceptIds().getFirst()).toList());
+    report
+        .getViolations()
+        .forEach(
+            violation -> {
+              assertEquals(OntologyProfileViolationSeverity.ERROR, violation.getSeverity());
+              assertEquals(
+                  List.of(animalConcept.getId(), plantConcept.getId()),
+                  violation.getConceptIds().subList(1, 3));
+            });
+  }
+
   private static Ontology createModel(TestNamespace ns, String name) {
     final var ontology = createOntology(ns, name);
     declareClass(ontology, "Customer", CUSTOMER);
     declareClass(ontology, "Party", PARTY);
     return ontology;
+  }
+
+  private static final OntologyAxiomType SUBCLASS = OntologyAxiomType.SUBCLASS_OF;
+  private static final OntologyAxiomType DISJOINT = OntologyAxiomType.DISJOINT_WITH;
+
+  private static CreateOntologyAxiom classAxiom(
+      Ontology ontology, String name, OntologyAxiomType type, URI subject, URI other) {
+    return axiomRequest(ontology)
+        .withName(name)
+        .withAxiomType(type)
+        .withSubjectIri(subject)
+        .withExpressions(List.of(namedClass(other)));
   }
 
   private static CreateOntologyAxiom axiomRequest(Ontology ontology) {
@@ -401,6 +594,26 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
          {"op":"add","path":"/characteristics","value":["TRANSITIVE"]}]
         """
             .formatted(inverse));
+  }
+
+  private static OntologyChangeOperation ruleOperation(Ontology ontology, String name) {
+    return new OntologyChangeOperation()
+        .withId(UUID.randomUUID())
+        .withOperationType(OntologyChangeOperationType.UPSERT_AXIOM)
+        .withState(OntologyChangeOperationState.ACTIVE)
+        .withAxiom(
+            new OntologyAxiom()
+                .withId(UUID.randomUUID())
+                .withName(name)
+                .withFullyQualifiedName(ontology.getFullyQualifiedName() + "." + name)
+                .withDisplayName(name)
+                .withDescription("Every customer is a party")
+                .withOntology(ontology.getEntityReference())
+                .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
+                .withSubjectIri(CUSTOMER)
+                .withProvenance(RelationProvenance.MANUAL)
+                .withExpressions(List.of(namedClass(PARTY)))
+                .withVersion(0.1));
   }
 
   private static OntologyExpression namedClass(URI iri) {

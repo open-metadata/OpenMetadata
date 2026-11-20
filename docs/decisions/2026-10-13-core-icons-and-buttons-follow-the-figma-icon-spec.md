@@ -1,7 +1,7 @@
 # Core icons and buttons follow the Figma icon sizing spec
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-23 (three landing-page glyphs at a 1.67 stroke) · v3 2026-10-28 (1.8 stroke for Plus/Minus glyphs; link button gap) · v4 2026-11-05 (link-color leading icon 18; menu and select icon frames) · v5 2026-11-18 (6px icon-to-label gap at every size) · v6 2026-11-18 (redrawn Plus, Minus, PlusCircle, MinusCircle, Edit01 and Copy01 at a 1.3 stroke) · v7 2026-11-18 (one icon frame per button height; non-scaling stroke)
 - **Deciders:** Rohit Jain
 - **Guard:** `openmetadata-ui-core-components/.../components/base/buttons/button.test.tsx`; `normalizeToGrid` in `scripts/generate-icons.mjs` throws on 24-grid sources it cannot rescale
 - **Related:** open-metadata/OpenMetadata#35348
@@ -39,3 +39,50 @@ that must keep a height move up one name.
 Icons rendered without a size are 20px instead of 24px. A new 24-grid icon is converted on
 `yarn icons:generate`; one that uses shapes other than `<path>` or transforms fails generation
 until it is converted to paths.
+
+## Amendment — v2: three landing-page glyphs at a 1.67 stroke
+
+`LayoutRows`, `LayoutColumns` and `ChevronSelectorVertical02` are the landing page's list, grid and
+collapse glyphs from design review Set 4, which draws them with a 2 stroke on a 24 grid. They are
+authored at 1.67 on the 20 grid, the same rendered weight, instead of the 1.3 every other outline
+icon uses.
+
+## Amendment — v3: designer stroke and link button gap
+- `Plus`, `Minus`, `PlusCircle` and `MinusCircle` use a 1.8 stroke, as drawn by the designer:
+  at 1.3 these sparse glyphs read lighter than the icons beside them. Every other outline icon keeps
+  the 1.3 stroke (the v2 landing-page glyphs aside). The circles are centred at (10, 10) like the
+  rest of the 20 grid.
+- Unboxed link buttons (`link-gray`, `link-color`, `link-destructive`) drop the label's `px-0.5`,
+  so their `gap` is one 2px step wider (2px at `xs`, 4px at `sm` and `md`, 6px at `lg` and `xl`).
+  The visible icon-to-label gap then matches boxed buttons.
+
+## Amendment — v4: link icons, menu and select icons
+- `link-color` buttons sit in running text, so their leading icon takes the 18 frame (14px glyph)
+  at every size instead of 20.
+- `Dropdown.Item` icons at the default size use a 20 frame (was 16 with a 2.25 stroke), like the
+  icon + title + description menus. Neutral icons in `Dropdown.Item`, `Select` options and value,
+  `ButtonGroup` and the form-label tooltip are `utility-gray-500`, `utility-gray-600` on hover. A
+  selected `ButtonGroup` item's icon takes the item's text colour.
+
+## Amendment — v5: 6px icon-to-label gap at every size
+The visible icon-to-label gap is 6px at every `Button` size, set in design review. v1–v4 rendered
+2px at `xs`, 4px at `sm` and `md`, and 8px for an `lg` button inside an `InputGroup`, which made the
+icon crowd the label on small buttons. Boxed buttons get it from `gap-1` plus the label's 2px
+`px-0.5`; unboxed links drop that padding and use `gap-1.5`, replacing the gaps listed in v3.
+`xs`, `sm` and `md` buttons with an icon are 2–4px wider.
+
+## Amendment — v6: redrawn action glyphs at a 1.3 stroke
+Design redrew `Plus`, `Minus`, `PlusCircle`, `MinusCircle`, `Edit01` and `Copy01` at the 1.3 stroke
+every other outline icon uses, replacing v3's 1.8 for the Plus/Minus glyphs. At 1.8 the Plus read
+bolder than the Edit, Delete and Copy icons beside it in Add and Create buttons. The circles shrink
+to r=7 and `Edit01` and `Copy01` draw inside a 14-unit box, so the set reads as one weight and size.
+
+## Amendment — v7: one icon frame per button height
+- `Button` leading and trailing icons share one frame per height: 16 (12 glyph) at `xs`, 18 (14)
+  at `sm`, `md` and `lg`, 20 (16) at `xl`. This replaces the separate leading 20 / trailing 18
+  frames (`xs` 18 / 16) in the Decision; a 16px glyph read too large beside a 14px label.
+- Icon-only `Button` padding is 1px wider per side at `xs`–`lg` so the smaller frame keeps the
+  28/32/36/40/44px heights.
+- `Button` icons draw with `vector-effect: non-scaling-stroke`, so an 18 or 16 frame keeps the
+  authored 1.3px stroke instead of thinning with the scale.
+- `ButtonUtility` frames and the `link-color` leading icon (v4) are unchanged.

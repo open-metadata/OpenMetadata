@@ -12,9 +12,10 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
-import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.schema.entity.events.PrefixCondition;
 import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.tests.type.TestCaseResult;
@@ -221,8 +222,7 @@ class AlertMatchingTest {
     assertFalse(
         AlertMatching.checkIfChangeEventIsAllowed(
             conversationUpdatedEvent(ref(Entity.TEST_CASE)),
-            observabilityRules(
-                "testCase", ArgumentsInput.Effect.INCLUDE, "matchTestResult({'Failed'})")));
+            observabilityRules("testCase", Effect.INCLUDE, "matchTestResult({'Failed'})")));
   }
 
   @Test
@@ -230,8 +230,7 @@ class AlertMatchingTest {
     assertFalse(
         AlertMatching.checkIfChangeEventIsAllowed(
             conversationUpdatedEvent(ref(Entity.TEST_CASE)),
-            observabilityRules(
-                "testCase", ArgumentsInput.Effect.EXCLUDE, "matchTestResult({'Failed'})")));
+            observabilityRules("testCase", Effect.EXCLUDE, "matchTestResult({'Failed'})")));
   }
 
   @Test
@@ -239,8 +238,7 @@ class AlertMatchingTest {
     assertFalse(
         AlertMatching.checkIfChangeEventIsAllowed(
             conversationUpdatedEvent(ref(Entity.PIPELINE)),
-            observabilityRules(
-                "pipeline", ArgumentsInput.Effect.EXCLUDE, "matchPipelineState({'Failed'})")));
+            observabilityRules("pipeline", Effect.EXCLUDE, "matchPipelineState({'Failed'})")));
   }
 
   @Test
@@ -249,9 +247,7 @@ class AlertMatchingTest {
         AlertMatching.checkIfChangeEventIsAllowed(
             conversationUpdatedEvent(ref(Entity.INGESTION_PIPELINE)),
             observabilityRules(
-                "ingestionPipeline",
-                ArgumentsInput.Effect.EXCLUDE,
-                "matchIngestionPipelineState({'failed'})")));
+                "ingestionPipeline", Effect.EXCLUDE, "matchIngestionPipelineState({'failed'})")));
   }
 
   @Test
@@ -259,8 +255,7 @@ class AlertMatchingTest {
     assertTrue(
         AlertMatching.checkIfChangeEventIsAllowed(
             testCaseResultEvent(TestCaseStatus.Failed),
-            observabilityRules(
-                "testCase", ArgumentsInput.Effect.INCLUDE, "matchTestResult({'Failed'})")));
+            observabilityRules("testCase", Effect.INCLUDE, "matchTestResult({'Failed'})")));
   }
 
   @Test
@@ -268,8 +263,7 @@ class AlertMatchingTest {
     assertFalse(
         AlertMatching.checkIfChangeEventIsAllowed(
             testCaseResultEvent(TestCaseStatus.Success),
-            observabilityRules(
-                "testCase", ArgumentsInput.Effect.INCLUDE, "matchTestResult({'Failed'})")));
+            observabilityRules("testCase", Effect.INCLUDE, "matchTestResult({'Failed'})")));
   }
 
   @Test
@@ -277,8 +271,7 @@ class AlertMatchingTest {
     assertFalse(
         AlertMatching.checkIfChangeEventIsAllowed(
             testCaseResultEvent(TestCaseStatus.Failed),
-            observabilityRules(
-                "testCase", ArgumentsInput.Effect.EXCLUDE, "matchTestResult({'Failed'})")));
+            observabilityRules("testCase", Effect.EXCLUDE, "matchTestResult({'Failed'})")));
   }
 
   @Test
@@ -332,7 +325,7 @@ class AlertMatchingTest {
   private static EventFilterRule includeRule(String condition) {
     return new EventFilterRule()
         .withName("rule")
-        .withEffect(ArgumentsInput.Effect.INCLUDE)
+        .withEffect(Effect.INCLUDE)
         .withCondition(condition);
   }
 
@@ -382,13 +375,13 @@ class AlertMatchingTest {
   }
 
   private static FilteringRules observabilityRules(
-      String resource, ArgumentsInput.Effect effect, String condition) {
+      String resource, Effect effect, String condition) {
     EventFilterRule action =
         new EventFilterRule()
             .withName("trigger")
             .withEffect(effect)
             .withCondition(condition)
-            .withPrefixCondition(ArgumentsInput.PrefixCondition.AND);
+            .withPrefixCondition(PrefixCondition.AND);
     return new FilteringRules()
         .withResources(List.of(resource))
         .withRules(Collections.emptyList())

@@ -10,8 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { Dataflow01, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  ButtonUtility,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  Dataflow01,
+  Minus,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
   Fragment,
@@ -22,7 +30,6 @@ import {
   useState,
 } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
-import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { DataType } from '../../../generated/entity/data/table';
@@ -34,6 +41,7 @@ import { t } from '../../../utils/i18next/LocalUtil';
 import { onColumnMouseEnter } from '../../../utils/Lineage/handlers/columnInteractions';
 import { getColumnDataTypeIcon } from '../../../utils/TableUtils';
 import LineageColumnMenu from '../../Lineage/LineageColumnMenu/LineageColumnMenu';
+import { BASE_NODE_FILL_CLASS } from './CustomNode.constants';
 import TestSuiteSummaryWidget from './TestSuiteSummaryWidget/TestSuiteSummaryWidget.component';
 
 const DEPTH_INDENT_PX = 16;
@@ -118,19 +126,21 @@ const ExpandHandle = ({
       onFocus={handleLineageNodeHandleMouseOver}
       onMouseOut={handleLineageNodeHandleMouseOut}
       onMouseOver={handleLineageNodeHandleMouseOver}>
-      <Plus
-        aria-hidden="false"
-        aria-label="expand"
-        className="lineage-expand-icon"
+      <ButtonUtility
         data-testid="plus-icon"
+        icon={Plus}
+        size="xs"
+        tooltip={t('label.expand')}
         onClick={handleLineageExpandIconClick}
       />
       {showExpandAll && (
         <>
           <div className="lineage-expand-icons-separator" />
-          <Dataflow01
-            className="lineage-expand-icon"
+          <ButtonUtility
             data-testid="lineage-expand-all-btn"
+            icon={Dataflow01}
+            size="xs"
+            tooltip={t('label.expand-all')}
             onClick={handleLineageExpandAllIconClick}
           />
         </>
@@ -151,30 +161,30 @@ export const getCollapseHandle = (
   onClickHandler: () => void
 ) => {
   return (
-    <Button
-      aria-label={t('label.collapse')}
+    <ButtonUtility
       // custom-node.less `.react-flow .lineage-node-handle` owns size, radius,
-      // border colour and surface bg (!important); these only replace what the
-      // antd button supplied (1px border, no padding).
+      // border colour and surface bg (!important).
       className={classNames(
-        'tw:absolute! lineage-node-minus lineage-node-handle flex-center nodrag nopan tw:border tw:p-0!',
+        'tw:absolute! lineage-node-minus lineage-node-handle flex-center nodrag nopan tw:border',
         direction === LineageDirection.Downstream
           ? 'react-flow__handle-right'
           : 'react-flow__handle-left'
       )}
-      color="tertiary"
       data-testid={
         direction === LineageDirection.Downstream
           ? 'downstream-collapse-handle'
           : 'upstream-collapse-handle'
       }
-      iconLeading={
-        <MinusIcon
-          className="lineage-expand-icon tw:dark:[&_path]:fill-fg-quaternary"
+      // Playwright targets the glyph by test id, so it stays an element.
+      icon={
+        <Minus
+          data-icon
+          className="tw:dark:[&_path]:fill-fg-quaternary tw:text-utility-gray-500"
           data-testid="minus-icon"
         />
       }
-      size="sm"
+      size="xs"
+      tooltip={t('label.collapse')}
       onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
         e.stopPropagation();
         onClickHandler();
@@ -277,10 +287,10 @@ const ColumnContentInner = ({
 
   return (
     <div
-      className={classNames(`custom-node-column-container ${className}`, {
-        'custom-node-header-column-tracing': isColumnTraced,
-        'tw:dark:text-primary': isColumnTraced,
-      })}
+      className={classNames(
+        `custom-node-column-container tw:text-primary ${className}`,
+        { 'custom-node-header-column-tracing': isColumnTraced }
+      )}
       data-testid={`column-${fullyQualifiedName}`}
       role="presentation"
       style={{
@@ -294,16 +304,6 @@ const ColumnContentInner = ({
         <div className="custom-node-name-container">
           {columnNameContentRender}
         </div>
-
-        {onColumnLineageEdit && fullyQualifiedName && (
-          <span className="lineage-column-menu tw:ml-auto tw:opacity-0 tw:group-hover:opacity-100 tw:focus-within:opacity-100">
-            <LineageColumnMenu
-              onEdit={(direction, triggerRef) =>
-                onColumnLineageEdit(fullyQualifiedName, direction, triggerRef)
-              }
-            />
-          </span>
-        )}
 
         {'constraint' in column && column.constraint && (
           <div
@@ -323,6 +323,15 @@ const ColumnContentInner = ({
               summary={summary}
             />
           </div>
+        )}
+        {onColumnLineageEdit && fullyQualifiedName && (
+          <span className="lineage-column-menu tw:flex tw:items-center tw:opacity-0 tw:group-hover:opacity-100 tw:focus-within:opacity-100">
+            <LineageColumnMenu
+              onEdit={(direction, triggerRef) =>
+                onColumnLineageEdit(fullyQualifiedName, direction, triggerRef)
+              }
+            />
+          </span>
         )}
       </div>
     </div>
@@ -354,6 +363,20 @@ export const ColumnContent = memo(ColumnContentInner, (prev, next) => {
 export const LINEAGE_NODE_DARK_CLASS =
   'tw:dark:[--lineage-node-border:var(--tw-color-border-primary)]';
 
+/**
+ * The base node's own fill is a gradient layer, which would sit above the
+ * background-color that the selected states set (brand, or error when quality
+ * failed), so it yields while selected. An unselected failed-quality node only
+ * changes its border, so it keeps the fill.
+ */
+export const hasBaseNodeFill = ({
+  isBaseNode,
+  isSelected,
+}: {
+  isBaseNode: boolean;
+  isSelected: boolean;
+}) => isBaseNode && !isSelected;
+
 export function getNodeClassNames({
   isSelected,
   showDqTracing,
@@ -375,6 +398,7 @@ export function getNodeClassNames({
       'data-quality-failed-custom-node-header': showDqTracing,
       'custom-node-header-tracing': isTraced,
       'lineage-base-node': isBaseNode,
+      [BASE_NODE_FILL_CLASS]: hasBaseNodeFill({ isBaseNode, isSelected }),
       'columns-expanded': isChildrenListExpanded,
     }
   );

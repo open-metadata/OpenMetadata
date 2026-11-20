@@ -259,6 +259,18 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
 
   const testCaseResult = testCaseResponse?.data ?? [];
   const ingestionPipelineCount = ingestionPipelineResponse?.paging.total ?? 0;
+
+  // The Pipelines tab reports its total after each load or delete, and its
+  // drawer adds pipelines in place; keep the tab badge on that total.
+  const handlePipelinesChange = useCallback(
+    (total: number) =>
+      queryClient.setQueryData<typeof ingestionPipelineResponse>(
+        testSuiteIngestionPipelinesQueryKey(testSuiteFQN),
+        (cached) =>
+          cached ? { ...cached, paging: { ...cached.paging, total } } : cached
+      ),
+    [queryClient, testSuiteFQN]
+  );
   const isTestCaseLoading = isTestCaseQueryFetching || isSynchronizingTestCases;
   const isLoading = isPermissionLoading || isTestSuiteLoading;
 
@@ -805,6 +817,7 @@ export const useTestSuiteDetailsPage = (): UseTestSuiteDetailsPageResult => {
     pagingData,
     showPagination,
     ingestionPipelineCount,
+    handlePipelinesChange,
     canAddMultipleDomains: entityRules.canAddMultipleDomains,
     canAddMultipleUserOwners: entityRules.canAddMultipleUserOwners,
     canAddMultipleTeamOwner: entityRules.canAddMultipleTeamOwner,

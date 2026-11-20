@@ -30,7 +30,6 @@ const TabsLabel = ({
   description,
   isBeta,
   isLoading,
-  proposedCount,
 }: TabsLabelProps) => {
   const { t } = useTranslation();
   const tabState = useTabItemState();
@@ -59,17 +58,6 @@ const TabsLabel = ({
           <Badge className="service-beta-tag" color="brand" size="sm">
             {t('label.beta')}
           </Badge>
-        )}
-        {Boolean(proposedCount) && (
-          <span data-testid="proposed-count">
-            {/* Worded, not a bare number: a second count badge reads as a duplicate of the tab count. */}
-            <Badge
-              className="m-x-xss tw:whitespace-nowrap"
-              color="purple"
-              size="sm">
-              {t('label.count-proposed', { count: proposedCount })}
-            </Badge>
-          </span>
         )}
       </div>
       {/* Note: add ".custom-menu-with-description" class in Menu component if need description in menu */}

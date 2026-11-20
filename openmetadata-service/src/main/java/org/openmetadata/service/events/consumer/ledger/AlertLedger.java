@@ -130,6 +130,16 @@ public final class AlertLedger {
     return gapSince;
   }
 
+  /**
+   * A tick an Error unwinds was interrupted: its note stays, written again at the position it
+   * committed, so the attempts follow the event the tick was on.
+   */
+  public void keepOpeningNote() {
+    if (noted) {
+      attempt("kept opening note", this::noteOpening);
+    }
+  }
+
   /** A tick that ends, however it ends, was not interrupted. */
   public void clearOpeningNote() {
     if (noted) {

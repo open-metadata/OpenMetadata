@@ -12,6 +12,7 @@
  */
 
 import { act, renderHook } from '@testing-library/react';
+import { TEST_CASE_RESOLUTION_WORKFLOW_NAME } from '../constants/WorkflowBuilder.constants';
 import {
   Type,
   WorkflowDefinition,
@@ -199,6 +200,29 @@ describe('useWorkflowMode — allowStructuralGraphEdits', () => {
 
 describe('useWorkflowMode — noOp workflow restrictions', () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it('allows saving incident settings while keeping system workflow operations locked', () => {
+    const { result } = renderHook(() =>
+      useWorkflowMode(TEST_CASE_RESOLUTION_WORKFLOW_NAME, {
+        ...noOpWorkflow,
+        name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+      })
+    );
+
+    expect(result.current.showEditButton).toBe(true);
+    expect(result.current.canSave).toBe(false);
+
+    act(() => result.current.enterEditMode());
+
+    expect(result.current.canSave).toBe(true);
+    expect(result.current.showSaveButton).toBe(true);
+    expect(result.current.showCancelButton).toBe(true);
+    expect(result.current.allowStructuralGraphEdits).toBe(false);
+    expect(result.current.canEdit).toBe(false);
+    expect(result.current.showTestButton).toBe(false);
+    expect(result.current.showDeleteButton).toBe(false);
+    expect(result.current.showWorkflowNodePalette).toBe(false);
+  });
 
   it('hides the Edit button for noOp workflows in view mode', () => {
     const { result } = renderHook(() =>

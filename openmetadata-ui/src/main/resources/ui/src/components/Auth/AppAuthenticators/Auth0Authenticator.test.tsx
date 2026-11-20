@@ -92,7 +92,9 @@ describe('Auth0Authenticator', () => {
       ref.current?.invokeLogout();
     });
 
-    expect(logout).toHaveBeenCalled();
+    // openUrl: false is v2's local-only logout; anything else navigates to
+    // Auth0's /v2/logout and ends the user's Auth0 session.
+    expect(logout).toHaveBeenCalledWith({ openUrl: false });
     expect(handleSuccessfulLogout).toHaveBeenCalled();
   });
 
@@ -252,7 +254,7 @@ describe('Auth0Authenticator', () => {
     });
 
     expect(loginWithRedirect).toHaveBeenCalledWith({
-      prompt: 'none',
+      authorizationParams: { prompt: 'none' },
       appState: {
         returnTo: `${window.location.pathname}${window.location.search}`,
       },

@@ -73,13 +73,21 @@ jest.mock(
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     // Echo the interpolated user so a test can tell the events apart.
-    t: (key: string, options?: { user?: string; assignee?: string }) =>
-      [key, options?.user, options?.assignee].filter(Boolean).join(':'),
+    t: (
+      key: string,
+      options?: { user?: string; assignee?: string; count?: number }
+    ) =>
+      [key, options?.user, options?.assignee, options?.count]
+        .filter(Boolean)
+        .join(':'),
   }),
 }));
 
 import { Task, TaskCategory } from '../../../../../generated/entity/tasks/task';
-import { TestCaseResolutionStatus } from '../../../../../generated/tests/testCaseResolutionStatus';
+import {
+  TestCaseResolutionStatus,
+  TestCaseResolutionStatusTypes,
+} from '../../../../../generated/tests/testCaseResolutionStatus';
 import TaskActivityTimeline from './TaskActivityTimeline';
 
 const task = {
@@ -101,6 +109,71 @@ const renderTimeline = (value: Task) =>
   render(<TaskActivityTimeline task={value} onCommentChanged={jest.fn()} />);
 
 describe('TaskActivityTimeline', () => {
+  it.each([
+    TestCaseResolutionStatusTypes.New,
+    TestCaseResolutionStatusTypes.ACK,
+  ])(
+    'keeps the prior assignment visible after returning unassigned to %s',
+    (status) => {
+      render(
+        <TaskActivityTimeline
+          incidentStatuses={[
+            {
+              id: 'assigned',
+              testCaseResolutionStatusType:
+                TestCaseResolutionStatusTypes.Assigned,
+              updatedBy: {
+                id: 'u1',
+                type: 'user',
+                name: 'jane',
+                displayName: 'Jane',
+              },
+              testCaseResolutionStatusDetails: {
+                assignee: {
+                  id: 'alex',
+                  type: 'user',
+                  name: 'alex',
+                  displayName: 'Alex',
+                },
+              },
+              timestamp: 20,
+            },
+            {
+              id: 'returned',
+              testCaseResolutionStatusType: status,
+              updatedBy: {
+                id: 'u1',
+                type: 'user',
+                name: 'jane',
+                displayName: 'Jane',
+              },
+              timestamp: 25,
+            },
+          ]}
+          task={{
+            ...task,
+            category: TaskCategory.Incident,
+            assignees: [],
+            comments: [],
+          }}
+          onCommentChanged={jest.fn()}
+        />
+      );
+
+      const events = screen.getAllByTestId('task-timeline-event');
+
+      expect(events).toHaveLength(2);
+      expect(events[0]).toHaveTextContent(
+        'message.task-event-incident-assigned:Jane:Alex'
+      );
+      expect(events[1]).toHaveTextContent(
+        status === TestCaseResolutionStatusTypes.New
+          ? 'message.task-event-incident-opened:Jane'
+          : 'message.task-event-incident-acknowledged:Jane'
+      );
+    }
+  );
+
   it('renders creation and comment entries in one stream', () => {
     renderTimeline(task);
 
@@ -108,6 +181,21 @@ describe('TaskActivityTimeline', () => {
       screen.getByText('message.task-event-created:Olivia Rhye')
     ).toBeInTheDocument();
     expect(screen.getByTestId('task-comment-card')).toHaveTextContent('hi');
+  });
+
+  it('counts the other holders when there are several', () => {
+    renderTimeline({
+      ...task,
+      assignees: [
+        { id: 'a1', name: 'assignee.one', displayName: 'Assignee One' },
+        { id: 'a2', name: 'assignee.two' },
+        { id: 'a3', name: 'assignee.three' },
+      ],
+    } as Task);
+
+    expect(
+      screen.getByText('message.task-event-assigned-others:Assignee One:2')
+    ).toBeInTheDocument();
   });
 
   // The task records who holds it but never when they were given it: the event

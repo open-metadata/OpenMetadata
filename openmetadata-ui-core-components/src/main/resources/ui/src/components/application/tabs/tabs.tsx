@@ -28,11 +28,9 @@ import {
 
 type Orientation = 'horizontal' | 'vertical';
 
-const EDGE_FADE = '32px';
-
 /**
  * Tracks which ends of a horizontally scrolling element hide content. The card
- * tab list scrolls with its scrollbar hidden, so a faded edge is the only sign
+ * tab list scrolls with its scrollbar hidden, so an edge shadow is the only sign
  * that more tabs sit past it.
  */
 const useOverflowEdges = (enabled: boolean) => {
@@ -77,16 +75,7 @@ const useOverflowEdges = (enabled: boolean) => {
     };
   }, [enabled]);
 
-  const maskImage =
-    edges.start || edges.end
-      ? `linear-gradient(to right, ${
-          edges.start ? 'transparent' : '#000'
-        }, #000 ${EDGE_FADE}, #000 calc(100% - ${EDGE_FADE}), ${
-          edges.end ? 'transparent' : '#000'
-        })`
-      : undefined;
-
-  return { ref, maskImage };
+  return { ref, edges };
 };
 
 /** `card` wraps a horizontal tab list in a Card, with an `actions` slot on the right. */
@@ -349,10 +338,6 @@ export const TabList = <K extends Orientation>({
 
   const isCard = variant === 'card';
   const overflow = useOverflowEdges(isCard && orientation === 'horizontal');
-  // The fade adds to the caller's style; it never replaces it.
-  const callerStyle = (
-    otherProps as Pick<AriaTabListProps<TabComponentProps>, 'style'>
-  ).style;
 
   const tabList = (
     <AriaTabList
@@ -380,15 +365,7 @@ export const TabList = <K extends Orientation>({
           typeof className === 'function' ? className(state) : className
         )
       }
-      ref={overflow.ref}
-      style={(state) => {
-        const base =
-          typeof callerStyle === 'function' ? callerStyle(state) : callerStyle;
-
-        return overflow.maskImage
-          ? { ...base, maskImage: overflow.maskImage }
-          : base;
-      }}>
+      ref={overflow.ref}>
       {children ?? ((item) => <Tab {...item}>{item.children}</Tab>)}
     </AriaTabList>
   );
@@ -403,7 +380,31 @@ export const TabList = <K extends Orientation>({
   if (isCard) {
     content = (
       <Card className="tw:flex tw:min-h-12 tw:items-center tw:justify-between tw:gap-4 tw:px-5">
-        {tabList}
+        <div
+          className={cx(
+            'tw:relative tw:flex tw:min-w-0 tw:items-center tw:self-stretch',
+            fullWidth && 'tw:flex-1'
+          )}>
+          {tabList}
+          {/* Shadows reach past the card's px-5 to sit flush with its edge, or end before the actions. */}
+          {overflow.edges.start && (
+            <div
+              aria-hidden="true"
+              className="tw:pointer-events-none tw:absolute tw:inset-y-0 tw:-left-5 tw:w-7 tw:bg-linear-to-r tw:from-black/10 tw:to-transparent tw:dark:from-black/40"
+              data-testid="tab-list-shadow-start"
+            />
+          )}
+          {overflow.edges.end && (
+            <div
+              aria-hidden="true"
+              className={cx(
+                'tw:pointer-events-none tw:absolute tw:inset-y-0 tw:w-7 tw:bg-linear-to-l tw:from-black/10 tw:to-transparent tw:dark:from-black/40',
+                actionsSlot ? 'tw:right-0' : 'tw:-right-5'
+              )}
+              data-testid="tab-list-shadow-end"
+            />
+          )}
+        </div>
         {actionsSlot}
       </Card>
     );

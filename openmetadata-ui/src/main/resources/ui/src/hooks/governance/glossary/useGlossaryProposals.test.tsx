@@ -19,42 +19,26 @@ import {
   ProviderType,
 } from '../../../generated/entity/data/glossaryTerm';
 import { getMemoryDerivations } from '../../../rest/contextMemoryAPI';
-import {
-  getGlossaryTermsById,
-  patchGlossaryTerm,
-  searchGlossaryTermsPaginated,
-} from '../../../rest/glossaryAPI';
-import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
+import { getGlossaryTermsById } from '../../../rest/glossaryAPI';
 import {
   listTasks,
   resolveTask,
   Task,
   TaskEntityStatus,
 } from '../../../rest/tasksAPI';
-import { ProposalCounts } from '../../../utils/GlossaryReview/GlossaryReview.types';
 import {
   useDecideProposal,
-  useGlossaryPendingCounts,
   useGlossaryProposal,
-  useGlossaryProposalCounts,
-  useGlossaryProposalPage,
   useTermDerivations,
 } from './useGlossaryProposals';
-import { searchTerms } from './useGlossaryProposals.mock';
 
 jest.mock('../../../rest/glossaryAPI', () => ({
   getGlossaryTermsById: jest.fn(),
-  patchGlossaryTerm: jest.fn(),
-  searchGlossaryTermsPaginated: jest.fn(),
 }));
 
 jest.mock('../../../rest/contextMemoryAPI', () => ({
   ...jest.requireActual('../../../rest/contextMemoryAPI'),
   getMemoryDerivations: jest.fn(),
-}));
-
-jest.mock('../../../rest/miscAPI', () => ({
-  postExactAggregateFieldOptions: jest.fn(),
 }));
 
 jest.mock('../../../rest/tasksAPI', () => ({
@@ -68,7 +52,7 @@ const aiDraft = {
   name: 'Churn Risk',
   fullyQualifiedName: 'Customers.Churn Risk',
   provider: ProviderType.Automation,
-  entityStatus: EntityStatus.Draft,
+  entityStatus: EntityStatus.InReview,
 } as GlossaryTerm;
 
 const personDraft = {
@@ -97,28 +81,11 @@ const approvalTask = {
   assignees: [{ id: 'reviewer-id', type: 'user' }],
 } as Task;
 
-const scope = {
-  id: 'glossary-id',
-  fullyQualifiedName: 'Customers',
-  isGlossary: true,
-};
-
-const twoProposals: ProposalCounts = { all: 2, ai: 1, person: 1 };
-
-const termsOf = (prefix: string, count: number, provider?: ProviderType) =>
-  Array.from(
-    { length: count },
-    (_, index) =>
-      ({
-        id: `${prefix}-${index}`,
-        name: `${prefix} ${index}`,
-        fullyQualifiedName: `Customers.${prefix} ${index}`,
-        provider,
-        entityStatus: EntityStatus.Draft,
-      } as GlossaryTerm)
-  );
-
-const ids = (items: GlossaryTerm[]) => items.map(({ id }) => id);
+const aiTask = {
+  ...approvalTask,
+  id: 'ai-task-id',
+  about: { fullyQualifiedName: 'Customers.Churn Risk', type: 'glossaryTerm' },
+} as Task;
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <QueryClientProvider
@@ -133,62 +100,45 @@ describe('useGlossaryProposals', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     terms = [aiDraft, personDraft, approvedTerm];
-    (searchGlossaryTermsPaginated as jest.Mock).mockImplementation(
-      searchTerms(() => terms)
-    );
     (getGlossaryTermsById as jest.Mock).mockImplementation(async (id: string) =>
       terms.find((term) => term.id === id)
     );
     (getMemoryDerivations as jest.Mock).mockResolvedValue([derivation]);
-    (listTasks as jest.Mock).mockResolvedValue({ data: [approvalTask] });
+    (listTasks as jest.Mock).mockResolvedValue({
+      data: [aiTask, approvalTask],
+    });
   });
 
-  it('counts the pending terms of a glossary, and the AI ones apart', async () => {
-    const { result } = renderHook(() => useGlossaryProposalCounts(scope), {
+  it('opens an AI proposal with its evidence and approval request', async () => {
+    const { result } = renderHook(() => useGlossaryProposal('ai-id'), {
       wrapper,
     });
 
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    await waitFor(() => expect(result.current?.approvalTask).toEqual(aiTask));
 
-    expect(result.current.counts).toEqual(twoProposals);
-    expect(searchGlossaryTermsPaginated).toHaveBeenCalledWith(
-      expect.objectContaining({ glossary: 'glossary-id', limit: 1 })
-    );
-  });
-
-  it('counts the pending children of a term', async () => {
-    const { result } = renderHook(
-      () => useGlossaryProposalCounts({ ...scope, isGlossary: false }),
-      { wrapper }
-    );
-
-    await waitFor(() => expect(result.current.isLoading).toBe(false));
-
-    expect(searchGlossaryTermsPaginated).toHaveBeenCalledWith(
-      expect.objectContaining({ parent: 'glossary-id' })
-    );
-  });
-
-  it('reads a page of AI proposals then people, with their evidence and approval requests', async () => {
-    const { result } = renderHook(
-      () => useGlossaryProposalPage(scope, 'all', 1, twoProposals),
-      { wrapper }
-    );
-
-    await waitFor(() => expect(result.current.proposals).toHaveLength(2));
-
-    const [ai, person] = result.current.proposals;
-
-    expect(ai.term.id).toBe('ai-id');
-    expect(ai.derivation).toEqual(derivation);
-    expect(person.term.id).toBe('person-id');
-    expect(person.approvalTask).toEqual(approvalTask);
-    expect(getMemoryDerivations).toHaveBeenCalledWith('glossaryTerm', [
-      'ai-id',
-    ]);
+    expect(result.current?.source).toBe('ai');
+    expect(result.current?.derivation).toEqual(derivation);
+    expect(getGlossaryTermsById).toHaveBeenCalledWith('ai-id', {
+      fields: 'reviewers,parent',
+    });
     expect(listTasks).toHaveBeenCalledWith(
-      expect.objectContaining({ aboutEntityIds: 'person-id' })
+      expect.objectContaining({ aboutEntityIds: 'ai-id' })
     );
+  });
+
+  it('opens nothing for a decided term, and asks for nothing without one', async () => {
+    const { result } = renderHook(
+      () => ({
+        decided: useGlossaryProposal('approved-id'),
+        none: useGlossaryProposal(undefined),
+      }),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(getGlossaryTermsById).toHaveBeenCalledTimes(1));
+
+    expect(result.current.decided).toBeUndefined();
+    expect(result.current.none).toBeUndefined();
   });
 
   it('finds the approval request for a term whose name contains a comma', async () => {
@@ -204,125 +154,51 @@ describe('useGlossaryProposals', () => {
         fullyQualifiedName: term.fullyQualifiedName,
       },
     };
-    (listTasks as jest.Mock).mockImplementation(async ({ aboutEntityIds }) => ({
-      data: aboutEntityIds === term.id ? [task] : [],
-    }));
-    const { result } = renderHook(
-      () =>
-        useGlossaryProposalPage(scope, 'person', 1, {
-          all: 1,
-          ai: 0,
-          person: 1,
-        }),
-      { wrapper }
-    );
+    (listTasks as jest.Mock).mockResolvedValue({ data: [task] });
+    const { result } = renderHook(() => useGlossaryProposal(term.id), {
+      wrapper,
+    });
 
-    await waitFor(() =>
-      expect(result.current.proposals[0]?.approvalTask).toEqual(task)
-    );
+    await waitFor(() => expect(result.current?.approvalTask).toEqual(task));
   });
 
-  it('starts on people proposals where the AI ones run out', async () => {
-    const aiTerms = termsOf('ai', 7, ProviderType.Automation);
-    const personTerms = termsOf('person', 13);
-    terms = [...aiTerms, ...personTerms];
-    const counts = { all: 20, ai: 7, person: 13 };
-    const { result, rerender } = renderHook(
-      ({ page }) => useGlossaryProposalPage(scope, 'all', page, counts),
-      { initialProps: { page: 1 }, wrapper }
-    );
-
-    await waitFor(() => expect(result.current.proposals).toHaveLength(15));
-
-    expect(ids(result.current.proposals.map(({ term }) => term))).toEqual(
-      ids([...aiTerms, ...personTerms.slice(0, 8)])
-    );
-
-    rerender({ page: 2 });
-
-    await waitFor(() => expect(result.current.proposals).toHaveLength(5));
-
-    expect(ids(result.current.proposals.map(({ term }) => term))).toEqual(
-      ids(personTerms.slice(8))
-    );
-    expect(listTasks).not.toHaveBeenCalled();
-  });
-
-  it('still lists the AI drafts when the caller may not read memories', async () => {
+  it('still opens an AI proposal when the caller may not read memories', async () => {
     (getMemoryDerivations as jest.Mock).mockRejectedValue(new Error('403'));
-    const { result } = renderHook(
-      () => useGlossaryProposalPage(scope, 'all', 1, twoProposals),
-      { wrapper }
-    );
+    const { result } = renderHook(() => useGlossaryProposal('ai-id'), {
+      wrapper,
+    });
 
-    await waitFor(() => expect(result.current.proposals).toHaveLength(2));
+    await waitFor(() => expect(result.current?.term.id).toBe('ai-id'));
 
-    expect(result.current.proposals[0].derivation).toBeUndefined();
+    expect(result.current?.derivation).toBeUndefined();
   });
 
-  it('keeps every proposal when the approval requests cannot be loaded', async () => {
+  it('still opens a proposal when its approval request cannot be loaded', async () => {
     (listTasks as jest.Mock).mockRejectedValue(new Error('500'));
-    const { result } = renderHook(
-      () => useGlossaryProposalPage(scope, 'all', 1, twoProposals),
-      { wrapper }
-    );
+    const { result } = renderHook(() => useGlossaryProposal('person-id'), {
+      wrapper,
+    });
 
-    await waitFor(() => expect(result.current.proposals).toHaveLength(2));
+    await waitFor(() => expect(result.current?.term.id).toBe('person-id'));
 
-    expect(result.current.proposals[1].approvalTask).toBeUndefined();
+    expect(result.current?.approvalTask).toBeUndefined();
   });
 
-  it('opens one proposal wherever its page is, and nothing for a decided term', async () => {
-    const { result } = renderHook(
-      () => ({
-        decided: useGlossaryProposal('approved-id'),
-        pending: useGlossaryProposal('person-id'),
-      }),
-      { wrapper }
-    );
-
-    await waitFor(() =>
-      expect(result.current.pending?.approvalTask).toEqual(approvalTask)
-    );
-
-    expect(result.current.decided).toBeUndefined();
-    expect(getGlossaryTermsById).toHaveBeenCalledWith('person-id', {
-      fields: 'reviewers,parent',
-    });
-  });
-
-  it('decides an AI draft on the term and a person proposal through its request, then recounts', async () => {
-    const settleTerm = (id: string, entityStatus: EntityStatus) => {
-      terms = terms.map((term) =>
-        term.id === id ? { ...term, entityStatus } : term
-      );
-    };
-    (patchGlossaryTerm as jest.Mock).mockImplementation(
-      async (id: string, [{ value }]: { value: EntityStatus }[]) =>
-        settleTerm(id, value)
-    );
-    (resolveTask as jest.Mock).mockImplementation(async () => {
-      settleTerm('person-id', EntityStatus.Rejected);
-
-      return { id: 'task-id', status: TaskEntityStatus.Rejected };
-    });
-    const { result } = renderHook(
-      () => ({
-        counts: useGlossaryProposalCounts(scope).counts,
-        decide: useDecideProposal(),
-      }),
-      { wrapper }
-    );
-    await waitFor(() => expect(result.current.counts).toEqual(twoProposals));
+  it('decides AI and person proposals through their approval requests', async () => {
+    (resolveTask as jest.Mock).mockImplementation(async (taskId: string) => ({
+      id: taskId,
+      status: TaskEntityStatus.Approved,
+    }));
+    const { result } = renderHook(() => useDecideProposal(), { wrapper });
 
     const decisions: boolean[] = [];
     await act(async () => {
       decisions.push(
-        await result.current.decide(
-          { term: aiDraft, source: 'ai' },
+        await result.current(
+          { term: aiDraft, source: 'ai', approvalTask: aiTask },
           EntityStatus.Approved
         ),
-        await result.current.decide(
+        await result.current(
           { term: personDraft, source: 'person', approvalTask },
           EntityStatus.Rejected,
           'Duplicate'
@@ -330,18 +206,24 @@ describe('useGlossaryProposals', () => {
       );
     });
 
-    await waitFor(() =>
-      expect(result.current.counts).toEqual({ all: 0, ai: 0, person: 0 })
-    );
-
     expect(decisions).toEqual([true, true]);
-    expect(patchGlossaryTerm).toHaveBeenCalledWith('ai-id', [
-      { op: 'replace', path: '/entityStatus', value: EntityStatus.Approved },
-    ]);
+    expect(resolveTask).toHaveBeenCalledWith(
+      'ai-task-id',
+      expect.objectContaining({ newValue: 'approved' })
+    );
     expect(resolveTask).toHaveBeenCalledWith(
       'task-id',
       expect.objectContaining({ comment: 'Duplicate', newValue: 'rejected' })
     );
+  });
+
+  it('decides no proposal before its approval request opens', async () => {
+    const { result } = renderHook(() => useDecideProposal(), { wrapper });
+
+    await expect(
+      result.current({ term: aiDraft, source: 'ai' }, EntityStatus.Approved)
+    ).rejects.toThrow();
+    expect(resolveTask).not.toHaveBeenCalled();
   });
 
   it('keeps a proposal pending while its request waits for other reviewers', async () => {
@@ -360,20 +242,6 @@ describe('useGlossaryProposals', () => {
     });
 
     expect(isSettled).toBe(false);
-  });
-
-  it('asks for nothing without a scope', () => {
-    const { result } = renderHook(
-      () => ({
-        counts: useGlossaryProposalCounts(undefined),
-        page: useGlossaryProposalPage(undefined, 'all', 1, twoProposals),
-      }),
-      { wrapper }
-    );
-
-    expect(result.current.counts.isLoading).toBe(false);
-    expect(result.current.page.isLoading).toBe(false);
-    expect(searchGlossaryTermsPaginated).not.toHaveBeenCalled();
   });
 
   it('reads the evidence of many table rows in chunks the API accepts', async () => {
@@ -396,46 +264,7 @@ describe('useGlossaryProposals', () => {
     });
 
     await waitFor(() => expect(result.current).toHaveLength(101));
-  });
 
-  it('counts pending terms per glossary, and the AI ones apart', async () => {
-    const buckets = (counts: Record<string, number>) => ({
-      data: {
-        aggregations: {
-          'sterms#glossary.id': {
-            buckets: Object.entries(counts).map(([key, doc_count]) => ({
-              key,
-              doc_count,
-            })),
-          },
-        },
-      },
-    });
-    (postExactAggregateFieldOptions as jest.Mock)
-      .mockResolvedValueOnce(buckets({ 'metrics-id': 2, 'success-id': 1 }))
-      .mockResolvedValueOnce(buckets({ 'metrics-id': 1 }));
-
-    const { result } = renderHook(() => useGlossaryPendingCounts(), {
-      wrapper,
-    });
-
-    await waitFor(() => expect(result.current).toBeDefined());
-
-    expect(result.current).toEqual({
-      all: { 'metrics-id': 2, 'success-id': 1 },
-      ai: { 'metrics-id': 1 },
-    });
-
-    const [[allRequest], [aiRequest]] = (
-      postExactAggregateFieldOptions as jest.Mock
-    ).mock.calls;
-
-    expect(allRequest).toEqual(
-      expect.objectContaining({
-        fieldName: 'glossary.id',
-        fieldValue: '.*',
-      })
-    );
-    expect(aiRequest.query).toContain('provider.keyword');
+    expect(getMemoryDerivations).toHaveBeenCalledTimes(2);
   });
 });

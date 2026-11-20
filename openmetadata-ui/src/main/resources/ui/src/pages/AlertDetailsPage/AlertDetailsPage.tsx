@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
+import { Bell01 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { ClientErrors } from '../../enums/Axios.enum';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { AlertDetailsPageProps } from './AlertDetailsPage.interface';
 import AlertDetailsContent from './components/AlertDetailsContent';
@@ -39,7 +44,14 @@ function AlertDetailsPage({
     onTabChange,
     tab,
   });
-  const { alertDetails, loadingCount, viewPermission } = detailsState;
+  const {
+    alertDetails,
+    alertDetailsError,
+    breadcrumb,
+    fetchAlertDetails,
+    loadingCount,
+    viewPermission,
+  } = detailsState;
 
   if (!loadingCount && !isUndefined(viewPermission) && !viewPermission) {
     return (
@@ -54,10 +66,37 @@ function AlertDetailsPage({
     );
   }
   if (!loadingCount && isUndefined(alertDetails)) {
+    const status = alertDetailsError?.response?.status;
+    let loadErrorPlaceholder = (
+      <SomethingWentWrongPlaceholder onReload={fetchAlertDetails} />
+    );
+    if (status === ClientErrors.NOT_FOUND) {
+      loadErrorPlaceholder = (
+        <NoDataPlaceholder
+          description={t('message.alert-not-found-description')}
+          icon={<Bell01 className="tw:text-secondary" />}
+          title={t('label.alert-not-found')}
+        />
+      );
+    } else if (status === ClientErrors.FORBIDDEN) {
+      loadErrorPlaceholder = (
+        <PermissionPlaceholder
+          permissionValue={t('label.view-entity', {
+            entity: t('label.alert-detail-plural'),
+          })}
+        />
+      );
+    }
+
     return (
-      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-        <NoDataPlaceholder data-testid="no-data-placeholder" />
-      </div>
+      <PageLayoutV1 pageTitle={t('label.alert-detail-plural')}>
+        <Box direction="col" gap={4}>
+          <TitleBreadcrumb titleLinks={breadcrumb} />
+          <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
+            {loadErrorPlaceholder}
+          </Box>
+        </Box>
+      </PageLayoutV1>
     );
   }
 

@@ -31,6 +31,11 @@ export const NODE_LABEL_EXTRA_PAD_H = 10;
 export const CHAR_WIDTH_ESTIMATE = 9;
 export const MODEL_NODE_MAX_LABEL_CHARS = 60;
 export const MODEL_NODE_MAX_WIDTH = 150;
+// Widest a truncating (model / data-concept) node grows to fit its label, so
+// common two-word names such as "Churned Customer" are not cut. Studio nodes
+// keep the fixed MODEL_NODE_MAX_WIDTH their layout spaces for.
+// ADR:2026-10-23-relations-graph-labels-grow-to-200px
+export const MODEL_NODE_MAX_LABEL_WIDTH = 200;
 
 const NODE_LABEL_MEASURE_FONT = `${NODE_LABEL_FONT_WEIGHT} ${NODE_LABEL_FONT_SIZE}px sans-serif`;
 

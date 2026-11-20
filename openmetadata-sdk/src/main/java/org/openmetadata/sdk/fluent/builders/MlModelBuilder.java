@@ -51,6 +51,7 @@ public class MlModelBuilder {
    * Set custom extension data.
    */
   public MlModelBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 
