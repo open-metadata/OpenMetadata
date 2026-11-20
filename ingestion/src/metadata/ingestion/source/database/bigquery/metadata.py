@@ -961,6 +961,23 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                         # reissue an expensive region-wide query.
                         if isinstance(exc, (sqlite3.Error, OSError)):
                             self._region_lifecycle_spool_disabled = True
+                            # Clean up if possible, but the in-memory circuit
+                            # breaker must not depend on successful disk writes.
+                            try:
+                                db.rollback()
+                                db.execute(
+                                    "DELETE FROM rows WHERE project = ? AND region = ?",
+                                    (database, normalized_region),
+                                )
+                                db.commit()
+                            except Exception as cleanup_exc:
+                                logger.warning(
+                                    "Could not clean partial BigQuery lifecycle rows "
+                                    "after spool failure for %s/%s: %s",
+                                    database,
+                                    region,
+                                    cleanup_exc,
+                                )
                             logger.warning(
                                 "Disabling BigQuery lifecycle region scans after "
                                 "temporary spool I/O failure for %s/%s: %s",
