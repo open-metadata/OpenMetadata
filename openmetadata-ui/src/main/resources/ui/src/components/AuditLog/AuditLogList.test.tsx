@@ -547,6 +547,75 @@ describe('AuditLogList', () => {
     expect(screen.queryByTestId('affected-entity')).not.toBeInTheDocument();
   });
 
+  it('should fall back to the summary when the only change is the deleted flag', () => {
+    const logs: AuditLogEntry[] = [
+      {
+        id: 1,
+        eventTs: Date.now(),
+        eventType: EventType.EntitySoftDeleted,
+        userName: 'admin',
+        entityType: 'table',
+        entityFQN: 'svc.db.schema.orders',
+        summary: 'Soft deleted table: svc.db.schema.orders',
+        changeEvent: mockChangeEvent({
+          eventType: EventType.EntitySoftDeleted,
+          entityType: 'table',
+          changeDescription: {
+            fieldsAdded: [],
+            fieldsUpdated: [
+              { name: 'deleted', oldValue: false, newValue: true },
+            ],
+            fieldsDeleted: [],
+          },
+        }),
+      },
+    ];
+
+    renderWithRouter(<AuditLogList isLoading={false} logs={logs} />);
+
+    expect(
+      screen.getByText('Soft deleted table: svc.db.schema.orders')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('affected-entity')).not.toBeInTheDocument();
+  });
+
+  it('should show false as a real new value and unquote quoted column names', () => {
+    const logs: AuditLogEntry[] = [
+      {
+        id: 1,
+        eventTs: Date.now(),
+        eventType: EventType.EntityUpdated,
+        userName: 'admin',
+        entityType: 'table',
+        changeEvent: mockChangeEvent({
+          eventType: EventType.EntityUpdated,
+          entityType: 'table',
+          changeDescription: {
+            fieldsAdded: [],
+            fieldsUpdated: [
+              { name: 'disabled', oldValue: true, newValue: false },
+              {
+                name: 'columns."order.id".dataType',
+                oldValue: 'INT',
+                newValue: 'BIGINT',
+              },
+            ],
+            fieldsDeleted: [],
+          },
+        }),
+      },
+    ];
+
+    renderWithRouter(<AuditLogList isLoading={false} logs={logs} />);
+
+    const description = screen.getByTestId('description-content');
+
+    expect(description).toHaveTextContent('Disabled: true → false');
+    expect(description).toHaveTextContent(
+      'Columns › order.id › Data Type: INT → BIGINT'
+    );
+  });
+
   it('should display System for logs without userName', () => {
     const systemLogs: AuditLogEntry[] = [
       {

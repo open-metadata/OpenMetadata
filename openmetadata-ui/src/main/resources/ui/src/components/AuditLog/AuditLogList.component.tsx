@@ -13,7 +13,7 @@
 
 import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { NoSearch } from '@openmetadata/ui-core-components/icons';
-import { compact, startCase } from 'lodash';
+import { compact, isNil, startCase } from 'lodash';
 import {
   FC,
   isValidElement,
@@ -28,7 +28,6 @@ import { Link } from 'react-router-dom';
 import { EntityType } from '../../enums/entity.enum';
 import {
   ChangeDescription,
-  EventType,
   FieldChange,
 } from '../../generated/type/changeEvent';
 import { getTextFromHtmlString } from '../../utils/BlockEditorPureUtils';
@@ -65,8 +64,9 @@ const getFieldLabel = (name?: string) => {
     return '';
   }
   // Keep the full path so a column-level change names its column: `columns.customer_id.tags`
-  // reads "Columns › customer_id › Tags". Inner segments are entity names, so they stay verbatim.
-  const parts = Fqn.split(name);
+  // reads "Columns › customer_id › Tags". Inner segments are entity names, so they stay verbatim
+  // apart from FQN quoting (`columns."order.id".tags`).
+  const parts = Fqn.split(name).map((part) => Fqn.unquoteName(part));
   if (parts.length === 1) {
     return startCase(parts[0]);
   }
@@ -387,7 +387,7 @@ const AuditLogItemDescription: FC<AuditLogItemDescriptionProps> = ({
   showEntity,
 }) => (
   <div data-testid="description-content">
-    {showEntity && descriptionNodes.length > 0 && (
+    {showEntity && (
       <Box
         align="center"
         data-testid="affected-entity"
@@ -478,10 +478,6 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
     normalizedType,
     timestamp,
   } = getAuditLogDisplayInfo(log, t('label.system'));
-  // A login/logout's entity is the actor already shown in the header.
-  const isAuthEvent =
-    log.eventType === EventType.UserLogin ||
-    log.eventType === EventType.UserLogout;
 
   const isLinkableField = useCallback((fieldName?: string): boolean => {
     if (!fieldName) {
@@ -513,7 +509,8 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
 
   const renderChangeValue = useCallback(
     (change: FieldChange, value: unknown, keyPrefix: string): ReactNode => {
-      if (!value) {
+      // `false` and `0` are real values (e.g. disabled: true → false), only absence is skipped.
+      if (isNil(value) || value === '') {
         return null;
       }
 
@@ -665,14 +662,17 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
 
   // The field changes carry the full path and old → new values; the server summary drops both,
   // so it is only the fallback for events without field changes (create, delete, login).
+  const fieldChangeNodes = useMemo(
+    () => getChangeDetails(log.changeEvent?.changeDescription),
+    [log, getChangeDetails]
+  );
   const descriptionNodes = useMemo((): ReactNode[] => {
-    const details = getChangeDetails(log.changeEvent?.changeDescription);
-    if (details.length > 0) {
-      return details;
+    if (fieldChangeNodes.length > 0) {
+      return fieldChangeNodes;
     }
 
     return log.summary ? [<span key="summary">{log.summary}</span>] : [];
-  }, [log, getChangeDetails]);
+  }, [log.summary, fieldChangeNodes]);
 
   const entityLink = useMemo(() => {
     if (normalizedType === EntityType.USER) {
@@ -735,7 +735,7 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
           entityFQN={entityFQN === entityLabel ? undefined : entityFQN}
           entityLink={entityLink}
           eventType={eventType}
-          showEntity={!isAuthEvent}
+          showEntity={fieldChangeNodes.length > 0}
         />
         <AuditLogItemMeta entityType={entityType} timestamp={timestamp} />
       </Box>
