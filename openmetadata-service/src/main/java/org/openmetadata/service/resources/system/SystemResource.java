@@ -121,6 +121,7 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.TestLoginCandidates;
 import org.openmetadata.service.security.auth.TestLoginRoundTrip;
 import org.openmetadata.service.security.auth.TestLoginService;
+import org.openmetadata.service.security.auth.validator.SamlIdpCertificateGate;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -968,6 +969,7 @@ public class SystemResource {
       preserveMaskedSecuritySecrets(securityConfig, originalConfig);
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
       validateConfigurationOfActiveProvider(securityConfig);
+      SamlIdpCertificateGate.requireUsable(authConfig, storedAuthentication());
 
       // Auto-populate publicKeyUrls for OIDC confidential clients before saving
       systemRepository.autoPopulatePublicKeyUrlsIfNeeded(authConfig);
@@ -994,7 +996,8 @@ public class SystemResource {
 
       return Response.ok(getSecurityConfig(securityContext)).build();
     } catch (BadRequestException e) {
-      // Raised only by validateConfigurationOfActiveProvider, before anything is written. Rethrow
+      // Raised only by validateConfigurationOfActiveProvider and the IdP certificate check, before
+      // anything is written. Rethrow
       // so
       // the mapper answers 400 rather than letting the catch below report it as a server failure —
       // and keep the type narrow, so a failure from the writes below still surfaces as a 5xx
@@ -1005,6 +1008,14 @@ public class SystemResource {
       LOG.error("Failed to update security configuration", e);
       throw new RuntimeException("Failed to update security configuration: " + e.getMessage());
     }
+  }
+
+  /** The authentication configuration in the database, which a PUT replaces. */
+  private AuthenticationConfiguration storedAuthentication() {
+    Settings stored = systemRepository.getConfigWithKey(AUTHENTICATION_CONFIGURATION.value());
+    return stored == null
+        ? null
+        : JsonUtils.convertValue(stored.getConfigValue(), AuthenticationConfiguration.class);
   }
 
   /**

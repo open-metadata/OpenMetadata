@@ -23,8 +23,10 @@ import org.openmetadata.schema.system.FieldError;
 
 /**
  * Lets a SAML identity provider certificate reach the database only after it passed the check a
- * save of the configuration runs ({@link SamlValidator#validateIdpCertificate}), when it comes from
- * the deployment configuration: on the first start, which seeds the setting.
+ * save of the configuration runs ({@link SamlValidator#validateIdpCertificate}), on every way that
+ * writes the authentication configuration without that save: the first start, which seeds the
+ * setting from the deployment, a PUT of the security configuration and the
+ * {@code update-security-config} command.
  *
  * <p>Only a certificate that is new or differs from the stored one is checked. A stored certificate
  * that expired since it was saved keeps working at runtime, so an unchanged value never stops a
