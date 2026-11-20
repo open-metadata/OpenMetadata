@@ -115,6 +115,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.EntityRepository.Operation;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
@@ -4831,6 +4832,103 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .getFailedRowsSample(first.testCase().getId().toString())
             .getRows()
             .getFirst());
+  }
+
+  @Test
+  void test_failedRowsStaleDescriptionEditAllowsAuthoritativeClassificationChange(
+      TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table original = admin.tables().get(createTable(ns).getId().toString(), "*");
+    Table updated = JsonUtils.deepCopy(original, Table.class);
+    updated.setDescription("Description written from an older classification baseline");
+    updated.setUpdatedBy("admin");
+    updated.setUpdatedAt(System.currentTimeMillis());
+    Table current = JsonUtils.deepCopy(original, Table.class);
+    current.getColumns().get(1).setTags(failedRowsSensitiveTags());
+    admin.tables().update(current.getId().toString(), current);
+    TableData data =
+        new TableData()
+            .withColumns(List.of("name", "extra_column"))
+            .withRows(List.of(List.of("synthetic", "extra")));
+    FailedSampleFixture fixture = failedSampleFixture(ns, current, data);
+    FailedRowsSamplePolicy.RemovalRecord before = removalRecord(current);
+    TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
+
+    repository.new TableUpdater(original, updated, Operation.PUT, null).update();
+
+    Table persisted = admin.tables().get(current.getId().toString(), "columns,tags");
+    assertEquals(updated.getDescription(), persisted.getDescription());
+    assertEquals(2, persisted.getColumns().size());
+    assertTrue(
+        persisted.getColumns().get(1).getTags().stream()
+            .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())));
+    assertEquals(before, removalRecord(current));
+    assertEquals(
+        List.of(PIIMasker.MASKED_VALUE, "extra"),
+        fixture
+            .reader()
+            .testCases()
+            .getFailedRowsSample(fixture.testCase().getId().toString())
+            .getRows()
+            .getFirst());
+    assertEquals(
+        data, admin.testCases().getFailedRowsSample(fixture.testCase().getId().toString()));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void test_failedRowsStaleRemovalRejectsAuthoritativeSourceChange(
+      boolean addedColumn, TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table original = admin.tables().get(createTable(ns).getId().toString(), "*");
+    Table updated = JsonUtils.deepCopy(original, Table.class);
+    updated.setDescription("Rejected stale edit");
+    updated.setUpdatedBy("admin");
+    updated.setUpdatedAt(System.currentTimeMillis());
+    Table current = JsonUtils.deepCopy(original, Table.class);
+    String sourceName = addedColumn ? "new_source" : "name";
+    if (addedColumn) {
+      current
+          .getColumns()
+          .add(
+              new Column()
+                  .withName(sourceName)
+                  .withDataType(ColumnDataType.STRING)
+                  .withTags(failedRowsSensitiveTags()));
+    } else {
+      current.getColumns().get(1).setTags(failedRowsSensitiveTags());
+      updated.setColumns(List.of(updated.getColumns().getFirst()));
+    }
+    admin.tables().update(current.getId().toString(), current);
+    TableData data =
+        new TableData()
+            .withColumns(List.of(sourceName, "extra_column"))
+            .withRows(List.of(List.of("synthetic", "extra")));
+    FailedSampleFixture fixture = failedSampleFixture(ns, current, data);
+    Table authoritative = admin.tables().get(current.getId().toString(), "columns,tags");
+    FailedRowsSamplePolicy.RemovalRecord before = removalRecord(current);
+    TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
+    TableRepository.TableUpdater updater =
+        repository.new TableUpdater(original, updated, Operation.PUT, null);
+
+    PreconditionFailedException failure =
+        assertThrows(PreconditionFailedException.class, updater::update);
+
+    assertEquals(412, failure.getResponse().getStatus());
+    Table persisted = admin.tables().get(current.getId().toString(), "columns,tags");
+    assertEquals(authoritative.getColumns(), persisted.getColumns());
+    assertEquals(authoritative.getDescription(), persisted.getDescription());
+    assertEquals(before, removalRecord(current));
+    assertEquals(
+        List.of(PIIMasker.MASKED_VALUE, "extra"),
+        fixture
+            .reader()
+            .testCases()
+            .getFailedRowsSample(fixture.testCase().getId().toString())
+            .getRows()
+            .getFirst());
+    assertEquals(
+        data, admin.testCases().getFailedRowsSample(fixture.testCase().getId().toString()));
   }
 
   @Test

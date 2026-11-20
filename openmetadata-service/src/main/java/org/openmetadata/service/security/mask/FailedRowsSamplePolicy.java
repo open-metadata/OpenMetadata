@@ -265,7 +265,7 @@ public final class FailedRowsSamplePolicy {
       String name = masked.getColumns().get(position);
       boolean sensitive =
           directSensitive(table.getTags())
-              || masksPosition(sample, position, name, table, columns, record);
+              || masksPosition(sample, position, table, columns, record);
       positions.add(sensitive);
       if (sensitive) {
         masked.getColumns().set(position, PIIMasker.flagMaskedName(name));
@@ -278,10 +278,10 @@ public final class FailedRowsSamplePolicy {
   private static boolean masksPosition(
       SampleRecord sample,
       int position,
-      String name,
       Table table,
       List<ColumnState> columns,
       RemovalRecord record) {
+    String name = sample.data().getColumns().get(position);
     if (sample.isLegacy()) {
       return currentAdditionalPolicy(name, table)
           || record.batches().stream()
@@ -292,11 +292,16 @@ public final class FailedRowsSamplePolicy {
     return switch (binding.association()) {
       case ADDITIONAL -> currentAdditionalPolicy(name, table);
       case AMBIGUOUS -> true;
-      case SOURCE -> !table.getId().equals(sample.tableId())
-          || sample.observedSequence() > record.sequence()
-          || sample.observedSequence() < record.coverageThrough()
+      case SOURCE -> hasInvalidSourceEvidence(sample, table, record)
           || masksSource(binding.paths().getFirst(), sample.observedSequence(), columns, record);
     };
+  }
+
+  private static boolean hasInvalidSourceEvidence(
+      SampleRecord sample, Table table, RemovalRecord record) {
+    return !table.getId().equals(sample.tableId())
+        || sample.observedSequence() > record.sequence()
+        || sample.observedSequence() < record.coverageThrough();
   }
 
   private static boolean masksSource(

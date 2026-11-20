@@ -11705,7 +11705,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
-    /** Runs inside the canonical transaction before generic tags or entity-specific fields change. */
+    /**
+     * Runs inside the canonical transaction before generic tags or entity-specific fields change.
+     * {@link #updateWithDeferredStore()} bypasses this hook; subclasses requiring it for bulk writes
+     * must route those writes through {@code requiresAtomicBulkUpdate}.
+     */
     protected void beforeEntityMutation() {}
 
     protected void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -15361,7 +15365,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private void updateAtomicBulkEntities(
-      UriInfo uriInfo,
       List<T> entities,
       String userName,
       boolean overrideMetadata,
@@ -15421,7 +15424,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             .filter(entity -> atomicFqns.contains(entity.getFullyQualifiedName()))
             .toList();
     updateAtomicBulkEntities(
-        uriInfo,
         atomicEntities,
         userName,
         overrideMetadata,

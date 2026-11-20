@@ -43,19 +43,20 @@ final class FailedRowsSampleStore {
 
   void captureRemoval(Table original, Table updated) {
     Table current = lockTable(original.getId());
+    RemovalRecord record = readRemovals(current.getId());
+    RemovalRecord appended = FailedRowsSamplePolicy.append(record, current, updated);
+    if (record.sequence().equals(appended.sequence())) {
+      return;
+    }
     if (!FailedRowsSamplePolicy.sameBaseline(original, current)) {
       throw new PreconditionFailedException(
           "The table source columns or classification changed. Please refresh and retry.");
     }
-    RemovalRecord record = readRemovals(current.getId());
-    RemovalRecord appended = FailedRowsSamplePolicy.append(record, current, updated);
-    if (!record.sequence().equals(appended.sequence())) {
-      dao.entityExtensionDAO()
-          .insert(
-              current.getId(),
-              FAILED_ROWS_COLUMN_REMOVALS_EXTENSION,
-              FAILED_ROWS_COLUMN_REMOVALS_EXTENSION,
-              JsonUtils.pojoToJson(appended));
-    }
+    dao.entityExtensionDAO()
+        .insert(
+            current.getId(),
+            FAILED_ROWS_COLUMN_REMOVALS_EXTENSION,
+            FAILED_ROWS_COLUMN_REMOVALS_EXTENSION,
+            JsonUtils.pojoToJson(appended));
   }
 }
