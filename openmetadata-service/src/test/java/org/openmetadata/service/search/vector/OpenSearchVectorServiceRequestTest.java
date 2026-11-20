@@ -32,6 +32,7 @@ import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Request;
 import os.org.opensearch.client.opensearch.generic.Response;
+import os.org.opensearch.client.transport.httpclient5.ResponseException;
 
 class OpenSearchVectorServiceRequestTest {
   private static final String ENDPOINT = "/test_case_search_index/_update/test?retry_on_conflict=3";
@@ -208,10 +209,12 @@ class OpenSearchVectorServiceRequestTest {
     AtomicInteger attempts = new AtomicInteger();
     when(genericClient.execute(any()))
         .thenAnswer(
-            call ->
-                attempts.getAndIncrement() % 2 == 0
-                    ? response(409, VERSION_CONFLICT)
-                    : response(200, "{\"result\":\"updated\"}"));
+            call -> {
+              if (attempts.getAndIncrement() % 2 == 0) {
+                throw thrown(409, VERSION_CONFLICT);
+              }
+              return response(200, "{\"result\":\"updated\"}");
+            });
 
     List<ILoggingEvent> logged = writeEmbeddings();
 
@@ -221,7 +224,11 @@ class OpenSearchVectorServiceRequestTest {
 
   @Test
   void aConflictThatNeverClearsIsAnErrorAfterThreeAttempts() throws IOException {
-    when(genericClient.execute(any())).thenAnswer(call -> response(409, VERSION_CONFLICT));
+    when(genericClient.execute(any()))
+        .thenAnswer(
+            call -> {
+              throw thrown(409, VERSION_CONFLICT);
+            });
 
     List<ILoggingEvent> logged = writeEmbeddings();
 
@@ -233,9 +240,10 @@ class OpenSearchVectorServiceRequestTest {
   void aRejectedEmbeddingWriteIsAnErrorWithoutBeingResent() throws IOException {
     when(genericClient.execute(any()))
         .thenAnswer(
-            call ->
-                response(
-                    400, "{\"error\":{\"type\":\"mapper_parsing_exception\"},\"status\":400}"));
+            call -> {
+              throw thrown(
+                  400, "{\"error\":{\"type\":\"mapper_parsing_exception\"},\"status\":400}");
+            });
 
     List<ILoggingEvent> logged = writeEmbeddings();
 
@@ -257,6 +265,24 @@ class OpenSearchVectorServiceRequestTest {
       log.detachAppender(logged);
     }
     return logged.list.stream().filter(e -> thread.equals(e.getThreadName())).toList();
+  }
+
+  /**
+   * What the OpenSearch client throws for an error status: it never returns the response, it raises
+   * a ResponseException whose message carries the status line and the error body.
+   */
+  private static ResponseException thrown(int status, String body) {
+    ResponseException failure = mock(ResponseException.class);
+    when(failure.status()).thenReturn(status);
+    when(failure.getMessage())
+        .thenReturn(
+            "method [POST], host [http://localhost:9200], URI ["
+                + ENDPOINT
+                + "], status line [HTTP/1.1 "
+                + status
+                + "]\n"
+                + body);
+    return failure;
   }
 
   private static Response response(int status, String json) throws IOException {

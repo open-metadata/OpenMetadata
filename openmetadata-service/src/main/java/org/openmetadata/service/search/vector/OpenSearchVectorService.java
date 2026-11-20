@@ -62,13 +62,14 @@ public class OpenSearchVectorService implements VectorIndexService {
           RetryConfig.custom()
               .maxAttempts(3)
               .intervalFunction(IntervalFunction.ofExponentialBackoff(200, 2))
-              // A version-conflicted update changed nothing, so it is resent like a closed segment
+              // A version-conflicted update changed nothing, so it is resent like a closed segment;
+              // the client raises it as a 409 ResponseException rather than returning the response
               // (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
               .retryOnException(
                   error ->
                       error instanceof UncheckedIOException
                           && (error.getCause() instanceof ClosedSegmentException
-                              || error.getCause() instanceof VersionConflictException))
+                              || SearchUtils.isVersionConflict(error)))
               .build());
   private static final int OVER_FETCH_MULTIPLIER = 2;
   public static final String HYBRID_PIPELINE_NAME = "hybrid-rrf";
@@ -1980,9 +1981,6 @@ public class OpenSearchVectorService implements VectorIndexService {
       if (response.getStatus() >= 500 && errorBody.contains(ALREADY_CLOSED_EXCEPTION)) {
         throw new ClosedSegmentException(message);
       }
-      if (SearchUtils.isVersionConflict(response.getStatus(), errorBody)) {
-        throw new VersionConflictException(message);
-      }
       throw new IOException(message);
     }
   }
@@ -1998,12 +1996,6 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   private static final class ClosedSegmentException extends IOException {
     private ClosedSegmentException(String message) {
-      super(message);
-    }
-  }
-
-  private static final class VersionConflictException extends IOException {
-    private VersionConflictException(String message) {
       super(message);
     }
   }
