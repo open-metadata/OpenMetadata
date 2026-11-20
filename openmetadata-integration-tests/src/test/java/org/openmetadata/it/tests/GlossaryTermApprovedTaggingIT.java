@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.APIServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -601,6 +603,71 @@ public class GlossaryTermApprovedTaggingIT {
     client.tables().importCsv(table.getFullyQualifiedName(), exported, false);
 
     assertHeld(term, 2, reread(client, table));
+  }
+
+  /** The term lists the assets it is pending on, so a reviewer sees what approval will tag. */
+  @Test
+  void pendingAssetsListsTheAssetsATermIsHeldOn(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = deprecatedTerm(client, ns);
+    CreateTable request = tableRequest(ns, schema(ns), "pending_assets");
+    request.getColumns().get(0).setTags(List.of(label(term)));
+    Table table = client.tables().create(request);
+
+    JsonNode page =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/glossaryTerms/%s/pendingAssets".formatted(term.getId()),
+                null,
+                JsonNode.class);
+
+    assertTrue(page.toString().contains(table.getId().toString()), page::toString);
+    assertFalse(
+        reread(client, table).getColumns().get(0).getTags().stream()
+            .anyMatch(tag -> term.getFullyQualifiedName().equals(tag.getTagFQN())));
+  }
+
+  /**
+   * A pending term is not shown, so a client removes it by sending the target's labels without
+   * it. Only the user who applied it removes it that way; another user's write keeps it.
+   */
+  @Test
+  void aWriteWithoutTheHeldTermRemovesItOnlyForTheUserWhoAppliedIt(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    GlossaryTerm term = deprecatedTerm(admin, ns);
+    Table table = admin.tables().create(tableRequest(ns, schema(ns), "remove_held"));
+    Table tagged = reread(admin, table);
+    tagged.setTags(List.of(label(term)));
+    admin.tables().update(table.getId().toString(), tagged);
+    assertEquals(1, pendingTargets(term).size());
+
+    // A PATCH that sends the labels but changes nothing is answered from the stored version; the
+    // writer is still the one who sent it.
+    SdkClients.ingestionBotClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PATCH,
+            "/v1/tables/%s".formatted(table.getId()),
+            JsonUtils.readTree("[{\"op\":\"add\",\"path\":\"/tags\",\"value\":[]}]"),
+            JsonNode.class);
+    assertEquals(1, pendingTargets(term).size(), "another user's unchanged PATCH keeps it");
+
+    Table byOther = SdkClients.ingestionBotClient().tables().get(table.getId().toString(), "tags");
+    byOther.setTags(List.of(SharedEntities.get().PII_SENSITIVE_TAG_LABEL));
+    SdkClients.ingestionBotClient().tables().update(table.getId().toString(), byOther);
+    assertEquals(1, pendingTargets(term).size(), "another user's write keeps the pending term");
+
+    Table described = reread(admin, table);
+    described.setDescription("an edit that does not send tags");
+    admin.tables().update(table.getId().toString(), described);
+    assertEquals(1, pendingTargets(term).size(), "a write that sends no tags keeps it");
+
+    Table cleared = reread(admin, table);
+    cleared.setTags(List.of());
+    admin.tables().update(table.getId().toString(), cleared);
+    assertTrue(pendingTargets(term).isEmpty(), "the applier's write without the term removes it");
   }
 
   // A held term is answered as if it had not been sent: neither the write's answer nor a later read

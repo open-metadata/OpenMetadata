@@ -719,6 +719,24 @@ public interface ClassificationTagDAOs {
         @Bind("afterTermFqn") String afterTermFqn,
         @Bind("limit") int limit);
 
+    @SqlUpdate(
+        "DELETE FROM tag_usage WHERE source = :source AND state = "
+            + PENDING_STATE
+            + " AND appliedBy = :appliedBy AND targetFQNHash IN (<targetFQNHashes>)")
+    void deletePendingAppliedByInternal(
+        @Bind("source") int source,
+        @Bind("appliedBy") String appliedBy,
+        @BindListFQN("targetFQNHashes") List<String> targetFQNs);
+
+    /**
+     * Drops the pending labels {@code appliedBy} holds on the targets, before a write of theirs that
+     * sends those targets' labels stores the ones it still applies.
+     */
+    default void deletePendingAppliedBy(int source, String appliedBy, List<String> targetFQNs) {
+      EntityDAO.updateInChunks(
+          targetFQNs, chunk -> deletePendingAppliedByInternal(source, appliedBy, chunk));
+    }
+
     /** Drops a term's pending labels, when the term is rejected. */
     @SqlUpdate(
         "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND state = "

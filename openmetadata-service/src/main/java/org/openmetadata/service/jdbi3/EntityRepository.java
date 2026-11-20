@@ -5161,6 +5161,25 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       final JsonPatch patch,
       final ChangeSource changeSource,
       final String ifMatchHeader) {
+    return patchById(uriInfo, id, actor, patch, changeSource, ifMatchHeader, false);
+  }
+
+  /**
+   * A PATCH a CSV import makes. An import merges labels, so unlike a client's PATCH it never
+   * removes a pending glossary term the asset holds: the exported file did not show it.
+   */
+  public final PatchResponse<T> patchForImport(UUID id, String user, JsonPatch patch) {
+    return patchById(null, id, ChangeActor.recorded(user, null), patch, null, null, true);
+  }
+
+  private PatchResponse<T> patchById(
+      final UriInfo uriInfo,
+      final UUID id,
+      final ChangeActor actor,
+      final JsonPatch patch,
+      final ChangeSource changeSource,
+      final String ifMatchHeader,
+      final boolean fromImport) {
     final Set<String> patchedFieldNames = JsonUtils.extractPatchedFields(patch);
 
     // Get only the fields relevant to this patch operation
@@ -5191,7 +5210,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             uriInfo,
             changeSource,
             useOptimisticLocking,
-            null));
+            null,
+            fromImport));
   }
 
   /**
@@ -5270,7 +5290,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             uriInfo,
             changeSource,
             useOptimisticLocking,
-            null));
+            null,
+            false));
   }
 
   /**
@@ -5297,7 +5318,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       UriInfo uriInfo,
       ChangeSource changeSource,
       boolean useOptimisticLocking,
-      ApprovedApplication approval) {
+      ApprovedApplication approval,
+      boolean fromImport) {
     // An approved change was checked when it was requested, as admitOrVerify does below.
     if (approval == null) {
       authorizePatchBeforeApply(original, patch, actor);
@@ -5312,7 +5334,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                 patchAndStore(
                     original,
                     updated,
-                    patchedFieldNames,
+                    new PatchScope(
+                        patchedFieldNames,
+                        fromImport
+                            ? null
+                            : ApprovedGlossaryTermGuard.targetsSent(
+                                new TaggedEntity(original, taggedFieldContainers(original)),
+                                patch)),
                     uriInfo,
                     changeSource,
                     useOptimisticLocking,
@@ -5327,7 +5355,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   final PatchResponse<T> patch(T original, JsonPatch patch, ChangeActor actor) {
     return patchCommonWithOptimisticLocking(
-        original, patch, JsonUtils.extractPatchedFields(patch), actor, null, null, false, null);
+        original,
+        patch,
+        JsonUtils.extractPatchedFields(patch),
+        actor,
+        null,
+        null,
+        false,
+        null,
+        false);
   }
 
   /**
@@ -5528,7 +5564,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             null,
             null,
             false,
-            approval);
+            approval,
+            false);
     createAndInsertChangeEvent(
         original,
         response.entity(),
@@ -5537,10 +5574,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return response;
   }
 
+  // What a PATCH touches: its top-level fields, and the targets whose labels it sends.
+  private record PatchScope(Set<String> fields, Set<String> labelTargets) {}
+
   private PatchResponse<T> patchAndStore(
       T original,
       T updated,
-      Set<String> patchedFieldNames,
+      PatchScope scope,
       UriInfo uriInfo,
       ChangeSource changeSource,
       boolean useOptimisticLocking,
@@ -5550,12 +5590,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try (var ignored = phase("patchEntityUpdate")) {
       if (useOptimisticLocking) {
         entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource, true);
-        entityUpdater.setPatchedFields(patchedFieldNames);
+        entityUpdater.setPatchedFields(scope.fields());
+        entityUpdater.setLabelTargetsSent(scope.labelTargets());
         entityUpdater.setApprovedChange(approvedChange);
         entityUpdater.updateWithOptimisticLocking();
       } else {
         entityUpdater = getUpdater(original, updated, Operation.PATCH, changeSource);
-        entityUpdater.setPatchedFields(patchedFieldNames);
+        entityUpdater.setPatchedFields(scope.fields());
+        entityUpdater.setLabelTargetsSent(scope.labelTargets());
         entityUpdater.setApprovedChange(approvedChange);
         entityUpdater.update();
       }
@@ -6483,7 +6525,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         List.of(entity),
         () -> {
           createNewEntityFlushBody(entity);
-          storePendingGlossaryTerms(heldTerms);
+          storePendingGlossaryTerms(heldTerms, entity.getUpdatedBy());
         });
     try (var ignored = phase("createSetInheritedFields")) {
       setInheritedFields(entity, new Fields(allowedFields));
@@ -6507,19 +6549,39 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * the write commits, a term approved while it ran is shown: its approval may have finished before
    * these labels existed.
    */
-  final void storePendingGlossaryTerms(List<HeldTerm> heldTerms) {
+  final void storePendingGlossaryTerms(List<HeldTerm> heldTerms, String appliedBy) {
     if (!heldTerms.isEmpty()) {
       Map<String, List<TagLabel>> labelsByTarget = new HashMap<>();
       heldTerms.forEach(
           held ->
               labelsByTarget
                   .computeIfAbsent(held.targetFqn(), target -> new ArrayList<>())
-                  .add(ApprovedGlossaryTermGuard.pendingLabel(held.label())));
+                  .add(
+                      ApprovedGlossaryTermGuard.pendingLabel(held.label())
+                          .withAppliedBy(appliedBy)));
       daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(labelsByTarget);
       Set<String> termFqns = new HashSet<>();
       heldTerms.forEach(held -> termFqns.add(held.label().getTagFQN()));
       PostCommitActionQueue.runOrDefer(() -> GlossaryTermPendingLabels.showIfApproved(termFqns));
     }
+  }
+
+  /**
+   * Stores the terms a write by {@code user} held. A pending term is not shown, so a client cannot
+   * remove it directly: a PATCH by the user who applied it that sends a target's labels without it
+   * removes it there. {@code sentTargets} are the targets the PATCH sends labels for; null for a PUT
+   * or an import, which merge labels and so never remove one, pending or shown. Pending labels of
+   * other users stay.
+   */
+  final void replacePendingGlossaryTerms(
+      T entity, String user, Set<String> sentTargets, List<HeldTerm> heldTerms) {
+    if (user != null && sentTargets != null && !sentTargets.isEmpty()) {
+      daoCollection
+          .tagUsageDAO()
+          .deletePendingAppliedBy(
+              TagLabel.TagSource.GLOSSARY.ordinal(), user, List.copyOf(sentTargets));
+    }
+    storePendingGlossaryTerms(heldTerms, user);
   }
 
   /** Labels on the entity and its tagged inline fields, keyed by target FQN. */
@@ -6877,13 +6939,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     for (int start = 0; start < entities.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
       int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
       List<T> chunk = entities.subList(start, end);
-      List<HeldTerm> chunkHeldTerms =
-          heldTerms.subList(start, end).stream().flatMap(List::stream).toList();
+      List<List<HeldTerm>> chunkHeldTerms = heldTerms.subList(start, end);
       flushInOneTransaction(
           chunk,
           () -> {
             createManyEntitiesFlushBody(chunk);
-            storePendingGlossaryTerms(chunkHeldTerms);
+            for (int i = 0; i < chunk.size(); i++) {
+              storePendingGlossaryTerms(chunkHeldTerms.get(i), chunk.get(i).getUpdatedBy());
+            }
           });
     }
     try (var ignored = phase("setInheritedFields")) {
@@ -11135,8 +11198,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * @see TableRepository.TableUpdater::entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
-    // Glossary terms updateWithDeferredStore held back, stored once the caller writes the entity.
+    // Glossary terms updateWithDeferredStore held back, stored once the caller writes the entity,
+    // and the user whose write held them.
     private List<HeldTerm> heldTerms = List.of();
+    private String heldBy;
+
+    // The targets whose labels a PATCH sends; null for a PUT or an import, which only merge labels.
+    @Setter private Set<String> labelTargetsSent;
 
     private static volatile long sessionTimeoutMillis = 10L * 60 * 1000; // 10 minutes
     protected T previous;
@@ -11352,6 +11420,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      */
     private void flushUpdate(boolean useOptimisticStore, boolean importMode) {
       List<HeldTerm> heldTerms = holdUnapprovedGlossaryTerms();
+      // Read before the flush: a write that changes nothing reverts `updated`, and its updatedBy
+      // with it, to the stored version's.
+      String writer = updated.getUpdatedBy();
       UpdaterSnapshot snapshot = snapshotUpdaterState();
       boolean[] firstAttempt = {true};
       flushInOneTransaction(
@@ -11360,7 +11431,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             restoreUpdaterState(snapshot, !firstAttempt[0]);
             firstAttempt[0] = false;
             flushUpdateBody(useOptimisticStore || useOptimisticLocking, importMode);
-            storePendingGlossaryTerms(heldTerms);
+            replacePendingGlossaryTerms(updated, writer, labelTargetsSent, heldTerms);
           });
       if (entityStored) {
         try (var ignored = phase("entityUpdateCacheEvict")) {
@@ -11381,7 +11452,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * entity: a write that fails must not leave a pending label for its approval to show later.
      */
     public final void storeHeldGlossaryTerms() {
-      storePendingGlossaryTerms(heldTerms);
+      replacePendingGlossaryTerms(updated, heldBy, labelTargetsSent, heldTerms);
     }
 
     private UpdaterSnapshot snapshotUpdaterState() {
@@ -11591,6 +11662,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     @Transaction
     public final void updateWithDeferredStore() {
       heldTerms = holdUnapprovedGlossaryTerms();
+      heldBy = updated.getUpdatedBy();
       changeDescription = new ChangeDescription();
       try (var ignored = phase("entityUpdateDiffDeferred")) {
         updateInternal();

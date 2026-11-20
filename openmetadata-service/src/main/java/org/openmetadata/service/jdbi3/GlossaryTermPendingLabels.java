@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
@@ -30,10 +31,12 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
 import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO.TargetHolder;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -58,6 +61,7 @@ public final class GlossaryTermPendingLabels implements Managed {
   // Bounds hashes x probed tables, which become bind variables of one query.
   static final int MAX_PROBE_BINDINGS = 20_000;
   private static final int GLOSSARY = TagLabel.TagSource.GLOSSARY.ordinal();
+  private static final String SHOW_PENDING_LABELS = "showPendingGlossaryTermLabels";
 
   /** Sweeps for pending labels of Approved terms once the server is up. */
   @Override
@@ -195,19 +199,52 @@ public final class GlossaryTermPendingLabels implements Managed {
   }
 
   // Entities are cached, and indexed for search, with their labels, so each one holding a target
-  // that now shows the term is evicted and indexed again.
+  // that now shows the term is evicted and indexed again. A document that fails to index goes on
+  // the search retry queue, so search catches up with the API rather than staying stale.
   private static void refreshHolders(Set<TargetHolder> holders) {
     for (TargetHolder holder : holders) {
+      EntityReference ref = null;
       try {
-        EntityReference ref =
-            Entity.getEntityReferenceById(holder.entityType(), holder.id(), Include.ALL);
+        ref = Entity.getEntityReferenceById(holder.entityType(), holder.id(), Include.ALL);
         EntityRepository.invalidateCacheForEntity(
             holder.entityType(), holder.id(), ref.getFullyQualifiedName());
         Entity.getSearchRepository().updateEntity(ref);
       } catch (RuntimeException e) {
         LOG.warn("Could not refresh {} {}", holder.entityType(), holder.id(), e);
+        // An entity that no longer exists has no document to catch up.
+        if (ref != null) {
+          SearchIndexRetryQueue.enqueue(
+              holder.id().toString(),
+              ref.getFullyQualifiedName(),
+              holder.entityType(),
+              SearchIndexRetryQueue.failureReason(SHOW_PENDING_LABELS, e));
+        }
       }
     }
+  }
+
+  /**
+   * The assets the term's approval will show it on, a page at a time: each entity holding one of
+   * its pending targets, the entity's own or one of its fields'. {@code after} is the cursor the
+   * previous page returned.
+   */
+  public static ResultList<EntityReference> pendingAssets(String termFqn, String after, int limit) {
+    List<String> targets =
+        dao()
+            .listPendingTargetHashes(
+                GLOSSARY, FullyQualifiedName.buildHash(termFqn), after == null ? "" : after, limit);
+    Map<UUID, EntityReference> assets = new LinkedHashMap<>();
+    for (TargetHolder holder : targets.isEmpty() ? Set.<TargetHolder>of() : holders(targets)) {
+      try {
+        assets.putIfAbsent(
+            holder.id(),
+            Entity.getEntityReferenceById(holder.entityType(), holder.id(), Include.NON_DELETED));
+      } catch (RuntimeException e) {
+        LOG.debug("Pending target holder {} {} is gone", holder.entityType(), holder.id());
+      }
+    }
+    String next = targets.size() == limit ? targets.getLast() : null;
+    return new ResultList<>(List.copyOf(assets.values()), null, next, assets.size());
   }
 
   /**
