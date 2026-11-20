@@ -1072,6 +1072,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         with self._region_lifecycle_lock:
             if self._region_lifecycle_spool_disabled:
                 raise _RegionLifecycleSpoolError("BigQuery lifecycle spool disabled")
+            db = None
             try:
                 db = self._get_region_lifecycle_db()
                 db.executemany(
@@ -1082,10 +1083,11 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 )
                 db.commit()
             except (sqlite3.Error, OSError) as exc:
-                try:
-                    db.rollback()
-                except (sqlite3.Error, OSError):
-                    pass
+                if db is not None:
+                    try:
+                        db.rollback()
+                    except (sqlite3.Error, OSError):
+                        pass
                 raise _RegionLifecycleSpoolError("Could not write spool batch") from exc
 
     def _cached_region_lifecycle(self, query: str) -> dict[str, LifeCycleQueryByTable]:
