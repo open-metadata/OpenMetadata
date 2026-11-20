@@ -91,14 +91,26 @@ it('runs everything when it cannot reason about the change', () => {
   );
   assert.equal(select([], { map: undefined }).mode, 'all');
   assert.equal(select([], { graph: undefined }).mode, 'all');
+});
+
+it('treats core components as a library: they select no browser tests', () => {
+  const core = [
+    'openmetadata-ui-core-components/src/main/resources/ui/src/x.tsx',
+  ];
+  assert.equal(selectTests({ changed: core, tests, map, graph }).mode, 'none');
   assert.equal(
+    selectTests({ changed: core, tests, map: undefined, graph }).mode,
+    'none'
+  );
+  // Alongside UI code, only the UI change selects.
+  assert.deepEqual(
     selectTests({
-      changed: ['openmetadata-ui-core-components/src/x.tsx'],
+      changed: [...core, `${UI}src/pages/Roles/Roles.tsx`],
       tests,
       map,
       graph,
-    }).mode,
-    'all'
+    }).tests,
+    [ROLES]
   );
 });
 

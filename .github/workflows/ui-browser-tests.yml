@@ -5,8 +5,11 @@
 # (scripts/select-browser-tests.mjs), using the map of what each test file
 # executes from the latest full merge-queue run. The merge queue runs every
 # test file, so nothing a selection misses reaches main. A missing map, or a
-# change to test setup, configs, dependencies or core components, runs
-# everything on the pull request too.
+# change to test setup, configs or dependencies, runs everything on the pull
+# request too.
+#
+# Core components are treated like a library: a change there runs core's own
+# tests (the `core components` job) and selects no browser tests.
 name: UI Browser Tests
 
 on:
@@ -28,6 +31,7 @@ concurrency:
 
 env:
   UI_DIR: openmetadata-ui/src/main/resources/ui
+  CORE_DIR: openmetadata-ui-core-components/src/main/resources/ui
   # At most this many runners; with ~1,070 tests three ran past 10 min each.
   SHARDS: 5
   # Test files per runner when only some run (130 files over 5 runners).
@@ -36,7 +40,6 @@ env:
   # (merge_group has no `paths` filter).
   UI_PATHS: >-
     openmetadata-ui/src/main/resources/ui/
-    openmetadata-ui-core-components/src/main/resources/ui/
     .github/workflows/ui-browser-tests.yml
     .github/actions/ui-browser-setup/
 
@@ -54,25 +57,29 @@ jobs:
       summary: ${{ steps.plan.outputs.summary }}
       shards: ${{ steps.plan.outputs.shards }}
       shard-count: ${{ steps.plan.outputs.shard-count }}
+      core: ${{ steps.changes.outputs.core }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
           # A pull request checks out its merge commit: HEAD^1 is the base.
           fetch-depth: 2
-      - name: Changed files in the merge-queue entry
-        id: queue
-        if: github.event_name == 'merge_group'
+      - name: Changed areas
+        id: changes
         env:
-          BASE: ${{ github.event.merge_group.base_sha }}
+          BASE: ${{ github.event.merge_group.base_sha || 'HEAD^1' }}
         run: |
-          git fetch --no-tags --depth=1 origin "$BASE"
+          if [ "${{ github.event_name }}" = "merge_group" ]; then
+            git fetch --no-tags --depth=1 origin "$BASE"
+          fi
           changed=$(git diff --name-only "$BASE" HEAD)
           ui=false
           for prefix in $UI_PATHS; do
             if grep -q "^$prefix" <<< "$changed"; then ui=true; fi
           done
-          echo "ui=$ui" >> "$GITHUB_OUTPUT"
+          core=false
+          if grep -q "^$CORE_DIR/" <<< "$changed"; then core=true; fi
+          { echo "ui=$ui"; echo "core=$core"; } >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v5
         if: github.event_name == 'pull_request'
         with:
@@ -115,7 +122,7 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             node scripts/select-browser-tests.mjs --map impact-map.json --base HEAD^1 --out selection.json \
               | tee -a "$GITHUB_STEP_SUMMARY"
-          elif [ "${{ steps.queue.outputs.ui }}" = "false" ]; then
+          elif [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
             echo '{"mode": "none", "reason": "no UI change in this merge-queue entry", "tests": [], "uncovered": []}' > selection.json
           else
             echo '{"mode": "all", "reason": "full run on ${{ github.event_name }}", "tests": [], "uncovered": []}' > selection.json
@@ -140,6 +147,37 @@ jobs:
           name: browser-selection
           path: ${{ env.UI_DIR }}/selection.json
           retention-days: 1
+
+  # Core components' own tests, run whenever core changes. A core change
+  # selects no browser tests, so this is its gate.
+  core-components:
+    name: core components
+    needs: select
+    if: needs.select.outputs.core == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ${{ env.UI_DIR }}/.nvmrc
+      - name: Install
+        working-directory: ${{ env.CORE_DIR }}
+        run: |
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --network-timeout 120000 && exit 0
+            echo "yarn install failed (attempt $attempt), retrying"
+            sleep 15
+          done
+          exit 1
+      - name: Test
+        working-directory: ${{ env.CORE_DIR }}
+        run: yarn test
+      - name: Build
+        working-directory: ${{ env.CORE_DIR }}
+        run: yarn build
 
   browser-tests:
     name: browser tests + coverage (shard ${{ matrix.shard }})

@@ -35,7 +35,6 @@ const LOCALE = 'src/locale/languages/en-us.json';
 
 /** Repo-root paths whose change can affect every browser test. */
 const RUN_ALL_PREFIXES = [
-  'openmetadata-ui-core-components/',
   '.github/workflows/ui-browser-tests.yml',
   '.github/actions/ui-browser-setup/',
   `${UI}package.json`,
@@ -47,10 +46,12 @@ const RUN_ALL_PREFIXES = [
   `${UI}scripts/select-browser-tests.mjs`,
 ];
 
-/** Core-components files that never ship in its bundle. */
-const isCoreDevOnly = (file) =>
-  file.startsWith('openmetadata-ui-core-components/') &&
-  /(\.(test|spec|stories)\.[jt]sx?|\.mdx?)$/.test(file);
+/**
+ * Core components are treated like a library: their own tests guard them
+ * (ui-browser-tests.yml › core components), and a core change selects no
+ * browser tests. See src/test/browser/README.md.
+ */
+const CORE = 'openmetadata-ui-core-components/';
 
 const isTestSide = (file) =>
   file.startsWith('src/test/') || /\.browser\.test\.tsx?$/.test(file);
@@ -99,16 +100,19 @@ export const selectTests = ({
   inCode = () => false,
 }) => {
   const all = (reason) => ({ mode: 'all', reason, tests, uncovered: [] });
-  // ponytail: core ships as a bundle coverage cannot attribute, so any
-  // shipped core change runs everything; map core's source once browser tests
-  // run against it.
-  const trigger = changed.find(
-    (file) =>
-      !isCoreDevOnly(file) &&
-      RUN_ALL_PREFIXES.some((prefix) => file.startsWith(prefix))
+  const trigger = changed.find((file) =>
+    RUN_ALL_PREFIXES.some((prefix) => file.startsWith(prefix))
   );
   if (trigger) {
     return all(`${trigger} affects every browser test`);
+  }
+  if (changed.length && changed.every((file) => file.startsWith(CORE))) {
+    return {
+      mode: 'none',
+      reason: 'core components only: their own tests cover them',
+      tests: [],
+      uncovered: [],
+    };
   }
   if (!map) {
     return all('no impact map from main yet');

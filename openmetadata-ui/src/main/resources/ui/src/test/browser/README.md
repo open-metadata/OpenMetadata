@@ -54,10 +54,11 @@ imports of every executed file (constants, styles, assets). Changed `en-us.json`
 keys select the tests whose code names them.
 
 Everything runs when the map is missing, or when a change touches test setup,
-the Vitest/Vite config, dependencies or core components. Changed code that no
-browser test executes is listed in the PR comment, along with how many of the
-changed lines the tests that ran executed. The merge queue always runs every test
-file, so nothing a selection misses reaches main. To see what a branch would run:
+the Vitest/Vite config or dependencies. Changed code that no browser test
+executes is listed in the PR comment, along with how many of the changed lines
+the tests that ran executed. The merge queue runs every test file whenever the
+queued change touches this UI, so nothing a selection misses reaches main. To
+see what a branch would run:
 
 ```bash
 node scripts/select-browser-tests.mjs --map impact-map.json --base origin/main
@@ -65,3 +66,10 @@ node scripts/select-browser-tests.mjs --map impact-map.json --base origin/main
 
 The static import graph alone cannot do this here: lazy imports tie about
 1,000 modules into one import cycle.
+
+**Core components are treated like a library.** A change to
+`openmetadata-ui-core-components` runs core's own tests and build (the
+`core components` job), not the browser tests: core guards its components with
+its own tests, and this suite tests the app. A core change that alters behaviour
+the app depends on needs a core test for that behaviour. A change touching both
+core and this UI selects browser tests for the UI part only.
