@@ -1,7 +1,7 @@
 # A relationship type in use cannot be deleted
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-18 (initial)
+- **Revisions:** v1 2026-11-18 (initial) · v2 2026-11-19 (the link back on restore is the canonical named reference; references match by id or FQN)
 - **Deciders:** Ontology Studio team
 - **Guard:** `RelationshipTypeDeleteGuardIT`, `GlossaryRdfImportIT`, `RelationshipTypeReferencesTest`, `RelationshipTypeRdfWriterTest`, `LegacyRelationshipTypeSynchronizerTest`
 - **Related:** #38112, ADR:2026-11-17-recreating-a-deleted-ontology-name-restores-its-record
@@ -72,3 +72,18 @@ original failure for that glossary: its term reads, list, edits and ontology exp
 until the type is restored (soft delete) or recreated under its name (hard delete). MySQL compares
 type names in binary after converting the stored name to utf8mb4, since the column takes the
 database character set.
+
+## Amendment
+
+**v2, 2026-11-19.** Relationship-type references now carry their name, and every writer stores one
+shape (ADR:2026-11-19-relationship-type-references-carry-their-name). Two parts of decision 3 change:
+
+- **The link back on restore** is that canonical reference: id, type, name, FQN, displayName and
+  description. It no longer copies the restored type's own inverse shape. That copy existed because
+  the inverse was applied by name, and a named link on one side only would have read relations
+  differently. Readers now resolve the inverse by id, then by name.
+- **Matching a reference to a type** (`RelationshipTypeReferences.refersTo`) is by id, else by FQN.
+  The separate name match is gone. Every path that feeds it reads references through
+  `RelationshipTypeReferenceNames`, which gives a reference stored with only a name its FQN. This
+  includes the guard's raw reads: `listIncludingDeleted`, the referenced-type lookup and the
+  restored type's inverse.
