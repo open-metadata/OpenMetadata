@@ -35,6 +35,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bench.BenchmarkMetrics;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -85,8 +86,13 @@ class IncidentGroupTrendScaleIT {
   }
 
   private Fixture seedFixture(TestNamespace namespace, Jdbi jdbi) throws Exception {
-    String schemaFqn = DatabaseSchemaTestFactory.createSimple(namespace).getFullyQualifiedName();
     String prefix = namespace.shortPrefix();
+    String schemaFqn =
+        DatabaseSchemaTestFactory.createSimpleWithName(
+                "sc" + prefix,
+                namespace,
+                DatabaseServiceTestFactory.createPostgresWithName("svc" + prefix, namespace))
+            .getFullyQualifiedName();
     List<Callable<TableFixture>> seeds =
         IntStream.range(0, TABLES)
             .mapToObj(
