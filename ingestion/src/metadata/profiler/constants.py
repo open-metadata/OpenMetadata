@@ -9,12 +9,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""
-Keys of the table-level results a profiler interface returns.
+"""Shared profiler result keys and column type provenance."""
 
-They are shared between the producers (the SQA table metric computers and the pandas interface) and
-the consumer (`Profiler.get_profile`), which maps them onto `TableProfile`.
-"""
+from metadata.generated.schema.entity.data.table import DataType
+
+BINARY_DATA_TYPES = frozenset({DataType.BINARY, DataType.VARBINARY, DataType.BLOB, DataType.BYTES, DataType.BYTEA})
+PROFILER_DATA_TYPE_KEY = "openmetadata.profiler.data_type"
 
 ROW_COUNT = "rowCount"
 COLUMN_COUNT = "columnCount"
