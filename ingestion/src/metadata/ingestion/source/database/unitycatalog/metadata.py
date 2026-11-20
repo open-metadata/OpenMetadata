@@ -226,7 +226,9 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             )
 
     def get_database_names_raw(self) -> Iterable[str]:
-        for catalog in self._iterate_listing(self.client.catalogs.list, "catalogs"):
+        for catalog in self._iterate_listing(
+            partial(self.client.catalogs.list, include_browse=True), "catalogs"
+        ):
             catalog_name = catalog.name
             if not catalog_name:
                 continue
@@ -388,7 +390,9 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         return schema names
         """
         catalog_name = self.context.get().database
-        schema_listing = partial(self.client.schemas.list, catalog_name=catalog_name)
+        schema_listing = partial(
+            self.client.schemas.list, catalog_name=catalog_name, include_browse=True
+        )
         for schema in self._iterate_listing(schema_listing, f"schemas in catalog [{catalog_name}]"):
             try:
                 schema_name = schema.name
@@ -497,6 +501,8 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             # leaving it unset returns every table of the schema in one response,
             # which OOMs the pod on schemas with many wide tables.
             "max_results": 0,
+            # A metadata-only BROWSE grant must enumerate these tables.
+            "include_browse": "true",
         }
         seen_tokens: set[str] = set()
         while True:
