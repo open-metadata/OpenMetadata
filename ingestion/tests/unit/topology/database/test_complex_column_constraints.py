@@ -58,6 +58,7 @@ def test_complex_columns_carry_their_nullability_constraint():
         "id": (DataType.INT, Constraint.NOT_NULL),
     }
 
+
 def test_single_column_unique_constraint_preserves_nullability():
     required_unique = {
         "name": "uniq_not_null",
