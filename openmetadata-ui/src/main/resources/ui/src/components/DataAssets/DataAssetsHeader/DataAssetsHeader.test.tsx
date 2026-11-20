@@ -153,14 +153,8 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   HeaderDotSeparator: jest
     .fn()
     .mockImplementation(() => <span data-testid="header-dot-separator" />),
-  ExtraInfoLabel: jest
-    .fn()
-    .mockImplementation(({ label, value, dataTestId }) => (
-      <div data-testid={dataTestId}>
-        {label && <span>{label}</span>}
-        <div>{value}</div>
-      </div>
-    )),
+  ExtraInfoLabel: jest.requireActual('../../../utils/DataAssetsHeader.utils')
+    .ExtraInfoLabel,
   ExtraInfoLink: jest.fn().mockImplementation(({ value, href, newTab }) => {
     const props = {
       href,

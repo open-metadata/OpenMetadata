@@ -12,7 +12,8 @@
  */
 
 import { Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { EntityType } from '../enums/entity.enum';
 import {
@@ -45,6 +46,10 @@ import {
   getDataAssetsHeaderInfo,
   getEntityExtraInfoLength,
 } from './DataAssetsHeader.utils';
+import {
+  DATE_TIME_12_HOUR_FORMAT,
+  formatDateTimeLong,
+} from './date-time/DateTimeUtils';
 
 // Mock only ExtraInfoLink, not ExtraInfoLabel as we want to test it
 jest.mock('./DataAssetsHeader.utils', () => ({
@@ -209,6 +214,33 @@ describe('Tests for DataAssetsHeaderUtils', () => {
 
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.created-time');
     expect(JSON.stringify(assetData.extraInfo)).toContain('formatted-0');
+  });
+
+  it('shows the table creation time without its UTC offset and the full time on hover', async () => {
+    const createdAt = 1609459200000;
+    const { extraInfo } = getDataAssetsHeaderInfo(
+      EntityType.TABLE,
+      { ...MOCK_TABLE, lifeCycle: { created: { timestamp: createdAt } } },
+      'Redshift',
+      []
+    );
+
+    render(<>{extraInfo}</>);
+
+    const createdTime = screen.getByTestId('table-created-time');
+
+    expect(createdTime).toHaveTextContent(
+      formatDateTimeLong(createdAt, DATE_TIME_12_HOUR_FORMAT)
+    );
+    expect(createdTime).not.toHaveTextContent('UTC');
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    fireEvent.mouseMove(document);
+    await user.hover(createdTime);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      `formatted-${createdAt}`
+    );
   });
 
   it('Function getDataAssetsHeaderInfo should hide a year-0001 placeholder table creation time', () => {
