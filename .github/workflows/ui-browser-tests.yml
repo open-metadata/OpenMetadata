@@ -8,6 +8,7 @@ on:
       - "openmetadata-ui/src/main/resources/ui/**"
       - "openmetadata-ui-core-components/src/main/resources/ui/**"
       - ".github/workflows/ui-browser-tests.yml"
+      - ".github/actions/ui-browser-setup/**"
   workflow_dispatch:
 
 permissions:
@@ -36,8 +37,7 @@ jobs:
         working-directory: ${{ env.UI_DIR }}
         continue-on-error: true
         run: |
-          yarn test:ui:coverage --reporter=default --reporter=junit \
-            --outputFile.junit=src/test/browser/junit.xml
+          yarn test:ui:coverage
       # Pull-request jobs are read-only, so results go to the job summary.
       - name: Summary
         if: always()

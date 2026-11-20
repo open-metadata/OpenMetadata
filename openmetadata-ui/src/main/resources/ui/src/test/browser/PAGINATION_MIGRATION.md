@@ -1,14 +1,20 @@
 # Pagination.spec.ts migration
 
-`playwright/e2e/Features/Pagination.spec.ts` has 37 tests (8.2 worker-minutes per full
-run, plus seeding 20+ entities per describe). 35 of them are now covered by UI
+`playwright/e2e/Features/Pagination.spec.ts` has 39 tests (about 8 worker-minutes per
+full run, plus seeding 20+ entities per describe). 31 of them are covered by UI
 integration tests built on `paginationContract.ts`, which reproduces
 `testPaginationNavigation` and `testCompletePaginationWithSearch` step by step.
 
-Those 35 are tagged `@migrated-browser` (`migratedTo.browser(...)` names the
+Those 31 are tagged `@migrated-browser` (`migratedTo.browser(...)` names the
 replacement) and keep running. They are deleted once the browser tests are
 validated **and** the `PaginationIT` gap below is closed, so real-server cursor
-paging stays covered. The other 2 stay as real-server smoke tests.
+paging stays covered.
+
+The other 8 are not tagged:
+- 2 real-server smoke tests (Users search, Table columns pagination);
+- 2 Topic schema fields tests, added after this migration and not covered yet;
+- 4 Data Models and Stored Procedures tests, whose browser tests are pinned as
+  failing by a product bug (#38295). They stay in Playwright until it is fixed.
 
 ## Where each Playwright test went
 
@@ -25,9 +31,10 @@ paging stays covered. The other 2 stay as real-server smoke tests.
 | Notification Alerts | `pages/NotificationListPage/NotificationListPage.browser.test.tsx` | `PaginationIT`* |
 | Observability Alerts | `pages/ObservabilityAlertsPage/ObservabilityAlertsPage.browser.test.tsx` | `PaginationIT`* |
 | API Collection › normal / search | `pages/APICollectionPage/APIEndpointsTab.browser.test.tsx` | `PaginationIT`* |
-| Stored Procedures › normal / search | `pages/StoredProcedure/StoredProcedureTab.browser.test.tsx` | `PaginationIT`* |
+| Stored Procedures › normal / search | `pages/StoredProcedure/StoredProcedureTab.browser.test.tsx` (pinned failing, #38295) **kept in Playwright** | `PaginationIT`* |
 | Database Schemas › normal / search | `pages/DatabaseDetailsPage/DatabaseSchemaTable.browser.test.tsx` | `PaginationIT`* |
-| Data Models › normal / search | `pages/ServiceDetailsPage/ServiceDataModels.browser.test.tsx` | `PaginationIT`* |
+| Data Models › normal / search | `pages/ServiceDetailsPage/ServiceDataModels.browser.test.tsx` (pinned failing, #38295) **kept in Playwright** | `PaginationIT`* |
+| Topic schema fields › pagination / search | none yet **kept in Playwright** | `ChildFieldPaginationIT` |
 | Directories › normal / search | `pages/ServiceDetailsPage/DriveServiceDirectories.browser.test.tsx` | `PaginationIT`* |
 | Files › normal / search | `pages/ServiceDetailsPage/DriveServiceFiles.browser.test.tsx` | `PaginationIT`* |
 | Files ↔ Spreadsheets tab reset | `DriveServiceFiles.browser.test.tsx` (tab-switch test) | none needed (client only) |
@@ -59,9 +66,9 @@ once fixed, prompting cleanup.
 
 | Page | Issue | Pinned as |
 | --- | --- | --- |
-| Data Models tab, Stored Procedures tab | URL-sync effect resets `currentPage` to 1 after Next under router transitions; reload shows the wrong page number and search starts from page 2 | `test.fails` |
-| Roles, Policies, Bots, Notification alerts, Classification tags, Service version page | Page change fetches twice (click handler and URL effect) | `duplicateFetchOnPageChange` |
-| Observability alerts | Table had no row-header column (react-aria error) | **fixed** in this change |
+| Data Models tab, Stored Procedures tab | URL-sync effect resets `currentPage` to 1 after Next under router transitions; reload shows the wrong page number and search starts from page 2 (#38295) | `test.fails`; their Playwright tests stay untagged |
+| Roles, Policies, Bots, Notification alerts, Classification tags, Service version page | Page change fetches twice (click handler and URL effect) (#38296) | `duplicateFetchOnPageChange` |
+| Observability alerts | Table had no row-header column (react-aria error) | fixed separately on main |
 
 Also noticed: Metrics list requests `/metrics/{id}/observability` once per visible row.
 `DataAssetsHeader` nests a `<button>` inside a `<button>`.

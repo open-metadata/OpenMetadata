@@ -49,6 +49,12 @@ const matches = (item: unknown, q: string) => {
   return !term || JSON.stringify(item).toLowerCase().includes(term);
 };
 
+/**
+ * A list page's own request. Pages also send `limit=0` just to read totals for
+ * tab badges; those are not page requests.
+ */
+export const isListPage = (url: URL) => url.searchParams.get('limit') !== '0';
+
 export const searchPage = <T>(items: T[], url: URL) => {
   const from = Number(url.searchParams.get('from') ?? 0);
   const size = Number(url.searchParams.get('size') ?? 10);

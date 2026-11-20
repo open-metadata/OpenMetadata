@@ -13,6 +13,11 @@
 import { initCoreI18n } from '@openmetadata/ui-core-components';
 import { afterAll, afterEach, beforeAll, expect } from 'vitest';
 import { cleanup } from 'vitest-browser-react';
+import { usePersistentStorage } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useAppModeStore } from '../../hooks/useAppMode';
+import { useDomainStore } from '../../hooks/useDomainStore';
+import { useSearchStore } from '../../hooks/useSearchStore';
 import '../../styles/globalStyles';
 import i18next from '../../utils/i18next/LocalUtil';
 import { worker } from './msw';
@@ -21,6 +26,16 @@ initCoreI18n(i18next);
 
 const runnerUrl = globalThis.location.href;
 const unhandledApiCalls: string[] = [];
+// App-wide stores pages write (signed-in user, domain, search, app mode).
+// Files run in one page (`isolate: false`), so reset them between tests;
+// otherwise a test inherits e.g. the previous test's currentUser.
+const stores = [
+  useApplicationStore,
+  usePersistentStorage,
+  useDomainStore,
+  useSearchStore,
+  useAppModeStore,
+];
 
 beforeAll(async () => {
   await worker.start({
@@ -46,6 +61,7 @@ afterEach(async () => {
   worker.resetHandlers();
   globalThis.history.replaceState(null, '', runnerUrl);
   localStorage.clear();
+  stores.forEach((store) => store.setState(store.getInitialState(), true));
 
   expect(unhandled, 'API calls without an MSW handler').toEqual([]);
 });

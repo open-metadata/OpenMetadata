@@ -1,6 +1,6 @@
 # Page behaviour is tested in Vitest browser mode, and E2E tests leave by marking
 
-- **Status:** Accepted
+- **Status:** Proposed
 - **Revisions:** v1 2026-10-28 (initial)
 - **Deciders:** Chirag Madlani
 - **Guard:** `src/test/browser/setup.ts` fails any browser test that makes an unmocked `/api/*`

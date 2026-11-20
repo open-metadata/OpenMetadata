@@ -17,6 +17,7 @@ import {
   DASHBOARD_SERVICE,
   serveEntities,
 } from '../../test/browser/fixtures/hierarchy';
+import { isListPage } from '../../test/browser/fixtures/paging';
 import { worker } from '../../test/browser/msw';
 import { describePaginatedList } from '../../test/browser/paginationContract';
 
@@ -28,7 +29,7 @@ describePaginatedList({
   name: 'Dashboard service › Version 0.1 › Dashboards',
   route: `/service/dashboardServices/${DASHBOARD_SERVICE.name}/versions/0.1`,
   listPath: '/api/v1/dashboards',
-  isPageRequest: (url) => url.searchParams.get('limit') !== '0',
+  isPageRequest: isListPage,
   items: dashboards,
   itemLabel: (d) => d.displayName,
   // The version view lists children at the base page size, with no size selector.

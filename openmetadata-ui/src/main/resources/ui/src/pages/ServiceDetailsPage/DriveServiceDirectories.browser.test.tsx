@@ -16,6 +16,7 @@ import {
   serveEmptyLists,
   serveEntities,
 } from '../../test/browser/fixtures/hierarchy';
+import { isListPage } from '../../test/browser/fixtures/paging';
 import { describePaginatedList } from '../../test/browser/paginationContract';
 
 const items = many(40, (i) =>
@@ -27,8 +28,7 @@ describePaginatedList({
   route: `/service/driveServices/${DRIVE_SERVICE.name}/directories`,
   query: { showDeletedTables: 'false' },
   listPath: '/api/v1/drives/directories',
-  // Pages also request limit=0 just to read totals for tab badges.
-  isPageRequest: (url) => url.searchParams.get('limit') !== '0',
+  isPageRequest: isListPage,
   items,
   itemLabel: (item) => item.displayName,
   search: { index: 'directory', urlParam: 'schema', term: 'pw' },
