@@ -24,6 +24,7 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
+from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
@@ -380,30 +381,19 @@ class TestUnityCatalogIncrementalSource:
         assert result == []
         delete_mock.assert_not_called()
 
-    def test_mark_tables_as_deleted_full_mode_reconciles_every_listed_schema(self):
+    def test_mark_tables_as_deleted_full_mode_delegates_to_super(self):
         instance = UnitycatalogSource.__new__(UnitycatalogSource)
         instance.incremental = SimpleNamespace(enabled=False)
-        instance.source_config = SimpleNamespace(markDeletedTables=True)
-        instance.context = Mock()
-        instance.context.get.return_value = SimpleNamespace(database="cat", database_service="svc")
-        instance.metadata = Mock()
-        instance.database_source_state = {"svc.cat.schema1.t1"}
-        instance._state_lock = RLock()
-        instance._incomplete_listings = set()
-        instance._skipped_stale_cleanups = []
-        listed = ["schema1", "schema2"]
-        instance._get_filtered_schema_names = lambda return_fqn=False, add_to_status=True: (
-            [f"svc.cat.{name}" for name in listed] if return_fqn else listed
-        )
 
-        list(instance.mark_tables_as_deleted())
+        with patch.object(
+            DatabaseServiceSource,
+            "mark_tables_as_deleted",
+            return_value=iter(["base"]),
+        ) as base_mark:
+            result = list(instance.mark_tables_as_deleted())
 
-        calls = instance.metadata.delete_stale_entities.call_args_list
-        assert [call.kwargs["scope_params"] for call in calls] == [
-            {"databaseSchema": "svc.cat.schema1"},
-            {"databaseSchema": "svc.cat.schema2"},
-        ]
-        assert all(call.kwargs["live_fqns"] == {"svc.cat.schema1.t1"} for call in calls)
+        assert result == ["base"]
+        base_mark.assert_called_once()
 
     def test_create_builds_and_forwards_incremental_config(self):
         config = Mock()

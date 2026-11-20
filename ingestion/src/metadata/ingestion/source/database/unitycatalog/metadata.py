@@ -14,7 +14,7 @@ Databricks Unity Catalog Source source methods.
 
 import json
 import traceback
-from collections.abc import Callable, Generator, Iterable
+from collections.abc import Callable, Iterable
 from functools import cached_property, partial
 from threading import RLock
 from typing import TYPE_CHECKING, Any, cast
@@ -63,11 +63,10 @@ from metadata.generated.schema.type.basic import (
     Markdown,
 )
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.ingestion.api.delete import delete_entity_by_name, delete_entity_from_source
+from metadata.ingestion.api.delete import delete_entity_by_name
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.barrier import Barrier
-from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import TotalsDeclarer
@@ -172,10 +171,6 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         # Caches to avoid redundant API calls (N+1 optimization)
         self._catalog_cache: dict[str, Any] = {}
         self._schema_cache: dict[tuple[str, str], Any] = {}
-        # Scopes whose listing failed this run: () for the catalogs, (catalog,) for a
-        # catalog's schemas, (catalog, schema) for a schema's tables. What such a listing
-        # did not reach was not seen, so stale-entity cleanup must leave the scope alone.
-        self._incomplete_listings: set[tuple[str, ...]] = set()
         self.owner_resolver = DatabricksOwnerResolver(
             api_client=connection.api.client,
             metadata=self.metadata,
@@ -237,35 +232,25 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
     def get_configured_database(self) -> str | None:
         return self._configured_catalog_name
 
-    def _iterate_listing(
-        self, list_call: Callable[[], Iterable[Any]], listing_name: str, scope: tuple[str, ...]
-    ) -> Iterable[Any]:
+    def _iterate_listing(self, list_call: Callable[[], Iterable[Any]], listing_name: str) -> Iterable[Any]:
         """
         Iterate a Databricks SDK listing, recording a failure and stopping gracefully
         instead of aborting the whole ingestion when the API call or its pagination
-        raises mid-iteration. The failed ``scope`` is remembered so that stale-entity
-        cleanup skips it; the failure counts against ``successThreshold`` like any other
-        (ADR:2026-11-19-a-failed-unity-catalog-listing-skips-its-stale-cleanup-without-failing-the-run).
+        raises mid-iteration.
         """
         try:
             yield from list_call()
         except Exception as exc:
-            with self._state_lock:
-                self._incomplete_listings.add(scope)
             self.status.failed(
                 StackTraceError(
                     name=listing_name,
-                    error=(
-                        f"Error while listing {listing_name}, results may be partial: {exc}. Nothing this listing "
-                        "did not reach is marked as deleted this run. If it fails on every run, grant the "
-                        "connection's principal access to it or exclude it with a filter pattern."
-                    ),
+                    error=f"Error while listing {listing_name}, results may be partial: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
             )
 
     def get_database_names_raw(self) -> Iterable[str]:
-        for catalog in self._iterate_listing(self.client.catalogs.list, "catalogs", ()):
+        for catalog in self._iterate_listing(self.client.catalogs.list, "catalogs"):
             catalog_name = catalog.name
             if not catalog_name:
                 continue
@@ -291,14 +276,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         if configured_db:
             result = [configured_db]
         else:
-            # Listed directly, not through the walk's failure-recording listing: a failed count
-            # only costs the progress denominator (the progress runner warns and goes on), and
-            # must not count as a failed listing that skips the stale-entity cleanup.
-            result = [
-                catalog.name
-                for catalog in self.client.catalogs.list()
-                if catalog.name and not self._is_database_filtered(catalog.name)
-            ]
+            result = [db for db in self.get_database_names_raw() if not self._is_database_filtered(db)]
         return result
 
     def _schema_names_by_database(self) -> "dict[str, list[str]] | None":
@@ -427,7 +405,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         """
         catalog_name = self.context.get().database
         schema_listing = partial(self.client.schemas.list, catalog_name=catalog_name)
-        for schema in self._iterate_listing(schema_listing, f"schemas in catalog [{catalog_name}]", (catalog_name,)):
+        for schema in self._iterate_listing(schema_listing, f"schemas in catalog [{catalog_name}]"):
             try:
                 schema_name = schema.name
                 if not schema_name:
@@ -574,7 +552,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             table_with_constraints = self._get_tables_with_constraints()
             table_listing = partial(self._list_tables, catalog_name, schema_name)
             for table, securable_kind in self._iterate_listing(
-                table_listing, f"tables in schema [{catalog_name}.{schema_name}]", (catalog_name, schema_name)
+                table_listing, f"tables in schema [{catalog_name}.{schema_name}]"
             ):
                 detailed_table = table
                 if (table.catalog_name, table.schema_name, table.name) in table_with_constraints:
@@ -1049,78 +1027,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                     recursive=self.source_config.markDeletedTables,
                 )
         else:
-            yield from self._mark_listed_tables_as_deleted()
-
-    def _skip_incomplete_listing(self, scope: tuple[str, ...], entities: str) -> bool:
-        """
-        Whether the listing of ``scope`` failed this run. Its failure is already recorded and says
-        that nothing it did not reach is deleted, so the skipped cleanup is only logged.
-        """
-        if scope not in self._incomplete_listings:
-            return False
-        logger.info(
-            "Not marking %s in [%s] as deleted: a listing there failed this run.",
-            entities,
-            ".".join(scope) or self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-        )
-        return True
-
-    def _mark_listed_tables_as_deleted(self) -> Iterable[Either]:
-        """The base stale-table cleanup, leaving out the scopes whose listing failed."""
-        if not self.context.get().__dict__.get("database"):
-            raise ValueError("No Database found in the context. We cannot run the table deletion.")
-        catalog_name = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
-        if not self.source_config.markDeletedTables or self._skip_incomplete_listing((catalog_name,), "tables"):
-            return
-        logger.info("Mark Deleted Tables set to True. Processing database [%s]", catalog_name)
-        for schema_name in self._get_filtered_schema_names(add_to_status=False):
-            if self._skip_incomplete_listing((catalog_name, schema_name), "tables"):
-                continue
-            yield from delete_entity_from_source(
-                metadata=self.metadata,
-                entity_type=Table,
-                entity_source_state=self.database_source_state,
-                recursive=self.source_config.markDeletedTables,
-                params={
-                    "databaseSchema": cast(
-                        "str",
-                        fqn.build(
-                            self.metadata,
-                            entity_type=DatabaseSchema,
-                            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-                            database_name=catalog_name,
-                            schema_name=schema_name,
-                        ),
-                    )
-                },
-            )
-
-    def mark_schemas_as_deleted(self) -> Generator[Either[DeleteEntity], Any, None]:
-        catalog_name = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
-        if self.source_config.markDeletedSchemas and self._skip_incomplete_listing((catalog_name,), "schemas"):
-            return
-        yield from super().mark_schemas_as_deleted()
-
-    def mark_databases_as_deleted(self) -> Generator[Either[DeleteEntity], Any, None]:
-        """
-        The base stale-database cleanup, with the catalog listing checked after it ran. The
-        cleanup lists the catalogs again to keep those this run did not walk; with a configured
-        catalog that listing is the run's only one, so its failure must stop the cleanup too.
-        """
-        if not self.source_config.markDeletedDatabases:
-            return
-        service_name = self.context.get().database_service  # pyright: ignore[reportAttributeAccessIssue]
-        logger.info("Mark Deleted Databases set to True. Processing service [%s]", service_name)
-        listed = set(self._get_filtered_database_names(return_fqn=True))
-        if self._skip_incomplete_listing((), "databases"):
-            return
-        yield from delete_entity_from_source(
-            metadata=self.metadata,
-            entity_type=Database,
-            entity_source_state=self.database_entity_source_state | listed,
-            recursive=self.source_config.markDeletedDatabases,
-            params={"service": service_name},
-        )
+            yield from super().mark_tables_as_deleted()
 
     def add_complex_datatype_descriptions(self, column: Column, column_json: ColumnJson):
         """

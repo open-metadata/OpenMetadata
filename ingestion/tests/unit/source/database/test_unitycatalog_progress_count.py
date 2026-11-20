@@ -101,18 +101,13 @@ def test_schema_names_by_database_groups_rows_and_returns_none_on_error(unitycat
 
 def test_filtered_database_names_for_totals_uses_configured_database(unitycatalog_source):
     unitycatalog_source.get_configured_database = lambda: "only_db"
-    unitycatalog_source.client = MagicMock()
+    unitycatalog_source.get_database_names_raw = MagicMock()
     assert unitycatalog_source._filtered_database_names_for_totals() == ["only_db"]
-    unitycatalog_source.client.catalogs.list.assert_not_called()
+    unitycatalog_source.get_database_names_raw.assert_not_called()
 
 
 def test_filtered_database_names_for_totals_filters_all_databases(unitycatalog_source):
     unitycatalog_source.get_configured_database = lambda: None
-    unitycatalog_source.client = MagicMock()
-    unitycatalog_source.client.catalogs.list.return_value = [
-        SimpleNamespace(name="keep"),
-        SimpleNamespace(name="drop"),
-        SimpleNamespace(name=None),
-    ]
+    unitycatalog_source.get_database_names_raw = lambda: iter(["keep", "drop"])
     unitycatalog_source._is_database_filtered = lambda db: db == "drop"
     assert unitycatalog_source._filtered_database_names_for_totals() == ["keep"]
