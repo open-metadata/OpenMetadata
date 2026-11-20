@@ -12,6 +12,7 @@
 Classifier for PII detection and sensitivity tagging.
 """
 
+import re
 from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Hashable, Mapping, Sequence
@@ -57,6 +58,7 @@ _NER_BASED_TAGS: frozenset[PIITag] = frozenset({PIITag.PERSON, PIITag.LOCATION, 
 # column-name corroboration we suppress the content hit to avoid false positives.
 # This set lists the tags that require such corroboration.
 _REQUIRES_COLUMN_NAME_CORROBORATION: frozenset[PIITag] = frozenset({PIITag.DATE_TIME})
+_DIGIT = re.compile(r"\d")
 
 T = TypeVar("T", bound=Hashable)
 
@@ -173,9 +175,12 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
         # the primary example: event_timestamp / created_at scores 1.0 on content but is
         # not PII; birth_date also scores 1.0 on content AND matches the allowlist, and
         # a free-text value such as "date of birth: 1990-04-12" names a personal date
-        # itself, so those hits are kept.
+        # itself, so those hits are kept.  Such a value must also hold a date, so a row
+        # like "user updated date of birth" cannot corroborate dates from other rows.
         for tag in _REQUIRES_COLUMN_NAME_CORROBORATION:
-            if tag not in column_name_matches and not any(is_personal_date_text(value) for value in str_values):
+            if tag not in content_results or tag in column_name_matches:
+                continue
+            if not any(is_personal_date_text(value) and _DIGIT.search(value) for value in str_values):
                 content_results.pop(tag, None)
 
         final_results: dict[PIITag, float] = {}
