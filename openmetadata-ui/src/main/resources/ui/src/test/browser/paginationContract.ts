@@ -70,8 +70,41 @@ export type ContractTest = 'navigation' | 'reload' | 'pageSize' | 'search';
 const urlOf = (route: string, params: Record<string, string>) =>
   `${route}?${new URLSearchParams(params).toString()}`;
 
-/** Lets in-flight effects fire so request counts are final. */
-const settle = () => new Promise((resolve) => setTimeout(resolve, 300));
+// Every API request MSW is answering, and when one last started or ended.
+const inFlight = new Set<string>();
+let lastActivity = Date.now();
+worker.events.on('request:start', ({ requestId }) => {
+  inFlight.add(requestId);
+  lastActivity = Date.now();
+});
+worker.events.on('request:end', ({ requestId }) => {
+  inFlight.delete(requestId);
+  lastActivity = Date.now();
+});
+
+/**
+ * Waits until the page has stopped fetching: nothing in flight and no new
+ * request for a short quiet window. A request count ("one fetch per page
+ * change") is only final once this holds; there is no event for "no further
+ * request is coming", so the quiet window is the condition.
+ */
+/** Polls `ready` until it holds. expect.poll/element cannot run in beforeAll. */
+const until = async (ready: () => boolean, timeoutMs: number, what: string) => {
+  const deadline = Date.now() + timeoutMs;
+  while (!ready()) {
+    if (Date.now() > deadline) {
+      throw new Error(`Timed out after ${timeoutMs} ms waiting for ${what}`);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+};
+
+const networkIdle = () =>
+  until(
+    () => inFlight.size === 0 && Date.now() - lastActivity >= 150,
+    10_000,
+    'requests to finish'
+  );
 
 export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
   const pageSize = spec.fixedPageSize ?? PAGE_SIZE_BASE;
@@ -132,14 +165,14 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
     // once up front so that cost is not charged to the first test's timeout.
     beforeAll(async () => {
       const app = await mount(base);
-      const deadline = Date.now() + 90_000;
-      while (!within().getByText(label(0)).query()) {
-        if (Date.now() > deadline) {
-          throw new Error(`${spec.name}: page never rendered ${label(0)}`);
-        }
-        await settle();
-      }
-      await settle();
+
+      await until(
+        () => Boolean(within().getByText(label(0)).query()),
+        90_000,
+        `${spec.name} to render ${label(0)}`
+      );
+
+      await networkIdle();
       await (await app.screen()).unmount();
       worker.resetHandlers();
     }, 120_000);
@@ -155,7 +188,7 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
         await expect.element(next()).toBeEnabled();
         expect(last(list).searchParams.get('limit')).toBe(String(pageSize));
 
-        await settle();
+        await networkIdle();
         const beforeNext = list.length;
 
         await userEvent.click(next());
@@ -175,7 +208,7 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
           encodeCursor(pageSize)
         );
 
-        await settle();
+        await networkIdle();
         if (!spec.knownIssues?.duplicateFetchOnPageChange) {
           expect(list.length - beforeNext, 'requests per page change').toBe(1);
         }
@@ -187,7 +220,7 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
           encodeCursor(pageSize)
         );
 
-        await settle();
+        await networkIdle();
       }
     );
 
@@ -205,7 +238,7 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
         await expect.element(previous()).toBeEnabled();
         await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
 
-        await settle();
+        await networkIdle();
       }
     );
 
@@ -236,7 +269,7 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
           await expect.element(dropdown).toHaveTextContent('25 / Page');
           expect(rows().length).toBe(25 + pinned);
 
-          await settle();
+          await networkIdle();
         }
       );
     }
@@ -283,7 +316,7 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
             .element(within().getByText(hitLabel(pageSize)))
             .toBeVisible();
 
-          await settle();
+          await networkIdle();
 
           const beforeReload = app.search.length;
           await app.reload();
@@ -323,7 +356,7 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
               term
             );
           }
-          await settle();
+          await networkIdle();
         }
       );
     }
@@ -357,13 +390,14 @@ export const describeClientPagedTable = (spec: ClientPagedTableSpec) => {
     beforeAll(async () => {
       spec.setup();
       const screen = await renderApp(spec.url);
-      const deadline = Date.now() + 90_000;
-      while (!page.getByText(spec.rowLabel(0)).query()) {
-        if (Date.now() > deadline) {
-          throw new Error(`${spec.name}: page never rendered`);
-        }
-        await settle();
-      }
+
+      await until(
+        () => Boolean(page.getByText(spec.rowLabel(0)).query()),
+        90_000,
+        `${spec.name} to render`
+      );
+
+      await networkIdle();
       await screen.unmount();
       worker.resetHandlers();
     }, 120_000);
