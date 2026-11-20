@@ -198,6 +198,39 @@ class BaseModel(PydanticBaseModel):
         return super().model_dump(**kwargs)
 
 
+class SecretReferenceError(Exception):
+    """A `secret:` reference that the configured secrets manager could not return."""
+
+
+def resolve_secret_reference(reference: str) -> str | None:
+    """Read the value a `secret:` reference points to.
+
+    Under the DB provider the value is the literal secret and is returned unchanged. Otherwise
+    the configured secrets manager is asked for it, and a reference it cannot return raises
+    `SecretReferenceError`. `None` means the store holds a cleared credential.
+    ADR:2026-11-19-an-unreadable-secret-reference-stops-ingestion
+    """
+    # Importing inside function to avoid circular import error
+    from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
+        DBSecretsManager,
+        SecretsManagerFactory,
+    )
+
+    factory = SecretsManagerFactory()
+    secrets_manager = factory.get_secrets_manager()
+    if isinstance(secrets_manager, DBSecretsManager):
+        return reference
+    provider = getattr(factory.secrets_manager_provider, "value", factory.secrets_manager_provider)
+    secret_id = reference.removeprefix(SECRET)
+    logger.info("Getting secret value for %s", secret_id)
+    try:
+        return secrets_manager.get_string_value(secret_id)
+    except Exception as exc:
+        raise SecretReferenceError(
+            f"Cannot resolve the secret reference [{reference}] with the [{provider}] secrets manager: {exc}"
+        ) from exc
+
+
 class _CustomSecretStr(SecretStr):
     """
     Custom SecretStr class which use the configured Secrets Manager to retrieve the actual values.
@@ -223,25 +256,12 @@ class _CustomSecretStr(SecretStr):
         A secret stored as ``null`` in the secrets manager resolves to ``None``.
         We log it and fall back to an empty string so downstream callers that
         expect a string (e.g. URL building with ``quote_plus``) do not crash.
-        """
-        # Importing inside function to avoid circular import error
-        from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
-            SecretsManagerFactory,
-        )
 
+        ``secret:`` references resolve through ``resolve_secret_reference``.
+        """
         secret_value = self._secret_value
-        if (
-            not skip_secret_manager
-            and self._secret_value
-            and self._secret_value.startswith(SECRET)
-            and SecretsManagerFactory().get_secrets_manager()
-        ):
-            secret_id = self._secret_value.replace(SECRET, "")
-            logger.info(f"Getting secret value for {secret_id}")
-            try:
-                secret_value = SecretsManagerFactory().get_secrets_manager().get_string_value(secret_id)
-            except Exception as exc:
-                logger.error(f"Secret value [{secret_id}] not present in the configured secrets manager: {exc}")
+        if not skip_secret_manager and secret_value and secret_value.startswith(SECRET):
+            secret_value = resolve_secret_reference(secret_value)
 
         if secret_value is None:
             logger.warning("Resolved a null secret value; treating it as an empty string")

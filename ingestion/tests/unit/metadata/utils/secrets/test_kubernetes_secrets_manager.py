@@ -113,7 +113,7 @@ class TestKubernetesSecretsManager(TestCase):
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.config")
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.client")
     def test_get_string_value_not_found(self, mock_client, mock_config):
-        """Test secret not found returns None"""
+        """Test secret not found raises an error naming the secret"""
         # Setup mock client to raise 404 error
         mock_core_v1_api = MagicMock()
         mock_core_v1_api.read_namespaced_secret.side_effect = lambda **kwargs: self._raise_api_exception(404)
@@ -122,11 +122,8 @@ class TestKubernetesSecretsManager(TestCase):
         with patch.dict(os.environ, {"KUBERNETES_NAMESPACE": "default"}):
             secrets_manager = KubernetesSecretsManager(loader=SecretsManagerClientLoader.env)
 
-            # Test retrieving non-existent secret
-            result = secrets_manager.get_string_value("non-existent-secret")
-
-            # Verify result is None
-            self.assertIsNone(result)
+            with self.assertRaisesRegex(ValueError, r"\[non-existent-secret\]"):
+                secrets_manager.get_string_value("non-existent-secret")
 
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.config")
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.client")
@@ -151,7 +148,7 @@ class TestKubernetesSecretsManager(TestCase):
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.config")
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.client")
     def test_get_string_value_no_value_key(self, mock_client, mock_config):
-        """Test secret without 'value' key returns None"""
+        """Test secret without 'value' key raises an error naming the secret"""
         # Setup mock secret without 'value' key
         mock_secret = MagicMock()
         mock_secret.data = {"other-key": base64.b64encode(b"some-value").decode()}
@@ -164,11 +161,25 @@ class TestKubernetesSecretsManager(TestCase):
         with patch.dict(os.environ, {"KUBERNETES_NAMESPACE": "default"}):
             secrets_manager = KubernetesSecretsManager(loader=SecretsManagerClientLoader.env)
 
-            # Test retrieving secret
-            result = secrets_manager.get_string_value("test-secret")
+            with self.assertRaisesRegex(ValueError, r"\[test-secret\]"):
+                secrets_manager.get_string_value("test-secret")
 
-            # Verify result is None
-            self.assertIsNone(result)
+    @patch("metadata.utils.secrets.kubernetes_secrets_manager.config")
+    @patch("metadata.utils.secrets.kubernetes_secrets_manager.client")
+    def test_get_string_value_without_data_raises(self, mock_client, mock_config):
+        """Test secret with no data at all raises an error naming the secret"""
+        mock_secret = MagicMock()
+        mock_secret.data = None
+
+        mock_core_v1_api = MagicMock()
+        mock_core_v1_api.read_namespaced_secret.return_value = mock_secret
+        mock_client.CoreV1Api.return_value = mock_core_v1_api
+
+        with patch.dict(os.environ, {"KUBERNETES_NAMESPACE": "default"}):
+            secrets_manager = KubernetesSecretsManager(loader=SecretsManagerClientLoader.env)
+
+            with self.assertRaisesRegex(ValueError, r"\[test-secret\]"):
+                secrets_manager.get_string_value("test-secret")
 
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.config")
     @patch("metadata.utils.secrets.kubernetes_secrets_manager.client")

@@ -17,6 +17,7 @@ import base64
 import os
 import traceback
 from abc import ABC
+from typing import cast
 
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
@@ -125,23 +126,18 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
         """
         :param secret_id: The secret id to retrieve
         :return: The value of the secret
+        :raises ValueError: when the secret does not exist or has no `value` key
         """
         try:
-            # Get the secret from Kubernetes
-            secret = self.client.read_namespaced_secret(name=secret_id, namespace=self.namespace)
-
-            # Kubernetes stores secret data as base64 encoded
-            if secret.data and "value" in secret.data:
-                secret_value = base64.b64decode(secret.data["value"]).decode("utf-8")
-                logger.debug(f"Got value for secret {secret_id}")
-                return secret_value
-            logger.warning(f"Secret {secret_id} exists but has no 'value' key")
-            return None  # noqa: TRY300
-
+            # The client documents a V1Secret but is untyped, so the checker would infer every
+            # shape its generic call_api can return.
+            secret = cast(
+                "client.V1Secret",
+                self.client.read_namespaced_secret(name=secret_id, namespace=self.namespace),
+            )
         except ApiException as exc:
             if exc.status == 404:
-                logger.debug(f"Secret {secret_id} not found")
-                return None
+                raise ValueError(f"Secret [{secret_id}] not found in namespace [{self.namespace}].") from exc
             logger.debug(traceback.format_exc())
             logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
             raise exc  # noqa: TRY201
@@ -149,6 +145,13 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
             logger.debug(traceback.format_exc())
             logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
             raise exc  # noqa: TRY201
+
+        # Kubernetes stores secret data as base64 encoded
+        if not secret.data or "value" not in secret.data:
+            raise ValueError(f"Secret [{secret_id}] in namespace [{self.namespace}] has no 'value' key.")
+        secret_value = base64.b64decode(secret.data["value"]).decode("utf-8")
+        logger.debug("Got value for secret %s", secret_id)
+        return secret_value
 
     def load_credentials(self) -> dict | None:
         """Load the provider credentials based on the loader type"""

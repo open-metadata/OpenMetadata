@@ -28,13 +28,24 @@ import java.time.Instant;
 import java.time.temporal.TemporalAmount;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 
+@Slf4j
 public class Fernet {
   private static final Fernet instance = new Fernet();
   private static final String KEY_SEPARATOR = ",";
+  private static final String SHIPPED_DEFAULT_KEY = "jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=";
+  private static final String DEFAULT_KEY_WARNING =
+      "The first Fernet key is the default shipped with OpenMetadata. Set FERNET_KEY to a new key"
+          + " followed by the current one, FERNET_KEY=<new key>,<current key>, so secrets stored"
+          + " with the current key still decrypt.";
+  private static final String NO_KEY_WARNING =
+      "No Fernet key is configured, so secrets stored in the database are not encrypted. Set"
+          + " FERNET_KEY to a key of your own.";
   private String fernetKey;
   private volatile List<Key> cachedKeys;
   private final SecureRandom secureRandom = new SecureRandom();
@@ -62,18 +73,22 @@ public class Fernet {
         && !FERNET_NO_ENCRYPTION.equals(fernetConfiguration.getFernetKey())) {
       setFernetKey(fernetConfiguration.getFernetKey());
     }
+    getKeyWarning().ifPresent(LOG::error);
   }
 
   @VisibleForTesting
   public void setFernetKey(String fernetKey) {
     if (fernetKey != null) {
-      // convert base64 to base64url
-      this.fernetKey = fernetKey.replace("/", "_").replace("+", "-").replace("=", "");
+      this.fernetKey = toBase64Url(fernetKey);
       this.cachedKeys = buildKeys(this.fernetKey);
     } else {
       this.fernetKey = null;
       this.cachedKeys = null;
     }
+  }
+
+  private static String toBase64Url(String base64) {
+    return base64.replace("/", "_").replace("+", "-").replace("=", "");
   }
 
   private static List<Key> buildKeys(String fernetKey) {
@@ -86,6 +101,19 @@ public class Fernet {
 
   public boolean isKeyDefined() {
     return fernetKey != null;
+  }
+
+  /** Why the configured keys do not protect stored secrets, when they do not. */
+  public Optional<String> getKeyWarning() {
+    String warning = isKeyDefined() ? null : NO_KEY_WARNING;
+    if (isKeyDefined() && isPrimaryKeyTheShippedDefault()) {
+      warning = DEFAULT_KEY_WARNING;
+    }
+    return Optional.ofNullable(warning);
+  }
+
+  private boolean isPrimaryKeyTheShippedDefault() {
+    return toBase64Url(SHIPPED_DEFAULT_KEY).equals(fernetKey.split(KEY_SEPARATOR)[0]);
   }
 
   public String encrypt(@NonNull String secret) {
