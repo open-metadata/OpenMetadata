@@ -11,17 +11,22 @@
 """
 Client to interact with SAS Viya apis
 """
+import json
 
 import requests
 
-from metadata.generated.schema.entity.services.connections.database.sasConnection import (
+from metadata.generated.schema.entity.services.connections.metadata.sasConnection import (
     SASConnection,
 )
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import APIError, ClientConfig
-from metadata.ingestion.source.database.sas.settings import sas_settings
+from metadata.ingestion.source.metadata.sas.settings import sas_settings
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
+
+DATAFLOWS_IDX = "dataflows"
+DATASETS_IDX = "datasets"
+REPORTS_IDX = "reports"
 
 logger = ingestion_logger()
 
@@ -37,7 +42,7 @@ class SASClient:
         self.config: SASConnection = config
         self.auth_token = self.get_token(config.serverHost, config.username, config.password.get_secret_value())
         client_config: ClientConfig = ClientConfig(
-            base_url=clean_uri(config.serverHost),
+            base_url=clean_uri(f"{config.serverHost}"),
             auth_header="Authorization",
             auth_token=self.get_auth_token,
             api_version="",
@@ -59,11 +64,11 @@ class SASClient:
         """
         check_list = []
         if self.enable_datatables:
-            check_list.append("datasets")
+            check_list.append(DATASETS_IDX)
         if self.enable_reports:
-            check_list.append("reports")
+            check_list.append(REPORTS_IDX)
         if self.enable_dataflows:
-            check_list.append("dataflows")
+            check_list.append(DATAFLOWS_IDX)
 
         for asset in check_list:
             self.list_assets(asset)
@@ -79,19 +84,22 @@ class SASClient:
         return response
 
     def get_information_catalog_link(self, instance_id):
-        return f"{self.config.serverHost}SASInformationCatalog/details/~fs~catalog~fs~instances~fs~{instance_id}"
+        return f"{self.config.serverHost}/SASInformationCatalog/details/~fs~catalog~fs~instances~fs~{instance_id}"
 
     def list_assets(self, assets):
         """
         Get all assets based on asset types
         """
-        if assets == "datasets":
+        enable_asset = False
+        asset_filter = None
+
+        if assets == DATASETS_IDX:
             enable_asset = self.enable_datatables
             asset_filter = self.custom_filter_datatables
-        elif assets == "reports":
+        elif assets == REPORTS_IDX:
             enable_asset = self.enable_reports
             asset_filter = self.custom_filter_reports
-        elif assets == "dataflows":
+        elif assets == DATASETS_IDX:
             enable_asset = self.enable_dataflows
             asset_filter = self.custom_filter_dataflows
 
@@ -130,7 +138,7 @@ class SASClient:
     def get_report_link(self, resource, uri):
         revised_uri = uri.replace("/", "%2F")
         endpoint = f"/links/resources/{resource}?uri={revised_uri}"
-        return self.config.serverHost + endpoint
+        return f"{self.config.serverHost}{endpoint}"
 
     def load_table(self, endpoint):
         self.client.put(path=endpoint, data={})
