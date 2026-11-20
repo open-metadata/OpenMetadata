@@ -25,7 +25,7 @@ from typing import (
 from presidio_analyzer import AnalyzerEngine  # noqa: TC002
 
 from metadata.generated.schema.entity.data.table import Column, DataType
-from metadata.pii.algorithms.column_patterns import get_pii_column_name_patterns
+from metadata.pii.algorithms.column_patterns import get_pii_column_name_patterns, is_personal_date_text
 from metadata.pii.algorithms.feature_extraction import (
     extract_pii_from_column_names,
     extract_pii_tags,
@@ -168,13 +168,14 @@ class HeuristicPIIClassifier(ColumnClassifier[PIITag]):
         if column_name is not None:
             column_name_matches = extract_pii_from_column_names(column_name, patterns=self._column_name_patterns)
 
-        # Suppress content hits for tags that require column-name corroboration when
-        # the column name does not confirm a personal meaning.  DATE_TIME is the
-        # primary example: event_timestamp / created_at scores 1.0 on content but is
-        # not PII; birth_date also scores 1.0 on content AND matches the allowlist,
-        # so its hit is kept.
+        # Suppress content hits for tags that require corroboration when neither the
+        # column name nor the sampled values confirm a personal meaning.  DATE_TIME is
+        # the primary example: event_timestamp / created_at scores 1.0 on content but is
+        # not PII; birth_date also scores 1.0 on content AND matches the allowlist, and
+        # a free-text value such as "date of birth: 1990-04-12" names a personal date
+        # itself, so those hits are kept.
         for tag in _REQUIRES_COLUMN_NAME_CORROBORATION:
-            if tag not in column_name_matches:
+            if tag not in column_name_matches and not any(is_personal_date_text(value) for value in str_values):
                 content_results.pop(tag, None)
 
         final_results: dict[PIITag, float] = {}
