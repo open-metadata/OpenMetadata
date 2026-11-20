@@ -13,6 +13,7 @@ import static org.openmetadata.it.tests.DomainLineageSteps.setDomains;
 import static org.openmetadata.it.tests.DomainLineageSteps.setTableDomains;
 import static org.openmetadata.it.tests.DomainLineageSteps.table;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -79,6 +80,17 @@ public class DomainLineageRebuildIT {
     assertEquals(0, ForkedOperations.run("rebuild-domain-lineage"), "second run");
 
     assertEquals(rebuilt, storedJson(issue.d1(), issue.d2()));
+  }
+
+  /** An operator's script must see the command fail, here on a database it cannot log in to. */
+  @Test
+  void theOpsCommandExitsNonZeroWhenItCannotConnectToTheDatabase() {
+    int exitCode =
+        ForkedOperations.run(
+            config -> ((ObjectNode) config.path("database")).put("password", "not-the-password"),
+            "rebuild-domain-lineage");
+
+    assertEquals(1, exitCode, "see target/forked-ops-*.log");
   }
 
   @Test
