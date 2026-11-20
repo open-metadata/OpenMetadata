@@ -386,8 +386,8 @@ class OmniApiClient:
                     model_name=model.name,
                     name=view_name,
                     label=view.get("label"),
-                    # A view file that replaced an inline view also answers to the inline name.
-                    base_view=view.get("reference") or view_name,
+                    alias=view.get("reference"),
+                    base_view=view_name,
                     base_schema=view.get("schema"),
                     base_table=view.get("table"),
                     fields=view.get("fields") or [],

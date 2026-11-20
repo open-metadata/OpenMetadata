@@ -186,6 +186,8 @@ class OmniSource(DashboardServiceSource):
         keys = {canonical_ref(topic.name)}
         if topic.base_schema:
             keys.add(canonical_ref(f"{topic.base_schema}.{topic.name}"))
+        if topic.alias:
+            keys.add(canonical_ref(topic.alias))
         return keys
 
     @classmethod

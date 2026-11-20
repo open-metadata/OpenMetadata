@@ -81,6 +81,8 @@ class OmniTopic(BaseModel):
     model_id: str
     model_name: str | None = None
     name: str
+    # A second name this data model answers to: the inline view its view file replaced.
+    alias: str | None = None
     label: str | None = None
     description: str | None = None
     base_view: str | None = None

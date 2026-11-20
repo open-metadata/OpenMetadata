@@ -905,6 +905,7 @@ def test_tile_reference_to_a_replaced_inline_view_resolves_to_the_view_file(omni
     files = {
         "semantic_views/sv_orders__fact_orders.view": "schema: BIZ_GENERAL\ntable_name: FACT_ORDERS\n",
         "semantic_views__sv_orders.topic": SEMANTIC_VIEW_TOPIC,
+        "order_summary.topic": "base_view: semantic_views__sv_orders__fact_orders\n",
     }
     model = OmniModel(id="m1", name="sales")
     omni_source.client.get_models = lambda *_: [model]
