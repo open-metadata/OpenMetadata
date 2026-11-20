@@ -19,6 +19,7 @@ import io.dropwizard.lifecycle.Managed;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -274,7 +275,7 @@ public final class GlossaryTermPendingLabels implements Managed {
             .listPendingTargetHashes(
                 GLOSSARY, FullyQualifiedName.buildHash(termFqn), after == null ? "" : after, limit);
     Map<UUID, EntityReference> assets = new LinkedHashMap<>();
-    for (TargetHolder holder : targets.isEmpty() ? Set.<TargetHolder>of() : holders(targets)) {
+    for (TargetHolder holder : nearestHolders(targets)) {
       try {
         assets.putIfAbsent(
             holder.id(),
@@ -285,6 +286,27 @@ public final class GlossaryTermPendingLabels implements Managed {
     }
     String next = targets.size() == limit ? targets.getLast() : null;
     return new ResultList<>(List.copyOf(assets.values()), null, next, assets.size());
+  }
+
+  /**
+   * The entities that hold each target: the one it is, or the one it is a field of. The entities
+   * above that one match the target's prefixes too, but the term is not pending on them. Two entity
+   * types that share an FQN both hold it.
+   */
+  static Set<TargetHolder> nearestHolders(List<String> targetHashes) {
+    Set<TargetHolder> holders = targetHashes.isEmpty() ? Set.of() : holders(targetHashes);
+    Set<TargetHolder> nearest = new LinkedHashSet<>();
+    for (String target : targetHashes) {
+      List<TargetHolder> above =
+          holders.stream().filter(holder -> isAtOrAbove(holder.hash(), target)).toList();
+      int deepest = above.stream().mapToInt(holder -> holder.hash().length()).max().orElse(0);
+      above.stream().filter(holder -> holder.hash().length() == deepest).forEach(nearest::add);
+    }
+    return nearest;
+  }
+
+  private static boolean isAtOrAbove(String holderHash, String targetHash) {
+    return targetHash.equals(holderHash) || targetHash.startsWith(holderHash + Entity.SEPARATOR);
   }
 
   /**

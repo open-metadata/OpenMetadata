@@ -6908,17 +6908,38 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
       List<T> chunk = entities.subList(start, end);
       List<List<HeldTerm>> chunkHeldTerms = heldTerms.subList(start, end);
-      flushInOneTransaction(
-          chunk,
-          () -> {
-            createManyEntitiesFlushBody(chunk);
-            for (int i = 0; i < chunk.size(); i++) {
-              storePendingGlossaryTerms(chunkHeldTerms.get(i), chunk.get(i).getUpdatedBy());
-            }
-          });
+      try {
+        flushInOneTransaction(
+            chunk,
+            () -> {
+              createManyEntitiesFlushBody(chunk);
+              for (int i = 0; i < chunk.size(); i++) {
+                storePendingGlossaryTerms(chunkHeldTerms.get(i), chunk.get(i).getUpdatedBy());
+              }
+            });
+      } catch (RuntimeException e) {
+        // The rollback dropped the chunk's pending rows, and the bulk creator retries a conflict
+        // with these same entities: give them their terms back so the retry holds them again.
+        restoreHeldTerms(chunk, chunkHeldTerms);
+        throw e;
+      }
     }
     try (var ignored = phase("setInheritedFields")) {
       setInheritedFields(entities, new Fields(allowedFields));
+    }
+  }
+
+  private void restoreHeldTerms(List<T> entities, List<List<HeldTerm>> heldTerms) {
+    for (int i = 0; i < entities.size(); i++) {
+      TaggedEntity tagged =
+          new TaggedEntity(entities.get(i), taggedFieldContainers(entities.get(i)));
+      heldTerms
+          .get(i)
+          .forEach(
+              held ->
+                  ApprovedGlossaryTermGuard.addToTargets(
+                      tagged,
+                      Map.of(FullyQualifiedName.buildHash(held.targetFqn()), held.label())));
     }
   }
 

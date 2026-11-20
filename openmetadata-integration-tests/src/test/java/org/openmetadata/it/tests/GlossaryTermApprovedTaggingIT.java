@@ -555,6 +555,35 @@ public class GlossaryTermApprovedTaggingIT {
   }
 
   /**
+   * The classification a held term carries would otherwise reach the asset as a derived tag ahead
+   * of the term itself: it is held with the term and shown with it once the term is approved.
+   */
+  @Test
+  void theClassificationAHeldTermCarriesIsHeldWithIt(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TagLabel carried = SharedEntities.get().PII_SENSITIVE_TAG_LABEL;
+    GlossaryTerm term = draftTerm(client, ns, carried);
+    CreateTable request = tableRequest(ns, schema(ns), "carried_tag");
+    request.setTags(List.of(label(term)));
+    Table table = client.tables().create(request);
+
+    assertFalse(hasTag(table.getTags(), carried.getTagFQN()), () -> table.getTags().toString());
+    assertHeld(term, 1, reread(client, table));
+    assertFalse(hasTag(reread(client, table).getTags(), carried.getTagFQN()));
+
+    setStatus(client, term, EntityStatus.APPROVED);
+
+    Awaitility.await("held term and its classification shown once approved")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () -> {
+              List<TagLabel> shown = reread(client, table).getTags();
+              return hasTerm(shown, term) && hasTag(shown, carried.getTagFQN());
+            });
+  }
+
+  /**
    * A target that refuses the approved term, here a column showing a term of the same mutually
    * exclusive glossary, keeps it pending without keeping it from the asset's other targets.
    */
@@ -673,7 +702,10 @@ public class GlossaryTermApprovedTaggingIT {
                 null,
                 JsonNode.class);
 
-    assertTrue(page.toString().contains(table.getId().toString()), page::toString);
+    List<String> assets = new ArrayList<>();
+    page.get("data").forEach(asset -> assets.add(asset.get("id").asText()));
+    // Only the table: the schema and database above it are taggable but do not hold the term.
+    assertEquals(List.of(table.getId().toString()), assets, page::toString);
     assertFalse(
         reread(client, table).getColumns().get(0).getTags().stream()
             .anyMatch(tag -> term.getFullyQualifiedName().equals(tag.getTagFQN())));
@@ -821,7 +853,8 @@ public class GlossaryTermApprovedTaggingIT {
   }
 
   /** A term whose glossary has reviewers starts in Draft until they approve it. */
-  private static GlossaryTerm draftTerm(OpenMetadataClient client, TestNamespace ns) {
+  private static GlossaryTerm draftTerm(
+      OpenMetadataClient client, TestNamespace ns, TagLabel... tags) {
     Glossary glossary =
         ns.trackRoot(
             Entity.GLOSSARY,
@@ -833,18 +866,19 @@ public class GlossaryTermApprovedTaggingIT {
                         .withDescription("Glossary whose terms start in Draft")
                         .withReviewers(
                             List.of(client.users().getByName("admin").getEntityReference()))));
-    return createTerm(client, glossary, ns.shortPrefix("draft_term"));
+    return createTerm(client, glossary, ns.shortPrefix("draft_term"), tags);
   }
 
   private static GlossaryTerm createTerm(
-      OpenMetadataClient client, Glossary glossary, String name) {
+      OpenMetadataClient client, Glossary glossary, String name, TagLabel... tags) {
     return client
         .glossaryTerms()
         .create(
             new CreateGlossaryTerm()
                 .withName(name)
                 .withGlossary(glossary.getFullyQualifiedName())
-                .withDescription("Term for approved-only tagging"));
+                .withDescription("Term for approved-only tagging")
+                .withTags(List.of(tags)));
   }
 
   private static GlossaryTerm deprecate(OpenMetadataClient client, GlossaryTerm term) {
@@ -891,7 +925,10 @@ public class GlossaryTermApprovedTaggingIT {
   }
 
   private static boolean hasTerm(List<TagLabel> tags, GlossaryTerm term) {
-    return tags != null
-        && tags.stream().anyMatch(t -> term.getFullyQualifiedName().equals(t.getTagFQN()));
+    return hasTag(tags, term.getFullyQualifiedName());
+  }
+
+  private static boolean hasTag(List<TagLabel> tags, String tagFqn) {
+    return tags != null && tags.stream().anyMatch(t -> tagFqn.equals(t.getTagFQN()));
   }
 }

@@ -30,6 +30,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabel.LabelType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -158,6 +159,7 @@ public final class ApprovedGlossaryTermGuard {
     List<TagLabel> remaining = new ArrayList<>(target.tags());
     List<TagLabel> taken = takeTerms(remaining, termHashes);
     if (!taken.isEmpty()) {
+      remaining.removeAll(derivedOnlyFrom(taken, remaining));
       target.replaceTags().accept(remaining);
       if (appliesAnyOf(listOrEmpty(target.currentTags().get()), termHashes)) {
         throw new IllegalArgumentException(
@@ -165,6 +167,35 @@ public final class ApprovedGlossaryTermGuard {
       }
     }
     return taken;
+  }
+
+  // validateTags has already added the classification tags each applied term carries as DERIVED
+  // labels. The ones only a held term carries would show it before approval, so they go with it.
+  private static List<TagLabel> derivedOnlyFrom(List<TagLabel> taken, List<TagLabel> remaining) {
+    List<TagLabel> derived =
+        remaining.stream().filter(label -> label.getLabelType() == LabelType.DERIVED).toList();
+    List<TagLabel> orphaned = List.of();
+    if (!derived.isEmpty()) {
+      Set<String> carriedByHeld = carriedTagFqns(taken);
+      Set<String> carriedByKept =
+          carriedTagFqns(
+              remaining.stream()
+                  .filter(label -> label.getLabelType() != LabelType.DERIVED)
+                  .toList());
+      orphaned =
+          derived.stream()
+              .filter(label -> carriedByHeld.contains(label.getTagFQN()))
+              .filter(label -> !carriedByKept.contains(label.getTagFQN()))
+              .toList();
+    }
+    return orphaned;
+  }
+
+  private static Set<String> carriedTagFqns(List<TagLabel> labels) {
+    return TagLabelUtil.batchFetchDerivedTags(labels).values().stream()
+        .flatMap(List::stream)
+        .map(TagLabel::getTagFQN)
+        .collect(Collectors.toSet());
   }
 
   // A move rewrites the FQNs of an entity's fields before the write re-keys their stored labels,
