@@ -397,6 +397,64 @@ def get_table_entities_from_query(
         if table_entities:
             return table_entities
 
+    return _cross_database_fallback(
+        metadata=metadata,
+        service_names=service_names,
+        database_query=database_query,
+        database_schema=schema_query if schema_query else database_schema,
+        table=table,
+    )
+
+
+def _cross_database_fallback(
+    metadata: OpenMetadata,
+    service_names: str | list[str],
+    database_query: str | None,
+    database_schema: str | None,
+    table: str | None,
+) -> list[Table] | None:
+    """
+    Resolve a table that a cross-database service ingested under a different database
+    name than the one the query runs in.
+
+    A view in one catalog can read `schema.table` from data another service ingested
+    under another database name (the same storage exposed through two catalogs). The
+    lookups above use the view's database, so they never match and no lineage edge is
+    created even with `crossDatabaseServiceNames` configured. This retries with the
+    database wildcarded (`<service>.*.<schema>.<table>`), and only:
+
+    - when the query did not name a database: one the query names is never overridden;
+    - across the cross-database services, never the current one: `service_names` is the
+      current service followed by `crossDatabaseServiceNames`, so this is a no-op when
+      cross-database lineage is off, and within the current service the database from
+      the query's context stays authoritative;
+    - when exactly one table matches: several candidates are ambiguous and left
+      unresolved rather than linked.
+
+    ADR:2026-11-12-cross-database-lineage-wildcards-the-database-only-for-an-unnamed-database-in-cross-database-services
+    """
+    if database_query or not table:
+        return None
+    services = [service_names] if isinstance(service_names, str) else list(service_names)
+    cross_database_services = services[1:]
+    if not cross_database_services:
+        return None
+    table_entities = search_table_entities(
+        metadata=metadata,
+        service_names=cross_database_services,
+        database=None,
+        database_schema=database_schema,
+        table=table,
+    )
+    if table_entities and len(table_entities) == 1:
+        return table_entities
+    if table_entities:
+        logger.debug(
+            "Cross-database fallback for [%s.%s] matched %d tables; leaving it unresolved",
+            database_schema,
+            table,
+            len(table_entities),
+        )
     return None
 
 
