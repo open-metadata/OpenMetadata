@@ -637,8 +637,10 @@ public class EventSubscriptionScheduler {
     return Optional.empty();
   }
 
+  // Reading never saves an offset: a read of an alert that has never run must not decide where it
+  // starts once it is enabled.
   public Optional<EventSubscriptionOffset> getEventSubscriptionOffset(UUID subscriptionID) {
-    EventSubscriptionOffset offset = getStartingOffset(subscriptionID);
+    EventSubscriptionOffset offset = AlertUtil.storedOffsetOrLatest(subscriptionID);
     if (offset != null && offset.getCurrentOffset() != null) {
       return Optional.of(offset);
     }
