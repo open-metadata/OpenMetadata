@@ -243,6 +243,12 @@ public class PartitionCalculator {
   }
 
   public long getEntityCount(String entityType, ReindexingConfiguration reindexConfig) {
+    // tableColumn has no standalone EntityRepository — columns are indexed as part of
+    // their parent Table entity. Skip the lookup to avoid a spurious EntityNotFoundException.
+    if (Entity.TABLE_COLUMN.equals(entityType)) {
+      LOG.debug("tableColumn is indexed via parent table; returning 0 for partition count");
+      return 0;
+    }
     try {
       long count;
       if (SearchIndexEntityTypes.isTimeSeriesEntity(entityType)) {
