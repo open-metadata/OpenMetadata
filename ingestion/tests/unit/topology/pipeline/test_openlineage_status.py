@@ -910,6 +910,103 @@ def test_failed_try_read_after_its_retry_succeeded_does_not_become_the_error(sou
     assert (row.error.failedTask, row.error.errorMessage) == ("load", "load lost its connection")
 
 
+def failure(run: str, index: int, message: str, **overrides):
+    """Event ``index`` of ``run`` turned into a failure carrying ``message``."""
+    failed = event(run, index, eventType="FAIL", **overrides)
+    facet = "spark.exception" if run in SPARK_RUNS else "errorMessage"
+    failed.run_facet["facets"][facet] = {"message": message, "stackTrace": message}
+    return failed
+
+
+def airflow_tasks_fail_one_after_the_other():
+    """extract fails, transform runs anyway (trigger_rule all_done) and fails, then the DAG run."""
+    return [
+        *(event("full_task_info", index) for index in (0, 1)),
+        failure("full_task_info", 2, "extract broke"),
+        *(event("full_task_info", index) for index in (3, 4, 5)),
+    ]
+
+
+def parallel_airflow_tasks_fail():
+    """extract starts after transform but fails before it."""
+    return [
+        *(event("full_task_info", index) for index in (0, 3)),
+        event("full_task_info", 1, eventTime="2026-11-17T12:21:47.000000+00:00"),
+        failure("full_task_info", 2, "extract broke", eventTime="2026-11-17T12:21:47.500000+00:00"),
+        *(event("full_task_info", index) for index in (4, 5)),
+    ]
+
+
+def airflow_task_fails_every_try_and_another_between():
+    """flaky fails on all three tries, and load fails between its first and second try."""
+    run = [
+        *(event("retried_task", index) for index in range(6)),
+        failure("retried_task", 6, "try 3 fails on purpose"),
+        event("retried_task", 7, eventTime="2026-11-18T09:08:07.000000+00:00"),
+        failure("retried_task", 8, "load broke", eventTime="2026-11-18T09:08:08.000000+00:00"),
+        failure("retried_task", 9, "flaky failed"),
+    ]
+    return sorted(run, key=lambda ol_event: ol_event.event_time)
+
+
+def spark_sql_jobs_fail_one_after_the_other():
+    return [
+        *(event("failed_run", index) for index in range(6)),
+        failure("failed_run", 6, "save broke"),
+        event("failed_run", 7),
+    ]
+
+
+def spark_sql_job_of_the_failed_ones_name_succeeds(save_fails_at: str):
+    """A second write named like the failed SQL job succeeds; the save SQL job fails at ``save_fails_at``."""
+    second_write = event("failed_run", 5)
+    second_write.run_facet["runId"] = "01a1e86e-127f-7000-8000-0000000000bb"
+    run = [
+        *(event("failed_run", index) for index in range(5)),
+        second_write,
+        failure("failed_run", 6, "save broke", eventTime=save_fails_at),
+        event("failed_run", 7),
+    ]
+    return sorted(run, key=lambda ol_event: ol_event.event_time)
+
+
+SPARK_FAILURE = ("deserialize_to_object", "Job aborted due to stage failure: ValueError: intentional failure")
+
+
+@pytest.mark.parametrize("reversed_order", [False, True], ids=["read_in_order", "read_in_reverse"])
+@pytest.mark.parametrize(
+    "run, first_failure",
+    [
+        pytest.param(airflow_tasks_fail_one_after_the_other, ("extract", "extract broke"), id="airflow_tasks_in_turn"),
+        pytest.param(parallel_airflow_tasks_fail, ("extract", "extract broke"), id="parallel_airflow_tasks"),
+        pytest.param(
+            airflow_task_fails_every_try_and_another_between,
+            ("flaky", "try 1 fails on purpose"),
+            id="airflow_task_failing_every_try",
+        ),
+        pytest.param(spark_sql_jobs_fail_one_after_the_other, SPARK_FAILURE, id="spark_sql_jobs_in_turn"),
+        pytest.param(
+            lambda: spark_sql_job_of_the_failed_ones_name_succeeds("2026-11-17T07:34:51.812Z"),
+            SPARK_FAILURE,
+            id="spark_same_name_succeeds_then_another_fails",
+        ),
+        pytest.param(
+            lambda: spark_sql_job_of_the_failed_ones_name_succeeds("2026-11-17T07:34:51.700Z"),
+            ("execute_save_into_data_source_command.public_report", "save broke"),
+            id="spark_same_name_succeeds_another_failed_earlier",
+        ),
+    ],
+)
+def test_step_that_failed_first_is_blamed_whatever_the_read_order(source, server, run, first_failure, reversed_order):
+    """With several steps failing, the error is the earliest failure that still stands."""
+    events = run()
+
+    ingest(source, server, events[::-1] if reversed_order else events)
+
+    [row] = server.statuses.values()
+    assert (row.error.failedTask, row.error.errorMessage) == first_failure
+
+
 def retried_run_where_load_fails(source, server, ingestions: list[list[int | str]]) -> PipelineStatus:
     """The row of the retried run once ``ingestions`` are read, with load and then the DAG run failing."""
     load_fails = event("retried_task", 8, eventType="FAIL")

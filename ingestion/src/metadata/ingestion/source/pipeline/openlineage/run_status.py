@@ -273,22 +273,46 @@ def _latest_tries(lines: list[TaskStatus]) -> dict[str, TaskStatus]:
 
 
 def _first_step_still_failing(lines: list[TaskStatus], other_than: str) -> str | None:
-    """The step whose latest try failed earliest, other than ``other_than``."""
+    """The step whose latest try failed and whose first failure came earliest, other than ``other_than``."""
     failing = [
-        line
+        name
         for name, line in _latest_tries(lines).items()
         if name != other_than and line.executionStatus == StatusType.Failed
     ]
-    return min(failing, key=_try_time).name if failing else None
+    return min(failing, key=lambda name: _first_failure_at(lines, name) or 0) if failing else None
 
 
-def _names_no_failing_step(error: ExecutionError, lines: list[TaskStatus], update: RunUpdate) -> bool:
-    """Whether ``error`` is the run's own, or names a step whose latest try did not fail. A step
-    that fails its run keeps the blame: its failure ended the run whatever came after."""
+def _failed_at(line: TaskStatus) -> int:
+    # The end of a failed try is when it failed; parallel steps can fail in another order than
+    # they started.
+    return _value(line.endTime) or _value(line.startTime) or 0
+
+
+def _first_failure_at(lines: list[TaskStatus], name: str, other_than: str | None = None) -> int | None:
+    """When the step ``name`` first failed, leaving out the try ``other_than``."""
+    return min(
+        (
+            _failed_at(line)
+            for line in lines
+            if line.name == name and line.taskId != other_than and line.executionStatus == StatusType.Failed
+        ),
+        default=None,
+    )
+
+
+def _takes_the_blame(error: ExecutionError, lines: list[TaskStatus], line: TaskStatus, update: RunUpdate) -> bool:
+    """Whether the failure on ``line`` replaces ``error``: the error is the run's own, names an
+    Airflow task a later try made good, or names a step that first failed after this one."""
     if error.failedTask is None:
         return True
-    blamed = _latest_tries(lines).get(error.failedTask)
-    return update.leaves_outcome_to_run and blamed is not None and blamed.executionStatus != StatusType.Failed
+    if update.leaves_outcome_to_run:
+        blamed = _latest_tries(lines).get(error.failedTask)
+        if blamed is not None and blamed.executionStatus != StatusType.Failed:
+            return True
+    # A step that failed on an earlier try failed then, whichever of its tries is read now.
+    failed_at = _failed_at(line) if error.failedTask == update.job else _first_failure_at(lines, update.job)
+    blamed_at = _first_failure_at(lines, error.failedTask, other_than=line.taskId)
+    return blamed_at is not None and failed_at is not None and failed_at < blamed_at
 
 
 def place_run(rows: list[PipelineStatus], update: RunUpdate) -> tuple[PipelineStatus | None, RunUpdate] | None:
@@ -329,19 +353,24 @@ def merge_run_status(stored: PipelineStatus | None, update: RunUpdate) -> Pipeli
         if not update.fails_run and _latest_tries(lines)[update.job].executionStatus != StatusType.Failed:
             # A failed try read after a later try of its step no longer explains the run.
             update = replace(update, error=None)
-        if error is not None and error.failedTask == update.job and line.executionStatus == StatusType.Successful:
-            # A later try of the failed step succeeded, so its failure no longer explains the run.
-            # The row keeps one error, so a step still failing is named without its message. With
-            # none, the error goes, except on a run its step failed: one Spark application can run
-            # two SQL jobs of one name, and the failed one failed the run.
+        if (
+            update.leaves_outcome_to_run
+            and error is not None
+            and error.failedTask == update.job
+            and line.executionStatus == StatusType.Successful
+        ):
+            # A later try of the failed Airflow task succeeded, so its failure no longer explains
+            # the run. The row keeps one error, so a task still failing is named without its
+            # message, and with none the error goes. Only an Airflow task is retried: a Spark SQL
+            # job of the same name is another job, and the failed one failed the application.
             still_failing = _first_step_still_failing(lines, other_than=update.job)
             if still_failing is not None:
                 error = ExecutionError(failedTask=still_failing)
-            elif status != StatusType.Failed or update.leaves_outcome_to_run:
+            else:
                 error = None
-        if error is not None and update.error is not None and _names_no_failing_step(error, lines, update):
-            # Read after the run's own failure, or after the try that made the blamed step good:
-            # the step failing now is the one that explains the run, whatever the reading order.
+        if error is not None and update.error is not None and _takes_the_blame(error, lines, line, update):
+            # Whatever order the events are read in, the error ends on the step that failed first
+            # and still stands.
             error = update.error
 
     ended_at = None
