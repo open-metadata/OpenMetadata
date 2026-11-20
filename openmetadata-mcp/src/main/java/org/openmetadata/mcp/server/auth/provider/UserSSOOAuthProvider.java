@@ -101,6 +101,12 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   static final String AUTH_REQUEST_ID_PARAM = "auth_request_id";
   static final String CONSENT_TOKEN_PARAM = "consent_token";
   static final String CONSENT_DECISION_PARAM = "decision";
+
+  static final String ACCOUNT_NOT_REGISTERED = "Your account is not registered in OpenMetadata.";
+  // Self-signup off, a registration domain not allowed or an unverified address: one sentence
+  // that is true for each, since the login step reports them as the same refusal.
+  public static final String ACCOUNT_NOT_ALLOWED =
+      "Your account is not allowed to sign in to OpenMetadata.";
   static final String CONSENT_APPROVE = "approve";
 
   private static final String SSO_ERROR_TITLE = "Authentication Failed";
@@ -527,7 +533,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     } catch (EntityNotFoundException e) {
       LOG.warn("SSO-authenticated user not found in OpenMetadata. Denying access.");
       LOG.debug("Denied user details: {}", userName);
-      writeAccessDenied(response);
+      writeAccessDenied(response, ACCOUNT_NOT_REGISTERED);
       return;
     }
 
@@ -628,8 +634,12 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
                 consent.token()));
   }
 
-  /** The page for a person the identity provider vouched for but who may not use this server. */
-  public static void writeAccessDenied(HttpServletResponse response) throws IOException {
+  /**
+   * The page for a person the identity provider vouched for but who may not use this server;
+   * {@code reason} is the sentence that tells them why.
+   */
+  public static void writeAccessDenied(HttpServletResponse response, String reason)
+      throws IOException {
     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
     response.setContentType("text/html; charset=UTF-8");
     response
@@ -647,7 +657,9 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
                 + "</style></head><body>"
                 + "<div class=\"card\">"
                 + "<h1>Access Denied</h1>"
-                + "<p>Your account is not registered in OpenMetadata.</p>"
+                + "<p>"
+                + reason
+                + "</p>"
                 + "<p>Please contact your administrator to get access.</p>"
                 + "<p style=\"font-size:13px;margin-top:16px\">You can close this window.</p>"
                 + "</div></body></html>");

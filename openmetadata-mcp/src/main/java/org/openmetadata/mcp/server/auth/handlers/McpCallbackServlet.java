@@ -308,7 +308,7 @@ public class McpCallbackServlet extends HttpServlet {
       if (request.getAttribute(AuthenticationCodeFlowHandler.SIGN_IN_FAILURE_ATTRIBUTE)
           == SignInFailure.ACCOUNT_NOT_ALLOWED) {
         LOG.warn("MCP sign-in refused: the account may not use this server");
-        UserSSOOAuthProvider.writeAccessDenied(response);
+        UserSSOOAuthProvider.writeAccessDenied(response, UserSSOOAuthProvider.ACCOUNT_NOT_ALLOWED);
         return;
       }
 

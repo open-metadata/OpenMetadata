@@ -285,6 +285,15 @@ class McpCallbackServletTest {
     when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(samplePendingRequest());
     AuthenticationCodeFlowHandler ssoHandler =
         mock(AuthenticationCodeFlowHandler.class, RETURNS_DEEP_STUBS);
+    // The login step answers a refusal with a 500, as it does for every failed MCP sign-in.
+    doAnswer(
+            call -> {
+              call.<HttpServletResponse>getArgument(1)
+                  .setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+              return null;
+            })
+        .when(ssoHandler)
+        .handleCallback(any(), any());
     McpCallbackServlet servlet = makeServletWithHandler(provider, pendingRepo, ssoHandler);
     HttpServletRequest request = mockCallbackRequest("pac4j-state-abc", null, null);
     when(request.getSession(true)).thenReturn(mock(HttpSession.class));
@@ -297,7 +306,9 @@ class McpCallbackServletTest {
     servlet.doGet(request, response);
 
     verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
-    assertThat(page.toString()).contains("Access Denied");
+    assertThat(page.toString())
+        .contains("Access Denied")
+        .contains(UserSSOOAuthProvider.ACCOUNT_NOT_ALLOWED);
     verify(provider, never()).handleSSOCallbackWithDbState(any(), any(), any(), any(), any());
   }
 
