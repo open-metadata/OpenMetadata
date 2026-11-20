@@ -65,7 +65,6 @@ class IncidentGroupTrendScaleIT {
   private static final int INCIDENTS_PER_TABLE = 50;
   private static final int INCIDENTS = TABLES * INCIDENTS_PER_TABLE;
   private static final int REQUESTS = 30;
-  private static final int SEED_WORKERS = 8;
   private static final String LARGE_GROUP = "scale_definition";
 
   @Test
@@ -94,18 +93,11 @@ class IncidentGroupTrendScaleIT {
                 namespace,
                 DatabaseServiceTestFactory.createPostgresWithName("svc" + prefix, namespace))
             .getFullyQualifiedName();
-    List<Callable<TableFixture>> seeds =
-        IntStream.range(0, TABLES)
-            .mapToObj(
-                table ->
-                    (Callable<TableFixture>)
-                        () -> seedTable(namespace, jdbi, schemaFqn, prefix + "_" + table))
-            .toList();
     List<TableFixture> tables = new ArrayList<>();
-    try (var executor = Executors.newFixedThreadPool(SEED_WORKERS)) {
-      for (var result : executor.invokeAll(seeds)) {
-        tables.add(result.get());
-      }
+    // MySQL's INSERT ... SELECT interval rebuild can lock history read by another loader.
+    // Keep fixture writes serial; the measured queries below still run concurrently.
+    for (int table = 0; table < TABLES; table++) {
+      tables.add(seedTable(namespace, jdbi, schemaFqn, prefix + "_" + table));
     }
     return new Fixture(tables, FullyQualifiedName.buildHash(schemaFqn) + ".%");
   }
