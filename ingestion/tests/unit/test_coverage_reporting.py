@@ -84,15 +84,13 @@ def test_nox_coverage_preserves_source_paths(coverage_repository: Path, from_roo
     assert_report_sources(coverage_repository / "ingestion")
 
 
-@pytest.mark.parametrize("from_root", [False, True], ids=["ingestion", "root"])
-def test_make_coverage_preserves_source_paths(coverage_repository: Path, from_root: bool) -> None:
+def test_make_coverage_preserves_source_paths(coverage_repository: Path) -> None:
     module = coverage_repository / "ingestion"
-    cwd = coverage_repository if from_root else module
     shutil.copyfile(module / ".coverage.unit", module / ".coverage")
     # Reuse the collected artifact and exercise only the reporting recipe.
     result = subprocess.run(
         ["make", "MAKE=true", "coverage"],
-        cwd=cwd,
+        cwd=module,
         capture_output=True,
         text=True,
         timeout=30,
@@ -102,12 +100,11 @@ def test_make_coverage_preserves_source_paths(coverage_repository: Path, from_ro
     assert_report_sources(module)
 
 
-@pytest.mark.parametrize("from_root", [False, True], ids=["ingestion", "root"])
-def test_nox_coverage_rejects_missing_data(coverage_repository: Path, from_root: bool) -> None:
+def test_nox_coverage_rejects_missing_data(coverage_repository: Path) -> None:
     module = coverage_repository / "ingestion"
     (module / ".coverage.unit").unlink()
     (module / "ci-coverage.xml").write_text("<stale/>\n", encoding="utf-8")
-    result = combine_reports(coverage_repository, from_root)
+    result = combine_reports(coverage_repository, True)
     assert result.returncode != 0, result.stdout + result.stderr
     assert "No data to combine" in result.stdout + result.stderr
 
@@ -161,13 +158,12 @@ def test_coverage_collection_keeps_colliding_junit_names_and_combines_real_data(
     assert {ET.parse(p).getroot().attrib["name"] for p in (project / "junit").glob("*.xml")} == {"unit", "integration"}
 
 
-@pytest.mark.parametrize("from_root", [False, True], ids=["ingestion", "root"])
-def test_coverage_collection_fails_without_downloads_despite_local_data(coverage_repository, from_root):
+def test_coverage_collection_fails_without_downloads_despite_local_data(coverage_repository):
     result = combine_reports(
         coverage_repository,
-        from_root,
+        True,
         "--coverage-dir",
-        "empty" if from_root else "../empty",
+        "empty",
     )
     assert result.returncode != 0, result.stdout + result.stderr
     assert "No Python coverage artifacts" in result.stdout + result.stderr

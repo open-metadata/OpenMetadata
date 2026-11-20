@@ -50,8 +50,11 @@ def test_versions_follow_project_configuration(tmp_path, output_file):
         '[tool.openmetadata.python-environments]\nsupported-python = ["3.13", "3.9", "3.10"]\n'
     )
     output = tmp_path / "outputs"
+    interpreter = [sys.executable]
+    if sys.version_info >= (3, 11):
+        interpreter.extend(["-E", "-S"])
     result = run(
-        sys.executable,
+        *interpreter,
         PLANNER,
         "versions",
         "--project",

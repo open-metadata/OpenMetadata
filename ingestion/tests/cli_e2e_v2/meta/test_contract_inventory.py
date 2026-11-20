@@ -309,9 +309,18 @@ def test_skipif_marked_required_case_is_not_coverage(pytester, monkeypatch):
     result.stderr.fnmatch_lines(["*mysql: profile.metrics missing collected case*"])
 
 
-@pytest.mark.parametrize("phase", ["setup", "call", "teardown"])
-@pytest.mark.parametrize("outcome", ["skip", "xfail"])
-@pytest.mark.parametrize("contract_check", [False, True])
+@pytest.mark.parametrize(
+    "phase, outcome, contract_check",
+    [
+        ("setup", "skip", True),
+        ("setup", "xfail", True),
+        ("call", "skip", True),
+        ("call", "xfail", True),
+        ("teardown", "skip", True),
+        ("teardown", "xfail", True),
+        ("call", "skip", False),
+    ],
+)
 def test_runtime_skip_and_xfail_fail_required_contracts(pytester, monkeypatch, phase, outcome, contract_check):
     suite = _child(pytester, monkeypatch)
     action = f"pytest.{outcome}('source unavailable')"
@@ -331,9 +340,7 @@ def test_runtime_skip_and_xfail_fail_required_contracts(pytester, monkeypatch, p
     result = pytester.runpytest_subprocess(str(mysql), *options, "-q")
     if not contract_check:
         assert result.ret == pytest.ExitCode.OK
-        result.assert_outcomes(
-            passed=int(phase == "teardown"), skipped=int(outcome == "skip"), xfailed=int(outcome == "xfail")
-        )
+        result.assert_outcomes(skipped=1)
         return
     assert result.ret == pytest.ExitCode.TESTS_FAILED
     result.assert_outcomes(

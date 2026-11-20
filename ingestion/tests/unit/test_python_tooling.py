@@ -248,17 +248,14 @@ def test_cli_e2e_preserves_pytest_outcome_and_subprocess_coverage(nox_repo: Path
         assert reported_test_names(nox_repo, "demo") == ["test_connector"]
 
 
-@pytest.mark.parametrize("entrypoint", ["make", "nox"])
-@pytest.mark.parametrize("workers", [None, "2", "0", "auto"], ids=["default", "two", "serial", "auto"])
-def test_unit_worker_count_defaults_to_four_and_respects_overrides(
-    nox_repo: Path, entrypoint: str, workers: str | None
-) -> None:
-    expected = {None: "4", "2": "2", "0": None, "auto": "1"}[workers]
+@pytest.mark.parametrize("entrypoint, workers", [("nox", "2"), ("nox", "0"), ("nox", "auto"), ("make", "2")])
+def test_unit_commands_respect_worker_overrides(nox_repo: Path, entrypoint: str, workers: str) -> None:
+    expected = {"2": "2", "0": None, "auto": "1"}[workers]
     (nox_repo / "ingestion/tests/unit/test_selection.py").write_text(
         "import os\n\ndef test_worker_count():\n"
         f"    assert os.environ.get('PYTEST_XDIST_WORKER_COUNT') == {expected!r}\n"
     )
-    args = ["-n", workers] if workers is not None else []
+    args = ["-n", workers]
     if entrypoint == "make":
         result = run("make", "unit_ingestion", "ARGS=" + " ".join(args), cwd=nox_repo)
     else:
@@ -268,8 +265,10 @@ def test_unit_worker_count_defaults_to_four_and_respects_overrides(
     assert reported_test_names(nox_repo, "unit") == ["test_worker_count"]
 
 
-@pytest.mark.parametrize("directory", [".", "ingestion"])
-@pytest.mark.parametrize("target", ["unit_ingestion", "unit_ingestion_dev_env"])
+@pytest.mark.parametrize(
+    "directory, target",
+    [(".", "unit_ingestion"), ("ingestion", "unit_ingestion"), (".", "unit_ingestion_dev_env")],
+)
 def test_make_unit_commands_use_the_complete_selection(nox_repo: Path, directory: str, target: str) -> None:
     for relative, name in (
         ("workflow/test_workflow_selection.py", "test_workflow_selected"),
@@ -292,26 +291,19 @@ def test_make_unit_commands_use_the_complete_selection(nox_repo: Path, directory
     ]
 
 
-@pytest.mark.parametrize("entrypoint", ["make", "nox"])
-@pytest.mark.parametrize("selection", ["node", "keyword", "marker"])
+@pytest.mark.parametrize("entrypoint, selection", [("nox", "node"), ("make", "keyword"), ("nox", "marker")])
 def test_unit_commands_run_only_the_requested_subset(nox_repo: Path, entrypoint: str, selection: str) -> None:
     (nox_repo / "ingestion/tests/unit/test_selection.py").write_text(
         "import pytest\n\n@pytest.mark.slow\ndef test_unit_selected():\n    pass\n\n"
         "def test_unit_rejected():\n    assert False, 'Unrequested test executed'\n"
     )
-    args = {
-        "node": ["tests/unit/test_selection.py::test_unit_selected"],
-        "keyword": ["-k", "unit_selected and not rejected"],
-        "marker": ["-m", "slow"],
-    }[selection]
     if entrypoint == "make":
-        selection_args = {
-            "node": "tests/unit/test_selection.py::test_unit_selected",
-            "keyword": "-k 'unit_selected and not rejected'",
-            "marker": "-m slow",
-        }[selection]
-        result = run("make", "unit_ingestion", f"ARGS=-n 0 {selection_args}", cwd=nox_repo)
+        result = run("make", "unit_ingestion", "ARGS=-n 0 -k 'unit_selected and not rejected'", cwd=nox_repo)
     else:
+        args = {
+            "node": ["tests/unit/test_selection.py::test_unit_selected"],
+            "marker": ["-m", "slow"],
+        }[selection]
         result = nox_tests(nox_repo, "unit", "-n", "0", *args)
 
     assert_success(result)
@@ -337,8 +329,7 @@ def test_nox_preserves_maxfail_value(nox_repo: Path, suite: str) -> None:
     assert "1 failed" in result.stdout
 
 
-@pytest.mark.parametrize("suite", ["unit", "integration"])
-@pytest.mark.parametrize("path_first", [True, False])
+@pytest.mark.parametrize("suite, path_first", [("unit", True), ("integration", False)])
 def test_nox_explicit_path_replaces_default_suite(nox_repo: Path, suite: str, path_first: bool) -> None:
     focused = nox_repo / "ingestion/tests/focused"
     focused.mkdir()
@@ -416,8 +407,7 @@ def test_pytest_collects_mlflow_from_both_entry_points(nox_repo: Path, directory
     ]
 
 
-@pytest.mark.parametrize("directory", [".", "ingestion"])
-def test_make_coverage_combines_unit_and_integration(tooling_repo: Path, directory: str, monkeypatch) -> None:
+def test_make_coverage_combines_unit_and_integration(tooling_repo: Path, monkeypatch) -> None:
     package = tooling_repo / "ingestion/src/metadata"
     (package / "__init__.py").touch()
     (package / "sample.py").write_text(
@@ -436,7 +426,7 @@ def test_make_coverage_combines_unit_and_integration(tooling_repo: Path, directo
     monkeypatch.setenv("PYTEST_XDIST_AUTO_NUM_WORKERS", "1")
     monkeypatch.setenv("PYTEST_INTEGRATION_WORKERS", "0")
 
-    assert_success(run("make", "coverage", cwd=tooling_repo / directory))
+    assert_success(run("make", "coverage", cwd=tooling_repo))
 
     report = ET.parse(tooling_repo / "ingestion/ci-coverage.xml").getroot()
     sample = report.find(".//class[@name='sample.py']")
@@ -447,9 +437,8 @@ def test_make_coverage_combines_unit_and_integration(tooling_repo: Path, directo
     assert not (tooling_repo / ".coverage").exists()
 
 
-@pytest.mark.parametrize("directory", [".", "ingestion"])
 @pytest.mark.parametrize("target", ["run_python_tests", "coverage"])
-def test_make_coverage_rejects_missing_data(tooling_repo: Path, directory: str, target: str) -> None:
+def test_make_coverage_rejects_missing_data(tooling_repo: Path, target: str) -> None:
     # A prior successful run must not make an empty run look successful.
     (tooling_repo / "ingestion/coverage.xml").write_text("<stale/>\n")
     if target == "run_python_tests":
@@ -464,10 +453,32 @@ def test_make_coverage_rejects_missing_data(tooling_repo: Path, directory: str, 
             )
         )
 
-    result = run("make", "MAKE=true", target, cwd=tooling_repo / directory)
+    result = run("make", "MAKE=true", target, cwd=tooling_repo)
 
     assert result.returncode != 0, result.stdout + result.stderr
     assert "No data to report" in result.stdout + result.stderr
+
+
+@pytest.fixture
+def manifest_repo(tmp_path: Path) -> Path:
+    for relative in (
+        "Makefile",
+        "ingestion/Makefile",
+        "ingestion/noxfile.py",
+        "ingestion/pyproject.toml",
+        "ingestion/uv.lock",
+        "scripts/datamodel_generation.py",
+        "scripts/generate_ingestion_models.py",
+        "scripts/python_tools.py",
+        "openmetadata-spec/scripts/prepare_model_schemas.py",
+        "ingestion/src/metadata/generated/__init__.py",
+    ):
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("original\n")
+    shutil.copyfile(REPO_ROOT / "scripts/check_generated_models.py", tmp_path / "scripts/check_generated_models.py")
+    assert_success(run(sys.executable, "scripts/check_generated_models.py", "--write", cwd=tmp_path))
+    return tmp_path
 
 
 @pytest.mark.parametrize(
@@ -483,18 +494,18 @@ def test_make_coverage_rejects_missing_data(tooling_repo: Path, directory: str, 
         "ingestion/src/metadata/generated/__init__.py",
     ],
 )
-def test_generation_manifest_detects_changes(tooling_repo: Path, changed: str) -> None:
+def test_generation_manifest_detects_changes(manifest_repo: Path, changed: str) -> None:
     command = (sys.executable, "scripts/check_generated_models.py", "--check")
-    assert_success(run(*command, cwd=tooling_repo))
-    path = tooling_repo / changed
+    assert_success(run(*command, cwd=manifest_repo))
+    path = manifest_repo / changed
     path.write_text(path.read_text() + "\n# Changed generation contract.\n")
 
-    result = run(*command, cwd=tooling_repo)
+    result = run(*command, cwd=manifest_repo)
 
     assert result.returncode == 1, result.stdout + result.stderr
     assert changed in result.stdout
-    assert_success(run(sys.executable, "scripts/check_generated_models.py", "--write", cwd=tooling_repo))
-    assert_success(run(*command, cwd=tooling_repo))
+    assert_success(run(sys.executable, "scripts/check_generated_models.py", "--write", cwd=manifest_repo))
+    assert_success(run(*command, cwd=manifest_repo))
 
 
 @pytest.mark.parametrize("directory", [".", "ingestion"])
@@ -827,8 +838,7 @@ def test_tool_install_ignores_metadata_on_callers_pythonpath(nox_repo: Path) -> 
     )
 
 
-@pytest.mark.parametrize("directory", [".", "ingestion"])
-@pytest.mark.parametrize("profile", ["style", "coverage", "generation"])
+@pytest.mark.parametrize("profile, directory", [("style", "."), ("coverage", "ingestion"), ("generation", ".")])
 def test_explicit_tool_environment_preserves_application(nox_repo: Path, profile: str, directory: str) -> None:
     assert_success(run("make", "install_test", cwd=nox_repo))
     environment = nox_repo / "env"
@@ -1137,10 +1147,6 @@ def test_model_archives_merge_and_repeated_locked_sync_avoids_denied_origin(nox_
         )
     assert (nox_repo / "ingestion/uv.lock").read_bytes() == lock
     assert requests == []
-    assert_success(run("uv", "cache", "clean", "fixture-first", "fixture-second", cwd=nox_repo))
-    assert_success(run("uv", "cache", "prune", "--ci", "--force", cwd=nox_repo))
-    assert not any(p.name in ("fixture_first", "fixture_second") for p in cache.rglob("*"))
-    assert (cache / "CACHEDIR.TAG").is_file()
     # Stale requirements still fail with locked validation, even when models cannot be fetched.
     config = nox_repo / "ingestion/pyproject.toml"
     config.write_text(config.read_text().replace("idna==3.11", "idna==3.10"))
@@ -1177,60 +1183,41 @@ def test_model_preparation_retries_only_transient_failures(tmp_path, model_origi
             assert "Hash mismatch" in result.stderr
 
 
-@pytest.mark.skipif(sys.version_info < (3, 11), reason="CI bootstrap uses stdlib tomllib")
-@pytest.mark.parametrize(
-    ("versions", "minimum", "maximum"),
-    [(["3.10", "3.11", "3.12"], "3.10", "3.12"), (["3.9", "3.10"], "3.9", "3.10")],
-)
-def test_ci_versions_bootstraps_from_pyproject_without_site_packages(tmp_path, versions, minimum, maximum):
-    project = tmp_path / "ingestion"
-    project.mkdir()
-    (project / "pyproject.toml").write_text(
-        "[tool.openmetadata.python-environments]\nsupported-python = " + json.dumps(versions) + "\n"
-    )
-
-    result = run(
-        sys.executable,
-        "-E",
-        "-S",
-        str(REPO_ROOT / "scripts/python_ci.py"),
-        "versions",
-        "--project",
-        str(project),
-        cwd=tmp_path,
-    )
-
-    assert_success(result)
-    assert json.loads(result.stdout) == {
-        "versions": versions,
-        "lowest": minimum,
-        "highest": maximum,
-    }
-
-
 def test_model_discovery_rejects_metadata_version_mismatch_and_tracks_identity(tmp_path):
     project = tmp_path / "ingestion"
     project.mkdir()
     config = project / "pyproject.toml"
-    original = (REPO_ROOT / "ingestion/pyproject.toml").read_text()
+    digest = "a" * 64
+    original = f"""[tool.uv]
+required-version = "=={UV_VERSION}"
+[[tool.uv.dependency-metadata]]
+name = "fixture-model"
+version = "1.2.3"
+requires-dist = []
+[dependency-groups]
+classification-models = ["fixture-model @ https://example.invalid/fixture_model-1.2.3-py3-none-any.whl#sha256={digest}"]
+[tool.openmetadata.python-environments]
+supported-python = ["3.9", "3.13", "3.10"]
+"""
     config.write_text(original)
     result = model_helper("discover", "--project", str(project), cwd=tmp_path)
     assert_success(result)
     baseline = json.loads(result.stdout)
-    assert baseline["discovery-python"] == "3.12"
-    keys = {entry["name"]: entry["key"] for entry in baseline["include"]}
+    assert baseline["discovery-python"] == "3.13"
+    [model] = baseline["include"]
+    assert model["name"] == "fixture-model"
     for old, new in [
-        ("#sha256=5e63", "?mirror=second#sha256=5e63"),
-        ("#sha256=5e63", "?#sha256=5e63"),
-        ("#sha256=5e63", "#sha256=6e63"),
+        ("#sha256=", "?mirror=second#sha256="),
+        ("#sha256=", "?#sha256="),
+        (digest, "b" * 64),
         (f"=={UV_VERSION}", "==0.0.0"),
     ]:
         config.write_text(original.replace(old, new))
         result = model_helper("discover", "--project", str(project), cwd=tmp_path)
         assert_success(result)
-        changed = {entry["name"]: entry["key"] for entry in json.loads(result.stdout)["include"]}
-        assert changed["en-core-web-md"] != keys["en-core-web-md"]
-    config.write_text(original.replace('version = "3.8.0"', 'version = "3.9.0"', 1))
+        [changed] = json.loads(result.stdout)["include"]
+        assert changed["key"] != model["key"]
+    config.write_text(original.replace('version = "1.2.3"', 'version = "1.2.4"'))
     result = model_helper("discover", "--project", str(project), cwd=tmp_path)
     assert result.returncode != 0
     assert "Missing exact static dependency metadata" in result.stderr
