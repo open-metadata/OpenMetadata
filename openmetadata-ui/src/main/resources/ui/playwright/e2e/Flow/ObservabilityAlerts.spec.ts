@@ -14,13 +14,13 @@
 import { expect, type Page } from '@playwright/test';
 import { DataContract } from '../../../src/generated/entity/data/dataContract';
 import {
-    TEST_CASE_NAME,
-    TEST_SUITE_NAME,
-    WEBHOOK_DELIVERY_COLUMN_NAME
+  TEST_CASE_NAME,
+  TEST_SUITE_NAME,
+  WEBHOOK_DELIVERY_COLUMN_NAME,
 } from '../../constant/alert';
 import {
-    AlertDetails,
-    ObservabilityCreationDetails
+  AlertDetails,
+  ObservabilityCreationDetails,
 } from '../../constant/alert.interface';
 import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { Domain } from '../../support/domain/Domain';
@@ -30,41 +30,41 @@ import { test as base } from '../../support/fixtures/isolatedUser';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-    commonCleanup,
-    commonPrerequisites,
-    createAlert,
-    deleteAlert,
-    generateAlertName,
-    inputBasicAlertInformation,
-    saveAlertAndVerifyResponse,
-    verifyAlertDetails,
-    visitAlertDetailsPage,
-    visitEditAlertPage
+  commonCleanup,
+  commonPrerequisites,
+  createAlert,
+  deleteAlert,
+  generateAlertName,
+  inputBasicAlertInformation,
+  saveAlertAndVerifyResponse,
+  verifyAlertDetails,
+  visitAlertDetailsPage,
+  visitEditAlertPage,
 } from '../../utils/alert';
 import { deleteFixtureEntity, settleAll } from '../../utils/apiResponse';
 import {
-    getApiContext,
-    getWorkerAdminAPIContext,
-    uuid
+  getApiContext,
+  getWorkerAdminAPIContext,
+  uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-    addExternalDestination,
-    checkAlertDetailsForWithPermissionUser,
-    checkAlertFlowForWithoutPermissionUser,
-    createCommonObservabilityAlert,
-    editObservabilityAlert,
-    getObservabilityCreationDetails,
-    visitObservabilityAlertPage
+  addExternalDestination,
+  checkAlertDetailsForWithPermissionUser,
+  checkAlertFlowForWithoutPermissionUser,
+  createCommonObservabilityAlert,
+  editObservabilityAlert,
+  getObservabilityCreationDetails,
+  visitObservabilityAlertPage,
 } from '../../utils/observabilityAlert';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import {
-    clearCapturedWebhookRequests,
-    findWebhookDelivery,
-    getAddedColumnNames,
-    startWebhookReceiver,
-    stopWebhookReceiver
+  clearCapturedWebhookRequests,
+  findWebhookDelivery,
+  getAddedColumnNames,
+  startWebhookReceiver,
+  stopWebhookReceiver,
 } from '../../utils/webhook';
 
 const user1 = new UserClass();
@@ -265,7 +265,10 @@ test('Pipeline Alert', async ({ page }) => {
     await diagnosticInfoResponse;
     await waitForAllLoadersToDisappear(page);
 
-    const diagnosticHelp = page.getByRole('button', { name: /latest offset/i });
+    // The Status row comes first, so its help icon is the first stop after the tab.
+    const diagnosticHelp = page.getByRole('button', {
+      name: /whether the alert is enabled/i,
+    });
     await diagnosticTab.focus();
     await page.keyboard.press('Tab');
     await expect(diagnosticHelp).toBeFocused();
@@ -284,7 +287,7 @@ test('Pipeline Alert', async ({ page }) => {
       )
       .toBe(true);
     await expect(
-      page.getByRole('tooltip', { name: /latest offset/i })
+      page.getByRole('tooltip', { name: /whether the alert is enabled/i })
     ).toBeVisible();
     await page.keyboard.press('Escape');
   });

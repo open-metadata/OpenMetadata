@@ -12,13 +12,13 @@
  */
 
 import {
-  Alert,
-  Box,
-  Divider,
-  FormField,
-  FormItemLabel,
-  Grid,
-  Input,
+    Alert,
+    Box,
+    Divider,
+    FormField,
+    FormItemLabel,
+    Grid,
+    Input
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
@@ -29,9 +29,10 @@ import DestinationFormItem from '../../../components/Alerts/DestinationFormItem/
 import ObservabilityFormFiltersItem from '../../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
+import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import {
-  AlertAiFormFieldsProps,
-  AlertAiFormValidationErrors,
+    AlertAiFormFieldsProps,
+    AlertAiFormValidationErrors
 } from '../../../components/observability/Alerts/AlertAiFormFields.interface';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
@@ -122,14 +123,25 @@ function ObservabilityAlertFormFields({
         <Box direction="col" gap={2}>
           <FormItemLabel label={t('label.description')} />
           <FormField control={form.control} name="description">
-            {({ field }) => (
-              <RichTextEditor
-                data-testid="description"
-                initialValue={alert?.description}
-                readonly={isAlertDisabled}
-                onTextChange={field.onChange}
-              />
-            )}
+            {({ field }) =>
+              // A mounted editor cannot be switched to read-only safely, so a disabled alert
+              // shows its description as a preview, and switching it back on mounts a fresh
+              // editor with the current text.
+              isAlertDisabled ? (
+                <div
+                  aria-disabled
+                  className="tw:rounded-lg tw:border tw:border-secondary tw:bg-disabled_subtle tw:p-3"
+                  data-testid="description-read-only">
+                  <RichTextEditorPreviewerNew markdown={field.value ?? ''} />
+                </div>
+              ) : (
+                <RichTextEditor
+                  data-testid="description"
+                  initialValue={field.value ?? alert?.description}
+                  onTextChange={field.onChange}
+                />
+              )
+            }
           </FormField>
         </Box>
       </Grid.Item>

@@ -346,10 +346,8 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
       'message.alert-disabled-form-notice'
     );
     expect(screen.getByTestId('displayName')).toBeDisabled();
-    expect(screen.getByTestId('description')).toHaveAttribute(
-      'data-readonly',
-      'true'
-    );
+    expect(screen.getByTestId('description-read-only')).toBeInTheDocument();
+    expect(screen.queryByTestId('description')).not.toBeInTheDocument();
     expect(AlertFormSourceItem).toHaveBeenLastCalledWith(
       expect.objectContaining({ isViewMode: true }),
       expect.anything()
@@ -366,6 +364,9 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
     });
 
     expect(screen.getByTestId('displayName')).not.toBeDisabled();
+    expect(
+      screen.queryByTestId('description-read-only')
+    ).not.toBeInTheDocument();
     expect(AlertFormSourceItem).toHaveBeenLastCalledWith(
       expect.objectContaining({ isViewMode: false }),
       expect.anything()
