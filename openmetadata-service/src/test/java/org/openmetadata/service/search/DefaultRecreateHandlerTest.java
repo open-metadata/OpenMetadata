@@ -3,6 +3,7 @@ package org.openmetadata.service.search;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anySet;
@@ -15,6 +16,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -25,9 +27,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.system.EventPublisherJob;
+import org.openmetadata.schema.system.IndexSettings;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
@@ -1619,6 +1625,120 @@ class DefaultRecreateHandlerTest {
       org.openmetadata.schema.utils.JsonUtils.readTree(json);
       assertTrue(json.contains("\\\"")); // escaped quote present
       assertTrue(json.contains("\\\\")); // escaped backslash present
+    }
+  }
+
+  @Nested
+  @DisplayName("Staged index shard count")
+  class StagedIndexShardsTests {
+    private static final String MAPPING =
+        "{\"settings\":{\"index\":{\"max_ngram_diff\":17}},\"mappings\":{\"properties\":{}}}";
+
+    @Test
+    @DisplayName("Unset numberOfShards keeps the mapping as it is")
+    void unsetShardsKeepsMapping() {
+      assertEquals(MAPPING, DefaultRecreateHandler.withNumberOfShards(MAPPING, null));
+      assertEquals(
+          MAPPING, DefaultRecreateHandler.withNumberOfShards(MAPPING, new IndexSettings()));
+    }
+
+    @Test
+    @DisplayName("numberOfShards is added next to the mapping's own index settings")
+    void shardsAreAddedToIndexSettings() {
+      JsonNode body =
+          JsonUtils.readTree(
+              DefaultRecreateHandler.withNumberOfShards(
+                  MAPPING, new IndexSettings().withNumberOfShards(1)));
+
+      assertEquals(1, body.at("/settings/index/number_of_shards").asInt());
+      assertEquals(17, body.at("/settings/index/max_ngram_diff").asInt());
+      assertTrue(body.at("/mappings/properties").isObject());
+    }
+
+    @Test
+    @DisplayName("A mapping without settings still gets the shard count")
+    void mappingWithoutSettingsGetsShards() {
+      JsonNode body =
+          JsonUtils.readTree(
+              DefaultRecreateHandler.withNumberOfShards(
+                  "{\"mappings\":{}}", new IndexSettings().withNumberOfShards(2)));
+
+      assertEquals(2, body.at("/settings/index/number_of_shards").asInt());
+    }
+
+    @Test
+    @DisplayName("A configured shard count replaces the mapping's own pin")
+    void configuredShardsReplaceMappingPin() {
+      JsonNode body =
+          JsonUtils.readTree(
+              DefaultRecreateHandler.withNumberOfShards(
+                  "{\"settings\":{\"index\":{\"number_of_shards\":1}}}",
+                  new IndexSettings().withNumberOfShards(3)));
+
+      assertEquals(3, body.at("/settings/index/number_of_shards").asInt());
+    }
+
+    @Test
+    @DisplayName("A per-entity override without shards keeps the mapping, not the global value")
+    void perEntityOverrideWithoutShardsKeepsMapping() {
+      EventPublisherJob job =
+          new EventPublisherJob()
+              .withLiveIndexSettings(new IndexSettings().withNumberOfShards(3))
+              .withLiveIndexSettingsByEntity(
+                  Map.of("table", new IndexSettings().withNumberOfReplicas(0)));
+
+      assertEquals(MAPPING, createStagedIndexBody(job));
+    }
+
+    @Test
+    @DisplayName("Reindex creates the staged index with the per-entity shard count")
+    void stagedIndexIsCreatedWithPerEntityShards() {
+      EventPublisherJob job =
+          new EventPublisherJob()
+              .withLiveIndexSettings(new IndexSettings().withNumberOfShards(3))
+              .withLiveIndexSettingsByEntity(
+                  Map.of("table", new IndexSettings().withNumberOfShards(1)));
+
+      assertEquals(
+          1,
+          JsonUtils.readTree(createStagedIndexBody(job))
+              .at("/settings/index/number_of_shards")
+              .asInt());
+    }
+
+    @Test
+    @DisplayName("Nonpositive numberOfShards fails before the staged index is created")
+    void nonpositiveShardsAreRejected() {
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              DefaultRecreateHandler.withNumberOfShards(
+                  MAPPING, new IndexSettings().withNumberOfShards(0)));
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              DefaultRecreateHandler.withNumberOfShards(
+                  MAPPING, new IndexSettings().withNumberOfShards(-1)));
+    }
+
+    private String createStagedIndexBody(EventPublisherJob job) {
+      SearchRepository repo = mock(SearchRepository.class);
+      SearchClient client = mock(SearchClient.class);
+      IndexMapping mapping =
+          IndexMapping.builder().indexName("table_search_index").alias("table").build();
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getIndexMapping("table")).thenReturn(mapping);
+      when(repo.readIndexMapping(mapping)).thenReturn(MAPPING);
+      when(client.getIndicesByAlias(anyString())).thenReturn(Set.of());
+
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        new DefaultRecreateHandler().withJobData(job).reCreateIndexes(Set.of("table"));
+      }
+
+      ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
+      verify(client).createIndex(anyString(), body.capture());
+      return body.getValue();
     }
   }
 }

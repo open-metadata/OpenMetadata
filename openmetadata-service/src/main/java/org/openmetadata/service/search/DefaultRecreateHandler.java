@@ -595,7 +595,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     }
 
     String stagedIndexName = buildStagedIndexName(canonicalIndexName);
-    searchClient.createIndex(stagedIndexName, mappingContent);
+    searchClient.createIndex(
+        stagedIndexName, withNumberOfShards(mappingContent, resolveLiveSettings(entityType)));
     applyBulkBuildSettings(searchClient, stagedIndexName, entityType);
     searchRepository.registerStagedIndex(entityType, stagedIndexName);
 
@@ -618,6 +619,26 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         "Created staged index '{}' for entity '{}' using provided IndexMapping.",
         stagedIndexName,
         entityType);
+  }
+
+  /** Shards are fixed at creation, so a configured numberOfShards goes into the staged index's
+   * creation body and replaces a mapping pin. ADR:2026-11-09-staged-index-shard-count-comes-from-live-index-settings */
+  static String withNumberOfShards(String mappingContent, IndexSettings live) {
+    if (live == null || live.getNumberOfShards() == null) {
+      return mappingContent;
+    }
+    requirePositiveShards(live);
+    ObjectNode root = (ObjectNode) JsonUtils.readTree(mappingContent);
+    root.withObject("/settings/index").put("number_of_shards", live.getNumberOfShards());
+    return JsonUtils.pojoToJson(root);
+  }
+
+  // The trigger payload skips the schema minimum, so a bad value must fail the run here.
+  public static void requirePositiveShards(IndexSettings settings) {
+    Integer shards = settings == null ? null : settings.getNumberOfShards();
+    if (shards != null && shards < 1) {
+      throw new IllegalArgumentException("numberOfShards must be at least 1, got " + shards);
+    }
   }
 
   private String buildStagedIndexName(String originalIndexName) {
