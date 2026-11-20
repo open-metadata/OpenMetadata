@@ -1,0 +1,145 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.it.tests;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.sso.config.SecurityConfigSwap;
+import org.openmetadata.it.sso.config.SecurityConfigSwap.Answer;
+import org.openmetadata.it.sso.config.SsoConfigs;
+import org.openmetadata.it.util.OssTestServer;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.Entity;
+
+/**
+ * A PUT of the security configuration stores a SAML IdP certificate only after it passed the check
+ * a save runs, so an administrator cannot store one that stops the next restart. A certificate the
+ * database already holds is not checked again, so an expired one can be sent back unchanged.
+ * ADR:2026-11-20-the-stored-saml-idp-certificate-is-standard-pem
+ */
+@Isolated
+@Execution(ExecutionMode.SAME_THREAD)
+class SsoSamlIdpCertificateIT {
+  private static final String IDP_ENTITY_ID = "https://idp.saml-certificate-it.invalid";
+  private static final String SP_ENTITY_ID = "openmetadata-saml-certificate-it";
+  private static final String CERTIFICATE_FIELD = "samlConfiguration.idp.idpX509Certificate";
+  private static final String CERTIFICATE_POINTER =
+      "/authenticationConfiguration/samlConfiguration/idp/idpX509Certificate";
+  private static final String VALID = resource("/saml/mock-idp.crt");
+  private static final String OTHER_VALID = resource("/saml/other-idp.crt");
+  private static final String EXPIRED = resource("/saml/expired-idp.crt");
+  private static final String NOT_A_CERTIFICATE =
+      "-----BEGIN CERTIFICATE-----\nnot-a-certificate\n-----END CERTIFICATE-----";
+
+  private static SecurityConfigSwap securityConfig;
+
+  @BeforeAll
+  static void startFromSaml() {
+    assumeFalse(OssTestServer.isExternalMode(), "Reconfigures the embedded server's SSO");
+    securityConfig = SecurityConfigSwap.snapshotLiveConfig();
+    securityConfig.applyBaseline(withIdpCertificate(securityConfig.originalCopy(), VALID));
+  }
+
+  @AfterAll
+  static void restoreTheLiveConfiguration() {
+    if (securityConfig != null) {
+      securityConfig.close();
+    }
+  }
+
+  @Test
+  @DisplayName("A PUT with an unusable IdP certificate is refused with a 400 and writes nothing")
+  void putRefusesAnUnusableCertificateAndWritesNothing() {
+    JsonNode stored = SecurityConfigSwap.storedConfig();
+
+    for (String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
+      Answer answer =
+          SecurityConfigSwap.attemptPut(
+              withIdpCertificate(securityConfig.baselineCopy(), unusable));
+
+      assertEquals(400, answer.status(), answer.body());
+      assertTrue(answer.body().contains(CERTIFICATE_FIELD), answer.body());
+      assertEquals(stored, SecurityConfigSwap.storedConfig(), "a refused PUT stores nothing");
+    }
+  }
+
+  @Test
+  @DisplayName("A PUT with a usable new IdP certificate stores it")
+  void putStoresAUsableCertificate() {
+    try {
+      Answer answer =
+          SecurityConfigSwap.attemptPut(
+              withIdpCertificate(securityConfig.baselineCopy(), OTHER_VALID));
+
+      assertEquals(200, answer.status(), answer.body());
+      assertEquals(OTHER_VALID, SecurityConfigSwap.storedConfig().at(CERTIFICATE_POINTER).asText());
+    } finally {
+      securityConfig.restoreBaseline();
+    }
+  }
+
+  /** A certificate can expire after it was stored; sending it back unchanged must still work. */
+  @Test
+  @DisplayName("A PUT that sends the stored expired IdP certificate back unchanged is accepted")
+  void putAcceptsTheStoredExpiredCertificateUnchanged() {
+    SecurityConfiguration expired = withIdpCertificate(securityConfig.baselineCopy(), EXPIRED);
+    storeWithoutChecks(expired);
+    try {
+      Answer answer = SecurityConfigSwap.attemptPut(expired);
+
+      assertEquals(200, answer.status(), answer.body());
+      assertEquals(EXPIRED, SecurityConfigSwap.storedConfig().at(CERTIFICATE_POINTER).asText());
+    } finally {
+      securityConfig.restoreBaseline();
+    }
+  }
+
+  private static SecurityConfiguration withIdpCertificate(
+      SecurityConfiguration base, String idpCertificate) {
+    return SsoConfigs.saml(base, IDP_ENTITY_ID, idpCertificate, SP_ENTITY_ID);
+  }
+
+  /** Stands for a certificate that was valid when it was saved and has expired since. */
+  private static void storeWithoutChecks(SecurityConfiguration config) {
+    Entity.getSystemRepository()
+        .createOrUpdate(
+            new Settings()
+                .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+                .withConfigValue(config.getAuthenticationConfiguration()));
+  }
+
+  private static String resource(String path) {
+    try (InputStream stream = SsoSamlIdpCertificateIT.class.getResourceAsStream(path)) {
+      return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+}
