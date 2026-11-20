@@ -44,7 +44,8 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 
 /**
  * Domain lineage rollups: one lineage row per ordered pair of domains, whose {@code assetEdges}
- * counts the lineage edges between the two domains' assets.
+ * counts the lineage edges between the two domains' assets. The invariant and its triggers are
+ * ADR:2026-11-20-a-domain-lineage-edge-counts-the-edges-its-domains-assets-hold-in-effect.
  */
 public final class LineageDomainRollups {
 
