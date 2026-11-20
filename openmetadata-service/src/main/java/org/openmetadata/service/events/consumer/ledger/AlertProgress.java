@@ -128,74 +128,57 @@ public sealed interface AlertProgress {
     }
   }
 
-  /** Keeps the rows of what it handled before it was switched off, and has nothing to read. */
+  /** Reads no change event: it stands at the latest offset and has nothing to read. */
+  sealed interface ReadsNothing extends AlertProgress {
+
+    EventSubscriptionOffset position();
+
+    long latest();
+
+    @Override
+    default long currentOffset() {
+      return latest();
+    }
+
+    @Override
+    default long startingOffset() {
+      return position().getStartingOffset();
+    }
+
+    @Override
+    default long latestOffset() {
+      return latest();
+    }
+
+    @Override
+    default PendingCount relevantUnreadCount(Relevance relevance) {
+      return PendingCount.NONE;
+    }
+
+    @Override
+    default UnreadPage unreadPage(int limit, int pageOffset, Relevance relevance) {
+      return UnreadPage.EMPTY;
+    }
+  }
+
+  /** Keeps the rows of what it handled before it was switched off. */
   record SwitchedOff(UUID alertId, EventSubscriptionOffset position, long latest)
-      implements AlertProgress {
+      implements ReadsNothing {
 
     @Override
     public Counts counts() {
       return countedFromRows(alertId);
     }
-
-    @Override
-    public long currentOffset() {
-      return latest;
-    }
-
-    @Override
-    public long startingOffset() {
-      return position.getStartingOffset();
-    }
-
-    @Override
-    public long latestOffset() {
-      return latest;
-    }
-
-    @Override
-    public PendingCount relevantUnreadCount(Relevance relevance) {
-      return PendingCount.NONE;
-    }
-
-    @Override
-    public UnreadPage unreadPage(int limit, int pageOffset, Relevance relevance) {
-      return UnreadPage.EMPTY;
-    }
   }
 
   record MakesItsOwnWork(UUID alertId, EventSubscriptionOffset position, long latest)
-      implements AlertProgress {
+      implements ReadsNothing {
 
     @Override
     public Counts counts() {
       AlertMetrics counters = AlertRecord.counters(alertId);
       return new Counts(
           counters.getTotalEvents(), counters.getSuccessEvents(), counters.getFailedEvents());
-    }
-
-    @Override
-    public long currentOffset() {
-      return latest;
-    }
-
-    @Override
-    public long startingOffset() {
-      return position.getStartingOffset();
-    }
-
-    @Override
-    public long latestOffset() {
-      return latest;
-    }
-
-    @Override
-    public PendingCount relevantUnreadCount(Relevance relevance) {
-      return PendingCount.NONE;
-    }
-
-    @Override
-    public UnreadPage unreadPage(int limit, int pageOffset, Relevance relevance) {
-      return UnreadPage.EMPTY;
     }
   }
 }
