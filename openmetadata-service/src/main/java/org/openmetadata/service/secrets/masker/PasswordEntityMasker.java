@@ -246,7 +246,8 @@ public class PasswordEntityMasker extends EntityMasker {
    * identical keys for the same field. If they disagreed, unmasking would fail to find a stored
    * secret and would silently overwrite it with the mask value.
    */
-  private void walkPasswordFields(Object target, String key, PasswordFieldVisitor visitor) {
+  private void walkPasswordFields(
+      final Object target, final String key, final PasswordFieldVisitor visitor) {
     if (target != null && !DO_NOT_MASK_CLASSES.contains(target.getClass())) {
       Arrays.stream(target.getClass().getMethods())
           .filter(ReflectionUtil::isGetMethodOfObject)
@@ -254,21 +255,25 @@ public class PasswordEntityMasker extends EntityMasker {
     }
   }
 
-  private void visitField(Object holder, Method method, String key, PasswordFieldVisitor visitor) {
+  private void visitField(
+      final Object holder,
+      final Method method,
+      final String key,
+      final PasswordFieldVisitor visitor) {
     final Object value = ReflectionUtil.getObjectFromMethod(method, holder);
     if (value != null) {
-      final String fieldName = method.getName().replaceFirst("get", "");
-      visitValue(holder, method, fieldName, createKey(key, fieldName), value, visitor);
+      visitValue(holder, method, key, value, visitor);
     }
   }
 
   private void visitValue(
       final Object holder,
       final Method method,
-      final String fieldName,
-      final String fieldKey,
+      final String key,
       final Object value,
       final PasswordFieldVisitor visitor) {
+    final String fieldName = method.getName().replaceFirst("get", "");
+    final String fieldKey = createKey(key, fieldName);
     final boolean isPassword = method.getAnnotation(PasswordField.class) != null;
     if (isPassword) {
       visitor.visit(holder, fieldName, fieldKey, value);

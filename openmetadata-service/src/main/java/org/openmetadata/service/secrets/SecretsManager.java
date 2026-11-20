@@ -447,17 +447,17 @@ public abstract class SecretsManager {
    * <p>Every walker here routes through this so that encrypt and delete derive the same secret id
    * for the same element - otherwise deleting a service would strand its secrets in the store.
    */
-  private static void forEachTraversableElement(Object obj, BiConsumer<Object, String> action) {
-    if (!(obj instanceof Collection<?> collection)) {
-      return;
-    }
-    List<String> elementKeys = ReflectionUtil.getCollectionElementKeys(collection);
-    int index = 0;
-    for (Object element : collection) {
-      if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(element))) {
-        action.accept(element, elementKeys.get(index));
+  private static void forEachTraversableElement(
+      final Object value, final BiConsumer<Object, String> action) {
+    if (value instanceof Collection<?> collection) {
+      final List<String> elementKeys = ReflectionUtil.getCollectionElementKeys(collection);
+      int index = 0;
+      for (final Object element : collection) {
+        if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(element))) {
+          action.accept(element, elementKeys.get(index));
+        }
+        index++;
       }
-      index++;
     }
   }
 
