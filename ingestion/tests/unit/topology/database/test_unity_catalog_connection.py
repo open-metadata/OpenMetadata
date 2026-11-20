@@ -83,16 +83,12 @@ def _workspace_client(catalogs=None, schemas=None, tables=None) -> MagicMock:
 
     def to_payload(value):
         obj = {"name": value.name}
-        if "catalog_type" in value._mock_kwargs:
-            kind = value.catalog_type
-            obj["catalog_type"] = kind.value if kind is not None else None
-        elif value.catalog_type is not None and not isinstance(value.catalog_type, MagicMock):
-            obj["catalog_type"] = value.catalog_type.value
-        if "table_type" in value._mock_kwargs:
-            kind = value.table_type
-            obj["table_type"] = kind.value if kind is not None else None
-        elif value.table_type is not None and not isinstance(value.table_type, MagicMock):
-            obj["table_type"] = value.table_type.value
+        catalog_type = value.catalog_type
+        if catalog_type is None or not isinstance(catalog_type, MagicMock):
+            obj["catalog_type"] = catalog_type.value if catalog_type is not None else None
+        table_type = value.table_type
+        if table_type is None or not isinstance(table_type, MagicMock):
+            obj["table_type"] = table_type.value if table_type is not None else None
         return obj
 
     def browse(method, endpoint, query=None):
