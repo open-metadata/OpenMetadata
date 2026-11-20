@@ -38,8 +38,10 @@ which did not establish that a resolved problem had returned.
 - Aggregate persisted open periods for visible group keys in one database query. Return at most
   nine counts per group. The periods are disjoint and scoped membership is deduplicated, so
   each matching period contributes one incident without a distinct-count sort.
-- Maintain periods in the same transaction as the incident summary. Its upsert locks the incident
-  before changing its periods. The existing repository gives live writes increasing timestamps.
+- Maintain periods in the same transaction as incident history and the summary. Reserve the
+  summary without overwriting an existing row, lock it, and choose the final timestamp before
+  serializing history. This orders concurrent writes as well as sequential ones; duration metrics
+  are adjusted when the timestamp moves.
   Repeated open statuses preserve the start; the first resolution sets the end. Older reopened
   chains have multiple periods, rather than a single close timestamp on the incident summary.
 - Native migration 2.1.1 creates the projection for both database engines and backfills indexed

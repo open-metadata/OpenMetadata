@@ -15,10 +15,12 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.github.dockerjava.api.model.Ulimit;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -48,6 +50,11 @@ class IncidentGroupTrendSqlTest {
             .withEnv("MYSQL_DATABASE", DATABASE)
             .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
             .withEnv("MYSQL_ROOT_HOST", "%")
+            .withTmpFs(Map.of("/var/lib/mysql", "rw,size=512m"))
+            .withCreateContainerCmdModifier(
+                cmd ->
+                    cmd.getHostConfig().withUlimits(List.of(new Ulimit("nofile", 65536L, 65536L))))
+            .withCommand("--skip-log-bin")
             .withExposedPorts(3306)
             .waitingFor(
                 Wait.forSuccessfulCommand(
@@ -125,6 +132,7 @@ class IncidentGroupTrendSqlTest {
     assertEquals(11, intervalCount(jdbi, null));
     verifyMigrationBatches(jdbi);
     verifyWritesAndDeletion(jdbi);
+    verifyReorderedWrites(jdbi);
     var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
     var window = new IncidentGroupTrend(100, 900);
     var rows =
@@ -216,6 +224,52 @@ class IncidentGroupTrendSqlTest {
               "DELETE FROM test_case_resolution_status_time_series WHERE stateId LIKE 'batch-%'");
         });
     assertEquals(11, intervalCount(jdbi, null));
+  }
+
+  private void verifyReorderedWrites(Jdbi jdbi) {
+    assertEquals(10L, persistStatus(jdbi, "ordered", "New", 10));
+    assertEquals(20L, persistStatus(jdbi, "ordered", "Resolved", 20));
+    // Both requests read the old incident before the resolving request obtained the write lock.
+    assertEquals(21L, persistStatus(jdbi, "ordered", "Ack", 15));
+    assertEquals(22L, persistStatus(jdbi, "ordered", "Resolved", 21));
+    jdbi.useHandle(
+        handle -> {
+          List<String> periods =
+              handle
+                  .createQuery(
+                      "SELECT openedAt, closedAt FROM test_case_incident_open_interval WHERE stateId = 'ordered' ORDER BY openedAt")
+                  .map((rs, ctx) -> rs.getLong("openedAt") + ":" + rs.getLong("closedAt"))
+                  .list();
+          assertEquals(List.of("10:20", "21:22"), periods);
+          assertEquals(
+              List.of(10L, 20L, 21L, 22L),
+              handle
+                  .createQuery(
+                      "SELECT timestamp FROM test_case_resolution_status_time_series WHERE stateId = 'ordered' ORDER BY timestamp")
+                  .mapTo(Long.class)
+                  .list());
+          handle.execute("DELETE FROM test_case_incident WHERE stateId = 'ordered'");
+          handle.execute(
+              "DELETE FROM test_case_resolution_status_time_series WHERE stateId = 'ordered'");
+        });
+  }
+
+  private long persistStatus(Jdbi jdbi, String stateId, String status, long timestamp) {
+    return jdbi.inTransaction(
+        handle -> {
+          var dao = handle.attach(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+          String recordId = UUID.randomUUID().toString();
+          long ordered =
+              dao.nextIncidentTimestamp(stateId, "ordered-test", status, timestamp, recordId);
+          handle.execute(
+              "INSERT INTO test_case_resolution_status_time_series (stateId,id,timestamp,testCaseResolutionStatusType) VALUES (?,?,?,?)",
+              stateId,
+              recordId,
+              ordered,
+              status);
+          dao.upsertIncident(stateId, "ordered-test", status, null, null, ordered, recordId);
+          return ordered;
+        });
   }
 
   private int intervalCount(Jdbi jdbi, String stateId) {

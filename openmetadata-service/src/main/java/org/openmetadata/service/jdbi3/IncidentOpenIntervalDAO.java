@@ -1,14 +1,54 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+
 import java.util.List;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.jdbi.BindFQN;
 
 /** Compact open periods; audit retention does not discard a surviving incident's periods. */
 public interface IncidentOpenIntervalDAO {
+  @ConnectionAwareSqlUpdate(
+      value =
+          """
+          INSERT INTO test_case_incident
+            (stateId, entityFQNHash, testCaseResolutionStatusType, createdAt, updatedAt, latestRecordId)
+          VALUES (:stateId, :entityFQNHash, :statusType, :timestamp, 0, :recordId)
+          ON DUPLICATE KEY UPDATE stateId = VALUES(stateId)
+          """,
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          """
+          INSERT INTO test_case_incident
+            (stateId, entityFQNHash, testCaseResolutionStatusType, createdAt, updatedAt, latestRecordId)
+          VALUES (:stateId, :entityFQNHash, :statusType, :timestamp, 0, :recordId)
+          ON CONFLICT (stateId) DO NOTHING
+          """,
+      connectionType = POSTGRES)
+  void reserveIncident(
+      @Bind("stateId") String stateId,
+      @BindFQN("entityFQNHash") String entityFQNHash,
+      @Bind("statusType") String statusType,
+      @Bind("timestamp") long timestamp,
+      @Bind("recordId") String recordId);
+
+  @SqlQuery("SELECT updatedAt FROM test_case_incident WHERE stateId = :stateId FOR UPDATE")
+  long lockIncidentTimestamp(@Bind("stateId") String stateId);
+
+  /** Must run in the transaction that inserts history; reservation also serializes first writes. */
+  default long nextIncidentTimestamp(
+      String stateId, String entityFQN, String statusType, long timestamp, String recordId) {
+    reserveIncident(stateId, entityFQN, statusType, timestamp, recordId);
+    return Math.max(timestamp, lockIncidentTimestamp(stateId) + 1);
+  }
+
   @SqlQuery(
       "SELECT stateId FROM test_case_incident WHERE stateId > :after ORDER BY stateId LIMIT :limit")
   List<String> listIncidentIds(@Bind("after") String after, @Bind("limit") int limit);

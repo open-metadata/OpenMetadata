@@ -566,30 +566,63 @@ public class TestCaseResolutionStatusRepository
   }
 
   private void persistRecord(String recordFQN, TestCaseResolutionStatus recordEntity) {
-    EntityReference testCaseReference = recordEntity.getTestCaseReference();
-    recordEntity.withTestCaseReference(null);
-    String recordJson = JsonUtils.pojoToJson(recordEntity);
-    recordEntity.withTestCaseReference(testCaseReference);
     DeadlockRetry.execute(
         () ->
             Entity.getJdbi()
                 .inTransaction(
                     handle -> {
-                      timeSeriesDao.insert(recordFQN, entityType, recordJson);
-                      ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
-                          .upsertIncident(
-                              recordEntity.getStateId().toString(),
-                              recordFQN,
-                              recordEntity.getTestCaseResolutionStatusType().value(),
-                              extractAssigneeName(recordEntity),
-                              recordEntity.getSeverity() != null
-                                  ? recordEntity.getSeverity().value()
-                                  : null,
-                              recordEntity.getTimestamp(),
-                              recordEntity.getId().toString());
+                      var dao =
+                          handle.attach(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+                      orderIncidentWrite(dao, recordFQN, recordEntity);
+                      dao.insert(recordFQN, entityType, serializeIncident(recordEntity));
+                      dao.upsertIncident(
+                          recordEntity.getStateId().toString(),
+                          recordFQN,
+                          recordEntity.getTestCaseResolutionStatusType().value(),
+                          extractAssigneeName(recordEntity),
+                          recordEntity.getSeverity() != null
+                              ? recordEntity.getSeverity().value()
+                              : null,
+                          recordEntity.getTimestamp(),
+                          recordEntity.getId().toString());
                       storeRelationship(recordEntity);
                       return null;
                     }));
+  }
+
+  private void orderIncidentWrite(
+      CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO dao,
+      String recordFQN,
+      TestCaseResolutionStatus record) {
+    long timestamp =
+        dao.nextIncidentTimestamp(
+            record.getStateId().toString(),
+            recordFQN,
+            record.getTestCaseResolutionStatusType().value(),
+            record.getTimestamp(),
+            record.getId().toString());
+    long adjustment = timestamp - record.getTimestamp();
+    record.setTimestamp(timestamp);
+    record.setUpdatedAt(
+        Math.max(record.getUpdatedAt() == null ? timestamp : record.getUpdatedAt(), timestamp));
+    if (adjustment > 0 && record.getMetrics() != null) {
+      record.getMetrics().stream()
+          .filter(
+              metric ->
+                  TIME_TO_RESPONSE.equals(metric.getName())
+                      || TIME_TO_RESOLUTION.equals(metric.getName()))
+          .forEach(metric -> metric.setValue(metric.getValue() + adjustment));
+    }
+  }
+
+  private String serializeIncident(TestCaseResolutionStatus record) {
+    EntityReference reference = record.getTestCaseReference();
+    record.setTestCaseReference(null);
+    try {
+      return JsonUtils.pojoToJson(record);
+    } finally {
+      record.setTestCaseReference(reference);
+    }
   }
 
   // The PARENT_OF relationship is written inside persistRecord's transaction. The base
