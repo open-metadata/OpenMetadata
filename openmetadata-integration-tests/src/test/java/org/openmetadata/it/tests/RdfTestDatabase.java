@@ -41,7 +41,7 @@ final class RdfTestDatabase implements AutoCloseable {
     this.backend = backend;
     final int port = backend == Backend.POSTGRES ? 5432 : 3306;
     container =
-        new GenericContainer<>(backend == Backend.POSTGRES ? "postgres:15" : "mysql:8.0")
+        new GenericContainer<>(backend == Backend.POSTGRES ? "postgres:15" : "mysql:8.4.13")
             .withExposedPorts(port)
             .withEnv("POSTGRES_PASSWORD", "rdf-test")
             .withEnv("POSTGRES_DB", "rdf")

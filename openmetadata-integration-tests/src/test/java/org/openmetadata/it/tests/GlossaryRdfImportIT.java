@@ -26,10 +26,12 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +44,7 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
+import org.openmetadata.it.util.RelationshipTypeTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -58,6 +61,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.RelationshipPaletteKey;
 import org.openmetadata.schema.type.RelationshipTypeCategory;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.ontology.RelationshipTypeIds;
@@ -113,9 +117,7 @@ public class GlossaryRdfImportIT {
   void cleanup(TestNamespace ns) throws Exception {
     NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
     customPropertyNames.forEach(this::deleteCustomProperty);
-    for (UUID id : relationshipTypeIds) {
-      deleteRelationshipType(id);
-    }
+    RelationshipTypeTestSupport.hardDeleteAll(relationshipTypeIds);
   }
 
   @ParameterizedTest
@@ -866,6 +868,216 @@ public class GlossaryRdfImportIT {
     assertEquals(before, getRelationshipType(inverse));
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void importSkipsInvalidInversePairWithoutSavingEitherHalf(boolean dryRun, TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "invalidInversePair" + dryRun);
+    String forward = relationshipTypeName(glossary.getName());
+    String inverse = forward + "Inverse";
+    String independent = forward + "Independent";
+    for (String name : List.of(forward, inverse, independent)) {
+      relationshipTypeIds.add(RelationshipTypeIds.stableId(name));
+    }
+    String ontology =
+        inverseCycleOntology(glossary.getName(), forward, inverse, "declared")
+            + "hcp:"
+            + inverse
+            + " a owl:ReflexiveProperty, owl:IrreflexiveProperty .\n"
+            + "hcp:Term0 hcp:"
+            + independent
+            + " hcp:Term1 .\n";
+
+    JsonNode result = importRdfBody(glossary.getName(), ontology, dryRun);
+
+    assertEquals(1, result.path("relationTypesRegistered").asInt(), result.toString());
+    assertEquals(1, result.path("relationsAdded").asInt(), result.toString());
+    assertTrue(result.path("messages").toString().contains("incompatible"), result.toString());
+    String relationSkipped =
+        "Relation %s skipped: its relationship type '%s' was skipped as invalid"
+            .formatted(forward, forward);
+    List<String> messages = new ArrayList<>();
+    result.path("messages").forEach(message -> messages.add(message.asText()));
+    assertEquals(3, messages.stream().filter(relationSkipped::equals).count(), result.toString());
+    assertFalse(result.path("messages").toString().contains("not registered"), result.toString());
+    assertRelationshipTypeMissing(forward);
+    assertRelationshipTypeMissing(inverse);
+    if (dryRun) {
+      assertRelationshipTypeMissing(independent);
+      assertEquals(404, termStatus(glossary.getName() + ".Term0"));
+    } else {
+      assertEquals(independent, getRelationshipType(independent).path("name").asText());
+      GlossaryTerm term = getTerm(glossary.getName() + ".Term0");
+      assertEquals(1, term.getRelatedTerms().size());
+      assertEquals(independent, term.getRelatedTerms().getFirst().getRelationType());
+    }
+  }
+
+  @Test
+  void importReusesGovernedInversePredicateWithoutCreatingAnAlias(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "governedInversePredicate");
+    String forward = relationshipTypeName(glossary.getName());
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(forward));
+    JsonNode synonym = getRelationshipType("synonym");
+    String ontology =
+        inverseCycleOntology(glossary.getName(), forward, "unused", "none")
+            + "hcp:"
+            + forward
+            + " owl:inverseOf skos:exactMatch .\n";
+
+    JsonNode result = importRdfBody(glossary.getName(), ontology);
+
+    assertEquals(1, result.path("relationTypesRegistered").asInt(), result.toString());
+    assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
+    assertRelationshipTypeMissing("exactMatch");
+    JsonNode after = getRelationshipType("synonym");
+    assertEquals(synonym.path("id"), after.path("id"));
+    assertEquals(synonym.path("rdfPredicate"), after.path("rdfPredicate"));
+    assertEquals(synonym.path("inverse").path("id"), after.path("inverse").path("id"));
+    assertEquals(synonym.path("characteristics"), after.path("characteristics"));
+    assertTrue(getRelationshipType(forward).path("inverse").isMissingNode());
+    for (int index = 0; index < 3; index++) {
+      GlossaryTerm term = getTerm(glossary.getName() + ".Term" + index);
+      assertEquals(2, term.getRelatedTerms().size());
+      assertTrue(
+          term.getRelatedTerms().stream()
+              .allMatch(relation -> forward.equals(relation.getRelationType())));
+    }
+  }
+
+  @Test
+  void importReusesTheGovernedNameOfAnAuthoredPredicate(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    String alias = relationshipTypeName(glossary.getName()) + "Alias";
+    String governed = alias + "Governed";
+    String inverse = alias + "Inverse";
+    RelationshipType existing =
+        SdkClients.adminClient()
+            .relationshipTypes()
+            .create(
+                new CreateRelationshipType()
+                    .withName(governed)
+                    .withDisplayName(governed)
+                    .withDescription("Governed definition")
+                    .withRdfPredicate(
+                        URI.create(
+                            "http://example.com/ontology/" + glossary.getName() + "#" + alias))
+                    .withCategory(RelationshipTypeCategory.CUSTOM)
+                    .withPaletteKey(RelationshipPaletteKey.VIOLET));
+    relationshipTypeIds.add(existing.getId());
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(alias));
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(inverse));
+    JsonNode result =
+        importRdfBody(
+            glossary.getName(),
+            inverseCycleOntology(glossary.getName(), alias, inverse, "declared"));
+    assertEquals(1, result.path("relationTypesRegistered").asInt(), result.toString());
+    assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
+    assertRelationshipTypeMissing(alias);
+    assertInversePair(governed, inverse);
+    assertCyclePerspectives(glossary, governed, inverse);
+    assertEquals("Governed definition", getRelationshipType(governed).path("description").asText());
+  }
+
+  @ParameterizedTest(name = "invalid claimer sorts before the valid one: {0}")
+  @ValueSource(booleans = {false, true})
+  void importDoesNotRejectAValidPairForAnUnwiredInvalidDeclaration(
+      boolean invalidSortsFirst, TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "unwired" + invalidSortsFirst);
+    String base = relationshipTypeName(glossary.getName());
+    String alpha = base + "Alpha";
+    String beta = alpha + "Beta";
+    // The unclaimed partner pairs with the first claiming IRI in sort order; cover both orders.
+    String gamma = invalidSortsFirst ? base + "AGamma" : alpha + "Gamma";
+    assertEquals(invalidSortsFirst, gamma.compareTo(alpha) < 0);
+    for (String name : List.of(alpha, beta, gamma)) {
+      relationshipTypeIds.add(RelationshipTypeIds.stableId(name));
+    }
+    String ontology =
+        inverseCycleOntology(glossary.getName(), alpha, beta, "declared")
+            + "hcp:"
+            + gamma
+            + " a owl:ObjectProperty, owl:ReflexiveProperty, owl:IrreflexiveProperty ; owl:inverseOf hcp:"
+            + beta
+            + " .\n"
+            + "hcp:Term0 hcp:"
+            + gamma
+            + " hcp:Term1 .\n";
+    JsonNode result = importRdfBody(glossary.getName(), ontology);
+    assertEquals(2, result.path("relationTypesRegistered").asInt(), result.toString());
+    assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
+    assertTrue(result.path("messages").toString().contains(gamma), result.toString());
+    assertRelationshipTypeMissing(gamma);
+    assertInversePair(alpha, beta);
+    assertCyclePerspectives(glossary, alpha, beta);
+  }
+
+  private void assertRelationshipTypeMissing(String name) throws Exception {
+    HttpResponse<String> response =
+        HTTP_CLIENT.send(
+            HttpRequest.newBuilder(
+                    URI.create(SdkClients.getServerUrl() + "/v1/relationshipTypes/name/" + name))
+                .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+                .GET()
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+    assertEquals(404, response.statusCode(), response.body());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void importRestoresASoftDeletedInverseFoundByItsPredicate(boolean governedName, TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "glossaryRestore" + governedName);
+    String forward = relationshipTypeName(glossary.getName());
+    String inverse = forward + "Inverse";
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(forward));
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(inverse));
+    RelationshipType deleted = softDeletedPartner(glossary, inverse, governedName);
+    relationshipTypeIds.add(deleted.getId());
+    String ontology = inverseCycleOntology(glossary.getName(), forward, inverse, "undeclared");
+
+    JsonNode planned = importRdfBody(glossary.getName(), ontology, true);
+
+    assertTrue(
+        planned.path("messages").toString().contains(deleted.getName() + "' is deleted"),
+        planned.toString());
+    assertTrue(relationshipTypeById(deleted.getId()).path("deleted").asBoolean());
+
+    long restoredAfter = System.currentTimeMillis();
+    JsonNode result = importRdfBody(glossary.getName(), ontology);
+
+    assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
+    assertEquals(planned.path("relationsAdded"), result.path("relationsAdded"));
+    assertEquals(planned.path("relationTypesRegistered"), result.path("relationTypesRegistered"));
+    JsonNode restored = getRelationshipType(deleted.getName());
+    assertEquals(deleted.getId().toString(), restored.path("id").asText());
+    assertFalse(restored.path("deleted").asBoolean());
+    if (governedName) {
+      assertEquals(
+          404,
+          get(SdkClients.getServerUrl() + "/v1/relationshipTypes/name/" + inverse).statusCode(),
+          "no alias is registered beside the governed type");
+    }
+    assertInversePair(forward, deleted.getName());
+    assertCyclePerspectives(glossary, forward, deleted.getName());
+    assertTrue(
+        restoreEventsSince(deleted.getId(), restoredAfter), "the restore is recorded as an event");
+  }
+
+  private boolean restoreEventsSince(UUID id, long timestamp) {
+    RelationshipTypeTestSupport.Reply reply =
+        RelationshipTypeTestSupport.send(
+            "GET", "/v1/events?entityRestored=relationshipType&timestamp=" + timestamp, null);
+    assertEquals(200, reply.status(), reply.message());
+    boolean found = false;
+    for (JsonNode event : reply.body().path("data")) {
+      found |= id.toString().equals(event.path("entityId").asText());
+    }
+    return found;
+  }
+
   @Test
   void importPreservesSymmetricSelfInverseWhenNamedInverseIsDeclared(TestNamespace ns)
       throws Exception {
@@ -875,34 +1087,19 @@ public class GlossaryRdfImportIT {
     relationshipTypeIds.add(RelationshipTypeIds.stableId(forward));
     relationshipTypeIds.add(RelationshipTypeIds.stableId(inverse));
 
-    String ontology =
-        """
-        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
-        @prefix owl: <http://www.w3.org/2002/07/owl#> .
-        @prefix hcp: <http://example.com/ontology/%s#> .
-        hcp:Term0 a skos:Concept ; hcp:%s hcp:Term1 .
-        hcp:Term1 a skos:Concept ; hcp:%s hcp:Term2 .
-        hcp:Term2 a skos:Concept ; hcp:%s hcp:Term0 .
-        hcp:%s a owl:ObjectProperty ; a owl:SymmetricProperty ; owl:inverseOf hcp:%s .
-        hcp:%s a owl:ObjectProperty .
-        """
-            .formatted(glossary.getName(), forward, forward, forward, forward, inverse, inverse);
+    String ontology = symmetricInverseOntology(glossary.getName(), forward, inverse, forward);
 
     JsonNode result = importRdfBody(glossary.getName(), ontology);
 
+    assertTrue(result.path("messages").isEmpty(), result.toString());
     assertEquals(2, result.path("relationTypesRegistered").asInt(), result.toString());
     assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
     JsonNode forwardType = getRelationshipType(forward);
     JsonNode inverseType = getRelationshipType(inverse);
-    // A symmetric property is its own inverse; the declared named inverse must not overwrite
-    // that self-reference (which would trip the validator).
+    // Symmetric properties must retain their self-inverse.
     assertEquals(forward, forwardType.path("inverse").path("name").asText());
     assertEquals(forwardType.path("id"), forwardType.path("inverse").path("id"));
-    // The named inverse still points back at the symmetric property.
-    assertEquals(forward, inverseType.path("inverse").path("name").asText());
-    assertEquals(forwardType.path("id"), inverseType.path("inverse").path("id"));
-    // Symmetry flips the reverse direction back to the authored predicate, so each term
-    // sees forward edges to both its neighbours.
+    assertTrue(inverseType.path("inverse").isMissingNode());
     for (int index = 0; index < 3; index++) {
       GlossaryTerm term = getTerm(glossary.getName() + ".Term" + index);
       String next = "Term" + ((index + 1) % 3);
@@ -925,6 +1122,155 @@ public class GlossaryRdfImportIT {
           term.getRelatedTerms().stream().noneMatch(edge -> inverse.equals(edge.getRelationType())),
           "named inverse must not appear on symmetric edges");
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void importSkipsANameHeldByADeletedTypeOnAnotherPredicate(boolean dryRun, TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "glossaryNameHeld" + dryRun);
+    String authored = relationshipTypeName(glossary.getName());
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(authored));
+    URI oldPredicate = URI.create("http://example.com/elsewhere/" + glossary.getName() + "#old");
+    RelationshipType held =
+        SdkClients.adminClient()
+            .relationshipTypes()
+            .create(
+                new CreateRelationshipType()
+                    .withName(authored)
+                    .withDisplayName("Held name")
+                    .withDescription("Governed on another predicate")
+                    .withRdfPredicate(oldPredicate)
+                    .withCategory(RelationshipTypeCategory.CUSTOM)
+                    .withPaletteKey(RelationshipPaletteKey.BLUE));
+    relationshipTypeIds.add(held.getId());
+    assertEquals(200, RelationshipTypeTestSupport.deleteType(held.getId(), false).status());
+
+    JsonNode result =
+        importRdfBody(
+            glossary.getName(),
+            inverseCycleOntology(glossary.getName(), authored, "unused", "none"),
+            dryRun);
+
+    assertTrue(
+        result
+            .path("messages")
+            .toString()
+            .contains("held by a deleted relationship type on " + oldPredicate),
+        result.toString());
+    assertTrue(
+        result
+            .path("messages")
+            .toString()
+            .contains("its relationship type '" + authored + "' was skipped as invalid"),
+        result.toString());
+    assertEquals(0, result.path("relationTypesRegistered").asInt(), result.toString());
+    assertEquals(0, result.path("relationsAdded").asInt(), result.toString());
+    JsonNode stored = relationshipTypeById(held.getId());
+    assertTrue(stored.path("deleted").asBoolean(), stored.toString());
+    assertEquals(oldPredicate.toString(), stored.path("rdfPredicate").asText());
+  }
+
+  /**
+   * A soft-deleted type on the predicate the ontology names {@code name}: one an earlier import
+   * registered under that name, or a governed type whose name differs from the IRI's local name.
+   */
+  private RelationshipType softDeletedPartner(Glossary glossary, String name, boolean governedName)
+      throws Exception {
+    RelationshipType type;
+    if (governedName) {
+      type =
+          SdkClients.adminClient()
+              .relationshipTypes()
+              .create(
+                  new CreateRelationshipType()
+                      .withName(name + "Governed")
+                      .withDisplayName("Governed inverse")
+                      .withDescription("Governed under its own name")
+                      .withRdfPredicate(
+                          URI.create(
+                              "http://example.com/ontology/" + glossary.getName() + "#" + name))
+                      .withCategory(RelationshipTypeCategory.CUSTOM)
+                      .withPaletteKey(RelationshipPaletteKey.BLUE));
+    } else {
+      importRdfBody(
+          glossary.getName(),
+          inverseCycleOntology(glossary.getName(), name, "unused", "none")
+              .replace("hcp:Term", "hcp:Earlier"));
+      for (int index = 0; index < 3; index++) {
+        RelationshipTypeTestSupport.Reply deleted =
+            RelationshipTypeTestSupport.send(
+                "DELETE",
+                "/v1/glossaryTerms/name/"
+                    + glossary.getName()
+                    + ".Earlier"
+                    + index
+                    + "?hardDelete=true",
+                null);
+        assertEquals(200, deleted.status(), deleted.message());
+      }
+      type = RelationshipTypeTestSupport.asType(RelationshipTypeTestSupport.getTypeByName(name));
+    }
+    RelationshipTypeTestSupport.Reply reply =
+        RelationshipTypeTestSupport.deleteType(type.getId(), false);
+    assertEquals(200, reply.status(), reply.message());
+    return type;
+  }
+
+  private JsonNode relationshipTypeById(UUID id) throws Exception {
+    HttpResponse<String> response =
+        get(SdkClients.getServerUrl() + "/v1/relationshipTypes/" + id + "?include=all");
+    assertEquals(200, response.statusCode(), response.body());
+    return OBJECT_MAPPER.readTree(response.body());
+  }
+
+  @Test
+  void importKeepsNamedPartnerEdgesWhenInverseIsSymmetric(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "glossarySymmetricPartner");
+    String symmetric = relationshipTypeName(glossary.getName());
+    String authored = symmetric + "Inverse";
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(symmetric));
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(authored));
+
+    JsonNode result =
+        importRdfBody(
+            glossary.getName(),
+            symmetricInverseOntology(glossary.getName(), symmetric, authored, authored));
+
+    assertTrue(result.path("messages").isEmpty(), result.toString());
+    assertEquals(2, result.path("relationTypesRegistered").asInt(), result.toString());
+    assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
+    // A directed cycle necessarily includes both UUID orderings.
+    for (int index = 0; index < 3; index++) {
+      GlossaryTerm term = getTerm(glossary.getName() + ".Term" + index);
+      assertEquals(2, term.getRelatedTerms().size());
+      for (TermRelation relation : term.getRelatedTerms()) {
+        assertEquals(
+            authored,
+            relation.getRelationType(),
+            "Both ends must retain the authored named partner");
+      }
+      assertEquals(
+          Set.of("Term" + ((index + 1) % 3), "Term" + ((index + 2) % 3)),
+          term.getRelatedTerms().stream()
+              .map(relation -> relation.getTerm().getName())
+              .collect(Collectors.toSet()));
+    }
+    assertEquals(symmetric, getRelationshipType(symmetric).path("inverse").path("name").asText());
+    assertTrue(getRelationshipType(authored).path("inverse").isMissingNode());
+  }
+
+  private String symmetricInverseOntology(
+      String glossaryName, String symmetric, String partner, String authored) {
+    return inverseCycleOntology(glossaryName, authored, partner, "none")
+        + "hcp:"
+        + symmetric
+        + " a owl:ObjectProperty, owl:SymmetricProperty ; owl:inverseOf hcp:"
+        + partner
+        + " .\n"
+        + "hcp:"
+        + partner
+        + " a owl:ObjectProperty .\n";
   }
 
   private RelationshipType createExistingPartner(Glossary glossary, String name, String inverse) {
@@ -1026,20 +1372,6 @@ public class GlossaryRdfImportIT {
 
   private String relationshipTypeName(String glossaryName) {
     return "prescribes" + RelationshipTypeIds.stableId(glossaryName).toString().replace("-", "");
-  }
-
-  private void deleteRelationshipType(UUID id) throws Exception {
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(
-                URI.create(
-                    SdkClients.getServerUrl() + "/v1/relationshipTypes/" + id + "?hardDelete=true"))
-            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-            .timeout(Duration.ofSeconds(30))
-            .DELETE()
-            .build();
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-    assertTrue(response.statusCode() == 200 || response.statusCode() == 404, response.body());
   }
 
   private HttpResponse<String> sendImportRdf(
