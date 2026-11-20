@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Alert, Box, Toggle } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Card,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface AlertEnabledSwitchProps {
@@ -21,8 +27,8 @@ interface AlertEnabledSwitchProps {
 }
 
 /**
- * Switches an alert on or off from its form. While it is off, the notice says the alert sends
- * nothing and that what happens meanwhile is not sent later; the live region announces it.
+ * The settings row that switches an alert on or off from its form. The description says what
+ * the current state means, and its live region announces the change.
  */
 const AlertEnabledSwitch = ({
   isEnabled,
@@ -30,26 +36,38 @@ const AlertEnabledSwitch = ({
   onChange,
 }: AlertEnabledSwitchProps) => {
   const { t } = useTranslation();
+  const descriptionId = useId();
 
   return (
-    <Box direction="col" gap={3}>
-      <Toggle
-        data-testid="alert-enabled-switch"
-        isDisabled={!canEdit}
-        isSelected={isEnabled}
-        label={t('label.enabled')}
-        onChange={onChange}
-      />
-      <div aria-live="polite" role="status">
-        {!isEnabled && (
-          <Alert
-            data-testid="alert-disabled-notice"
-            title={t('message.alert-disabled-form-notice')}
-            variant="warning"
+    <Card data-testid="alert-enabled-row">
+      <Card.Content>
+        <Box align="center" gap={4} justify="between">
+          <Box direction="col" gap={1}>
+            <Typography className="tw:text-primary" weight="semibold">
+              {t('label.enabled')}
+            </Typography>
+            <div
+              aria-live="polite"
+              data-testid="alert-enabled-description"
+              id={descriptionId}>
+              <Typography className="tw:text-tertiary" size="text-sm">
+                {isEnabled
+                  ? t('message.alert-enabled-description')
+                  : t('message.alert-disabled-description')}
+              </Typography>
+            </div>
+          </Box>
+          <Toggle
+            aria-describedby={descriptionId}
+            aria-label={t('label.enabled')}
+            data-testid="alert-enabled-switch"
+            isDisabled={!canEdit}
+            isSelected={isEnabled}
+            onChange={onChange}
           />
-        )}
-      </div>
-    </Box>
+        </Box>
+      </Card.Content>
+    </Card>
   );
 };
 

@@ -21,38 +21,55 @@ const renderSwitch = (
   props: Partial<Parameters<typeof AlertEnabledSwitch>[0]>
 ) => {
   const onChange = jest.fn();
-  render(
+  const result = render(
     <AlertEnabledSwitch canEdit isEnabled onChange={onChange} {...props} />
   );
 
-  return onChange;
+  return { onChange, ...result };
 };
 
 describe('AlertEnabledSwitch', () => {
-  it('is a switch named Enabled, on for an enabled alert, with no notice', () => {
+  it('shows a titled row whose switch is named Enabled and on for an enabled alert', () => {
     renderSwitch({});
 
-    const toggle = screen.getByRole('switch', { name: 'label.enabled' });
-
-    expect(toggle).toBeChecked();
-    expect(
-      screen.queryByTestId('alert-disabled-notice')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('alert-enabled-row')).toHaveTextContent(
+      'label.enabled'
+    );
+    expect(screen.getByRole('switch', { name: 'label.enabled' })).toBeChecked();
+    expect(screen.getByTestId('alert-enabled-description')).toHaveTextContent(
+      'message.alert-enabled-description'
+    );
   });
 
-  it('announces that a disabled alert sends nothing, now or later', () => {
+  it('describes a disabled alert as sending nothing, now or later', () => {
     renderSwitch({ isEnabled: false });
 
     expect(
       screen.getByRole('switch', { name: 'label.enabled' })
     ).not.toBeChecked();
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'message.alert-disabled-form-notice'
+    expect(screen.getByTestId('alert-enabled-description')).toHaveTextContent(
+      'message.alert-disabled-description'
     );
   });
 
+  it('announces the description when the state changes and ties it to the switch', () => {
+    const { rerender, onChange } = renderSwitch({});
+    const region = screen.getByTestId('alert-enabled-description');
+
+    expect(region).toHaveAttribute('aria-live', 'polite');
+    expect(
+      screen.getByRole('switch', { name: 'label.enabled' })
+    ).toHaveAttribute('aria-describedby', region.id);
+
+    rerender(
+      <AlertEnabledSwitch canEdit isEnabled={false} onChange={onChange} />
+    );
+
+    expect(region).toHaveTextContent('message.alert-disabled-description');
+  });
+
   it('reports the new state when switched', () => {
-    const onChange = renderSwitch({});
+    const { onChange } = renderSwitch({});
 
     fireEvent.click(screen.getByRole('switch', { name: 'label.enabled' }));
 

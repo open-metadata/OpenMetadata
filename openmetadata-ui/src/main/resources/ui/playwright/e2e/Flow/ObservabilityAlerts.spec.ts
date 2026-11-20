@@ -346,13 +346,15 @@ test('Pipeline Alert', async ({ page }) => {
 
     await visitEditAlertPage(page, data.alertDetails, false);
     const enabledSwitch = page.getByRole('switch', { name: 'Enabled' });
+    const enabledDescription = page.getByTestId('alert-enabled-description');
     await expect(enabledSwitch).toBeChecked();
     await expect(page.locator('#displayName')).toBeEnabled();
+    await expect(enabledDescription).toContainText('sends notifications');
 
     await enabledSwitch.press('Space');
     await expect(enabledSwitch).not.toBeChecked();
     await expect(page.locator('#displayName')).toBeDisabled();
-    await expect(page.getByTestId('alert-disabled-notice')).toBeVisible();
+    await expect(enabledDescription).toContainText('It sends nothing');
     await expect(page.getByTestId('save-button')).toBeEnabled();
     expect((await saveAlert()).enabled).toBe(false);
 
@@ -363,7 +365,7 @@ test('Pipeline Alert', async ({ page }) => {
     await enabledSwitch.press('Space');
     await expect(enabledSwitch).toBeChecked();
     await expect(page.locator('#displayName')).toBeEnabled();
-    await expect(page.getByTestId('alert-disabled-notice')).toHaveCount(0);
+    await expect(enabledDescription).toContainText('sends notifications');
     expect((await saveAlert()).enabled).toBe(true);
   });
 
