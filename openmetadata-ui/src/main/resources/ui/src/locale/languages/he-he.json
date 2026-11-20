@@ -2153,6 +2153,7 @@
     "request-schema-field": "שדה סכמת בקשה",
     "request-tag-plural": "בקשת תגיות",
     "requested-by": "מבוקש על ידי",
+    "require-encrypted-assertions": "דרישת הצהרות SAML מוצפנות",
     "required": "נדרש",
     "required-field": "שדה חובה",
     "required-field-plural": "שדות חובה",

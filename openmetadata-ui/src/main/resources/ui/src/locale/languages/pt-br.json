@@ -2153,6 +2153,7 @@
     "request-schema-field": "Campo de esquema da requisição",
     "request-tag-plural": "Solicitar Tags",
     "requested-by": "Solicitado por",
+    "require-encrypted-assertions": "Exigir asserções criptografadas",
     "required": "Obrigatória",
     "required-field": "Campo obrigatório",
     "required-field-plural": "Campos Obrigatórios",

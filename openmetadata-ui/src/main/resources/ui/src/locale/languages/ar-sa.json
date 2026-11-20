@@ -2153,6 +2153,7 @@
     "request-schema-field": "حقل مخطط الطلب",
     "request-tag-plural": "طلب وسوم",
     "requested-by": "Requested By",
+    "require-encrypted-assertions": "اشتراط تشفير تأكيدات SAML",
     "required": "مطلوب",
     "required-field": "حقل مطلوب",
     "required-field-plural": "حقول مطلوبة",

@@ -2153,6 +2153,7 @@
     "request-schema-field": "請求結構欄位",
     "request-tag-plural": "請求標籤",
     "requested-by": "Requested By",
+    "require-encrypted-assertions": "要求加密斷言",
     "required": "必填",
     "required-field": "必填欄位",
     "required-field-plural": "必填欄位",

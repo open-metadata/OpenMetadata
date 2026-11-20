@@ -2153,6 +2153,7 @@
     "request-schema-field": "विनंती स्कीमा फील्ड",
     "request-tag-plural": "विनंती टॅग",
     "requested-by": "Requested By",
+    "require-encrypted-assertions": "कूटबद्ध SAML विधाने आवश्यक करा",
     "required": "आवश्यक",
     "required-field": "आवश्यक फील्ड",
     "required-field-plural": "आवश्यक फील्ड्स",

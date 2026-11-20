@@ -2153,6 +2153,7 @@
     "request-schema-field": "فیلد اسکیما درخواست",
     "request-tag-plural": "برچسب‌های درخواست",
     "requested-by": "Requested By",
+    "require-encrypted-assertions": "ضرورت رمزگذاری تأییدیه‌های SAML",
     "required": "اجباری",
     "required-field": "فیلد الزامی",
     "required-field-plural": "فیلدهای الزامی",

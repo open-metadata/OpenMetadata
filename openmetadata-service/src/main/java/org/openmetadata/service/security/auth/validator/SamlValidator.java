@@ -496,9 +496,9 @@ public class SamlValidator {
       X509Certificate cert, String certName, SamlSSOClientConfig samlConfig)
       throws CertificateException {
     // Check if certificate is expired
-    Date now = Date.from(Instant.now());
-    Date notAfter = cert.getNotAfter();
-    Date notBefore = cert.getNotBefore();
+    final Date now = Date.from(Instant.now());
+    final Date notAfter = cert.getNotAfter();
+    final Date notBefore = cert.getNotBefore();
 
     if (now.before(notBefore)) {
       throw new CertificateException(certName + " is not yet valid. Valid from: " + notBefore);

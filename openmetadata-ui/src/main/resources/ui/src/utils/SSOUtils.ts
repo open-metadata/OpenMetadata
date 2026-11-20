@@ -577,6 +577,21 @@ const cleanupSamlIdp = (
   }
 };
 
+const resolveSamlBrowserCallback = (
+  acs: string,
+  configuredCallback: string | undefined
+): string | undefined => {
+  try {
+    const url = new URL(acs);
+
+    return url.pathname.endsWith('/callback')
+      ? acs
+      : configuredCallback || `${url.origin}/callback`;
+  } catch {
+    return configuredCallback;
+  }
+};
+
 /**
  * Cleans SAML SP configuration
  */
@@ -584,13 +599,23 @@ const cleanupSamlSp = (
   spConfig: Record<string, unknown>,
   authConfig: AuthenticationConfiguration
 ): void => {
-  const callbackUrl =
-    typeof spConfig.acs === 'string' ? spConfig.acs : spConfig.callback;
+  const acs =
+    typeof spConfig.acs === 'string' && spConfig.acs
+      ? spConfig.acs
+      : spConfig.callback;
 
-  if (typeof callbackUrl === 'string') {
-    authConfig.callbackUrl = callbackUrl;
-    spConfig.callback = callbackUrl;
-    spConfig.acs = callbackUrl;
+  if (typeof acs === 'string' && acs) {
+    spConfig.acs = acs;
+    const callbackUrl = resolveSamlBrowserCallback(
+      acs,
+      authConfig.callbackUrl ||
+        (typeof spConfig.callback === 'string' ? spConfig.callback : undefined)
+    );
+
+    if (callbackUrl) {
+      authConfig.callbackUrl = callbackUrl;
+      spConfig.callback = callbackUrl;
+    }
   }
   if (typeof spConfig.spX509Certificate === 'string') {
     spConfig.spX509Certificate = spConfig.spX509Certificate.replaceAll(

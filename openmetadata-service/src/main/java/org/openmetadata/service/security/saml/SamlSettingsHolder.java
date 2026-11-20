@@ -127,9 +127,10 @@ public class SamlSettingsHolder {
   private static void putIdpCertificates(Map<String, Object> samlData, String pem)
       throws CertificateException {
     if (!CommonUtil.nullOrEmpty(pem)) {
-      // Keep future rollover keys: live settings are cached, so filtering here would require a
-      // restart when the IdP activates its next key. Static validation requires an active key.
-      List<X509Certificate> certificates = SamlCertificates.parseUnexpiredIdpCertificates(pem);
+      // Runtime keys are explicitly pinned. Expiry must not turn a later restart into a server
+      // outage; validity is checked when validating new settings. Remove retired keys explicitly.
+      // ADR:2026-11-20-saml-runtime-trust-preserves-configured-signing-keys
+      final List<X509Certificate> certificates = SamlCertificates.parse(pem);
       samlData.put(SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, certificates.getFirst());
       for (int i = 0; i < certificates.size(); i++) {
         samlData.put(SettingsBuilder.IDP_X509CERTMULTI_PROPERTY_KEY + "." + i, certificates.get(i));

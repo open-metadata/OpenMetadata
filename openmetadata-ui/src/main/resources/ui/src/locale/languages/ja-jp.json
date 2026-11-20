@@ -2153,6 +2153,7 @@
     "request-schema-field": "リクエストスキーマフィールド",
     "request-tag-plural": "タグをリクエスト",
     "requested-by": "リクエスト者",
+    "require-encrypted-assertions": "暗号化されたアサーションを必須にする",
     "required": "必須",
     "required-field": "必須フィールド",
     "required-field-plural": "必須フィールド",

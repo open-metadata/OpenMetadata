@@ -2153,6 +2153,7 @@
     "request-schema-field": "요청 스키마 필드",
     "request-tag-plural": "태그 요청",
     "requested-by": "Requested By",
+    "require-encrypted-assertions": "암호화된 어설션 필수",
     "required": "필수",
     "required-field": "필수 필드",
     "required-field-plural": "필수 필드",

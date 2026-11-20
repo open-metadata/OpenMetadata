@@ -2153,6 +2153,7 @@
     "request-schema-field": "Begäransschemafält",
     "request-tag-plural": "Begär taggar",
     "requested-by": "Begärd av",
+    "require-encrypted-assertions": "Kräv krypterade SAML-intyg",
     "required": "Krävs",
     "required-field": "Required Field",
     "required-field-plural": "Obligatoriska fält",

@@ -28,11 +28,11 @@ public final class SamlCertificates {
   private SamlCertificates() {}
 
   /** Ignore inactive rollover keys while requiring at least one currently usable trust anchor. */
-  public static List<X509Certificate> parseValidIdpCertificates(String value)
+  public static List<X509Certificate> parseValidIdpCertificates(final String value)
       throws CertificateException {
-    List<X509Certificate> valid = new ArrayList<>();
-    Date now = new Date();
-    for (X509Certificate certificate : parse(value)) {
+    final List<X509Certificate> valid = new ArrayList<>();
+    final Date now = new Date();
+    for (final X509Certificate certificate : parse(value)) {
       if (!now.before(certificate.getNotBefore()) && !now.after(certificate.getNotAfter())) {
         valid.add(certificate);
       }
@@ -44,40 +44,29 @@ public final class SamlCertificates {
     return List.copyOf(valid);
   }
 
-  /** Retain upcoming rollover keys, but never trust a key that has already expired. */
-  public static List<X509Certificate> parseUnexpiredIdpCertificates(String value)
-      throws CertificateException {
-    Date now = new Date();
-    List<X509Certificate> certificates =
-        parse(value).stream().filter(certificate -> !now.after(certificate.getNotAfter())).toList();
+  public static List<X509Certificate> parse(final String value) throws CertificateException {
+    final List<X509Certificate> certificates =
+        CertificateFactory.getInstance("X.509")
+            .generateCertificates(new ByteArrayInputStream(decode(value)))
+            .stream()
+            .map(X509Certificate.class::cast)
+            .distinct()
+            .toList();
     if (certificates.isEmpty()) {
-      throw new CertificateException(
-          "All IdP X509 certificates have expired; import current IdP metadata");
+      throw new CertificateException("No X509 certificates were provided");
     }
     return certificates;
   }
 
-  public static List<X509Certificate> parse(String value) throws CertificateException {
+  private static byte[] decode(final String value) throws CertificateException {
+    if (value.replace(PEM_BEGIN, "").replace("-----END CERTIFICATE-----", "").isBlank()) {
+      throw new CertificateException("Certificate data is empty after removing PEM headers");
+    }
     try {
-      if (value.replace(PEM_BEGIN, "").replace("-----END CERTIFICATE-----", "").isBlank()) {
-        throw new CertificateException("Certificate data is empty after removing PEM headers");
-      }
-      byte[] encoded =
-          value.contains(PEM_BEGIN)
-              ? value.getBytes(StandardCharsets.US_ASCII)
-              : Base64.getDecoder().decode(value.replaceAll("\\s+", ""));
-      List<X509Certificate> certificates =
-          CertificateFactory.getInstance("X.509")
-              .generateCertificates(new ByteArrayInputStream(encoded))
-              .stream()
-              .map(X509Certificate.class::cast)
-              .distinct()
-              .toList();
-      if (certificates.isEmpty()) {
-        throw new CertificateException("No X509 certificates were provided");
-      }
-      return certificates;
-    } catch (IllegalArgumentException e) {
+      return value.contains(PEM_BEGIN)
+          ? value.getBytes(StandardCharsets.US_ASCII)
+          : Base64.getDecoder().decode(value.replaceAll("\\s+", ""));
+    } catch (final IllegalArgumentException e) {
       throw new CertificateException("Invalid X509 certificate encoding", e);
     }
   }

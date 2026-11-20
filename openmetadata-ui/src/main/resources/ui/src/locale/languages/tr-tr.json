@@ -2153,6 +2153,7 @@
     "request-schema-field": "İstek Şema Alanı",
     "request-tag-plural": "Etiket İste",
     "requested-by": "Requested By",
+    "require-encrypted-assertions": "Şifrelenmiş SAML Beyanlarını Zorunlu Kıl",
     "required": "Gerekli",
     "required-field": "Zorunlu alan",
     "required-field-plural": "Zorunlu Alanlar",
