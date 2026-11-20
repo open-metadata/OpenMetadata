@@ -1,9 +1,9 @@
-# The stored SAML IdP certificate is standard PEM: the server reads it strictly, a migration rewrites older layouts once, and every way in is checked
+# The stored SAML IdP certificate is standard PEM: the server reads it strictly, a migration rewrites older layouts once, and the settings write step checks every new one
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-20 (initial)
 - **Deciders:** Adrià Manero
-- **Guard:** `IdpCertificatePemTest` and `SamlIdpCertificateMigrationTest` (the layouts the step rewrites and the values it leaves alone); `SamlIdpCertificateGateTest`, the SAML cases of `DeploymentConfigReconcilerTest`, `OpenMetadataOperationsSecurityConfigTest` and `SsoSamlIdpCertificateIT` (what reaches the database from each way in)
+- **Guard:** `IdpCertificatePemTest` and `SamlIdpCertificateMigrationTest` (the layouts the step rewrites and the values it leaves alone); `SettingsWriteFunnelTest` (no setting is written past the write step); `SystemRepositorySecuritySettingsTest` and `SsoSamlIdpCertificateIT` (each way in refuses a bad new certificate and keeps an unchanged one)
 - **Related:** #37056; PR #38197, PR #38219 and PR #38302 (the strict reader); ADR:2026-11-11-a-data-migration-carries-its-own-logic
 
 ## Context
@@ -19,9 +19,10 @@ those three layouts. The certificate is read while the server starts, so a store
 them stops the server from starting after the upgrade.
 
 The UI saves the configuration with a PATCH, which runs the full validation, certificate included.
-Four other ways wrote it without that check: the first start, which seeds the setting from the
+Other ways wrote it without that check: the first start, which seeds the setting from the
 deployment (`SAML_IDP_CERTIFICATE` in `openmetadata.yaml`); on main and 2.1 every start that
 reconciles it; a PUT of the security configuration; and the `update-security-config` command.
+Checking each of them by hand would leave the next new way unchecked.
 
 ## Decision
 
@@ -37,21 +38,27 @@ reconciles it; a PUT of the security configuration; and the `update-security-con
    of the authentication configuration changes.
 4. The step lives in 2.0.10 on every branch, so a database upgraded from 2.0.9 to 2.0.10 does not
    run it again on 2.1, and a database already on 2.1.0 runs it on its next upgrade.
-5. **Every way in checks the certificate before it is stored**: the UI and any PATCH (the full
-   validation), and a PUT, the `update-security-config` command, the first-start seed and, on main
-   and 2.1, the reconcile (`SamlIdpCertificateGate`). The gate calls
-   `SamlValidator.validateIdpCertificate`, the check the full validation runs, so there is one
-   rule. It checks only a certificate that is new or differs from the stored one: a stored
-   certificate that expired since it was saved keeps working at runtime, so sending it back
-   unchanged or restarting with it must not fail.
-6. **A refused certificate is never stored.** A PUT answers 400 and the command exits non-zero,
-   both naming the field. A first start stops with that message. A reconciled value follows the
-   setting's mode: in `AUTO` and `DB` the stored value stays and the error is logged on every
-   start until the deployment value is fixed; in `ENV` the start stops.
+5. **The check runs in one place: the settings write step** (`SystemRepository`'s
+   `prepareSettingForUpdate`), which every write of a setting's value passes before the database:
+   the UI and API saves (PUT and PATCH of the security configuration, the settings endpoints), the
+   administration commands, seeds and the reconciled deployment value. The step gets the new value
+   and the stored value it replaces, decrypted, and runs the checks of that setting type. For the
+   authentication configuration it calls `SamlValidator.validateIdpCertificate`, the check the
+   full validation of a save runs, so there is one rule. `SettingsWriteFunnelTest` fails when a
+   new method writes a setting's value without that step. The full validation of a save stays in
+   front of it, with its network checks.
+6. **Ratcheting.** The step checks only a certificate that is new or differs from the stored one. A
+   stored certificate that expired since it was saved keeps working at runtime, so sending it back
+   unchanged or restarting with it never fails.
+7. **A refused certificate is never stored, and each way reports it as before.** An API save
+   answers 400 naming the field; a command exits non-zero with that message; a first start stops
+   with it; a reconciled value follows the setting's mode: in `AUTO` and `DB` the stored value
+   stays and the error is logged on every start until the deployment value is fixed, in `ENV` the
+   start stops.
 
 ## Consequences
 
-Upgraded databases hold certificates the strict reader accepts, and no deployment value can put a
+Upgraded databases hold certificates the strict reader accepts, and no write can put a
 bad one back. In `AUTO` mode an unchanged `SAML_IDP_CERTIFICATE` keeps the migrated value, and so
 does the stored row on 2.0, where the deployment only seeds an empty database. After the migration
 the stored certificate differs from the deployment value last applied, as after an edit in the UI,

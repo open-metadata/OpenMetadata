@@ -139,7 +139,6 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.TestLoginCandidates;
 import org.openmetadata.service.security.auth.TestLoginRoundTrip;
 import org.openmetadata.service.security.auth.TestLoginService;
-import org.openmetadata.service.security.auth.validator.SamlIdpCertificateGate;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -1232,8 +1231,6 @@ public class SystemResource {
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
       validateConfigurationOfActiveProvider(securityConfig);
       requireApplicable(securityConfig);
-      SamlIdpCertificateGate.requireUsable(
-          authConfig, previous == null ? null : previous.getAuthenticationConfiguration());
 
       // Refresh publicKeyUrls from discovery for OIDC confidential clients before saving
       systemRepository.syncPublicKeyUrlsFromDiscovery(authConfig);

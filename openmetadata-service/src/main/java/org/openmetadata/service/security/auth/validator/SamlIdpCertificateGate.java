@@ -23,14 +23,13 @@ import org.openmetadata.schema.system.FieldError;
 
 /**
  * Lets a SAML identity provider certificate reach the database only after it passed the check a
- * save of the configuration runs ({@link SamlValidator#validateIdpCertificate}), on every way that
- * writes the authentication configuration without that save: the first start, which seeds the
- * setting from the deployment, every start that reconciles it, a PUT of the security configuration
- * and the {@code update-security-config} command.
+ * save of the configuration runs ({@link SamlValidator#validateIdpCertificate}). Its one caller is
+ * the step every settings write passes through before it is stored, so every way in, now or later,
+ * is covered: an API save, an administration command, a seed or a reconciled deployment value.
  *
  * <p>Only a certificate that is new or differs from the stored one is checked. A stored certificate
- * that expired since it was saved keeps working at runtime, so an unchanged value never stops a
- * restart. ADR:2026-11-20-the-stored-saml-idp-certificate-is-standard-pem
+ * that expired since it was saved keeps working at runtime, so an unchanged value is never refused
+ * again. ADR:2026-11-20-the-stored-saml-idp-certificate-is-standard-pem
  */
 public final class SamlIdpCertificateGate {
   private static final String REFUSED =

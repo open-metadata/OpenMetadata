@@ -14,6 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
@@ -33,15 +34,21 @@ import org.openmetadata.it.sso.config.SecurityConfigSwap;
 import org.openmetadata.it.sso.config.SecurityConfigSwap.Answer;
 import org.openmetadata.it.sso.config.SsoConfigs;
 import org.openmetadata.it.util.OssTestServer;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.config.source.SettingsSecrets;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 /**
- * A PUT of the security configuration stores a SAML IdP certificate only after it passed the check
- * a save runs, so an administrator cannot store one that stops the next restart. A certificate the
- * database already holds is not checked again, so an expired one can be sent back unchanged.
+ * Every API save of the security configuration stores a SAML IdP certificate only after it passed
+ * the check a save runs, so an administrator cannot store one that stops the next restart. A
+ * certificate the database already holds is not checked again, so an expired one stays usable.
  * ADR:2026-11-20-the-stored-saml-idp-certificate-is-standard-pem
  */
 @Isolated
@@ -121,18 +128,101 @@ class SsoSamlIdpCertificateIT {
     }
   }
 
+  @Test
+  @DisplayName("A PATCH with an unusable IdP certificate is refused with a 400 and writes nothing")
+  void patchRefusesAnUnusableCertificateAndWritesNothing() {
+    JsonNode stored = SecurityConfigSwap.storedConfig();
+
+    for (String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
+      Answer answer = SecurityConfigSwap.attemptPatch(replaceCertificate(unusable));
+
+      assertEquals(400, answer.status(), answer.body());
+      assertTrue(answer.body().contains(CERTIFICATE_FIELD), answer.body());
+      assertEquals(stored, SecurityConfigSwap.storedConfig(), "a refused PATCH stores nothing");
+    }
+  }
+
+  @Test
+  @DisplayName("A PATCH with a usable new IdP certificate stores it")
+  void patchStoresAUsableCertificate() {
+    try {
+      Answer answer = SecurityConfigSwap.attemptPatch(replaceCertificate(OTHER_VALID));
+
+      assertEquals(204, answer.status(), answer.body());
+      assertEquals(OTHER_VALID, SecurityConfigSwap.storedConfig().at(CERTIFICATE_POINTER).asText());
+    } finally {
+      securityConfig.restoreBaseline();
+    }
+  }
+
+  /** A PATCH of a login switch alone is not validated in full; the write step still runs. */
+  @Test
+  @DisplayName("A PATCH that keeps the stored expired IdP certificate is accepted")
+  void patchKeepsTheStoredExpiredCertificate() {
+    storeWithoutChecks(withIdpCertificate(securityConfig.baselineCopy(), EXPIRED));
+    try {
+      Answer answer =
+          SecurityConfigSwap.attemptPatch(
+              "[{\"op\":\"replace\",\"path\":\"/authenticationConfiguration/enableSelfSignup\","
+                  + "\"value\":false}]");
+
+      assertEquals(204, answer.status(), answer.body());
+      assertEquals(EXPIRED, SecurityConfigSwap.storedConfig().at(CERTIFICATE_POINTER).asText());
+    } finally {
+      securityConfig.restoreBaseline();
+    }
+  }
+
+  @Test
+  @DisplayName("The generic settings endpoints refuse the authentication configuration")
+  void genericSettingsEndpointsRefuseTheAuthenticationConfiguration() {
+    JsonNode stored = SecurityConfigSwap.storedConfig();
+    Settings settings =
+        new Settings()
+            .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+            .withConfigValue(
+                withIdpCertificate(securityConfig.baselineCopy(), NOT_A_CERTIFICATE)
+                    .getAuthenticationConfiguration());
+
+    assertThrows(
+        Exception.class,
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.PUT,
+                    "/v1/system/settings",
+                    JsonUtils.pojoToJson(settings),
+                    RequestOptions.builder().build()));
+    assertEquals(stored, SecurityConfigSwap.storedConfig());
+  }
+
+  private static String replaceCertificate(String idpCertificate) {
+    return "[{\"op\":\"replace\",\"path\":\"/authenticationConfiguration/samlConfiguration/idp/"
+        + "idpX509Certificate\",\"value\":"
+        + JsonUtils.pojoToJson(idpCertificate)
+        + "}]";
+  }
+
   private static SecurityConfiguration withIdpCertificate(
       SecurityConfiguration base, String idpCertificate) {
     return SsoConfigs.saml(base, IDP_ENTITY_ID, idpCertificate, SP_ENTITY_ID);
   }
 
-  /** Stands for a certificate that was valid when it was saved and has expired since. */
+  /**
+   * Stands for a certificate that was valid when it was saved and has expired since: the row is
+   * written as time would leave it, past the settings write step that refuses a new expired one.
+   */
   private static void storeWithoutChecks(SecurityConfiguration config) {
-    Entity.getSystemRepository()
-        .createOrUpdate(
-            new Settings()
-                .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
-                .withConfigValue(config.getAuthenticationConfiguration()));
+    Entity.getCollectionDAO()
+        .systemDAO()
+        .insertSettings(
+            SettingsType.AUTHENTICATION_CONFIGURATION.value(),
+            JsonUtils.pojoToJson(
+                SettingsSecrets.encrypted(
+                    SettingsType.AUTHENTICATION_CONFIGURATION,
+                    JsonUtils.valueToTree(config.getAuthenticationConfiguration()))));
+    SettingsCache.invalidateSettings(SettingsType.AUTHENTICATION_CONFIGURATION.value());
   }
 
   private static String resource(String path) {

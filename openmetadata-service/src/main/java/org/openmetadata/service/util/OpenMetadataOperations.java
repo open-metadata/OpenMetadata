@@ -150,7 +150,6 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
-import org.openmetadata.service.security.auth.validator.SamlIdpCertificateGate;
 import org.openmetadata.service.security.jwt.BotTokenRegenerator;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.JdbcSessionStore;
@@ -847,14 +846,14 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   /**
-   * Stores the authentication and authorizer configuration of a security configuration file. A
-   * SAML IdP certificate that a save would refuse stops it before anything is written.
+   * Stores the authentication and authorizer configuration of a security configuration file, the
+   * authentication first: a value the settings repository refuses, such as a SAML IdP certificate
+   * a save would refuse, stops it before the authorizer is written.
    */
   static void storeSecurityConfiguration(
       SystemRepository repository, SecurityConfiguration securityConfig) {
     AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
     if (authConfig != null) {
-      SamlIdpCertificateGate.requireUsable(authConfig, storedAuthentication(repository));
       repository.createOrUpdate(
           new Settings()
               .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
@@ -868,14 +867,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
               .withConfigValue(securityConfig.getAuthorizerConfiguration()));
       LOG.info("Authorization configuration updated.");
     }
-  }
-
-  private static AuthenticationConfiguration storedAuthentication(SystemRepository repository) {
-    Settings stored =
-        repository.getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
-    return stored == null
-        ? null
-        : JsonUtils.convertValue(stored.getConfigValue(), AuthenticationConfiguration.class);
   }
 
   @Command(name = "install-app", description = "Install the application from App MarketPlace.")
