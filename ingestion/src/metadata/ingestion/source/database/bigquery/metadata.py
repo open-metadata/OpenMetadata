@@ -156,6 +156,10 @@ _bigquery_table_types = {
 }
 
 
+class _RegionLifecycleSpoolError(Exception):
+    """Local SQLite/tempfile failure, distinct from BigQuery transport errors."""
+
+
 logger = ingestion_logger()
 # pylint: disable=protected-access
 # sqlalchemy-bigquery reflects NUMERIC/BIGNUMERIC as the generic Numeric, which the column
@@ -904,11 +908,14 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             with self._region_lifecycle_lock:
                 if self._region_lifecycle_spool_disabled:
                     return None
-                db = self._get_region_lifecycle_db()
-                state = db.execute(
-                    "SELECT status, attempts FROM scans WHERE project = ? AND region = ?",
-                    (database, normalized_region),
-                ).fetchone()
+                try:
+                    db = self._get_region_lifecycle_db()
+                    state = db.execute(
+                        "SELECT status, attempts FROM scans WHERE project = ? AND region = ?",
+                        (database, normalized_region),
+                    ).fetchone()
+                except (sqlite3.Error, OSError) as exc:
+                    raise _RegionLifecycleSpoolError("Could not read spool state") from exc
             if state is None or state[0] == "retry":
                 try:
                     sql = BIGQUERY_LIFE_CYCLE_QUERY_ALL_IN_REGION.format(
@@ -947,19 +954,24 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     with self._region_lifecycle_lock:
                         if self._region_lifecycle_spool_disabled:
                             return None
-                        db.execute(
-                            "INSERT OR REPLACE INTO scans "
-                            "(project, region, status, attempts) VALUES (?, ?, 'ok', 0)",
-                            (database, normalized_region),
-                        )
-                        db.commit()
+                        try:
+                            db.execute(
+                                "INSERT OR REPLACE INTO scans "
+                                "(project, region, status, attempts) VALUES (?, ?, 'ok', 0)",
+                                (database, normalized_region),
+                            )
+                            db.commit()
+                        except (sqlite3.Error, OSError) as exc:
+                            raise _RegionLifecycleSpoolError(
+                                "Could not commit spool scan status"
+                            ) from exc
                 except Exception as exc:
                     with self._region_lifecycle_lock:
                         # A full/broken disk may reject DELETE and even the
                         # failed-status write. Disable the *whole* spool in RAM
                         # before attempting any cleanup so later tables never
                         # reissue an expensive region-wide query.
-                        if isinstance(exc, (sqlite3.Error, OSError)):
+                        if isinstance(exc, _RegionLifecycleSpoolError):
                             self._region_lifecycle_spool_disabled = True
                             # Clean up if possible, but the in-memory circuit
                             # breaker must not depend on successful disk writes.
@@ -1033,16 +1045,19 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 return None
 
             with self._region_lifecycle_lock:
-                records = db.execute(
-                    "SELECT table_name, payload FROM rows "
-                    "WHERE project = ? AND region = ? AND schema_name = ?",
-                    (database, normalized_region, schema_name),
-                ).fetchall()
+                try:
+                    records = db.execute(
+                        "SELECT table_name, payload FROM rows "
+                        "WHERE project = ? AND region = ? AND schema_name = ?",
+                        (database, normalized_region, schema_name),
+                    ).fetchall()
+                except (sqlite3.Error, OSError) as exc:
+                    raise _RegionLifecycleSpoolError("Could not read cached rows") from exc
             return {
                 table_name: LifeCycleQueryByTable.model_validate_json(payload)
                 for table_name, payload in records
             }
-        except (OSError, sqlite3.Error) as exc:
+        except _RegionLifecycleSpoolError as exc:
             with self._region_lifecycle_lock:
                 self._region_lifecycle_spool_disabled = True
             logger.warning(
@@ -1056,9 +1071,9 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
     def _write_region_lifecycle_batch(self, batch: list[tuple[str, ...]]) -> None:
         with self._region_lifecycle_lock:
             if self._region_lifecycle_spool_disabled:
-                raise sqlite3.OperationalError("BigQuery lifecycle spool disabled")
-            db = self._get_region_lifecycle_db()
+                raise _RegionLifecycleSpoolError("BigQuery lifecycle spool disabled")
             try:
+                db = self._get_region_lifecycle_db()
                 db.executemany(
                     "INSERT OR REPLACE INTO rows "
                     "(project, region, schema_name, table_name, payload) "
@@ -1066,9 +1081,12 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     batch,
                 )
                 db.commit()
-            except Exception:
-                db.rollback()
-                raise
+            except (sqlite3.Error, OSError) as exc:
+                try:
+                    db.rollback()
+                except (sqlite3.Error, OSError):
+                    pass
+                raise _RegionLifecycleSpoolError("Could not write spool batch") from exc
 
     def _cached_region_lifecycle(self, query: str) -> dict[str, LifeCycleQueryByTable]:
         context = self.context.get()
