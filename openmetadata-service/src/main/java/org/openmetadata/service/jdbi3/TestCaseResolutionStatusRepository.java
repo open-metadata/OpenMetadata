@@ -54,6 +54,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestCaseResolutionStatusTimeSeriesDAO.IncidentGroupPage;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusResource;
@@ -584,7 +585,8 @@ public class TestCaseResolutionStatusRepository
                               ? recordEntity.getSeverity().value()
                               : null,
                           recordEntity.getTimestamp(),
-                          recordEntity.getId().toString());
+                          recordEntity.getId().toString(),
+                          WorkflowHandler.isMigrationContext());
                       storeRelationship(recordEntity);
                       return null;
                     }));

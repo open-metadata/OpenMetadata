@@ -48,6 +48,9 @@ which did not establish that a resolved problem had returned.
   batches of 1,000 incident ids. Each batch replaces its projection atomically; the migration
   records completion only after every batch succeeds. A retry is safe. History discarded before
   migration cannot be recovered, so backfilled periods begin at the first retained open status.
+  Forced upgrades may replay older task migrations before the interval table exists: those
+  migration-context writes preserve history and summaries and defer periods to the backfill.
+  Once the table exists, even migration-context writes maintain it. Normal writes never defer.
 
 ## Consequences
 

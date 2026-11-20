@@ -133,6 +133,7 @@ class IncidentGroupTrendSqlTest {
     verifyMigrationBatches(jdbi);
     verifyWritesAndDeletion(jdbi);
     verifyReorderedWrites(jdbi);
+    verifyWritesBeforeIntervalMigration(jdbi, schema);
     var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
     var window = new IncidentGroupTrend(100, 900);
     var rows =
@@ -224,6 +225,41 @@ class IncidentGroupTrendSqlTest {
               "DELETE FROM test_case_resolution_status_time_series WHERE stateId LIKE 'batch-%'");
         });
     assertEquals(11, intervalCount(jdbi, null));
+  }
+
+  private void verifyWritesBeforeIntervalMigration(Jdbi jdbi, String schema) {
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    jdbi.useHandle(
+        handle -> {
+          handle.execute("DROP TABLE test_case_incident_open_interval");
+          handle.execute(
+              "INSERT INTO test_case_resolution_status_time_series (stateId,id,timestamp,testCaseResolutionStatusType) VALUES ('migration','migration',10,'New')");
+        });
+    dao.upsertIncident("migration", "test", "New", null, null, 10, "migration", true);
+    assertThrows(
+        RuntimeException.class,
+        () -> dao.upsertIncident("not-migrating", "test", "New", null, null, 10, "normal"));
+    jdbi.useHandle(
+        handle -> {
+          assertEquals(
+              0,
+              handle
+                  .createQuery(
+                      "SELECT COUNT(*) FROM test_case_incident WHERE stateId = 'not-migrating'")
+                  .mapTo(Integer.class)
+                  .one());
+          handle.execute(schema);
+          IncidentOpenIntervalMigration.backfill(handle);
+        });
+    assertEquals(10L, dao.findOpenInterval("migration"));
+    dao.upsertIncident("migration", "test", "Resolved", null, null, 20, "close", true);
+    assertEquals(null, dao.findOpenInterval("migration"));
+    jdbi.useHandle(
+        handle -> {
+          handle.execute("DELETE FROM test_case_incident WHERE stateId = 'migration'");
+          handle.execute(
+              "DELETE FROM test_case_resolution_status_time_series WHERE stateId = 'migration'");
+        });
   }
 
   private void verifyReorderedWrites(Jdbi jdbi) {

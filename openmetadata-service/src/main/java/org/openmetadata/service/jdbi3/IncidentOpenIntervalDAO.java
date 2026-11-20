@@ -9,11 +9,22 @@ import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.jdbi.BindFQN;
 
 /** Compact open periods; audit retention does not discard a surviving incident's periods. */
 public interface IncidentOpenIntervalDAO {
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'test_case_incident_open_interval')",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'test_case_incident_open_interval')",
+      connectionType = POSTGRES)
+  boolean openIntervalTableExists();
+
   @ConnectionAwareSqlUpdate(
       value =
           """

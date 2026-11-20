@@ -2312,12 +2312,30 @@ public interface TimeSeriesDAOs {
         String severity,
         long timestamp,
         String recordId) {
+      upsertIncident(
+          stateId, entityFQNHash, statusType, assignee, severity, timestamp, recordId, false);
+    }
+
+    @Transaction
+    default void upsertIncident(
+        String stateId,
+        String entityFQNHash,
+        String statusType,
+        String assignee,
+        String severity,
+        long timestamp,
+        String recordId,
+        boolean migrationContext) {
       upsertIncidentSummary(
           stateId, entityFQNHash, statusType, assignee, severity, timestamp, recordId);
-      recordOpenInterval(
-          stateId,
-          timestamp,
-          OPEN_STATUSES.stream().anyMatch(status -> status.value().equals(statusType)));
+      // Forced upgrades replay older task migrations before the interval schema is created.
+      // Their history is projected by the later backfill; normal writes must never skip it.
+      if (!migrationContext || openIntervalTableExists()) {
+        recordOpenInterval(
+            stateId,
+            timestamp,
+            OPEN_STATUSES.stream().anyMatch(status -> status.value().equals(statusType)));
+      }
     }
 
     // Keeps the incident row's denormalized severity in step with a severity edited on the
