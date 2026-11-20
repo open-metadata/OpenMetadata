@@ -34,9 +34,9 @@ import {
   ProviderType,
 } from '../../../../../../generated/events/eventSubscription';
 import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
-import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useAlertSelection } from '../../../../../../hooks/useAlertSelection';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
+import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   createNotificationAlert,
   getAlertsFromName,

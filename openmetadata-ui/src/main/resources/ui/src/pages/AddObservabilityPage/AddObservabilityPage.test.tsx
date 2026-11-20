@@ -12,11 +12,11 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
+import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import { AlertType } from '../../generated/events/eventSubscription';
-import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
-import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
 import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';

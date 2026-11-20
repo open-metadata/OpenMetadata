@@ -24,13 +24,13 @@ import {
   FORM_DRAWER_WIDTH_WITHOUT_HINT,
   FORM_DRAWER_WIDTH_WITH_HINT,
 } from '../../../constants/common/formHint.constants';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import {
   AlertType,
   ProviderType,
 } from '../../../generated/events/eventSubscription';
-import { ResourceEntity } from '../../../enums/permissions.enum';
-import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useAlertFormData } from '../../../hooks/observability/alerts/useAlertFormData';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
