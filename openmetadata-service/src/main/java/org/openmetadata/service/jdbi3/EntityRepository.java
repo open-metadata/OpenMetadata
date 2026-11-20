@@ -4335,7 +4335,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try {
       page =
           ReindexingUtil.findReferenceInElasticSearchAcrossAllIndexes(
-              "tags.tagFQN", ReindexingUtil.escapeDoubleQuotes(tagFqn), from);
+              "tags.tagFQN", ReindexingUtil.escapeQueryStringPhrase(tagFqn), from);
     } catch (Exception e) {
       LOG.warn("Search-based cache invalidation failed for tag={}", tagFqn, e);
       page = List.of();
