@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.dialects.mysql.base import MySQLDialect
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, PendingRollbackError
 
 from metadata.generated.schema.entity.data.table import Constraint, ConstraintType
 from metadata.ingestion.ometa.utils import model_str
@@ -96,6 +96,27 @@ def _execute(statement, *_):
         return TABLE_OPTIONS_ROWS
     # SHOW FULL COLUMNS FROM `om_verify`.`<table>`
     return SHOW_FULL_COLUMNS_ROWS[query.rsplit(".", 1)[-1].strip("`")]
+
+
+class _DisconnectingConnection:
+    """
+    A connection that loses the server on the table_options query and, as SQLAlchemy does,
+    refuses every later statement until it is rolled back
+    """
+
+    def __init__(self):
+        self.needs_rollback = False
+
+    def execute(self, statement, *args):
+        if self.needs_rollback:
+            raise PendingRollbackError("Can't reconnect until invalid transaction is rolled back")
+        if "information_schema.table_options" in str(statement):
+            self.needs_rollback = True
+            raise OperationalError(str(statement), {}, Exception("Lost connection to MySQL server during query"))
+        return _execute(statement, *args)
+
+    def rollback(self):
+        self.needs_rollback = False
 
 
 def _doris_source(threads=1):
@@ -208,3 +229,16 @@ class TestPrimaryKeyConstraints:
 
         queries = [str(call.args[0]) for call in execute_mock.call_args_list]
         assert sum("information_schema.table_options" in query for query in queries) == 1
+
+    def test_lost_connection_does_not_fail_the_next_tables(self, doris_source):
+        """After a lost connection, the next table's statements still run on the thread's connection"""
+        doris_source.engine.connect.return_value = _DisconnectingConnection()
+
+        # The table_options query of the first table loses the connection
+        doris_source.get_columns_and_constraints("om_verify", "t_uniq", "default", inspector=None)
+        columns, constraints, _ = doris_source.get_columns_and_constraints(
+            "om_verify", "t_agg", "default", inspector=None
+        )
+
+        assert [model_str(column.name) for column in columns] == ["dt", "site", "pv"]
+        assert constraints == []

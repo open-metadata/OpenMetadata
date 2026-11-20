@@ -280,6 +280,7 @@ class DorisSource(CommonDbSourceService):
                 # Ingest the schema's tables without primary keys rather than fail each of them
                 logger.debug(traceback.format_exc())
                 logger.warning("Could not read the table models of schema [%s]: %s", schema_name, exc)
+                self._rollback_failed_statement()
                 primary_keys = {}
             self.primary_key_columns_cache.put(schema_name, primary_keys)
         return primary_keys.get(table_name, [])
