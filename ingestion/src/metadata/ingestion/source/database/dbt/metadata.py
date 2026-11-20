@@ -146,10 +146,13 @@ from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.filters import filter_by_tag
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
+
+RESOLVED_TABLES_CACHE_SIZE = LRU_CACHE_SIZE
 
 
 class InvalidServiceException(Exception):  # noqa: N818
@@ -184,7 +187,7 @@ class DbtSource(DbtServiceSource):
         # Tables found so far, keyed by how the manifest names them. A table is met once as
         # its own model and again for every model and test that depends on it. Reset per
         # project in yield_data_models.
-        self.resolved_tables: dict[tuple[str | None, str | None, str, bool], Table] = {}
+        self.resolved_tables: LRUCache[Table] = LRUCache(RESOLVED_TABLES_CACHE_SIZE)
         self._load_omd_custom_properties()
 
     @cached_property
@@ -984,7 +987,7 @@ class DbtSource(DbtServiceSource):
     ) -> Table | None:
         key = (database_name, schema_name, table_name, literal_table_name)
         if key in self.resolved_tables:
-            return self.resolved_tables[key]
+            return self.resolved_tables.get(key)
         table_fqn = self._build_table_fqn(
             database_name=database_name,
             schema_name=schema_name,
@@ -996,7 +999,7 @@ class DbtSource(DbtServiceSource):
         )
         # Misses are not kept: _get_table_entity returns None for a failed lookup as well.
         if table_entity:
-            self.resolved_tables[key] = table_entity
+            self.resolved_tables.put(key, table_entity)
         return table_entity
 
     # pylint: disable=too-many-locals, too-many-branches
@@ -1005,7 +1008,7 @@ class DbtSource(DbtServiceSource):
         Yield the data models
         """
         self.reported_unresolved_upstreams.clear()
-        self.resolved_tables = {}
+        self.resolved_tables.clear()
         if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest:
             logger.debug("Parsing DBT Data Models")
             manifest_entities = {

@@ -72,9 +72,10 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     validate_table_structure,
     validate_time_interval,
 )
-from metadata.ingestion.source.database.dbt.metadata import DbtSource
+from metadata.ingestion.source.database.dbt.metadata import RESOLVED_TABLES_CACHE_SIZE, DbtSource
 from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects, UpstreamNode
 from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.utils.lru_cache import LRUCache
 from metadata.utils.tag_utils import get_tag_label, get_tag_labels
 from metadata.utils.time_utils import datetime_to_timestamp
 
@@ -4417,6 +4418,7 @@ class TestDbtLineageReusesParsedUpstream:
         source.status = MagicMock()
         source.tag_classification_name = "dbtTags"
         source.reported_unresolved_upstreams = set()
+        source.resolved_tables = LRUCache(RESOLVED_TABLES_CACHE_SIZE)
         source.context = SimpleNamespace(get=lambda: self._ctx)
         return source
 
@@ -4567,7 +4569,7 @@ class TestAddDbtSourceFreshnessResults:
         source.config.serviceName = "snowflake_svc"
         source.source_config = MagicMock()
         source.source_config.searchAcrossDatabases = search_across_databases
-        source.resolved_tables = {}
+        source.resolved_tables = LRUCache(RESOLVED_TABLES_CACHE_SIZE)
         source.context.get.return_value.dbt_tests = {}
         source.context.get.return_value.sources_generate_time = sources_generate_time
         source.context.get.return_value.run_results_generate_time = run_results_generate_time
