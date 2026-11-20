@@ -69,8 +69,10 @@ class EnumBackwardCompatibilityTest {
    */
   @Test
   void testTagStateEnumBackwardCompatible() {
-    assertEquals(2, TagLabel.State.values().length);
+    assertEquals(3, TagLabel.State.values().length);
+    assertEquals(0, State.SUGGESTED.ordinal());
     assertEquals(1, State.CONFIRMED.ordinal());
+    assertEquals(2, State.PENDING.ordinal());
   }
 
   /**
