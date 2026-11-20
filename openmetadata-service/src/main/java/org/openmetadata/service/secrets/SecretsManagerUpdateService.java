@@ -157,7 +157,7 @@ public class SecretsManagerUpdateService {
             workflow -> {
               try {
                 updateWorkflow(workflow);
-              } catch (Exception e) {
+              } catch (SecretsManagerUpdateException e) {
                 LOG.error(
                     "Failed to update workflow [{}] with id [{}]: {}",
                     workflow.getName(),

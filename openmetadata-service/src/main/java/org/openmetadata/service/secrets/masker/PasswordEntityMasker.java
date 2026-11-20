@@ -247,26 +247,36 @@ public class PasswordEntityMasker extends EntityMasker {
    * secret and would silently overwrite it with the mask value.
    */
   private void walkPasswordFields(Object target, String key, PasswordFieldVisitor visitor) {
-    if (target == null || DO_NOT_MASK_CLASSES.contains(target.getClass())) {
-      return;
+    if (target != null && !DO_NOT_MASK_CLASSES.contains(target.getClass())) {
+      Arrays.stream(target.getClass().getMethods())
+          .filter(ReflectionUtil::isGetMethodOfObject)
+          .forEach(method -> visitField(target, method, key, visitor));
     }
-    Arrays.stream(target.getClass().getMethods())
-        .filter(ReflectionUtil::isGetMethodOfObject)
-        .forEach(method -> visitField(target, method, key, visitor));
   }
 
   private void visitField(Object holder, Method method, String key, PasswordFieldVisitor visitor) {
-    Object value = ReflectionUtil.getObjectFromMethod(method, holder);
-    if (value == null) {
-      return;
+    final Object value = ReflectionUtil.getObjectFromMethod(method, holder);
+    if (value != null) {
+      final String fieldName = method.getName().replaceFirst("get", "");
+      visitValue(holder, method, fieldName, createKey(key, fieldName), value, visitor);
     }
-    String fieldName = method.getName().replaceFirst("get", "");
-    String fieldKey = createKey(key, fieldName);
-    if (method.getAnnotation(PasswordField.class) != null) {
+  }
+
+  private void visitValue(
+      final Object holder,
+      final Method method,
+      final String fieldName,
+      final String fieldKey,
+      final Object value,
+      final PasswordFieldVisitor visitor) {
+    final boolean isPassword = method.getAnnotation(PasswordField.class) != null;
+    if (isPassword) {
       visitor.visit(holder, fieldName, fieldKey, value);
-    } else if (isTraversable(value)) {
+    }
+    if (!isPassword && isTraversable(value)) {
       walkPasswordFields(value, fieldKey, visitor);
-    } else if (value instanceof Collection<?> collection) {
+    }
+    if (!isPassword && value instanceof Collection<?> collection) {
       walkCollection(collection, fieldKey, visitor);
     }
   }
