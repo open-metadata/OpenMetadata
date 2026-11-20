@@ -128,9 +128,10 @@ each entity removes it, and a full rebuild removes it everywhere.
 Glossary terms retain configurable relations, external mappings and their existing tag assignments.
 The unreleased `realizedIn`, class-kind and property-authoring fields have been removed. Native
 ontology definitions use their own entities and approved release graph. Native asset links and
-property-to-column assignments live separately in `ontology.conceptBindings` entity extensions.
-The concept bindings API returns only currently authorized targets; its revision is independent of
-semantic working revisions, release digests and RDF import/export. See
+property-to-column assignments live separately in `ontology_concept_binding` rows; the per-concept
+revision stays in the `ontology.conceptBindings` extension. The concept bindings API returns only
+currently authorized targets; its revision is independent of semantic working revisions, release
+digests and RDF import/export. See
 ADR:2026-10-17-glossaries-do-not-own-ontology-models and
 ADR:2026-10-19-native-concept-bindings-remain-operational-metadata.
 
