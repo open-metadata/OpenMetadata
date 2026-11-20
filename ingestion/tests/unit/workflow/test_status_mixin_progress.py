@@ -13,14 +13,14 @@
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
     ProgressUpdateType,
 )
 from metadata.ingestion.ometa.client import APIError, RestTransportError
 from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
-
-import pytest
 
 
 class _FakeStep:
