@@ -1,6 +1,5 @@
 package org.openmetadata.service.migration;
 
-import static com.tngtech.archunit.base.DescribedPredicate.alwaysFalse;
 import static com.tngtech.archunit.base.DescribedPredicate.not;
 import static com.tngtech.archunit.core.domain.JavaCall.Predicates.target;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo;
@@ -28,6 +27,7 @@ import org.openmetadata.service.migration.utils.DataMigrationStep;
 import org.openmetadata.service.migration.utils.IdBatches;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.MigrationTableUtil;
+import org.openmetadata.service.migration.utils.v211.SuggestionTaskOwnerFallbackMigration;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -59,8 +59,15 @@ class MigrationArchitectureTest {
   /**
    * Steps that may use more than the allowed classes. Each entry says what it uses and why the work
    * cannot be done with rows and SQL instead.
+   *
+   * <ul>
+   *   <li>{@link SuggestionTaskOwnerFallbackMigration} deploys SuggestionTaskWorkflow through the
+   *       WorkflowHandler after changing its row: the deployed process keeps the assignee settings
+   *       it was deployed with, and an upgrade never deploys a workflow that already exists again.
+   * </ul>
    */
-  private static final DescribedPredicate<JavaClass> EXCEPTIONS = alwaysFalse();
+  private static final DescribedPredicate<JavaClass> EXCEPTIONS =
+      belongToAnyOf(SuggestionTaskOwnerFallbackMigration.class);
 
   private static final DescribedPredicate<JavaClass> CHECKED_STEPS =
       VERSIONED_MIGRATIONS.and(not(WRITTEN_BEFORE_THE_RULE)).and(not(EXCEPTIONS));
@@ -103,7 +110,9 @@ class MigrationArchitectureTest {
       classes()
           .that(CHECKED_STEPS)
           .should()
-          .onlyDependOnClassesThat(CHECKED_STEPS.or(LIBRARIES).or(FRAMEWORK).or(CONTRACTS))
+          // A release's Migration calls its listed exceptions; their reasons are recorded above.
+          .onlyDependOnClassesThat(
+              CHECKED_STEPS.or(EXCEPTIONS).or(LIBRARIES).or(FRAMEWORK).or(CONTRACTS))
           .as("A versioned migration step uses only the classes MigrationArchitectureTest allows")
           .allowEmptyShould(true);
 
