@@ -1,7 +1,7 @@
 # SAML encryption is an explicit policy and metadata carries rollover certificates
 
-- **Status:** Accepted
-- **Revisions:** v1 2026-11-19 (initial)
+- **Status:** Accepted; runtime expired-certificate filtering superseded by ADR:2026-11-20-saml-runtime-trust-preserves-configured-signing-keys
+- **Revisions:** v1 2026-11-19 (initial) · v2 2026-11-20 (runtime trust compatibility)
 - **Deciders:** Mohit Yadav
 - **Guard:** `SamlResponseValidatorTest`, `SamlSettingsHolderTest`, `SSOUtils.test.ts`
 - **Related:** #37056, #38219, #38197, ADR:2026-11-10-saml-security-settings-mean-what-the-form-shows
@@ -43,3 +43,9 @@ already locked out with no usable administrator session, roll back the applicati
 version, sign in and correct the saved flag, then upgrade again. Do not disable signature validation
 or assume changing YAML overrides the database configuration. The saved false flag remains false;
 there is no automatic migration that weakens an explicit true policy.
+
+## Amendment v2 — runtime certificate validity
+The runtime filtering rule above is superseded by
+ADR:2026-11-20-saml-runtime-trust-preserves-configured-signing-keys. All explicitly configured
+signing keys remain available at runtime, while static validation still requires an active key.
+An expired saved certificate must not prevent the entire server from restarting.

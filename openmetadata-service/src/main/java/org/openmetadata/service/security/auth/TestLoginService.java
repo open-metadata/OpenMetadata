@@ -238,7 +238,7 @@ public final class TestLoginService {
                 listOrEmpty(ctx.authConfig().getJwtPrincipalClaims()),
                 principalDomainOf(ctx.authzConfig()))
             .resolve(claims);
-    ResolvedAccountIdentity accountIdentity =
+    final ResolvedAccountIdentity accountIdentity =
         new ResolvedAccountIdentity(
             userNameOrLocalPart(identity.userName(), identity.email()),
             identity.email(),

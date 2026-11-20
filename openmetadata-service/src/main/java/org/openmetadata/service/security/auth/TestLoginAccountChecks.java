@@ -34,7 +34,9 @@ final class TestLoginAccountChecks {
   private TestLoginAccountChecks() {}
 
   static TestLoginResult check(
-      SecurityConfiguration candidate, TestLoginResult result, UserRepository users) {
+      final SecurityConfiguration candidate,
+      final TestLoginResult result,
+      final UserRepository users) {
     if (result.getStatus() != TestLoginResult.Status.SUCCESS
         || result.getProtocol() == TestLoginProtocol.BASIC) {
       return result;
@@ -43,7 +45,7 @@ final class TestLoginAccountChecks {
       requireAdmitted(candidate, result, users);
     } catch (AuthenticationException e) {
       result.withStatus(TestLoginResult.Status.FAILED);
-      List<String> errors = new ArrayList<>(result.getErrors());
+      final List<String> errors = new ArrayList<>(result.getErrors());
       errors.add(e.getMessage());
       result.setErrors(errors);
       result.getStages().stream()
@@ -55,11 +57,11 @@ final class TestLoginAccountChecks {
   }
 
   static String admitOidc(
-      SecurityConfiguration candidate,
-      TestLoginService.ResolvedAccountIdentity identity,
-      UserRepository users) {
+      final SecurityConfiguration candidate,
+      final TestLoginService.ResolvedAccountIdentity identity,
+      final UserRepository users) {
     try {
-      User user =
+      final User user =
           identity.emailFirstFlow()
               ? users.getActiveUserByEmailForAuth(identity.email(), users.getAuthUpdateFields())
               : users.getUserByNameForAuthUpdate(identity.userName());
@@ -77,18 +79,20 @@ final class TestLoginAccountChecks {
     }
   }
 
-  private static void requireInteractiveAccount(User user) {
+  private static void requireInteractiveAccount(final User user) {
     if (Boolean.TRUE.equals(user.getIsBot()) || Boolean.TRUE.equals(user.getDeleted())) {
       throw new AuthenticationException("This account cannot sign in interactively.");
     }
   }
 
   private static void requireAdmitted(
-      SecurityConfiguration candidate, TestLoginResult result, UserRepository users) {
-    boolean emailFirst =
+      final SecurityConfiguration candidate,
+      final TestLoginResult result,
+      final UserRepository users) {
+    final boolean emailFirst =
         usesEmailLookup(candidate.getAuthenticationConfiguration(), result.getProtocol());
     try {
-      User user =
+      final User user =
           emailFirst
               ? users.getActiveUserByEmailForAuth(
                   result.getResolvedEmail(), users.getAuthUpdateFields())
@@ -101,16 +105,16 @@ final class TestLoginAccountChecks {
   }
 
   private static boolean usesEmailLookup(
-      AuthenticationConfiguration auth, TestLoginProtocol protocol) {
+      final AuthenticationConfiguration auth, final TestLoginProtocol protocol) {
     return protocol == TestLoginProtocol.LDAP
         || (!nullOrEmpty(auth.getEmailClaim()) && nullOrEmpty(auth.getJwtPrincipalClaimsMapping()));
   }
 
   private static void requireSignupAllowed(
-      SecurityConfiguration candidate,
-      TestLoginProtocol protocol,
-      String email,
-      boolean emailFirst) {
+      final SecurityConfiguration candidate,
+      final TestLoginProtocol protocol,
+      final String email,
+      final boolean emailFirst) {
     if (!Boolean.TRUE.equals(candidate.getAuthenticationConfiguration().getEnableSelfSignup())) {
       throw new AuthenticationException(
           "User not registered. Contact administrator to create an account.");

@@ -353,7 +353,11 @@ export const SAML_UI_SCHEMA = {
       validateXml: { 'ui:widget': 'hidden', 'ui:hideError': true },
       sendEncryptedNameId: { 'ui:widget': 'hidden', 'ui:hideError': true },
       signSpMetadata: { 'ui:widget': 'hidden', 'ui:hideError': true },
-      wantAssertionEncrypted: { 'ui:title': 'Require Encrypted Assertions' },
+      wantAssertionEncrypted: {
+        get 'ui:title'() {
+          return i18next.t('label.require-encrypted-assertions');
+        },
+      },
       keyStoreFilePath: { 'ui:widget': 'hidden', 'ui:hideError': true },
       keyStoreAlias: { 'ui:widget': 'hidden', 'ui:hideError': true },
       keyStorePassword: { 'ui:widget': 'hidden', 'ui:hideError': true },
