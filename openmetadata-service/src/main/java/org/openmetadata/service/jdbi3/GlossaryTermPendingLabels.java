@@ -33,6 +33,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
 import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO.TargetHolder;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
@@ -184,24 +185,23 @@ public final class GlossaryTermPendingLabels implements Managed {
   private static Outcome showBatch(String termFqn, String termHash, List<String> targets) {
     Map<String, TagLabel> labelsByTarget = new HashMap<>();
     dao()
-        .listPendingLabelTypes(GLOSSARY, termHash, targets)
+        .listPendingLabels(GLOSSARY, termHash, targets)
         .forEach(row -> labelsByTarget.put(row.getKey(), termLabel(termFqn, row.getValue())));
     int shown = 0;
     boolean complete = true;
     for (TargetHolder holder :
         labelsByTarget.isEmpty() ? Set.<TargetHolder>of() : holders(targets)) {
       try {
-        if (Entity.getEntityRepository(holder.entityType())
-            .showApprovedTerm(holder.id(), labelsByTarget, GOVERNANCE_BOT)) {
+        EntityRepository<?> repository = Entity.getEntityRepository(holder.entityType());
+        if (repository.showApprovedTerm(holder.id(), labelsByTarget, GOVERNANCE_BOT)) {
           shown++;
         }
+      } catch (EntityNotFoundException gone) {
+        // A deleted asset keeps its pending rows; the startup sweep shows them if it is restored.
+        LOG.debug(
+            "Skipped glossary term {} on missing {} {}", termFqn, holder.entityType(), holder.id());
       } catch (IllegalArgumentException refused) {
-        LOG.warn(
-            "Kept glossary term {} pending on {} {}: {}",
-            termFqn,
-            holder.entityType(),
-            holder.id(),
-            refused.getMessage());
+        shown += showTargetByTarget(termFqn, holder, labelsByTarget);
       } catch (RuntimeException e) {
         complete = false;
         LOG.warn(
@@ -215,16 +215,38 @@ public final class GlossaryTermPendingLabels implements Managed {
     return new Outcome(shown, complete);
   }
 
-  // The label keeps the type it was applied with: an automated one, as ingestion sends, comes back
-  // suggested for the owner to confirm.
-  private static TagLabel termLabel(String termFqn, int labelType) {
-    TagLabel.LabelType type = TagLabel.LabelType.values()[labelType];
-    return new TagLabel()
+  /**
+   * After the asset refused the term on all its targets at once, as when it would be mutually
+   * exclusive with a tag one of them shows, shows it on each target alone, so only the targets that
+   * refuse it stay pending. Returns 1 when any target took it.
+   */
+  private static int showTargetByTarget(
+      String termFqn, TargetHolder holder, Map<String, TagLabel> labelsByTarget) {
+    EntityRepository<?> repository = Entity.getEntityRepository(holder.entityType());
+    boolean anyShown = false;
+    for (String target : repository.ownTargetFqns(holder.id())) {
+      TagLabel label = labelsByTarget.get(FullyQualifiedName.buildHash(target));
+      if (label != null) {
+        try {
+          String hash = FullyQualifiedName.buildHash(target);
+          anyShown |= repository.showApprovedTerm(holder.id(), Map.of(hash, label), GOVERNANCE_BOT);
+        } catch (IllegalArgumentException refused) {
+          LOG.warn(
+              "Kept glossary term {} pending on {}: {}", termFqn, target, refused.getMessage());
+        }
+      }
+    }
+    return anyShown ? 1 : 0;
+  }
+
+  // The label keeps what it was applied with: its type, reason and metadata. An automated one, as
+  // ingestion sends, comes back suggested for the owner to confirm.
+  private static TagLabel termLabel(String termFqn, TagLabel pending) {
+    return pending
         .withTagFQN(termFqn)
         .withSource(TagLabel.TagSource.GLOSSARY)
-        .withLabelType(type)
         .withState(
-            type == TagLabel.LabelType.AUTOMATED
+            pending.getLabelType() == TagLabel.LabelType.AUTOMATED
                 ? TagLabel.State.SUGGESTED
                 : TagLabel.State.CONFIRMED);
   }

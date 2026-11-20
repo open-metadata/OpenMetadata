@@ -554,6 +554,49 @@ public class GlossaryTermApprovedTaggingIT {
         "approval is an ordinary edit of the asset, so it records a version");
   }
 
+  /**
+   * A target that refuses the approved term, here a column showing a term of the same mutually
+   * exclusive glossary, keeps it pending without keeping it from the asset's other targets.
+   */
+  @Test
+  void aConflictOnOneTargetKeepsOnlyThatTargetPending(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary =
+        ns.trackRoot(
+            Entity.GLOSSARY,
+            client
+                .glossaries()
+                .create(
+                    new CreateGlossary()
+                        .withName(ns.prefix(GlossaryTestFactory.STATUS_TEST_GLOSSARY_PREFIX))
+                        .withDescription("Mutually exclusive glossary")
+                        .withMutuallyExclusive(true)
+                        .withReviewers(
+                            List.of(client.users().getByName("admin").getEntityReference()))));
+    GlossaryTerm shown =
+        setStatus(
+            client, createTerm(client, glossary, ns.shortPrefix("shown")), EntityStatus.APPROVED);
+    GlossaryTerm held = createTerm(client, glossary, ns.shortPrefix("held"));
+    CreateTable request = tableRequest(ns, schema(ns), "exclusive_held");
+    request.setTags(List.of(label(held)));
+    request.getColumns().get(0).setTags(List.of(label(held)));
+    Table table = client.tables().create(request);
+    assertEquals(2, pendingTargets(held).size());
+    // The column is given the other term while the held one waits: nothing it shows conflicts yet.
+    Table tagged = reread(client, table);
+    tagged.getColumns().get(0).setTags(List.of(label(shown)));
+    client.tables().update(table.getId().toString(), tagged);
+
+    setStatus(client, held, EntityStatus.APPROVED);
+
+    Awaitility.await("the table shows the term")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(() -> hasTerm(reread(client, table).getTags(), held));
+    assertFalse(hasTerm(reread(client, table).getColumns().get(0).getTags(), held));
+    assertEquals(1, pendingTargets(held).size(), "the conflicting column keeps it pending");
+  }
+
   @Test
   void rejectingTheTermDropsWhatItHeld(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();

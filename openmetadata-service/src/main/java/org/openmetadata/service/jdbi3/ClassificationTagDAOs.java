@@ -717,23 +717,35 @@ public interface ClassificationTagDAOs {
         @BindFQN("tagFQNHash") String tagFQN,
         @BindListFQN("targetFQNHashes") List<String> targetFQNs);
 
-    /** The label type of each of a term's pending labels on the given targets, by target hash. */
+    /**
+     * The label type, reason and metadata of each of a term's pending labels on the given targets,
+     * by target hash, so showing the term keeps what was sent with it.
+     */
     @SqlQuery(
-        "SELECT targetFQNHash, labelType FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash "
+        "SELECT targetFQNHash, labelType, reason, metadata FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash "
             + "AND state = "
             + PENDING_STATE
             + " AND targetFQNHash IN (<targetFQNHashes>)")
-    @RegisterRowMapper(PendingLabelTypeMapper.class)
-    List<Map.Entry<String, Integer>> listPendingLabelTypes(
+    @RegisterRowMapper(PendingLabelMapper.class)
+    List<Map.Entry<String, TagLabel>> listPendingLabels(
         @Bind("source") int source,
         @Bind("tagFQNHash") String tagFQNHash,
         @BindList("targetFQNHashes") List<String> targetFQNHashes);
 
-    class PendingLabelTypeMapper implements RowMapper<Map.Entry<String, Integer>> {
+    class PendingLabelMapper implements RowMapper<Map.Entry<String, TagLabel>> {
       @Override
-      public Map.Entry<String, Integer> map(ResultSet rs, StatementContext ctx)
+      public Map.Entry<String, TagLabel> map(ResultSet rs, StatementContext ctx)
           throws SQLException {
-        return Map.entry(rs.getString("targetFQNHash"), rs.getInt("labelType"));
+        String metadata = rs.getString("metadata");
+        TagLabel label =
+            new TagLabel()
+                .withLabelType(TagLabel.LabelType.values()[rs.getInt("labelType")])
+                .withReason(rs.getString("reason"))
+                .withMetadata(
+                    metadata == null
+                        ? null
+                        : JsonUtils.readValue(metadata, TagLabelMetadata.class));
+        return Map.entry(rs.getString("targetFQNHash"), label);
       }
     }
 
