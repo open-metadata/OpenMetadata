@@ -1328,7 +1328,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         testCases.stream().map(TestCase::getFullyQualifiedName).filter(Objects::nonNull).toList();
     final var statusDAO = daoCollection.testCaseResolutionStatusTimeSeriesDao();
     final Set<UUID> childIds = new HashSet<>(resolutionStatusChildren(testCases));
-    final Set<String> incidentIds = new HashSet<>();
+    final Set<String> incidentIds =
+        new HashSet<>(
+            EntityDAO.queryInChunks(
+                testCases.stream().map(testCase -> testCase.getId().toString()).toList(),
+                statusDAO::listIncidentIdsForTestCaseIds));
     if (!testCaseFQNs.isEmpty()) {
       childIds.addAll(EntityDAO.queryInChunks(testCaseFQNs, statusDAO::listStatusIdsForTestCases));
       incidentIds.addAll(

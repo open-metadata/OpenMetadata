@@ -466,8 +466,14 @@ class IncidentGroupTrendSqlTest {
     assertTrue(dao.listIncidentIdsForTestCases(List.of("before_move")).isEmpty());
     assertEquals(List.of("moved"), dao.listIncidentIdsForStatusRecords(List.of(record.toString())));
     jdbi.useHandle(
+        handle ->
+            handle.execute(
+                "DELETE FROM test_case_resolution_status_time_series WHERE stateId = 'moved'"));
+    assertTrue(dao.listIncidentIdsForTestCases(List.of("before_move")).isEmpty());
+    assertEquals(List.of("moved"), dao.listIncidentIdsForTestCaseIds(List.of("moved_owner")));
+    jdbi.useHandle(
         handle -> handle.execute("DELETE FROM entity_relationship WHERE fromId = 'moved_owner'"));
-    assertEquals(List.of(record), dao.listStatusIdsForTestCases(List.of("before_move")));
+    assertTrue(dao.listStatusIdsForTestCases(List.of("before_move")).isEmpty());
     assertEquals(List.of("moved"), dao.listIncidentIdsForTestCases(List.of("before_move")));
     dao.deleteIncidentsByStateIds(List.of("moved"));
     assertEquals(0, dao.countTestCaseResolutionStatusesForStateId("moved"));

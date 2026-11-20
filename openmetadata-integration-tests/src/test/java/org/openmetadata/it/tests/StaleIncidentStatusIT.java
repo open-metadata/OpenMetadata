@@ -30,6 +30,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
@@ -405,8 +407,10 @@ public class StaleIncidentStatusIT {
     await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> assertIncidentRemoved(stateId));
   }
 
-  @Test
-  void deletionRespectsStableOwnerAfterTestMoves(TestNamespace ns) throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void deletionRespectsStableOwnerAfterTestMoves(boolean pruneHistory, TestNamespace ns)
+      throws Exception {
     Table original = createTable(ns, "beforeMove");
     Table destination = createTable(ns, "afterMove");
     String name = "movedCase_" + ns.uniqueShortId();
@@ -419,6 +423,16 @@ public class StaleIncidentStatusIT {
         .put("path", "/entityLink")
         .put("value", "<#E::table::" + destination.getFullyQualifiedName() + "::columns::id>");
     SdkClients.adminClient().testCases().patch(moved.getId().toString(), patch);
+    if (pruneHistory) {
+      TestSuiteBootstrap.getJdbi()
+          .useHandle(
+              handle ->
+                  handle
+                      .createUpdate(
+                          "DELETE FROM test_case_resolution_status_time_series WHERE stateId = :id")
+                      .bind("id", stateId.toString())
+                      .execute());
+    }
     TestCase replacement = createTestCase(original, name);
     SdkClients.adminClient()
         .testCases()

@@ -2258,6 +2258,13 @@ public interface TimeSeriesDAOs {
           AND parent.toEntity = 'testCaseResolutionStatus'
         INNER JOIN test_case owner ON owner.id = parent.fromId
         WHERE owned.stateId = candidate.stateId AND owner.fqnHash != candidate.entityFQNHash
+        UNION ALL
+        SELECT 1 FROM test_case_incident owned
+        INNER JOIN entity_relationship parent ON parent.toId = owned.latestRecordId
+          AND parent.relation = 9 AND parent.fromEntity = 'testCase'
+          AND parent.toEntity = 'testCaseResolutionStatus'
+        INNER JOIN test_case owner ON owner.id = parent.fromId
+        WHERE owned.stateId = candidate.stateId AND owner.fqnHash != candidate.entityFQNHash
         """;
 
     @SqlQuery(
@@ -2273,6 +2280,16 @@ public interface TimeSeriesDAOs {
             + INCIDENT_OWNED_BY_MOVED_TEST
             + ")")
     List<String> listIncidentIdsForTestCases(@BindListFQN("fqns") List<String> fqns);
+
+    @SqlQuery(
+        """
+        SELECT DISTINCT incident.stateId FROM test_case_incident incident
+        INNER JOIN entity_relationship parent ON parent.toId = incident.latestRecordId
+          AND parent.relation = 9 AND parent.fromEntity = 'testCase'
+          AND parent.toEntity = 'testCaseResolutionStatus'
+        WHERE parent.fromId IN (<ids>)
+        """)
+    List<String> listIncidentIdsForTestCaseIds(@BindList("ids") List<String> ids);
 
     @SqlQuery(
         "SELECT DISTINCT stateId FROM test_case_resolution_status_time_series WHERE id IN (<ids>) AND stateId IS NOT NULL")
