@@ -232,6 +232,14 @@ jest.mock(
   })
 );
 
+jest.mock('../../Alerts/AlertDisabledBadge/AlertDisabledBadge', () => ({
+  __esModule: true,
+  default: ({ enabled }: { enabled?: boolean }) =>
+    enabled === false ? (
+      <span data-testid="alert-disabled-badge">label.disabled</span>
+    ) : null,
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, string>) =>
@@ -339,10 +347,35 @@ describe('ObservabilityAlertsAiTable', () => {
 
     expect(screen.getByTestId('alert-name')).toHaveClass('tw:truncate');
     expect(screen.getByTestId('alert-name')).toHaveAttribute('title', longName);
-    expect(screen.getByTestId('alert-name').parentElement).toHaveClass(
-      'tw:w-[30%]!',
-      'tw:max-w-0'
+    expect(
+      screen.getByTestId('alert-name').closest('[data-testid="table-cell"]')
+    ).toHaveClass('tw:w-[30%]!', 'tw:max-w-0');
+  });
+
+  it('marks a disabled alert as disabled next to its name', () => {
+    render(
+      <ObservabilityAlertsAiTable
+        {...baseProps}
+        alerts={[{ ...alertRecord, enabled: false }]}
+      />
     );
+
+    expect(screen.getByTestId('alert-disabled-badge')).toHaveTextContent(
+      'label.disabled'
+    );
+  });
+
+  it('shows no disabled badge for an enabled alert', () => {
+    render(
+      <ObservabilityAlertsAiTable
+        {...baseProps}
+        alerts={[{ ...alertRecord, enabled: true }]}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('alert-disabled-badge')
+    ).not.toBeInTheDocument();
   });
 
   it('uses view callback instead of link when provided', () => {

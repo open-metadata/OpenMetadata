@@ -48,6 +48,7 @@ import {
   getAlertTableCellLayoutClassName,
   getAlertTableHeaderLayoutClassName,
 } from '../../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage.utils';
+import AlertDisabledBadge from '../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import FeaturesPlaceholder from '../../common/EmptyPlaceholder/FeaturesPlaceholder';
@@ -213,25 +214,28 @@ function ObservabilityAlertsAiTable({
             getAlertTableCellLayoutClassName(ALERT_TABLE_COLUMN_IDS.NAME),
             ALERT_NAME_COLUMN_LAYOUT_CLASS
           )}>
-          {onViewAlert ? (
-            <Button
-              className="tw:block tw:min-w-0 tw:truncate"
-              color="link-color"
-              data-testid="alert-name"
-              size="sm"
-              title={alertName}
-              onPress={() => onViewAlert(record)}>
-              {alertName}
-            </Button>
-          ) : (
-            <Link
-              className="tw:block tw:min-w-0 tw:truncate"
-              data-testid="alert-name"
-              title={alertName}
-              to={getAlertDetailsPath(alertFqn)}>
-              {alertName}
-            </Link>
-          )}
+          <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+            {onViewAlert ? (
+              <Button
+                className="tw:block tw:min-w-0 tw:truncate"
+                color="link-color"
+                data-testid="alert-name"
+                size="sm"
+                title={alertName}
+                onPress={() => onViewAlert(record)}>
+                {alertName}
+              </Button>
+            ) : (
+              <Link
+                className="tw:block tw:min-w-0 tw:truncate"
+                data-testid="alert-name"
+                title={alertName}
+                to={getAlertDetailsPath(alertFqn)}>
+                {alertName}
+              </Link>
+            )}
+            <AlertDisabledBadge enabled={record.enabled} />
+          </div>
         </Table.Cell>
         <Table.Cell
           className={getAlertTableCellLayoutClassName(

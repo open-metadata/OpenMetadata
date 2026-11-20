@@ -60,6 +60,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
+import AlertDisabledBadge from '../../components/Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
@@ -278,13 +279,18 @@ const NotificationListPage = () => {
         render: (_: string, record: EventSubscription) => {
           return (
             record.fullyQualifiedName && (
-              <Link
-                className="tw:block tw:max-w-48 tw:truncate"
-                data-testid="alert-name"
-                title={getEntityName(record)}
-                to={getNotificationAlertDetailsPath(record.fullyQualifiedName)}>
-                {getEntityName(record)}
-              </Link>
+              <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+                <Link
+                  className="tw:block tw:max-w-48 tw:truncate"
+                  data-testid="alert-name"
+                  title={getEntityName(record)}
+                  to={getNotificationAlertDetailsPath(
+                    record.fullyQualifiedName
+                  )}>
+                  {getEntityName(record)}
+                </Link>
+                <AlertDisabledBadge enabled={record.enabled} />
+              </div>
             )
           );
         },

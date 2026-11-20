@@ -39,6 +39,7 @@ import {
   LIST_PAGE_SIZE_OPTIONS,
   NO_DATA_PLACEHOLDER,
 } from '../../../../../../constants/constants';
+import AlertDisabledBadge from '../../../../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../../../enums/entity.enum';
@@ -387,21 +388,24 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
     switch (colId) {
       case 'name':
         return (
-          <Button
-            className="tw:max-w-full tw:truncate tw:block tw:text-left"
-            color="link-color"
-            data-testid="alert-name"
-            size="sm"
-            tooltip={getEntityName(alert)}
-            onPress={() =>
-              onNavigate({
-                type: 'detail',
-                fqn: alert.fullyQualifiedName ?? '',
-                name: getEntityName(alert),
-              })
-            }>
-            {getEntityName(alert)}
-          </Button>
+          <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+            <Button
+              className="tw:max-w-full tw:truncate tw:block tw:text-left"
+              color="link-color"
+              data-testid="alert-name"
+              size="sm"
+              tooltip={getEntityName(alert)}
+              onPress={() =>
+                onNavigate({
+                  type: 'detail',
+                  fqn: alert.fullyQualifiedName ?? '',
+                  name: getEntityName(alert),
+                })
+              }>
+              {getEntityName(alert)}
+            </Button>
+            <AlertDisabledBadge enabled={alert.enabled} />
+          </div>
         );
 
       case 'trigger':

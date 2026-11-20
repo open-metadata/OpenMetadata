@@ -55,6 +55,7 @@ import {
   OBSERVABILITY_PAGE_LAYOUT_CLASS,
 } from '../observability.constants';
 import AlertAiDiagnosticTab from './AlertAiDiagnosticTab';
+import AlertDisabledBadge from '../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import AlertAiEventCounts from './AlertAiEventCounts';
 import AlertAiForm from './AlertAiForm.component';
 import { getAlertAiResources } from './AlertAiFormFieldsPureUtils';
@@ -479,6 +480,7 @@ const AlertDetailsPage = ({
           <DocumentTitle title={alertName} />
           <PageLayout.PageHeader
             actions={headerActions}
+            badge={<AlertDisabledBadge enabled={alertDetails?.enabled} />}
             breadcrumb={
               <HeaderBreadcrumb
                 noMargin

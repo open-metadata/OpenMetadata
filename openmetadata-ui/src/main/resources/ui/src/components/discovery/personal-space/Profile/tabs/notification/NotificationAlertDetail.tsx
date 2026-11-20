@@ -38,6 +38,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import AlertPendingEvents from '../../../../../Alerts/AlertPendingEvents/AlertPendingEvents';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { AlertDetailTabs } from '../../../../../../enums/Alerts.enum';
@@ -194,10 +195,7 @@ const DiagnosticStatsSummary: FC<{
           {`${t('label.pending-entity', { entity: t('label.event-plural') })}:`}
         </Typography>
         <Typography size="text-sm" weight="medium">
-          {formatEventCount(
-            eventsRecord.pendingEventsCount,
-            eventsRecord.countsAreLowerBound
-          )}
+          <AlertPendingEvents counts={eventsRecord} />
         </Typography>
       </Box>
       <Box align="center" direction="row" gap={1}>
