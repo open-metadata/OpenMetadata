@@ -70,7 +70,10 @@ from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
-from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
+from metadata.ingestion.source.database.bigquery.metadata import (
+    BigquerySource,
+    _RegionLifecycleSpoolError,
+)
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_STORED_PROCEDURES,
     BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
@@ -1083,7 +1086,7 @@ class TestBigqueryRegionAwareQueries:
             nonlocal count
             count += 1
             if count == 2:
-                raise sqlite3.OperationalError("database or disk is full")
+                raise _RegionLifecycleSpoolError("database or disk is full")
             return write(batch)
 
         with patch.object(
@@ -1132,7 +1135,7 @@ class TestBigqueryRegionAwareQueries:
             nonlocal batches
             batches += 1
             if batches == 2:
-                raise sqlite3.OperationalError("database or disk is full")
+                raise _RegionLifecycleSpoolError("database or disk is full")
             return original_write(batch)
 
         with patch.object(
@@ -1175,6 +1178,44 @@ class TestBigqueryRegionAwareQueries:
         assert open_db.call_count == 1
         assert conn.execute.call_count == 0
         assert self.bq_source._region_lifecycle_spool_disabled is True
+
+    def test_lifecycle_network_oserror_does_not_disable_other_regions(self):
+        """BigQuery transport errors must not trip the SQLite-spool breaker."""
+        engine, conn = self._make_engine_mock([])
+        scans = []
+
+        def network_scan(statement):
+            sql = str(statement)
+            scans.append(sql)
+            if "region-EU" in sql:
+                raise ConnectionResetError("BigQuery connection reset")
+            rows = MagicMock()
+            rows.__iter__.return_value = iter([])
+            return rows
+
+        conn.execute.side_effect = network_scan
+        self.bq_source.engine = engine
+
+        assert self.bq_source._load_region_lifecycle(
+            MOCK_DB_NAME, "EU", "dataset_a"
+        ) is None
+        assert self.bq_source._region_lifecycle_spool_disabled is False
+        assert self.bq_source._load_region_lifecycle(
+            MOCK_DB_NAME, "US", "dataset_a"
+        ) == {}
+        assert self.bq_source._load_region_lifecycle(
+            MOCK_DB_NAME, "EU", "dataset_a"
+        ) is None
+        assert self.bq_source._region_lifecycle_spool_disabled is False
+        assert sum("region-EU" in sql for sql in scans) == 2
+        assert sum("region-US" in sql for sql in scans) == 1
+        db = self.bq_source._region_lifecycle_db
+        assert db.execute(
+            "SELECT status FROM scans WHERE region = 'eu'"
+        ).fetchone()[0] == "failed"
+        assert db.execute(
+            "SELECT status FROM scans WHERE region = 'us'"
+        ).fetchone()[0] == "ok"
 
     # --- get_stored_procedures ---
 
