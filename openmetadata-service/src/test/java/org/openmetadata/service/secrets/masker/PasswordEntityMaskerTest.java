@@ -2,36 +2,54 @@ package org.openmetadata.service.secrets.masker;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.utils.SupersetApiConnection;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.security.credentials.GCPValues;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig;
 import org.openmetadata.schema.services.connections.dashboard.DomoDashboardConnection;
 import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
+import org.openmetadata.schema.services.connections.dashboard.QlikSenseConnection;
+import org.openmetadata.schema.services.connections.dashboard.SapS4HanaConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
+import org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues;
+import org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
+import org.openmetadata.schema.services.connections.database.DataStorageConfig;
+import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
+import org.openmetadata.schema.services.connections.database.MssqlConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig__1;
 import org.openmetadata.schema.services.connections.database.common.GcpCloudSqlConfig;
 import org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth;
 import org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken;
+import org.openmetadata.schema.services.connections.database.datalake.S3Config;
+import org.openmetadata.schema.services.connections.database.deltalake.MetastoreConfig;
+import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
+import org.openmetadata.schema.services.connections.database.deltalake.metastore.MetastoreDbConnection;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth;
+import org.openmetadata.schema.services.connections.mcp.McpConnection;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.DatabricksPipelineConnection;
+import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
 import org.openmetadata.service.exception.EntityMaskException;
 
 public class PasswordEntityMaskerTest extends TestEntityMasker {
   private static final String TOKEN = "openmetadata-token";
   private static final String ALPHA_KEY = "alpha-api-key";
+  private static final String GAMMA_KEY = "gamma-key";
   private static final String BETA_KEY = "beta-api-key";
   private static final String SFTP_PASSWORD = "openmetadata-sftp-secret";
   private static final String NESTED_SECRET = "openmetadata-nested-secret";
@@ -109,6 +127,173 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
     return ((CloudConfig) connection.getAuthType()).getCloudConfig().getToken();
   }
 
+  /**
+   * Secrets inside a collection are restored by element identity, not by position. Keying on
+   * position means deleting the first of two servers shifts the second into slot 0, so it would be
+   * handed the deleted server's key while its own is lost.
+   */
+  @Test
+  void testCollectionSecretsFollowTheElementNotThePosition() {
+    McpConnection original =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("alpha").withApiKey(ALPHA_KEY),
+                    new McpServerConfig().withName("beta").withApiKey(BETA_KEY)));
+    // What the edit form sends back after deleting "alpha": "beta" alone, key still masked.
+    McpConnection edited =
+        new McpConnection()
+            .withServers(
+                List.of(new McpServerConfig().withName("beta").withApiKey(getMaskedPassword())));
+
+    final McpConnection restored =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(edited, original, "Mcp", ServiceType.MCP);
+
+    assertEquals(1, restored.getServers().size());
+    assertEquals(BETA_KEY, restored.getServers().getFirst().getApiKey());
+  }
+
+  /** Reordering must not swap the two servers' keys either. */
+  @Test
+  void testCollectionSecretsSurviveReordering() {
+    McpConnection original =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("alpha").withApiKey(ALPHA_KEY),
+                    new McpServerConfig().withName("beta").withApiKey(BETA_KEY)));
+    McpConnection reordered =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("beta").withApiKey(getMaskedPassword()),
+                    new McpServerConfig().withName("alpha").withApiKey(getMaskedPassword())));
+
+    final McpConnection restored =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(reordered, original, "Mcp", ServiceType.MCP);
+
+    assertEquals(BETA_KEY, restored.getServers().getFirst().getApiKey());
+    assertEquals(ALPHA_KEY, restored.getServers().get(1).getApiKey());
+  }
+
+  /**
+   * A name is only an identity if it is unique, and the schema does not enforce that. Two servers
+   * sharing a name must not share a key, or one secret would overwrite the other and both entries
+   * would come back holding the survivor.
+   */
+  @Test
+  void testDuplicateNamesDoNotShareASecret() {
+    McpConnection original =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("dup").withApiKey(ALPHA_KEY),
+                    new McpServerConfig().withName("dup").withApiKey(BETA_KEY)));
+    McpConnection edited =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("dup").withApiKey(getMaskedPassword()),
+                    new McpServerConfig().withName("dup").withApiKey(getMaskedPassword())));
+
+    final McpConnection restored =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(edited, original, "Mcp", ServiceType.MCP);
+
+    assertEquals(ALPHA_KEY, restored.getServers().getFirst().getApiKey());
+    assertEquals(BETA_KEY, restored.getServers().get(1).getApiKey());
+  }
+
+  /**
+   * Names that share one secret id once cleaned (case, punctuation) are still distinct servers: a
+   * masked key follows its own server through a reorder.
+   */
+  @Test
+  void testNamesSharingASecretIdKeepTheirOwnKeysWhenReordered() {
+    final McpConnection restored =
+        unmaskServers(
+            List.of(server("Prod", ALPHA_KEY), server("prod", BETA_KEY)),
+            List.of(server("prod", getMaskedPassword()), server("Prod", getMaskedPassword())));
+
+    assertEquals(BETA_KEY, restored.getServers().getFirst().getApiKey());
+    assertEquals(ALPHA_KEY, restored.getServers().get(1).getApiKey());
+  }
+
+  /** Deleting server "1" must not hand its key to server "2", which then sits in slot 0. */
+  @Test
+  void testDigitOnlyNamesKeepTheirOwnKeysWhenOneIsDeleted() {
+    final McpConnection restored =
+        unmaskServers(
+            List.of(server("1", ALPHA_KEY), server("2", BETA_KEY)),
+            List.of(server("2", getMaskedPassword())));
+
+    assertEquals(BETA_KEY, restored.getServers().getFirst().getApiKey());
+  }
+
+  /** A server named like a position key must not take the key of the server in that position. */
+  @Test
+  void testANameLikeAPositionKeyKeepsItsOwnKey() {
+    final McpConnection restored =
+        unmaskServers(
+            List.of(server("#1", ALPHA_KEY), server("dup", BETA_KEY), server("dup", GAMMA_KEY)),
+            List.of(
+                server("#1", getMaskedPassword()),
+                server("dup", getMaskedPassword()),
+                server("dup", getMaskedPassword())));
+
+    assertEquals(ALPHA_KEY, restored.getServers().getFirst().getApiKey());
+    assertEquals(BETA_KEY, restored.getServers().get(1).getApiKey());
+    assertEquals(GAMMA_KEY, restored.getServers().get(2).getApiKey());
+  }
+
+  private static McpServerConfig server(String name, String apiKey) {
+    return new McpServerConfig().withName(name).withApiKey(apiKey);
+  }
+
+  private static McpConnection unmaskServers(
+      List<McpServerConfig> original, List<McpServerConfig> edited) {
+    return (McpConnection)
+        EntityMaskerFactory.createEntityMasker()
+            .unmaskServiceConnectionConfig(
+                new McpConnection().withServers(edited),
+                new McpConnection().withServers(original),
+                "Mcp",
+                ServiceType.MCP);
+  }
+
+  /**
+   * A masked value means "keep the stored secret". Renaming a server while sending its key back
+   * masked leaves nothing stored under the new name, so it must be refused rather than storing the
+   * mask as the key.
+   */
+  @Test
+  void testMaskedSecretWithNoStoredValueIsRejected() {
+    McpConnection original =
+        new McpConnection()
+            .withServers(List.of(new McpServerConfig().withName("alpha").withApiKey(ALPHA_KEY)));
+    McpConnection renamed =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig()
+                        .withName("alpha-renamed")
+                        .withApiKey(getMaskedPassword())));
+
+    EntityMaskException thrown =
+        Assertions.assertThrows(
+            EntityMaskException.class,
+            () ->
+                EntityMaskerFactory.createEntityMasker()
+                    .unmaskServiceConnectionConfig(renamed, original, "Mcp", ServiceType.MCP));
+
+    assertEquals(400, thrown.getResponse().getStatus());
+  }
+
   @Test
   void testSftpPasswordIsMaskedAndRestored() {
     SftpConnection original =
@@ -134,7 +319,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   /** The config arrives from the database as a map, which is what used to defeat the masker. */
   @Test
   void testSftpPrivateKeyFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "host",
             "sftp.example.com",
@@ -151,7 +336,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testDatabricksPipelineTokenFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "hostPort",
             "dbc.cloud.databricks.com:443",
@@ -169,7 +354,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testDatabricksPipelineClientSecretFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "hostPort",
             "dbc.cloud.databricks.com:443",
@@ -189,7 +374,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testPowerBiGcsPrivateKeyFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "PowerBI",
@@ -217,7 +402,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testSupersetApiSslConfigFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "Superset",
@@ -246,7 +431,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testMysqlCloudSqlAuthFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "Mysql",
@@ -271,6 +456,197 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   }
 
   /** Masks a config shaped as it is stored: nested auth objects arrive as plain maps. */
+  @Test
+  void testSsisDatabaseConnectionSslConfigFromSerializedConfigIsMasked() {
+    final Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "SSIS",
+            "packageConnection",
+            "/opt/ssis/projects",
+            "databaseConnection",
+            Map.of(
+                "type",
+                "Mssql",
+                "hostPort",
+                "mssql:1433",
+                "username",
+                "sa",
+                "sslConfig",
+                Map.of("caCertificate", NESTED_SECRET)));
+
+    final SSISConnection masked = (SSISConnection) mask(serialized, "SSIS", ServiceType.PIPELINE);
+
+    final MssqlConnection database = masked.getDatabaseConnection();
+    assertEquals(
+        getMaskedPassword(),
+        ((ValidateSSLClientConfig) database.getSslConfig()).getCaCertificate());
+  }
+
+  @Test
+  void testQlikSenseCertificateValuesFromSerializedConfigAreMasked() {
+    final Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "QlikSense",
+            "hostPort",
+            "https://qlik:4242",
+            "certificates",
+            Map.of("sslConfig", Map.of("caCertificate", NESTED_SECRET, "sslKey", NESTED_SECRET)));
+
+    final QlikSenseConnection masked =
+        (QlikSenseConnection) mask(serialized, "QlikSense", ServiceType.DASHBOARD);
+
+    final ValidateSSLClientConfig ssl =
+        (ValidateSSLClientConfig) ((QlikCertificateValues) masked.getCertificates()).getSslConfig();
+    assertEquals(getMaskedPassword(), ssl.getCaCertificate());
+    assertEquals(getMaskedPassword(), ssl.getSslKey());
+  }
+
+  @Test
+  void testSapS4HanaOAuthClientSecretFromSerializedConfigIsMasked() {
+    final Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "SapS4Hana",
+            "hostPort",
+            "https://sap.example.com",
+            "authType",
+            Map.of(
+                "authType",
+                "oauth2",
+                "clientId",
+                "client",
+                "clientSecret",
+                NESTED_SECRET,
+                "tokenEndpoint",
+                "https://sap.example.com/token"));
+
+    final SapS4HanaConnection masked =
+        (SapS4HanaConnection) mask(serialized, "SapS4Hana", ServiceType.DASHBOARD);
+
+    assertEquals(
+        getMaskedPassword(), ((SapS4HanaOAuthCredentials) masked.getAuthType()).getClientSecret());
+  }
+
+  @Test
+  void testSampleDataStorageS3KeyFromSerializedConfigIsMasked() {
+    final Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "Postgres",
+            "hostPort",
+            "postgres:5432",
+            "username",
+            "admin",
+            "database",
+            "db",
+            "sampleDataStorageConfig",
+            Map.of(
+                "config",
+                Map.of(
+                    "bucketName",
+                    "samples",
+                    "storageConfig",
+                    Map.of("awsRegion", "us-east-1", "awsSecretAccessKey", NESTED_SECRET))));
+
+    PostgresConnection masked =
+        (PostgresConnection) mask(serialized, "Postgres", ServiceType.DATABASE);
+
+    DataStorageConfig config = (DataStorageConfig) masked.getSampleDataStorageConfig().getConfig();
+    assertEquals(
+        getMaskedPassword(), ((AWSCredentials) config.getStorageConfig()).getAwsSecretAccessKey());
+  }
+
+  @Test
+  void testEmptySampleDataStorageConfigStaysEmpty() {
+    final Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "Postgres",
+            "hostPort",
+            "postgres:5432",
+            "username",
+            "admin",
+            "database",
+            "db",
+            "sampleDataStorageConfig",
+            Map.of("config", Map.of()));
+
+    PostgresConnection masked =
+        (PostgresConnection) mask(serialized, "Postgres", ServiceType.DATABASE);
+
+    assertEquals(Map.of(), masked.getSampleDataStorageConfig().getConfig());
+  }
+
+  @Test
+  void testDeltaLakeMetastoreDbPasswordFromSerializedConfigIsMasked() {
+    final Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "DeltaLake",
+            "configSource",
+            Map.of(
+                "connection",
+                Map.of(
+                    "metastoreDb",
+                    "jdbc:mysql://metastore:3306/db",
+                    "username",
+                    "hive",
+                    "password",
+                    NESTED_SECRET)));
+
+    DeltaLakeConnection masked =
+        (DeltaLakeConnection) mask(serialized, "DeltaLake", ServiceType.DATABASE);
+
+    MetastoreConfig metastore = (MetastoreConfig) masked.getConfigSource();
+    assertEquals(
+        getMaskedPassword(), ((MetastoreDbConnection) metastore.getConnection()).getPassword());
+  }
+
+  @Test
+  void testDeltaLakeStorageS3KeyFromSerializedConfigIsMasked() {
+    final Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "DeltaLake",
+            "configSource",
+            Map.of(
+                "connection",
+                Map.of(
+                    "securityConfig",
+                    Map.of("awsRegion", "us-east-1", "awsSecretAccessKey", NESTED_SECRET))));
+
+    DeltaLakeConnection masked =
+        (DeltaLakeConnection) mask(serialized, "DeltaLake", ServiceType.DATABASE);
+
+    S3Config s3 = (S3Config) ((StorageConfig) masked.getConfigSource()).getConnection();
+    assertEquals(getMaskedPassword(), s3.getSecurityConfig().getAwsSecretAccessKey());
+  }
+
+  /** Released 2.0 versions typed a storage config as a metastore config and added its appName. */
+  @Test
+  void testDeltaLakeStorageS3KeySavedAsMetastoreConfigIsMasked() {
+    final Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "DeltaLake",
+            "configSource",
+            Map.of(
+                "appName",
+                "OpenMetadata",
+                "connection",
+                Map.of(
+                    "securityConfig",
+                    Map.of("awsRegion", "us-east-1", "awsSecretAccessKey", NESTED_SECRET))));
+
+    DeltaLakeConnection masked =
+        (DeltaLakeConnection) mask(serialized, "DeltaLake", ServiceType.DATABASE);
+
+    S3Config s3 = (S3Config) ((MetastoreConfig) masked.getConfigSource()).getConnection();
+    assertEquals(getMaskedPassword(), s3.getSecurityConfig().getAwsSecretAccessKey());
+  }
+
   private Object mask(
       Map<String, Object> serialized, String connectionType, ServiceType serviceType) {
     return EntityMaskerFactory.createEntityMasker()

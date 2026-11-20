@@ -23,7 +23,7 @@ from metadata.generated.schema.entity.data.databaseSchema import (
     DatabaseSchemaProfilerConfig,
 )
 from metadata.generated.schema.entity.data.table import ColumnProfilerConfig, Table
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+from metadata.generated.schema.entity.services.connections.dataStorageConfig import (
     DataStorageConfig,
 )
 from metadata.generated.schema.entity.services.databaseService import DatabaseService

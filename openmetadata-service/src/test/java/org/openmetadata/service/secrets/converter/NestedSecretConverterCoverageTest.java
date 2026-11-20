@@ -46,17 +46,9 @@ class NestedSecretConverterCoverageTest {
    * no converter can be written until the branch is extracted into its own schema file. Shrink this
    * set; never grow it. An entry also stops the payload descending into that property where it is
    * nested in another connection, so the other branches there stay checked.
-   *
-   * <p>{@code SampleDataStorageConfig.config} is a 2.0-only gap: the typed {@code
-   * sampleDataStorageConfig} on every database connection has no converter, so its S3 credentials
-   * are never typed. The property no longer exists on main.
+   * ADR:2026-11-19-secret-bearing-oneof-branches-live-in-their-own-schema-files
    */
-  private static final Set<String> KNOWN_UNCONVERTIBLE =
-      Set.of(
-          "MetastoreConfig.connection",
-          "QlikSenseConnection.certificates",
-          "SampleDataStorageConfig.config",
-          "SapS4HanaConnection.authType");
+  private static final Set<String> KNOWN_UNCONVERTIBLE = Set.of();
 
   private final Set<String> allowlistHits = new HashSet<>();
 
@@ -77,17 +69,21 @@ class NestedSecretConverterCoverageTest {
       String connection = simpleJavaName(schema, path);
       JsonNode properties = schema.path("properties");
       for (String property : iterable(properties.fieldNames())) {
-        Ref oneOf = resolveToOneOfNode(properties.get(property), path, schemas);
-        if (oneOf == null || !containsPasswordFormat(oneOf.node(), oneOf.path(), schemas)) {
-          continue;
-        }
         String id = connection + "." + property;
-        if (KNOWN_UNCONVERTIBLE.contains(id)) {
+        final Ref oneOf = resolveToOneOfNode(properties.get(property), path, schemas);
+        final Ref typed =
+            oneOf == null
+                ? resolveToNestedOneOfHolder(properties.get(property), path, schemas)
+                : null;
+        boolean secretOneOf =
+            oneOf != null && containsPasswordFormat(oneOf.node(), oneOf.path(), schemas);
+        boolean allowlisted = KNOWN_UNCONVERTIBLE.contains(id);
+        if (allowlisted && (secretOneOf || typed != null)) {
           allowlistHits.add(id);
-          continue;
-        }
-        if (leavesSecretsInAMap(schema, property, oneOf, schemas)) {
-          uncovered.add(id);
+        } else if (secretOneOf) {
+          addIf(uncovered, id, leavesSecretsInAMap(schema, property, oneOf, schemas));
+        } else if (typed != null) {
+          addIf(uncovered, id, leavesSecretsInATypedProperty(schema, property, typed, schemas));
         }
       }
     }
@@ -121,11 +117,54 @@ class NestedSecretConverterCoverageTest {
     }
     boolean leaks = false;
     for (Ref branch : secretBearingBranches(oneOf.node(), oneOf.path(), schemas)) {
-      Map<String, Object> payload = new LinkedHashMap<>();
+      final Map<String, Object> payload = new LinkedHashMap<>();
       payload.put(property, secretPayload(branch.node(), branch.path(), schemas));
       leaks |= convertsWithASecretLeftUntyped(connectionClass, payload);
     }
     return leaks;
+  }
+
+  private static void addIf(List<String> list, String id, boolean condition) {
+    if (condition) {
+      list.add(id);
+    }
+  }
+
+  /**
+   * A typed property ({@code $ref} to another config, e.g. SSIS {@code databaseConnection}) is only
+   * typed itself: a secret-bearing {@code oneOf} inside it is typed only if the connection's
+   * converter runs it through its own converter.
+   */
+  private boolean leavesSecretsInATypedProperty(
+      JsonNode schema, String property, Ref typed, Map<String, JsonNode> schemas) {
+    Class<?> connectionClass;
+    try {
+      connectionClass = Class.forName(schema.path("javaType").asText(""));
+    } catch (ClassNotFoundException e) {
+      return false;
+    }
+    final Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put(property, secretPayload(typed.node(), typed.path(), schemas));
+    return convertsWithASecretLeftUntyped(connectionClass, payload);
+  }
+
+  /**
+   * Returns the object schema a {@code $ref} property resolves to when that object holds a
+   * secret-bearing {@code oneOf} among its own properties, or {@code null}.
+   */
+  private Ref resolveToNestedOneOfHolder(
+      JsonNode property, String path, Map<String, JsonNode> schemas) {
+    final String ref = property.path("$ref").asText("");
+    Ref resolved = ref.isEmpty() ? null : resolveRef(ref, path, schemas);
+    boolean holdsSecretOneOf = false;
+    if (resolved != null && resolved.node().has("properties")) {
+      for (JsonNode child : resolved.node().get("properties")) {
+        final Ref oneOf = resolveToOneOfNode(child, resolved.path(), schemas);
+        holdsSecretOneOf |=
+            oneOf != null && containsPasswordFormat(oneOf.node(), oneOf.path(), schemas);
+      }
+    }
+    return holdsSecretOneOf ? resolved : null;
   }
 
   private boolean convertsWithASecretLeftUntyped(
@@ -187,7 +226,7 @@ class NestedSecretConverterCoverageTest {
    * by its fields or by an enum discriminator sees what it would see in production.
    */
   private Object secretPayload(JsonNode branch, String path, Map<String, JsonNode> schemas) {
-    Map<String, Object> payload = new LinkedHashMap<>();
+    final Map<String, Object> payload = new LinkedHashMap<>();
     String owner = simpleJavaName(branch, path);
     JsonNode properties = branch.path("properties");
     for (String name : iterable(properties.fieldNames())) {
@@ -196,7 +235,7 @@ class NestedSecretConverterCoverageTest {
         allowlistHits.add(owner + "." + name);
         continue;
       }
-      String ref = property.path("$ref").asText("");
+      final String ref = property.path("$ref").asText("");
       Ref resolved = ref.isEmpty() ? new Ref(property, path) : resolveRef(ref, path, schemas);
       if (resolved == null) {
         continue;

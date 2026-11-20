@@ -23,8 +23,10 @@ from metadata.generated.schema.entity.data.databaseSchema import (
 )
 from metadata.generated.schema.entity.data.table import Table, TableProfilerConfig
 from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
     SampleDataStorageConfig,
+)
+from metadata.generated.schema.entity.services.connections.dataStorageConfig import (
+    DataStorageConfig,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.type.basic import ProfileSampleType

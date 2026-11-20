@@ -13,9 +13,12 @@
 
 package org.openmetadata.service.secrets.masker;
 
+import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.schema.entity.automations.Workflow;
@@ -33,6 +36,7 @@ import org.openmetadata.service.util.ReflectionUtil;
 public class PasswordEntityMasker extends EntityMasker {
   public static final String PASSWORD_MASK = "*********";
   private static final String NEW_KEY = "";
+  private static final String OPENMETADATA_PACKAGE = "org.openmetadata";
 
   protected PasswordEntityMasker() {}
 
@@ -111,8 +115,11 @@ public class PasswordEntityMasker extends EntityMasker {
             SecretsUtil.convert(originalConnectionConfig, connectionType, null, serviceType);
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(originalConvertedConfig, NEW_KEY, passwordsMap);
+        rejectMasksWithoutStoredSecret(toUnmaskConfig, passwordsMap);
         unmaskPasswordFields(toUnmaskConfig, NEW_KEY, passwordsMap);
         return toUnmaskConfig;
+      } catch (EntityMaskException e) {
+        throw e;
       } catch (Exception e) {
         String message =
             SecretsUtil.buildExceptionMessageConnectionMask(e.getMessage(), connectionType, false);
@@ -182,83 +189,129 @@ public class PasswordEntityMasker extends EntityMasker {
   }
 
   private void maskPasswordFields(Object toMaskObject) {
-    if (!DO_NOT_MASK_CLASSES.contains(toMaskObject.getClass())) {
-      // for each get method
-      Arrays.stream(toMaskObject.getClass().getMethods())
-          .filter(ReflectionUtil::isGetMethodOfObject)
-          .forEach(
-              method -> {
-                Object obj = ReflectionUtil.getObjectFromMethod(method, toMaskObject);
-                String fieldName = method.getName().replaceFirst("get", "");
-                // if the object matches the package of openmetadata
-                if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
-                  // maskPasswordFields
-                  maskPasswordFields(obj);
-                  // check if it has PasswordField annotation
-                } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  // get setMethod
-                  Method toSet = ReflectionUtil.getToSetMethod(toMaskObject, obj, fieldName);
-                  // set new value
-                  ReflectionUtil.setValueInMethod(toMaskObject, PASSWORD_MASK, toSet);
-                }
-              });
-    }
+    walkPasswordFields(
+        toMaskObject,
+        NEW_KEY,
+        (holder, fieldName, fieldKey, value) -> setField(holder, fieldName, value, PASSWORD_MASK));
   }
 
   private void unmaskPasswordFields(
       Object toUnmaskObject, String key, Map<String, String> passwordsMap) {
-    if (!DO_NOT_MASK_CLASSES.contains(toUnmaskObject.getClass())) {
-      // for each get method
-      Arrays.stream(toUnmaskObject.getClass().getMethods())
-          .filter(ReflectionUtil::isGetMethodOfObject)
-          .forEach(
-              method -> {
-                Object obj = ReflectionUtil.getObjectFromMethod(method, toUnmaskObject);
-                String fieldName = method.getName().replaceFirst("get", "");
-                // if the object matches the package of openmetadata
-                if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
-                  // maskPasswordFields
-                  unmaskPasswordFields(obj, createKey(key, fieldName), passwordsMap);
-                  // check if it has PasswordField annotation
-                } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  String valueToSet =
-                      PASSWORD_MASK.equals(obj)
-                          ? passwordsMap.getOrDefault(createKey(key, fieldName), PASSWORD_MASK)
-                          : Fernet.getInstance().decryptIfApplies((String) obj);
-                  // get setMethod
-                  Method toSet = ReflectionUtil.getToSetMethod(toUnmaskObject, obj, fieldName);
-                  // set new value
-                  ReflectionUtil.setValueInMethod(toUnmaskObject, valueToSet, toSet);
-                }
-              });
-    }
+    walkPasswordFields(
+        toUnmaskObject,
+        key,
+        (holder, fieldName, fieldKey, value) -> {
+          String valueToSet =
+              PASSWORD_MASK.equals(value)
+                  ? passwordsMap.getOrDefault(fieldKey, PASSWORD_MASK)
+                  : Fernet.getInstance().decryptIfApplies((String) value);
+          setField(holder, fieldName, value, valueToSet);
+        });
+  }
+
+  /**
+   * A masked value only means "keep the stored secret", so it is refused where nothing is stored
+   * under the same key (e.g. a list element that was renamed) instead of saving the mask itself.
+   */
+  private void rejectMasksWithoutStoredSecret(Object config, Map<String, String> passwordsMap) {
+    walkPasswordFields(
+        config,
+        NEW_KEY,
+        (holder, fieldName, fieldKey, value) -> {
+          if (PASSWORD_MASK.equals(value) && !passwordsMap.containsKey(fieldKey)) {
+            throw new EntityMaskException(
+                Response.Status.BAD_REQUEST,
+                String.format(
+                    "Field [%s] is masked but has no stored value to keep. Send the actual value.",
+                    fieldKey));
+          }
+        });
   }
 
   private void buildPasswordsMap(Object toMapObject, String key, Map<String, String> passwordsMap) {
-    if (!DO_NOT_MASK_CLASSES.contains(toMapObject.getClass())) {
-      // for each get method
-      Arrays.stream(toMapObject.getClass().getMethods())
+    walkPasswordFields(
+        toMapObject,
+        key,
+        (holder, fieldName, fieldKey, value) ->
+            passwordsMap.put(fieldKey, Fernet.getInstance().decryptIfApplies((String) value)));
+  }
+
+  /**
+   * Walks every {@link PasswordField} reachable from {@code target}, including fields nested inside
+   * collections. Collections were previously not traversed at all, so a secret declared inside a
+   * JSON-schema array - {@code mcpConnection.servers[].apiKey}, say - was neither masked on read nor
+   * encrypted at rest.
+   *
+   * <p>Masking, unmasking and password-map building all share this traversal so that they derive
+   * identical keys for the same field. If they disagreed, unmasking would fail to find a stored
+   * secret and would silently overwrite it with the mask value.
+   */
+  private void walkPasswordFields(
+      final Object target, final String key, final PasswordFieldVisitor visitor) {
+    if (target != null && !DO_NOT_MASK_CLASSES.contains(target.getClass())) {
+      Arrays.stream(target.getClass().getMethods())
           .filter(ReflectionUtil::isGetMethodOfObject)
-          .forEach(
-              method -> {
-                Object obj = ReflectionUtil.getObjectFromMethod(method, toMapObject);
-                String fieldName = method.getName().replaceFirst("get", "");
-                // if the object matches the package of openmetadata
-                if (obj != null && obj.getClass().getPackageName().startsWith("org.openmetadata")) {
-                  // maskPasswordFields
-                  buildPasswordsMap(obj, createKey(key, fieldName), passwordsMap);
-                  // check if it has PasswordField annotation
-                } else if (obj != null && method.getAnnotation(PasswordField.class) != null) {
-                  // get value
-                  String value = Fernet.getInstance().decryptIfApplies((String) obj);
-                  // store in passwordsMap
-                  passwordsMap.put(createKey(key, fieldName), value);
-                }
-              });
+          .forEach(method -> visitField(target, method, key, visitor));
     }
+  }
+
+  private void visitField(
+      final Object holder,
+      final Method method,
+      final String key,
+      final PasswordFieldVisitor visitor) {
+    final Object value = ReflectionUtil.getObjectFromMethod(method, holder);
+    if (value != null) {
+      visitValue(holder, method, key, value, visitor);
+    }
+  }
+
+  private void visitValue(
+      final Object holder,
+      final Method method,
+      final String key,
+      final Object value,
+      final PasswordFieldVisitor visitor) {
+    final String fieldName = method.getName().replaceFirst("get", "");
+    final String fieldKey = createKey(key, fieldName);
+    final boolean isPassword = method.getAnnotation(PasswordField.class) != null;
+    if (isPassword) {
+      visitor.visit(holder, fieldName, fieldKey, value);
+    }
+    if (!isPassword && isTraversable(value)) {
+      walkPasswordFields(value, fieldKey, visitor);
+    }
+    if (!isPassword && value instanceof Collection<?> collection) {
+      walkCollection(collection, fieldKey, visitor);
+    }
+  }
+
+  private void walkCollection(Collection<?> collection, String key, PasswordFieldVisitor visitor) {
+    List<String> elementKeys = ReflectionUtil.getCollectionElementIdentities(collection);
+    int index = 0;
+    for (Object element : collection) {
+      if (isTraversable(element)) {
+        walkPasswordFields(element, createKey(key, elementKeys.get(index)), visitor);
+      }
+      index++;
+    }
+  }
+
+  private boolean isTraversable(Object value) {
+    return value != null && value.getClass().getPackageName().startsWith(OPENMETADATA_PACKAGE);
+  }
+
+  private void setField(Object holder, String fieldName, Object currentValue, String newValue) {
+    Method toSet = ReflectionUtil.getToSetMethod(holder, currentValue, fieldName);
+    ReflectionUtil.setValueInMethod(holder, newValue, toSet);
   }
 
   private String createKey(String previousKey, String key) {
     return NEW_KEY.equals(previousKey) ? key : previousKey + "." + key;
+  }
+
+  @FunctionalInterface
+  private interface PasswordFieldVisitor {
+    void visit(Object holder, String fieldName, String fieldKey, Object value);
   }
 }

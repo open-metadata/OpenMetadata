@@ -19,7 +19,7 @@ base class or into storage/messaging samplers.
 from dataclasses import dataclass, field
 from typing import Any, List, Optional  # noqa: UP035
 
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+from metadata.generated.schema.entity.services.connections.dataStorageConfig import (
     DataStorageConfig,
 )
 from metadata.sampler.models import SampleConfig

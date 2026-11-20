@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.utils.SupersetApiConnection;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
@@ -39,6 +40,7 @@ import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.MicroStrategyConnection;
 import org.openmetadata.schema.services.connections.dashboard.OmniConnection;
 import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
+import org.openmetadata.schema.services.connections.dashboard.QlikSenseConnection;
 import org.openmetadata.schema.services.connections.dashboard.SapS4HanaConnection;
 import org.openmetadata.schema.services.connections.dashboard.SsrsConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
@@ -46,10 +48,15 @@ import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.dashboard.ThoughtSpotConnection;
 import org.openmetadata.schema.services.connections.dashboard.powerbi.AzureConfig;
 import org.openmetadata.schema.services.connections.dashboard.powerbi.S3Config;
+import org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath;
+import org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues;
+import org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth;
+import org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
 import org.openmetadata.schema.services.connections.database.CockroachConnection;
+import org.openmetadata.schema.services.connections.database.DataStorageConfig;
 import org.openmetadata.schema.services.connections.database.DatabricksConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.Db2Connection;
@@ -68,6 +75,7 @@ import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.QuestDBConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
+import org.openmetadata.schema.services.connections.database.SampleDataStorageConfig;
 import org.openmetadata.schema.services.connections.database.SapErpConnection;
 import org.openmetadata.schema.services.connections.database.SapHanaConnection;
 import org.openmetadata.schema.services.connections.database.SapSuccessFactorsConnection;
@@ -81,6 +89,7 @@ import org.openmetadata.schema.services.connections.database.databricks.AzureADS
 import org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth;
 import org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.services.connections.database.deltalake.MetastoreConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
@@ -121,6 +130,14 @@ public final class ClassConverterFactory {
 
   @Getter private static final Map<Class<?>, ClassConverter> converterMap;
 
+  private static final ClassValue<Boolean> SAMPLE_DATA_HOLDERS =
+      new ClassValue<>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+          return SampleDataStorageConfigClassConverter.holdsSampleDataStorageConfig(type);
+        }
+      };
+
   /**
    * Connections whose {@code Object} properties -- the ones a JSON Schema {@code oneOf} produces --
    * only need to be re-typed so the password masker and the secrets manager can walk into them. See
@@ -128,6 +145,22 @@ public final class ClassConverterFactory {
    */
   private static final Map<Class<?>, ClassConverter> NESTED_CONFIG_CONVERTERS =
       Map.ofEntries(
+          Map.entry(
+              MetastoreConfig.class,
+              new NestedConfigClassConverter(
+                  MetastoreConfig.class,
+                  Map.of(
+                      "connection",
+                      DeltaLakeConnectionClassConverter.METASTORE_CONNECTION_CLASSES))),
+          Map.entry(
+              SampleDataStorageConfig.class,
+              new NestedConfigClassConverter(
+                  SampleDataStorageConfig.class,
+                  Map.of("config", List.of(DataStorageConfig.class)))),
+          Map.entry(
+              DataStorageConfig.class,
+              new NestedConfigClassConverter(
+                  DataStorageConfig.class, Map.of("storageConfig", List.of(AWSCredentials.class)))),
           // GCPCredentials is typed, but its gcpConfig is a oneOf the credentials converter types.
           Map.entry(
               GcpCloudSqlConfig.class,
@@ -246,6 +279,18 @@ public final class ClassConverterFactory {
                               .class,
                           S3Config.class)))),
           Map.entry(
+              QlikCertificateValues.class,
+              new NestedConfigClassConverter(
+                  QlikCertificateValues.class,
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+          Map.entry(
+              QlikSenseConnection.class,
+              new NestedConfigClassConverter(
+                  QlikSenseConnection.class,
+                  Map.of(
+                      "certificates",
+                      List.of(QlikCertificateValues.class, QlikCertificatePath.class)))),
+          Map.entry(
               QuestDBConnection.class,
               new NestedConfigClassConverter(
                   QuestDBConnection.class, Map.of("authType", List.of(basicAuth.class)))),
@@ -274,7 +319,11 @@ public final class ClassConverterFactory {
               SapS4HanaConnection.class,
               new NestedConfigClassConverter(
                   SapS4HanaConnection.class,
-                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+                  Map.of(
+                      "authType",
+                      List.of(SapS4HanaBasicAuth.class, SapS4HanaOAuthCredentials.class),
+                      "sslConfig",
+                      List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
               SapSuccessFactorsConnection.class,
               new NestedConfigClassConverter(
@@ -358,6 +407,10 @@ public final class ClassConverterFactory {
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
-    return converterMap.getOrDefault(clazz, new DefaultConnectionClassConverter(clazz));
+    final ClassConverter converter =
+        converterMap.getOrDefault(clazz, new DefaultConnectionClassConverter(clazz));
+    return SAMPLE_DATA_HOLDERS.get(clazz)
+        ? new SampleDataStorageConfigClassConverter(clazz, converter)
+        : converter;
   }
 }
