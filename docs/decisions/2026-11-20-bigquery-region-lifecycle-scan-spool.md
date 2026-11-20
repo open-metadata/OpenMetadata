@@ -32,6 +32,12 @@ safe for large catalogs either.
   two attempts per project/region). Do **not** retry deterministic failures:
   SQLite cache capacity/IO errors or upstream non-retryable 4xx errors
   (excluding 429).
+- A spool I/O/capacity failure disables the region spool for the remainder
+  of the ingestion run using one in-memory boolean, before attempting cleanup.
+  Disk-full errors can also prevent DELETE, rollback, or writing a "failed"
+  status to SQLite; none of those operations may be required to block another
+  billed region scan. Already-committed partial records remain inaccessible
+  while disabled and are removed with the temporary directory on close.
 - If the region query cannot complete within these limits, use the
   dataset-qualified created-only `INFORMATION_SCHEMA.TABLES` query. This
   avoids repeating costly region scans but cannot supply `updated_at` until a
