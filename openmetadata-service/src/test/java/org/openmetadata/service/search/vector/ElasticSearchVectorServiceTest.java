@@ -13,6 +13,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
@@ -39,6 +43,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.slf4j.LoggerFactory;
 
 class ElasticSearchVectorServiceTest {
 
@@ -604,6 +609,84 @@ class ElasticSearchVectorServiceTest {
     assertFalse(
         ex.getCause() instanceof NullPointerException,
         "Null entity must not cause a NullPointerException");
+  }
+
+  @Test
+  void aConflictThatClearsIsResentAndLogsNothing() throws Exception {
+    Response conflict = restResponse(409, VERSION_CONFLICT_BODY);
+    Response updated = restResponse(200, "{\"result\":\"updated\"}");
+    AtomicInteger attempts = new AtomicInteger();
+    when(mockRestClient.performRequest(any(Request.class)))
+        .thenAnswer(call -> attempts.getAndIncrement() % 2 == 0 ? conflict : updated);
+
+    List<ILoggingEvent> logged = writeEmbeddings();
+
+    assertEquals(4, attempts.get());
+    assertTrue(logged.stream().noneMatch(e -> e.getLevel().isGreaterOrEqual(Level.WARN)));
+  }
+
+  @Test
+  void aConflictThatNeverClearsIsAnErrorAfterThreeAttempts() throws Exception {
+    mockRestClientResponse(409, VERSION_CONFLICT_BODY);
+
+    List<ILoggingEvent> logged = writeEmbeddings();
+
+    verify(mockRestClient, times(6)).performRequest(any(Request.class));
+    assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
+  }
+
+  @Test
+  void aRejectedEmbeddingWriteIsAnErrorWithoutBeingResent() throws Exception {
+    mockRestClientResponse(
+        400, "{\"error\":{\"type\":\"mapper_parsing_exception\"},\"status\":400}");
+
+    List<ILoggingEvent> logged = writeEmbeddings();
+
+    verify(mockRestClient, times(2)).performRequest(any(Request.class));
+    assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
+  }
+
+  private static Response restResponse(int status, String json) throws Exception {
+    Response response = mock(Response.class);
+    HttpEntity entity = mock(HttpEntity.class);
+    when(response.getStatusCode()).thenReturn(status);
+    when(response.getEntity()).thenReturn(entity);
+    when(entity.getContent())
+        .thenAnswer(inv -> new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
+    return response;
+  }
+
+  private static final String VERSION_CONFLICT_BODY =
+      "{\"error\":{\"root_cause\":[{\"type\":\"version_conflict_engine_exception\","
+          + "\"reason\":\"[t1]: version conflict, required seqNo [5], primary term [1]. current"
+          + " document has seqNo [6] and primary term [1]\"}],\"type\":"
+          + "\"version_conflict_engine_exception\",\"reason\":\"[t1]: version conflict\"},"
+          + "\"status\":409}";
+
+  /** Only this test's thread: other test classes may log through the service concurrently. */
+  private List<ILoggingEvent> writeEmbeddings() {
+    Logger log = (Logger) LoggerFactory.getLogger(ElasticSearchVectorService.class);
+    String thread = Thread.currentThread().getName();
+    ListAppender<ILoggingEvent> logged = new ListAppender<>();
+    logged.start();
+    log.addAppender(logged);
+    try {
+      vectorService.partialUpdateEntity("table_search_index", "t1", Map.of("fingerprint", "f"));
+      vectorService.clearEntityEmbedding("table_search_index", "t1");
+    } finally {
+      log.detachAppender(logged);
+    }
+    return logged.list.stream().filter(e -> thread.equals(e.getThreadName())).toList();
+  }
+
+  private void mockRestClientResponse(int status, String responseJson) throws Exception {
+    Response mockResponse = mock(Response.class);
+    HttpEntity mockEntity = mock(HttpEntity.class);
+    when(mockRestClient.performRequest(any(Request.class))).thenReturn(mockResponse);
+    when(mockResponse.getStatusCode()).thenReturn(status);
+    when(mockResponse.getEntity()).thenReturn(mockEntity);
+    when(mockEntity.getContent())
+        .thenAnswer(inv -> new ByteArrayInputStream(responseJson.getBytes(StandardCharsets.UTF_8)));
   }
 
   private void mockRestClientResponse(String responseJson) throws Exception {

@@ -6,14 +6,23 @@ import static org.mockito.Mockito.spy;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
+import es.co.elastic.clients.elasticsearch._types.Refresh;
+import es.co.elastic.clients.elasticsearch._types.Script;
+import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryRequest;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
+import es.co.elastic.clients.elasticsearch.core.UpdateRequest;
+import es.co.elastic.clients.elasticsearch.core.UpdateResponse;
+import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.ScriptedDeleteRetryTestBase;
+import org.openmetadata.service.search.SearchUtils;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
@@ -31,6 +40,11 @@ class ElasticSearchEntityManagerDeleteByScriptRetryTest extends ScriptedDeleteRe
           .withExposedPorts(9200)
           .waitingFor(Wait.forHttp("/_cluster/health").forStatusCode(200))
           .withStartupTimeout(Duration.ofMinutes(3));
+
+  private static final long STALE_SEQ_NO = 1_000_000L;
+  private static final Script BROKEN_SCRIPT =
+      Script.of(
+          s -> s.source(src -> src.scriptString("ctx._source.")).lang(ScriptLanguage.Painless));
 
   private ElasticSearchClient connection;
   private ElasticsearchClient client;
@@ -66,8 +80,47 @@ class ElasticSearchEntityManagerDeleteByScriptRetryTest extends ScriptedDeleteRe
             }
             return response;
           }
+
+          @Override
+          @SuppressWarnings("unchecked")
+          public <T, P> UpdateResponse<T> update(UpdateRequest<T, P> request, Class<T> type)
+              throws IOException {
+            return !failThisWrite()
+                ? super.update(request, type)
+                : super.update((UpdateRequest<T, P>) failing(request.index(), request.id()), type);
+          }
         };
     manager = new ElasticSearchEntityManager(client);
+  }
+
+  private UpdateRequest<Map<String, Object>, Map<String, Object>> failing(String index, String id) {
+    return UpdateRequest.of(
+        u -> {
+          u.index(index).id(id);
+          return writeFailure == WriteFailure.CONFLICT
+              ? u.ifSeqNo(STALE_SEQ_NO).ifPrimaryTerm(1L).doc(Map.of("value", 0))
+              : u.script(BROKEN_SCRIPT);
+        });
+  }
+
+  @Override
+  protected List<SearchUtils.BulkItemFailure> conflictingAndRejectedBulk(
+      String conflicted, String rejected) throws IOException {
+    BulkOperation stale =
+        BulkOperation.of(
+            o ->
+                o.update(
+                    u ->
+                        u.index(index)
+                            .id(conflicted)
+                            .ifSeqNo(STALE_SEQ_NO)
+                            .ifPrimaryTerm(1L)
+                            .action(a -> a.doc(Map.of("value", 0)))));
+    BulkOperation broken =
+        BulkOperation.of(
+            o -> o.update(u -> u.index(index).id(rejected).action(a -> a.script(BROKEN_SCRIPT))));
+    return ElasticSearchEntityManager.bulkItemFailures(
+        client.bulk(b -> b.refresh(Refresh.True).operations(List.of(stale, broken))));
   }
 
   @Override
@@ -78,6 +131,11 @@ class ElasticSearchEntityManagerDeleteByScriptRetryTest extends ScriptedDeleteRe
   @Override
   protected void deleteByScript() throws Exception {
     manager.deleteByScript(index, SCRIPT, PARAMS);
+  }
+
+  @Override
+  protected EntityManagementClient manager() {
+    return manager;
   }
 
   @Override

@@ -41,6 +41,7 @@ import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -65,8 +66,46 @@ public final class SearchUtils {
   private static final String PREFIX_AGG_SUFFIX = "__prefix";
   private static final String CONTAINS_AGG_SUFFIX = "__contains";
   private static final String STERMS_PREFIX = "sterms#";
+  private static final int CONFLICT_STATUS = 409;
+  private static final String VERSION_CONFLICT = "version_conflict_engine_exception";
 
   private SearchUtils() {}
+
+  /**
+   * True when a search write failed only because a concurrent write changed the same document,
+   * whichever client raised it (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
+   */
+  public static boolean isVersionConflict(Throwable failure) {
+    boolean conflict = false;
+    for (Throwable cause = failure; cause != null && !conflict; cause = cause.getCause()) {
+      conflict = isVersionConflictItself(cause);
+    }
+    return conflict;
+  }
+
+  /** The same test for a raw response's status and body, e.g. from a generic request. */
+  public static boolean isVersionConflict(int status, String body) {
+    return status == CONFLICT_STATUS
+        && body != null
+        && body.contains("\"" + VERSION_CONFLICT + "\"");
+  }
+
+  /** The same test for a status and error type reported separately, e.g. by a bulk item. */
+  public static boolean isVersionConflictType(int status, String errorType) {
+    return status == CONFLICT_STATUS && VERSION_CONFLICT.equals(errorType);
+  }
+
+  private static boolean isVersionConflictItself(Throwable failure) {
+    return switch (failure) {
+      case os.org.opensearch.client.opensearch._types.OpenSearchException e -> e.error() != null
+          && isVersionConflictType(e.status(), e.error().type());
+      case es.co.elastic.clients.elasticsearch._types.ElasticsearchException e -> e.error() != null
+          && isVersionConflictType(e.status(), e.error().type());
+      case os.org.opensearch.client.transport.httpclient5.ResponseException e -> isVersionConflict(
+          e.status(), e.getMessage());
+      default -> false;
+    };
+  }
 
   /**
    * Stable search routing key so all of a user's queries hit the same shard copy. Without it,
@@ -919,6 +958,89 @@ public final class SearchUtils {
    * selector looks like, but that failure mode is caught at build time by the test pinning the
    * selector to the resolver registry rather than by watching production logs.
    */
+  /**
+   * Logs one delete-by-query attempt and says whether it is the last: after a failure or timeout,
+   * once nothing conflicted, or at the attempt limit
+   * (ADR:2026-11-19-a-synchronous-delete-by-query-retries-version-conflicts).
+   */
+  public static boolean isFinalDeleteAttempt(
+      List<String> indices,
+      List<?> failures,
+      boolean timedOut,
+      long versionConflicts,
+      int attempt,
+      int maxAttempts) {
+    boolean failed = !failures.isEmpty() || timedOut;
+    if (failed) {
+      LOG.error("DeleteByQuery on {} failed: {}, timed out: {}", indices, failures, timedOut);
+    } else if (versionConflicts > 0 && attempt == maxAttempts) {
+      LOG.warn(
+          "DeleteByQuery on {} left {} version conflict(s) after {} attempts",
+          indices,
+          versionConflicts,
+          attempt);
+    }
+    return failed || versionConflicts == 0 || attempt == maxAttempts;
+  }
+
+  /**
+   * Queues a failed single-document update for a rebuild. A version conflict that outlasted every
+   * retry is a warning, any other failure an error
+   * (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
+   */
+  public static void queueFailedUpdate(
+      String engine, String indexName, String docId, Exception failure) {
+    SearchIndexRetryQueue.enqueue(
+        docId, null, SearchIndexRetryQueue.failureReason("updateEntity", failure));
+    if (isVersionConflict(failure)) {
+      LOG.warn(
+          "Concurrent writes held the document for index: {}, docId: {}; queued for retry",
+          indexName,
+          docId);
+    } else {
+      LOG.error(
+          "Failed to update entity in {} for index: {}, docId: {}",
+          engine,
+          indexName,
+          docId,
+          failure);
+    }
+  }
+
+  /** A failed item of a bulk request, whichever engine answered it. */
+  public record BulkItemFailure(String id, int status, String type, String reason) {}
+
+  /** Queues reindexed items that lost to concurrent writes; any other failure is an error. */
+  public static void reportReindexFailures(
+      List<EntityReference> entities, List<BulkItemFailure> failures) {
+    Map<String, EntityReference> byId = new HashMap<>();
+    entities.forEach(entity -> byId.put(entity.getId().toString(), entity));
+    List<BulkItemFailure> rejected = new ArrayList<>();
+    for (BulkItemFailure failure : failures) {
+      if (isVersionConflictType(failure.status(), failure.type())) {
+        queueConflictedReindex(byId.get(failure.id()), failure);
+      } else {
+        rejected.add(failure);
+      }
+    }
+    if (!rejected.isEmpty()) {
+      LOG.error(
+          "Bulk reindex encountered errors. Total: {}, Failed: {}",
+          entities.size(),
+          rejected.size());
+      rejected.forEach(item -> LOG.error("Reindex failed for ID {}: {}", item.id(), item.reason()));
+    }
+  }
+
+  private static void queueConflictedReindex(EntityReference entity, BulkItemFailure failure) {
+    SearchIndexRetryQueue.enqueue(
+        failure.id(),
+        entity == null ? null : entity.getFullyQualifiedName(),
+        entity == null ? "" : entity.getType(),
+        "reindexEntities: " + failure.reason());
+    LOG.warn("Concurrent writes held reindexed ID {}; queued for retry", failure.id());
+  }
+
   public static void logColumnLineageFlush(ColumnLineageFlushOutcome outcome) {
     if (!outcome.failureReasons().isEmpty()) {
       LOG.error(

@@ -9,6 +9,9 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.ResponseException;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -34,6 +37,16 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class ElasticSearchVectorService implements VectorIndexService {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final int OVER_FETCH_MULTIPLIER = 2;
+  // A version-conflicted update changed nothing, so it is resent after a pause
+  // (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
+  private static final Retry CONFLICT_RETRY =
+      Retry.of(
+          "elasticsearch-vector-request",
+          RetryConfig.custom()
+              .maxAttempts(3)
+              .intervalFunction(IntervalFunction.ofExponentialBackoff(200, 2))
+              .retryOnException(VersionConflictException.class::isInstance)
+              .build());
 
   private static volatile ElasticSearchVectorService instance;
 
@@ -246,6 +259,11 @@ public class ElasticSearchVectorService implements VectorIndexService {
 
   @Override
   public String executeGenericRequest(String method, String endpoint, String body) {
+    return CONFLICT_RETRY.executeSupplier(
+        () -> executeGenericRequestAttempt(method, endpoint, body));
+  }
+
+  private String executeGenericRequestAttempt(String method, String endpoint, String body) {
     try {
       Request request = new Request(method, endpoint);
       if (body != null) {
@@ -257,6 +275,10 @@ public class ElasticSearchVectorService implements VectorIndexService {
       Response response = restClient.performRequest(request);
       int statusCode = response.getStatusCode();
       String responseBody = readEntityBody(response.getEntity());
+      if (SearchUtils.isVersionConflict(statusCode, responseBody)) {
+        throw new VersionConflictException(
+            "Elasticsearch request failed with status " + statusCode + ": " + responseBody);
+      }
       if (statusCode >= 400) {
         // 4xx path: Rest5Client returns these normally, so we surface the status
         // and body in the exception message — symmetric to the OS path.
@@ -514,6 +536,12 @@ public class ElasticSearchVectorService implements VectorIndexService {
           entityIndexName,
           e.getMessage(),
           e);
+    }
+  }
+
+  private static final class VersionConflictException extends RuntimeException {
+    private VersionConflictException(String message) {
+      super(message);
     }
   }
 
