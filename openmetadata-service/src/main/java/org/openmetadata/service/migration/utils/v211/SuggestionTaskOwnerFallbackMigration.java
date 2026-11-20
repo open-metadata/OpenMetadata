@@ -114,12 +114,7 @@ public final class SuggestionTaskOwnerFallbackMigration {
         .orElseThrow(
             () ->
                 new IllegalStateException(
-                    "%s has no %s node with assignees, so its owner fallback cannot be set. Add %s and %s to its approval node's assignees, or restore %s, and run the migration again."
-                        .formatted(
-                            WORKFLOW_NAME,
-                            REVIEW_NODE,
-                            CASCADE_OWNERS,
-                            EMPTY_ASSIGNEE_STRATEGY,
-                            REVIEW_NODE)));
+                    "%s has no %s node with assignees, so its owner fallback cannot be set. Restore %s and run the migration again."
+                        .formatted(WORKFLOW_NAME, REVIEW_NODE, REVIEW_NODE)));
   }
 }
