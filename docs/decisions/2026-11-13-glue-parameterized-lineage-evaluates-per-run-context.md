@@ -1,0 +1,111 @@
+# Glue parameterized script lineage evaluates each inspected run context independently
+
+- **Status:** Accepted
+- **Revisions:** v1 2026-11-13 (initial)
+- **Deciders:** GluePipeline connector maintainers (#37597)
+- **Guard:** `test_glue_parameterized_lineage.py` (`TestIssue37597WorkflowRunProperties`, `TestCrossRunCorrelationAndOneSidedEdges`, `TestSafetyAndBoundedResources`, `TestResolvedOptionsHonorRequestedOptions`, `TestNonOverridableArgumentsPrecedence`, `TestReviewerRegressions`, `TestDataflowProvenanceAndReviewFixes`)
+- **Related:** #37597, ADR:2026-10-22-glue-snowflake-refs-with-unknown-schema-link-only-unique-tables
+
+## Context
+
+AWS Glue Python scripts routinely construct target and source table names, schemas, databases, and
+S3 paths at runtime from `awsglue.utils.getResolvedOptions(sys.argv, ...)` job arguments and
+`glue.get_workflow_run_properties(...)["RunProperties"]` workflow run properties, combined via
+f-strings, `.format()`, `%` formatting, `+` concatenation, string case/trim/replace helpers, lookup
+dicts, or small constant-iterable `for` loops. A single Glue workflow or job is often triggered once
+per partition or market (`MARKET=DE`, `MARKET=FR`, ...).
+
+Two failure modes must be avoided when resolving runtime parameters statically:
+
+1. **Cross-run Cartesian pollution:** pooling sources and targets across all runs into one flat set
+   for a job would link `RAW_DE -> CONTRACT_FR` alongside `RAW_DE -> CONTRACT_DE`.
+2. **Guessing partial unknowns or unbounded work:** substituting placeholder text or another run's
+   properties when part of a template or run lookup does not match, falling back to regex on
+   uninterpolated `{var}` templates, or inspecting an unbounded history of runs or loop iterations.
+
+## Decision
+
+- `GluepipelineSource` collects a `WorkflowSnapshot` at most once per workflow and passes it with
+   inspected job runs to the pure `build_parameter_contexts` builder (`context_builder.py`),
+   producing up to `MAX_INSPECTED_RUNS = 10` typed `ParameterContext` instances per job. Job
+   arguments merge in precedence order `Job.DefaultArguments` < workflow trigger
+   `Actions[].Arguments` < `JobRun.Arguments` < `Job.NonOverridableArguments` (merged last in every
+   context, fallbacks included, as Glue gives them highest precedence) and workflow run properties
+   merge in order `Workflow.DefaultRunProperties` < `WorkflowRun.WorkflowRunProperties`. When
+   `get_workflow_runs(..., IncludeGraph=True)` includes per-node `JobDetails.JobRuns`, each workflow
+   run's properties pair only with job runs started in that workflow run; when
+   `glue:GetWorkflowRuns` fails with `ClientError`, ingestion logs at `DEBUG` and falls back to
+   `Workflow.LastRun` and defaults.
+- `script_evaluator.py` owns neutral AST binding resolution, bounded expression evaluation
+  (`MAX_EXPR_DEPTH = 32`, `MAX_STRING_LENGTH = 4096`), scalar-preserving loop-slice expansion
+  (`MAX_LOOP_UNROLLS = 32`), exact Python hashable dictionary key semantics (`1` vs `"1"`, tuples,
+  `None`), and distinction between immutable tuples and mutable lists under alias mutations.
+  `snowflake_parser.py` and `script_parser.py` consume its public API.
+- `script_parser.py` evaluates intra-script frame provenance in statement execution order across
+  unrolled constant `for` loops (`MAX_LOOP_UNROLLS = 32`, `MAX_TOTAL_LOOP_STEPS = 256`), non-recursive
+  helper calls (`MAX_CALL_DEPTH = 8`), and bounded containers (`MAX_CONTAINER_ITEMS = 128`) into typed
+  `LineageGroup` units (`sources` / `targets`: `Resolved | "absent" | "unresolved"`):
+  - Reassigning a variable, dictionary key, list index, or Spark temp view
+    (`createOrReplaceTempView`, `registerTempTable`) replaces its prior provenance; accumulating
+    operations (`.append`, `.extend`, `.insert`, `+=`, `.setdefault`, `.union` / `.unionByName` /
+    `.join` / `reduce`) combine contributing provenances; and unconsumed reads in scripts that perform
+    target writes emit no separate one-sided group.
+  - Dictionary writes and reads (`d[k]`, `.get()`, `.pop()`, `.setdefault()`) preserve Python key
+    values and types rather than coercing keys to strings.
+  - `spark.sql(...)` extracts table/view references from the SQL AST (`sqlglot` Spark dialect,
+    ignoring columns, literals, aliases, and CTEs) against live temp views, and `spark.table(...)`
+    checks live temp views before catalog resolution; dynamic SQL, parse errors, or unregistered SQL
+    tables evaluate to `"unresolved"`.
+  - `merge_sides` preserves `"unresolved"` whenever any merged input is `"unresolved"`, and any write
+    whose reaching source relationship cannot be established (disagreeing branches, dynamic or
+    early-exiting loops that rebind a frame/container/view, unknown dictionary keys, opaque frame
+    calls, or a container a call the analyzer cannot inspect can reach) produces
+    `sources = "unresolved"`. Such a call reaches every container nested in its arguments (including
+    aliases taken through subscripts, `*args` / `**kwargs`) and every container a lambda or function
+    passed to it refers to, wherever the call appears (statement, assignment, condition, f-string
+    placeholder, slice, comprehension, nested argument, or helper return). Operands Python
+    short-circuits past (`False and ...`, `True or ...`, a chained comparison after a false link, a
+    comprehension behind a false filter) never run. A reached comparison operand executes once
+    before its value is resolved. When a prior operand may short-circuit, later effects join with
+    the state where they were skipped.
+  - A comprehension evaluates its iterable before deciding which parts can run. An empty
+    iterable skips its filters, nested iterators, and element. If an iterator or filter has
+    unknown results, a generator body may be deferred, or a comprehension may repeat the body,
+    the analyzer joins the probed effects with the skipped state. It does not assume that a
+    single probe establishes the final provenance. A lambda passed to an uninspectable callee
+    also joins its possible effects with the state where it did not run.
+  - A container that branches, `a if c else b`, or `a or b` may alias in more than one way and
+    loses its tracked entries, because one joined copy cannot keep every alias.
+- `getResolvedOptions(sys.argv, [...])` mirrors `awsglue.utils`: the result holds only the requested
+  options and Glue's built-in options, keyed by argparse dest (`--flag-name` -> `flag_name`), so
+  `args.get("NOT_REQUESTED", "x")` is `"x"`. A requested option missing from the context is
+  `UNKNOWN`. When the options list or `sys.argv` cannot be established statically (or `sys.argv` or
+  a mutable options list is modified), every option value is `UNKNOWN`.
+- `get_workflow_run_properties(Name=..., RunId=...)` resolves only when `Name` and `RunId` match the
+  workflow and run identity of the active `ParameterContext`; unmatched or indeterminate lookups
+  remain `UNKNOWN`.
+- Any unknown sub-expression inside a string template or concatenation poisons the entire string to
+  `UNKNOWN`, while unknown Snowflake database/schema options with a known table continue to follow
+  ADR:2026-10-22-glue-snowflake-refs-with-unknown-schema-link-only-unique-tables. Regex fallbacks
+  run only when `ast.parse` fails and skip strings containing template placeholders (`{`, `}`, `%s`,
+  `%(`).
+- Catalog resolution maps `LineageGroup[ScriptRef]` (and Visual ETL nodes) to
+  `LineageGroup[EntityReference]`, and `plan_lineage_edges` enforces one contract: both sides
+  `Resolved` emit `Table -> Table` edges; `sources == "absent"` with `Resolved` targets emits
+  `Pipeline -> Table` edges; `targets == "absent"` with `Resolved` sources emits `Table -> Pipeline`
+  edges; either side `"unresolved"` skips the group; and one-sided edges are suppressed for tables
+  already linked by a two-sided group. Failed workflow-run fetches mark run properties opaque so
+  script-side `.get()` fallbacks are not fabricated into lineage while explicit defaults still
+  resolve.
+
+## Consequences
+
+- Multi-market and parameterized Glue workflows emit accurate per-run `Table -> Table`,
+  `Pipeline -> Table`, and `Table -> Pipeline` lineage without cross-run or unmatched-lookup false
+  positives, while fetching workflow run history once per workflow.
+- Runs older than the 10 most recent inspected runs are not re-evaluated on a single ingestion pass;
+  prior lineage edges already persisted in OpenMetadata remain intact, and bounded `LRUCache`s cap
+  S3 script downloads, `get_job_runs` calls, Glue connection lookups, entity resolutions, and AST
+  parses.
+- Dynamic table names computed from external I/O (e.g., querying a control table at runtime or
+  arbitrary user-defined functions) remain `UNKNOWN` and produce no lineage rather than a guess.

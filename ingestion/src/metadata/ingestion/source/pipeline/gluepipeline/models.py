@@ -13,7 +13,7 @@
 Glue Pipeline Source Model module
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EntityDetails(BaseModel):
@@ -104,10 +104,13 @@ class JobConnections(BaseModel):
 
 
 class JobNodes(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     config_nodes: dict | None = Field(default=None, alias="CodeGenConfigurationNodes")
     command: JobCommand | None = Field(default=None, alias="Command")
     connections: JobConnections | None = Field(default=None, alias="Connections")
     default_arguments: dict | None = Field(default=None, alias="DefaultArguments")
+    non_overridable_arguments: dict | None = Field(default=None, alias="NonOverridableArguments")
 
 
 class JobNodeResponse(BaseModel):

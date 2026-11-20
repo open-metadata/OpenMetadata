@@ -338,21 +338,38 @@ class GluePipelineUnitTest(TestCase):
         assert len(lineage_details["sources"]) == 1
 
     def test_resolve_jdbc_entities_wildcard_fallback(self):
-        """When dbServiceNames is empty, use wildcard '*' to search all services"""
+        """When dbServiceNames is empty, wildcard lookup resolves tables across database services."""
+        from fnmatch import fnmatchcase
+        from types import SimpleNamespace
         from unittest.mock import MagicMock
+        from uuid import UUID
 
+        from metadata.generated.schema.type.basic import Uuid
         from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
             JDBCRef,
         )
 
+        expected_fqn = "redshift_svc.dev.public.customer_sample"
         mock_table_ref = EntityReference(
-            id="85811038-099a-11ed-861d-0242ac120002",
+            id=Uuid(UUID("85811038-099a-11ed-861d-0242ac120002")),
             type="table",
             name="customer_sample",
+            fullyQualifiedName=expected_fqn,
         )
+        indexed_tables = {
+            expected_fqn: SimpleNamespace(fullyQualifiedName=SimpleNamespace(root=expected_fqn)),
+            "redshift_svc.other_db.public.customer_sample": SimpleNamespace(
+                fullyQualifiedName=SimpleNamespace(root="redshift_svc.other_db.public.customer_sample")
+            ),
+        }
 
         mock_metadata = MagicMock()
-        mock_metadata.get_entity_reference.return_value = mock_table_ref
+        mock_metadata.es_search_from_fqn.side_effect = lambda entity_type, fqn_search_string, fields=None: [
+            tbl for fqn_key, tbl in indexed_tables.items() if fnmatchcase(fqn_key, fqn_search_string)
+        ]
+        mock_metadata.get_entity_reference.side_effect = lambda entity, fqn: (
+            mock_table_ref if fqn == expected_fqn else None
+        )
         self.gluepipeline.metadata = mock_metadata
 
         # Without this the resolver calls the real AWS Glue API, which a try/except
@@ -368,30 +385,45 @@ class GluePipelineUnitTest(TestCase):
         )
         self.gluepipeline._resolve_jdbc_entities([jdbc_ref], lineage_details, "targets")
 
-        assert len(lineage_details["targets"]) == 1
-        assert lineage_details["targets"][0].name == "customer_sample"
+        assert lineage_details["targets"] == [mock_table_ref]
 
     def test_resolve_catalog_entities_wildcard_fallback(self):
-        """When dbServiceNames is empty, catalog resolution also uses wildcard"""
+        """When dbServiceNames is empty, catalog resolution resolves tables across database services."""
+        from fnmatch import fnmatchcase
+        from types import SimpleNamespace
         from unittest.mock import MagicMock
+        from uuid import UUID
 
+        from metadata.generated.schema.type.basic import Uuid
         from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
             CatalogRef,
         )
 
+        expected_fqn = "glue_catalog_svc.my_database.default.my_table"
         mock_table_ref = EntityReference(
-            id="85811038-099a-11ed-861d-0242ac120002",
+            id=Uuid(UUID("85811038-099a-11ed-861d-0242ac120002")),
             type="table",
             name="my_table",
+            fullyQualifiedName=expected_fqn,
         )
+        indexed_tables = {
+            expected_fqn: SimpleNamespace(fullyQualifiedName=SimpleNamespace(root=expected_fqn)),
+            "glue_catalog_svc.other_db.default.my_table": SimpleNamespace(
+                fullyQualifiedName=SimpleNamespace(root="glue_catalog_svc.other_db.default.my_table")
+            ),
+        }
 
         mock_metadata = MagicMock()
-        mock_metadata.get_entity_reference.return_value = mock_table_ref
+        mock_metadata.es_search_from_fqn.side_effect = lambda entity_type, fqn_search_string, fields=None: [
+            tbl for fqn_key, tbl in indexed_tables.items() if fnmatchcase(fqn_key, fqn_search_string)
+        ]
+        mock_metadata.get_entity_reference.side_effect = lambda entity, fqn: (
+            mock_table_ref if fqn == expected_fqn else None
+        )
         self.gluepipeline.metadata = mock_metadata
 
         lineage_details = {"sources": [], "targets": []}
         catalog_ref = CatalogRef(database="my_database", table="my_table")
         self.gluepipeline._resolve_catalog_entities([catalog_ref], lineage_details, "sources")
 
-        assert len(lineage_details["sources"]) == 1
-        assert lineage_details["sources"][0].name == "my_table"
+        assert lineage_details["sources"] == [mock_table_ref]
