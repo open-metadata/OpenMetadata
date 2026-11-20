@@ -102,7 +102,7 @@ class TestSuiteRepositoryTest {
   }
 
   @Test
-  void softDeletedFailingCaseDoesNotAffectSuiteSummaryOrAlerts() {
+  void softDeletedFailingCaseDoesNotAffectInMemorySuiteSummary() {
     String liveFqn = "service.db.schema.table.live";
     String softDeletedFqn = "service.db.schema.table.deleted";
     TestCase live =
