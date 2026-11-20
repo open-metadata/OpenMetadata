@@ -71,7 +71,7 @@ class SsoMcpSignInChecksIT extends McpSignInTestBase {
   }
 
   @ParameterizedTest(name = "a client signs in through {0}")
-  @EnumSource(value = OidcProviderProfile.class, mode = EnumSource.Mode.EXCLUDE, names = "GOOGLE")
+  @EnumSource(OidcProviderProfile.class)
   void clientSignsInThroughEachProviderShape(OidcProviderProfile shape, TestNamespace ns)
       throws Throwable {
     try (MockOidcProvider shaped = MockOidcProvider.start(shape)) {
@@ -162,11 +162,9 @@ class SsoMcpSignInChecksIT extends McpSignInTestBase {
 
           SsoNavigation navigation = navigateUntilTheClient(server, authorization);
 
-          // Gap: the login step fails first, so the person sees the generic 500 page and not
-          // the "Access Denied" page the MCP callback has for an unknown account.
-          assertThat(navigation.last().status()).as(navigation.describe()).isEqualTo(500);
+          assertThat(navigation.last().status()).as(navigation.describe()).isEqualTo(403);
           assertThat(navigation.last().body())
-              .contains("Authentication Failed")
+              .contains("Access Denied")
               .doesNotContain("consent_token");
         });
   }
@@ -256,34 +254,6 @@ class SsoMcpSignInChecksIT extends McpSignInTestBase {
       assertThat(code).isNotBlank();
     } finally {
       hardDelete(user);
-    }
-  }
-
-  /**
-   * Google documents both {@code https://accounts.google.com} and {@code accounts.google.com} as
-   * its issuer. The server's own login accepts both; the MCP callback refuses the second.
-   */
-  @Test
-  void gapGoogleSchemelessIssuerIsRefused(TestNamespace ns) throws Throwable {
-    try (MockOidcProvider google = MockOidcProvider.start(OidcProviderProfile.GOOGLE)) {
-      securityConfig.withVariant(
-          config -> SsoConfigs.confidentialOidc(securityConfig.originalCopy(), google),
-          () -> {
-            User user = createUser(new CreateUser(), ns.shortPrefix("google"));
-            try {
-              google.signIn(MockOidcIdentity.forEmail(user.getEmail()));
-              JsonNode server = discoverAuthorizationServer();
-              Authorization authorization =
-                  authorizationFor(CLIENT, server, register(CLIENT, server));
-
-              SsoNavigation navigation = navigateUntilTheClient(server, authorization);
-
-              assertThat(navigation.last().status()).as(navigation.describe()).isEqualTo(500);
-              assertThat(navigation.last().body()).contains("Authentication Failed");
-            } finally {
-              hardDelete(user);
-            }
-          });
     }
   }
 
