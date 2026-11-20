@@ -38,7 +38,7 @@ jobs:
           TWINE_PASSWORD: '${{ secrets.TWINE_OPENMETADATA_INGESTION_PASSWORD }}'
         run: |
           sudo make install_antlr_cli
-          make install_dev generate
+          make install_dev
           source env/bin/activate
           cd ingestion; \
             python -m build; \

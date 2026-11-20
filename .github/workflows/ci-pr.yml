@@ -29,7 +29,6 @@ jobs:
     name: Select Python workloads
     runs-on: ubuntu-latest
     outputs:
-      versions: ${{ steps.versions.outputs.versions }}
       lowest: ${{ steps.versions.outputs.lowest }}
       highest: ${{ steps.versions.outputs.highest }}
       ref: ${{ github.event.pull_request.head.sha || github.sha }}

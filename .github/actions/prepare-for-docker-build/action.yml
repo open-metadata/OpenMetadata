@@ -42,4 +42,4 @@ runs:
       shell: bash
       run: |-
         sudo make install_antlr_cli
-        make install_dev generate
+        make install_dev
