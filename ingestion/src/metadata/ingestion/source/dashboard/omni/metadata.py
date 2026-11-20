@@ -12,6 +12,7 @@
 dashboards with charts, and builds lineage from warehouse tables through
 topics to dashboards."""
 
+import re
 import traceback
 from collections import defaultdict
 from collections.abc import Iterable
@@ -35,6 +36,7 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.omniConnection import (
     OmniConnection,
 )
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -50,6 +52,8 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -89,6 +93,9 @@ DATAMODEL_CACHE_SIZE = 1000
 # can emit data-model -> table lineage once every data model has been written,
 # independent of whether the instance has any dashboards.
 _DATAMODEL_LINEAGE_SENTINEL = object()
+
+OMNI_SQL_VIEW_REF = re.compile(r"\$\{([^}]+)\}")
+OMNI_SQL_VIEW_PLACEHOLDER = "omni_view_ref"
 
 # Map Omni field data types to OpenMetadata column types.
 OMNI_DATATYPE_MAP = {
@@ -538,6 +545,81 @@ class OmniSource(DashboardServiceSource):
                         right=None,
                     )
 
+        if not dashboard_entity:
+            return
+        for table_entity in self._sql_tile_tables(dashboard_details, db_service_prefix):
+            lineage = self._get_add_lineage_request(to_entity=dashboard_entity, from_entity=table_entity)
+            if lineage:
+                yield lineage
+
+    def _sql_dialect(self, db_service_name: str | None) -> Dialect:
+        db_service = self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name) if db_service_name else None
+        return ConnectionTypeDialectMapper.dialect_of(db_service.serviceType.value) if db_service else Dialect.ANSI
+
+    def _sql_tile_tables(
+        self,
+        dashboard_details: OmniDashboardDetails,
+        db_service_prefix: str | None = None,
+    ) -> Iterable[Table]:
+        """Resolve the warehouse tables named in the hand-written SQL of a document's tiles."""
+        sql_tiles = [
+            tile
+            for tile in dashboard_details.dashboard.queryPresentations or []
+            if tile.query and tile.query.userEditedSQL and tile.query.userEditedSQL.strip()
+        ]
+        if not sql_tiles:
+            return
+        (
+            prefix_service_name,
+            prefix_database_name,
+            prefix_schema_name,
+            prefix_table_name,
+        ) = self.parse_db_service_prefix(db_service_prefix)
+        dialect = self._sql_dialect(prefix_service_name)
+        seen: set[str] = set()
+        for tile in sql_tiles:
+            try:
+                parser = LineageParser(
+                    OMNI_SQL_VIEW_REF.sub(OMNI_SQL_VIEW_PLACEHOLDER, tile.query.userEditedSQL),
+                    dialect,
+                    parser_type=self.get_query_parser_type(),
+                )
+                for source_table in parser.source_tables:
+                    parts = fqn.split(str(source_table))
+                    table_name = parts[-1]
+                    schema_name = self.check_database_schema_name(parts[-2]) if len(parts) > 1 else None
+                    database_name = self.check_database_schema_name(parts[-3]) if len(parts) > 2 else None
+                    if not schema_name or table_name == OMNI_SQL_VIEW_PLACEHOLDER:
+                        continue
+                    if prefix_table_name and prefix_table_name.lower() != table_name.lower():
+                        continue
+                    if prefix_schema_name and prefix_schema_name.lower() != schema_name.lower():
+                        continue
+                    if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
+                        continue
+                    tables = self.metadata.search_in_any_service(
+                        entity_type=Table,
+                        fqn_search_string=build_es_fqn_search_string(
+                            service_name=prefix_service_name or "*",
+                            database_name=prefix_database_name or database_name,
+                            schema_name=prefix_schema_name or schema_name,
+                            table_name=prefix_table_name or table_name,
+                        ),
+                        fetch_multiple_entities=True,
+                    )
+                    for table in [tables] if isinstance(tables, Table) else tables or []:
+                        if str(table.id.root) not in seen:
+                            seen.add(str(table.id.root))
+                            yield table
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.debug(traceback.format_exc())
+                logger.warning(
+                    "Could not parse SQL of tile %r in document %s: %s",
+                    tile.name,
+                    dashboard_details.document.identifier,
+                    exc,
+                )
+
     def _tile_topics(self, tile: QueryPresentation) -> Iterable[OmniTopic]:
         """Resolve every data model a tile reads.
 
@@ -551,6 +633,7 @@ class OmniSource(DashboardServiceSource):
             return
         refs = [tile.query.table]
         refs.extend(field.split(".")[0] for field in tile.query.fields or [] if "." in field)
+        refs.extend(ref.split(".")[0] for ref in OMNI_SQL_VIEW_REF.findall(tile.query.userEditedSQL or ""))
         # Distinct references can resolve to the same data model (a bare view name
         # and its schema-qualified handle), so dedupe on what they resolve to.
         seen: set[str] = set()
