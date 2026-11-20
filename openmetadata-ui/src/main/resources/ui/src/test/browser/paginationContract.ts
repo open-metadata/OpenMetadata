@@ -82,6 +82,8 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
   const previous = () => within().getByTestId('previous');
   const indicator = () => within().getByTestId('page-indicator');
   const label = (i: number) => spec.itemLabel(spec.items[i]);
+  const hits = [...spec.items].reverse();
+  const hitLabel = (i: number) => spec.itemLabel(hits[i]);
   const last = (calls: RecordedCall[]) => calls[calls.length - 1];
   const rows = () =>
     Array.from(
@@ -109,9 +111,9 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
   const mount = async (params: Record<string, string>) => {
     spec.setup?.();
     const list = serveList(spec.listPath, spec.items, spec.isPageRequest);
-    const search = spec.search
-      ? serveSearch(spec.search.index, spec.items)
-      : [];
+    // Search hits come back in reverse, so a page still showing the plain
+    // list (or the previous page) cannot pass for showing the results.
+    const search = spec.search ? serveSearch(spec.search.index, hits) : [];
     let screen = await renderApp(urlOf(spec.route, params));
 
     return {
@@ -269,6 +271,7 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
             .toBe(term);
           await expect.element(indicator()).toHaveTextContent(/1\s*of\s*\d+/);
           await expect.element(previous()).toBeDisabled();
+          await expect.element(within().getByText(hitLabel(0))).toBeVisible();
 
           await userEvent.click(next());
 
@@ -277,6 +280,9 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
             .toBe(String(pageSize));
           await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
           await expect.element(previous()).toBeEnabled();
+          await expect
+            .element(within().getByText(hitLabel(pageSize)))
+            .toBeVisible();
 
           await settle();
 
@@ -293,6 +299,9 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
             .element(within().getByTestId('searchbar'))
             .toHaveValue(term);
           await expect.element(indicator()).toHaveTextContent(/2\s*of\s*\d+/);
+          await expect
+            .element(within().getByText(hitLabel(pageSize)))
+            .toBeVisible();
 
           if (spec.deletedToggleTestId) {
             const toggle = within().getByTestId(spec.deletedToggleTestId);

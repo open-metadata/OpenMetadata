@@ -107,6 +107,57 @@ export const columnSortingFields: SortingField[] = [
   },
 ];
 
+export type SortOrderIcon = 'barsDesc' | 'barsAsc' | 'az' | 'za' | 'search';
+
+export interface SortOrderOption {
+  order: SORT_ORDER;
+  label: string;
+  icon: SortOrderIcon;
+}
+
+const ALPHABETICAL_ORDER_OPTIONS: SortOrderOption[] = [
+  { order: SORT_ORDER.ASC, label: 'label.a-to-z', icon: 'az' },
+  { order: SORT_ORDER.DESC, label: 'label.z-to-a', icon: 'za' },
+];
+
+// The first option of each field is the order applied when that field is picked.
+export const SORT_ORDER_OPTIONS: Record<string, SortOrderOption[]> = {
+  totalVotes: [
+    {
+      order: SORT_ORDER.DESC,
+      label: 'label.most-votes-first',
+      icon: 'barsDesc',
+    },
+    {
+      order: SORT_ORDER.ASC,
+      label: 'label.fewest-votes-first',
+      icon: 'barsAsc',
+    },
+  ],
+  [DISPLAY_NAME_KEYWORD_FIELD]: ALPHABETICAL_ORDER_OPTIONS,
+  'table.name.keyword': ALPHABETICAL_ORDER_OPTIONS,
+  dataType: ALPHABETICAL_ORDER_OPTIONS,
+  _score: [
+    { order: SORT_ORDER.DESC, label: 'label.best-match-first', icon: 'search' },
+  ],
+  updatedAt: [
+    { order: SORT_ORDER.DESC, label: 'label.newest-first', icon: 'barsDesc' },
+    { order: SORT_ORDER.ASC, label: 'label.oldest-first', icon: 'barsAsc' },
+  ],
+  'usageSummary.weeklyStats.count': [
+    {
+      order: SORT_ORDER.DESC,
+      label: 'label.most-used-first',
+      icon: 'barsDesc',
+    },
+    {
+      order: SORT_ORDER.ASC,
+      label: 'label.least-used-first',
+      icon: 'barsAsc',
+    },
+  ],
+};
+
 export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'owner.displayName',
   'tags.tagFQN',

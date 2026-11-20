@@ -129,7 +129,7 @@ prose and code blocks.
 | `frontend-browser-tests.md` | UI `*.browser.test.tsx`, `src/test/browser/**`, `playwright/e2e/**` — which test layer a check belongs in; writing a Vitest browser test; tagging a migrated Playwright test |
 | `python-ingestion.md` | `ingestion/src/**/*.py` — pytest style, connector-specific-file rule, `model_str()` |
 | `schema-first.md` | `openmetadata-spec/.../schema/**` and any `generated/**` — regen, never hand-edit generated |
-| `migrations.md` | `bootstrap/sql/**` — append-only, native path, MySQL+Postgres, idempotent |
+| `migrations.md` | `bootstrap/sql/**`, `service/migration/**` — append-only, native path, MySQL+Postgres, idempotent, steps carry their own logic |
 
 ### Repo coding conventions (read before writing non-trivial code)
 

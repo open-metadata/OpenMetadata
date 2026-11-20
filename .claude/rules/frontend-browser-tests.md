@@ -31,14 +31,12 @@ Real Chromium (Vitest browser mode), real components and providers. Only the net
 - Mock only what the page calls (`worker.use(...)`). An unmocked `/api/*` call fails the test, so never
   leave one to pass silently.
 - Build responses with the typed factories in `src/test/browser/fixtures/`, shaped like the server's
-  real response. Reuse `serveEntity` (PATCH applies the JSON patch), `servePersona` (permissions from the
-  seeded policies) and `serveSearch` rather than writing new handlers.
-- Assert what the user sees **and** what the page sent (`server.patches`, query params, request count).
+  real response. Reuse the existing handlers (`serveList`, `serveSearch`, the hierarchy and table
+  fixtures) rather than writing new ones; a list page uses `describePaginatedList` from
+  `paginationContract.ts`.
+- Assert what the user sees **and** what the page sent (query params, request count).
 - Never `vi.mock` our own components; a test that needs it belongs in Jest.
-- Long cold-load waits use `scaled(ms)` / `suiteTimeout(ms)` from `src/test/browser/timeouts.ts`;
-  coverage runs are about 2× slower.
-- A click a re-render can drop (pickers, panel tabs) goes through `openPicker(trigger, ready)`; a pick
-  is confirmed from the DOM's own state (`setSelected`). Do not add sleeps or retries.
+- Wait on a condition (`expect.element`, `expect.poll`), never a sleep, and do not add retries.
 
 ## Moving a Playwright test
 
