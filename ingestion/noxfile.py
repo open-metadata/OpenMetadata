@@ -16,6 +16,7 @@ import argparse
 import fcntl
 import os
 import runpy
+import shutil
 import subprocess
 import sys
 from contextlib import contextmanager, nullcontext
@@ -443,23 +444,28 @@ def cli_e2e(session):
 # ---------------------------------------------------------------------------
 # Combine coverage
 # ---------------------------------------------------------------------------
-@nox.session(
-    name="combine-coverage",
-    reuse_venv=True,
-    venv_backend="uv|venv",
-)
+@nox.session(name="combine-coverage", python=False)
 def combine_coverage(session):
-    """Combine coverage from multiple test runs and generate reports.
-
-    Used in CI to merge coverage artifacts from separate unit and
-    integration jobs. Expects .coverage files under coverage-data/.
-
-    Example:
-        nox -s combine-coverage
-    """
-    session.chdir(Path(__file__).resolve().parent)
+    """Combine local or downloaded coverage and stage JUnit reports."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--coverage-dir", type=Path)
+    parser.add_argument("--results-dir", type=Path)
+    args = parser.parse_args(session.posargs)
     python = prepare(session, "coverage")
-    session.run(str(python.parent / "coverage"), "combine")
+    if args.coverage_dir:
+        directory = Path(session.invoked_from) / args.coverage_dir
+        files = sorted(path for path in directory.rglob(".coverage*") if path.is_file())
+        if not files:
+            session.error("No Python coverage artifacts were downloaded")
+        for index, path in enumerate(files):
+            shutil.copyfile(path, INGESTION_ROOT / f".coverage.download-{index}")
+    if args.results_dir:
+        directory = Path(session.invoked_from) / args.results_dir
+        junit = INGESTION_ROOT / "junit"
+        junit.mkdir(exist_ok=True)
+        for index, path in enumerate(sorted(directory.rglob("test-results*.xml"))):
+            shutil.copyfile(path, junit / f"test-results-{index}.xml")
+    session.run(str(python.parent / "coverage"), "combine", "--rcfile=pyproject.toml", "--keep")
     session.run(
         str(python.parent / "coverage"),
         "report",
@@ -469,7 +475,4 @@ def combine_coverage(session):
         str(python.parent / "coverage"),
         "xml",
         "--rcfile=pyproject.toml",
-        "-o",
-        "coverage.xml",
     )
-    session.run("mv", "coverage.xml", "ci-coverage.xml", external=True)

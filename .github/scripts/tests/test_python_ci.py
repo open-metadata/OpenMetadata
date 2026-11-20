@@ -17,7 +17,6 @@ import os
 import shutil
 import subprocess
 import sys
-import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
@@ -209,63 +208,6 @@ def test_reporting_records_setup_failure_and_raw_exit_code(tmp_path, step_outcom
     assert data["exitCode"] == exit_code
     assert data["context"]["lane"] == "sample-lane"
     assert classification in summary.read_text()
-
-
-def test_coverage_collection_keeps_colliding_junit_names_and_combines_real_data(
-    tmp_path,
-):
-    project = tmp_path / "ingestion"
-    project.mkdir()
-    (project / "pyproject.toml").write_text(
-        '[tool.coverage.run]\nrelative_files = true\n[tool.coverage.xml]\noutput = "ci-coverage.xml"\n'
-    )
-    source = project / "sample.py"
-    source.write_text('import sys\nif sys.argv[1] == "unit":\n    result = 1\nelse:\n    result = 2\n')
-    for lane in ["unit", "integration"]:
-        artifact = tmp_path / "artifacts" / lane
-        artifact.mkdir(parents=True)
-        result = run(
-            sys.executable,
-            "-m",
-            "coverage",
-            "run",
-            "--data-file",
-            artifact / ".coverage",
-            source,
-            lane,
-            cwd=project,
-        )
-        assert result.returncode == 0, result.stderr
-        report = tmp_path / "results" / lane
-        report.mkdir(parents=True)
-        (report / "test-results.xml").write_text(
-            f'<testsuite name="{lane}" tests="1"><testcase name="{lane}"/></testsuite>'
-        )
-    result = run(
-        sys.executable,
-        ROOT / ".github/scripts/prepare_python_coverage.py",
-        "--coverage-dir",
-        tmp_path / "artifacts",
-        "--results-dir",
-        tmp_path / "results",
-        "--project-dir",
-        project,
-    )
-    assert result.returncode == 0, result.stderr
-    xml = ET.parse(project / "ci-coverage.xml").getroot()
-    assert xml.attrib["line-rate"] == "1"
-    assert {ET.parse(p).getroot().attrib["name"] for p in (project / "junit").glob("*.xml")} == {"unit", "integration"}
-
-
-def test_coverage_collection_fails_without_data(tmp_path):
-    result = run(
-        sys.executable,
-        ROOT / ".github/scripts/prepare_python_coverage.py",
-        "--coverage-dir",
-        tmp_path,
-    )
-    assert result.returncode != 0
-    assert "No Python coverage artifacts" in result.stderr
 
 
 def test_diagnostics_keeps_runner_evidence_without_docker(tmp_path):

@@ -8,9 +8,6 @@ inputs:
   profile:
     description: Locked Python profile (dev, test, or test-classification)
     default: test
-  java-version:
-    description: Java Version to install
-    default: '21'
   args:
     description: Arguments to pass to run_local_docker.sh
     required: false
@@ -23,10 +20,6 @@ inputs:
     description: Ingestion dependency to pass to run_local_docker.sh
     required: false
     default: "mysql,elasticsearch,sample-data"
-  install-server:
-    description: Whether to install Java, Node, and the OpenMetadata server
-    required: false
-    default: "true"
   fast-mode:
     description: Restore a pre-seeded Playwright fixture (PostgreSQL/OpenSearch or MySQL/Elasticsearch) and start the server on the host
     required: false
@@ -52,23 +45,23 @@ runs:
   using: composite
   steps:
     # ---- Setup Java --------------------------------------------------------------
-    - name: Setup JDK ${{ inputs.java-version }}
-      if: ${{ inputs.install-server == 'true' && (inputs.fast-mode == 'true' || inputs.lightweight-ingestion != 'true') }}
+    - name: Setup JDK 21
+      if: ${{ inputs.fast-mode == 'true' || inputs.lightweight-ingestion != 'true' }}
       uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
       with:
-        java-version: ${{ inputs.java-version }}
+        java-version: '21'
         distribution: 'temurin'
     # ------------------------------------------------------------------------------
 
     # ---- Setup Node --------------------------------------------------------------
     - name: Use Node.js
-      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
       with:
         node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
 
     - name: Install yarn
-      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       run: corepack enable
       shell: bash
     # ------------------------------------------------------------------------------
@@ -82,7 +75,6 @@ runs:
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
     - name: Configure Test Session Limit
-      if: ${{ inputs.install-server == 'true' }}
       run: |
         if [ -z "${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-}" ]; then
           echo "AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER=10000" >> "$GITHUB_ENV"
@@ -90,7 +82,7 @@ runs:
       shell: bash
 
     - name: Start Server and Ingest Sample Data
-      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' }}
+      if: ${{ inputs.fast-mode != 'true' }}
       uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4
       env:
         INGESTION_DEPENDENCY: ${{ inputs.ingestion_dependency }}
@@ -102,7 +94,7 @@ runs:
 
     # ADR:2026-10-28-playwright-fast-mode-pulls-images-outside-the-startup-budget
     - name: Pull fast Playwright environment images
-      if: ${{ inputs.install-server == 'true' && inputs.fast-mode == 'true' }}
+      if: ${{ inputs.fast-mode == 'true' }}
       run: |
         # Assigned rather than read through process substitution, whose exit
         # status is lost: an unreadable fixture must fail here, not skip the pull.
@@ -114,7 +106,7 @@ runs:
       shell: bash
 
     - name: Restore fast Playwright environment
-      if: ${{ inputs.install-server == 'true' && inputs.fast-mode == 'true' }}
+      if: ${{ inputs.fast-mode == 'true' }}
       run: |
         if [[ -z "${{ inputs.fixture-path }}" || -z "${{ inputs.distribution-path }}" ]]; then
           echo "fixture-path and distribution-path are required in fast mode" >&2
@@ -132,7 +124,7 @@ runs:
       shell: bash
 
     - name: Synchronize test dependencies after server setup
-      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.profile != 'dev' }}
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.profile != 'dev' }}
       env:
         PYTHON_PROFILE: ${{ inputs.profile }}
       run: make install PYTHON_PROFILE="$PYTHON_PROFILE"

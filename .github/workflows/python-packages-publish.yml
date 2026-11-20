@@ -49,7 +49,6 @@ jobs:
           TWINE_USERNAME: '${{ secrets.TWINE_OPENMETADATA_AIRFLOW_MANAGED_APIS_USERNAME }}'
           TWINE_PASSWORD: '${{ secrets.TWINE_OPENMETADATA_AIRFLOW_MANAGED_APIS_PASSWORD }}'
         run: |
-          make install_dev
           source env/bin/activate
           make install_apis
           cd openmetadata-airflow-apis; \

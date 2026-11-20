@@ -1567,7 +1567,6 @@ jobs:
           fixture-path: ${{ steps.fast-inputs.outputs.fixture }}
           distribution-path: ${{ steps.fast-inputs.outputs.distribution }}
           ingestion-image-path: ${{ steps.fast-inputs.outputs.ingestion_image }}
-          profile: dev
 
       # The visual and RDF lanes cannot use the shared fixture (see
       # PW_PRESEEDED_STATE above), so each seeds its own environment from

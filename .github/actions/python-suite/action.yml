@@ -17,7 +17,6 @@ runs:
   using: composite
   steps:
     - name: Run Python suite
-      id: tests
       env:
         SUITE: ${{ inputs.suite }}
         NOX_ARGS: ${{ inputs.nox-args }}

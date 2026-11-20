@@ -14,12 +14,14 @@
 import importlib.metadata
 import os
 import re
+import runpy
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
+UV_VERSION = runpy.run_path(str(ROOT / "scripts/python_tools.py"))["required_version"]()
 
 
 def prepare_locked_tooling(root, monkeypatch):
@@ -66,7 +68,7 @@ def prepare_locked_tooling(root, monkeypatch):
         ]
     }
     config.write_text(
-        '''[build-system]
+        """[build-system]
 requires = ["setuptools==83.0.0"]
 build-backend = "setuptools.build_meta"
 [project]
@@ -77,7 +79,9 @@ requires-python = ">=3.10"
 [tool.setuptools.packages.find]
 where = ["src"]
 [tool.uv]
-required-version = "==0.13.4"
+required-version = "=="""
+        + UV_VERSION
+        + '''"
 default-groups = []
 [dependency-groups]
 bootstrap = ["pip", "tomli>=2; python_version < '3.11'"]

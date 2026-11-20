@@ -31,7 +31,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from ingestion.tests.utils.python_tooling import prepare_locked_tooling
+from ingestion.tests.utils.python_tooling import UV_VERSION, prepare_locked_tooling
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -658,7 +658,7 @@ def test_local_bootstrap_installs_and_reuses_pinned_uv(nox_repo: Path, monkeypat
     assert_success(run("make", "install_test", f"PYTHON={sys.executable}", cwd=nox_repo))
     result = run(str(nox_repo / "ingestion/.nox/bootstrap/bin/uv"), "--version", cwd=nox_repo)
     assert_success(result)
-    assert result.stdout.startswith("uv 0.13.4 ")
+    assert result.stdout.split()[:2] == ["uv", UV_VERSION]
     managed = nox_repo / "ingestion/.nox/bootstrap/bin/uv"
     installed = managed.stat().st_mtime_ns
     assert_success(run("make", "install_test", f"PYTHON={sys.executable}", cwd=nox_repo))
@@ -694,7 +694,7 @@ def test_ci_bootstrap_rejects_missing_or_wrong_uv_without_installing(
     result = run(make, "python_tools", f"PYTHON={sys.executable}", cwd=tooling_repo)
 
     assert result.returncode != 0, result.stdout + result.stderr
-    assert "Expected uv 0.13.4" in result.stderr
+    assert f"Expected uv {UV_VERSION}" in result.stderr
     assert not (tooling_repo / "ingestion/.nox/bootstrap").exists()
 
 
@@ -733,13 +733,15 @@ def test_explicit_uv_version_is_checked_before_nox_bootstrap(tooling_repo: Path,
     result = run("make", "python_tools", cwd=tooling_repo)
 
     assert result.returncode != 0, result.stdout + result.stderr
-    assert "OM_UV_EXECUTABLE must point to uv 0.13.4" in result.stderr
+    assert f"OM_UV_EXECUTABLE must point to uv {UV_VERSION}" in result.stderr
     assert not (tooling_repo / "ingestion/.nox/bootstrap").exists()
 
 
 def test_changed_uv_pin_rejects_the_previous_executable(tooling_repo: Path, monkeypatch) -> None:
     config = tooling_repo / "ingestion/pyproject.toml"
-    config.write_text(config.read_text().replace('required-version = "==0.13.4"', 'required-version = "==0.0.0"'))
+    config.write_text(
+        config.read_text().replace(f'required-version = "=={UV_VERSION}"', 'required-version = "==0.0.0"')
+    )
     monkeypatch.setenv("OM_UV_EXECUTABLE", shutil.which("uv"))
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
 
@@ -756,7 +758,7 @@ def test_application_environment_uv_is_not_selected_for_exact_sync(nox_repo: Pat
     sentinel = nox_repo / "application-uv-used"
     executable = environment / "bin/uv"
     executable.write_text(
-        f"#!{sys.executable}\nfrom pathlib import Path\nPath({str(sentinel)!r}).touch()\nprint('uv 0.13.4')\n"
+        f"#!{sys.executable}\nfrom pathlib import Path\nPath({str(sentinel)!r}).touch()\nprint('uv {UV_VERSION}')\n"
     )
     executable.chmod(0o755)
     monkeypatch.setenv("PATH", str(environment / "bin") + os.pathsep + os.environ["PATH"])
@@ -1097,7 +1099,7 @@ def test_model_archives_merge_and_repeated_locked_sync_avoids_denied_origin(nox_
                 "--requirement",
                 requirement,
                 "--uv-version",
-                "0.13.4",
+                UV_VERSION,
                 "--output",
                 str(archive),
                 cwd=nox_repo,
@@ -1135,7 +1137,7 @@ def test_model_archives_merge_and_repeated_locked_sync_avoids_denied_origin(nox_
         )
     assert (nox_repo / "ingestion/uv.lock").read_bytes() == lock
     assert requests == []
-    assert_success(model_helper("clean", "--project", str(nox_repo / "ingestion"), cwd=nox_repo))
+    assert_success(run("uv", "cache", "clean", "fixture-first", "fixture-second", cwd=nox_repo))
     assert_success(run("uv", "cache", "prune", "--ci", "--force", cwd=nox_repo))
     assert not any(p.name in ("fixture_first", "fixture_second") for p in cache.rglob("*"))
     assert (cache / "CACHEDIR.TAG").is_file()
@@ -1161,7 +1163,7 @@ def test_model_preparation_retries_only_transient_failures(tmp_path, model_origi
         requirement = requirement.split("#")[0] + "#sha256=" + "0" * 64
     output = tmp_path / "model.tar"
     result = model_helper(
-        "prepare", "--requirement", requirement, "--uv-version", "0.13.4", "--output", str(output), cwd=tmp_path
+        "prepare", "--requirement", requirement, "--uv-version", UV_VERSION, "--output", str(output), cwd=tmp_path
     )
     if failure == "transient":
         assert_success(result)
@@ -1177,10 +1179,10 @@ def test_model_preparation_retries_only_transient_failures(tmp_path, model_origi
 
 @pytest.mark.skipif(sys.version_info < (3, 11), reason="CI bootstrap uses stdlib tomllib")
 @pytest.mark.parametrize(
-    ("versions", "maximum"),
-    [(["3.10", "3.11", "3.12"], "3.12"), (["3.9", "3.10"], "3.10")],
+    ("versions", "minimum", "maximum"),
+    [(["3.10", "3.11", "3.12"], "3.10", "3.12"), (["3.9", "3.10"], "3.9", "3.10")],
 )
-def test_python_matrix_bootstraps_from_pyproject_without_site_packages(tmp_path, versions, maximum):
+def test_ci_versions_bootstraps_from_pyproject_without_site_packages(tmp_path, versions, minimum, maximum):
     project = tmp_path / "ingestion"
     project.mkdir()
     (project / "pyproject.toml").write_text(
@@ -1189,17 +1191,21 @@ def test_python_matrix_bootstraps_from_pyproject_without_site_packages(tmp_path,
 
     result = run(
         sys.executable,
-        "-I",
+        "-E",
         "-S",
-        str(REPO_ROOT / "scripts/prepare_classification_models.py"),
-        "matrix",
+        str(REPO_ROOT / "scripts/python_ci.py"),
+        "versions",
         "--project",
         str(project),
         cwd=tmp_path,
     )
 
     assert_success(result)
-    assert json.loads(result.stdout) == {"python-versions": versions, "discovery-python": maximum}
+    assert json.loads(result.stdout) == {
+        "versions": versions,
+        "lowest": minimum,
+        "highest": maximum,
+    }
 
 
 def test_model_discovery_rejects_metadata_version_mismatch_and_tracks_identity(tmp_path):
@@ -1217,7 +1223,7 @@ def test_model_discovery_rejects_metadata_version_mismatch_and_tracks_identity(t
         ("#sha256=5e63", "?mirror=second#sha256=5e63"),
         ("#sha256=5e63", "?#sha256=5e63"),
         ("#sha256=5e63", "#sha256=6e63"),
-        ("==0.13.4", "==0.13.5"),
+        (f"=={UV_VERSION}", "==0.0.0"),
     ]:
         config.write_text(original.replace(old, new))
         result = model_helper("discover", "--project", str(project), cwd=tmp_path)
@@ -1243,7 +1249,7 @@ def test_model_free_test_profile_preserves_test_dependencies_after_model_selecti
                 "--requirement",
                 requirement,
                 "--uv-version",
-                "0.13.4",
+                UV_VERSION,
                 "--output",
                 str(archive),
                 cwd=nox_repo,
@@ -1295,7 +1301,7 @@ def test_model_versions_coexist_in_one_cache_after_parallel_preparation(tmp_path
                 "--requirement",
                 requirement,
                 "--uv-version",
-                "0.13.4",
+                UV_VERSION,
                 "--output",
                 str(archive),
                 cwd=tmp_path,
@@ -1317,7 +1323,7 @@ def test_model_versions_coexist_in_one_cache_after_parallel_preparation(tmp_path
         (project / "pyproject.toml").write_text(
             '[project]\nname="fixture-project"\nversion="0.0.0"\nrequires-python=">=3.10"\n'
             "[dependency-groups]\nclassification-models=[" + json.dumps(requirement) + "]\n"
-            '[tool.uv]\npackage=false\nrequired-version="==0.13.4"\ndefault-groups=[]\n'
+            f'[tool.uv]\npackage=false\nrequired-version="=={UV_VERSION}"\ndefault-groups=[]\n'
             '[[tool.uv.dependency-metadata]]\nname="fixture-first"\nversion="'
             + version
             + '"\nrequires-dist=[]\nrequires-python=">=3.10"\n'

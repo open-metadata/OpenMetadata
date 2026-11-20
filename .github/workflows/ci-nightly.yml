@@ -212,10 +212,8 @@ jobs:
           python-version: ${{ needs.plan.outputs.highest }}
       - name: Install uv
         uses: ./.github/actions/setup-uv
-      - name: Install coverage dependencies
-        run: |
-          make python_tools
-          ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py -s install -- coverage --environment "$PWD/env"
+      - name: Prepare Python tools
+        run: make python_tools
         shell: bash
       - name: Download coverage artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
@@ -233,7 +231,9 @@ jobs:
           pattern: py-*-test-results-*
           path: test-artifacts
       - name: Generate report
-        run: env/bin/python .github/scripts/prepare_python_coverage.py
+        run: |
+          ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py -s combine-coverage -- \
+            --coverage-dir artifacts --results-dir test-artifacts
         shell: bash
       - name: Push Results to Sonar
         id: push-to-sonar
