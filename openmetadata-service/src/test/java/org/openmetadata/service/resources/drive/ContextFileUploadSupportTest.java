@@ -22,6 +22,10 @@ import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ContextFileType;
 
 class ContextFileUploadSupportTest {
+  private static final String ASCII_FILE_NAME = "report-2026.pdf";
+  private static final String CYRILLIC_FILE_NAME = "Отчёт.xlsx";
+  private static final String CJK_FILE_NAME = "報告.pdf";
+  private static final String LATIN1_FILE_NAME = "Café.txt";
 
   @Test
   void detectFileTypeUsesMimeMappings() {
@@ -102,34 +106,36 @@ class ContextFileUploadSupportTest {
 
   @Test
   void decodeMultipartFileNameRecoversUtf8NameFromParsedUpload() throws Exception {
-    String original = "Отчёт.xlsx";
-    String body =
+    final String body =
         "--XX\r\n"
             + "Content-Disposition: form-data; name=\"file\"; filename=\""
-            + original
+            + CYRILLIC_FILE_NAME
             + "\"\r\n"
             + "Content-Type: application/octet-stream\r\n\r\n"
             + "abc\r\n"
             + "--XX--\r\n";
-    MIMEMessage message =
+    final MIMEMessage message =
         new MIMEMessage(
             new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)),
             "XX",
             new MIMEConfig());
-    List<String> header = message.getAttachments().get(0).getHeader("Content-Disposition");
-    String parsed = new FormDataContentDisposition(header.get(0)).getFileName();
+    final List<String> header =
+        message.getAttachments().getFirst().getHeader("Content-Disposition");
+    final String parsed = new FormDataContentDisposition(header.getFirst()).getFileName();
 
-    assertNotEquals(original, parsed);
-    assertEquals(original, ContextFileUploadSupport.decodeMultipartFileName(parsed));
+    assertNotEquals(CYRILLIC_FILE_NAME, parsed);
+    assertEquals(CYRILLIC_FILE_NAME, ContextFileUploadSupport.decodeMultipartFileName(parsed));
   }
 
   @Test
   void decodeMultipartFileNameLeavesOtherNamesUnchanged() {
     assertNull(ContextFileUploadSupport.decodeMultipartFileName(null));
     assertEquals(
-        "report-2026.pdf", ContextFileUploadSupport.decodeMultipartFileName("report-2026.pdf"));
-    assertEquals("Отчёт.xlsx", ContextFileUploadSupport.decodeMultipartFileName("Отчёт.xlsx"));
-    assertEquals("報告.pdf", ContextFileUploadSupport.decodeMultipartFileName("報告.pdf"));
-    assertEquals("Café.txt", ContextFileUploadSupport.decodeMultipartFileName("Café.txt"));
+        ASCII_FILE_NAME, ContextFileUploadSupport.decodeMultipartFileName(ASCII_FILE_NAME));
+    assertEquals(
+        CYRILLIC_FILE_NAME, ContextFileUploadSupport.decodeMultipartFileName(CYRILLIC_FILE_NAME));
+    assertEquals(CJK_FILE_NAME, ContextFileUploadSupport.decodeMultipartFileName(CJK_FILE_NAME));
+    assertEquals(
+        LATIN1_FILE_NAME, ContextFileUploadSupport.decodeMultipartFileName(LATIN1_FILE_NAME));
   }
 }

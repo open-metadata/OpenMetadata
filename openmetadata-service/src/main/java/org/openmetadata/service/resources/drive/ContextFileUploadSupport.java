@@ -5,7 +5,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
+import java.nio.CharBuffer;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
@@ -157,35 +157,39 @@ public final class ContextFileUploadSupport {
    * name as UTF-8. Names that are ASCII, contain characters outside ISO-8859-1 (already
    * decoded), or whose bytes are not valid UTF-8 are returned unchanged.
    */
-  public static String decodeMultipartFileName(String fileName) {
-    if (fileName == null) {
-      return null;
-    }
-    boolean hasNonAscii = false;
-    for (int i = 0; i < fileName.length(); i++) {
-      char c = fileName.charAt(i);
-      if (c > '\u00FF') {
-        return fileName;
-      }
-      if (c > '\u007F') {
-        hasNonAscii = true;
-      }
-    }
-    if (!hasNonAscii) {
+  public static String decodeMultipartFileName(final String fileName) {
+    if (fileName == null || !isUtf8DecodingCandidate(fileName)) {
       return fileName;
     }
-    CharsetDecoder decoder =
+    return decodeUtf8OrKeep(fileName);
+  }
+
+  /** Whether {@code fileName} has non-ASCII characters and all of them fit in ISO-8859-1. */
+  private static boolean isUtf8DecodingCandidate(final String fileName) {
+    boolean hasNonAscii = false;
+    for (int i = 0; i < fileName.length(); i++) {
+      final char character = fileName.charAt(i);
+      if (character > '\u00FF') {
+        return false;
+      }
+      hasNonAscii |= character > '\u007F';
+    }
+    return hasNonAscii;
+  }
+
+  /** Re-decode the ISO-8859-1 bytes of {@code fileName} as UTF-8, or keep it if invalid. */
+  private static String decodeUtf8OrKeep(final String fileName) {
+    final ByteBuffer input = ByteBuffer.wrap(fileName.getBytes(StandardCharsets.ISO_8859_1));
+    final CharBuffer output = CharBuffer.allocate(input.remaining());
+    final CharsetDecoder decoder =
         StandardCharsets.UTF_8
             .newDecoder()
             .onMalformedInput(CodingErrorAction.REPORT)
             .onUnmappableCharacter(CodingErrorAction.REPORT);
-    try {
-      return decoder
-          .decode(ByteBuffer.wrap(fileName.getBytes(StandardCharsets.ISO_8859_1)))
-          .toString();
-    } catch (CharacterCodingException e) {
+    if (decoder.decode(input, output, true).isError() || decoder.flush(output).isError()) {
       return fileName;
     }
+    return output.flip().toString();
   }
 
   /**
