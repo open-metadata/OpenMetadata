@@ -1,6 +1,8 @@
 package org.openmetadata.service.search.opensearch;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -14,8 +16,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import org.apache.commons.lang3.tuple.Pair;
@@ -30,6 +34,7 @@ import org.openmetadata.service.search.SearchRepository;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.Conflicts;
+import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryRequest;
@@ -170,11 +175,84 @@ class OpenSearchEntityManagerUpdateByQueryRetryTest {
     verify(indices).refresh(any(Function.class));
   }
 
+  @Test
+  void removingAnAbsentLineageEdgeRunsNoUpdateByQuery() throws Exception {
+    indicesHoldingMatches();
+    final UpdateByQueryResponse clean = response(0, 0);
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(clean);
+    new OpenSearchEntityManager(client)
+        .updateChildren(
+            List.of("all"),
+            "upstreamLineage.docUniqueId",
+            List.of("from--->to"),
+            Pair.of("ctx._source.remove('upstreamLineage')", Map.of()));
+    verify(client, never()).updateByQuery(any(UpdateByQueryRequest.class));
+  }
+
+  @Test
+  void removingLineageTargetsOnlyMatchingIndicesAndRefreshesThem() throws Exception {
+    indicesHoldingMatches("table_search_index", "table_search_index_rebuild");
+    final UpdateByQueryResponse conflicted = response(2, 1);
+    final UpdateByQueryResponse clean = response(1, 0);
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(conflicted, clean);
+    new OpenSearchEntityManager(client)
+        .updateChildren(
+            List.of("all", "staged"),
+            "upstreamLineage.docUniqueId",
+            List.of("from--->to"),
+            Pair.of("ctx._source.remove('upstreamLineage')", Map.of()));
+    final ArgumentCaptor<UpdateByQueryRequest> requests =
+        ArgumentCaptor.forClass(UpdateByQueryRequest.class);
+    verify(client, times(2)).updateByQuery(requests.capture());
+    for (final UpdateByQueryRequest request : requests.getAllValues()) {
+      assertEquals(List.of("table_search_index", "table_search_index_rebuild"), request.index());
+      assertEquals(Conflicts.Proceed, request.conflicts());
+      assertEquals(Refresh.True, request.refresh());
+      assertTrue(request.waitForCompletion() == null || request.waitForCompletion());
+    }
+    verify(indices).refresh(any(Function.class));
+  }
+
+  @Test
+  void removingLineageDoesNotSilentlyIgnoreAnUnreachableShard() throws Exception {
+    matchingIndicesSearch(1);
+    assertThrows(
+        IOException.class,
+        () ->
+            new OpenSearchEntityManager(client)
+                .updateChildren(
+                    List.of("all"),
+                    "upstreamLineage.docUniqueId",
+                    List.of("from--->to"),
+                    Pair.of("ctx._source.remove('upstreamLineage')", Map.of())));
+    verify(client, never()).updateByQuery(any(UpdateByQueryRequest.class));
+  }
+
+  @Test
+  void removingLineageRejectsTimedOutMatchingIndexSearch() throws Exception {
+    matchingIndicesSearch(true, 0);
+    assertThrows(
+        IOException.class,
+        () ->
+            new OpenSearchEntityManager(client)
+                .updateChildren(
+                    List.of("all"),
+                    "upstreamLineage.docUniqueId",
+                    List.of("from--->to"),
+                    Pair.of("ctx._source.remove('upstreamLineage')", Map.of())));
+    verify(client, never()).updateByQuery(any(UpdateByQueryRequest.class));
+  }
+
   private void indicesHoldingMatches(String... names) throws Exception {
     matchingIndicesSearch(0, names);
   }
 
   private void matchingIndicesSearch(int failedShards, String... names) throws Exception {
+    matchingIndicesSearch(false, failedShards, names);
+  }
+
+  private void matchingIndicesSearch(
+      final boolean timedOut, final int failedShards, final String... names) throws Exception {
     List<StringTermsBucket> buckets =
         Arrays.stream(names)
             .map(name -> StringTermsBucket.of(bucket -> bucket.key(name).docCount(1)))
@@ -182,7 +260,7 @@ class OpenSearchEntityManagerUpdateByQueryRetryTest {
     SearchResponse<JsonData> matches =
         new SearchResponse.Builder<JsonData>()
             .took(1)
-            .timedOut(false)
+            .timedOut(timedOut)
             .shards(shards -> shards.total(2).successful(2 - failedShards).failed(failedShards))
             .hits(hits -> hits.hits(List.of()))
             .aggregations(

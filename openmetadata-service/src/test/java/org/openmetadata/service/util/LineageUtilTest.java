@@ -1,10 +1,14 @@
 package org.openmetadata.service.util;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -12,11 +16,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.lineage.EsLineageData;
@@ -31,9 +40,63 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 
 class LineageUtilTest {
+
+  @ParameterizedTest
+  @CsvSource({"false,true", "false,false", "true,true", "true,false"})
+  void failedDerivedLineageRemovalQueuesTheDownstreamEntityWithoutInterruptingItsCaller(
+      final boolean deferred, final boolean checkedFailure) throws Exception {
+    final EntityReference from = entityRef(Entity.DOMAIN, UUID.randomUUID(), "domain.from");
+    final EntityReference to = entityRef(Entity.DOMAIN, UUID.randomUUID(), "domain.to");
+    final SearchRepository repository = mock(SearchRepository.class);
+    final SearchClient client = mock(SearchClient.class);
+    final Exception failure =
+        checkedFailure
+            ? new IOException("search timeout")
+            : new IllegalStateException("search unavailable");
+    when(repository.getSearchClient()).thenReturn(client);
+    when(repository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS)).thenReturn("all");
+    doThrow(failure)
+        .when(client)
+        .updateChildren(any(List.class), any(String.class), any(List.class), any(Pair.class));
+    final Method delete =
+        LineageUtil.class.getDeclaredMethod(
+            "deleteLineageFromSearch",
+            EntityReference.class,
+            EntityReference.class,
+            LineageDetails.class);
+    delete.setAccessible(true);
+
+    try (final MockedStatic<Entity> entities = mockStatic(Entity.class);
+        final MockedStatic<SearchIndexRetryQueue> retry = mockStatic(SearchIndexRetryQueue.class)) {
+      entities.when(Entity::getSearchRepository).thenReturn(repository);
+      retry
+          .when(
+              () -> SearchIndexRetryQueue.failureReason("deleteDerivedLineageFromSearch", failure))
+          .thenReturn("search failure");
+      if (deferred) {
+        assertTrue(LineageUtil.beginLineageDeferral());
+      }
+      assertDoesNotThrow(
+          () -> {
+            delete.invoke(null, from, to, null);
+          });
+      if (deferred) {
+        final var writes = LineageUtil.drainLineageDeferred();
+        assertEquals(1, writes.size());
+        assertDoesNotThrow(writes.getFirst()::run);
+      }
+      retry.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  to.getId().toString(), to.getFullyQualifiedName(), "search failure"));
+    } finally {
+      LineageUtil.clearLineageDeferred();
+    }
+  }
 
   @Test
   void addDomainLineageCreatesSearchableRelationshipsForUpstreamAndDownstreamDomains() {
@@ -214,7 +277,8 @@ class LineageUtilTest {
   }
 
   @Test
-  void removeDataProductsLineageDeletesRelationshipAndSearchEntryWhenLastEdgeIsRemoved() {
+  void removeDataProductsLineageDeletesRelationshipAndSearchEntryWhenLastEdgeIsRemoved()
+      throws Exception {
     UUID entityId = UUID.randomUUID();
     EntityReference dataProduct = entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.updated");
     EntityReference downstreamProduct =
@@ -239,6 +303,16 @@ class LineageUtilTest {
                 .build());
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
 
+    when(searchRepository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS)).thenReturn("all");
+    final AtomicBoolean indexed = new AtomicBoolean(true);
+    doAnswer(
+            call -> {
+              indexed.set(false);
+              return null;
+            })
+        .when(searchClient)
+        .updateChildren(any(List.class), any(String.class), any(List.class), any(Pair.class));
+
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
       mockedEntity.when(Entity::getSearchRepository).thenReturn(searchRepository);
@@ -251,6 +325,8 @@ class LineageUtilTest {
 
       LineageUtil.removeDataProductsLineage(entityId, Entity.TABLE, List.of(dataProduct));
 
+      assertFalse(indexed.get(), "Derived lineage removal must finish before returning");
+
       verify(relationshipDAO)
           .delete(
               eq(dataProduct.getId()),
@@ -259,16 +335,13 @@ class LineageUtilTest {
               eq(Entity.DATA_PRODUCT),
               eq(Relationship.UPSTREAM.ordinal()));
 
-      ArgumentCaptor<Pair<String, String>> fieldCaptor = ArgumentCaptor.forClass(Pair.class);
       ArgumentCaptor<Pair<String, Map<String, Object>>> updateCaptor =
           ArgumentCaptor.forClass(Pair.class);
       verify(searchClient)
           .updateChildren(
-              eq(SearchClient.GLOBAL_SEARCH_ALIAS), fieldCaptor.capture(), updateCaptor.capture());
-      assertEquals("upstreamLineage.docUniqueId", fieldCaptor.getValue().getLeft());
-      assertEquals(
-          dataProduct.getId() + "--->" + downstreamProduct.getId(),
-          fieldCaptor.getValue().getRight());
+              eq(List.of("all")), eq("upstreamLineage.docUniqueId"),
+              eq(List.of(dataProduct.getId() + "--->" + downstreamProduct.getId())),
+                  updateCaptor.capture());
       assertEquals(SearchClient.REMOVE_LINEAGE_SCRIPT, updateCaptor.getValue().getLeft());
       assertEquals(
           dataProduct.getId() + "--->" + downstreamProduct.getId(),
@@ -353,6 +426,7 @@ class LineageUtilTest {
                 .json(JsonUtils.pojoToJson(new LineageDetails()))
                 .build());
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    when(searchRepository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS)).thenReturn("all");
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);

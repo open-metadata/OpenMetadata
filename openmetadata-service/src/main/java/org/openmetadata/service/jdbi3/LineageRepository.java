@@ -1615,8 +1615,9 @@ public class LineageRepository {
     String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
     try {
       searchClient.updateChildren(
-          GLOBAL_SEARCH_ALIAS,
-          new ImmutablePair<>("upstreamLineage.docUniqueId", uniqueValue),
+          List.of(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)),
+          "upstreamLineage.docUniqueId",
+          List.of(uniqueValue),
           new ImmutablePair<>(
               REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
       invalidateLineageCacheForEdge(fromEntity, toEntity);
