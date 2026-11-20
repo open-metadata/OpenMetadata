@@ -82,6 +82,13 @@ jobs:
         run: |
           cat <(echo -e "${{ secrets.OSSRH_GPG_SECRET_KEY }}") | gpg --batch --import
           gpg --list-secret-keys --keyid-format LONG
+      - name: Set Maven version to 2.1.0.1
+        # Maven Central already has 2.1.0 (the rc1 build) and never allows a version to be replaced.
+        # Only for the 2.1.0 release branch: never cherry-pick to 2.1 or main.
+        run: >
+          mvn --no-transfer-progress --batch-mode
+          org.codehaus.mojo:versions-maven-plugin:2.25.2:set
+          -DnewVersion=2.1.0.1 -DgenerateBackupPoms=false -DprocessAllModules=true
       - name: Build openmetadata-service
         # Not published, but the Java client is generated from the swagger.json its compile writes.
         run: mvn --no-transfer-progress --batch-mode -DskipTests -pl openmetadata-service -am install
