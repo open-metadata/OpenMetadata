@@ -253,12 +253,6 @@ const ClassificationDetails = forwardRef(
       cursorType,
     }) => {
       if (cursorType) {
-        fetchClassificationChildren(
-          currentClassification?.fullyQualifiedName ?? '',
-          {
-            [cursorType]: paging[cursorType],
-          }
-        );
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
