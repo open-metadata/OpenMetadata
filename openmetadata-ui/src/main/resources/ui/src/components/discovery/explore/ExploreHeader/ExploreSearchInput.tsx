@@ -81,12 +81,8 @@ const INPUT_CONTAINER_CLASS = classNames(
 const SUGGESTIONS_CONTAINER_CLASS =
   'tw:max-h-[calc(24rem-2rem)] tw:w-full tw:overflow-y-auto';
 
-const SEARCH_POPOVER_CLASS = classNames(
-  'tw:max-h-96! tw:w-(--trigger-width) tw:origin-(--trigger-anchor-point)',
-  'tw:overflow-x-hidden tw:overflow-y-auto tw:rounded-lg tw:bg-overlay-surface',
-  'tw:px-0! tw:py-4! tw:shadow-lg tw:outline-1 tw:outline-secondary_alt',
-  'tw:will-change-transform'
-);
+// Surface, edge and shadow come from the core SelectPopover; only size and padding differ.
+const SEARCH_POPOVER_CLASS = 'tw:max-h-96! tw:px-0! tw:py-4!';
 
 const NLP_SUGGESTION_ITEM_CLASS = classNames(
   "tw:[&_[data-testid='ai-query-suggestions']]:w-full!",

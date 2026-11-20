@@ -31,11 +31,13 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -93,6 +95,7 @@ public class RootCauseAnalysisTool implements McpTool {
             includeColumns,
             getSubjectContext(securityContext),
             securityContext,
+            authorizer,
             new LineagePermissionFilter(authorizer));
     try {
       return analyze(request);
@@ -113,7 +116,7 @@ public class RootCauseAnalysisTool implements McpTool {
    * domain restrictions ({@code LineageDomainFilter}). The overloads that omit it prune nothing, so
    * a domain-restricted caller would see producers and impacted assets they cannot access.
    */
-  private record RcaRequest(
+  record RcaRequest(
       String fqn,
       String entityType,
       int upstreamDepth,
@@ -123,6 +126,7 @@ public class RootCauseAnalysisTool implements McpTool {
       boolean includeColumns,
       SubjectContext subject,
       CatalogSecurityContext securityContext,
+      Authorizer authorizer,
       LineagePermissionFilter lineagePermissionFilter) {}
 
   private Map<String, Object> analyze(RcaRequest request) throws IOException {
@@ -202,7 +206,7 @@ public class RootCauseAnalysisTool implements McpTool {
     // Knowing that the root is failing without knowing which tests failed costs another search.
     // The same helper already resolves this for upstream nodes; the root was just excluded.
     if (rootFails) {
-      Map<String, Object> rootTests = addTestCaseResultForTestSuite(rootNode);
+      Map<String, Object> rootTests = addTestCaseResultForTestSuite(rootNode, request);
       // A list with no total reads as possibly-trimmed, especially next to this tool's own notice
       // that node and edge details are cut for context. Say whether it is the full set.
       Object results = rootTests.get("testCaseResults");
@@ -214,7 +218,8 @@ public class RootCauseAnalysisTool implements McpTool {
     }
     upstreamAnalysis.put("failingUpstreamNodesCount", nodes.size());
     if (!nodes.isEmpty()) {
-      nodes.forEach(node -> node.put("failingTestCases", addTestCaseResultForTestSuite(node)));
+      nodes.forEach(
+          node -> node.put("failingTestCases", addTestCaseResultForTestSuite(node, request)));
       upstreamAnalysis.put("failingUpstreamNodes", nodes);
     }
     upstreamAnalysis.put("failingUpstreamEdgesCount", rawEdges.size());
@@ -613,21 +618,47 @@ public class RootCauseAnalysisTool implements McpTool {
    * <p>An empty map used to mean three different things: no suite attached, the backend threw, or no
    * failing tests. Next to a {@code status: "failed"} verdict those are opposite meanings.
    */
-  private Map<String, Object> addTestCaseResultForTestSuite(Map<String, Object> node) {
+  @VisibleForTesting
+  Map<String, Object> addTestCaseResultForTestSuite(Map<String, Object> node, RcaRequest request) {
     Map<String, Object> testCaseResult = new HashMap<>();
     Map<String, Object> testSuiteMap = JsonUtils.getMap(node.get("testSuite"));
     String testSuiteId = testSuiteMap == null ? null : (String) testSuiteMap.get("id");
+    String entityFqn = (String) node.get("fullyQualifiedName");
     if (testSuiteId == null) {
       testCaseResult.put(
           "note", "No test suite is attached to this asset, so no test results could be read.");
+    } else if (!canViewTests(request, (String) node.get("entityType"), entityFqn)) {
+      testCaseResult.put("note", "You do not have permission to view this asset's test results.");
     } else {
-      readFailingTests((String) node.get("fullyQualifiedName"), testSuiteId, testCaseResult);
+      readFailingTests(entityFqn, testSuiteId, testCaseResult, request.subject());
     }
     return testCaseResult;
   }
 
+  /**
+   * Seeing an asset does not imply seeing its data quality: the test endpoints gate a table's tests
+   * behind VIEW_TESTS, and the results below are read straight from the repository.
+   */
+  private static boolean canViewTests(RcaRequest request, String entityType, String entityFqn) {
+    String type = entityType == null ? Entity.TABLE : entityType;
+    try {
+      request
+          .authorizer()
+          .authorize(
+              request.securityContext(),
+              new OperationContext(type, MetadataOperation.VIEW_TESTS),
+              new ResourceContext<>(type, null, entityFqn));
+      return true;
+    } catch (AuthorizationException | EntityNotFoundException | IllegalArgumentException e) {
+      return false;
+    }
+  }
+
   private void readFailingTests(
-      String entityFqn, String testSuiteId, Map<String, Object> testCaseResult) {
+      String entityFqn,
+      String testSuiteId,
+      Map<String, Object> testCaseResult,
+      SubjectContext subject) {
     TestCaseResultRepository testResultTimeSeriesRepository =
         (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESULT);
     try {
@@ -641,7 +672,7 @@ public class RootCauseAnalysisTool implements McpTool {
               null,
               null,
               null,
-              null);
+              subject);
       ResultList<TestCaseResult> testCaseResults = latest.results();
       if (testCaseResults.getData() != null && !testCaseResults.getData().isEmpty()) {
         testCaseResult.put("testCaseResults", testCaseResults.getData());

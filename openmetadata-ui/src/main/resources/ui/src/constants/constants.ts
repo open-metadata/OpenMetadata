@@ -152,7 +152,6 @@ export const ROUTES = {
   PLATFORM_LINEAGE: '/lineage',
   PLATFORM_LINEAGE_WITH_FQN: `/lineage/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
   MY_DATA: '/my-data',
-  TOUR: '/tour',
   REPORTS: '/reports',
   EXPLORE: '/explore',
   EXPLORE_WITH_TAB: `/explore/${PLACEHOLDER_ROUTE_TAB}`,

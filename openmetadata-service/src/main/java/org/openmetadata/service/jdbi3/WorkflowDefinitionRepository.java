@@ -55,6 +55,22 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   private static final String CREATE_AND_RUN_INGESTION_PIPELINE_TASK =
       "createAndRunIngestionPipelineTask";
 
+  /**
+   * Subtypes whose delegates dereference the deserialized {@code recognizerFeedback} workflow
+   * variable (and so NPE without a null guard when the variable is missing). The schema for these
+   * nodes declares every {@code inputNamespaceMap} key as {@code required} with a {@code "global"}
+   * default — but only when the map itself is present. Deploying such a node with the
+   * {@code inputNamespaceMap} absent leaves the delegate reading {@code null} feedback and failing
+   * at runtime, so this shape is rejected by {@link #validateRecognizerFeedbackInputNamespaceMap}
+   * on creation and on graph-changing updates; a stored definition that predates the rule can still
+   * be edited for unrelated fields, with the delegate null-guard as a safety net.
+   */
+  private static final Set<String> RECOGNIZER_FEEDBACK_NODE_SUBTYPES =
+      Set.of(
+          "applyRecognizerFeedbackTask",
+          "rejectRecognizerFeedbackTask",
+          "createRecognizerFeedbackApprovalTask");
+
   public WorkflowDefinitionRepository() {
     super(
         WorkflowDefinitionResource.COLLECTION_PATH,
@@ -160,6 +176,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     WorkflowSinkSecrets.encrypt(original, updated);
     if (changesWorkflowGraph(original, updated)) {
       validateBatchAndSinkRules(updated);
+      validateRecognizerFeedbackInputNamespaceMap(updated);
     }
     return new WorkflowDefinitionRepository.WorkflowDefinitionUpdater(original, updated, operation);
   }
@@ -258,6 +275,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   private static void prepareForCreate(WorkflowDefinition entity) {
     validateBatchAndSinkRules(entity);
+    validateRecognizerFeedbackInputNamespaceMap(entity);
     WorkflowDefinitionSecretGuards.requireNoMaskedSecrets(entity);
     WorkflowDefinitionSecretGuards.requireNoEncryptedSecrets(entity);
     WorkflowSinkSecrets.encrypt(entity);
@@ -292,6 +310,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   public void validateWorkflow(WorkflowDefinition workflowDefinition) {
     validateWorkflowStructure(workflowDefinition);
     validateBatchAndSinkRules(workflowDefinition);
+    validateRecognizerFeedbackInputNamespaceMap(workflowDefinition);
   }
 
   private void validateWorkflowStructure(WorkflowDefinition workflowDefinition) {
@@ -504,6 +523,37 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateBatchExecution(workflowDefinition);
     // Provider capabilities determine the entity types a sink can sync
     validateSinkEntityTypes(workflowDefinition);
+  }
+
+  /**
+   * Rejects a recognizer-feedback node deployed without an {@code inputNamespaceMap}: its delegate
+   * dereferences the deserialized {@code recognizerFeedback} variable and NPEs when the map is
+   * absent. Gated to creation and graph-changing updates (see {@link #changesWorkflowGraph}) so a
+   * stored definition that predates this rule can still be edited for unrelated fields; the
+   * runtime null-guard in the delegates remains as a safety net for those older definitions.
+   */
+  private static void validateRecognizerFeedbackInputNamespaceMap(
+      WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getNodes() == null || workflowDefinition.getNodes().isEmpty()) {
+      return;
+    }
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      if (!RECOGNIZER_FEEDBACK_NODE_SUBTYPES.contains(node.getSubType())) {
+        continue;
+      }
+      Map<String, String> inputNamespaceMap =
+          JsonUtils.readOrConvertValue(node.getInputNamespaceMap(), Map.class);
+      if (inputNamespaceMap == null) {
+        throw BadRequestException.of(
+            String.format(
+                "Invalid Workflow: Node '%s' of subType '%s' requires an inputNamespaceMap that "
+                    + "maps recognizerFeedback (and the related inputs) to a namespace, but the "
+                    + "inputNamespaceMap was omitted; provide an inputNamespaceMap with at least "
+                    + "{\"relatedEntity\":\"global\", \"updatedBy\":\"global\", "
+                    + "\"triggeringObjectId\":\"global\", \"recognizerFeedback\":\"global\"}",
+                node.getName(), node.getSubType()));
+      }
+    }
   }
 
   /** Checked on write only: a stored definition that fails it is still deployed and run. */

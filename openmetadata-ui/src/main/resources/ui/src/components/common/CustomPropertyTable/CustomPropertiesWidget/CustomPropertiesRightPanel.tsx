@@ -22,7 +22,11 @@ import { useTranslation } from 'react-i18next';
 import NoSearchResultsPlaceholder from '../../EmptyPlaceholder/NoSearchResultsPlaceholder';
 import WidgetCard from '../../WidgetCard/WidgetCard';
 import { CustomPropertyCard } from '../CustomPropertyCard/CustomPropertyCard';
-import { matchesPropertySearch } from '../CustomPropertyCard/CustomPropertyCard.utils';
+import {
+  hasVersionValue,
+  matchesPropertySearch,
+} from '../CustomPropertyCard/CustomPropertyCard.utils';
+import { CustomPropertyVersionValue } from '../CustomPropertyCard/CustomPropertyVersionValue';
 import { CustomPropertiesRightPanelProps } from './CustomPropertiesRightPanel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET_DEFAULT_SIZE,
@@ -42,6 +46,8 @@ export const CustomPropertiesRightPanel = ({
   widgetSettings,
   viewAllPath,
   hasEditPermissions,
+  isVersionView = false,
+  addedKeys = [],
   onValueSave,
 }: CustomPropertiesRightPanelProps) => {
   const { t } = useTranslation();
@@ -70,6 +76,7 @@ export const CustomPropertiesRightPanel = ({
       ),
     [laidOut, searchText]
   );
+  const canEdit = hasEditPermissions && !isVersionView;
   const searchLabel = t('label.search-entity', {
     entity: t('label.property-plural'),
   });
@@ -102,19 +109,32 @@ export const CustomPropertiesRightPanel = ({
   ) => {
     // A preview row always spans the whole widget so the list stays one
     // column; a full-width card honours the half/full width set on it.
-    const spanClass = { 'tw:col-span-2': size === 'small' || width === 'full' };
+    const isRow = size === 'small' || isVersionView;
+    const spanClass = { 'tw:col-span-2': isRow || width === 'full' };
 
-    if (size === 'small') {
+    if (isRow) {
+      const value = extension?.[property.name];
+
       return (
         <CustomPropertyListItem
           className={classNames(spanClass, {
             'tw:rounded-xl tw:border tw:border-secondary tw:bg-primary':
               isBordered,
           })}
-          hasEditPermissions={hasEditPermissions}
+          hasEditPermissions={canEdit}
           key={property.name}
           property={property}
-          value={extension?.[property.name]}
+          value={value}
+          valueContent={
+            isVersionView &&
+            hasVersionValue(property.propertyType.name, value) ? (
+              <CustomPropertyVersionValue
+                isAdded={addedKeys.includes(property.name)}
+                property={property}
+                value={value}
+              />
+            ) : undefined
+          }
           onValueSave={onValueSave}
         />
       );
@@ -127,7 +147,7 @@ export const CustomPropertiesRightPanel = ({
         })}
         key={property.name}>
         <CustomPropertyCard
-          hasEditPermissions={hasEditPermissions}
+          hasEditPermissions={canEdit}
           isCompact={width === 'half'}
           property={property}
           value={extension?.[property.name]}

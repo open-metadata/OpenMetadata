@@ -19,22 +19,24 @@ import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.macasaet.fernet.TokenValidationException;
+import jakarta.ws.rs.BadRequestException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.UnaryOperator;
+import java.util.function.BiFunction;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.fernet.Fernet;
 
 /**
- * The secrets of one sending configuration, as JSON, at the fields its owner names: encrypted before
- * the configuration is stored, decrypted where a message is sent, masked in a response, and
- * restored from the stored configuration when a request sends back what it read. An alert's
- * destinations and the webhooks on a user's or a team's profile keep their secrets this one way.
+ * The secrets of one sending configuration, as JSON, at the fields its owner names: encrypted with
+ * the server's Fernet keys before the configuration is stored, decrypted where a message is sent,
+ * masked in a response, and restored from the stored configuration when a request sends back what
+ * it read. An alert's destinations and the webhooks on a user's or a team's profile keep their
+ * secrets this one way. ADR:2026-11-14-webhook-secrets-are-encrypted-with-the-server-fernet-key
  */
 @Slf4j
 public final class ConfigSecrets {
-  public static final UnaryOperator<String> MASK = secret -> PASSWORD_MASK;
+  private static final String ENTER_AGAIN = "The value at '%s' must be entered again";
 
   // Where a configuration delivers what it carries: the endpoint it posts to, and, for OAuth
   // credentials, the token URL they are shown to. A secret restored beside a moved target would
@@ -50,17 +52,20 @@ public final class ConfigSecrets {
 
   /** Encrypts, in place, the text at each field. Ciphertext is kept as it is. */
   public static boolean encrypt(JsonNode config, List<JsonPointer> fields) {
-    return transform(config, fields, ConfigSecrets::encrypted);
+    return transform(config, fields, (field, value) -> encrypted(value));
   }
 
-  /** Decrypts, in place, the text at each field. Text that is not ciphertext is kept as it is. */
+  /**
+   * Decrypts, in place, the text at each field. Text that is not ciphertext is kept as it is, and
+   * ciphertext the configured keys do not decrypt is refused with a 400 that names the field.
+   */
   public static boolean decrypt(JsonNode config, List<JsonPointer> fields) {
     return transform(config, fields, ConfigSecrets::decrypted);
   }
 
   /** Replaces, in place, the text at each field with the mask. */
   public static boolean mask(JsonNode config, List<JsonPointer> fields) {
-    return transform(config, fields, MASK);
+    return transform(config, fields, (field, value) -> PASSWORD_MASK);
   }
 
   /**
@@ -99,11 +104,12 @@ public final class ConfigSecrets {
     ((ObjectNode) config.at(field.head())).put(field.last().getMatchingProperty(), value);
   }
 
-  static boolean transform(JsonNode config, List<JsonPointer> fields, UnaryOperator<String> op) {
+  static boolean transform(
+      JsonNode config, List<JsonPointer> fields, BiFunction<JsonPointer, String, String> op) {
     boolean changed = false;
     for (JsonPointer field : fields) {
       String value = config.at(field).asText();
-      String transformed = op.apply(value);
+      String transformed = op.apply(field, value);
       if (!transformed.equals(value)) {
         set(config, field, transformed);
         changed = true;
@@ -141,10 +147,10 @@ public final class ConfigSecrets {
         && !Fernet.isTokenized(incoming)
         && Fernet.isTokenized(stored)
         && Fernet.getInstance().isKeyDefined()
-        && incoming.equals(decryptOrNull(stored));
+        && incoming.equals(decryptedWithPrimaryKeyOrNull(stored));
   }
 
-  private static String decryptOrNull(String ciphertext) {
+  private static String decryptedWithPrimaryKeyOrNull(String ciphertext) {
     String plaintext = null;
     try {
       plaintext = Fernet.getInstance().decryptWithPrimaryKey(ciphertext);
@@ -155,13 +161,22 @@ public final class ConfigSecrets {
   }
 
   private static String encrypted(String value) {
-    boolean keptAsIs = value.isEmpty() || !Fernet.getInstance().isKeyDefined();
-    return keptAsIs ? value : Fernet.getInstance().encryptIfApplies(value);
+    boolean keptAsIs =
+        value.isEmpty() || !Fernet.getInstance().isKeyDefined() || Fernet.isTokenized(value);
+    return keptAsIs ? value : Fernet.getInstance().encrypt(value);
   }
 
-  private static String decrypted(String value) {
-    return Fernet.getInstance().isKeyDefined()
-        ? Fernet.getInstance().decryptIfApplies(value)
-        : value;
+  // A value no configured key decrypts, one stored in a format this release does not read
+  // included, is never sent: it is entered again.
+  private static String decrypted(JsonPointer field, String value) {
+    String plaintext = value;
+    if (Fernet.getInstance().isKeyDefined() && Fernet.isTokenized(value)) {
+      try {
+        plaintext = Fernet.getInstance().decrypt(value);
+      } catch (TokenValidationException | IllegalArgumentException e) {
+        throw new BadRequestException(ENTER_AGAIN.formatted(field));
+      }
+    }
+    return plaintext;
   }
 }

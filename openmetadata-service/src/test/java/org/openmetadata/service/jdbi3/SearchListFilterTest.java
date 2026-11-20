@@ -51,6 +51,26 @@ public class SearchListFilterTest {
   }
 
   @Test
+  void testTestDefinitionConditionMatchesLowercasedFqn() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("testDefinition", "ColumnValuesToBeNotNull");
+    String actual = searchListFilter.getCondition(Entity.TEST_CASE);
+    String expected =
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"bool\": {\"filter\": [{\"term\": {\"testDefinition.fullyQualifiedName\": \"columnvaluestobenotnull\"}}]}}}";
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  void testBlankTestDefinitionIsIgnored() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("testDefinition", " ");
+    String actual = searchListFilter.getCondition(Entity.TEST_CASE);
+    String expected =
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"match_all\": {}}}";
+    assertEquals(expected, actual);
+  }
+
+  @Test
   void testBlankTestCaseStatusesAreIgnored() {
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("testCaseStatus", " , ");
@@ -171,11 +191,24 @@ public class SearchListFilterTest {
     String actual = searchListFilter.getCondition(Entity.TABLE);
 
     assertTrue(
-        actual.contains("{\"term\": {\"domains.fullyQualifiedName\": \"finance.\\\"raw\\\"\"}}"));
+        actual.contains("{\"term\":{\"domains.fullyQualifiedName\":\"finance.\\\"raw\\\"\"}}"));
     assertTrue(
         actual.contains(
             "{\"nested\":{\"path\":\"owners\",\"query\":{\"terms\":{\"owners.id\":[\"owner1\", \"owner2\"]}},\"ignore_unmapped\":true}}"));
     assertTrue(actual.contains("{\"term\": {\"createdBy\": \"user\\\"name\"}}"));
+  }
+
+  @Test
+  void testDomainFilterMatchesTheDomainAndItsSubDomains() {
+    // e.g. Data Quality lists filtered by a parent domain keep test cases in its sub-domains
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("domains", "Sales");
+
+    String actual = searchListFilter.getCondition(Entity.TEST_CASE);
+
+    assertTrue(actual.contains("{\"term\":{\"domains.fullyQualifiedName\":\"Sales\"}}"));
+    assertTrue(actual.contains("{\"prefix\":{\"domains.fullyQualifiedName\":\"Sales.\"}}"));
+    assertFalse(actual.contains("must_not\":{\"exists"));
   }
 
   @Test

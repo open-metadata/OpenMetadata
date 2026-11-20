@@ -32,7 +32,12 @@ const mockShowErrorToast = jest.fn();
 const mockGetEntityPermission = jest.fn();
 const mockGetResolvedTaskFormSchema = jest.fn();
 
-let mockCurrentUser: { id?: string; name?: string; isAdmin?: boolean } = {
+let mockCurrentUser: {
+  id?: string;
+  name?: string;
+  isAdmin?: boolean;
+  teams?: { id: string; type: string }[];
+} = {
   name: 'bob',
 };
 
@@ -54,6 +59,9 @@ jest.mock('constants/Task.constant', () => ({
 }));
 
 jest.mock('rest/tasksAPI', () => ({
+  TaskEntityStatus: jest.requireActual('generated/entity/tasks/task')
+    .TaskStatus,
+  TaskEntityType: jest.requireActual('generated/entity/tasks/task').TaskType,
   getTask: (...args: unknown[]) => mockGetTaskById(...args),
   resolveTask: (...args: unknown[]) => mockResolveTask(...args),
   addTaskComment: (...a: unknown[]) => mockAddComment(...a),
@@ -476,6 +484,7 @@ jest.mock('react-router-dom', () => ({
 // Boundary stub for the routing layer: the panel only cares that a task with an
 // about-entity links to it, and that an incident falls back to its test case.
 jest.mock('utils/TaskNavigationUtils', () => ({
+  ...jest.requireActual('utils/TaskNavigationUtils'),
   getTaskAboutPath: (
     task: { about?: { type?: string; fullyQualifiedName?: string } },
     incidentTestCaseFqn: string
@@ -607,6 +616,33 @@ describe('TaskDetailPanel', () => {
     expect(
       screen.getAllByText('Approval required for sales_table').length
     ).toBeGreaterThan(0);
+  });
+
+  // Not the list row it falls back on: the server's task carries the status
+  // the list needs to file a linked task under its tab.
+  it('reports the full task once it loads', async () => {
+    const onLoaded = jest.fn();
+    const listRow = { ...TASK, status: 'Open' } as unknown as ComponentProps<
+      typeof TaskDetailPanel
+    >['fallbackTask'];
+    mockGetTaskById.mockResolvedValue({
+      data: { ...TASK, status: 'Rejected' },
+    });
+
+    await act(async () =>
+      render(
+        <TaskDetailPanel
+          fallbackTask={listRow}
+          taskId="task-1"
+          onLoaded={onLoaded}
+        />
+      )
+    );
+
+    expect(onLoaded).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Rejected' })
+    );
+    expect(onLoaded).not.toHaveBeenCalledWith(listRow);
   });
 
   it('fetches the task with the full field set', async () => {
@@ -1377,6 +1413,116 @@ describe('TaskDetailPanel', () => {
       ).not.toBeInTheDocument();
     });
 
+    describe('workflow approval decided by its assignees', () => {
+      const APPROVAL_TASK = {
+        ...TASK,
+        type: 'RequestApproval',
+        workflowInstanceId: 'wf-1',
+        workflowStageId: 'review',
+        assignees: [
+          { id: 'u9', name: 'shailesh', type: 'user' },
+          { id: 'team-1', name: 'stewards', type: 'team' },
+        ],
+      };
+
+      it('hides Approve/Reject from a reviewer who is not an assignee, even with ResolveTask', async () => {
+        mockCurrentUser = { name: 'bob', id: 'u2' };
+        mockGetTaskById.mockResolvedValue({ data: APPROVAL_TASK });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+        expect(screen.queryByText('label.reject')).not.toBeInTheDocument();
+        expect(
+          screen.getByTestId('task-resolve-denied-hint')
+        ).toHaveTextContent('message.only-assignees-can-approve-or-reject');
+      });
+
+      it('tells the requester who is not assigned that the task is not theirs to decide', async () => {
+        mockCurrentUser = { name: 'alice', id: 'u1' };
+        mockGetTaskById.mockResolvedValue({ data: APPROVAL_TASK });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(
+          screen.getByTestId('task-resolve-denied-hint')
+        ).toHaveTextContent('message.only-assignees-can-approve-or-reject');
+      });
+
+      it('shows Approve/Reject to a member of an assigned team', async () => {
+        mockCurrentUser = {
+          name: 'bob',
+          id: 'u2',
+          teams: [{ id: 'team-1', type: 'team' }],
+        };
+        mockGetTaskById.mockResolvedValue({ data: APPROVAL_TASK });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(screen.getByText('label.approve')).toBeInTheDocument();
+        expect(screen.getByText('label.reject')).toBeInTheDocument();
+      });
+
+      it('replaces Approve/Reject with the counted votes once the assignee voted in this stage', async () => {
+        mockCurrentUser = { name: 'shailesh', id: 'u9' };
+        mockGetTaskById.mockResolvedValue({
+          data: {
+            ...APPROVAL_TASK,
+            // The server drops the voter's own entry after a non-final vote.
+            assignees: [{ id: 'team-1', name: 'stewards', type: 'team' }],
+            reviewVotes: [
+              {
+                voter: { id: 'u9', name: 'shailesh', type: 'user' },
+                assignee: { id: 'u9', name: 'shailesh', type: 'user' },
+                decision: 'Approved',
+                stage: 'review',
+                timestamp: 1,
+              },
+            ],
+          },
+        });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+        expect(screen.queryByText('label.reject')).not.toBeInTheDocument();
+        expect(screen.getByTestId('task-review-votes')).toHaveTextContent(
+          'message.user-approved-task'
+        );
+        expect(
+          screen.getByTestId('task-review-votes-waiting')
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId('task-resolve-denied-hint')
+        ).not.toBeInTheDocument();
+      });
+
+      it('keeps Approve/Reject when the assignee only voted in an earlier stage', async () => {
+        mockCurrentUser = { name: 'shailesh', id: 'u9' };
+        mockGetTaskById.mockResolvedValue({
+          data: {
+            ...APPROVAL_TASK,
+            reviewVotes: [
+              {
+                voter: { id: 'u9', name: 'shailesh', type: 'user' },
+                assignee: { id: 'u9', name: 'shailesh', type: 'user' },
+                decision: 'Approved',
+                stage: 'draft',
+                timestamp: 1,
+              },
+            ],
+          },
+        });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(screen.getByText('label.approve')).toBeInTheDocument();
+        expect(
+          screen.queryByTestId('task-review-votes')
+        ).not.toBeInTheDocument();
+      });
+    });
+
     it('does not gate an incident task on ResolveTask and skips the permission fetch', async () => {
       mockGetTaskById.mockResolvedValue({
         data: { ...TASK, type: 'TestCaseResolution' },
@@ -1571,6 +1717,75 @@ describe('TaskDetailPanel', () => {
       expect(screen.getByTestId('task-approve')).toBeInTheDocument();
     });
 
+    // The list row has no assignees, payload or ontologyReview: rendering the body
+    // from it flashed "Unassigned", a one-event timeline and, for an ontology
+    // review, a "could not be loaded" error before the full task replaced them.
+    it('renders only the header from the list row until the full task loads', async () => {
+      const pending: { resolve?: (value: { data: unknown }) => void } = {};
+      mockGetTaskById.mockReturnValue(
+        new Promise((resolve) => {
+          pending.resolve = resolve;
+        })
+      );
+
+      await act(async () =>
+        render(
+          <TaskDetailPanel
+            fallbackTask={{ ...LEGACY_APPROVAL_TASK, assignees: [] } as never}
+            taskId="task-1"
+          />
+        )
+      );
+
+      expect(screen.getByTestId('task-detail-panel')).toBeInTheDocument();
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-detail-summary')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-activity-timeline')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('label.unassigned')).not.toBeInTheDocument();
+
+      await act(async () => pending.resolve?.({ data: LEGACY_APPROVAL_TASK }));
+
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(screen.getByTestId('task-detail-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('task-activity-timeline')).toBeInTheDocument();
+    });
+
+    // The placeholder already explains a failed first load; a toast would say it twice.
+    it('shows why the task failed to load in place of the body, once, with a retry', async () => {
+      mockGetTaskById.mockRejectedValueOnce({ response: { status: 500 } });
+
+      await act(async () =>
+        render(
+          <TaskDetailPanel
+            fallbackTask={LEGACY_APPROVAL_TASK as never}
+            taskId="task-1"
+          />
+        )
+      );
+
+      expect(screen.getByTestId('task-detail-panel')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.something-went-wrong')
+      ).toBeInTheDocument();
+      expect(mockShowErrorToast).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-activity-timeline')
+      ).not.toBeInTheDocument();
+
+      mockGetTaskById.mockResolvedValueOnce({ data: LEGACY_APPROVAL_TASK });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+      });
+
+      expect(screen.getByTestId('task-detail-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('task-activity-timeline')).toBeInTheDocument();
+    });
+
     // Only the first load gates the actions; a reload after a comment must not
     // blank the buttons (or flip the status label) while it runs.
     it('keeps its actions while a comment reloads the task', async () => {
@@ -1684,7 +1899,14 @@ describe('TaskDetailPanel', () => {
 
       expect(mockGetResolvedTaskFormSchema).toHaveBeenCalledWith(
         'RequestApproval',
-        'Approval'
+        'Approval',
+        expect.objectContaining({
+          // The legacy approval mock carries no stamped schema id; the panel
+          // forwards `task?.taskFormSchemaId` (undefined here) and the raw
+          // payload so Suggestion variants would disambiguate by suggestionType.
+          taskFormSchemaId: undefined,
+          payload: LEGACY_APPROVAL_TASK.payload,
+        })
       );
     });
 

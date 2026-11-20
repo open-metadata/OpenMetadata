@@ -19,4 +19,9 @@ export const COMMON_RESIZABLE_PANEL_CONFIG = {
     minWidth: 400,
     flex: 0.33,
   },
+  ENTITY_SUMMARY_PANEL: {
+    minWidth: 400,
+    flex: 0.33,
+    enforceMinWidth: true,
+  },
 };

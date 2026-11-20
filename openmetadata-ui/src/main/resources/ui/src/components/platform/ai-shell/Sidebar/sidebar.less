@@ -1022,6 +1022,14 @@
     transition: background-color 150ms @ask-transition-ease,
       color 150ms @ask-transition-ease;
 
+    // A TooltipTrigger item hides its outline (tw:outline-hidden), so keyboard focus, which
+    // react-aria marks with data-focus-visible, draws its own ring.
+    &[data-focus-visible],
+    &:focus-visible {
+      outline: 2px solid var(--tw-border-color-brand);
+      outline-offset: 2px;
+    }
+
     &:not(&--active):not(&--interactive-icon):not(&--recent-chats):hover {
       background: @ask-bg-hover;
       color: @ask-text-tertiary;
@@ -1412,6 +1420,14 @@
     cursor: pointer;
     transition: background-color 150ms @ask-transition-ease,
       color 150ms @ask-transition-ease;
+
+    // A TooltipTrigger item hides its outline (tw:outline-hidden), so keyboard focus, which
+    // react-aria marks with data-focus-visible, draws its own ring.
+    &[data-focus-visible],
+    &:focus-visible {
+      outline: 2px solid var(--tw-border-color-brand);
+      outline-offset: 2px;
+    }
 
     &:not(&--active):hover {
       background: @ask-bg-hover;

@@ -193,7 +193,7 @@ function SpreadsheetsTable({
       data-testid="data-models-table"
       dataSource={spreadsheets}
       defaultVisibleColumns={DEFAULT_SERVICE_TAB_VISIBLE_COLUMNS}
-      entityType="dashboardDataModelTable"
+      entityType="driveSpreadsheetsTable"
       extraTableFilters={
         <span className="tw:inline-flex tw:items-center">
           <Toggle

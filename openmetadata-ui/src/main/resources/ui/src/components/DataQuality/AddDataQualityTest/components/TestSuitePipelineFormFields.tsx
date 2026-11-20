@@ -34,7 +34,7 @@ import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { WorkflowExtraConfig } from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval.types';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
-import { normalizeSelectedTestProp } from '../../AddTestCaseList/AddTestCaseListForm.utils';
+import { isValidTestCaseSelection } from '../../AddTestCaseList/AddTestCaseListForm.utils';
 import { TestSuiteIngestionDataType } from '../AddDataQualityTest.interface';
 
 export type TestSuitePipelineFormValues = WorkflowExtraConfig &
@@ -209,7 +209,7 @@ const TestSuitePipelineFormFields = ({
                       name="testCases"
                       rules={{
                         validate: (value) =>
-                          normalizeSelectedTestProp(value).length > 0 ||
+                          isValidTestCaseSelection(value) ||
                           t('label.field-required', {
                             field: t('label.test-case'),
                           }),

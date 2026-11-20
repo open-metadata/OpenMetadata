@@ -21,7 +21,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
   DotsVertical,
   Edit01,
   NoFilterFunnel,
@@ -31,24 +30,26 @@ import {
   Time,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
-import { FC, useMemo } from 'react';
+import { FC, Fragment, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
 import { MEMORY_STATUS_LABEL_KEYS } from '../../../constants/ContextCenter.constants';
+import { EntityType } from '../../../enums/entity.enum';
 import {
   ContextMemory,
   ContextMemoryStatus,
   EntityReference,
 } from '../../../generated/entity/context/contextMemory';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useMemoryStatusReason } from '../../../hooks/discovery/context-center/useMemoryStatusReason';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getMemoryCitations } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/RichTextStringUtils';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
-import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   MemoriesViewProps,
   MemoryActionsProps,
@@ -120,28 +121,59 @@ const MemoryRowSkeleton: FC = () => (
   </Box>
 );
 
-const MemoryRowHeader: FC<{ updatedBy?: string; updatedAt?: number }> = ({
-  updatedBy,
-  updatedAt,
-}) => (
-  <Box align="center" gap={2} wrap="wrap">
-    {updatedBy && (
-      <Typography className="tw:text-secondary" size="text-sm">
-        {updatedBy}
-      </Typography>
-    )}
-    {updatedAt !== undefined && (
-      <>
-        <span className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xs">
-          &middot;
-        </span>
-        <Typography className="tw:text-quaternary" size="text-xs">
-          {getShortRelativeTime(updatedAt)}
-        </Typography>
-      </>
-    )}
-  </Box>
+const MetaSeparator: FC = () => (
+  <Typography
+    aria-hidden
+    className="tw:text-utility-gray-400 tw:leading-none tw:select-none"
+    size="text-xs">
+    &middot;
+  </Typography>
 );
+
+/** The owner leads; whoever changed the memory last follows when that is someone else. */
+const MemoryRowHeader: FC<{
+  owner?: string;
+  updatedBy?: string;
+  updatedAt?: number;
+}> = ({ owner, updatedBy, updatedAt }) => {
+  const { t } = useTranslation();
+  const showsUpdater = Boolean(owner && updatedBy);
+
+  return (
+    <Box align="center" gap={2} wrap="wrap">
+      {(owner ?? updatedBy) && (
+        <Typography
+          className="tw:text-secondary"
+          data-testid="memory-owner"
+          size="text-sm">
+          {owner ?? updatedBy}
+        </Typography>
+      )}
+      {showsUpdater && (
+        <>
+          <MetaSeparator />
+          <Typography
+            className="tw:text-quaternary"
+            data-testid="memory-updated-by"
+            size="text-xs">
+            {t('label.updated-by-user-time-ago', {
+              user: updatedBy,
+              time: getShortRelativeTime(updatedAt),
+            })}
+          </Typography>
+        </>
+      )}
+      {!showsUpdater && updatedAt !== undefined && (
+        <>
+          <MetaSeparator />
+          <Typography className="tw:text-quaternary" size="text-xs">
+            {getShortRelativeTime(updatedAt)}
+          </Typography>
+        </>
+      )}
+    </Box>
+  );
+};
 
 interface MemoryLinkedEntitiesProps {
   linkedEntities: EntityReference[];
@@ -194,34 +226,14 @@ const MemoryLinkedEntities: FC<MemoryLinkedEntitiesProps> = ({
   );
 };
 
-interface MemoryUsageInfoProps {
-  memory: ContextMemory;
-}
-
-const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({ memory }) => {
+const MemoryVoteCounts: FC<{
+  positiveCount: number;
+  negativeCount: number;
+}> = ({ positiveCount, negativeCount }) => {
   const { t } = useTranslation();
-  const { count, lastAt } = getMemoryCitations(memory);
-  const {
-    positiveCount = 0,
-    negativeCount = 0,
-    correctedCount = 0,
-  } = memory.outcomes ?? {};
-
-  if (count === undefined && lastAt === undefined) {
-    return null;
-  }
 
   return (
-    <Box
-      align="center"
-      className="tw:mt-1 tw:text-quaternary"
-      data-testid="memory-usage-info"
-      gap={1}>
-      <Time size={16} />
-      <Typography className="tw:whitespace-nowrap" size="text-xs">
-        {count === undefined ? '' : t('label.cited-n-times', { count })}
-        {lastAt ? ` · ${t('label.last')} ${getShortRelativeTime(lastAt)}` : ''}
-      </Typography>
+    <Box align="center" gap={2}>
       {/* A Box has no role, so an aria-label on it is never read: the counts are named in text. */}
       {positiveCount > 0 && (
         <Box align="center" data-testid="memory-helpful-count" gap={1}>
@@ -245,14 +257,92 @@ const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({ memory }) => {
           </Typography>
         </Box>
       )}
-      {correctedCount > 0 && (
+    </Box>
+  );
+};
+
+interface UsageSegment {
+  key: string;
+  node: ReactNode;
+}
+
+interface MemoryUsageInfoProps {
+  memory: ContextMemory;
+}
+
+const MemoryUsageInfo: FC<MemoryUsageInfoProps> = ({ memory }) => {
+  const { t } = useTranslation();
+  const { count, lastAt } = getMemoryCitations(memory);
+  const {
+    positiveCount = 0,
+    negativeCount = 0,
+    correctedCount = 0,
+  } = memory.outcomes ?? {};
+
+  if (count === undefined && lastAt === undefined) {
+    return null;
+  }
+
+  const hasVotes = positiveCount > 0 || negativeCount > 0;
+  const candidates: Array<UsageSegment | false> = [
+    count !== undefined && {
+      key: 'cited',
+      node: (
+        <Typography className="tw:whitespace-nowrap" size="text-xs">
+          {t('label.cited-n-times', { count })}
+        </Typography>
+      ),
+    },
+    Boolean(lastAt) && {
+      key: 'last-used',
+      node: (
+        <Typography
+          className="tw:whitespace-nowrap"
+          data-testid="memory-last-used"
+          size="text-xs">
+          {t('label.last-used-time', { time: getShortRelativeTime(lastAt) })}
+        </Typography>
+      ),
+    },
+    hasVotes && {
+      key: 'votes',
+      node: (
+        <MemoryVoteCounts
+          negativeCount={negativeCount}
+          positiveCount={positiveCount}
+        />
+      ),
+    },
+    correctedCount > 0 && {
+      key: 'corrected',
+      node: (
         <Typography
           className="tw:whitespace-nowrap"
           data-testid="memory-corrected-count"
           size="text-xs">
           {t('label.corrected-n-times', { count: correctedCount })}
         </Typography>
-      )}
+      ),
+    },
+  ];
+  const segments = candidates.filter((segment): segment is UsageSegment =>
+    Boolean(segment)
+  );
+
+  return (
+    <Box
+      align="center"
+      className="tw:mt-1 tw:text-quaternary"
+      data-testid="memory-usage-info"
+      gap={2}
+      wrap="wrap">
+      <Time size={16} />
+      {segments.map(({ key, node }, index) => (
+        <Fragment key={key}>
+          {index > 0 && <MetaSeparator />}
+          {node}
+        </Fragment>
+      ))}
     </Box>
   );
 };
@@ -280,9 +370,7 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
 
   return (
     <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
-      <CopyLinkButton url={memoryUrl}>
-        <Copy01 data-icon aria-hidden="true" />
-      </CopyLinkButton>
+      <CopyButton value={memoryUrl} />
       {canActOnMemory && canEdit && onEditMemory && (
         <ButtonUtility
           data-testid="edit-memory-btn"
@@ -348,22 +436,48 @@ const EntityStatusBadge: FC<{ memory: ContextMemory }> = ({ memory }) => {
 
 const EntityStatusReason: FC<{ memory: ContextMemory }> = ({ memory }) => {
   const { t } = useTranslation();
+  const isShown =
+    Boolean(memory.statusReason) &&
+    memory.entityStatus !== ContextMemoryStatus.Approved;
+  const reason = useMemoryStatusReason(isShown ? memory : undefined);
 
-  if (
-    !memory.statusReason ||
-    memory.entityStatus === ContextMemoryStatus.Approved
-  ) {
-    return null;
-  }
-
-  return (
+  return isShown ? (
     <Typography
       className="tw:text-tertiary tw:line-clamp-2"
       data-testid={`memory-status-reason-${memory.id}`}
       size="text-xs">
-      {t('label.reason')}: {memory.statusReason}
+      {t('label.reason')}: {reason}
     </Typography>
-  );
+  ) : null;
+};
+
+/**
+ * Who a memory card names: its owner, and whoever changed it last when that is someone else. A
+ * memory with no owner names its last editor, as before
+ * (ADR:2026-11-03-extraction-bookkeeping-keeps-the-sources-last-editor).
+ */
+const useMemoryAuthors = (memory: ContextMemory) => {
+  // The avatar loads the owner, so the last editor's profile is loaded here.
+  const [, , updaterProfile] = useUserProfile({
+    permission: Boolean(memory.updatedBy),
+    name: memory.updatedBy ?? '',
+  });
+  const updater = updaterProfile?.displayName || memory.updatedBy;
+  const owner = memory.owners?.[0];
+
+  return owner
+    ? {
+        avatar: owner.name,
+        isTeamAvatar: owner.type === EntityType.TEAM,
+        owner: getEntityName(owner),
+        updatedBy: owner.name === memory.updatedBy ? undefined : updater,
+      }
+    : {
+        avatar: memory.updatedBy,
+        isTeamAvatar: false,
+        owner: undefined,
+        updatedBy: updater,
+      };
 };
 
 const MemoryRow: FC<MemoryRowProps> = ({
@@ -376,9 +490,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
   onEditMemory,
   onViewMemory,
 }) => {
-  const authorDisplayName = useApplicationStore(
-    (state) => state.userProfilePics[memory.updatedBy ?? '']?.displayName
-  );
+  const authors = useMemoryAuthors(memory);
   const isOwner =
     memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
   const canActOnMemory = isOwner || Boolean(isAdminUser);
@@ -427,9 +539,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
       data-testid={`memory-row-${memory.id}`}
       gap={3}
       onClick={() => onViewMemory?.(memory)}>
-      {memory?.updatedBy && (
+      {authors.avatar && (
         <div className="tw:shrink-0 tw:mt-0.5">
-          <ProfilePicture name={memory.updatedBy} />
+          <ProfilePicture isTeam={authors.isTeamAvatar} name={authors.avatar} />
         </div>
       )}
       <Box
@@ -442,8 +554,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
           direction="col"
           gap={1}>
           <MemoryRowHeader
+            owner={authors.owner}
             updatedAt={memory.updatedAt}
-            updatedBy={authorDisplayName || memory.updatedBy}
+            updatedBy={authors.updatedBy}
           />
 
           <Box align="center" gap={2} wrap="wrap">

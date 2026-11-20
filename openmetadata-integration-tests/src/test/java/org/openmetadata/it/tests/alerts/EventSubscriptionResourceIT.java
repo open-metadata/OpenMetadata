@@ -71,6 +71,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionMapper;
 import org.openmetadata.service.resources.events.subscription.EventSubscriptionResource;
@@ -2257,9 +2258,9 @@ public class EventSubscriptionResourceIT
     String id = created.getId().toString();
     assertSecretsMasked(created.getDestinations().getFirst());
     Map<String, Object> storedConfig = storedConfig(created.getId());
-    assertEquals(endpoint, decrypted(storedConfig.get("endpoint")));
-    assertEquals(headerValue, decrypted(headersOf(storedConfig).get("Authorization")));
-    assertEquals(secretKey, decrypted(authTypeOf(storedConfig).get("secretKey")));
+    assertEquals(endpoint, opened(created.getId(), "/endpoint"));
+    assertEquals(headerValue, opened(created.getId(), "/headers/Authorization"));
+    assertEquals(secretKey, opened(created.getId(), "/authType/secretKey"));
 
     String path = "/v1/events/subscriptions/" + id;
     List<String> reads =
@@ -2299,10 +2300,9 @@ public class EventSubscriptionResourceIT
     withNewEndpoint.getDestinations().getFirst().withConfig(fresh);
     EventSubscription moved = patchEntity(id, withNewEndpoint);
     assertSecretsMasked(moved.getDestinations().getFirst());
-    assertEquals(otherEndpoint, decrypted(storedConfig(created.getId()).get("endpoint")));
-    assertEquals(
-        headerValue, decrypted(headersOf(storedConfig(created.getId())).get("Authorization")));
-    assertEquals(secretKey, decrypted(authTypeOf(storedConfig(created.getId())).get("secretKey")));
+    assertEquals(otherEndpoint, opened(created.getId(), "/endpoint"));
+    assertEquals(headerValue, opened(created.getId(), "/headers/Authorization"));
+    assertEquals(secretKey, opened(created.getId(), "/authType/secretKey"));
     assertNoSecretOrCiphertext(
         rawGet(SdkClients.adminClient(), path + "/versions"),
         List.of(otherEndpoint, headerValue, secretKey));
@@ -2355,8 +2355,7 @@ public class EventSubscriptionResourceIT
         2,
         updated.getDestinations().stream().map(SubscriptionDestination::getId).distinct().count());
     assertEquals(retained.getId(), updated.getDestinations().get(1).getId());
-    assertEquals(
-        "http://localhost:8585/inserted", decrypted(storedConfig(created.getId()).get("endpoint")));
+    assertEquals("http://localhost:8585/inserted", opened(created.getId(), "/endpoint"));
   }
 
   @Test
@@ -2387,9 +2386,7 @@ public class EventSubscriptionResourceIT
     EventSubscription updated = getEntity(created.getId().toString());
     assertEquals(created.getName(), updated.getDisplayName());
     assertEquals(numericSecret, updated.getBatchSize());
-    assertEquals(
-        String.valueOf(numericSecret),
-        decrypted(headersOf(storedConfig(created.getId())).get("Authorization")));
+    assertEquals(String.valueOf(numericSecret), opened(created.getId(), "/headers/Authorization"));
   }
 
   @Test
@@ -2398,7 +2395,7 @@ public class EventSubscriptionResourceIT
     EventSubscription created =
         putSubscription(secretRequest(ns, "new_put_secrets", endpoint, "header-token", null));
     assertSecretsMasked(created.getDestinations().getFirst());
-    assertEquals(endpoint, decrypted(storedConfig(created.getId()).get("endpoint")));
+    assertEquals(endpoint, opened(created.getId(), "/endpoint"));
     assertRefused(
         () ->
             putSubscription(
@@ -2424,9 +2421,8 @@ public class EventSubscriptionResourceIT
                 secretRequest(ns, "batch_secrets", endpoint, "batch-header", null), "admin");
     AlertFixtures.repository().prepareInternal(entity, false);
     AlertFixtures.repository().createManyEntitiesForImport(List.of(entity));
-    assertEquals(endpoint, decrypted(storedConfig(entity.getId()).get("endpoint")));
-    assertEquals(
-        "batch-header", decrypted(headersOf(storedConfig(entity.getId())).get("Authorization")));
+    assertEquals(endpoint, opened(entity.getId(), "/endpoint"));
+    assertEquals("batch-header", opened(entity.getId(), "/headers/Authorization"));
     assertSecretsMasked(getEntity(entity.getId().toString()).getDestinations().getFirst());
   }
 
@@ -2529,9 +2525,7 @@ public class EventSubscriptionResourceIT
                 .executeForString(
                     HttpMethod.PATCH, "/v1/events/subscriptions/" + created.getId(), copyOut));
     assertEquals(
-        endpoint,
-        decrypted(storedConfig(created.getId()).get("endpoint")),
-        "a refused request changes nothing");
+        endpoint, opened(created.getId(), "/endpoint"), "a refused request changes nothing");
   }
 
   /**
@@ -2562,7 +2556,7 @@ public class EventSubscriptionResourceIT
       Object storedEndpoint = storedConfig(created.getId()).get("endpoint");
       assertEquals(
           endpoint,
-          legacy ? storedEndpoint : decrypted(storedEndpoint),
+          legacy ? storedEndpoint : opened(created.getId(), "/endpoint"),
           "a refused request changes nothing");
       assertSecretsMasked(getEntity(created.getId().toString()).getDestinations().getFirst());
     }
@@ -2684,8 +2678,7 @@ public class EventSubscriptionResourceIT
       assertEquals(
           List.of(receiver.url("/other-receiver")),
           configOf(moved.getDestinations().getFirst()).get("receivers"));
-      assertEquals(
-          headerValue, decrypted(headersOf(storedConfig(created.getId())).get("Authorization")));
+      assertEquals(headerValue, opened(created.getId(), "/headers/Authorization"));
       assertTrue(receiver.received().isEmpty(), "the alert never runs, disabled as it is");
     }
   }
@@ -2702,9 +2695,7 @@ public class EventSubscriptionResourceIT
 
     assertRefused(() -> patchEntity(created.getId().toString(), withAnotherChannel));
     assertEquals(
-        endpoint,
-        decrypted(storedConfig(created.getId()).get("endpoint")),
-        "the refused request changes nothing");
+        endpoint, opened(created.getId(), "/endpoint"), "the refused request changes nothing");
   }
 
   /**
@@ -2958,9 +2949,14 @@ public class EventSubscriptionResourceIT
     return configOf(AlertFixtures.stored(alertId).getDestinations().getFirst());
   }
 
-  private static String decrypted(Object ciphertext) {
-    assertTrue(Fernet.isTokenized((String) ciphertext), "stored in the clear: " + ciphertext);
-    return Fernet.getInstance().decrypt((String) ciphertext);
+  /** The value the alert's first destination stores encrypted at {@code field}, decrypted. */
+  private static String opened(UUID alertId, String field) {
+    SubscriptionDestination stored = AlertFixtures.stored(alertId).getDestinations().getFirst();
+    String value = JsonUtils.valueToTree(stored.getConfig()).at(field).asText();
+    assertTrue(Fernet.isTokenized(value), "not encrypted: " + value);
+    return JsonUtils.valueToTree(DestinationSecrets.decrypted(stored).getConfig())
+        .at(field)
+        .asText();
   }
 
   private static String headerOf(RecordingReceiver.Received received, String name) {

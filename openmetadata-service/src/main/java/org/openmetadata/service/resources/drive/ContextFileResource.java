@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -72,6 +73,7 @@ import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.AzureAssetService;
 import org.openmetadata.service.attachments.S3AssetService;
 import org.openmetadata.service.context.center.ContextFileProcessingService;
+import org.openmetadata.service.context.center.MemoryExtractionState;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
@@ -80,6 +82,8 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.context.ContextMemoryResource;
+import org.openmetadata.service.resources.context.MemoryExtractionAccess;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -87,6 +91,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.ListCursors;
 import org.openmetadata.service.util.RestUtil;
 
 @Tag(
@@ -100,6 +105,15 @@ import org.openmetadata.service.util.RestUtil;
 public class ContextFileResource extends EntityResource<ContextFile, ContextFileRepository> {
   public static final String COLLECTION_PATH = "v1/contextCenter/drive/files/";
   public static final String FIELDS = "owners,tags,folder,domains,followers,votes";
+
+  /**
+   * What the Documents list reads of a file, so an Extract response can replace its row; the UI's
+   * CONTEXT_FILE_FIELDS changes with it
+   * (ADR:2026-11-09-a-documents-owner-or-an-admin-starts-or-retries-its-extraction).
+   */
+  private static final String EXTRACTION_RESPONSE_FIELDS =
+      "owners,folder,memoryCount," + MemoryExtractionState.NEVER_EXTRACTED;
+
   private final ContextFileMapper mapper = new ContextFileMapper();
   private final ContextFileProcessingService extractionService;
   private long maxFileSize = 5 * 1024 * 1024L;
@@ -201,8 +215,12 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     if (updatedBy != null && !updatedBy.isBlank()) {
       filter.addQueryParam("updatedBy", updatedBy);
     }
+    Fields fields = getFields(ContextFileVisibility.guardFields(fieldsParam));
     if (orderBy == null || orderBy.isBlank()) {
       return visibleOnly(
+          securityContext,
+          filter,
+          fields,
           super.listInternal(
               uriInfo,
               securityContext,
@@ -210,30 +228,79 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
               filter,
               limit,
               before,
-              after),
-          securityContext);
+              after));
     }
 
     RestUtil.validateCursors(before, after);
-    Fields fields = getFields(ContextFileVisibility.guardFields(fieldsParam));
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
     ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
     ResultList<ContextFile> resultList =
         repository.listByUpdatedAt(
-            uriInfo, fields, filter, limit, before, after, resolveOrderBy(orderBy));
-    return visibleOnly(addHref(uriInfo, resultList), securityContext);
+            uriInfo,
+            fields,
+            filter,
+            limit,
+            ListCursors.unseal(before),
+            ListCursors.unseal(after),
+            resolveOrderBy(orderBy));
+    return visibleOnly(
+        securityContext,
+        filter,
+        fields,
+        addHref(uriInfo, readableOnly(securityContext, fields, resultList)));
+  }
+
+  /**
+   * Leaves out the rows a rule refuses, as an unordered listing does
+   * (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read). The page is not refilled;
+   * its cursors are sealed, since one may point at a row left out.
+   */
+  private ResultList<ContextFile> readableOnly(
+      SecurityContext securityContext, Fields fields, ResultList<ContextFile> page) {
+    if (rowsMayDiffer(securityContext, fields)) {
+      page.setData(rowAuthorization(fields).readable().apply(securityContext, page.getData()));
+      page.getPaging()
+          .withBefore(ListCursors.seal(page.getPaging().getBefore()))
+          .withAfter(ListCursors.seal(page.getPaging().getAfter()));
+    }
+    return page;
   }
 
   /**
    * Drops the files this caller may not see. A page is filtered after it is read, so it can come
    * back shorter than {@code limit} — the paging cursors still walk every file, which is what keeps
-   * the next page from skipping any.
+   * the next page from skipping any. The total counts only files the caller may see, as Context
+   * Center memories do (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
    */
   private ResultList<ContextFile> visibleOnly(
-      ResultList<ContextFile> files, SecurityContext securityContext) {
-    return ContextFileVisibility.filterByVisibility(files, securityContext);
+      SecurityContext securityContext,
+      ListFilter filter,
+      Fields fields,
+      ResultList<ContextFile> files) {
+    ResultList<ContextFile> visible =
+        ContextFileVisibility.filterByVisibility(files, securityContext);
+    Paging paging = visible.getPaging();
+    if (paging != null
+        && paging.getTotal() != null
+        && !ContextFileVisibility.seesEveryFile(securityContext)) {
+      paging.setTotal(
+          ContextMemoryResource.listedTotal(
+              paging.getTotal(),
+              visible.getData().size(),
+              () -> visibleCount(securityContext, filter, fields)));
+    }
+    return visible;
+  }
+
+  /**
+   * How many files under {@code filter} the caller may see, passing the same row and sharing checks
+   * as a page listed with {@code fields}: a field that needs ViewAll makes the count need it too.
+   */
+  private int visibleCount(SecurityContext securityContext, ListFilter filter, Fields fields) {
+    return repository.countVisible(
+        filter, securityContext, viewPermissionFilter, rowAuthorization(fields).operations());
   }
 
   @GET
@@ -782,6 +849,52 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     ContextFile moved =
         repository.moveContextFile(id, newFolder, securityContext.getUserPrincipal().getName());
     return Response.ok(addHref(uriInfo, moved)).build();
+  }
+
+  @POST
+  @Path("/{id}/extract")
+  @Operation(
+      operationId = "extractDriveFileMemories",
+      summary = "Extract or retry a file's memories",
+      description =
+          "Queue memory extraction for a file whose extraction failed or never ran, from the stage"
+              + " it lacks: text extraction when its content has no text, memory extraction"
+              + " otherwise. The file's owners, an owning team's members and admins only. Returns"
+              + " the file in its new state; the extraction itself runs in the background.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The file, now queued",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContextFile.class))),
+        @ApiResponse(responseCode = "403", description = "Not an owner of the file or an admin"),
+        @ApiResponse(responseCode = "404", description = "File not found"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Already queued or being extracted, nothing to extract, or extraction unavailable"),
+        @ApiResponse(
+            responseCode = "503",
+            description =
+                "Memory extraction could not be queued, or the text extraction queue is full."
+                    + " The file is left Failed to retry, unless concurrent writes keep that from"
+                    + " being recorded: it then stays in progress, and a retry gets 409 until a"
+                    + " restart resubmits it")
+      })
+  public ContextFile requestExtraction(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the file", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    MemoryExtractionAccess.requireOwnerOrAdmin(
+        visibleFile(uriInfo, securityContext, id, Include.NON_DELETED), securityContext);
+    extractionService.requestExtraction(id);
+    return addHref(
+        uriInfo,
+        repository.get(
+            uriInfo, id, getFields(EXTRACTION_RESPONSE_FIELDS), Include.NON_DELETED, false));
   }
 
   private Asset resolveAsset(ContextFile file) {

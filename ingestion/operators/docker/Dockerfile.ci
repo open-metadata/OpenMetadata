@@ -138,8 +138,13 @@ fi
 
 WORKDIR /ingestion
 
-# For the dev build, we copy all files
+# For the dev build, we copy all files except uv.lock, which Dockerfile.ci.dockerignore keeps out
+# (ADR:2026-11-18-ingestion-dev-image-does-not-ship-uv-lock).
 COPY ingestion/ .
+RUN if [ -e uv.lock ]; then \
+      echo "ingestion/uv.lock reached the image; build with BuildKit so Dockerfile.ci.dockerignore applies" >&2; \
+      exit 1; \
+    fi
 COPY openmetadata-spec /openmetadata-spec
 COPY scripts/datamodel_generation.py /scripts/datamodel_generation.py
 
@@ -288,7 +293,7 @@ RUN set -eu; \
     [ -n "$ossl" ] || { echo "no src:openssl packages found; refusing to skip the OpenSSL CVE patch" >&2; exit 1; }; \
     kh="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="linux"{print $2}')"; \
     apt-get -qq update; \
-    cve_pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^(perl|glibc|sqlite3|gzip|libssh2|libevent|pcre2)$/ {print $2}')"; \
+    cve_pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^(perl|glibc|sqlite3|gzip|libssh2|libevent|pcre2|zlib)$/ {print $2}')"; \
     apt-get -qq install -y --only-upgrade $ul $ex $kh $ossl $cve_pkgs; \
     apt-mark manual libpq5 libgomp1 xz-utils bzip2; \
     apt-get -qq purge -y libpq-dev libmariadb-dev libmariadb-dev-compat libmariadb3 mariadb-common libunbound8; \
