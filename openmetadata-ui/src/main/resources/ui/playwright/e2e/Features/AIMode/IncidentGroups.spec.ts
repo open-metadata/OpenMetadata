@@ -83,7 +83,7 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
 
     await expect(
       groups.getByRole('img', {
-        name: /Open incidents over the last 7 days: 0 → 2/,
+        name: /^Open incidents: 0 on .+, 2 on .+\.$/,
       })
     ).toBeVisible();
     await expect(groups.getByTestId('incident-trend-direction')).toHaveText(
@@ -95,7 +95,7 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(
       groups.getByRole('img', {
-        name: /Open incidents over the last 7 days: 0 → 2/,
+        name: /^Open incidents: 0 on .+, 2 on .+\.$/,
       })
     ).toBeVisible();
   });
