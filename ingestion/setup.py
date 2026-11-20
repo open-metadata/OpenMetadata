@@ -223,7 +223,10 @@ base_requirements = {
     "packaging",  # For version parsing
     "setuptools>=83",  # CVE-2026-59890: MANIFEST.in exclusion bypass through Unicode normalization
     "shapely",
-    "collate-data-diff>=0.11.17",  # get_stats_dict(retain_rows=...), DataDiffDuplicateKeyError
+    # get_stats_dict(retain_rows=...), DataDiffDuplicateKeyError. 0.11.19 moved dbt-core behind the
+    # [dbt] extra; keep it so dbt-core (and the dbt-extractor floor below) still install.
+    "collate-data-diff[dbt]>=0.11.17",
+    "pytz",  # imported directly by metadata.utils.time_utils
     # Floor on dbt-extractor (transitive via collate-data-diff -> dbt-core).
     # Pre-0.5 versions ship no cp310-manylinux_2_17_aarch64 wheel, forcing a
     # Rust/Cargo source build on ARM runners. 0.5+ uses cp38-abi3 wheels.
