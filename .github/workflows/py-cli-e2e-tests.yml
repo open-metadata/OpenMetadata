@@ -71,7 +71,7 @@ jobs:
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: ${{ inputs.python-version }}
-          classification-models: 'true'
+          profile: test-classification
           args: -m no-ui -s true
       - name: Reclaim unused disk for Exasol
         if: matrix.e2e-test == 'exasol'
@@ -91,10 +91,12 @@ jobs:
         shell: bash
       - name: Run connector E2E
         id: tests
-        uses: ./.github/actions/python-cli-e2e
-        with:
-          connector: ${{ matrix.e2e-test }}
-          python-version: ${{ inputs.python-version }}
+        shell: bash
+        run: |
+          set -o pipefail
+          source env/bin/activate
+          cd ingestion
+          nox --no-venv -s cli-e2e -- "$E2E_TEST" 2>&1 | tee cli-e2e-test-run.log
         env:
           E2E_TEST: ${{ matrix.e2e-test }}
           E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
@@ -156,6 +158,14 @@ jobs:
           E2E_ATHENA_REGION: ${{ secrets.E2E_AWS_REGION }}
           E2E_ATHENA_S3STAGINGDIR: ${{ secrets.E2E_ATHENA_S3STAGINGDIR }}
           E2E_ATHENA_WORKGROUP: ${{ secrets.E2E_ATHENA_WORKGROUP }}
+      - name: Upload connector coverage
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: cli-coverage-${{ inputs.python-version }}-${{ matrix.e2e-test }}
+          path: ingestion/.coverage.${{ matrix.e2e-test }}
+          include-hidden-files: true
       - name: Report test results
         if: ${{ always() }}
         uses: ./.github/actions/report-test-results

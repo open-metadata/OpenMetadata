@@ -80,7 +80,7 @@ jobs:
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: ${{ inputs.python-version }}
-          classification-models: 'true'
+          profile: test-classification
           args: ${{ matrix.database.compose-args }}
       - name: Reclaim unused disk for the Exasol shard
         if: matrix.shard.needs-disk

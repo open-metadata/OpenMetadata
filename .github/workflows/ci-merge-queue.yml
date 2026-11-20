@@ -50,23 +50,19 @@ jobs:
   py-checkstyle:
     name: py-checkstyle
     needs: plan
+    if: ${{ needs.plan.outputs.static == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - if: ${{ needs.plan.outputs.static == 'true' }}
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
           fetch-depth: 1
       - name: Run formatting and lint
-        if: ${{ needs.plan.outputs.static == 'true' }}
         uses: ./.github/actions/python-lint
         with:
           python-version: ${{ needs.plan.outputs.highest }}
-      - name: Report skipped work
-        if: ${{ needs.plan.outputs.static == 'false' }}
-        run: echo "No relevant Python changes; static checks skipped." >> "$GITHUB_STEP_SUMMARY"
   type-checks:
     name: Python type checks
     needs: plan
@@ -123,14 +119,9 @@ jobs:
       - plan
       - models
     if: ${{ needs.plan.outputs.python == 'true' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        python:
-          - ${{ needs.plan.outputs.highest }}
     uses: ./.github/workflows/py-unit.yml
     with:
-      python-version: ${{ matrix.python }}
+      python-version: ${{ needs.plan.outputs.highest }}
       ref: ${{ needs.plan.outputs.ref }}
       collect-coverage: false
   integration:
@@ -139,14 +130,9 @@ jobs:
       - models
       - backend
     if: ${{ needs.plan.outputs.python == 'true' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        python:
-          - ${{ needs.plan.outputs.highest }}
     uses: ./.github/workflows/py-integration.yml
     with:
-      python-version: ${{ matrix.python }}
+      python-version: ${{ needs.plan.outputs.highest }}
       ref: ${{ needs.plan.outputs.ref }}
       collect-coverage: false
   py-tests-status:
@@ -173,7 +159,7 @@ jobs:
           EXPECTED_RESULTS: |
             {
               "plan": "success",
-              "py-checkstyle": "success",
+              "py-checkstyle": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
               "type-checks": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
               "models": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
               "backend": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",

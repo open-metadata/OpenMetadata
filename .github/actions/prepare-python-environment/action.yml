@@ -21,10 +21,8 @@ runs:
         python-version: ${{ inputs.python-version }}
     - name: Install uv
       uses: ./.github/actions/setup-uv
-    - name: Generate models
-      run: |
-        sudo make install_antlr_cli
-        make generate
+    - name: Install ANTLR
+      run: sudo make install_antlr_cli
       shell: bash
     - name: Download classification model archives
       if: inputs.profile == 'test-classification'

@@ -5,9 +5,9 @@ inputs:
   python-version:
     description: Python Version to install
     required: true
-  classification-models:
-    description: Import model archives and retain models in the test profile
-    default: 'false'
+  profile:
+    description: Locked Python profile (dev, test, or test-classification)
+    default: test
   java-version:
     description: Java Version to install
     default: '21'
@@ -47,11 +47,6 @@ inputs:
     description: Build the ingestion container without installing duplicate host dependencies
     required: false
     default: "false"
-  install-test-dependencies:
-    # Browser-only jobs use the ingestion container and can omit runner test dependencies.
-    description: Install the locked ingestion test dependencies on the runner
-    required: false
-    default: "true"
 
 runs:
   using: composite
@@ -83,7 +78,7 @@ runs:
       uses: ./.github/actions/prepare-python-environment
       with:
         python-version: ${{ inputs.python-version }}
-        profile: ${{ inputs.install-test-dependencies != 'true' && 'dev' || inputs.classification-models == 'true' && 'test-classification' || 'test' }}
+        profile: ${{ inputs.profile }}
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
     - name: Configure Test Session Limit
@@ -137,19 +132,13 @@ runs:
       shell: bash
 
     - name: Synchronize test dependencies after server setup
-      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
+      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.profile != 'dev' }}
       env:
-        CLASSIFICATION_MODELS: ${{ inputs.classification-models }}
-      run: |
-        source env/bin/activate
-        profile='test'
-        if [ "$CLASSIFICATION_MODELS" = 'true' ]; then
-          profile=test-classification
-        fi
-        make install_test PYTHON_TEST_PROFILE="$profile"
+        PYTHON_PROFILE: ${{ inputs.profile }}
+      run: make install PYTHON_PROFILE="$PYTHON_PROFILE"
       shell: bash
 
     - name: Verify classification models
-      if: inputs.classification-models == 'true'
+      if: inputs.profile == 'test-classification'
       run: env/bin/python scripts/prepare_classification_models.py verify --project ingestion
       shell: bash

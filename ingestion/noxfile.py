@@ -280,6 +280,15 @@ def static_checks(session):
 # ---------------------------------------------------------------------------
 # Unit tests
 # ---------------------------------------------------------------------------
+def run_test_process(session, command, suite, environment=None):
+    """Run a test process and record its unmodified exit status."""
+    if environment is None:
+        environment = {name: value for name, value in {**os.environ, **session.env}.items() if value is not None}
+    result = subprocess.run(command, cwd=INGESTION_ROOT, env=environment, check=False)
+    (INGESTION_ROOT / f"{suite}-test-exit-code.txt").write_text(f"{result.returncode}\n")
+    return result.returncode
+
+
 @nox.session(
     name="unit-tests",
     reuse_venv=True,
@@ -317,7 +326,9 @@ def unit_tests(session):
 
     pytest_args.extend(session.posargs)
 
-    session.run(str(python.parent / "pytest"), *pytest_args)
+    exit_code = run_test_process(session, [str(python.parent / "pytest"), *pytest_args], "unit")
+    if exit_code:
+        session.error(f"Unit tests exited with code {exit_code}")
 
 
 # ---------------------------------------------------------------------------
@@ -370,7 +381,9 @@ def integration_tests(session):
 
     pytest_args.extend(args)
 
-    session.run(str(python.parent / "pytest"), *pytest_args)
+    exit_code = run_test_process(session, [str(python.parent / "pytest"), *pytest_args], "integration")
+    if exit_code:
+        session.error(f"Integration tests exited with code {exit_code}")
 
 
 @nox.session(name="cli-e2e", python=False, default=False)
@@ -397,7 +410,8 @@ def cli_e2e(session):
         "COVERAGE_PROCESS_START": str(INGESTION_ROOT / "pyproject.toml"),
         "COVERAGE_FILE": str(INGESTION_ROOT / f".coverage.{connector}"),
     }
-    result = subprocess.run(
+    exit_code = run_test_process(
+        session,
         [
             str(python),
             "-m",
@@ -412,11 +426,9 @@ def cli_e2e(session):
             f"--junitxml=junit/test-results-{connector}.xml",
             str(test),
         ],
-        cwd=INGESTION_ROOT,
-        env=coverage_environment,
-        check=False,
+        "cli-e2e",
+        coverage_environment,
     )
-    (INGESTION_ROOT / "cli-e2e-test-exit-code.txt").write_text(f"{result.returncode}\n")
     for command in ("combine", "report"):
         subprocess.run(
             [str(python), "-m", "coverage", command, f"--data-file=.coverage.{connector}", "--rcfile=pyproject.toml"],
@@ -424,8 +436,8 @@ def cli_e2e(session):
             env=environment,
             check=False,
         )
-    if result.returncode:
-        session.error(f"CLI E2E tests exited with code {result.returncode}")
+    if exit_code:
+        session.error(f"CLI E2E tests exited with code {exit_code}")
 
 
 # ---------------------------------------------------------------------------

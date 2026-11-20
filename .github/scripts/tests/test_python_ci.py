@@ -136,51 +136,6 @@ def test_gate_rejects_unexpected_results_and_dependencies():
     assert gate({}, {}).returncode != 0
 
 
-@pytest.mark.parametrize("suite, exit_code", [("unit", 0), ("unit", 1), ("integration", 124)])
-def test_suite_streams_output_and_preserves_nox_exit(tmp_path, suite, exit_code):
-    binaries = tmp_path / "env/bin"
-    binaries.mkdir(parents=True)
-    (binaries / "activate").touch()
-    project = tmp_path / "ingestion"
-    project.mkdir()
-    binary = binaries / "nox"
-    binary.write_text(
-        f"#!{sys.executable}\nimport json, sys\nfrom pathlib import Path\n"
-        'Path("args.json").write_text(json.dumps(sys.argv[1:]))\n'
-        'print("suite output")\nprint("suite diagnostic", file=sys.stderr)\n'
-        f"sys.exit({exit_code})\n"
-    )
-    binary.chmod(0o755)
-    action = yaml.safe_load((ROOT / ".github/actions/python-suite/action.yml").read_text())
-    result = run(
-        "bash",
-        "-eo",
-        "pipefail",
-        "-c",
-        action["runs"]["steps"][0]["run"],
-        cwd=tmp_path,
-        env={
-            **os.environ,
-            "PATH": str(binaries) + os.pathsep + os.environ["PATH"],
-            "SUITE": suite,
-            "NOX_ARGS": "--maxfail 1 tests/selected",
-        },
-    )
-    assert result.returncode == exit_code, result.stderr
-    assert (project / f"{suite}-test-exit-code.txt").read_text().strip() == str(exit_code)
-    assert "suite output" in result.stdout
-    assert "suite diagnostic" in (project / f"{suite}-test-run.log").read_text()
-    assert json.loads((project / "args.json").read_text()) == [
-        "--no-venv",
-        "-s",
-        f"{suite}-tests",
-        "--",
-        "--maxfail",
-        "1",
-        "tests/selected",
-    ]
-
-
 def test_nightly_artifact_names_are_unique_across_invocations():
     unit_steps = workflow("py-unit.yml")["jobs"]["py-unit-tests"]["steps"]
     unit = {

@@ -167,7 +167,10 @@ def test_static_checks_isolate_dependencies_and_catch_application_errors(nox_rep
     assert baseline.read_bytes() == original_baseline
 
 
-def test_ci_server_setup_restores_test_dependencies_after_application_setup(nox_repo: Path, monkeypatch) -> None:
+@pytest.mark.parametrize("profile", ["test", "test-classification"])
+def test_ci_server_setup_restores_test_dependencies_after_application_setup(
+    nox_repo: Path, monkeypatch, profile
+) -> None:
     assert_success(run("make", "install_dev", cwd=nox_repo))
     action = yaml.safe_load((REPO_ROOT / ".github/actions/setup-openmetadata-test-environment/action.yml").read_text())
     restore = next(
@@ -175,7 +178,7 @@ def test_ci_server_setup_restores_test_dependencies_after_application_setup(nox_
         for step in action["runs"]["steps"]
         if step.get("name") == "Synchronize test dependencies after server setup"
     )
-    monkeypatch.setenv("CLASSIFICATION_MODELS", "true")
+    monkeypatch.setenv("PYTHON_PROFILE", profile)
 
     assert_success(run("bash", "-eo", "pipefail", "-c", restore, cwd=nox_repo))
 
@@ -188,6 +191,34 @@ def test_ci_server_setup_restores_test_dependencies_after_application_setup(nox_
             cwd=nox_repo,
         )
     )
+
+
+@pytest.mark.parametrize("suite", ["unit", "integration"])
+@pytest.mark.parametrize("exit_code", [0, 1, 5])
+def test_ci_suite_records_pytest_status_and_streams_real_output(nox_repo, monkeypatch, suite, exit_code):
+    test = nox_repo / f"ingestion/tests/{suite}/test_selection.py"
+    test.write_text(
+        f"def test_selected():\n    print('suite output')\n    assert {exit_code != 1}\n"
+        if exit_code != 5
+        else "value = 1\n"
+    )
+    assert_success(run("make", "install_test", cwd=nox_repo))
+    monkeypatch.setenv("SUITE", suite)
+    monkeypatch.setenv("NOX_ARGS", f"-n 0 -s tests/{suite}/test_selection.py")
+    action = yaml.safe_load((REPO_ROOT / ".github/actions/python-suite/action.yml").read_text())
+
+    result = run("bash", "-eo", "pipefail", "-c", action["runs"]["steps"][0]["run"], cwd=nox_repo)
+
+    assert (result.returncode == 0) == (exit_code == 0), result.stdout + result.stderr
+    assert (nox_repo / f"ingestion/{suite}-test-exit-code.txt").read_text().strip() == str(exit_code)
+    assert (nox_repo / f"ingestion/junit/test-results-{suite}.xml").is_file()
+    log = (nox_repo / f"ingestion/{suite}-test-run.log").read_text()
+    expected = {0: "1 passed", 1: "1 failed", 5: "no tests ran"}[exit_code]
+    assert expected in log
+    assert expected in result.stdout
+    if exit_code != 5:
+        assert "suite output" in log
+        assert "suite output" in result.stdout
 
 
 @pytest.mark.parametrize("exit_code", [0, 1, 5])
