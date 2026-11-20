@@ -81,11 +81,12 @@ class MetadataCollectionServiceTest {
             .withId(UUID.randomUUID())
             .withName("finance")
             .withFullyQualifiedName("finance");
-    final Task leftBehind = completionTask(EntityStatus.IN_REVIEW, true);
-    final Task currentStage = completionTask(EntityStatus.APPROVED, true);
-    final Task collection = completionTask(EntityStatus.IN_REVIEW, false);
+    final Task leftBehind = completionTask(domain.getId(), EntityStatus.IN_REVIEW, true);
+    final Task currentStage = completionTask(domain.getId(), EntityStatus.APPROVED, true);
+    final Task collection = completionTask(domain.getId(), EntityStatus.IN_REVIEW, false);
+    final Task sameNameAsset = completionTask(UUID.randomUUID(), EntityStatus.IN_REVIEW, true);
     when(repository.listOpenTasksByEntityAndType(eq("finance"), any(), anyInt()))
-        .thenReturn(List.of(leftBehind, currentStage, collection));
+        .thenReturn(List.of(leftBehind, currentStage, collection, sameNameAsset));
 
     new MetadataCollectionService(repository, bot)
         .closeRevisionsOutside(domain, EntityStatus.APPROVED.value());
@@ -94,12 +95,49 @@ class MetadataCollectionServiceTest {
     verify(repository).resolveTask(eq(leftBehind), resolution.capture(), eq("governance-bot"));
     verify(repository, never()).resolveTask(eq(currentStage), any(), any());
     verify(repository, never()).resolveTask(eq(collection), any(), any());
+    verify(repository, never()).resolveTask(eq(sameNameAsset), any(), any());
     assertEquals(TaskResolutionType.Cancelled, resolution.getValue().getType());
   }
 
   @Test
+  void aDeletedAssetCancelsTheOpenTasksOfEveryStageAsDeleted() {
+    final TaskRepository repository = mock(TaskRepository.class);
+    final EntityReference bot = new EntityReference().withName("governance-bot").withType("user");
+    final Domain domain =
+        new Domain()
+            .withId(UUID.randomUUID())
+            .withName("finance")
+            .withFullyQualifiedName("finance");
+    final List<Task> open =
+        List.of(
+            completionTask(domain.getId(), EntityStatus.DRAFT, false),
+            completionTask(domain.getId(), EntityStatus.IN_REVIEW, false),
+            completionTask(domain.getId(), EntityStatus.IN_REVIEW, true));
+    final Task sameNameAsset = completionTask(UUID.randomUUID(), EntityStatus.DRAFT, false);
+    when(repository.listOpenTasksByEntityAndType(
+            eq("finance"), eq(MetadataCollectionService.TASK_TYPE), anyInt()))
+        .thenReturn(List.of(open.get(0), sameNameAsset, open.get(1), open.get(2)));
+
+    new MetadataCollectionService(repository, bot).closeTasksOfDeletedAsset(domain);
+
+    final ArgumentCaptor<TaskResolution> resolutions =
+        ArgumentCaptor.forClass(TaskResolution.class);
+    open.forEach(
+        task ->
+            verify(repository).resolveTask(eq(task), resolutions.capture(), eq("governance-bot")));
+    verify(repository, never()).resolveTask(eq(sameNameAsset), any(), any());
+    resolutions
+        .getAllValues()
+        .forEach(
+            resolution -> {
+              assertEquals(TaskResolutionType.Cancelled, resolution.getType());
+              assertEquals(MetadataCollectionService.ASSET_DELETED, resolution.getComment());
+            });
+  }
+
+  @Test
   void aRevisionTaskIsNotResolvedThroughTheApi() {
-    final Task revision = completionTask(EntityStatus.IN_REVIEW, true);
+    final Task revision = completionTask(UUID.randomUUID(), EntityStatus.IN_REVIEW, true);
 
     final BadRequestException refused =
         assertThrows(
@@ -108,13 +146,17 @@ class MetadataCollectionServiceTest {
     assertEquals(MetadataCollectionService.REVISION_CLOSES_ON_EDIT, refused.getMessage());
   }
 
-  private static Task completionTask(final EntityStatus stage, final boolean revision) {
+  private static Task completionTask(
+      final UUID about, final EntityStatus stage, final boolean revision) {
     final MetadataCompletionPayload payload =
         new MetadataCompletionPayload().withStage(stage).withMissingFields(List.of());
     if (revision) {
       payload.setRevision(new MetadataCompletionRevision().withRequestedBy("karan"));
     }
-    return new Task().withId(UUID.randomUUID()).withPayload(payload);
+    return new Task()
+        .withId(UUID.randomUUID())
+        .withAbout(new EntityReference().withId(about))
+        .withPayload(payload);
   }
 
   @Test
