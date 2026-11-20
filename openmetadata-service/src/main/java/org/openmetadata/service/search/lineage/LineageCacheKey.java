@@ -45,6 +45,8 @@ public class LineageCacheKey {
   int paginationDownstreamDepth;
   Long startTime;
   Long endTime;
+  String entityType;
+  Boolean includeDeleted;
 
   /**
    * Creates cache key from lineage request.
@@ -74,7 +76,9 @@ public class LineageCacheKey {
         0,
         0,
         request.getStartTime(),
-        request.getEndTime());
+        request.getEndTime(),
+        request.getEntityType() == null ? "" : request.getEntityType(),
+        request.getIncludeDeleted());
   }
 
   /**

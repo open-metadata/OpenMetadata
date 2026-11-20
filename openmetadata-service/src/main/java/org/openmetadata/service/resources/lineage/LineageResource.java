@@ -53,7 +53,6 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.AddLineage;
@@ -196,26 +195,24 @@ public class LineageResource {
     return Entity.getEntityReferenceByName(entityType, entityFQN, include);
   }
 
-  /**
-   * Search lineage roots its graph on the indexed entity with {@code fqn}; {@code type} is optional
-   * and the search never uses it to find the root. So the check covers that indexed entity, looked
-   * up the same way, whatever type the caller sent or left out. A root the index does not have yet
-   * falls back to the type and FQN the caller named, as before.
-   */
-  private void authorizeLineageRoot(SecurityContext securityContext, String entityType, String fqn)
+  private String resolveAndAuthorizeLineageRoot(
+      SecurityContext securityContext, String entityType, String fqn, boolean includeDeleted)
       throws IOException {
-    if (!nullOrEmpty(fqn) && !getSubjectContext(securityContext).isAdmin()) {
-      Entity.getSearchRepository()
-          .getLineageRoot(fqn)
-          .or(() -> namedLineageRoot(entityType, fqn))
-          .ifPresent(root -> authorizeLineageRootView(securityContext, root));
+    boolean admin = getSubjectContext(securityContext).isAdmin();
+    if (nullOrEmpty(fqn) || (admin && !nullOrEmpty(entityType))) {
+      return entityType;
     }
-  }
-
-  private static Optional<EntityReference> namedLineageRoot(String entityType, String fqn) {
-    return !nullOrEmpty(entityType) && Entity.hasEntityRepository(entityType)
-        ? Optional.of(new EntityReference().withType(entityType).withFullyQualifiedName(fqn))
-        : Optional.empty();
+    EntityReference root =
+        Entity.getSearchRepository()
+            .getLineageRoot(
+                new SearchLineageRequest()
+                    .withFqn(fqn)
+                    .withEntityType(entityType)
+                    .withIncludeDeleted(includeDeleted));
+    if (!admin) {
+      authorizeLineageRootView(securityContext, root);
+    }
+    return root.getType();
   }
 
   private void authorizeLineageRootView(SecurityContext securityContext, EntityReference root) {
@@ -477,7 +474,8 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
-    authorizeLineageRoot(securityContext, entityType, fqn);
+    String rootEntityType =
+        resolveAndAuthorizeLineageRoot(securityContext, entityType, fqn, deleted);
     validateTemporalBounds(startTime, endTime);
     SubjectContext subjectContext = getSubjectContext(securityContext);
     SearchLineageResult lineage =
@@ -485,11 +483,12 @@ public class LineageResource {
             .searchLineage(
                 new SearchLineageRequest()
                     .withFqn(fqn)
+                    .withEntityType(rootEntityType)
                     .withUpstreamDepth(upstreamDepth)
                     .withDownstreamDepth(downstreamDepth)
                     .withQueryFilter(queryFilter)
                     .withIncludeDeleted(deleted)
-                    .withIsConnectedVia(isConnectedVia(entityType))
+                    .withIsConnectedVia(isConnectedVia(rootEntityType))
                     .withLayerFrom(from)
                     .withLayerSize(size)
                     .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
@@ -606,7 +605,8 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
-    authorizeLineageRoot(securityContext, entityType, fqn);
+    String rootEntityType =
+        resolveAndAuthorizeLineageRoot(securityContext, entityType, fqn, deleted);
     validateTemporalBounds(startTime, endTime);
     SubjectContext subjectContext = getSubjectContext(securityContext);
     SearchLineageResult lineage =
@@ -614,11 +614,12 @@ public class LineageResource {
             .searchLineageWithDirection(
                 new SearchLineageRequest()
                     .withFqn(fqn)
+                    .withEntityType(rootEntityType)
                     .withUpstreamDepth(upstreamDepth)
                     .withDownstreamDepth(downstreamDepth)
                     .withQueryFilter(queryFilter)
                     .withIncludeDeleted(deleted)
-                    .withIsConnectedVia(isConnectedVia(entityType))
+                    .withIsConnectedVia(isConnectedVia(rootEntityType))
                     .withDirection(direction)
                     .withLayerFrom(from)
                     .withLayerSize(size)
@@ -659,7 +660,11 @@ public class LineageResource {
           @QueryParam("includeDeleted")
           boolean deleted)
       throws IOException {
-    authorizeLineageRoot(securityContext, Entity.TABLE, fqn);
+    if (!nullOrEmpty(fqn) && !getSubjectContext(securityContext).isAdmin()) {
+      authorizeLineageRootView(
+          securityContext,
+          new EntityReference().withType(Entity.TABLE).withFullyQualifiedName(fqn));
+    }
 
     return Entity.getSearchRepository()
         .searchDataQualityLineage(
@@ -698,14 +703,15 @@ public class LineageResource {
           boolean deleted,
       @Parameter(description = "entity type") @QueryParam("type") String entityType)
       throws IOException {
-    authorizeLineageRoot(securityContext, entityType, fqn);
+    String rootEntityType =
+        resolveAndAuthorizeLineageRoot(securityContext, entityType, fqn, deleted);
     return dao.exportCsv(
         fqn,
         upstreamDepth,
         downstreamDepth,
         queryFilter,
         deleted,
-        entityType,
+        rootEntityType,
         getSubjectContext(securityContext));
   }
 
@@ -751,13 +757,14 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
-    authorizeLineageRoot(securityContext, entityType, fqn);
+    String rootEntityType =
+        resolveAndAuthorizeLineageRoot(securityContext, entityType, fqn, deleted);
     validateTemporalBounds(startTime, endTime);
     CsvAsyncJobArgs.LineageExportArgs args =
         new CsvAsyncJobArgs.LineageExportArgs()
             .setByEntityCount(false)
             .setFqn(fqn)
-            .setEntityType(entityType)
+            .setEntityType(rootEntityType)
             .setQueryFilter(queryFilter)
             .setDeleted(deleted)
             .setStartTime(startTime)
@@ -828,7 +835,8 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
-    authorizeLineageRoot(securityContext, entityType, fqn);
+    String rootEntityType =
+        resolveAndAuthorizeLineageRoot(securityContext, entityType, fqn, deleted);
     validateTemporalBounds(startTime, endTime);
     return Entity.getSearchRepository()
         .getLineagePaginationInfo(
@@ -837,7 +845,7 @@ public class LineageResource {
             downstreamDepth,
             queryFilter,
             deleted,
-            entityType,
+            rootEntityType,
             startTime,
             endTime);
   }
@@ -914,13 +922,14 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
-    authorizeLineageRoot(securityContext, entityType, fqn);
+    String rootEntityType =
+        resolveAndAuthorizeLineageRoot(securityContext, entityType, fqn, deleted);
     validateTemporalBounds(startTime, endTime);
     CsvAsyncJobArgs.LineageExportArgs args =
         new CsvAsyncJobArgs.LineageExportArgs()
             .setByEntityCount(true)
             .setFqn(fqn)
-            .setEntityType(entityType)
+            .setEntityType(rootEntityType)
             .setQueryFilter(queryFilter)
             .setDeleted(deleted)
             .setStartTime(startTime)
@@ -1026,7 +1035,8 @@ public class LineageResource {
           @QueryParam("endTime")
           Long endTime)
       throws IOException {
-    authorizeLineageRoot(securityContext, entityType, fqn);
+    String rootEntityType =
+        resolveAndAuthorizeLineageRoot(securityContext, entityType, fqn, deleted);
     validateTemporalBounds(startTime, endTime);
     if (nullOrEmpty(direction)) {
       throw new IllegalArgumentException("Lineage Direction is required.");
@@ -1035,6 +1045,7 @@ public class LineageResource {
     EntityCountLineageRequest request =
         new EntityCountLineageRequest()
             .withFqn(fqn)
+            .withEntityType(rootEntityType)
             .withDirection(direction)
             .withFrom(from)
             .withSize(size)
@@ -1044,7 +1055,7 @@ public class LineageResource {
             .withDownstreamDepth(downstreamDepth)
             .withQueryFilter(queryFilter)
             .withIncludeDeleted(deleted)
-            .withIsConnectedVia(isConnectedVia(entityType))
+            .withIsConnectedVia(isConnectedVia(rootEntityType))
             .withIncludeSourceFields(getRequiredLineageFields(includeSourceFields))
             .withColumnFilter(columnFilter)
             .withPreservePaths(preservePaths)

@@ -457,6 +457,11 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public EntityReference getLineageRoot(SearchLineageRequest request) throws IOException {
+    return ensureLineageBuilder().getLineageRoot(request);
+  }
+
+  @Override
   public LineagePaginationInfo getLineagePaginationInfo(
       String fqn,
       int upstreamDepth,

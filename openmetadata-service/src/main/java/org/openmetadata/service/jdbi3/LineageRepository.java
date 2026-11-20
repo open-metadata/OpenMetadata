@@ -962,6 +962,7 @@ public class LineageRepository {
               .searchLineage(
                   new SearchLineageRequest()
                       .withFqn(fqn)
+                      .withEntityType(entityType)
                       .withUpstreamDepth(upstreamDepth)
                       .withDownstreamDepth(downstreamDepth)
                       .withQueryFilter(queryFilter)
@@ -2032,6 +2033,7 @@ public class LineageRepository {
       EntityCountLineageRequest request =
           new EntityCountLineageRequest()
               .withFqn(fqn)
+              .withEntityType(entityType)
               .withDirection(direction)
               .withFrom(from)
               .withSize(size)
