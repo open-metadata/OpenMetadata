@@ -12,6 +12,15 @@
 Clickhouse lineage module
 """
 
+from collections.abc import Iterable
+from typing import Any
+
+from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.ingestion.api.models import Either
+from metadata.ingestion.source.database.clickhouse.kafka_lineage import (
+    yield_kafka_engine_lineage,
+)
 from metadata.ingestion.source.database.clickhouse.lineage_utils import (
     get_mv_target_lineage,
     get_view_lineage_parser,
@@ -54,3 +63,7 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
     def get_view_lineage_parser_factory(self) -> ViewLineageParserFactory | None:
         """Keep explicit materialized-view outputs outside the input lineage graph."""
         return get_view_lineage_parser
+
+    def _iter(self, *args: Any, **kwargs: Any) -> Iterable[Either[AddLineageRequest | CreateQueryRequest]]:
+        yield from super()._iter(*args, **kwargs)
+        yield from yield_kafka_engine_lineage(self)  # pyright: ignore[reportReturnType]

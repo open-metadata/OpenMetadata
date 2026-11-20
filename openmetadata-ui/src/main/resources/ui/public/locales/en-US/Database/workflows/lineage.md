@@ -138,6 +138,14 @@ Example: `database_service_1`, `database_service_2`
 $$
 
 $$section
+### Messaging Service Names $(id="messagingServiceNames")
+
+List of messaging service names to use when resolving upstream Kafka or streaming topic lineage for streaming table engines (such as the ClickHouse `Kafka` table engine). Required when ClickHouse Named Collections conceal broker endpoints from table DDL or when multiple ingested messaging services share broker endpoints and topic names.
+
+Example: `kafka_prod`, `redpanda_events`
+$$
+
+$$section
 ### Enable Temp Table Lineage $(id="enableTempTableLineage")
 
 Set the `Enable Temp Table Lineage` toggle to handle lineage for temporary and transient tables (specifically for Snowflake). When enabled, OpenMetadata will track lineage involving temporary tables that might otherwise be ignored. Default is `false`.
