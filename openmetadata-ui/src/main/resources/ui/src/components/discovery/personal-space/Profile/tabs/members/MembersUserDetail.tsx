@@ -95,7 +95,9 @@ const MembersUserDetail: FC<MembersUserDetailProps> = ({
 
   const afterDelete = useCallback(
     (isSoftDelete?: boolean) =>
-      isSoftDelete ? void refetch() : onNavigate({ type: 'users' }),
+      isSoftDelete
+        ? void refetch()
+        : onNavigate({ type: 'users' }, { replace: true }),
     [refetch, onNavigate]
   );
 

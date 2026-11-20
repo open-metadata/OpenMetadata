@@ -137,6 +137,36 @@ class JwtIdentityResolverTest {
     assertEquals("john@company.com", identity.email());
   }
 
+  @Test
+  void testInternalBotTokenUnderMappingKeepsTheBotsStoredEmail() {
+    // A bot token minted under username:upn / email:mail puts the bare name in upn, the first
+    // claim in the order. Building <upn>@<principalDomain> from it gave another address than the
+    // bot's, and the request failed with "Account already exists".
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(
+            null,
+            Map.of("username", "upn", "email", "mail"),
+            List.of("upn", "mail", "email", "preferred_username", "sub"),
+            "openmetadata.local",
+            email -> "ignored");
+
+    JwtIdentityResolver.ResolvedIdentity identity =
+        resolver.resolve(
+            claims(
+                Map.of(
+                    "sub", "ingestion-bot",
+                    "upn", "ingestion-bot",
+                    "mail", "ingestion-bot@open-metadata.org",
+                    "email", "ingestion-bot@open-metadata.org",
+                    "preferred_username", "ingestion-bot@open-metadata.org",
+                    "isBot", true)),
+            true,
+            true);
+
+    assertEquals("ingestion-bot", identity.userName());
+    assertEquals("ingestion-bot@open-metadata.org", identity.email());
+  }
+
   @ParameterizedTest
   @ValueSource(strings = {"", "invalid"})
   void testInternalTokenRejectsInvalidEmailInsteadOfSynthesizingOne(String invalidEmail) {

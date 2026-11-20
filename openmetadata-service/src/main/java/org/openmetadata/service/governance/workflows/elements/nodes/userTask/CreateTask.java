@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -93,6 +94,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.tasks.IncidentWorkflowStages;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.AsyncService;
@@ -205,10 +207,11 @@ public class CreateTask implements TaskListener {
       // A request can end (withdrawn, overridden, cancelled) or be revised while delivery is
       // still creating its task; that task is closed once this Flowable command commits.
       ReviewPolicy reviewPolicy =
-          new ReviewPolicy()
-              .withApprovalThreshold(approvalThreshold)
-              .withRejectionThreshold(rejectionThreshold)
-              .withPartialDecisions(partialDecisions(delegateTask));
+          reviewPolicy(
+              approvalThreshold,
+              rejectionThreshold,
+              partialDecisions(delegateTask),
+              task.getAssignees());
       ChangeRequestRun.from(varHandler)
           .filter(
               run ->
@@ -231,7 +234,9 @@ public class CreateTask implements TaskListener {
               approvalThreshold,
               task.getAssignees());
       delegateTask.setVariable("approvalThreshold", catalogCounts ? 1 : taskApprovalThreshold);
-      delegateTask.setVariable("rejectionThreshold", catalogCounts ? 1 : rejectionThreshold);
+      delegateTask.setVariable(
+          "rejectionThreshold",
+          catalogCounts ? 1 : capAtUsersAbleToVote(rejectionThreshold, task.getAssignees()));
       delegateTask.setVariable("approversList", new ArrayList<String>());
       delegateTask.setVariable("rejectersList", new ArrayList<String>());
       delegateTask.setVariable("taskEntityId", task.getId().toString());
@@ -358,21 +363,9 @@ public class CreateTask implements TaskListener {
     if (workflowInstanceIdObj != null) {
       return UUID.fromString(workflowInstanceIdObj.toString());
     }
-    String businessKey = resolveProcessBusinessKey(delegateTask.getProcessInstanceId());
+    String businessKey =
+        WorkflowHandler.getInstance().getProcessBusinessKey(delegateTask.getProcessInstanceId());
     return businessKey != null && !businessKey.isBlank() ? UUID.fromString(businessKey) : null;
-  }
-
-  private static String resolveProcessBusinessKey(String processInstanceId) {
-    if (processInstanceId == null || processInstanceId.isBlank()) {
-      return null;
-    }
-    org.flowable.engine.runtime.ProcessInstance processInstance =
-        WorkflowHandler.getInstance()
-            .getRuntimeService()
-            .createProcessInstanceQuery()
-            .processInstanceId(processInstanceId)
-            .singleResult();
-    return processInstance != null ? processInstance.getBusinessKey() : null;
   }
 
   private List<EntityReference> getAssignees(DelegateTask delegateTask) {
@@ -583,7 +576,7 @@ public class CreateTask implements TaskListener {
                 effectiveWorkflowDefinitionId, workflowStageId);
       }
       List<EntityReference> resolvedAssignees =
-          resolveExistingTaskAssignees(currentTask, assignees, requestedAssignees);
+          resolveExistingTaskAssignees(currentTask, assignees, requestedAssignees, workflowStageId);
       boolean preserveTerminalWorkflowState = isTerminalTaskStatus(currentTask.getStatus());
       if (!preserveTerminalWorkflowState) {
         updatedTask.setStatus(stageStatus != null ? stageStatus : updatedTask.getStatus());
@@ -978,18 +971,61 @@ public class CreateTask implements TaskListener {
    * WorkflowStartVariables#APPROVAL_MODE_ALL_ASSIGNEES} every assignee entry must approve, so the
    * node's threshold is raised to the entry count; a team is one entry, covered by any member.
    * Every other mode keeps the node's threshold.
+   *
+   * <p>The threshold never exceeds the number of users able to vote. The requester is removed from
+   * the assignees to prevent self-approval, so a node requiring two approvals from an owner and a
+   * reviewer would otherwise leave the task open forever when the reviewer made the change. A list
+   * holding a team is not capped, since any number of its members can vote.
+   * ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
    */
   static int resolveApprovalThreshold(
       String approvalMode, int nodeThreshold, List<EntityReference> assignees) {
-    return WorkflowStartVariables.APPROVAL_MODE_ALL_ASSIGNEES.equals(approvalMode)
-        ? Math.max(nodeThreshold, assignees == null ? 0 : assignees.size())
-        : nodeThreshold;
+    int threshold =
+        WorkflowStartVariables.APPROVAL_MODE_ALL_ASSIGNEES.equals(approvalMode)
+            ? Math.max(nodeThreshold, assignees == null ? 0 : assignees.size())
+            : nodeThreshold;
+    return capAtUsersAbleToVote(threshold, assignees);
+  }
+
+  /**
+   * The policy a change request is decided by. Both thresholds get the same cap as the task's, or
+   * the only eligible reviewer's decision would read as reviewers failing to agree.
+   * ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
+   */
+  static ReviewPolicy reviewPolicy(
+      int nodeApprovalThreshold,
+      int rejectionThreshold,
+      boolean partialDecisions,
+      List<EntityReference> assignees) {
+    return new ReviewPolicy()
+        .withApprovalThreshold(capAtUsersAbleToVote(nodeApprovalThreshold, assignees))
+        .withRejectionThreshold(capAtUsersAbleToVote(rejectionThreshold, assignees))
+        .withPartialDecisions(partialDecisions);
+  }
+
+  /**
+   * Caps an approval or rejection threshold at the users able to vote, so neither is out of reach
+   * once the requester is removed. ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
+   */
+  static int capAtUsersAbleToVote(int threshold, List<EntityReference> assignees) {
+    boolean onlyUsers =
+        assignees != null
+            && !assignees.isEmpty()
+            && assignees.stream().allMatch(assignee -> Entity.USER.equals(assignee.getType()));
+    return onlyUsers ? Math.min(threshold, assignees.size()) : threshold;
   }
 
   static List<EntityReference> resolveExistingTaskAssignees(
       Task existingTask,
       List<EntityReference> workflowAssignees,
-      List<EntityReference> requestedAssignees) {
+      List<EntityReference> requestedAssignees,
+      String targetStageId) {
+    if (existingTask.getType() == TaskEntityType.TestCaseResolution
+        && requestedAssignees != null
+        && requestedAssignees.isEmpty()
+        && isIncidentReturnToTriage(existingTask.getWorkflowStageId(), targetStageId)) {
+      return List.of();
+    }
     List<EntityReference> existingAssignees = existingTask.getAssignees();
     boolean hasExistingAssignees = existingAssignees != null && !existingAssignees.isEmpty();
     boolean hasRequestedAssignees = requestedAssignees != null && !requestedAssignees.isEmpty();
@@ -1007,6 +1043,13 @@ public class CreateTask implements TaskListener {
       return requestedAssignees;
     }
     return existingAssignees;
+  }
+
+  private static boolean isIncidentReturnToTriage(String currentStageId, String targetStageId) {
+    return (IncidentWorkflowStages.NEW_STAGE_ID.equals(targetStageId)
+            && !Objects.equals(currentStageId, targetStageId))
+        || (IncidentWorkflowStages.ACK_STAGE_ID.equals(targetStageId)
+            && IncidentWorkflowStages.ASSIGNED_STAGE_ID.equals(currentStageId));
   }
 
   // Delegates to TaskRepository.isTerminalStatus so the two predicates can't drift when a new
@@ -1091,7 +1134,8 @@ public class CreateTask implements TaskListener {
     if (taskId != null && !taskId.isBlank()) {
       return UUID.fromString(taskId);
     }
-    String businessKey = resolveProcessBusinessKey(delegateTask.getProcessInstanceId());
+    String businessKey =
+        WorkflowHandler.getInstance().getProcessBusinessKey(delegateTask.getProcessInstanceId());
     if (businessKey == null || businessKey.isBlank()) {
       return null;
     }

@@ -22,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.jdbi.v3.core.Handle;
@@ -66,7 +67,8 @@ import org.testcontainers.containers.JdbcDatabaseContainer;
  * on a connection of its own to stop one side part-way through its transaction, so the two
  * requests interleave the same way on every run instead of racing.
  */
-// The tests run one after the other so neither counts the other's lock waits as its own.
+// The lock probe sees every session's waits, so the class runs in the serial global-state lane and
+// its tests one after the other: no other test's lock wait can count as one of its own.
 @Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 @Slf4j
@@ -74,12 +76,16 @@ class DataProductDeleteRaceIT {
 
   private static final Duration BLOCKED_WITHIN = Duration.ofSeconds(60);
   private static final String CASCADE_PAUSE_EXTENSION = "dataProduct.cascadePause";
+  // MySQL reports the table each blocked transaction waits on; its statement text in
+  // innodb_trx missed the waiters on CI, where the requests then ran into the 50s lock timeout.
   private static final String MYSQL_LOCK_WAITS =
       """
-      SELECT trx_query FROM information_schema.innodb_trx WHERE trx_state = 'LOCK WAIT'""";
+      SELECT DISTINCT w.REQUESTING_ENGINE_TRANSACTION_ID, l.OBJECT_NAME AS waiting
+      FROM performance_schema.data_lock_waits w
+      JOIN performance_schema.data_locks l ON l.ENGINE_LOCK_ID = w.REQUESTING_ENGINE_LOCK_ID""";
   private static final String POSTGRES_LOCK_WAITS =
       """
-      SELECT query FROM pg_stat_activity
+      SELECT query AS waiting FROM pg_stat_activity
       WHERE wait_event_type = 'Lock' AND datname = current_database()""";
   private static final String DATA_PRODUCT_ROWS =
       """
@@ -116,10 +122,9 @@ class DataProductDeleteRaceIT {
     Handle holder = holdRow("data_product_entity", dataProductId);
     try {
       delete = async(() -> hardDelete(dataProduct));
-      awaitBlocked(delete, 1, List.of(dataProductId), List.of("data_product_entity"));
+      awaitBlocked(delete, 1, List.of("data_product_entity"));
       add = async(() -> addAsset(dataProduct, table));
-      awaitBlocked(
-          add, 2, List.of(dataProductId), List.of("data_product_entity", "entity_relationship"));
+      awaitBlocked(add, 2, List.of("data_product_entity", "entity_relationship"));
     } finally {
       release(holder);
     }
@@ -144,13 +149,10 @@ class DataProductDeleteRaceIT {
     Handle holder = holdRow("table_entity", tableId);
     try {
       add = async(() -> addAsset(dataProduct, table));
-      awaitBlocked(add, 1, List.of(tableId), List.of("table_entity"));
+      awaitBlocked(add, 1, List.of("table_entity"));
       delete = async(() -> hardDelete(dataProduct));
       awaitBlocked(
-          delete,
-          2,
-          List.of(tableId, dataProductId),
-          List.of("table_entity", "data_product_entity", "entity_relationship"));
+          delete, 2, List.of("table_entity", "data_product_entity", "entity_relationship"));
     } finally {
       release(holder);
     }
@@ -181,13 +183,10 @@ class DataProductDeleteRaceIT {
     Handle holder = holdRow("entity_extension", dataProductId);
     try {
       delete = async(() -> hardDeleteDomain(dataProduct));
-      awaitBlocked(delete, 1, List.of(dataProductId), List.of("entity_extension"));
+      awaitBlocked(delete, 1, List.of("entity_extension"));
       add = async(() -> addAsset(dataProduct, table));
       awaitBlocked(
-          add,
-          2,
-          List.of(dataProductId),
-          List.of("entity_extension", "data_product_entity", "entity_relationship"));
+          add, 2, List.of("entity_extension", "data_product_entity", "entity_relationship"));
     } finally {
       release(holder);
     }
@@ -282,27 +281,29 @@ class DataProductDeleteRaceIT {
   }
 
   /**
-   * Waits until {@code request} has returned or {@code waiters} statements are waiting on a row
-   * lock. MySQL shows the bound values, so its statements are matched on the ids; Postgres shows
-   * placeholders, so its statements are matched on the tables.
+   * Waits until {@code request} has returned or {@code waiters} transactions wait on a row lock in
+   * {@code tables}: the locked table on MySQL, the waiting statement's text on Postgres.
    */
-  private static void awaitBlocked(
-      CompletableFuture<?> request, int waiters, List<String> ids, List<String> tables) {
-    boolean mysql = TestSuiteBootstrap.getConnectionType() == ConnectionType.MYSQL;
-    List<String> needles = mysql ? ids : tables;
+  private static void awaitBlocked(CompletableFuture<?> request, int waiters, List<String> tables) {
     Awaitility.await("request done or %d statements waiting on a row lock".formatted(waiters))
         .pollInterval(Duration.ofMillis(50))
         .atMost(BLOCKED_WITHIN)
-        .until(() -> request.isDone() || lockWaiters(mysql, needles) >= waiters);
+        .until(() -> request.isDone() || lockWaiters(tables) >= waiters);
   }
 
-  private static long lockWaiters(boolean mysql, List<String> needles) {
+  private static long lockWaiters(List<String> tables) {
+    boolean mysql = TestSuiteBootstrap.getConnectionType() == ConnectionType.MYSQL;
     String waiting = mysql ? MYSQL_LOCK_WAITS : POSTGRES_LOCK_WAITS;
     List<String> statements =
-        lockProbe.withHandle(h -> h.createQuery(waiting).mapTo(String.class).list());
+        lockProbe.withHandle(
+            h -> h.createQuery(waiting).map((row, ctx) -> row.getString("waiting")).list());
     return statements.stream()
-        .filter(sql -> sql != null && needles.stream().anyMatch(sql::contains))
+        .filter(sql -> sql != null && tables.stream().anyMatch(table -> mentionsTable(sql, table)))
         .count();
+  }
+
+  private static boolean mentionsTable(String sql, String table) {
+    return Pattern.compile("\\b%s\\b".formatted(table)).matcher(sql).find();
   }
 
   private static void awaitBoth(CompletableFuture<?> first, CompletableFuture<?> second)

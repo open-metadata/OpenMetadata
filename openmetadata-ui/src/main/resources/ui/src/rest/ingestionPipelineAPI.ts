@@ -159,10 +159,13 @@ export const getPipelineServiceHostIp = async () => {
 // is a no-op for a UUID and safely escapes an fqn's separators.
 export const getIngestionPipelineLogById = (
   idOrFqn: string,
-  after?: string
+  after?: string,
+  runId?: string
 ) => {
   return APIClient.get<IngestionPipelineLogByIdInterface>(
-    `/services/ingestionPipelines/logs/${getEncodedFqn(idOrFqn)}/last`,
+    `/services/ingestionPipelines/logs/${getEncodedFqn(idOrFqn)}/${
+      runId ? encodeURIComponent(runId) : 'last'
+    }`,
     {
       params: {
         after,

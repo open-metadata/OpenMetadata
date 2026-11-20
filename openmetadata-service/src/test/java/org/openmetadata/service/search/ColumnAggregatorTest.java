@@ -20,17 +20,23 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.ColumnGridItem;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
 import org.openmetadata.schema.api.data.ColumnMetadataGroup;
 import org.openmetadata.schema.api.data.MetadataStatus;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.ColumnAggregator.ColumnAggregationRequest;
+import org.openmetadata.service.search.ColumnMetadataGrouper.ColumnWithContext;
 
 class ColumnAggregatorTest {
 
@@ -312,5 +318,68 @@ class ColumnAggregatorTest {
     TagLabel tag = ColumnAggregator.parseTagLabel(tagData);
 
     assertNull(tag.getStyle());
+  }
+
+  @Test
+  void nextBrowsePage_advancesOnlyFieldsThatContributed() {
+    Map<String, List<String>> keysByField =
+        Map.of("columns.name.keyword", List.of("a", "b", "c"), "fields.name.keyword", List.of());
+
+    ColumnAggregator.BrowsePage page =
+        ColumnAggregator.nextBrowsePage(keysByField, Map.of("fields.name.keyword", "a0"), 3);
+
+    assertEquals(List.of("a", "b", "c"), page.names());
+    assertEquals(
+        Map.of("columns.name.keyword", "c", "fields.name.keyword", "a0"), page.afterKeys());
+    assertTrue(page.hasMore());
+  }
+
+  @Test
+  void nextBrowsePage_mergesInEngineKeyOrder() {
+    String fullwidthA = "Ａ";
+    String emoji = "😀";
+    Map<String, List<String>> keysByField =
+        Map.of(
+            "tasks.name.keyword", List.of(fullwidthA, emoji),
+            "mlFeatures.name.keyword", List.of(emoji));
+
+    ColumnAggregator.BrowsePage page = ColumnAggregator.nextBrowsePage(keysByField, Map.of(), 1);
+
+    assertEquals(List.of(fullwidthA), page.names());
+    assertEquals(Map.of("tasks.name.keyword", fullwidthA), page.afterKeys());
+  }
+
+  @Test
+  void decodeBrowseCursor_nullPayloadStartsAtPageOne() {
+    assertEquals(Map.of(), ColumnAggregator.decodeBrowseCursor(base64("null")));
+    assertEquals(
+        Map.of(), ColumnAggregator.decodeBrowseCursor(base64("{\"columns.name.keyword\":null}")));
+  }
+
+  @Test
+  void mergeRowsByBucketKey_mergesOnlyOccurrencesThatShareABucketKey() {
+    Map<String, List<ColumnWithContext>> tableRows =
+        Map.of("customerid", List.of(occurrence("CustomerID", "table")));
+    Map<String, List<ColumnWithContext>> topicRows =
+        Map.of("customerid", List.of(occurrence("customerid", "topic")));
+    Map<String, List<ColumnWithContext>> pipelineRows =
+        Map.of(
+            "Extract", List.of(occurrence("Extract", "pipeline")),
+            "extract", List.of(occurrence("extract", "pipeline")));
+
+    Map<String, List<ColumnWithContext>> rows =
+        ColumnAggregator.mergeRowsByBucketKey(List.of(tableRows, topicRows, pipelineRows));
+
+    assertEquals(Set.of("CustomerID", "Extract", "extract"), rows.keySet());
+    assertEquals(2, rows.get("CustomerID").size());
+  }
+
+  private static ColumnWithContext occurrence(String columnName, String entityType) {
+    return new ColumnWithContext(
+        new Column().withName(columnName), entityType, null, null, null, null, null);
+  }
+
+  private static String base64(String json) {
+    return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
   }
 }

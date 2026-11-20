@@ -23,6 +23,7 @@ import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getRandomColor } from '../../../utils/ColorUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
 import Loader from '../Loader/Loader';
+import { getBotAvatar } from './ProfilePicture.utils';
 
 type UserData = Pick<User, 'name' | 'displayName'>;
 
@@ -45,6 +46,10 @@ const WIDTH_TO_SIZE: Partial<Record<number, CoreAvatarSize>> = {
 };
 
 const AgentIcon = () => <AiAgent className="tw:size-5/8" />;
+
+const TRANSPARENT_BACKGROUND: CSSProperties = {
+  backgroundColor: 'transparent',
+};
 
 const SMALL_LOADER_SIZES: CoreAvatarSize[] = ['xxs', 'xs'];
 
@@ -181,7 +186,7 @@ const ProfilePicture = ({
     return userPermissions.hasViewPermissions(ResourceEntity.USER, permissions);
   }, [permissions]);
 
-  const [profileURL, isPicLoading] = useUserProfile({
+  const [profileURL, isPicLoading, user] = useUserProfile({
     permission: viewUserPermission && !isAgent,
     name,
     isTeam,
@@ -213,7 +218,21 @@ const ProfilePicture = ({
         data-testid="profile-avatar"
         placeholderIcon={Teams}
         size={avatarSize}
-        style={{ backgroundColor: 'transparent' }}
+        style={TRANSPARENT_BACKGROUND}
+      />
+    );
+  }
+
+  const botAvatar = getBotAvatar(profileURL, character, user);
+  if (botAvatar) {
+    return (
+      <Avatar
+        {...botAvatar}
+        className={className}
+        contrastBorder={false}
+        data-testid="profile-avatar"
+        size={avatarSize}
+        style={TRANSPARENT_BACKGROUND}
       />
     );
   }

@@ -46,6 +46,8 @@ class WorkflowDefinitionGraphValidationTest {
       "json/data/governance/workflows/TestCaseResolutionTaskWorkflow.json";
   private static final String METRIC_APPROVAL_WORKFLOW =
       "json/data/governance/workflows/MetricApprovalWorkflow.json";
+  private static final String RECOGNIZER_FEEDBACK_WORKFLOW =
+      "json/data/governance/workflows/RecognizerFeedbackReviewWorkflow.json";
 
   @Test
   void cyclicStateMachineWorkflowPassesGraphValidation() throws Exception {
@@ -58,6 +60,22 @@ class WorkflowDefinitionGraphValidationTest {
 
     assertDoesNotThrow(
         () -> validateGraph(workflow), "cycles are valid in workflow state machines");
+  }
+
+  @Test
+  void incidentSeedLetsAssignedIncidentReturnToNew() throws Exception {
+    WorkflowDefinition workflow = loadWorkflow(INCIDENT_WORKFLOW);
+
+    assertEdge(workflow, "AssignedStage", "NewStage", "new");
+    assertDoesNotThrow(() -> validateGraph(workflow));
+  }
+
+  @Test
+  void incidentSeedLetsAssignedIncidentReturnToAcknowledged() throws Exception {
+    WorkflowDefinition workflow = loadWorkflow(INCIDENT_WORKFLOW);
+
+    assertEdge(workflow, "AssignedStage", "AckStage", "ack");
+    assertDoesNotThrow(() -> validateGraph(workflow));
   }
 
   /**
@@ -111,6 +129,119 @@ class WorkflowDefinitionGraphValidationTest {
                 edge("Review", "End", "reject")));
     assertDoesNotThrow(() -> validate("validateEnforceMode", workflow));
     assertDoesNotThrow(() -> validate("validateConditionalTasks", workflow));
+  }
+
+  /**
+   * Regression guard for the recognizer-feedback NPE: a recognizer-feedback node deployed without
+   * an {@code inputNamespaceMap} reads a {@code null} feedback variable at runtime and (before the
+   * delegate null-guard) NPE'd. {@code validateRecognizerFeedbackInputNamespaceMap} rejects this
+   * state at deploy time with a descriptive error pointing at the node and the missing mapping.
+   */
+  @Test
+  void recognizerFeedbackNodeWithoutInputNamespaceMap_isRejected() {
+    WorkflowDefinition workflow =
+        recognizerFeedbackWorkflow(
+            List.of(
+                """
+            {"type": "automatedTask", "subType": "applyRecognizerFeedbackTask",
+             "name": "ApplyApprovedFeedback"}
+            """),
+            List.of(
+                edge("FeedbackSubmitted", "ApplyApprovedFeedback", null),
+                edge("ApplyApprovedFeedback", "FeedbackApplied", null)));
+
+    BadRequestException error =
+        assertThrows(
+            BadRequestException.class,
+            () -> validate("validateRecognizerFeedbackInputNamespaceMap", workflow));
+    assertTrue(
+        error.getMessage().contains("ApplyApprovedFeedback"),
+        "error should name the offending node: " + error.getMessage());
+    assertTrue(
+        error.getMessage().contains("inputNamespaceMap"),
+        "error should mention inputNamespaceMap: " + error.getMessage());
+    assertTrue(
+        error.getMessage().contains("recognizerFeedback"),
+        "error should name the input that was left unresolved: " + error.getMessage());
+  }
+
+  /** The same check applies to the user-task subType (whose delegate also derefs feedback). */
+  @Test
+  void recognizerFeedbackApprovalUserTaskWithoutInputNamespaceMap_isRejected() {
+    WorkflowDefinition workflow =
+        recognizerFeedbackWorkflow(
+            List.of(
+                """
+            {"type": "userTask", "subType": "createRecognizerFeedbackApprovalTask",
+             "name": "ReviewFeedback",
+             "config": {"assignees": {"addReviewers": true},
+                        "approvalThreshold": 1, "rejectionThreshold": 1}}
+            """),
+            List.of(
+                edge("FeedbackSubmitted", "ReviewFeedback", null),
+                edge("ReviewFeedback", "FeedbackApplied", null)));
+
+    BadRequestException error =
+        assertThrows(
+            BadRequestException.class,
+            () -> validate("validateRecognizerFeedbackInputNamespaceMap", workflow));
+    assertTrue(
+        error.getMessage().contains("ReviewFeedback"),
+        "error should name the offending node: " + error.getMessage());
+    assertTrue(
+        error.getMessage().contains("inputNamespaceMap"),
+        "error should mention inputNamespaceMap: " + error.getMessage());
+  }
+
+  /**
+   * The check is scoped: nodes whose delegates null-guard their optional inputs (e.g. setEntityAttributeTask,
+   * whose {@code updatedBy} delegates to "governance-bot") continue to deploy without an entry for
+   * that optional input. They must not be rejected by the recognizer-feedback tightening.
+   */
+  @Test
+  void nonRecognizerFeedbackNodes_passValidationWithoutInputNamespaceMap() {
+    String nonInputNode =
+        """
+        {"type": "startEvent", "subType": "startEvent", "name": "ExtraStart"}
+        """;
+    WorkflowDefinition workflow =
+        recognizerFeedbackWorkflow(
+            List.of(
+                """
+            {"type": "automatedTask", "subType": "applyRecognizerFeedbackTask",
+             "name": "ApplyApprovedFeedback",
+             "inputNamespaceMap": {"relatedEntity": "global",
+                                   "updatedBy": "global",
+                                   "triggeringObjectId": "global",
+                                   "recognizerFeedback": "global"}}
+            """,
+                nonInputNode),
+            List.of(
+                edge("FeedbackSubmitted", "ApplyApprovedFeedback", null),
+                edge("ApplyApprovedFeedback", "ExtraStart", null),
+                edge("ExtraStart", "FeedbackApplied", null)));
+
+    assertDoesNotThrow(() -> validate("validateRecognizerFeedbackInputNamespaceMap", workflow));
+  }
+
+  /**
+   * The shipped {@code RecognizerFeedbackReviewWorkflow} declares an input and an inputNamespaceMap
+   * on every recognizer-feedback node, so the new check must not reject the seed during bootstrap.
+   */
+  @Test
+  void recognizerFeedbackSeedWorkflow_passesInputNamespaceMappingValidation() throws Exception {
+    WorkflowDefinition workflow = loadWorkflow(RECOGNIZER_FEEDBACK_WORKFLOW);
+    assertTrue(
+        workflow.getNodes().stream()
+            .anyMatch(
+                n ->
+                    n.getInput() != null
+                        && !n.getInput().isEmpty()
+                        && n.getInputNamespaceMap() != null),
+        "fixture must include at least one node that declares both input and inputNamespaceMap");
+    assertDoesNotThrow(
+        () -> validate("validateRecognizerFeedbackInputNamespaceMap", workflow),
+        "the shipped RecognizerFeedbackReviewWorkflow must remain deployable after the validator tightening");
   }
 
   @Test
@@ -237,6 +368,31 @@ class WorkflowDefinitionGraphValidationTest {
             {"type": "startEvent", "subType": "startEvent", "name": "Start"},
             %s,
             {"type": "endEvent", "subType": "endEvent", "name": "End"}
+          ],
+          "edges": [%s]
+        }
+        """
+            .formatted(String.join(",", nodes), String.join(",", edges));
+    return JsonUtils.readValue(json, WorkflowDefinition.class);
+  }
+
+  /** Mirror of the shipped RecognizerFeedbackReviewWorkflow: trigger output is the 4-tuple. */
+  private static WorkflowDefinition recognizerFeedbackWorkflow(
+      List<String> nodes, List<String> edges) {
+    String json =
+        """
+        {
+          "name": "RecognizerFeedbackFixture",
+          "fullyQualifiedName": "RecognizerFeedbackFixture",
+          "trigger": {"type": "eventBasedEntity",
+                      "config": {"entityTypes": ["recognizerFeedback"],
+                                 "events": ["Created", "Updated"], "filter": {}},
+                      "output": ["relatedEntity", "updatedBy", "triggeringObjectId",
+                                 "recognizerFeedback"]},
+          "nodes": [
+            {"type": "startEvent", "subType": "startEvent", "name": "FeedbackSubmitted"},
+            %s,
+            {"type": "endEvent", "subType": "endEvent", "name": "FeedbackApplied"}
           ],
           "edges": [%s]
         }

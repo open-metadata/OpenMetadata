@@ -524,6 +524,11 @@ export interface PipelineServiceClientConfiguration {
      */
     openMetadataUrl?: string;
     /**
+     * App-level token (xapp-*) required for Socket Mode. Generate from Slack app settings under
+     * App-Level Tokens with connections:write scope.
+     */
+    appToken?: string;
+    /**
      * Bot Token
      */
     botToken?: string;
@@ -531,6 +536,13 @@ export interface PipelineServiceClientConfiguration {
      * Client Secret of the Application.
      */
     clientSecret?: string;
+    /**
+     * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+     * for production) receives events on a public HTTP endpoint and scales horizontally behind
+     * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+     * deployments that cannot expose a public endpoint (on-prem/firewalled).
+     */
+    connectionMode?: ConnectionMode;
     /**
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
@@ -673,6 +685,21 @@ export interface PipelineServiceClientConfiguration {
      */
     allowedOrigins?: string[];
     /**
+     * Exact HTTPS redirect host allowlist, case-insensitive. Empty allows any HTTPS host. No
+     * wildcards or suffix matching. Loopback and native redirects are controlled separately.
+     * Applies to new registration and new authorization flows.
+     */
+    allowedRedirectHosts?: string[];
+    /**
+     * Allow HTTP or HTTPS loopback callbacks for desktop clients.
+     */
+    allowLoopbackRedirects?: boolean;
+    /**
+     * Allow private-use URI scheme callbacks for native clients. Disable to require HTTPS or
+     * enabled loopback callbacks.
+     */
+    allowNativeRedirects?: boolean;
+    /**
      * Base URL for MCP OAuth endpoints. Used for OAuth metadata (issuer, endpoints). If not
      * set, falls back to system settings. For clustered deployments, set this to the
      * external-facing URL.
@@ -684,11 +711,17 @@ export interface PipelineServiceClientConfiguration {
      */
     connectTimeout?: number;
     /**
-     * Names of MCP tools to turn off for every user, admins included. A disabled tool is
-     * refused on every call right away and leaves tools/list after a restart; enabling it again
-     * applies after a restart. A name that matches no tool is ignored.
+     * Names of MCP tools to turn off for every user, admins included. A change applies right
+     * away to tool calls and to the next tools/list, on each server as it reloads the setting;
+     * an MCP client that already listed the tools sees the change when it lists them again. A
+     * name that matches no tool is ignored.
      */
     disabledTools?: string[];
+    /**
+     * Allow anonymous OAuth client registration. Disabling it stops new registrations but
+     * preserves existing clients and grants.
+     */
+    dynamicClientRegistrationEnabled?: boolean;
     /**
      * Largest MCP tool response, in characters. Tools return fewer items to stay under it, so
      * it bounds how much of the MCP client's context one call can use. A saved change applies
@@ -697,11 +730,11 @@ export interface PipelineServiceClientConfiguration {
      */
     maxResponseChars?: number;
     /**
-     * Name of the MCP server
+     * Name of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerName?: string;
     /**
-     * Version of the MCP server
+     * Version of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerVersion?: string;
     /**
@@ -718,8 +751,9 @@ export interface PipelineServiceClientConfiguration {
     path?: string;
     /**
      * Expose only the MCP tools that do not change metadata (annotated readOnlyHint), for every
-     * user including admins. Turning it on blocks write tools right away; they leave tools/list
-     * after a restart, and turning it off applies after a restart.
+     * user including admins. A change applies right away to tool calls and to the next
+     * tools/list, on each server as it reloads the setting; an MCP client that already listed
+     * the tools sees the change when it lists them again.
      */
     readOnly?: boolean;
     /**
@@ -1989,6 +2023,17 @@ export interface Aws {
     [property: string]: any;
 }
 
+/**
+ * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+ * for production) receives events on a public HTTP endpoint and scales horizontally behind
+ * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+ * deployments that cannot expose a public endpoint (on-prem/firewalled).
+ */
+export enum ConnectionMode {
+    SocketMode = "SocketMode",
+    Webhook = "Webhook",
+}
+
 export enum DefaultAppMode {
     AI = "ai",
     Classic = "classic",
@@ -2266,7 +2311,8 @@ export interface LogStorageConfiguration {
      */
     earlyFlushWatermarkBytes?: number;
     /**
-     * Enable it for pipelines deployed in the server
+     * Deprecated and ignored. Pipelines store their logs in S3 whenever the type is s3
+     * (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).
      */
     enabled?: boolean;
     /**
@@ -2851,6 +2897,11 @@ export interface SavedSparqlQuery {
      * Display name for the saved query.
      */
     name: string;
+    /**
+     * Ontology the query was saved in. Ontology Studio lists a query only in its own ontology;
+     * absent for a query saved outside one.
+     */
+    ontologyId?: string;
     /**
      * SPARQL query body.
      */

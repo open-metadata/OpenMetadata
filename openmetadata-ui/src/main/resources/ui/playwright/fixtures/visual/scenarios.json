@@ -1852,7 +1852,7 @@
       }
     ],
     "ready": {
-      "text": "Search Index Settings",
+      "testId": "no-data-placeholder",
       "within": {
         "role": "tabpanel"
       }
@@ -3916,234 +3916,6 @@
     }
   },
   {
-    "id": "ontology-scope-menu",
-    "group": "Governance states",
-    "path": "/governance/ontology",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "role": "menu"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-scope-menu-trigger"
-      }
-    ]
-  },
-  {
-    "id": "ontology-new-form",
-    "group": "Governance states",
-    "path": "/governance/ontology",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-create-dialog"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-scope-menu-trigger"
-      },
-      {
-        "action": "click",
-        "testId": "ontology-create"
-      }
-    ],
-    "disabled": [
-      {
-        "testId": "ontology-create-submit"
-      }
-    ],
-    "inViewport": [
-      {
-        "testId": "ontology-create-submit"
-      }
-    ]
-  },
-  {
-    "id": "ontology-new-validation",
-    "group": "Governance states",
-    "path": "/governance/ontology",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-create-dialog"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-scope-menu-trigger"
-      },
-      {
-        "action": "click",
-        "testId": "ontology-create"
-      },
-      {
-        "action": "fill",
-        "testId": "ontology-create-name",
-        "value": "VisualOntology"
-      },
-      {
-        "action": "fill",
-        "testId": "ontology-create-prefix",
-        "value": "invalid prefix"
-      }
-    ],
-    "disabled": [
-      {
-        "testId": "ontology-create-submit"
-      }
-    ],
-    "inViewport": [
-      {
-        "testId": "ontology-create-submit"
-      }
-    ],
-    "containsText": [
-      "Start with a letter, digit, or underscore. Then use letters, digits, dots, hyphens, or underscores."
-    ]
-  },
-  {
-    "id": "ontology-native-graph",
-    "group": "Governance states",
-    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-graph-search"
-    }
-  },
-  {
-    "id": "ontology-tree",
-    "group": "Governance states",
-    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "role": "treegrid",
-      "name": "Concepts"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "submode-tab-tree"
-      }
-    ]
-  },
-  {
-    "id": "ontology-library",
-    "group": "Governance states",
-    "path": "/governance/ontology",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-library"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-library-trigger"
-      }
-    ]
-  },
-  {
-    "id": "ontology-publication-picker",
-    "group": "Governance states",
-    "path": "/governance/ontology",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-publication-picker"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-publication-trigger"
-      }
-    ]
-  },
-  {
-    "id": "ontology-publish-changes",
-    "group": "Governance states",
-    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-publication-modal"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-publication-trigger"
-      }
-    ]
-  },
-  {
-    "id": "ontology-publish-releases",
-    "group": "Governance states",
-    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-publication-modal"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-publication-trigger"
-      },
-      {
-        "action": "click",
-        "testId": "ontology-publication-tab-releases"
-      }
-    ]
-  },
-  {
-    "id": "ontology-export-dialog",
-    "group": "Governance states",
-    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "role": "dialog",
-      "name": "Import / export ontology"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-import-export-trigger"
-      }
-    ]
-  },
-  {
-    "id": "ontology-query",
-    "group": "Governance states",
-    "path": "/governance/ontology?ontology=1cc8514b-bd7a-5c36-9ac2-4f12aaf998de",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-new-query"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "mode-tab-query"
-      }
-    ]
-  },
-  {
     "id": "workflow-graph",
     "group": "Governance states",
     "path": "/workflows/visual_approval_workflow/workflow",
@@ -4391,7 +4163,7 @@
       }
     ],
     "initialReady": {
-      "testId": "data-quality-add-button-menu"
+      "testId": "entity-health-pie-chart-widget"
     }
   },
   {
@@ -5525,7 +5297,8 @@
       },
       {
         "action": "click",
-        "testId": "children-info-dropdown-btn"
+        "testId": "children-info-dropdown-btn",
+        "within": "lineage-node-visual_warehouse.finance.public.orders"
       }
     ],
     "ready": {
@@ -8874,7 +8647,7 @@
     },
     "id": "custom-property-config-no-search-results",
     "ready": {
-      "text": "No Properties found"
+      "text": "No Properties Found"
     },
     "actions": [
       {
@@ -10633,7 +10406,7 @@
     "ready": {
       "testId": "announcements-empty"
     },
-    "text": "No Announcements found"
+    "text": "No Announcements Found"
   },
   {
     "id": "classic-settings-notifications-announcements-add",

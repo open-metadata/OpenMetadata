@@ -14,8 +14,9 @@
 import { ToastProvider } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { FC, useEffect } from 'react';
+import { I18nProvider } from 'react-aria-components';
 import { HelmetProvider } from 'react-helmet-async';
-import { I18nextProvider } from 'react-i18next';
+import { I18nextProvider, useTranslation } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import App from './App';
@@ -28,12 +29,14 @@ import {
   getSystemConfig,
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
+import { getReactAriaLocale } from './utils/i18next/i18nextUtil';
 import i18n from './utils/i18next/LocalUtil';
 import { isPlaywrightEnv } from './utils/PlaywrightUtils';
 import { getThemeConfig } from './utils/ThemeUtils';
 
 const AppRoot: FC = () => {
   const { initializeAuthState } = useApplicationStore();
+  const { i18n: i18nInstance } = useTranslation();
   useThemeCssVariables();
 
   const { applicationConfig, setApplicationConfig, setRdfEnabled } =
@@ -92,14 +95,16 @@ const AppRoot: FC = () => {
           basename={getBasePath()}
           useTransitions={!isPlaywrightEnv()}>
           <I18nextProvider i18n={i18n}>
-            <HelmetProvider>
-              <DocumentTitleProvider>
-                <ErrorBoundary>
-                  <App />
-                  <ToastProvider />
-                </ErrorBoundary>
-              </DocumentTitleProvider>
-            </HelmetProvider>
+            <I18nProvider locale={getReactAriaLocale(i18nInstance.language)}>
+              <HelmetProvider>
+                <DocumentTitleProvider>
+                  <ErrorBoundary>
+                    <App />
+                    <ToastProvider />
+                  </ErrorBoundary>
+                </DocumentTitleProvider>
+              </HelmetProvider>
+            </I18nProvider>
           </I18nextProvider>
         </BrowserRouter>
       </div>

@@ -49,8 +49,11 @@ import { CreateMemoryModalProps } from './CreateMemoryModal.interface';
 jest.mock('react-i18next', () => {
   // One object across renders, like the global mock; echoes the Query a translated reason names.
   const translation = {
-    t: (key: string, options?: { query?: string }) =>
-      options?.query === undefined ? key : `${key}:${options.query}`,
+    t: (key: string, options?: { query?: string; creatorName?: string }) => {
+      const value = options?.query ?? options?.creatorName;
+
+      return value === undefined ? key : `${key}:${value}`;
+    },
     i18n: { language: 'en-US', dir: () => 'ltr' },
   };
 
@@ -485,6 +488,29 @@ describe('CreateMemoryModal', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('names the owner by display name in the read-only banner', () => {
+    renderViewOnly({
+      id: 'memory-id',
+      name: 'refund-policy',
+      owners: [
+        { id: 'owner-id', type: 'user', name: 'alice', displayName: 'Alice' },
+      ],
+      updatedBy: 'admin',
+    });
+
+    expect(
+      screen.getByText('message.context-memory-read-only-description:Alice')
+    ).toBeInTheDocument();
+  });
+
+  it('falls back to the last updater in the read-only banner when there is no owner', () => {
+    renderViewOnly({ id: 'memory-id', name: 'legacy', updatedBy: 'admin' });
+
+    expect(
+      screen.getByText('message.context-memory-read-only-description:admin')
+    ).toBeInTheDocument();
+  });
+
   it('shows the last updater when a memory has no owner', async () => {
     const memory: ContextMemory = {
       id: 'memory-id',
@@ -519,6 +545,11 @@ describe('CreateMemoryModal', () => {
     expect(await metadata.findByText('Alice Smith')).toBeInTheDocument();
     expect(metadata.getByText('label.updated-by')).toBeInTheDocument();
     expect(screen.getByText('label.owner')).toBeInTheDocument();
+    // The owner reference has no display name; UserPopOverCard resolves it rather than the login.
+    expect(UserPopOverCard).toHaveBeenCalledWith(
+      expect.objectContaining({ displayName: undefined, userName: 'alice' }),
+      expect.anything()
+    );
   });
 
   it('keeps the update date when a legacy memory has no updater', () => {

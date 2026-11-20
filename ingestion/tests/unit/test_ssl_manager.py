@@ -3,11 +3,25 @@ Manage SSL test cases
 """
 
 import os
+import ssl
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+import certifi
+import pytest
 from pydantic import SecretStr
+from pymysql.connections import Connection as PyMySQLConnection
 
+from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
+    DorisConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
+    StarRocksConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -20,7 +34,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.cassandra.metadata import CassandraSource
 from metadata.ingestion.source.messaging.kafka.metadata import KafkaSource
-from metadata.utils.ssl_manager import SSLManager
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 
 class SSLManagerTest(TestCase):
@@ -1016,3 +1030,43 @@ class HiveSSLManagerTest(TestCase):
         self.assertIsNone(args.get("ssl_certfile"))
         self.assertIsNone(args.get("ssl_keyfile"))
         ssl_manager.cleanup_temp_files()
+
+
+MYSQL_FAMILY = [MysqlConnection, DorisConnection, StarRocksConnection]
+
+
+def _pymysql_ssl_args(connection) -> dict:
+    ssl_manager = check_ssl_and_init(connection)
+    try:
+        return dict(ssl_manager.setup_ssl(connection).connectionArguments.root["ssl"])
+    finally:
+        ssl_manager.cleanup_temp_files()
+
+
+@pytest.mark.parametrize("connection_cls", MYSQL_FAMILY)
+def test_ca_certificate_makes_pymysql_verify_the_server(connection_cls):
+    connection = connection_cls(
+        hostPort="db:3306",
+        username="user",
+        sslConfig={"caCertificate": Path(certifi.where()).read_text()},
+    )
+    ssl_manager = check_ssl_and_init(connection)
+    try:
+        ssl_args = ssl_manager.setup_ssl(connection).connectionArguments.root["ssl"]
+        ctx = PyMySQLConnection._create_ssl_ctx(None, ssl_args)
+    finally:
+        ssl_manager.cleanup_temp_files()
+
+    assert ctx.verify_mode == ssl.CERT_REQUIRED
+    assert ctx.check_hostname is True
+
+
+@pytest.mark.parametrize("connection_cls", MYSQL_FAMILY)
+def test_client_certificate_and_key_use_pymysql_ssl_keys(connection_cls):
+    connection = connection_cls(
+        hostPort="db:3306",
+        username="user",
+        sslConfig={"caCertificate": "ca", "sslCertificate": "cert", "sslKey": "key"},
+    )
+
+    assert set(_pymysql_ssl_args(connection)) == {"ca", "cert", "key"}
