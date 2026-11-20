@@ -18,6 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { getAllAlerts } from '../../../../../../rest/alertsAPI';
 import { deleteEntity } from '../../../../../../rest/miscAPI';
 import NotificationAlertsPanel from './NotificationAlertsPanel';
 
@@ -222,6 +223,30 @@ describe('NotificationAlertsPanel', () => {
         1
       );
     });
+  });
+
+  it('marks a disabled alert as disabled next to its name', async () => {
+    (getAllAlerts as jest.Mock).mockResolvedValueOnce({
+      data: [
+        {
+          id: 'alert-2',
+          name: 'disabled-alert',
+          fullyQualifiedName: 'disabled-alert',
+          provider: 'user',
+          enabled: false,
+          filteringRules: { resources: ['table'] },
+        },
+      ],
+      paging: { total: 1 },
+    });
+
+    await act(async () => {
+      render(<NotificationAlertsPanel onNavigate={mockOnNavigate} />);
+    });
+
+    expect(
+      await screen.findByTestId('alert-disabled-badge')
+    ).toBeInTheDocument();
   });
 
   it('should show edit and delete buttons for user alerts', async () => {

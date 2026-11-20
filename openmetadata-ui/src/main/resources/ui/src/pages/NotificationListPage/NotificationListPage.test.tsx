@@ -302,6 +302,34 @@ describe('Notification Alerts Page Tests', () => {
     expect(alertNameElement).toBeInTheDocument();
   });
 
+  it('marks a disabled alert as disabled next to its name', async () => {
+    (getAllAlerts as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        data: [{ ...MOCK_DATA[0], enabled: false }],
+        paging: { total: 1 },
+      })
+    );
+
+    await act(async () => {
+      render(<NotificationListPage />, { wrapper: MemoryRouter });
+    });
+
+    expect(
+      await screen.findByTestId('alert-disabled-badge')
+    ).toBeInTheDocument();
+  });
+
+  it('shows no disabled badge for an enabled alert', async () => {
+    await act(async () => {
+      render(<NotificationListPage />, { wrapper: MemoryRouter });
+    });
+
+    expect(await screen.findByTestId('alert-name')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('alert-disabled-badge')
+    ).not.toBeInTheDocument();
+  });
+
   it('Table should render descriptionTableObject', async () => {
     (getAllAlerts as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({

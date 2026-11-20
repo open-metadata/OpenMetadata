@@ -85,6 +85,10 @@ describe('AlertAiDiagnosticTab', () => {
           screen.getByTestId('diagnostic-value-label.status')
         ).toHaveTextContent(status)
       );
+
+      expect(
+        screen.getByLabelText('message.alert-status-description')
+      ).toBeInTheDocument();
     }
   );
 

@@ -343,7 +343,7 @@ export const getDiagnosticItems = (
   {
     key: t('label.status'),
     value: alertStatusOf(diagnosticData?.enabled),
-    description: t('message.disabled-alert-processes-no-events'),
+    description: t('message.alert-status-description'),
   },
   {
     key: t('label.latest-offset'),

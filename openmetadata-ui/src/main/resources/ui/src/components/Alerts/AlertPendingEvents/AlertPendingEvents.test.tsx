@@ -10,24 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip } from '@openmetadata/ui-core-components';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import AlertPendingEvents from './AlertPendingEvents';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
-
-// The real tooltip still renders; wrapping it records the text it is handed, which jsdom cannot
-// hover open.
-jest.mock('@openmetadata/ui-core-components', () => {
-  const actual = jest.requireActual('@openmetadata/ui-core-components');
-
-  return {
-    ...actual,
-    Tooltip: jest.fn((props) => <actual.Tooltip {...props} />),
-  };
-});
 
 describe('AlertPendingEvents', () => {
   it('says a disabled alert is not running instead of showing 0', () => {
@@ -41,16 +30,16 @@ describe('AlertPendingEvents', () => {
     expect(screen.queryByText('0')).not.toBeInTheDocument();
   });
 
-  it('explains in a tooltip that a disabled alert processes no events', () => {
+  it('explains in a tooltip that a disabled alert processes no events', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(
       <AlertPendingEvents counts={{ enabled: false, pendingEventsCount: 0 }} />
     );
 
-    expect(Tooltip).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: 'message.disabled-alert-processes-no-events',
-      }),
-      expect.anything()
+    await user.tab();
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'message.disabled-alert-processes-no-events'
     );
   });
 

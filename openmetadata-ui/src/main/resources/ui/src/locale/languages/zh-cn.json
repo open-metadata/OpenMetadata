@@ -4391,6 +4391,7 @@
     "alert-pick-a-trigger-description": "选择要监控的对象——测试结果、管道状态或特定资产的变更。",
     "alert-recent-events-description": "为告警{{alertName}}触发的最近告警事件列表。",
     "alert-rules-read-only": "这些筛选器和触发器不是在此表单中创建的，因此无法在此处编辑。其他更改的保存不会影响它们。",
+    "alert-status-description": "提醒是否已启用。已禁用的提醒在重新启用之前不会处理任何事件。",
     "alert-stay-ahead-description": "让团队在各自使用的工具中先于相关方了解问题。",
     "alert-synced-successfully": "警报同步成功",
     "alerts-description": "使用 Webhooks 及时了解最新的提醒信息",

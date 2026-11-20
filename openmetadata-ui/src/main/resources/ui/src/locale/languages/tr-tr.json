@@ -4391,6 +4391,7 @@
     "alert-pick-a-trigger-description": "Neyi izleyeceğinizi seçin — test sonuçları, pipeline durumu, belirli varlıklardaki değişiklikler.",
     "alert-recent-events-description": "{{alertName}} uyarısı için tetiklenen son uyarı olaylarının listesi.",
     "alert-rules-read-only": "Bu filtreler ve tetikleyiciler bu formda oluşturulmadığından burada düzenlenemez. Diğer değişiklikler bunları etkilemeden kaydedilir.",
+    "alert-status-description": "Uyarının etkin olup olmadığı. Devre dışı bir uyarı, yeniden etkinleştirilene kadar olayları işlemez.",
     "alert-stay-ahead-description": "Ekibiniz sorunları kendi araçlarından öğrenir — paydaşlar fark etmeden önce.",
     "alert-synced-successfully": "Uyarı başarıyla senkronize edildi",
     "alerts-description": "Webhook'ları kullanarak zamanında uyarılarla güncel kalın.",

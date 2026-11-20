@@ -38,6 +38,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import AlertDisabledBadge from '../../../../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import AlertPendingEvents from '../../../../../Alerts/AlertPendingEvents/AlertPendingEvents';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -527,6 +528,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
           item it would otherwise collapse to fit a tall tab panel instead of the panel scrolling. */}
       <Card className="tw:mb-2 tw:shrink-0" size="sm" variant="muted">
         <Card.Content className="tw:flex tw:flex-row tw:items-center tw:flex-wrap tw:gap-6">
+          <AlertDisabledBadge enabled={alert?.enabled} />
           <Box align="center" direction="row" gap={2}>
             <Typography className="tw:text-tertiary tw:shrink-0" size="text-sm">
               {`${t('label.owner-plural')}:`}

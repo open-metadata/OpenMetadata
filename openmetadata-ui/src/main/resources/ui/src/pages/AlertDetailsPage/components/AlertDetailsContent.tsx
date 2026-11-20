@@ -136,7 +136,9 @@ function AlertDetailsContent({
                   <div>
                     <EntityHeaderTitle
                       badge={
-                        <AlertDisabledBadge enabled={alertDetails?.enabled} />
+                        alertDetails?.enabled === false ? (
+                          <AlertDisabledBadge enabled={false} />
+                        ) : undefined
                       }
                       displayName={alertDetails?.displayName}
                       icon={alertIcon}

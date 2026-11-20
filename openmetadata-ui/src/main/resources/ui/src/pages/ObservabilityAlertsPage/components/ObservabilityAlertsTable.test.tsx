@@ -159,6 +159,16 @@ jest.mock('../../../components/common/NextPrevious/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div data-testid="next-previous" />)
 );
 
+// The core library is mocked without Badge here, so the badge stands in with its own rule.
+jest.mock(
+  '../../../components/Alerts/AlertDisabledBadge/AlertDisabledBadge',
+  () => ({
+    __esModule: true,
+    default: ({ enabled }: { enabled?: boolean }) =>
+      enabled === false ? <span data-testid="alert-disabled-badge" /> : null,
+  })
+);
+
 jest.mock('./ObservabilityAlertActions', () =>
   jest.fn().mockImplementation(() => <div data-testid="alert-actions" />)
 );
@@ -220,6 +230,20 @@ describe('ObservabilityAlertsTable component', () => {
     fireEvent.click(screen.getByRole('button', { name: 'alert-test' }));
 
     expect(onViewAlert).toHaveBeenCalledWith(mockAlerts[0]);
+  });
+
+  it('marks a disabled alert as disabled next to its name', () => {
+    renderTable({ alerts: [{ ...mockAlerts[0], enabled: false }] });
+
+    expect(screen.getByTestId('alert-disabled-badge')).toBeInTheDocument();
+  });
+
+  it('shows no disabled badge for an enabled alert', () => {
+    renderTable({ alerts: [{ ...mockAlerts[0], enabled: true }] });
+
+    expect(
+      screen.queryByTestId('alert-disabled-badge')
+    ).not.toBeInTheDocument();
   });
 
   it('should render the table with alert rows when data is present', () => {
