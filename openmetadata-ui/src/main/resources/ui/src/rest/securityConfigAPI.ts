@@ -17,8 +17,12 @@ import {
   AuthorizerConfiguration,
 } from '../constants/SSO.constant';
 import { FieldError } from '../generated/system/securityValidationResponse';
+import { TestLoginCredentialsRequest } from '../generated/system/testLoginCredentialsRequest';
 import { TestLoginResult } from '../generated/system/testLoginResult';
+import { TestLoginSession } from '../generated/system/testLoginSession';
 import APIClient from './index';
+
+const TEST_LOGIN_PATH = '/system/security/test-login';
 
 export interface SecurityConfiguration {
   authenticationConfiguration: AuthenticationConfiguration;
@@ -37,6 +41,10 @@ export type { TestLoginResult };
 export interface TestLoginTokenRequest {
   securityConfiguration: SecurityConfiguration;
   idToken: string;
+}
+
+export interface TestLoginStartRequest {
+  securityConfiguration: SecurityConfiguration;
 }
 
 /**
@@ -63,9 +71,52 @@ export const testLoginValidateToken = async (
   data: TestLoginTokenRequest
 ): Promise<AxiosResponse<TestLoginResult>> => {
   return APIClient.post<TestLoginTokenRequest, AxiosResponse<TestLoginResult>>(
-    '/system/security/test-login/validate-token',
+    `${TEST_LOGIN_PATH}/validate-token`,
     data
   );
+};
+
+/**
+ * Start an interactive Test Login for a provider whose login runs on the server
+ * (confidential OIDC, SAML, LDAP/Basic). Admin-only; never changes the live
+ * configuration.
+ * @param data - Candidate (unsaved) security configuration
+ * @returns Promise with the session to open in a popup or complete with credentials
+ */
+export const startTestLogin = async (
+  data: TestLoginStartRequest
+): Promise<AxiosResponse<TestLoginSession>> => {
+  return APIClient.post<TestLoginStartRequest, AxiosResponse<TestLoginSession>>(
+    `${TEST_LOGIN_PATH}/start`,
+    data
+  );
+};
+
+/**
+ * The outcome of a Test Login, or its pending timeline while the sign-in is
+ * still in progress. Only the admin who started the test can read it.
+ * @param testSessionId - Id returned when the test was started
+ */
+export const getTestLoginResult = async (
+  testSessionId: string
+): Promise<AxiosResponse<TestLoginResult>> => {
+  return APIClient.get<TestLoginResult>(
+    `${TEST_LOGIN_PATH}/result/${encodeURIComponent(testSessionId)}`
+  );
+};
+
+/**
+ * Complete an LDAP/Basic Test Login with the credentials the admin entered.
+ * They are used once and never stored.
+ * @param data - Session id, email and password
+ */
+export const submitTestLoginCredentials = async (
+  data: TestLoginCredentialsRequest
+): Promise<AxiosResponse<TestLoginResult>> => {
+  return APIClient.post<
+    TestLoginCredentialsRequest,
+    AxiosResponse<TestLoginResult>
+  >(`${TEST_LOGIN_PATH}/credentials`, data);
 };
 
 /**

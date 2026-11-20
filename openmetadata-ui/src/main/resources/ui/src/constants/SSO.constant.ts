@@ -315,15 +315,13 @@ export const SAML_UI_SCHEMA = {
       'ui:title': 'Service Provider (SP)',
       entityId: {
         'ui:title': 'SP Entity ID',
-        'ui:readonly': true,
         'ui:help':
-          'Auto-generated Service Provider Entity ID. Copy this value and paste it as Entity ID in your SAML Identity Provider configuration.',
+          'Defaults to the application URL. You can change it to match the Identifier (Entity ID) configured in your SAML Identity Provider.',
       },
       acs: {
         'ui:title': 'Assertion Consumer Service URL',
-        'ui:readonly': true,
         'ui:help':
-          'Auto-generated Assertion Consumer Service URL. Copy this value and paste it as ACS URL (or Reply URL) in your SAML Identity Provider configuration.',
+          'Defaults to the application callback URL. Set your public callback URL here and use the same ACS URL (or Reply URL) in your SAML Identity Provider.',
       },
       callback: { 'ui:widget': 'hidden', 'ui:hideError': true },
       spX509Certificate: {
@@ -346,7 +344,7 @@ export const SAML_UI_SCHEMA = {
       validateXml: { 'ui:widget': 'hidden', 'ui:hideError': true },
       sendEncryptedNameId: { 'ui:widget': 'hidden', 'ui:hideError': true },
       signSpMetadata: { 'ui:widget': 'hidden', 'ui:hideError': true },
-      wantAssertionEncrypted: { 'ui:widget': 'hidden', 'ui:hideError': true },
+      wantAssertionEncrypted: { 'ui:title': 'Require Encrypted Assertions' },
       keyStoreFilePath: { 'ui:widget': 'hidden', 'ui:hideError': true },
       keyStoreAlias: { 'ui:widget': 'hidden', 'ui:hideError': true },
       keyStorePassword: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -833,6 +831,7 @@ export interface AuthenticationConfiguration {
   enableSelfSignup: boolean;
   enableAutoRedirect?: boolean;
   clientType?: ClientType;
+  responseType?: string;
   secret?: string;
   ldapConfiguration?: Record<string, unknown>;
   samlConfiguration?: Record<string, unknown>;

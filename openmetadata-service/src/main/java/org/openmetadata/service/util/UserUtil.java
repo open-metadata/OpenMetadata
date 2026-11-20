@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -334,6 +335,15 @@ public final class UserUtil {
    */
   public static User addOrUpdateBotUser(User user) {
     User originalUser = retrieveWithAuthMechanism(user);
+    if (originalUser != null && !Boolean.TRUE.equals(originalUser.getIsBot())) {
+      // Turning a person's account into a bot would hand the bot's role to every credential the
+      // account already holds, such as its password and personal access tokens.
+      throw new IllegalStateException(
+          String.format(
+              "User '%s' already exists and is not a bot, so the bot of that name was not created. "
+                  + "Rename or delete that user, then restart the server.",
+              user.getName()));
+    }
     AuthenticationMechanism authMechanism =
         originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
@@ -502,9 +512,10 @@ public final class UserUtil {
   public static User getUser(String updatedBy, CreateUser create) {
     return new User()
         .withId(UUID.randomUUID())
-        .withName(create.getName().toLowerCase())
-        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(create.getName().toLowerCase()))
-        .withEmail(create.getEmail().toLowerCase())
+        .withName(create.getName().toLowerCase(Locale.ROOT))
+        .withFullyQualifiedName(
+            EntityInterfaceUtil.quoteName(create.getName().toLowerCase(Locale.ROOT)))
+        .withEmail(create.getEmail().toLowerCase(Locale.ROOT))
         .withDescription(create.getDescription())
         .withDisplayName(create.getDisplayName())
         .withIsBot(create.getIsBot())
@@ -513,7 +524,7 @@ public final class UserUtil {
         .withPersonas(create.getPersonas())
         .withDefaultPersona(create.getDefaultPersona())
         .withTimezone(create.getTimezone())
-        .withUpdatedBy(updatedBy.toLowerCase())
+        .withUpdatedBy(updatedBy.toLowerCase(Locale.ROOT))
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE))

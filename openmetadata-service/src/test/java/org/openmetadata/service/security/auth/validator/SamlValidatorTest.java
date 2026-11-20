@@ -15,6 +15,7 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -1107,6 +1108,40 @@ class SamlValidatorTest {
     String body = invokePrivate("readResponseBody", HttpURLConnection.class, connection);
 
     assertEquals("from-input", body);
+  }
+
+  @Test
+  void validatesRolloverBundlesButStillRejectsInactiveSpCertificates() throws Exception {
+    for (String inactive : List.of("expired", "future")) {
+      String pem;
+      try (InputStream input = getClass().getResourceAsStream("/saml/" + inactive + "-idp.crt")) {
+        pem = new String(input.readAllBytes(), StandardCharsets.US_ASCII);
+      }
+      invokePrivate(
+          "validateX509Certificate",
+          new Class<?>[] {String.class, String.class, SamlSSOClientConfig.class},
+          pem + "\n" + GENERIC_CERT,
+          "IdP X509 certificate",
+          baseConfig("http://localhost/unused"));
+      String inactivePem = pem;
+      assertThrows(
+          InvocationTargetException.class,
+          () ->
+              invokePrivate(
+                  "validateX509Certificate",
+                  new Class<?>[] {String.class, String.class, SamlSSOClientConfig.class},
+                  inactivePem,
+                  "IdP X509 certificate",
+                  baseConfig("http://localhost/unused")));
+      assertThrows(
+          InvocationTargetException.class,
+          () ->
+              invokePrivate(
+                  "validateX509Certificate",
+                  new Class<?>[] {String.class, String.class},
+                  inactivePem,
+                  "SP X509 certificate"));
+    }
   }
 
   @Test

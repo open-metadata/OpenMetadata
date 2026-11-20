@@ -387,7 +387,7 @@ public class LLMServiceResource
       @Valid CreateLLMService update) {
     LLMService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (LLMService) response.getEntity());
     return response;
   }

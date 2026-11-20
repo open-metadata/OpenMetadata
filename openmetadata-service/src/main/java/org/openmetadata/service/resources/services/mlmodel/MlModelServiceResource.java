@@ -460,7 +460,7 @@ public class MlModelServiceResource
       @Valid CreateMlModelService update) {
     MlModelService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (MlModelService) response.getEntity());
     return response;
   }

@@ -23,7 +23,9 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +41,7 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class SamlSettingsHolder {
+  private static final String DEFAULT_DOMAIN = "openmetadata.org";
   private static volatile Saml2Settings saml2Settings;
   private static final Object lock = new Object();
   @Getter private String relayState;
@@ -59,7 +62,7 @@ public class SamlSettingsHolder {
 
   /**
    * Builds OneLogin settings for a SAML configuration without touching the process-wide settings.
-   * Login installs the result for the live configuration; the configuration check builds a throwaway
+   * Login installs the result for the live configuration; the Test Login dry-run builds a throwaway
    * one for a candidate, which must never replace the live settings.
    */
   public static Saml2Settings buildSettings(SamlSSOClientConfig samlConfig)
@@ -92,8 +95,7 @@ public class SamlSettingsHolder {
     samlData.put(
         SettingsBuilder.IDP_SINGLE_LOGOUT_SERVICE_BINDING_PROPERTY_KEY,
         "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect");
-    samlData.put(
-        SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, samlConfig.getIdp().getIdpX509Certificate());
+    putIdpCertificates(samlData, samlConfig.getIdp().getIdpX509Certificate());
 
     // Security Settings
     SamlSecurityConfig securityConfig = samlConfig.getSecurity();
@@ -120,6 +122,19 @@ public class SamlSettingsHolder {
     putSpCredentials(samlData, samlConfig.getSp(), securityConfig);
     samlData.put(SettingsBuilder.UNIQUE_ID_PREFIX_PROPERTY_KEY, "OPENMETADATA_");
     return new SettingsBuilder().fromValues(samlData).build();
+  }
+
+  private static void putIdpCertificates(Map<String, Object> samlData, String pem)
+      throws CertificateException {
+    if (!CommonUtil.nullOrEmpty(pem)) {
+      // Keep future rollover keys: live settings are cached, so filtering here would require a
+      // restart when the IdP activates its next key. Static validation requires an active key.
+      List<X509Certificate> certificates = SamlCertificates.parseUnexpiredIdpCertificates(pem);
+      samlData.put(SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, certificates.getFirst());
+      for (int i = 0; i < certificates.size(); i++) {
+        samlData.put(SettingsBuilder.IDP_X509CERTMULTI_PROPERTY_KEY + "." + i, certificates.get(i));
+      }
+    }
   }
 
   /**
@@ -233,16 +248,21 @@ public class SamlSettingsHolder {
 
       if (authzConfig == null) {
         LOG.error("AuthorizerConfiguration is null in getDomain()");
-        return "openmetadata.org"; // Default fallback
       }
-
-      String domain = authzConfig.getPrincipalDomain();
-      LOG.debug("Retrieved principal domain: {}", domain);
-      return domain != null ? domain : "openmetadata.org";
+      return domainFor(authzConfig);
 
     } catch (Exception e) {
       LOG.error("Error retrieving domain dynamically", e);
-      return "openmetadata.org"; // Default fallback
+      return DEFAULT_DOMAIN;
     }
+  }
+
+  /**
+   * The domain appended to a NameID that is not an email. Shared with the Test Login dry-run, which
+   * must derive it from the candidate configuration rather than the live one.
+   */
+  public static String domainFor(AuthorizerConfiguration authzConfig) {
+    String domain = authzConfig == null ? null : authzConfig.getPrincipalDomain();
+    return domain != null ? domain : DEFAULT_DOMAIN;
   }
 }

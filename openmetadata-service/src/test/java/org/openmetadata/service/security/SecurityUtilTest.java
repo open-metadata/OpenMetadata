@@ -867,4 +867,44 @@ class SecurityUtilTest {
     assertTrue(fragment.contains("name="));
     assertTrue(fragment.contains("%26"));
   }
+
+  @Test
+  void sameIdentifierIgnoresCaseTheWayStoredNamesAreNormalized() {
+    assertTrue(SecurityUtil.sameIdentifier("John.Doe", "john.doe"));
+    assertTrue(SecurityUtil.sameIdentifier("ADMIN", "admin"));
+    assertTrue(SecurityUtil.sameIdentifier("Example.COM", "example.com"));
+  }
+
+  @Test
+  void sameIdentifierKeepsNamesApartThatOnlyUpperCaseFoldingWouldJoin() {
+    // String.equalsIgnoreCase treats each pair as equal: both characters upper-case to I and S
+    assertTrue("admın".equalsIgnoreCase("admin"));
+    assertFalse(SecurityUtil.sameIdentifier("admın", "admin"));
+    assertFalse(SecurityUtil.sameIdentifier("ſam", "sam"));
+    assertFalse(SecurityUtil.sameIdentifier("fıntech.com", "fintech.com"));
+  }
+
+  @Test
+  void sameIdentifierNeverMatchesAMissingValue() {
+    assertFalse(SecurityUtil.sameIdentifier(null, "admin"));
+    assertFalse(SecurityUtil.sameIdentifier("admin", null));
+    assertFalse(SecurityUtil.sameIdentifier(null, null));
+  }
+
+  @Test
+  void testBuildPrincipalClaimsMappingKeepsAColonInsideTheClaimName() {
+    // Splitting on every colon dropped this entry via the length filter (and before #28780
+    // truncated it to "urn"), silently losing the email mapping.
+    assertEquals(
+        Map.of("username", "preferred_username", "email", "urn:oid:0.9.2342.19200300.100.1.3"),
+        SecurityUtil.buildPrincipalClaimsMapping(
+            List.of("username:preferred_username", "email:urn:oid:0.9.2342.19200300.100.1.3")));
+  }
+
+  @Test
+  void testBuildPrincipalClaimsMappingSkipsAnEntryWithoutAColon() {
+    assertEquals(
+        Map.of("email", "email"),
+        SecurityUtil.buildPrincipalClaimsMapping(List.of("email:email", "garbage-no-colon")));
+  }
 }

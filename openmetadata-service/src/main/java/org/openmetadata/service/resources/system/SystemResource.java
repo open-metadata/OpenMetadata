@@ -46,6 +46,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -78,7 +79,10 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.SecurityValidationResponse;
+import org.openmetadata.schema.system.TestLoginCredentialsRequest;
 import org.openmetadata.schema.system.TestLoginResult;
+import org.openmetadata.schema.system.TestLoginSession;
+import org.openmetadata.schema.system.TestLoginStartRequest;
 import org.openmetadata.schema.system.TestLoginTokenRequest;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
@@ -114,6 +118,8 @@ import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.auth.TestLoginCandidates;
+import org.openmetadata.service.security.auth.TestLoginRoundTrip;
 import org.openmetadata.service.security.auth.TestLoginService;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -275,17 +281,35 @@ public class SystemResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    String settingName = canonicalSettingName(name);
     // Restrict access to authentication and authorizer configurations
-    if (name.equalsIgnoreCase(AUTHENTICATION_CONFIGURATION.value())
-        || name.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
+    if (settingName.equals(AUTHENTICATION_CONFIGURATION.value())
+        || settingName.equals(AUTHORIZER_CONFIGURATION.value())) {
       throw new SystemSettingsException(
           "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
 
-    if (!isUserReadableSetting(name)) {
+    if (!isUserReadableSetting(settingName)) {
       authorizer.authorizeAdmin(securityContext);
     }
-    return systemRepository.getConfigWithKey(name);
+    Settings settings = systemRepository.getConfigWithKey(settingName);
+    // The lookup compares with the database collation, which on MySQL ignores accents, so it can
+    // answer with a row of another name than the one the checks above were made for.
+    if (settings != null
+        && settings.getConfigType() != null
+        && !settings.getConfigType().value().equals(settingName)) {
+      throw new SystemSettingsException(String.format("Setting %s was not found", name));
+    }
+    return settings;
+  }
+
+  /** The defined setting name {@code name} refers to, ignoring case; any other name unchanged. */
+  private static String canonicalSettingName(String name) {
+    return Arrays.stream(SettingsType.values())
+        .map(SettingsType::value)
+        .filter(value -> SecurityUtil.sameIdentifier(value, name))
+        .findFirst()
+        .orElse(name);
   }
 
   @GET
@@ -1224,7 +1248,10 @@ public class SystemResource {
     validateConfigurationOfActiveProvider(securityConfig);
     String currentUsername = SecurityUtil.getUserName(securityContext);
     return systemRepository.validateSecurityConfiguration(
-        securityConfig, applicationConfig, currentUsername);
+        TestLoginCandidates.withLiveSecretsRestored(
+            securityConfig, SecurityConfigurationManager.getInstance().getCurrentSecurityConfig()),
+        applicationConfig,
+        currentUsername);
   }
 
   @POST
@@ -1251,6 +1278,109 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
     return TestLoginService.resolveFromIdToken(
         request.getSecurityConfiguration(), request.getIdToken());
+  }
+
+  @POST
+  @Path("/security/test-login/start")
+  @Operation(
+      operationId = "testLoginStart",
+      summary = "Start an interactive Test Login against a candidate security configuration",
+      description =
+          "Admin-only. Starts a real sign-in round-trip against a candidate (unsaved) configuration "
+              + "for providers whose live login runs on the server: confidential-client OIDC, SAML, "
+              + "LDAP and Basic. Returns either an authorization URL to open in a popup or a request "
+              + "for credentials; poll the result endpoint for the outcome. Never changes the live "
+              + "configuration, creates a user, issues a token or starts a session.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test login session",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestLoginSession.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Invalid candidate, or a public-client OIDC provider (tested with validate-token)")
+      })
+  public TestLoginSession testLoginStart(
+      @Context SecurityContext securityContext, TestLoginStartRequest request) {
+    authorizer.authorizeAdmin(securityContext);
+    SecurityConfiguration candidate = requireTestLoginCandidate(request);
+    // Scope bean validation to the active provider, as the validate and PUT endpoints do.
+    validateConfigurationOfActiveProvider(candidate);
+    return TestLoginRoundTrip.getInstance()
+        .start(
+            SecurityUtil.getUserName(securityContext),
+            TestLoginCandidates.withLiveSecretsRestored(
+                candidate, SecurityConfigurationManager.getInstance().getCurrentSecurityConfig()));
+  }
+
+  @GET
+  @Path("/security/test-login/result/{testSessionId}")
+  @Operation(
+      operationId = "testLoginResult",
+      summary = "Get the outcome of a Test Login",
+      description =
+          "Admin-only, and only for the admin who started the test. Returns the staged outcome of a "
+              + "Test Login, or a pending timeline while the sign-in is still in progress.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test login result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestLoginResult.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Unknown or expired test, or one started by another admin")
+      })
+  public TestLoginResult testLoginResult(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id returned when the test login was started")
+          @PathParam("testSessionId")
+          String testSessionId) {
+    authorizer.authorizeAdmin(securityContext);
+    return TestLoginRoundTrip.getInstance()
+        .result(SecurityUtil.getUserName(securityContext), testSessionId);
+  }
+
+  @POST
+  @Path("/security/test-login/credentials")
+  @Operation(
+      operationId = "testLoginCredentials",
+      summary = "Complete an LDAP or Basic Test Login with credentials",
+      description =
+          "Admin-only, and only for the admin who started the test. Verifies the credentials "
+              + "against the candidate configuration exactly as login would, without provisioning a "
+              + "user, issuing a token, starting a session, or counting a failed attempt against the "
+              + "account. Each test completes once, and attempts are rate-limited per admin.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test login result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestLoginResult.class))),
+        @ApiResponse(responseCode = "400", description = "The test is not waiting for credentials"),
+        @ApiResponse(responseCode = "404", description = "Unknown or expired test"),
+        @ApiResponse(responseCode = "429", description = "Too many credential test logins")
+      })
+  public TestLoginResult testLoginCredentials(
+      @Context SecurityContext securityContext, @Valid TestLoginCredentialsRequest request) {
+    authorizer.authorizeAdmin(securityContext);
+    return TestLoginRoundTrip.getInstance()
+        .submitCredentials(SecurityUtil.getUserName(securityContext), request);
+  }
+
+  private static SecurityConfiguration requireTestLoginCandidate(TestLoginStartRequest request) {
+    if (request == null || request.getSecurityConfiguration() == null) {
+      throw new BadRequestException("A candidate securityConfiguration is required.");
+    }
+    return request.getSecurityConfiguration();
   }
 
   @GET

@@ -341,8 +341,10 @@ public final class SecurityUtil {
    */
   public static Map<String, String> buildPrincipalClaimsMapping(
       List<String> jwtPrincipalClaimsMapping) {
+    // Split on the first colon only, so a claim name that itself contains a colon is kept whole
+    // rather than truncated (the pre-#28780 behaviour) or dropped by the length filter below.
     return listOrEmpty(jwtPrincipalClaimsMapping).stream()
-        .map(s -> s.split(":"))
+        .map(s -> s.split(":", 2))
         .filter(parts -> parts.length == 2)
         .collect(Collectors.toMap(s -> s[0], s -> s[1]));
   }
@@ -410,7 +412,8 @@ public final class SecurityUtil {
       if (nullOrEmpty(expectedDomains)) {
         expectedDomains = nullOrEmpty(principalDomain) ? Set.of() : Set.of(principalDomain);
       }
-      if (expectedDomains.stream().noneMatch(domain::equalsIgnoreCase)) {
+      String tokenDomain = domain;
+      if (expectedDomains.stream().noneMatch(d -> sameIdentifier(d, tokenDomain))) {
         throw AuthenticationException.invalidEmailMessage(domain, expectedDomains);
       }
     }

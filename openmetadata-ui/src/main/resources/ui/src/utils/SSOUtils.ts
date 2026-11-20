@@ -584,9 +584,13 @@ const cleanupSamlSp = (
   spConfig: Record<string, unknown>,
   authConfig: AuthenticationConfiguration
 ): void => {
-  if (typeof spConfig.callback === 'string') {
-    authConfig.callbackUrl = spConfig.callback;
-    spConfig.acs = spConfig.callback;
+  const callbackUrl =
+    typeof spConfig.acs === 'string' ? spConfig.acs : spConfig.callback;
+
+  if (typeof callbackUrl === 'string') {
+    authConfig.callbackUrl = callbackUrl;
+    spConfig.callback = callbackUrl;
+    spConfig.acs = callbackUrl;
   }
   if (typeof spConfig.spX509Certificate === 'string') {
     spConfig.spX509Certificate = spConfig.spX509Certificate.replaceAll(
@@ -1155,27 +1159,28 @@ const resolveSsoLoginUrl = (
   return fallback;
 };
 
-const resolveX509Certificate = (
+const resolveX509Certificates = (
   keyDescriptors: HTMLCollectionOf<Element>
-): string | undefined => {
-  let fallback: string | undefined;
-
-  for (const keyDescriptor of keyDescriptors) {
-    const use = keyDescriptor.getAttribute('use');
-    const x509 = keyDescriptor.getElementsByTagNameNS(
+): string[] => {
+  const signing: string[] = [];
+  const fallback: string[] = [];
+  for (const descriptor of keyDescriptors) {
+    const use = descriptor.getAttribute('use');
+    if (use && use !== 'signing') {
+      continue;
+    }
+    for (const certificate of descriptor.getElementsByTagNameNS(
       XMLDSIG_NS,
       'X509Certificate'
-    )[0];
-
-    if (use === 'signing' && x509?.textContent) {
-      return x509.textContent.replaceAll(/\s+/g, '');
-    }
-    if (!use && !fallback && x509?.textContent) {
-      fallback = x509.textContent.replaceAll(/\s+/g, '');
+    )) {
+      const value = certificate.textContent?.replaceAll(/\s+/g, '');
+      if (value) {
+        (use === 'signing' ? signing : fallback).push(value);
+      }
     }
   }
 
-  return fallback;
+  return [...new Set([...signing, ...fallback])];
 };
 
 export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
@@ -1186,9 +1191,8 @@ export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
     throw new Error('Invalid XML: the file could not be parsed.');
   }
 
-  const entityId = doc
-    .getElementsByTagNameNS(SAML_MD_NS, 'EntityDescriptor')[0]
-    ?.getAttribute('entityID');
+  const entity = doc.getElementsByTagNameNS(SAML_MD_NS, 'EntityDescriptor')[0];
+  const entityId = entity?.getAttribute('entityID');
 
   if (!entityId) {
     throw new Error(
@@ -1196,9 +1200,12 @@ export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
     );
   }
 
-  const ssoLoginUrl = resolveSsoLoginUrl(
-    doc.getElementsByTagNameNS(SAML_MD_NS, 'SingleSignOnService')
-  );
+  const idp = entity.getElementsByTagNameNS(SAML_MD_NS, 'IDPSSODescriptor')[0];
+  const ssoLoginUrl =
+    idp &&
+    resolveSsoLoginUrl(
+      idp.getElementsByTagNameNS(SAML_MD_NS, 'SingleSignOnService')
+    );
 
   if (!ssoLoginUrl) {
     throw new Error(
@@ -1206,11 +1213,11 @@ export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
     );
   }
 
-  const certText = resolveX509Certificate(
-    doc.getElementsByTagNameNS(SAML_MD_NS, 'KeyDescriptor')
+  const certificates = resolveX509Certificates(
+    idp.getElementsByTagNameNS(SAML_MD_NS, 'KeyDescriptor')
   );
 
-  if (!certText) {
+  if (!certificates.length) {
     throw new Error(
       'Invalid metadata: no X509Certificate found. A signing certificate is required.'
     );
@@ -1219,6 +1226,11 @@ export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
   return {
     entityId,
     ssoLoginUrl,
-    idpX509Certificate: `-----BEGIN CERTIFICATE-----\n${certText}\n-----END CERTIFICATE-----`,
+    idpX509Certificate: certificates
+      .map(
+        (certificate) =>
+          `-----BEGIN CERTIFICATE-----\n${certificate}\n-----END CERTIFICATE-----`
+      )
+      .join('\n'),
   };
 };

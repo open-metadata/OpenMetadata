@@ -3517,6 +3517,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/SettingsSso/SsoTestLogin/SsoTestLoginCredentialsForm.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/SSOTestLogin.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/SettingsSso/SsoTestLogin/SsoTestLoginModal.tsx"
       ],
       "specs": [
