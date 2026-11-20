@@ -224,11 +224,9 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
             }
         )
 
-        manifest_dict["nodes"] = {
-            key: node
-            for key, node in manifest_dict.get("nodes", {}).items()
-            if node.get("resource_type") not in UNPARSED_NODE_RESOURCE_TYPES
-        }
+        nodes = manifest_dict.setdefault("nodes", {})
+        for key in [key for key, node in nodes.items() if node.get("resource_type") in UNPARSED_NODE_RESOURCE_TYPES]:
+            del nodes[key]
 
         # pylint: disable=too-many-nested-blocks
         for field in ["nodes", "sources"]:
