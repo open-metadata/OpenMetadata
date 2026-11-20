@@ -25,6 +25,7 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline.StorageMetadataConfigType;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
@@ -54,6 +55,28 @@ public final class IngestionPipelineBuilder {
    */
   public static void addDefinedConfigForRead(IngestionPipeline ingestionPipeline) {
     addDefinedConfig(ingestionPipeline, true);
+  }
+
+  /**
+   * Prepares {@code updated} for a write over {@code stored}. A write that carries the stored source
+   * config unchanged, such as a restore or a soft delete, re-stores what the store already holds,
+   * so its config is converted as {@link #addDefinedConfigForRead} converts it. A config the caller
+   * changes is left to the write-time check of {@link #addDefinedConfig}. User writes never get here
+   * unchecked: the masker converts them strictly first.
+   * ADR:2026-10-24-a-masked-connection-secret-is-kept-only-while-the-endpoint-is-unchanged
+   */
+  public static void addDefinedConfigForRewrite(
+      IngestionPipeline stored, IngestionPipeline updated) {
+    if (hasStoredSourceConfig(stored, updated)) {
+      addDefinedConfigForRead(updated);
+    }
+  }
+
+  private static boolean hasStoredSourceConfig(
+      IngestionPipeline stored, IngestionPipeline updated) {
+    return stored.getSourceConfig() != null
+        && JsonUtils.valueToTree(stored.getSourceConfig())
+            .equals(JsonUtils.valueToTree(updated.getSourceConfig()));
   }
 
   private static void addDefinedConfig(IngestionPipeline ingestionPipeline, boolean forRead) {
