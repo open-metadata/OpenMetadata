@@ -2295,6 +2295,14 @@ public interface TimeSeriesDAOs {
         "SELECT DISTINCT stateId FROM test_case_resolution_status_time_series WHERE id IN (<ids>) AND stateId IS NOT NULL")
     List<String> listIncidentIdsForStatusRecords(@BindList("ids") List<String> ids);
 
+    @SqlQuery(
+        "SELECT id FROM test_case_resolution_status_time_series WHERE stateId IN (<stateIds>)")
+    List<UUID> listStatusIdsForIncidents(@BindList("stateIds") List<String> stateIds);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_resolution_status_time_series WHERE id IN (<ids>) AND stateId IS NULL")
+    void deleteStatusRecordsWithoutIncident(@BindList("ids") List<String> ids);
+
     @SqlUpdate("DELETE FROM test_case_incident WHERE stateId IN (<stateIds>)")
     void deleteIncidentSummariesByStateIds(@BindList("stateIds") List<String> stateIds);
 

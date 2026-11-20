@@ -1,7 +1,7 @@
-# Incident grouping reads a generated table key through a covering index
+# Incident grouping uses the full generated table name
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-19 (initial) · v2 2026-11-20 (consolidated unreleased DDL into 2.1.1)
+- **Revisions:** v1 2026-11-19 (initial) · v2 2026-11-20 (consolidated unreleased DDL into 2.1.1) · v3 2026-11-20 (support 3,072-character table names)
 - **Deciders:** Teddy Crepineau
 - **Guard:** `IncidentGroupingIndexSqlTest`, `IncidentGroupQueriesSqlTest`, `IncidentGroupTrendSqlTest`, `IncidentGroupTrendScaleIT`
 - **Related:** https://github.com/open-metadata/OpenMetadata/pull/38164; ADR:2026-11-19-incident-grouping-uses-transactional-projections
@@ -20,12 +20,12 @@ of the JSON entity link with trailing `>` removed. This is the existing grouping
 including its behavior for column test cases. Group queries read that column; relationships,
 filters, ranking, paging and historical counts retain their existing semantics.
 
-MySQL uses a virtual generated column and a covering index on `(fqnHash, deleted, id,
-incidentTableFqn)`. The full indexed key fits InnoDB's 3072-byte limit because the existing hash
-column uses ASCII. The optimizer can read all grouping fields without fetching the large JSON
-row. No forced index hint is added. PostgreSQL stores the generated key without adding another index. Its smaller index-tuple
-limit cannot safely cover arbitrary full UTF-8 table keys, and an incomplete covering index has
-no measured benefit to justify another index build. PostgreSQL still avoids repeated JSON extraction.
+The grouping column supports the schema limit of 3,072 characters. The migration also widens the
+older `entityLink` and `entityFQN` generated columns to hold the full link and field path.
+MySQL derives the grouping key from the stored entity link. It indexes the first 512 characters
+of the table name followed by the deletion flag, ID and ASCII FQN hash. A lookup can use the
+prefix to find candidate rows and compare their complete names. PostgreSQL stores the full
+grouping key without an additional index.
 
 Generated columns and the MySQL index are maintained by the database for all writers and participate
 in transaction rollback. There is no separate projection table, backfill worker, synchronization
@@ -36,11 +36,11 @@ file is run through the migration runner; it is not an independently replayable 
 
 ## Consequences
 
-MySQL index creation scans existing test cases once; PostgreSQL rewrites the table to store the
-generated key. Upgrade time and DDL locking depend on catalog size. MySQL writes maintain one additional
+Widening the source columns and building the MySQL index can rebuild or scan existing test cases.
+PostgreSQL rewrites the table to store the generated key. Upgrade time and DDL locking depend on catalog size. MySQL writes maintain one additional
 index. Returning to older application code leaves additive columns/indexes in place safely.
-MySQL gains from a covering index; do not claim the same performance gain on PostgreSQL without
-measuring it. A change in grouping-key semantics requires a new migration.
+The MySQL timings in the original PR benchmark were measured with the earlier covering index.
+They do not establish latency for the prefix index. A change in grouping-key semantics requires a new migration.
 
 ## Regression checks
 
@@ -65,7 +65,8 @@ the sample and excludes periods closed at or before it.
 Open intervals cascade from their incident summary through a foreign key. Explicit history-record
 deletion refreshes the summary and rebuilds its intervals in the same transaction. Test hard deletion
 captures status and incident IDs before asynchronous cleanup, including unlinked records and summaries
-whose audit history has expired. Surviving parent relationships take precedence over reusable test
+whose audit history has expired. Cleanup deletes complete incident histories in batches. It removes
+relationships in the database transaction and deletes the captured search documents after commit. Surviving parent relationships take precedence over reusable test
 names. Soft deletion retains the data; group queries hide deleted tests until restored.
 
 The interval-table existence check is restricted to migration-context writes. The older 2.0.0 task

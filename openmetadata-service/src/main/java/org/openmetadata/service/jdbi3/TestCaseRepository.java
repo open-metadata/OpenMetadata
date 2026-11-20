@@ -1372,29 +1372,38 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               DatabaseOperation.TEST_CASE_CLEANUP,
               "resolution-status:"
                   + (childIds.isEmpty() ? incidentIds.getFirst() : childIds.getFirst()),
-              () -> {
-                deleteResolutionStatusChildren(childIds);
-                for (List<String> batch :
-                    Lists.partition(incidentIds, BULK_MATCH_WRITE_BATCH_SIZE)) {
-                  daoCollection
-                      .testCaseResolutionStatusTimeSeriesDao()
-                      .deleteIncidentsByStateIds(batch);
-                }
-              });
+              () -> deleteResolutionStatusChildren(childIds, incidentIds));
     }
   }
 
-  private void deleteResolutionStatusChildren(List<UUID> childIds) {
-    final TestCaseResolutionStatusRepository statusRepository =
-        (TestCaseResolutionStatusRepository)
-            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-    for (UUID childId : childIds) {
-      try {
-        statusRepository.deleteById(childId, true);
-      } catch (RuntimeException e) {
-        LOG.error("Error hard deleting test case resolution status {}", childId, e);
-      }
+  private void deleteResolutionStatusChildren(List<UUID> childIds, List<String> incidentIds) {
+    final Set<UUID> removedIds =
+        daoCollection.inTransaction(
+            transaction -> deleteIncidentHistory(transaction, childIds, incidentIds));
+    for (UUID id : removedIds) {
+      searchRepository.deleteTimeSeriesEntityById(new TestCaseResolutionStatus().withId(id));
     }
+  }
+
+  static Set<UUID> deleteIncidentHistory(
+      CollectionDAO transaction, List<UUID> childIds, List<String> incidentIds) {
+    final var statusDAO = transaction.testCaseResolutionStatusTimeSeriesDao();
+    final Set<UUID> statusIds = new HashSet<>(childIds);
+    final var incidentBatches = Lists.partition(incidentIds, BULK_MATCH_WRITE_BATCH_SIZE);
+    for (List<String> batch : incidentBatches) {
+      statusIds.addAll(statusDAO.listStatusIdsForIncidents(batch));
+    }
+    transaction
+        .relationshipDAO()
+        .batchDeleteRelationships(List.copyOf(statusIds), Entity.TEST_CASE_RESOLUTION_STATUS);
+    for (List<String> batch : incidentBatches) {
+      statusDAO.deleteIncidentsByStateIds(batch);
+    }
+    // Legacy records can have a parent relationship but no incident ID.
+    for (List<UUID> batch : Lists.partition(childIds, BULK_MATCH_WRITE_BATCH_SIZE)) {
+      statusDAO.deleteStatusRecordsWithoutIncident(batch.stream().map(UUID::toString).toList());
+    }
+    return Set.copyOf(statusIds);
   }
 
   private void deleteAllTestCaseResults(List<String> testCaseFQNs) {

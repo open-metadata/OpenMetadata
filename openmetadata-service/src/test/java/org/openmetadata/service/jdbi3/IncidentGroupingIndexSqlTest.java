@@ -58,7 +58,7 @@ class IncidentGroupingIndexSqlTest {
   @Test
   void indexTracksSourceTransactionsOnMysql() {
     try (var database =
-        new GenericContainer<>("mysql:8.3.0")
+        new GenericContainer<>("mysql:8.4.13")
             .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
             .withEnv("MYSQL_DATABASE", "incident_projection")
             .withEnv("MYSQL_ROOT_HOST", "%")
@@ -88,11 +88,16 @@ class IncidentGroupingIndexSqlTest {
   }
 
   private void runChecks(Jdbi jdbi, boolean mysql) {
+    String prefix = "表".repeat(3071);
+    String existingName = prefix + "甲";
+    String newName = prefix + "乙";
     jdbi.useHandle(
         handle -> {
           String json = mysql ? "JSON" : "JSONB";
           String id = mysql ? "JSON_UNQUOTE(JSON_EXTRACT(json,'$.id'))" : "json->>'id'";
           String deleted = mysql ? "JSON_EXTRACT(json,'$.deleted')" : "(json->>'deleted')::boolean";
+          String link = mysql ? "json ->> '$.entityLink'" : "json ->> 'entityLink'";
+          String fqn = mysql ? "json ->> '$.entityFQN'" : "json ->> 'entityFQN'";
           String hashType =
               mysql ? "VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin" : "VARCHAR(768)";
           handle.execute(
@@ -109,10 +114,24 @@ class IncidentGroupingIndexSqlTest {
                   + id
                   + ") STORED, deleted BOOLEAN GENERATED ALWAYS AS ("
                   + deleted
-                  + ") STORED)");
+                  + ") STORED, entityFQN VARCHAR("
+                  + (mysql ? 1024 : 712)
+                  + ") GENERATED ALWAYS AS ("
+                  + fqn
+                  + ") STORED NOT NULL, entityLink VARCHAR(512) GENERATED ALWAYS AS ("
+                  + link
+                  + ") STORED NOT NULL)");
           insertCase(handle, "before", "before", "<#E::table::table1::columns::column>", mysql);
         });
     applySchema(jdbi, mysql, 2);
+    jdbi.useHandle(
+        handle ->
+            insertCase(
+                handle,
+                "existing-long",
+                "existing-long",
+                "<#E::table::" + existingName + "::columns::c>",
+                mysql));
     applySchema(jdbi, mysql);
     assertEquals("table1", table(jdbi, "before"));
     jdbi.useHandle(handle -> insertCase(handle, "after", "after", "<#E::table::table2>", mysql));
@@ -150,14 +169,15 @@ class IncidentGroupingIndexSqlTest {
     assertEquals(null, table(jdbi, "rollback"));
     jdbi.useHandle(handle -> handle.execute("DELETE FROM test_case WHERE fqnHash='after'"));
     assertEquals(null, table(jdbi, "after"));
-    String wide = "表".repeat(480);
+    assertEquals(existingName, table(jdbi, "existing-long"));
     jdbi.useHandle(
-        handle -> insertCase(handle, "a".repeat(768), "wide", "<#E::table::" + wide + ">", mysql));
-    assertEquals(wide, table(jdbi, "a".repeat(768)));
+        handle ->
+            insertCase(handle, "a".repeat(768), "wide", "<#E::table::" + newName + ">", mysql));
+    assertEquals(newName, table(jdbi, "a".repeat(768)));
     applySchema(jdbi, mysql);
     applySchema(jdbi, mysql);
     assertEquals("renamed", table(jdbi, "renamed"));
-    assertEquals(wide, table(jdbi, "a".repeat(768)));
+    assertEquals(newName, table(jdbi, "a".repeat(768)));
   }
 
   private void applySchema(Jdbi jdbi, boolean mysql) {
@@ -185,7 +205,16 @@ class IncidentGroupingIndexSqlTest {
   }
 
   private void insertCase(Handle handle, String hash, String id, String link, boolean mysql) {
-    String json = "{\"id\":\"" + id + "\",\"entityLink\":\"" + link + "\",\"deleted\":false}";
+    String entityFqn =
+        link.substring("<#E::table::".length(), link.length() - 1).replace("::columns::", ".");
+    String json =
+        "{\"id\":\""
+            + id
+            + "\",\"entityLink\":\""
+            + link
+            + "\",\"entityFQN\":\""
+            + entityFqn
+            + "\",\"deleted\":false}";
     handle
         .createUpdate(
             "INSERT INTO test_case (fqnHash,json) VALUES (:hash,"

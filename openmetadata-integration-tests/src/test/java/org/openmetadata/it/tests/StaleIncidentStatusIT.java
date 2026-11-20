@@ -365,7 +365,11 @@ public class StaleIncidentStatusIT {
     Table table = createTable(ns, "deleteOrphans");
     TestCase unlinked = createTestCase(table, "unlinked_" + ns.uniqueShortId());
     TestCase pruned = createTestCase(table, "pruned_" + ns.uniqueShortId());
-    UUID unlinkedState = createIncident(unlinked);
+    TestCaseResolutionStatus unlinkedRecord = createIncidentRecord(unlinked);
+    UUID unlinkedState = unlinkedRecord.getStateId();
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .until(() -> indexedStatusCount(unlinkedRecord.getId()) == 1);
     UUID prunedState = createIncident(pruned);
     orphanResolutionStatusRows(unlinkedState);
     orphanResolutionStatusRows(prunedState);
@@ -387,6 +391,7 @@ public class StaleIncidentStatusIT {
             () -> {
               assertIncidentRemoved(unlinkedState);
               assertIncidentRemoved(prunedState);
+              assertEquals(0, indexedStatusCount(unlinkedRecord.getId()));
             });
   }
 
@@ -464,6 +469,19 @@ public class StaleIncidentStatusIT {
         .testCases()
         .delete(owner.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
     await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> assertIncidentRemoved(stateId));
+  }
+
+  private int indexedStatusCount(UUID recordId) throws Exception {
+    String response =
+        SdkClients.adminClient()
+            .search()
+            .query("id:" + recordId)
+            .index("test_case_resolution_status_search_index")
+            .size(1)
+            .execute();
+    JsonNode hits = MAPPER.readTree(response).path("hits").path("hits");
+    assertTrue(hits.isArray(), response);
+    return hits.size();
   }
 
   private void assertIncidentRemoved(UUID stateId) {

@@ -19,13 +19,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.github.dockerjava.api.model.Ulimit;
 import java.io.File;
 import java.time.Duration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.jdbi.v3.core.Jdbi;
+import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.SqlStatements;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.jupiter.api.Test;
@@ -49,7 +54,7 @@ class IncidentGroupTrendSqlTest {
   @Test
   void openCountsIncludeResolutionsAndBaselineOnMysql() throws Exception {
     try (GenericContainer<?> database =
-        new GenericContainer<>("mysql:8.3.0")
+        new GenericContainer<>("mysql:8.4.13")
             .withEnv("MYSQL_DATABASE", DATABASE)
             .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
             .withEnv("MYSQL_ROOT_HOST", "%")
@@ -147,6 +152,10 @@ class IncidentGroupTrendSqlTest {
     verifyReorderedWrites(jdbi);
     verifyWritesBeforeIntervalMigration(jdbi, schema);
     verifyCapturedDeletion(jdbi);
+    assertEquals(
+        bulkDeletionStatementCount(jdbi, 2),
+        bulkDeletionStatementCount(jdbi, 50),
+        "deleting a complete incident should take the same number of SQL statements within a batch");
     verifyMovedOwner(jdbi);
     var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
     var window = new IncidentGroupTrend(100, 900);
@@ -436,6 +445,66 @@ class IncidentGroupTrendSqlTest {
     assertEquals(
         List.of("replacement"), dao.listIncidentIdsForTestCases(List.of("recreated_test")));
     dao.deleteIncidentsByStateIds(List.of("replacement"));
+  }
+
+  private int bulkDeletionStatementCount(Jdbi jdbi, int historyLength) {
+    List<UUID> history =
+        IntStream.range(0, historyLength).mapToObj(i -> UUID.randomUUID()).toList();
+    UUID legacy = UUID.randomUUID();
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    dao.upsertIncident("bulk", "bulk_test", "New", null, null, 10, history.getLast().toString());
+    Set<UUID> expected = new HashSet<>(history);
+    expected.add(legacy);
+    jdbi.useHandle(
+        handle -> {
+          for (UUID id : expected) {
+            handle.execute(
+                "INSERT INTO test_case_resolution_status_time_series (stateId,id,timestamp) VALUES (?,?,10)",
+                id.equals(legacy) ? null : "bulk",
+                id.toString());
+            handle.execute(
+                "INSERT INTO entity_relationship VALUES ('owner',?,'testCase','testCaseResolutionStatus',9)",
+                id.toString());
+          }
+        });
+    AtomicInteger statements = new AtomicInteger();
+    var removed =
+        jdbi.inTransaction(
+            handle -> {
+              handle.setSqlLogger(
+                  new SqlLogger() {
+                    @Override
+                    public void logBeforeExecution(StatementContext context) {
+                      statements.incrementAndGet();
+                    }
+                  });
+              return TestCaseRepository.deleteIncidentHistory(
+                  handle.attach(CollectionDAO.class),
+                  List.of(history.getFirst(), legacy),
+                  List.of("bulk"));
+            });
+    assertEquals(expected, removed);
+    assertEquals(0, intervalCount(jdbi, "bulk"));
+    assertEquals(0, dao.countTestCaseResolutionStatusesForStateId("bulk"));
+    jdbi.useHandle(
+        handle -> {
+          assertEquals(
+              0,
+              handle
+                  .createQuery(
+                      "SELECT COUNT(*) FROM test_case_resolution_status_time_series WHERE id = :id")
+                  .bind("id", legacy.toString())
+                  .mapTo(int.class)
+                  .one());
+          assertEquals(
+              0,
+              handle
+                  .createQuery("SELECT COUNT(*) FROM entity_relationship WHERE fromId = 'owner'")
+                  .mapTo(int.class)
+                  .one());
+        });
+    assertTrue(statements.get() > 0, "count SQL on the cleanup transaction");
+    return statements.get();
   }
 
   private void verifyMovedOwner(Jdbi jdbi) {

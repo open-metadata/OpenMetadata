@@ -9,5 +9,9 @@ CREATE TABLE IF NOT EXISTS test_case_incident_open_interval (
     CONSTRAINT chk_tcioi_bounds CHECK (closedAt IS NULL OR closedAt > openedAt)
 );
 
-ALTER TABLE test_case ADD COLUMN IF NOT EXISTS incidentTableFqn VARCHAR(512)
+ALTER TABLE test_case
+    ALTER COLUMN entityFQN TYPE TEXT,
+    ALTER COLUMN entityLink TYPE TEXT;
+
+ALTER TABLE test_case ADD COLUMN IF NOT EXISTS incidentTableFqn VARCHAR(3072)
     GENERATED ALWAYS AS (TRIM(TRAILING '>' FROM SPLIT_PART(json->>'entityLink', '::', 3))) STORED;
