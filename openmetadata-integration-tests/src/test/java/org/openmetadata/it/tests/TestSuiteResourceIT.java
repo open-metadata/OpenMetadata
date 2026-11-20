@@ -896,6 +896,45 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @Test
+  void softDeletedFailedTestIsExcludedFromSuiteDetailAndSearchList(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTableForBasicTestSuite(ns, "soft_deleted_failure");
+    List<TestCase> testCases = createTestCases(client, ns, table, 2);
+    TestSuite suite =
+        createEntity(
+            new CreateTestSuite()
+                .withName(ns.prefix("suite_soft_deleted_failure"))
+                .withDescription("Soft-delete result isolation regression"));
+    addTestCasesToLogicalTestSuite(
+        suite.getId(), testCases.stream().map(TestCase::getId).toList());
+    recordTestCaseResults(client, testCases, 1, 1);
+
+    TestSuite before = client.testSuites().get(suite.getId().toString(), "summary");
+    assertEquals(1, before.getSummary().getFailed());
+
+    client.testCases().delete(testCases.get(1).getId().toString());
+
+    TestSuite after = client.testSuites().get(suite.getId().toString(), "summary");
+    assertEquals(0, after.getSummary().getFailed());
+    assertEquals(1, after.getSummary().getSuccess());
+    assertEquals(1, after.getSummary().getTotal());
+    assertEquals(1, after.getTestCaseResultSummary().size());
+
+    Awaitility.await("deleted failing case is absent from suite list summary")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              TestSuite listed = searchTestSuite(client, suite);
+              assertEquals(0, listed.getSummary().getFailed());
+              assertEquals(1, listed.getSummary().getSuccess());
+              assertEquals(1, listed.getSummary().getTotal());
+              assertEquals(1, listed.getTestCaseResultSummary().size());
+            });
+  }
+
+  @Test
   void test_addTestCasesToBasicTestSuite_400(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
