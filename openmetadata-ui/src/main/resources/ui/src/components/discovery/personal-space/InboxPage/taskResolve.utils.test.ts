@@ -610,6 +610,69 @@ describe('splitTaskActions', () => {
     expect(layout.overflow).toEqual([]);
   });
 
+  describe('an incident stage', () => {
+    const NEW = 'new:new';
+    const ACK = 'ack:ack';
+    const ASSIGN = 'assign:assigned';
+    const REASSIGN = 'reassign:assigned';
+    const RESOLVE = 'resolve:resolved';
+
+    const incidentActions = (specs: string[]): TaskResolveAction[] =>
+      getTaskResolveActions(
+        makeTask({
+          availableTransitions: specs.map((spec) => {
+            const [id, targetStageId] = spec.split(':');
+
+            return {
+              id,
+              label: id,
+              targetStageId,
+              targetTaskStatus: TaskStatus.InProgress,
+            };
+          }),
+        }),
+        LABELS
+      );
+
+    it.each([
+      ['new', [ACK, ASSIGN, RESOLVE], 'ack', 'assign', ['resolve']],
+      ['ack', [NEW, ASSIGN, RESOLVE], 'assign', 'resolve', ['new']],
+      [
+        'assigned',
+        [NEW, ACK, REASSIGN, RESOLVE],
+        'resolve',
+        'reassign',
+        ['new', 'ack'],
+      ],
+      [
+        'assigned',
+        [REASSIGN, RESOLVE, NEW, ACK],
+        'resolve',
+        'reassign',
+        ['new', 'ack'],
+      ],
+    ])(
+      'in %s, leads with the next step and folds steps back (%j)',
+      (stageId, specs, primary, secondary, overflow) => {
+        const layout = splitTaskActions(incidentActions(specs), stageId);
+
+        expect(layout.primary?.id).toBe(primary);
+        expect(layout.secondary?.id).toBe(secondary);
+        expect(layout.overflow.map((a) => a.id)).toEqual(overflow);
+      }
+    );
+
+    it('keeps the workflow order when a transition leaves the incident stages', () => {
+      const layout = splitTaskActions(
+        incidentActions([NEW, 'escalate:triage', RESOLVE]),
+        'ack'
+      );
+
+      expect(layout.primary?.id).toBe('new');
+      expect(layout.secondary?.id).toBe('escalate');
+    });
+  });
+
   it('offers nothing for a task with no actions', () => {
     expect(splitTaskActions([])).toEqual({
       primary: undefined,
