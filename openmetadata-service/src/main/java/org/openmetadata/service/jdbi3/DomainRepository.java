@@ -629,36 +629,22 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
   }
 
-  // Evicts users' cached selections once the delete has committed (cleanup() drops their
-  // DEFAULTS_TO
-  // rows after deleteChildren), so a concurrent read can't re-cache a deleted domain.
+  // Evicts every user's cached context, here and on peers, once the delete has committed. Cached
+  // domains and defaultDomain are matched by FQN, so a same-named domain created later would
+  // otherwise grant a former member its assets.
   @Override
   protected DeleteLifecycle beginDeleteLifecycle(Domain domain, String deletedBy) {
     // A sub-domain deleted through its parent's cascade is covered by the parent's lifecycle
-    List<String> usersToEvict =
-        domainHardDeleteSubtree.get() == null ? usersDefaultingToSubtree(domain) : List.of();
+    boolean cascaded = domainHardDeleteSubtree.get() != null;
     DeleteLifecycle parentLifecycle = super.beginDeleteLifecycle(domain, deletedBy);
-    if (usersToEvict.isEmpty()) {
+    if (cascaded) {
       return parentLifecycle;
     }
     return () -> {
       try (parentLifecycle) {
-        usersToEvict.forEach(
-            user ->
-                UserRepository.evictNowAndAfterCommit(
-                    () -> SubjectCache.invalidateUserContext(user)));
+        UserRepository.evictNowAndAfterCommit(SubjectCache::invalidateAllUserContextsEverywhere);
       }
     };
-  }
-
-  private List<String> usersDefaultingToSubtree(Domain domain) {
-    String fqnHash = FullyQualifiedName.buildHash(domain.getFullyQualifiedName());
-    List<UUID> subtreeIds =
-        daoCollection.domainDAO().listSubtreeIds(fqnHash, fqnHash + Entity.SEPARATOR + "%").stream()
-            .map(UUID::fromString)
-            .toList();
-    return ((UserRepository) Entity.getEntityRepository(Entity.USER))
-        .listUsersDefaultingTo(subtreeIds);
   }
 
   @Override
@@ -982,6 +968,9 @@ public class DomainRepository extends EntityRepository<Domain> {
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.DOMAIN, renamedDomains);
       EntityRepository.finishInvalidateCacheForRenameCascade(
           Entity.DATA_PRODUCT, renamedDataProducts);
+      // Cached authorization contexts hold the old FQN that hasDomain() matches on; evict again
+      // after commit so a load overlapping this transaction cannot re-cache it
+      UserRepository.evictNowAndAfterCommit(SubjectCache::invalidateAllUserContextsEverywhere);
     }
 
     private void invalidateDomainReferencers(UUID domainId) {

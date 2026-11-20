@@ -38,7 +38,6 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -296,29 +295,6 @@ public class UserRepository extends EntityRepository<User> {
     }
     validateRoles(user.getRoles());
     validateDefaultDomain(user);
-  }
-
-  /**
-   * Names of users whose navbar selection ({@code defaultDomain}) is one of {@code domainIds}. The
-   * selection is a {@code DEFAULTS_TO} relationship, so deleting the domain removes it; callers use
-   * this only to evict those users' cached context.
-   */
-  public List<String> listUsersDefaultingTo(Collection<UUID> domainIds) {
-    List<String> userIds =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(
-                domainIds.stream().map(UUID::toString).toList(),
-                Relationship.DEFAULTS_TO.ordinal(),
-                Entity.DOMAIN,
-                USER)
-            .stream()
-            .map(CollectionDAO.EntityRelationshipObject::getToId)
-            .distinct()
-            .toList();
-    return batchResolveRefs(USER, userIds.stream().map(UUID::fromString).toList()).values().stream()
-        .map(EntityReference::getName)
-        .toList();
   }
 
   /** A navbar selection must resolve to a real domain; anything else is rejected up front. */

@@ -1,7 +1,8 @@
 # Authorization caches retire generations after commit and load from fresh entity reads
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-11-06 (user-context TTL is two minutes without
+  running Redis pub/sub)
 - **Deciders:** Felipe Cardoso
 - **Guard:** `RevocableLoadingCacheTest`, `SubjectCacheTest`, `CacheBundleTest`,
   `McpServerRequestContextTest`, `PolicyRevocationConcurrencyIT`, `RdfPolicyRevocationIT`
@@ -57,3 +58,9 @@ and equivalent deterministic race coverage.
 The guarantee is local: a new authorization decision after a successful response uses the committed
 policy on that server. Redis propagation to peers remains asynchronous; already authorized calls
 are not cancelled. A global synchronous revocation barrier is a separate decision.
+
+## Amendment: user-context TTL without Redis pub/sub
+
+The fifteen-minute user-context TTL above holds only while Redis pub/sub is running, since that is
+what evicts peers after a write. Without it, user contexts expire after two minutes; see
+ADR:2026-10-13-user-auth-context-expires-after-2-minutes-without-redis.
