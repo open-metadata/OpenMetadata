@@ -40,6 +40,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.bootstrap.RdfStoreImage;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO.RdfReindexLockDAO;
@@ -56,7 +57,6 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 
 /**
  * Storage maintenance against real MySQL/PostgreSQL and Fuseki: a compaction or clear pauses
@@ -93,9 +93,7 @@ public class RdfStorageMaintenanceIT {
     final String image = System.getProperty("rdfContainerImage");
     return image == null
         ? new GenericContainer<>(
-                new ImageFromDockerfile()
-                    .withFileFromPath(
-                        ".", RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store")))
+                RdfStoreImage.get(RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store")))
             .withEnv("JVM_ARGS", "-Xms512m -Xmx1g")
         : new GenericContainer<>(image)
             .withEnv("ADMIN_PASSWORD", "admin")

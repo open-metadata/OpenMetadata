@@ -37,6 +37,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.bootstrap.RdfStoreImage;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
@@ -45,7 +46,6 @@ import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 
 /** Durable delivery through real MySQL/PostgreSQL transactions and HTTP/TDB2 writes. */
 @Execution(ExecutionMode.SAME_THREAD)
@@ -64,9 +64,7 @@ public class RdfLiveWriteRecoveryIT {
     if (endpoint == null) {
       fuseki =
           new GenericContainer<>(
-                  new ImageFromDockerfile()
-                      .withFileFromPath(
-                          ".", RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store")))
+                  RdfStoreImage.get(RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store")))
               .withExposedPorts(3030)
               .withEnv("JVM_ARGS", "-Xms512m -Xmx1g")
               .waitingFor(Wait.forHttp("/$/ping"));

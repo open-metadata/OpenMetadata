@@ -47,6 +47,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.bootstrap.RdfStoreImage;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfDatasetNames;
@@ -69,7 +70,6 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface.RelationshipData
 import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 
 /** Real SQL transactions and HTTP/TDB2, including two independent server routing instances. */
 @Execution(ExecutionMode.SAME_THREAD)
@@ -103,8 +103,7 @@ public class RdfBlueGreenRebuildIT {
     endpoint = System.getProperty("rdfRebuildFusekiEndpoint");
     if (endpoint == null) {
       fuseki =
-          new GenericContainer<>(
-                  new ImageFromDockerfile().withFileFromPath(".", ROOT.resolve("docker/rdf-store")))
+          new GenericContainer<>(RdfStoreImage.get(ROOT.resolve("docker/rdf-store")))
               .withExposedPorts(3030)
               .withEnv("JVM_ARGS", "-Xms512m -Xmx1g")
               .waitingFor(Wait.forHttp("/$/ping"));

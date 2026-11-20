@@ -33,8 +33,13 @@ public final class NamespaceCleanup {
   // How long to wait for a recursive hard delete to finish cascading. Sized for the scale suite's
   // 100k-table service, whose cascade ran ~6 minutes on an unloaded cluster. Override with
   // -Djpw.cleanup.cascadeTimeoutMin.
+  //
+  // Default is 2 minutes, not 15: a cascade that fails (rather than runs long) never reaches 404,
+  // so the cap is billed in full to a test that is already doomed to leak. An async hard delete
+  // that loses a MySQL deadlock under the parallel lane is such a cascade, and a few of them ran
+  // the lane into its job timeout. Suites that really do delete a 100k-table service raise it.
   private static final Duration CASCADE_TIMEOUT =
-      Duration.ofMinutes(Integer.getInteger("jpw.cleanup.cascadeTimeoutMin", 15));
+      Duration.ofMinutes(Integer.getInteger("jpw.cleanup.cascadeTimeoutMin", 2));
   // Awaitility defaults its poll delay to the poll interval, so a 5s interval meant every root -
   // including the overwhelming majority whose cascade is already finished - blocked 5s before its
   // first check. Across a lane's namespaces that dominated the integration budget. The delay is

@@ -17,10 +17,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.bootstrap.RdfStoreImage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
@@ -64,9 +64,7 @@ class RdfFusekiAuthorizationIT {
     return image != null
         ? new GenericContainer<>(DockerImageName.parse(image))
         : new GenericContainer<>(
-            new ImageFromDockerfile()
-                .withFileFromPath(
-                    ".", RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store")));
+            RdfStoreImage.get(RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store")));
   }
 
   @AfterAll

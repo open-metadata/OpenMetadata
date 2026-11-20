@@ -89,7 +89,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.k3s.K3sContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -610,8 +609,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       return new GenericContainer<>(DockerImageName.parse(image));
     }
     return new GenericContainer<>(
-        new ImageFromDockerfile()
-            .withFileFromPath(".", Paths.get(getProjectRoot(), "docker", "rdf-store")));
+        RdfStoreImage.get(Paths.get(getProjectRoot(), "docker", "rdf-store")));
   }
 
   private void startK3s() {
