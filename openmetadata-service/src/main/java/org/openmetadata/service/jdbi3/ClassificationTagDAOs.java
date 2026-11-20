@@ -226,19 +226,10 @@ public interface ClassificationTagDAOs {
   interface TagUsageDAO {
     /**
      * The stored {@code state} of a glossary term applied before it is Approved: kept, but read by
-     * no tag query until the term is approved. It is {@link TagLabel.State#PENDING}'s ordinal,
-     * spelled out so that queries can use it.
+     * no tag query until the term is approved. It is a storage state, one past the last {@link
+     * TagLabel.State}, so the API cannot express it.
      */
     int PENDING_STATE = 2;
-
-    /** The stored {@code state} of {@link TagLabel.State#SUGGESTED}. */
-    int SUGGESTED_STATE = 0;
-
-    /** The stored {@code state} of {@link TagLabel.State#CONFIRMED}. */
-    int CONFIRMED_STATE = 1;
-
-    /** The stored {@code labelType} of {@link TagLabel.LabelType#AUTOMATED}. */
-    int AUTOMATED_LABEL_TYPE = 2;
 
     /** A tag query's condition that leaves out pending labels. */
     String NOT_PENDING = "state <> " + PENDING_STATE;
@@ -689,26 +680,6 @@ public interface ClassificationTagDAOs {
         @Bind("afterTargetHash") String afterTargetHash,
         @Bind("limit") int limit);
 
-    /**
-     * Shows a term's pending labels on the given targets, now that the term is approved. A pending
-     * label does not keep the state it was sent with: an automated label, as ingestion sends, comes
-     * back Suggested, for the owner to confirm, and any other comes back Confirmed.
-     */
-    @SqlUpdate(
-        "UPDATE tag_usage SET state = CASE WHEN labelType = "
-            + AUTOMATED_LABEL_TYPE
-            + " THEN "
-            + SUGGESTED_STATE
-            + " ELSE "
-            + CONFIRMED_STATE
-            + " END WHERE source = :source AND tagFQNHash = :tagFQNHash AND state = "
-            + PENDING_STATE
-            + " AND targetFQNHash IN (<targetFQNHashes>)")
-    int confirmPending(
-        @Bind("source") int source,
-        @Bind("tagFQNHash") String tagFQNHash,
-        @BindList("targetFQNHashes") List<String> targetFQNHashes);
-
     /** The terms that have pending labels, in FQN order after {@code afterTermFqn}. */
     @SqlQuery(
         "SELECT DISTINCT tagFQN FROM tag_usage WHERE source = :source AND state = "
@@ -745,6 +716,26 @@ public interface ClassificationTagDAOs {
         @Bind("source") int source,
         @BindFQN("tagFQNHash") String tagFQN,
         @BindListFQN("targetFQNHashes") List<String> targetFQNs);
+
+    /** The label type of each of a term's pending labels on the given targets, by target hash. */
+    @SqlQuery(
+        "SELECT targetFQNHash, labelType FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash "
+            + "AND state = "
+            + PENDING_STATE
+            + " AND targetFQNHash IN (<targetFQNHashes>)")
+    @RegisterRowMapper(PendingLabelTypeMapper.class)
+    List<Map.Entry<String, Integer>> listPendingLabelTypes(
+        @Bind("source") int source,
+        @Bind("tagFQNHash") String tagFQNHash,
+        @BindList("targetFQNHashes") List<String> targetFQNHashes);
+
+    class PendingLabelTypeMapper implements RowMapper<Map.Entry<String, Integer>> {
+      @Override
+      public Map.Entry<String, Integer> map(ResultSet rs, StatementContext ctx)
+          throws SQLException {
+        return Map.entry(rs.getString("targetFQNHash"), rs.getInt("labelType"));
+      }
+    }
 
     /** Drops a term's pending labels on exactly the given targets. */
     default void deletePendingOnTargets(int source, String tagFQN, List<String> targetFQNs) {
@@ -1231,6 +1222,20 @@ public interface ClassificationTagDAOs {
      * a target FQN and its associated tags.
      */
     default void applyTagsBatchMultiTarget(Map<String, List<TagLabel>> tagsByTarget) {
+      applyTagsBatchWithState(tagsByTarget, null);
+    }
+
+    /**
+     * Stores held glossary terms as pending labels. Pending is a storage state only this DAO knows:
+     * it is not a {@link TagLabel.State}, so no client can send or receive it.
+     */
+    default void applyPendingTagsBatch(Map<String, List<TagLabel>> tagsByTarget) {
+      applyTagsBatchWithState(tagsByTarget, PENDING_STATE);
+    }
+
+    /** Upserts the labels, storing {@code storedState} instead of each label's own when set. */
+    default void applyTagsBatchWithState(
+        Map<String, List<TagLabel>> tagsByTarget, Integer storedState) {
       if (tagsByTarget == null || tagsByTarget.isEmpty()) {
         return;
       }
@@ -1256,7 +1261,7 @@ public interface ClassificationTagDAOs {
                   FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
                   targetFQNHash,
                   tagLabel.getLabelType().ordinal(),
-                  tagLabel.getState().ordinal(),
+                  storedState != null ? storedState : tagLabel.getState().ordinal(),
                   tagLabel.getReason(),
                   tagLabel.getAppliedBy(),
                   JsonUtils.pojoToJson(tagLabel.getMetadata())));

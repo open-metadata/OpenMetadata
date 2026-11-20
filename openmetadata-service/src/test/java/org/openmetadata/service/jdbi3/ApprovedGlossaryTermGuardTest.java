@@ -341,21 +341,13 @@ class ApprovedGlossaryTermGuardTest {
     assertEquals(List.of(label(APPROVED)), tags);
   }
 
-  @Test
-  void aPendingLabelIsTheLabelMarkedPending() {
-    TagLabel pending = ApprovedGlossaryTermGuard.pendingLabel(label(DEPRECATED));
-
-    assertEquals(TagLabel.State.PENDING, pending.getState());
-    assertEquals(DEPRECATED.getFullyQualifiedName(), pending.getTagFQN());
-  }
-
   /** Queries spell the stored states and label types out; they must match the enums' ordinals. */
   @Test
   void storedStatesMatchTheEnums() {
-    assertEquals(TagLabel.State.PENDING.ordinal(), TagUsageDAO.PENDING_STATE);
-    assertEquals(TagLabel.State.CONFIRMED.ordinal(), TagUsageDAO.CONFIRMED_STATE);
-    assertEquals(TagLabel.State.SUGGESTED.ordinal(), TagUsageDAO.SUGGESTED_STATE);
-    assertEquals(LabelType.AUTOMATED.ordinal(), TagUsageDAO.AUTOMATED_LABEL_TYPE);
+    assertEquals(
+        TagLabel.State.values().length,
+        TagUsageDAO.PENDING_STATE,
+        "pending is a storage state one past the API's, so no client can send it");
   }
 
   private static List<HeldTerm> hold(Table updated, Table stored) {

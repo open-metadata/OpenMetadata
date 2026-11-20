@@ -2116,10 +2116,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
    * Drops the term's pending labels on the assets it was removed from, held ones included: a
    * pending label is not shown, so taking it back is not a change a reviewer sees. A pending-only
    * removal patches nothing, so the asset is not authorized by the patch; the caller must be allowed
-   * to edit the asset's glossary terms.
+   * to edit the asset's glossary terms, and an asset they may not edit is reported as failed.
    */
   private void dropPendingOnRemovedAssets(
       GlossaryTerm term, BulkOperationResult result, PatchRequester requester) {
+    List<BulkResponse> passed = new ArrayList<>();
+    List<BulkResponse> denied = new ArrayList<>();
     for (BulkResponse response : listOrEmpty(result.getSuccessRequest())) {
       if (response.getRequest() instanceof EntityReference asset && isAddressed(asset)) {
         try {
@@ -2130,11 +2132,26 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                   new OperationContext(owningType(asset), MetadataOperation.EDIT_GLOSSARY_TERMS),
                   new ResourceContext<>(owningType(asset), owningId(asset), null));
           GlossaryTermPendingLabels.dropPendingOn(term, asset);
+          passed.add(response);
         } catch (AuthorizationException e) {
-          LOG.debug(
-              "Kept pending term {} on {}: {}", term.getName(), asset.getId(), e.getMessage());
+          denied.add(
+              response
+                  .withStatus(Response.Status.FORBIDDEN.getStatusCode())
+                  .withMessage(e.getMessage()));
         }
+      } else {
+        passed.add(response);
       }
+    }
+    if (!denied.isEmpty()) {
+      List<BulkResponse> failed = new ArrayList<>(listOrEmpty(result.getFailedRequest()));
+      failed.addAll(denied);
+      result
+          .withSuccessRequest(passed)
+          .withFailedRequest(failed)
+          .withNumberOfRowsPassed(passed.size())
+          .withNumberOfRowsFailed(failed.size())
+          .withStatus(passed.isEmpty() ? ApiStatus.FAILURE : ApiStatus.PARTIAL_SUCCESS);
     }
   }
 

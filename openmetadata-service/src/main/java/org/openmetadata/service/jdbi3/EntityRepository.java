@@ -6514,14 +6514,33 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           held ->
               labelsByTarget
                   .computeIfAbsent(held.targetFqn(), target -> new ArrayList<>())
-                  .add(
-                      ApprovedGlossaryTermGuard.pendingLabel(held.label())
-                          .withAppliedBy(appliedBy)));
-      daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(labelsByTarget);
+                  .add(JsonUtils.deepCopy(held.label(), TagLabel.class).withAppliedBy(appliedBy)));
+      daoCollection.tagUsageDAO().applyPendingTagsBatch(labelsByTarget);
       Set<String> termFqns = new HashSet<>();
       heldTerms.forEach(held -> termFqns.add(held.label().getTagFQN()));
       PostCommitActionQueue.runOrDefer(() -> GlossaryTermPendingLabels.showIfApproved(termFqns));
     }
+  }
+
+  /**
+   * Shows an approved glossary term the entity holds as pending, as an ordinary edit by {@code
+   * user}: the term is added to the targets {@code labelsByTargetHash} names and the entity is
+   * patched, so it records a version and a change event and updates the cache, search and RDF like
+   * any other edit. The write's upsert turns the pending rows into shown ones. Returns whether there
+   * was anything to add.
+   */
+  public final boolean showApprovedTerm(
+      UUID id, Map<String, TagLabel> labelsByTargetHash, String user) {
+    T original = get(null, id, patchFields, NON_DELETED, false);
+    T updated = JsonUtils.deepCopy(original, entityClass);
+    boolean added =
+        ApprovedGlossaryTermGuard.addToTargets(
+                new TaggedEntity(updated, taggedFieldContainers(updated)), labelsByTargetHash)
+            > 0;
+    if (added) {
+      patch(null, id, user, JsonUtils.getJsonPatch(original, updated));
+    }
+    return added;
   }
 
   /**

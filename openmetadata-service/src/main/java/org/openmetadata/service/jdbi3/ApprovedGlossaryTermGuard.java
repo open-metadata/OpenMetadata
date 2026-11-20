@@ -30,7 +30,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -39,7 +38,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * Only an Approved glossary term shows on a data asset or on one of its fields, whichever API
  * applies it (ADR:2026-11-06-only-approved-glossary-terms-can-be-newly-applied-to-an-asset). A
  * write that newly applies a term that is not Approved is not refused: the term is taken out of the
- * write and stored as {@link TagLabel.State#PENDING}, which no tag read returns, until the term is
+ * write and stored as pending (a storage state only the tag DAO knows), which no tag read returns, until the term is
  * approved. A write is judged per target, the asset or a field addressed by its FQN: a term is new
  * on a target that does not already hold it in its own right. A term that leaves Approved later
  * stays where it was applied, so writes that carry it back to the same target keep it. Terms are
@@ -112,6 +111,29 @@ public final class ApprovedGlossaryTermGuard {
     return newlyApplied;
   }
 
+  /**
+   * Adds to the entity's targets the labels {@code labelsByTargetHash} names for them, through each
+   * target's holder, and returns how many it added. A target that already applies the term keeps
+   * its labels as they are.
+   */
+  public static int addToTargets(TaggedEntity entity, Map<String, TagLabel> labelsByTargetHash) {
+    int added = 0;
+    for (TaggedTarget target : taggedTargets(entity.entity(), entity.fieldsByContainer())) {
+      TagLabel label =
+          target.fqn() == null
+              ? null
+              : labelsByTargetHash.get(FullyQualifiedName.buildHash(target.fqn()));
+      if (label != null
+          && !TagLabelUtil.appliedGlossaryTermFqns(target.tags()).contains(label.getTagFQN())) {
+        List<TagLabel> tags = new ArrayList<>(target.tags());
+        tags.add(label);
+        target.replaceTags().accept(tags);
+        added++;
+      }
+    }
+    return added;
+  }
+
   /** Removes the labels of the terms {@code termHashes} names from {@code tags}, returning them. */
   public static List<TagLabel> takeTerms(List<TagLabel> tags, Set<String> termHashes) {
     List<TagLabel> taken = new ArrayList<>();
@@ -120,11 +142,6 @@ public final class ApprovedGlossaryTermGuard {
       tags.removeAll(taken);
     }
     return taken;
-  }
-
-  /** The label as it is stored while its term waits for approval. */
-  public static TagLabel pendingLabel(TagLabel label) {
-    return JsonUtils.deepCopy(label, TagLabel.class).withState(TagLabel.State.PENDING);
   }
 
   /** Whether {@code tags} apply any of the terms {@code termHashes} names. */

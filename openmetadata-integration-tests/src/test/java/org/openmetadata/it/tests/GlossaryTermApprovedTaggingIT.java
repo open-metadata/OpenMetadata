@@ -33,6 +33,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.DriveServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -74,11 +75,11 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
@@ -534,6 +535,7 @@ public class GlossaryTermApprovedTaggingIT {
     request.getColumns().get(0).setTags(List.of(label(term)));
     Table table = client.tables().create(request);
     assertHeld(term, 2, reread(client, table));
+    Double versionBefore = reread(client, table).getVersion();
 
     setStatus(client, term, EntityStatus.APPROVED);
 
@@ -547,6 +549,9 @@ public class GlossaryTermApprovedTaggingIT {
                   && hasTerm(shown.getColumns().get(0).getTags(), term);
             });
     assertTrue(pendingTargets(term).isEmpty());
+    assertTrue(
+        reread(client, table).getVersion() > versionBefore,
+        "approval is an ordinary edit of the asset, so it records a version");
   }
 
   @Test
@@ -672,7 +677,10 @@ public class GlossaryTermApprovedTaggingIT {
     assertTrue(pendingTargets(term).isEmpty(), "assets/remove drops it on the table and columns");
   }
 
-  /** A pending-only removal changes nothing visible, yet still needs permission to edit the asset. */
+  /**
+   * A pending-only removal changes nothing visible, yet still needs permission to edit the asset's
+   * glossary terms: a user denied that on tables gets the asset back as failed, and it stays held.
+   */
   @Test
   void aUserWhoCannotEditTheAssetCannotDropItsHeldTerm(TestNamespace ns) {
     OpenMetadataClient admin = SdkClients.adminClient();
@@ -681,21 +689,23 @@ public class GlossaryTermApprovedTaggingIT {
     request.setTags(List.of(label(term)));
     Table table = admin.tables().create(request);
     assertEquals(1, pendingTargets(term).size());
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("deny_terms"), Entity.TABLE, MetadataOperation.EDIT_GLOSSARY_TERMS);
 
-    try {
-      SdkClients.dataConsumerClient()
-          .getHttpClient()
-          .execute(
-              HttpMethod.PUT,
-              "/v1/glossaryTerms/%s/assets/remove".formatted(term.getId()),
-              new AddGlossaryToAssetsRequest()
-                  .withDryRun(false)
-                  .withAssets(List.of(table.getEntityReference())),
-              BulkOperationResult.class);
-    } catch (OpenMetadataException refused) {
-      // Refused outright is as good as refused per asset: either way the term stays held.
-    }
+    BulkOperationResult result =
+        denied
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/glossaryTerms/%s/assets/remove".formatted(term.getId()),
+                new AddGlossaryToAssetsRequest()
+                    .withDryRun(false)
+                    .withAssets(List.of(table.getEntityReference())),
+                BulkOperationResult.class);
 
+    assertEquals(1, result.getNumberOfRowsFailed(), () -> JsonUtils.pojoToJson(result));
+    assertEquals(0, result.getNumberOfRowsPassed(), () -> JsonUtils.pojoToJson(result));
     assertEquals(1, pendingTargets(term).size(), "the held term stays");
   }
 
