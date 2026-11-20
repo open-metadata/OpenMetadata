@@ -90,6 +90,25 @@ class S3Metric(Enum):
     BUCKET_SIZE_BYTES = "BucketSizeBytes"
 
 
+# CloudWatch publishes BucketSizeBytes per storage class and has no all-classes aggregate (only NumberOfObjects does),
+# so the bucket size is the sum over the classes that hold object data. The *ObjectOverhead and GlacierStagingStorage
+# classes are billing-only metadata and are left out.
+BUCKET_SIZE_STORAGE_TYPES = (
+    "StandardStorage",
+    "StandardIAStorage",
+    "OneZoneIAStorage",
+    "ReducedRedundancyStorage",
+    "IntelligentTieringFAStorage",
+    "IntelligentTieringIAStorage",
+    "IntelligentTieringAIAStorage",
+    "IntelligentTieringAAStorage",
+    "IntelligentTieringDAAStorage",
+    "GlacierInstantRetrievalStorage",
+    "GlacierStorage",
+    "DeepArchiveStorage",
+)
+
+
 class S3Source(StorageServiceSource):
     """
     Source implementation to ingest S3 buckets data.
@@ -670,42 +689,38 @@ class S3Source(StorageServiceSource):
 
     def _fetch_metric(self, bucket_name: str, metric: S3Metric) -> float:
         try:
+            storage_types = BUCKET_SIZE_STORAGE_TYPES if metric == S3Metric.BUCKET_SIZE_BYTES else ("AllStorageTypes",)
             raw_result = self.cloudwatch_client.get_metric_data(
                 MetricDataQueries=[
                     {
-                        "Id": "total_nr_of_object_request",
+                        "Id": f"storage_type_{index}",
                         "MetricStat": {
                             "Metric": {
                                 "Namespace": "AWS/S3",
                                 "MetricName": metric.value,
                                 "Dimensions": [
                                     {"Name": "BucketName", "Value": bucket_name},
-                                    {
-                                        "Name": "StorageType",
-                                        # StandardStorage-only support for BucketSizeBytes for now
-                                        "Value": (
-                                            "StandardStorage"
-                                            if metric == S3Metric.BUCKET_SIZE_BYTES
-                                            else "AllStorageTypes"
-                                        ),
-                                    },
+                                    {"Name": "StorageType", "Value": storage_type},
                                 ],
                             },
                             "Period": 60,
                             "Stat": "Average",
                             "Unit": ("Bytes" if metric == S3Metric.BUCKET_SIZE_BYTES else "Count"),
                         },
-                    },
+                    }
+                    for index, storage_type in enumerate(storage_types)
                 ],
                 StartTime=datetime.now() - timedelta(days=2),
                 # metrics generated daily, ensure there is at least 1 entry
                 EndTime=datetime.now(),
                 ScanBy="TimestampDescending",
             )
-            if raw_result["MetricDataResults"]:
-                first_metric = raw_result["MetricDataResults"][0]
-                if first_metric["StatusCode"] == "Complete" and first_metric["Values"]:
-                    return int(first_metric["Values"][0])
+            # A storage class the bucket doesn't use comes back Complete with no values and adds nothing.
+            return sum(
+                int(result["Values"][0])
+                for result in raw_result["MetricDataResults"]
+                if result["StatusCode"] == "Complete" and result["Values"]
+            )
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed fetching metric {metric.value} for bucket {bucket_name}, returning 0")
