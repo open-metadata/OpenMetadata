@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-19 (initial) · v2 2026-11-20 (consolidated unreleased DDL into 2.1.1)
 - **Deciders:** Teddy Crepineau
-- **Guard:** `IncidentGroupingIndexSqlTest`, `IncidentGroupQueriesSqlTest`, `IncidentGroupTrendSqlTest`
+- **Guard:** `IncidentGroupingIndexSqlTest`, `IncidentGroupQueriesSqlTest`, `IncidentGroupTrendSqlTest`, `IncidentGroupTrendScaleIT`
 - **Related:** https://github.com/open-metadata/OpenMetadata/pull/38164; ADR:2026-11-19-incident-grouping-uses-transactional-projections
 
 ## Context
@@ -44,12 +44,19 @@ measuring it. A change in grouping-key semantics requires a new migration.
 
 ## Regression checks
 
-`IncidentGroupTrendSqlTest` runs the production trend query on MySQL and PostgreSQL with
+`IncidentGroupTrendScaleIT`, tagged `@Tag("scale")`, runs the production trend query on MySQL and PostgreSQL with
 10,000 incidents across 200 table groups and 40,000 history rows. It checks all nine counts
 for a 25-table page and a single large group, with 30 measured requests at concurrency 1 and 5.
-The default five-second p95 budget is a coarse regression alarm, not a production SLO; override
+The workload runs only in the `scale-it` profile; regular SQL tests retain the smaller correctness
+fixtures. The default five-second p95 budget is a coarse regression alarm, not a production SLO; override
 `-Dincident.trend.scale.p95Millis=...` for a calibrated runner. End-to-end HTTP concurrency
-measurements are recorded separately in PR #38164.
+measurements are recorded separately in PR #38164. The scale runner writes JSON measurements under
+`openmetadata-integration-tests/target/benchmark/`.
+
+For this isolated SQL workload, select `-Pscale-it -Dit.test=IncidentGroupTrendScaleIT` and
+`-Dskip.embedded.bootstrap=true`; it starts its own database and does not need the application/search
+stack. Select an engine with `-DdatabaseType=postgres` or `-DdatabaseType=mysql`; `databaseImage`
+can override that engine's container image.
 
 The nine-row `samplesSql()` result supplies evenly spaced timestamps in a shared seven-day window.
 It is a time axis, not random sampling of incidents. Each count includes periods opened on or before

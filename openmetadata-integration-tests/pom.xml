@@ -1886,8 +1886,9 @@
                   <includes>
                     <include>**/tests/search/scale/*IT.java</include>
                     <include>**/tests/security/scale/*IT.java</include>
+                    <include>**/tests/dataquality/scale/*IT.java</include>
                   </includes>
-                  <includedGroups>scale</includedGroups>
+                  <groups>scale</groups>
                   <systemPropertyVariables>
                     <junit.jupiter.extensions.autodetection.enabled>true</junit.jupiter.extensions.autodetection.enabled>
                     <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>

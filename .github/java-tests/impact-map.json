@@ -68,7 +68,8 @@
       },
       {
         "tests": [
-          "org/openmetadata/it/tests/search/scale/**"
+          "org/openmetadata/it/tests/search/scale/**",
+          "org/openmetadata/it/tests/dataquality/scale/**"
         ],
         "where": "nightly: openmetadata-nightly k8s-java-it (scale-it)"
       }

@@ -19,16 +19,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.github.dockerjava.api.model.Ulimit;
 import java.io.File;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
@@ -153,7 +148,6 @@ class IncidentGroupTrendSqlTest {
     verifyWritesBeforeIntervalMigration(jdbi, schema);
     verifyCapturedDeletion(jdbi);
     verifyMovedOwner(jdbi);
-    verifyScale(jdbi);
     var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
     var window = new IncidentGroupTrend(100, 900);
     var rows =
@@ -479,103 +473,6 @@ class IncidentGroupTrendSqlTest {
     assertEquals(0, dao.countTestCaseResolutionStatusesForStateId("moved"));
     assertEquals(0, intervalCount(jdbi, "moved"));
     jdbi.useHandle(handle -> handle.execute("DELETE FROM test_case WHERE id = 'moved_owner'"));
-  }
-
-  private void verifyScale(Jdbi jdbi) throws Exception {
-    jdbi.useTransaction(
-        handle -> {
-          var tables =
-              handle.prepareBatch(
-                  "INSERT INTO test_case (fqnHash,incidentTableFqn,deleted) VALUES (?, ?, FALSE)");
-          for (int table = 0; table < 200; table++) {
-            tables.add("scale_test_" + table, "scale_table_" + table);
-          }
-          tables.execute();
-          var incidents =
-              handle.prepareBatch(
-                  "INSERT INTO test_case_incident "
-                      + "(stateId,entityFQNHash,createdAt) VALUES (?,?,100)");
-          var history =
-              handle.prepareBatch(
-                  "INSERT INTO test_case_resolution_status_time_series "
-                      + "(stateId,id,timestamp,testCaseResolutionStatusType) VALUES (?,?,?,?)");
-          for (int incident = 0; incident < 10000; incident++) {
-            String state = "scale_" + incident;
-            incidents.add(state, "scale_test_" + (incident / 50));
-            List<String> statuses =
-                List.of("New", "Ack", "Assigned", incident % 2 == 0 ? "Resolved" : "Ack");
-            for (int event = 0; event < statuses.size(); event++) {
-              history.add(state, state + "_" + event, (event + 1) * 100L, statuses.get(event));
-            }
-          }
-          incidents.execute();
-          history.execute();
-        });
-    jdbi.useHandle(IncidentOpenIntervalMigration::backfill);
-    assertEquals(10011, intervalCount(jdbi, null));
-    for (int concurrency : List.of(1, 5)) {
-      measureScaleQueries(jdbi, concurrency, false);
-      measureScaleQueries(jdbi, concurrency, true);
-    }
-    jdbi.useHandle(
-        handle -> {
-          handle.execute(
-              "DELETE FROM test_case_resolution_status_time_series WHERE stateId LIKE 'scale_%'");
-          handle.execute("DELETE FROM test_case_incident WHERE stateId LIKE 'scale_%'");
-          handle.execute("DELETE FROM test_case WHERE fqnHash LIKE 'scale_test_%'");
-        });
-    assertEquals(11, intervalCount(jdbi, null));
-  }
-
-  private void measureScaleQueries(Jdbi jdbi, int concurrency, boolean largeGroup)
-      throws Exception {
-    final List<String> keys =
-        largeGroup
-            ? List.of("scale_definition")
-            : IntStream.range(0, 25).mapToObj(i -> "scale_table_" + i).toList();
-    final String groupKey = largeGroup ? "'scale_definition'" : "tc.incidentTableFqn";
-    final List<Integer> expected =
-        largeGroup
-            ? List.of(0, 10000, 10000, 10000, 5000, 5000, 5000, 5000, 5000)
-            : List.of(0, 50, 50, 50, 25, 25, 25, 25, 25);
-    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
-    Callable<Long> request =
-        () -> {
-          long started = System.nanoTime();
-          var rows =
-              dao.listIncidentGroupTrendCounts(
-                  groupKey,
-                  "",
-                  "WHERE i.stateId LIKE 'scale_%'",
-                  IncidentGroupTrend.samplesSql(),
-                  keys,
-                  new IncidentGroupTrend(0, 800).bindings());
-          long elapsed = System.nanoTime() - started;
-          var grouped =
-              rows.stream()
-                  .collect(Collectors.groupingBy(TimeSeriesDAOs.IncidentGroupTrendCount::groupKey));
-          assertEquals(Set.copyOf(keys), grouped.keySet());
-          grouped
-              .values()
-              .forEach(values -> assertEquals(expected, IncidentGroupTrend.counts(values)));
-          return elapsed;
-        };
-    request.call();
-    List<Long> timings = new ArrayList<>();
-    try (var executor = Executors.newFixedThreadPool(concurrency)) {
-      for (var result : executor.invokeAll(Collections.nCopies(30, request))) {
-        timings.add(result.get());
-      }
-    }
-    timings.sort(Long::compareTo);
-    double p95Millis = timings.get((int) Math.ceil(timings.size() * 0.95) - 1) / 1_000_000.0;
-    long budgetMillis = Long.getLong("incident.trend.scale.p95Millis", 5000L);
-    System.out.printf(
-        "Incident trend scale: largeGroup=%s concurrency=%d requests=%d p95=%.1fms budget=%dms%n",
-        largeGroup, concurrency, timings.size(), p95Millis, budgetMillis);
-    assertTrue(
-        p95Millis < budgetMillis,
-        "Trend query p95 exceeded coarse scale regression budget: " + p95Millis);
   }
 
   private String summaryField(Jdbi jdbi, String stateId, String field) {
