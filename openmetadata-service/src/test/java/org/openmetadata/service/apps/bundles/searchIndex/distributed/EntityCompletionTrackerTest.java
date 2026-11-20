@@ -15,8 +15,6 @@ package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -129,34 +127,6 @@ class EntityCompletionTrackerTest {
   }
 
   @Test
-  void testGetStatus() {
-    UUID jobId = UUID.randomUUID();
-    EntityCompletionTracker tracker = new EntityCompletionTracker(jobId);
-
-    tracker.initializeEntity("table", 4);
-    tracker.recordPartitionComplete("table", false);
-    tracker.recordPartitionComplete("table", true);
-
-    EntityCompletionTracker.EntityCompletionStatus status = tracker.getStatus("table");
-    assertNotNull(status);
-    assertEquals("table", status.entityType());
-    assertEquals(4, status.totalPartitions());
-    assertEquals(2, status.completedPartitions());
-    assertEquals(1, status.failedPartitions());
-    assertFalse(status.isComplete());
-    assertTrue(status.hasFailures());
-    assertFalse(status.promoted());
-  }
-
-  @Test
-  void testGetStatusForUnknownEntity() {
-    UUID jobId = UUID.randomUUID();
-    EntityCompletionTracker tracker = new EntityCompletionTracker(jobId);
-
-    assertNull(tracker.getStatus("unknown"));
-  }
-
-  @Test
   void testCallbackOnlyCalledOnce() throws InterruptedException {
     UUID jobId = UUID.randomUUID();
     EntityCompletionTracker tracker = new EntityCompletionTracker(jobId);
@@ -260,9 +230,6 @@ class EntityCompletionTrackerTest {
     // A throwing promotion must NOT be recorded as promoted, otherwise the reconciliation and the
     // reindex finalizer skip it and the entity is silently left on its stale pre-reindex index.
     assertFalse(tracker.isPromoted("table"));
-    EntityCompletionTracker.EntityCompletionStatus status = tracker.getStatus("table");
-    assertNotNull(status);
-    assertFalse(status.promoted());
   }
 
   @Test

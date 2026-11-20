@@ -248,46 +248,4 @@ public class EntityCompletionTracker {
           jobId);
     }
   }
-
-  /**
-   * Get the completion status for an entity.
-   *
-   * @param entityType The entity type
-   * @return Completion status or null if not tracked
-   */
-  public EntityCompletionStatus getStatus(String entityType) {
-    AtomicInteger total = totalPartitions.get(entityType);
-    AtomicInteger completed = completedPartitions.get(entityType);
-    AtomicInteger failed = failedPartitions.get(entityType);
-
-    if (total == null) {
-      return null;
-    }
-
-    return new EntityCompletionStatus(
-        entityType,
-        total.get(),
-        completed != null ? completed.get() : 0,
-        failed != null ? failed.get() : 0,
-        promotedEntities.contains(entityType));
-  }
-
-  /**
-   * Status record for entity completion tracking.
-   */
-  public record EntityCompletionStatus(
-      String entityType,
-      int totalPartitions,
-      int completedPartitions,
-      int failedPartitions,
-      boolean promoted) {
-
-    public boolean isComplete() {
-      return completedPartitions >= totalPartitions;
-    }
-
-    public boolean hasFailures() {
-      return failedPartitions > 0;
-    }
-  }
 }
