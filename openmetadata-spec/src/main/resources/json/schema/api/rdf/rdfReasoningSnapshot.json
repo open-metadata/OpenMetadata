@@ -8,7 +8,7 @@
   "definitions": {
     "freshness": {
       "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningFreshness",
-      "description": "UNKNOWN while projection health is degraded, for example after a dead-lettered write or a write outside the queue that could not be recorded: the graph may be missing writes, and a refresh cannot repair it. Otherwise CURRENT when the dataset generation still serves, the source revision covers every enqueued live write (writes outside the queue take a queue ID too), and the ontology and rule digests match; STALE when any of these no longer holds. Independent of job state: a SUCCEEDED refresh can publish a snapshot that is already STALE.",
+      "description": "UNKNOWN while projection health is degraded, for example after a dead-lettered write or a write outside the queue that could not be recorded: the graph may be missing writes, and a refresh cannot repair it. Otherwise CURRENT when the dataset generation still serves, the source revision covers every enqueued live write (writes outside the queue take a queue ID too), the same ontology releases are active, and the rule digest matches; STALE when any of these no longer holds. Independent of job state: a SUCCEEDED refresh can publish a snapshot that is already STALE.",
       "type": "string",
       "enum": ["CURRENT", "STALE", "UNKNOWN"]
     },
@@ -36,11 +36,56 @@
       "type": "string",
       "pattern": "^sha256:[0-9a-f]{64}$"
     },
-    "ontologySelection": {
-      "javaType": "org.openmetadata.schema.api.rdf.RdfOntologySelection",
-      "description": "Which ontology axioms take part. APPROVED is the production set and the only one a refresh accepts. CANDIDATE adds draft axioms, to check a change before it is approved.",
-      "type": "string",
-      "enum": ["APPROVED", "CANDIDATE"]
+    "ontologyRelease": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfOntologyReleaseRef",
+      "description": "One sealed ontology release, as OpenMetadata identifies it. In the serving graph an active release is the graph https://open-metadata.org/graph/ontology/{ontologyId}, whose ontology header states owl:versionIRI <urn:openmetadata:ontology-release:{releaseId}>.",
+      "type": "object",
+      "properties": {
+        "ontologyId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "releaseId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "contentDigest": {
+          "description": "The release's contentDigest: SHA-256 of its sealed manifest. Opaque to the store, which only records it.",
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": ["ontologyId", "releaseId", "contentDigest"],
+      "additionalProperties": false
+    },
+    "ontologyReleases": {
+      "description": "Ontology releases, at most one per ontology. A refresh lists every active release; a check or explanation lists the one release it reasons over.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ontologyRelease"
+      },
+      "uniqueItems": true,
+      "maxItems": 1000
+    },
+    "uploadedInput": {
+      "javaType": "org.openmetadata.schema.api.rdf.RdfUploadedInput",
+      "description": "RDF that OpenMetadata uploaded to the store before submitting the job, addressed by the SHA-256 of its bytes. The store reads it only if the bytes it holds under that digest hash to it and are exactly byteSize long.",
+      "type": "object",
+      "properties": {
+        "digest": {
+          "$ref": "#/definitions/digest"
+        },
+        "byteSize": {
+          "type": "integer",
+          "minimum": 1,
+          "existingJavaType": "java.lang.Long"
+        },
+        "mediaType": {
+          "description": "RDF-Thrift, the encoding OpenMetadata already sends Fuseki.",
+          "type": "string",
+          "enum": ["application/rdf+thrift"]
+        }
+      },
+      "required": ["digest", "byteSize", "mediaType"],
+      "additionalProperties": false
     },
     "input": {
       "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningInput",
@@ -50,17 +95,13 @@
         "sourceRevision": {
           "$ref": "#/definitions/sourceRevision"
         },
-        "ontologySelection": {
-          "$ref": "#/definitions/ontologySelection"
+        "ontologyReleases": {
+          "description": "The releases the job reasoned over: every active release for a refresh, the one checked or explained otherwise.",
+          "$ref": "#/definitions/ontologyReleases"
         },
-        "ontologyIri": {
-          "description": "Root ontology of the import closure a check or explanation reasoned over. Absent for a refresh, which covers every selected closure.",
-          "type": "string",
-          "format": "uri"
-        },
-        "ontologyDigest": {
-          "description": "OpenMetadata's digest of the selected ontology input. Opaque to the store, which only records it.",
-          "$ref": "#/definitions/digest"
+        "releaseRdf": {
+          "description": "The uploaded release a check or explanation read. Absent for a refresh, which reads the active releases from the serving graph.",
+          "$ref": "#/definitions/uploadedInput"
         },
         "ruleBundleDigest": {
           "description": "OpenMetadata's digest of the governance rule bundle. Opaque to the store, which only records it.",
@@ -74,7 +115,7 @@
           }
         }
       },
-      "required": ["sourceRevision", "ontologySelection"],
+      "required": ["sourceRevision", "ontologyReleases"],
       "additionalProperties": false
     }
   },

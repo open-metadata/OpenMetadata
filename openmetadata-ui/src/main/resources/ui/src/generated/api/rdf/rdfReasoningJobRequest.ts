@@ -18,15 +18,19 @@ export interface RDFReasoningJobRequest {
     check?:   Check;
     explain?: Explain;
     /**
-     * OpenMetadata's digest of the selected ontology input, recorded with the result.
+     * REFRESH: every active release, possibly none. The store classifies each release graph in
+     * the serving dataset whose owl:versionIRI names the listed release, and fails the job with
+     * INPUT_CHANGED when one names another. CHECK and EXPLAIN: exactly the one release
+     * releaseRdf holds, active or not.
      */
-    ontologyDigest?: string;
+    ontologyReleases: OntologyRelease[];
+    operation:        Operation;
     /**
-     * Root ontology of the import closure to check or explain. Required for CHECK and EXPLAIN.
+     * The release a CHECK or EXPLAIN reasons over, uploaded first, so a release that is not
+     * active reaches the store without entering the serving graph. Required for CHECK and
+     * EXPLAIN; a REFRESH does not take it.
      */
-    ontologyIri?:      string;
-    ontologySelection: OntologySelection;
-    operation:         Operation;
+    releaseRdf?: UploadedInput;
     /**
      * Idempotency key. Submitting the same ID again returns the existing job instead of
      * starting another.
@@ -37,7 +41,8 @@ export interface RDFReasoningJobRequest {
      */
     ruleBundleDigest?: string;
     /**
-     * The governance rules a REFRESH applies to a fixed point. Disabled rules take no part.
+     * The governance rules a REFRESH applies to a fixed point, sent inline from OpenMetadata's
+     * rule store. Disabled rules take no part. Required for REFRESH.
      */
     rules?: InferenceRule[];
     /**
@@ -180,23 +185,62 @@ export interface Explain {
 }
 
 /**
- * Which ontology axioms take part. APPROVED is the production set and the only one a
- * refresh accepts. CANDIDATE adds draft axioms, to check a change before it is approved.
+ * REFRESH: every active release, possibly none. The store classifies each release graph in
+ * the serving dataset whose owl:versionIRI names the listed release, and fails the job with
+ * INPUT_CHANGED when one names another. CHECK and EXPLAIN: exactly the one release
+ * releaseRdf holds, active or not.
+ *
+ * Ontology releases, at most one per ontology. A refresh lists every active release; a
+ * check or explanation lists the one release it reasons over.
+ *
+ * One sealed ontology release, as OpenMetadata identifies it. In the serving graph an
+ * active release is the graph https://open-metadata.org/graph/ontology/{ontologyId}, whose
+ * ontology header states owl:versionIRI <urn:openmetadata:ontology-release:{releaseId}>.
  */
-export enum OntologySelection {
-    Approved = "APPROVED",
-    Candidate = "CANDIDATE",
+export interface OntologyRelease {
+    /**
+     * The release's contentDigest: SHA-256 of its sealed manifest. Opaque to the store, which
+     * only records it.
+     */
+    contentDigest: string;
+    ontologyId:    string;
+    releaseId:     string;
 }
 
 /**
  * REFRESH recomputes the deductions from asserted input and publishes them as a new
- * snapshot. CHECK answers one typed question about an import closure. EXPLAIN justifies one
- * statement.
+ * snapshot. CHECK answers one typed question about one ontology release. EXPLAIN justifies
+ * one statement.
  */
 export enum Operation {
     Check = "CHECK",
     Explain = "EXPLAIN",
     Refresh = "REFRESH",
+}
+
+/**
+ * The release a CHECK or EXPLAIN reasons over, uploaded first, so a release that is not
+ * active reaches the store without entering the serving graph. Required for CHECK and
+ * EXPLAIN; a REFRESH does not take it.
+ *
+ * RDF that OpenMetadata uploaded to the store before submitting the job, addressed by the
+ * SHA-256 of its bytes. The store reads it only if the bytes it holds under that digest
+ * hash to it and are exactly byteSize long.
+ */
+export interface UploadedInput {
+    byteSize: number;
+    digest:   string;
+    /**
+     * RDF-Thrift, the encoding OpenMetadata already sends Fuseki.
+     */
+    mediaType: MediaType;
+}
+
+/**
+ * RDF-Thrift, the encoding OpenMetadata already sends Fuseki.
+ */
+export enum MediaType {
+    ApplicationRDFThrift = "application/rdf+thrift",
 }
 
 /**
