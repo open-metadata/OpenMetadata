@@ -3167,6 +3167,7 @@
     "requested-by": "Richiesto Da",
     "requested-on": "Richiesto il",
     "requests": "Richieste",
+    "require-encrypted-assertions": "Richiedi asserzioni crittografate",
     "required": "Obbligatorio",
     "required-field": "Campo Obbligatorio",
     "required-field-plural": "Campi Obbligatori",

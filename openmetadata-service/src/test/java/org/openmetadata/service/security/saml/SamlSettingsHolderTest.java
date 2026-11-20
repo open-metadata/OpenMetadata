@@ -34,11 +34,16 @@ import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.IdentityProviderConfig;
 import org.openmetadata.catalog.type.SamlSecurityConfig;
 import org.openmetadata.catalog.type.ServiceProviderConfig;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
+@Isolated
 class SamlSettingsHolderTest {
   private static final char[] KEYSTORE_PASSWORD = "changeit".toCharArray();
 
@@ -87,8 +92,7 @@ class SamlSettingsHolderTest {
       SamlSSOClientConfig config = samlConfig();
       config.getIdp().setIdpX509Certificate(inactivePem + "\n" + resource("/saml/mock-idp.crt"));
       assertEquals(
-          SamlCertificates.parseUnexpiredIdpCertificates(
-              inactivePem + "\n" + resource("/saml/mock-idp.crt")),
+          SamlCertificates.parse(inactivePem + "\n" + resource("/saml/mock-idp.crt")),
           SamlSettingsHolder.buildSettings(config).getIdpx509certMulti());
       assertThrows(
           CertificateException.class,
@@ -97,16 +101,42 @@ class SamlSettingsHolderTest {
   }
 
   @Test
-  void removesExpiredKeysAndRejectsAnEntirelyExpiredTrustStore() throws Exception {
-    SamlSSOClientConfig config = samlConfig();
-    String expired = resource("/saml/expired-idp.crt");
-    String active = resource("/saml/mock-idp.crt");
+  void preservesExplicitlyConfiguredKeysAtRuntime() throws Exception {
+    final SamlSSOClientConfig config = samlConfig();
+    final String expired = resource("/saml/expired-idp.crt");
+    final String active = resource("/saml/mock-idp.crt");
     config.getIdp().setIdpX509Certificate(expired + "\n" + active);
-    Saml2Settings settings = SamlSettingsHolder.buildSettings(config);
-    assertEquals(SamlCertificates.parse(active), settings.getIdpx509certMulti());
-    assertEquals(SamlCertificates.parse(active).getFirst(), settings.getIdpx509cert());
+    assertEquals(
+        SamlCertificates.parse(expired + "\n" + active),
+        SamlSettingsHolder.buildSettings(config).getIdpx509certMulti());
+    assertThrows(
+        CertificateException.class, () -> SamlCertificates.parseValidIdpCertificates(expired));
+  }
+
+  @Test
+  void initializesLiveSettingsWhenAllSavedIdpCertificatesHaveExpired() throws Exception {
+    final AuthenticationConfiguration previousAuth =
+        SecurityConfigurationManager.getCurrentAuthConfig();
+    Saml2Settings previousSettings;
+    try {
+      previousSettings = SamlSettingsHolder.getSaml2Settings();
+    } catch (IllegalStateException ignored) {
+      previousSettings = null;
+    }
+    final String expired = resource("/saml/expired-idp.crt");
+    final SamlSSOClientConfig config = samlConfig();
     config.getIdp().setIdpX509Certificate(expired);
-    assertThrows(CertificateException.class, () -> SamlSettingsHolder.buildSettings(config));
+    try {
+      SecurityConfigurationManager.getInstance()
+          .setCurrentAuthConfig(new AuthenticationConfiguration().withSamlConfiguration(config));
+      SamlSettingsHolder.getInstance().initDefaultSettings(new OpenMetadataApplicationConfig());
+      assertEquals(
+          SamlCertificates.parse(expired),
+          SamlSettingsHolder.getSaml2Settings().getIdpx509certMulti());
+    } finally {
+      SecurityConfigurationManager.getInstance().setCurrentAuthConfig(previousAuth);
+      SamlSettingsHolder.setSaml2Settings(previousSettings);
+    }
   }
 
   @Test

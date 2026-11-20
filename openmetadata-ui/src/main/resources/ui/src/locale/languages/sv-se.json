@@ -3167,6 +3167,7 @@
     "requested-by": "Begärd av",
     "requested-on": "Begärd den",
     "requests": "Förfrågningar",
+    "require-encrypted-assertions": "Kräv krypterade SAML-intyg",
     "required": "Krävs",
     "required-field": "Required Field",
     "required-field-plural": "Obligatoriska fält",

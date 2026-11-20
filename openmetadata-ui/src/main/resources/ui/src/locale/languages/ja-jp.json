@@ -3167,6 +3167,7 @@
     "requested-by": "リクエスト者",
     "requested-on": "リクエスト日",
     "requests": "リクエスト",
+    "require-encrypted-assertions": "暗号化されたアサーションを必須にする",
     "required": "必須",
     "required-field": "必須フィールド",
     "required-field-plural": "必須フィールド",

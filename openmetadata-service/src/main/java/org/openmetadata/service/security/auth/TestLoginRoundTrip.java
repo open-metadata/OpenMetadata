@@ -115,7 +115,7 @@ public final class TestLoginRoundTrip {
       throw new BadRequestException(NOT_AWAITING_CREDENTIALS);
     }
     requireCredentialTestAllowance(entry);
-    TestLoginResult result = verifyCredentialsSafely(entry, request);
+    final TestLoginResult result = verifyCredentialsSafely(entry, request);
     sessions.complete(entry.testSessionId(), result);
     return result;
   }
@@ -123,7 +123,7 @@ public final class TestLoginRoundTrip {
   private TestLoginResult verifyCredentialsSafely(
       TestLoginSessionEntry entry, TestLoginCredentialsRequest request) {
     try {
-      TestLoginResult result =
+      final TestLoginResult result =
           entry.protocol() == TestLoginProtocol.LDAP
               ? TestLoginCredentialHandler.verifyLdap(
                   entry.candidate(), request.getEmail(), request.getPassword())

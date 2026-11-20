@@ -3167,6 +3167,7 @@
     "requested-by": "درخواست‌شده توسط",
     "requested-on": "درخواست شده در",
     "requests": "درخواست‌ها",
+    "require-encrypted-assertions": "ضرورت رمزگذاری تأییدیه‌های SAML",
     "required": "اجباری",
     "required-field": "فیلد الزامی",
     "required-field-plural": "فیلدهای الزامی",

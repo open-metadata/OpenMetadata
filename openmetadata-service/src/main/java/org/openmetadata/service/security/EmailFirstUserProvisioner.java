@@ -133,7 +133,7 @@ public class EmailFirstUserProvisioner {
     if (subject == null || subject.isBlank()) {
       return false;
     }
-    String bound = user.getIdentityProviderSubject();
+    final String bound = user.getIdentityProviderSubject();
     if (bound == null || bound.isBlank()) {
       LOG.debug("Binding identity provider subject to user {}", user.getName());
       user.setIdentityProviderSubject(subject);

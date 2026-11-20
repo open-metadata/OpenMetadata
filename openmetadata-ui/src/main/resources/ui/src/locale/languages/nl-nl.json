@@ -3167,6 +3167,7 @@
     "requested-by": "Aangevraagd door",
     "requested-on": "Aangevraagd op",
     "requests": "Verzoeken",
+    "require-encrypted-assertions": "Versleutelde assertions vereisen",
     "required": "Verplicht",
     "required-field": "Verplicht veld",
     "required-field-plural": "Verplichte velden",

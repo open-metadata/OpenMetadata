@@ -3167,6 +3167,7 @@
     "requested-by": "Запрошено",
     "requested-on": "Дата запроса",
     "requests": "Запросы",
+    "require-encrypted-assertions": "Требовать зашифрованные утверждения",
     "required": "Необходимый",
     "required-field": "Обязательное поле",
     "required-field-plural": "Обязательные поля",

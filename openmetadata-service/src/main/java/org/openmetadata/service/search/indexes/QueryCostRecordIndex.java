@@ -49,7 +49,7 @@ public class QueryCostRecordIndex implements SearchIndex {
     // top-level owners/tags/domains, hides a cost record exactly as it hides the query. Without a
     // top-level domain, hasDomain() treats the record as domainless and shows it to everyone.
     doc.put("owners", query.getOwners());
-    ParseTags tags = new ParseTags(listOrEmpty(query.getTags()));
+    final ParseTags tags = new ParseTags(listOrEmpty(query.getTags()));
     doc.put("tags", tags.getTags());
     doc.put("tier", tags.getTierTag());
     doc.put("domains", query.getDomains());

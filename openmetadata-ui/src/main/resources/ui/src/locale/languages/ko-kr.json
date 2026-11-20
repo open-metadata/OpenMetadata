@@ -3167,6 +3167,7 @@
     "requested-by": "Requested By",
     "requested-on": "요청일",
     "requests": "요청",
+    "require-encrypted-assertions": "암호화된 어설션 필수",
     "required": "필수",
     "required-field": "필수 필드",
     "required-field-plural": "필수 필드",

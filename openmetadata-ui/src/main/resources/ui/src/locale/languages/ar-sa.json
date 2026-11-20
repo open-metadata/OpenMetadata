@@ -3167,6 +3167,7 @@
     "requested-by": "Requested By",
     "requested-on": "تاريخ الطلب",
     "requests": "الطلبات",
+    "require-encrypted-assertions": "اشتراط تشفير تأكيدات SAML",
     "required": "مطلوب",
     "required-field": "حقل مطلوب",
     "required-field-plural": "حقول مطلوبة",

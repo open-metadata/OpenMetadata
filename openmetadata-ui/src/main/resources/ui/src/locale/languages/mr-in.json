@@ -3167,6 +3167,7 @@
     "requested-by": "Requested By",
     "requested-on": "विनंती केल्याची तारीख",
     "requests": "विनंत्या",
+    "require-encrypted-assertions": "कूटबद्ध SAML विधाने आवश्यक करा",
     "required": "आवश्यक",
     "required-field": "आवश्यक फील्ड",
     "required-field-plural": "आवश्यक फील्ड्स",

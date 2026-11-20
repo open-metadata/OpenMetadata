@@ -709,6 +709,44 @@ describe('SSOUtils', () => {
       expect(authConfig.samlConfiguration?.sp?.entityId).toBe(sp.entityId);
     });
 
+    it.each([
+      [
+        'https://ui.example.com/callback',
+        '',
+        'https://ui.example.com/callback',
+      ],
+      [
+        '',
+        'https://ui.example.com/callback',
+        'https://ui.example.com/callback',
+      ],
+      ['', '', 'https://saml.example.com/callback'],
+    ])(
+      'keeps the browser callback separate from a legacy ACS (%s, %s)',
+      (rootCallback, spCallback, expectedCallback) => {
+        const data = getDefaultsForProvider(
+          AuthProvider.Saml,
+          ClientType.Public
+        );
+        const auth = data.authenticationConfiguration;
+        const sp = auth.samlConfiguration?.sp;
+
+        if (!sp) {
+          throw new Error('Missing SAML SP defaults');
+        }
+        auth.callbackUrl = rootCallback;
+        sp.callback = spCallback;
+        sp.acs = 'https://saml.example.com/api/v1/saml/acs';
+
+        const result = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+        const cleaned = result?.authenticationConfiguration;
+
+        expect(cleaned?.samlConfiguration?.sp?.acs).toBe(sp.acs);
+        expect(cleaned?.samlConfiguration?.sp?.callback).toBe(expectedCallback);
+        expect(cleaned?.callbackUrl).toBe(expectedCallback);
+      }
+    );
+
     it('should handle LDAP trustStore cleanup by format', () => {
       const data: FormData = {
         authenticationConfiguration: {
