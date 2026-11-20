@@ -1136,6 +1136,9 @@ class OpenlineageSource(PipelineServiceSource):
         root_name = root["name"]
         own_name = f"{root['namespace']}-{root_name}"
         try:
+            # A pipeline FQN is "<service>.<name>" with the name quoted when it holds a dot, so a
+            # suffix check finds the pipeline in any service without parsing every cached FQN.
+            own_fqn_suffix = f".{fqn.quote_name(own_name)}"
             candidates = [
                 self._get_by_name_cached(
                     Pipeline, f"{root['namespace']}.{fqn.quote_name(root_name)}", fields=["tasks"]
@@ -1143,7 +1146,7 @@ class OpenlineageSource(PipelineServiceSource):
                 *(
                     self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn, fields=["tasks"])
                     for pipeline_fqn in list(self._known_pipelines)
-                    if fqn.split(pipeline_fqn)[-1] == own_name
+                    if pipeline_fqn.endswith(own_fqn_suffix)
                 ),
                 *(
                     self.metadata.es_search_from_fqn(

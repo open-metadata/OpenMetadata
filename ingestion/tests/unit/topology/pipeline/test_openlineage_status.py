@@ -38,6 +38,7 @@ from metadata.ingestion.source.pipeline.openlineage.run_status import RUN_KEY_WI
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     message_to_open_lineage_event,
 )
+from metadata.utils.fqn import build as build_fqn
 
 DATASETS = Path(__file__).parent.parent.parent / "resources/datasets"
 with open(DATASETS / "openlineage_spark_runs.json") as runs_file:  # noqa: PTH123
@@ -78,6 +79,11 @@ TABLE_IDS = {
 
 def pipeline_id(pipeline_fqn: str) -> UUID:
     return uuid5(NAMESPACE_URL, pipeline_fqn)
+
+
+def written_fqn(request) -> str:
+    """The FQN the server gives a written pipeline: its name is quoted when it holds a dot."""
+    return build_fqn(None, Pipeline, service_name=request.service.root, pipeline_name=request.name.root)
 
 
 class FakeServer:
@@ -156,7 +162,7 @@ def test_only_events_of_runs_that_did_not_fail_write_lineage(source, server, eve
     """The SQL job writing shop.public.report: its datasets become lineage only on START, RUNNING and COMPLETE."""
     write_event = event("failed_run", 6, eventType=event_type)
     for result in source.yield_pipeline(write_event):
-        server.pipeline_tasks[f"{result.right.service.root}.{result.right.name.root}"] = result.right.tasks or []
+        server.pipeline_tasks[written_fqn(result.right)] = result.right.tasks or []
     source.context.get().pipeline = source.get_pipeline_name(write_event)
 
     edges = [
@@ -183,7 +189,7 @@ def ingest(source, server, events):
     results = []
     for ol_event in events:
         for result in source.yield_pipeline(ol_event):
-            pipeline_fqn = f"{result.right.service.root}.{result.right.name.root}"
+            pipeline_fqn = written_fqn(result.right)
             server.pipeline_tasks[pipeline_fqn] = result.right.tasks or []
             server.pipeline_requests[pipeline_fqn] = result.right
         for result in source.yield_pipeline_status(ol_event) or []:
@@ -538,6 +544,29 @@ def test_airflow_dag_run_fails_with_its_first_task_failure(source, server):
 
 
 @pytest.mark.parametrize("run", ["default_task_info", "full_task_info"])
+def test_dag_run_failure_read_before_its_task_failure_still_names_the_task(source, server, run):
+    *steps, task_fails, dag_fails = whole_run(run)
+
+    ingest(source, server, [*steps, dag_fails, task_fails])
+
+    [row] = server.statuses.values()
+    assert (row.error.errorMessage, row.error.failedTask) == ("ValueError: intentional failure", "transform")
+
+
+def test_dag_run_failure_read_before_the_retry_that_made_its_task_good_blames_no_task(source, server):
+    """flaky passes on its third try and the DAG run then times out, with the timeout read first.
+    The row holds one error and flaky's took its place, so the timeout's message is not kept."""
+    times_out = event("retried_task", 9, eventType="FAIL")
+    times_out.run_facet["facets"]["errorMessage"] = {"message": "dagrun timed out", "programmingLanguage": "python"}
+
+    ingest(source, server, [*(event("retried_task", index) for index in (0, 1, 2)), times_out])
+    ingest(source, server, [event("retried_task", index) for index in (3, 4, 5, 6, 7, 8)])
+
+    [row] = server.statuses.values()
+    assert (row.executionStatus, row.error) == (StatusType.Failed, None)
+
+
+@pytest.mark.parametrize("run", ["default_task_info", "full_task_info"])
 def test_airflow_dag_start_date_is_the_pipeline_start_date(source, server, run):
     ingest(source, server, whole_run(run))
 
@@ -621,12 +650,45 @@ def test_event_with_a_parent_and_no_job_type_is_a_step_of_the_parent(source, ser
 
     ingest(source, server, [launched])
 
-    assert list(server.pipeline_requests) == ["spark_openlineage.airflow-nightly.run_spark"]
+    assert list(server.pipeline_requests) == ['spark_openlineage."airflow-nightly.run_spark"']
     [row] = server.statuses.values()
     assert (row.executionId, [line.name for line in row.taskStatus]) == (
         "01a1e86e-0000-7000-8000-0000000000ab",
         ["orders_app"],
     )
+
+
+@pytest.mark.parametrize(
+    "job_facets",
+    [
+        pytest.param("TASK", id="facets_not_an_object"),
+        pytest.param({"jobType": "TASK"}, id="job_type_facet_not_an_object"),
+        pytest.param({"jobType": {"jobType": ["TASK"]}}, id="job_type_not_a_string"),
+    ],
+)
+def test_malformed_job_type_facet_reads_as_no_job_type(source, server, job_facets):
+    """Naming the pipeline must not fail: it runs before any stage can report an error."""
+    step = event("default_task_info", 1)
+    step.job["facets"] = job_facets
+
+    assert source.get_pipeline_name(step) == "airflow-nightly_sales"
+
+
+def test_dbt_run_started_by_an_airflow_task_is_a_run_of_its_own_pipeline(source, server):
+    """dbt gives a whole dbt run the job type JOB, and each model a job type of its own."""
+    dbt_run = event("successful_run", 7)
+    dbt_run.job.update(namespace="dbt", name="dbt-run-shop")
+    dbt_run.job["facets"]["jobType"].update(integration="DBT", jobType="JOB")
+    dbt_run.run_facet["facets"]["parent"] = {
+        "job": {"namespace": "airflow", "name": "nightly.run_dbt"},
+        "run": {"runId": "01a1e86e-0000-7000-8000-0000000000ab"},
+    }
+
+    ingest(source, server, [dbt_run])
+
+    assert [fqn.rsplit(".", 1)[-1] for fqn in server.pipeline_requests] == ["dbt-dbt-run-shop"]
+    [row] = server.statuses.values()
+    assert row.executionId == dbt_run.run_facet["runId"]
 
 
 def test_dag_run_triggered_by_another_dags_task_is_a_run_of_its_own_pipeline(source, server):
@@ -838,6 +900,7 @@ def test_retry_of_the_blamed_task_moves_the_blame_to_a_task_still_failing(source
     [
         pytest.param([0, 5, 6, 1, 2, 7, "load_fails", "dag_fails"], id="first_try"),
         pytest.param([0, 5, 6, 3, 4, 1, 2, 7, "load_fails", "dag_fails"], id="both_failed_tries"),
+        pytest.param([0, 1, 2, "dag_fails", 5, 6, 7, "load_fails"], id="other_task_fails_after_the_retry"),
     ],
 )
 def test_failed_try_read_after_its_retry_succeeded_does_not_become_the_error(source, server, indexes):
@@ -863,13 +926,31 @@ def retried_run_where_load_fails(source, server, ingestions: list[list[int | str
     return row
 
 
-def test_dag_pipeline_written_by_this_ingestion_is_found_before_search_indexes_it(source, server):
-    ingest(source, server, whole_run("full_task_info"))
+def renamed_dag(raw: dict, dag_id: str) -> dict:
+    """``raw`` with the DAG nightly_sales renamed, in its job, parent and Airflow facets."""
+    return json.loads(json.dumps(raw).replace("nightly_sales", dag_id))
+
+
+@pytest.mark.parametrize(
+    "dag_id, dag_pipeline",
+    [
+        pytest.param("nightly_sales", AIRFLOW_PIPELINE, id="plain_name"),
+        pytest.param("team.nightly_sales", 'airflow_openlineage."airflow-team.nightly_sales"', id="dotted_name"),
+    ],
+)
+def test_dag_pipeline_written_by_this_ingestion_is_found_before_search_indexes_it(source, server, dag_id, dag_pipeline):
+    ingest(
+        source,
+        server,
+        [message_to_open_lineage_event(renamed_dag(raw, dag_id)) for raw in AIRFLOW_RUNS["full_task_info"]],
+    )
     source.metadata.es_search_from_fqn.side_effect = lambda *args, **kwargs: []
+    started = started_by_transform(0)
+    started.run_facet["facets"]["parent"] = renamed_dag(STARTED_BY_TRANSFORM, dag_id)
 
-    [(from_id, to_id, _)] = pipeline_links(source, server, started_by_transform(0))
+    [(from_id, to_id, _)] = pipeline_links(source, server, started)
 
-    assert (from_id, to_id) == (pipeline_id(AIRFLOW_PIPELINE), pipeline_id(FAILED_PIPELINE))
+    assert (from_id, to_id) == (pipeline_id(dag_pipeline), pipeline_id(FAILED_PIPELINE))
 
 
 @pytest.mark.parametrize("cap", [3, 1], ids=["holds_one_pipeline", "holds_none"])

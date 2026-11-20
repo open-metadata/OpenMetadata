@@ -86,6 +86,7 @@ class RunUpdate:
     job: str
     job_run_id: str
     is_pipeline_run: bool
+    leaves_outcome_to_run: bool
     fails_run: bool
     status: StatusType
     started_at: int | None
@@ -94,7 +95,12 @@ class RunUpdate:
 
 
 def _job_type(event: OpenLineageEvent) -> str | None:
-    return ((event.job.get("facets") or {}).get("jobType") or {}).get("jobType")
+    # Every event reaches this while being named, before any stage can report a failure, so a
+    # malformed facet must read as no job type instead of stopping the whole ingestion.
+    facets = event.job.get("facets")
+    facet = facets.get("jobType") if isinstance(facets, dict) else None
+    job_type = facet.get("jobType") if isinstance(facet, dict) else None
+    return job_type if isinstance(job_type, str) else None
 
 
 def _is_own_run(event: OpenLineageEvent) -> bool:
@@ -203,6 +209,7 @@ def build_run_update(event: OpenLineageEvent) -> RunUpdate | None:
         except (KeyError, TypeError):
             return None
     ended_at = _millis(event.event_time) if status != StatusType.Pending else None
+    leaves_outcome_to_run = _job_type(event) in _STEPS_THAT_LEAVE_THE_RUN_OUTCOME_TO_IT
     run_key = _uuid7_millis(run_id)
     if run_key is None:
         # Without a time in the runId, only the run's own final event gives it a stable key.
@@ -215,7 +222,8 @@ def build_run_update(event: OpenLineageEvent) -> RunUpdate | None:
         job=job,
         job_run_id=event.run_facet["runId"],
         is_pipeline_run=is_pipeline_run,
-        fails_run=status == StatusType.Failed and _job_type(event) not in _STEPS_THAT_LEAVE_THE_RUN_OUTCOME_TO_IT,
+        leaves_outcome_to_run=leaves_outcome_to_run,
+        fails_run=status == StatusType.Failed and not leaves_outcome_to_run,
         status=status,
         started_at=_millis(event.event_time) if event.event_type == EventType.START.value else None,
         ended_at=ended_at,
@@ -274,6 +282,15 @@ def _first_step_still_failing(lines: list[TaskStatus], other_than: str) -> str |
     return min(failing, key=_try_time).name if failing else None
 
 
+def _names_no_failing_step(error: ExecutionError, lines: list[TaskStatus], update: RunUpdate) -> bool:
+    """Whether ``error`` is the run's own, or names a step whose latest try did not fail. A step
+    that fails its run keeps the blame: its failure ended the run whatever came after."""
+    if error.failedTask is None:
+        return True
+    blamed = _latest_tries(lines).get(error.failedTask)
+    return update.leaves_outcome_to_run and blamed is not None and blamed.executionStatus != StatusType.Failed
+
+
 def place_run(rows: list[PipelineStatus], update: RunUpdate) -> tuple[PipelineStatus | None, RunUpdate] | None:
     """
     The run's stored row and the update keyed to it, given the pipeline's rows from the run's key
@@ -314,14 +331,18 @@ def merge_run_status(stored: PipelineStatus | None, update: RunUpdate) -> Pipeli
             update = replace(update, error=None)
         if error is not None and error.failedTask == update.job and line.executionStatus == StatusType.Successful:
             # A later try of the failed step succeeded, so its failure no longer explains the run.
-            # The row keeps one error, so a step still failing is named without its message. A
-            # run already failed with no other step failing keeps the error: one Spark application
-            # can run two SQL jobs of one name, and the failed one failed the run.
+            # The row keeps one error, so a step still failing is named without its message. With
+            # none, the error goes, except on a run its step failed: one Spark application can run
+            # two SQL jobs of one name, and the failed one failed the run.
             still_failing = _first_step_still_failing(lines, other_than=update.job)
             if still_failing is not None:
                 error = ExecutionError(failedTask=still_failing)
-            elif status != StatusType.Failed:
+            elif status != StatusType.Failed or update.leaves_outcome_to_run:
                 error = None
+        if error is not None and update.error is not None and _names_no_failing_step(error, lines, update):
+            # Read after the run's own failure, or after the try that made the blamed step good:
+            # the step failing now is the one that explains the run, whatever the reading order.
+            error = update.error
 
     ended_at = None
     if status != StatusType.Pending:

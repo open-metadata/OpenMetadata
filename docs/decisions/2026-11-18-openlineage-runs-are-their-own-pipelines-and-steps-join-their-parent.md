@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-18 (initial)
 - **Deciders:** Akash Verma
-- **Guard:** `test_openlineage_status.py::test_spark_application_launched_by_an_airflow_task_is_a_run_of_its_own_pipeline`, `test_openlineage_status.py::test_dag_run_triggered_by_another_dags_task_is_a_run_of_its_own_pipeline`, `test_openlineage_status.py::test_step_joins_its_parents_run_whatever_its_name`, `test_openlineage_status.py::test_run_started_by_an_airflow_task_is_linked_from_the_dag_pipeline`
+- **Guard:** `test_openlineage_status.py::test_spark_application_launched_by_an_airflow_task_is_a_run_of_its_own_pipeline`, `test_openlineage_status.py::test_dag_run_triggered_by_another_dags_task_is_a_run_of_its_own_pipeline`, `test_openlineage_status.py::test_dbt_run_started_by_an_airflow_task_is_a_run_of_its_own_pipeline`, `test_openlineage_status.py::test_step_joins_its_parents_run_whatever_its_name`, `test_openlineage_status.py::test_run_started_by_an_airflow_task_is_linked_from_the_dag_pipeline`
 - **Related:** #19481, #37990
 
 ## Context

@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-18 (initial)
 - **Deciders:** Akash Verma
-- **Guard:** `test_openlineage_status.py` — `test_successful_run_is_one_row_with_a_line_per_job`, `test_failed_sql_job_fails_the_run_although_the_application_completes`, `test_each_try_of_a_retried_airflow_task_is_its_own_line`, `PipelineDetailsUtils.test.tsx`, `test_tries_read_out_of_order_each_find_their_own_line`, `test_tasks_read_before_the_dag_run_start_are_kept`, `test_run_whose_id_carries_the_millisecond_of_another_run_takes_the_next_free_key`, `test_dag_run_error_names_the_task_that_failed_it_not_a_try_a_retry_made_good`, `test_retry_of_the_blamed_task_moves_the_blame_to_a_task_still_failing`, `test_failed_try_read_after_its_retry_succeeded_does_not_become_the_error`, `test_start_read_in_a_later_ingestion_than_complete_never_downgrades`, `test_every_status_line_names_a_task_of_the_pipeline`, `test_step_name_without_its_parent_job_prefix_names_its_task_whole`
+- **Guard:** `test_openlineage_status.py` — `test_successful_run_is_one_row_with_a_line_per_job`, `test_failed_sql_job_fails_the_run_although_the_application_completes`, `test_each_try_of_a_retried_airflow_task_is_its_own_line`, `PipelineDetailsUtils.test.tsx`, `test_tries_read_out_of_order_each_find_their_own_line`, `test_tasks_read_before_the_dag_run_start_are_kept`, `test_run_whose_id_carries_the_millisecond_of_another_run_takes_the_next_free_key`, `test_dag_run_error_names_the_task_that_failed_it_not_a_try_a_retry_made_good`, `test_retry_of_the_blamed_task_moves_the_blame_to_a_task_still_failing`, `test_failed_try_read_after_its_retry_succeeded_does_not_become_the_error`, `test_start_read_in_a_later_ingestion_than_complete_never_downgrades`, `test_every_status_line_names_a_task_of_the_pipeline`, `test_step_name_without_its_parent_job_prefix_names_its_task_whole`, `test_dag_run_failure_read_before_its_task_failure_still_names_the_task`, `test_dag_run_failure_read_before_the_retry_that_made_its_task_good_blames_no_task`
 - **Related:** #19481, #19321, #37990, ADR:2026-11-18-openlineage-runs-are-their-own-pipelines-and-steps-join-their-parent
 
 ## Context
@@ -34,11 +34,14 @@ event therefore has to find the same row without any state kept between ingestio
   replaces the full job name as the task name with the short one as its display name: the native
   Airflow connector names a task by its `task_id`, so the same task reads the same in both, and the
   Tasks view and run lines show the step without repeating its pipeline.
-- The row's error is the first failure that still stands. A failed try of a step that leaves the
-  outcome to the run gives no error once a later try of that step is known. When a later try of
-  the failed step succeeds, the error names the step whose latest try failed earliest, without its message: the
-  row holds one error, so that step's message was not kept. With no such step the error is dropped
-  unless the run has already failed. Any error is dropped when the run ends Successful.
+- The row's error is the first failure that still stands, whatever order its events are read in. A
+  failed try of a step that leaves the outcome to the run gives no error once a later try of that
+  step is known. A step failure read after the run's own failure, or after a later try made the
+  blamed step good, takes the error's place. When a later try of the failed step succeeds, the
+  error names the step whose latest try failed earliest, without its message: the row holds one
+  error, so that step's message was not kept. With no such step the error is dropped, unless a step
+  that fails its run failed it: one Spark application can run two SQL jobs of one name, and the
+  failed one failed the run. Any error is dropped when the run ends Successful.
 - FAIL and ABORT events write status only, never lineage: their datasets are what the job meant to
   read and write.
 
@@ -47,5 +50,6 @@ Rows are stable whichever ingestion reads an event and in whatever order, at the
 status read per event. More than 1000 runs of one pipeline starting in the same second, or senders
 older than OpenLineage 1.15, lose rows or step lines. A task that fails on every try reports the
 first try's error. A run whose first failed step is later retried successfully names the step that
-still fails but not its message. Revisit if `TaskStatus` gains an error, the server gains a
+still fails but not its message, and a DAG run whose own failure was read before that retry keeps
+no error at all. Revisit if `TaskStatus` gains an error, the server gains a
 run-start time or an aborted status, or status moves to the `/api/v1/openlineage` endpoint.
