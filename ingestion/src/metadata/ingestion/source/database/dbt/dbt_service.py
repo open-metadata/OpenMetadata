@@ -46,6 +46,7 @@ from metadata.ingestion.source.database.dbt.constants import (
     REQUIRED_CONSTRAINT_KEYS,
     REQUIRED_NODE_KEYS,
     REQUIRED_RESULTS_KEYS,
+    UNPARSED_NODE_RESOURCE_TYPES,
 )
 from metadata.ingestion.source.database.dbt.dbt_config import (
     DBTConfigException,
@@ -222,6 +223,12 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
                 if key.lower() not in required_manifest_keys
             }
         )
+
+        manifest_dict["nodes"] = {
+            key: node
+            for key, node in manifest_dict.get("nodes", {}).items()
+            if node.get("resource_type") not in UNPARSED_NODE_RESOURCE_TYPES
+        }
 
         # pylint: disable=too-many-nested-blocks
         for field in ["nodes", "sources"]:
