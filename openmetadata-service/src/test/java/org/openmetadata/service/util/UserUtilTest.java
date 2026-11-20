@@ -401,6 +401,88 @@ class UserUtilTest {
     }
   }
 
+  private static User storedBot(boolean withToken, Boolean isAdmin, UUID... roleIds) {
+    User bot =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("seeded-bot")
+            .withFullyQualifiedName("seeded-bot")
+            .withIsBot(true)
+            .withIsAdmin(isAdmin)
+            .withDisplayName("seeded-bot")
+            .withRoles(
+                java.util.Arrays.stream(roleIds)
+                    .map(
+                        id ->
+                            new EntityReference()
+                                .withId(id)
+                                .withType(Entity.ROLE)
+                                .withName("role-" + id)
+                                .withHref(java.net.URI.create("http://localhost/roles/" + id)))
+                    .toList());
+    return withToken
+        ? bot.withAuthenticationMechanism(
+            new AuthenticationMechanism()
+                .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                .withConfig(new JWTAuthMechanism().withJWTToken("stored-token")))
+        : bot;
+  }
+
+  private static User seededBot(UUID... roleIds) {
+    // As BotResource.seedBotUser builds it: explicit isAdmin=false, role references without href.
+    return new User()
+        .withId(UUID.randomUUID())
+        .withName("seeded-bot")
+        .withFullyQualifiedName("seeded-bot")
+        .withIsBot(true)
+        .withIsAdmin(false)
+        .withDisplayName("seeded-bot")
+        .withRoles(
+            java.util.Arrays.stream(roleIds)
+                .map(id -> new EntityReference().withId(id).withType(Entity.ROLE))
+                .toList());
+  }
+
+  @Test
+  void isUnchangedBotSkipsOnlyWhenTheUpsertWouldChangeNothing() {
+    UUID role = UUID.randomUUID();
+    UUID otherRole = UUID.randomUUID();
+
+    // Same token holder, admin flag, roles (by id, despite different reference fields) and names.
+    assertTrue(UserUtil.isUnchangedBot(storedBot(true, false, role), seededBot(role)));
+    assertTrue(UserUtil.isUnchangedBot(storedBot(true, null, role), seededBot(role)));
+
+    // Nothing stored yet, or no token: the upsert is what creates the bot / generates its JWT.
+    assertFalse(UserUtil.isUnchangedBot(null, seededBot(role)));
+    assertFalse(UserUtil.isUnchangedBot(storedBot(false, false, role), seededBot(role)));
+    // A stored admin flag the seed turns off must be applied.
+    assertFalse(UserUtil.isUnchangedBot(storedBot(true, true, role), seededBot(role)));
+    // Different roles must be applied.
+    assertFalse(UserUtil.isUnchangedBot(storedBot(true, false, role), seededBot(otherRole)));
+    assertFalse(UserUtil.isUnchangedBot(storedBot(true, false), seededBot(role)));
+    // A changed display name must be applied.
+    assertFalse(
+        UserUtil.isUnchangedBot(
+            storedBot(true, false, role).withDisplayName("renamed"), seededBot(role)));
+  }
+
+  @Test
+  void addOrUpdateBotUserDoesNotWriteAnUnchangedBot() {
+    UUID role = UUID.randomUUID();
+    UserRepository userRepository = mock(UserRepository.class);
+    User stored = storedBot(true, false, role);
+    when(userRepository.getByName(any(), eq("seeded-bot"), any(Fields.class))).thenReturn(stored);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+
+      User returned = UserUtil.addOrUpdateBotUser(seededBot(role));
+
+      assertEquals(stored, returned);
+      verify(userRepository, never()).createOrUpdate(any(), any(User.class), any());
+    }
+  }
+
   @Test
   void addOrUpdateBotUserRefusesToTurnAPersonsAccountIntoABot() {
     UserRepository userRepository = mock(UserRepository.class);
