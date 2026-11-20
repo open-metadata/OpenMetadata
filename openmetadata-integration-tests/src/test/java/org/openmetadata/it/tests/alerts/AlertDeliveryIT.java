@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory.EXTERNAL;
@@ -155,6 +156,7 @@ class AlertDeliveryIT {
       FixtureEvents.insert(List.of(sampleEvent("table columns changed")));
       DirectTick.run(alert);
       assertEquals(1, receiver.received().size(), "and what happens once it is on");
+      assertRunning(alert);
     }
   }
 
@@ -182,6 +184,7 @@ class AlertDeliveryIT {
       FixtureEvents.insert(List.of(sampleEvent("table columns changed")));
       DirectTick.run(alert);
       assertEquals(1, receiver.received().size(), "and what happens once it is on");
+      assertRunning(alert);
     }
   }
 
@@ -202,7 +205,8 @@ class AlertDeliveryIT {
     }
   }
 
-  // The calls the alert's page, its diagnostics and its scheduling view make.
+  // The calls the alert's page, its diagnostics and its scheduling view make: not running, nothing
+  // it will still process, and its position as stored.
   private static void assertNothingPending(EventSubscription alert) {
     HttpClient rest = SdkClients.adminClient().getHttpClient();
     String byId = ALERTS_PATH + "/id/" + alert.getId();
@@ -210,10 +214,11 @@ class AlertDeliveryIT {
     EventsRecord record =
         rest.execute(HttpMethod.GET, byId + "/eventsRecord", null, EventsRecord.class);
     assertEquals(0L, record.getPendingEventsCount());
+    assertFalse(record.getEnabled());
 
-    EventSubscriptionDiagnosticInfo diagnostics =
-        rest.execute(
-            HttpMethod.GET, byId + "/diagnosticInfo", null, EventSubscriptionDiagnosticInfo.class);
+    EventSubscriptionDiagnosticInfo diagnostics = diagnosticsOf(alert);
+    assertFalse(diagnostics.getEnabled());
+    assertStoredPositionReported(alert, diagnostics);
     assertEquals(0L, diagnostics.getRelevantUnprocessedEventsCount());
     assertEquals(0L, diagnostics.getTotalUnprocessedEventsCount());
     assertTrue(diagnostics.getRelevantUnprocessedEventsList().isEmpty());
@@ -230,6 +235,46 @@ class AlertDeliveryIT {
             ALERTS_PATH + "/" + alert.getId() + "/processedEvents",
             null,
             Boolean.class));
+  }
+
+  private static void assertRunning(EventSubscription alert) {
+    EventsRecord record =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                ALERTS_PATH + "/id/" + alert.getId() + "/eventsRecord",
+                null,
+                EventsRecord.class);
+    assertTrue(record.getEnabled());
+    EventSubscriptionDiagnosticInfo diagnostics = diagnosticsOf(alert);
+    assertTrue(diagnostics.getEnabled());
+    assertStoredPositionReported(alert, diagnostics);
+  }
+
+  // An alert with no position row reads as standing at the latest offset of that moment, which the
+  // response's own latest offset, read just after it, can only have passed.
+  private static void assertStoredPositionReported(
+      EventSubscription alert, EventSubscriptionDiagnosticInfo diagnostics) {
+    String stored = AlertFixtures.position(alert.getId());
+    if (stored == null) {
+      assertEquals(diagnostics.getStartingOffset(), diagnostics.getCurrentOffset());
+      assertTrue(diagnostics.getCurrentOffset() <= diagnostics.getLatestOffset());
+    } else {
+      EventSubscriptionOffset position = JsonUtils.readValue(stored, EventSubscriptionOffset.class);
+      assertEquals(position.getCurrentOffset(), diagnostics.getCurrentOffset());
+      assertEquals(position.getStartingOffset(), diagnostics.getStartingOffset());
+    }
+  }
+
+  private static EventSubscriptionDiagnosticInfo diagnosticsOf(EventSubscription alert) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            ALERTS_PATH + "/id/" + alert.getId() + "/diagnosticInfo",
+            null,
+            EventSubscriptionDiagnosticInfo.class);
   }
 
   private static EventSubscription createdSwitchedOff(
