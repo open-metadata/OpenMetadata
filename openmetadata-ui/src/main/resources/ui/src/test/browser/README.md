@@ -44,3 +44,33 @@ ADR:2026-10-28-page-behaviour-is-tested-in-vitest-browser-mode-and-e2e-tests-lea
   skip the comparison elsewhere (`test.skipIf(server.platform !== 'linux')`); set a viewport tall enough that the element
   fits, and park the pointer so nothing is hovered. Baselines are committed under
   `__screenshots__/`; regenerate with `--update`.
+
+## Which tests run in CI
+
+A pull request runs only the test files that execute the code it changes.
+`scripts/select-browser-tests.mjs` reads a map of the source files each test
+file executed (recorded by `impact.ts` during the full merge-queue run, published
+as a workflow artifact). It also follows the test helpers a test imports, and the direct
+imports of every executed file (constants, styles, assets). Changed `en-us.json`
+keys select the tests whose code names them.
+
+Everything runs when the map is missing, or when a change touches test setup,
+the Vitest/Vite config or dependencies. Changed code that no browser test
+executes is listed in the PR comment, along with how many of the changed lines
+the tests that ran executed. The merge queue runs every test file whenever the
+queued change touches this UI, so nothing a selection misses reaches main. To
+see what a branch would run:
+
+```bash
+node scripts/select-browser-tests.mjs --map impact-map.json --base origin/main
+```
+
+The static import graph alone cannot do this here: lazy imports tie about
+1,000 modules into one import cycle.
+
+**Core components are treated like a library.** A change to
+`openmetadata-ui-core-components` runs core's own tests and build (the
+`core components` job), not the browser tests: core guards its components with
+its own tests, and this suite tests the app. A core change that alters behaviour
+the app depends on needs a core test for that behaviour. A change touching both
+core and this UI selects browser tests for the UI part only.
