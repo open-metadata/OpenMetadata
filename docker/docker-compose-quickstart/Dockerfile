@@ -11,7 +11,7 @@
 
 # Build stage
 FROM alpine:3 AS build
-ARG RI_VERSION="2.0.9"
+ARG RI_VERSION="2.0.10"
 ENV RELEASE_URL="https://github.com/open-metadata/OpenMetadata/releases/download/${RI_VERSION}-release/openmetadata-${RI_VERSION}.tar.gz"
 
 RUN mkdir -p /opt/openmetadata && \
@@ -46,7 +46,7 @@ RUN jlink \
 
 # Final stage
 FROM alpine:3
-ARG RI_VERSION="2.0.9"
+ARG RI_VERSION="2.0.10"
 ARG BUILD_DATE
 ARG COMMIT_ID
 LABEL maintainer="OpenMetadata"
