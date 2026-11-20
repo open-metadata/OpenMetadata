@@ -601,6 +601,7 @@ const getSpreadsheetHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
           <>
             <HeaderDotSeparator />
             <ExtraInfoLabel
+              dataTestId="spreadsheet-created-time"
               label={t('label.created-time')}
               tooltip={formatDateTime(spreadsheet.createdTime)}
               value={formatDateTimeLong(

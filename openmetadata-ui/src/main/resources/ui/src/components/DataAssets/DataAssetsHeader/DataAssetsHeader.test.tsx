@@ -429,15 +429,20 @@ describe('DataAssetsHeader component', () => {
       />
     );
 
-    expect(screen.getByText('label.updated-at-source')).toBeInTheDocument();
-    expect(screen.getByTestId('source-updated-at')).toHaveTextContent(
-      '2 hours ago'
+    const metadataRow = within(
+      screen.getByTestId('data-asset-header-metadata')
     );
+    const sourceUpdated = metadataRow.getByTestId('source-updated-at');
+
+    expect(
+      metadataRow.getByText('label.updated-at-source')
+    ).toBeInTheDocument();
+    expect(sourceUpdated).toHaveTextContent('2 hours ago');
 
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     // react-aria opens hover tooltips only after it has seen a pointer move.
     fireEvent.mouseMove(document);
-    await user.hover(screen.getByTestId('source-updated-at'));
+    await user.hover(sourceUpdated);
 
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
       formatDateTime(twoHoursAgo)
