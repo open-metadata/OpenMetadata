@@ -524,33 +524,13 @@ public class TableRepository extends EntityRepository<Table> {
         });
   }
 
-  /**
-   * The stored table JSON keeps a snapshot of its database and schema references, taken when the
-   * table was written. Renaming a parent (its displayName) does not rewrite that snapshot, so swap
-   * in the parents' current references, read through the entity cache.
-   */
-  private void useCurrentParentRefs(List<Table> tables) {
-    Map<UUID, EntityReference> current = new HashMap<>();
-    for (Table table : tables) {
-      table.setDatabase(currentRef(DATABASE, table.getDatabase(), current));
-      table.setDatabaseSchema(currentRef(DATABASE_SCHEMA, table.getDatabaseSchema(), current));
+  private void useCurrentParentRefs(final List<Table> tables) {
+    final Map<UUID, EntityReference> currentById = new HashMap<>();
+    for (final Table table : tables) {
+      table.setDatabase(currentReference(DATABASE, table.getDatabase(), currentById));
+      table.setDatabaseSchema(
+          currentReference(DATABASE_SCHEMA, table.getDatabaseSchema(), currentById));
     }
-  }
-
-  private EntityReference currentRef(
-      String type, EntityReference stored, Map<UUID, EntityReference> current) {
-    if (!hasId(stored)) {
-      return stored;
-    }
-    return current.computeIfAbsent(
-        stored.getId(),
-        id -> {
-          try {
-            return getEntityReferenceById(type, id, ALL);
-          } catch (EntityNotFoundException e) {
-            return stored;
-          }
-        });
   }
 
   private boolean hasId(EntityReference ref) {
