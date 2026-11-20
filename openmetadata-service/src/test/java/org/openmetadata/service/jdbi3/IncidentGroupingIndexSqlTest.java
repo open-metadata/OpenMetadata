@@ -118,7 +118,8 @@ class IncidentGroupingIndexSqlTest {
                   + (mysql ? 1024 : 712)
                   + ") GENERATED ALWAYS AS ("
                   + fqn
-                  + ") STORED NOT NULL, entityLink VARCHAR(512) GENERATED ALWAYS AS ("
+                  + (mysql ? ") VIRTUAL" : ") STORED")
+                  + " NOT NULL, entityLink VARCHAR(512) GENERATED ALWAYS AS ("
                   + link
                   + ") STORED NOT NULL)");
           insertCase(handle, "before", "before", "<#E::table::table1::columns::column>", mysql);

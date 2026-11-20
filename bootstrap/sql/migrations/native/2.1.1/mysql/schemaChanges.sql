@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS test_case_incident_open_interval (
 
 -- The link includes field paths and delimiters in addition to the table name.
 ALTER TABLE test_case
-    MODIFY COLUMN entityFQN TEXT GENERATED ALWAYS AS (json ->> '$.entityFQN') STORED NOT NULL,
+    MODIFY COLUMN entityFQN TEXT GENERATED ALWAYS AS (json ->> '$.entityFQN') VIRTUAL NOT NULL,
     MODIFY COLUMN entityLink TEXT GENERATED ALWAYS AS (json ->> '$.entityLink') STORED NOT NULL;
 
 ALTER TABLE test_case ADD COLUMN incidentTableFqn VARCHAR(3072)
