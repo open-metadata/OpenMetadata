@@ -36,13 +36,13 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
-import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 /**
  * A PUT of the security configuration stores a SAML IdP certificate only after it passed the check
@@ -119,6 +119,63 @@ class SamlIdpCertificatePutIT {
     }
   }
 
+  @Test
+  void patchRefusesAnUnusableCertificateAndWritesNothing() {
+    JsonNode stored = storedAuthentication();
+
+    for (String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
+      String answer = attempt(() -> patch(replaceCertificate(unusable)));
+
+      assertTrue(answer.contains("idpX509Certificate"), answer);
+      assertEquals(stored, storedAuthentication(), "a refused PATCH stores nothing");
+    }
+  }
+
+  @Test
+  void patchStoresAUsableCertificate() throws Exception {
+    try {
+      patch(replaceCertificate(OTHER_VALID));
+
+      assertEquals(OTHER_VALID, storedCertificate());
+    } finally {
+      put(withIdpCertificate(VALID));
+    }
+  }
+
+  private static String replaceCertificate(String idpCertificate) {
+    return "[{\"op\":\"replace\",\"path\":\"/authenticationConfiguration/samlConfiguration/idp/"
+        + "idpX509Certificate\",\"value\":"
+        + JsonUtils.pojoToJson(idpCertificate)
+        + "}]";
+  }
+
+  private static String patch(String jsonPatch) throws Exception {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            SECURITY_CONFIG_PATH,
+            jsonPatch,
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+  }
+
+  /** The answer of a request that may fail: its body, or the message of its failure. */
+  private interface Request {
+    String send() throws Exception;
+  }
+
+  private static String attempt(Request request) {
+    String answer;
+    try {
+      answer = String.valueOf(request.send());
+    } catch (InvalidRequestException e) {
+      answer = e.getMessage() + " " + e.getResponseBody();
+    } catch (Exception e) {
+      answer = String.valueOf(e.getMessage());
+    }
+    return answer;
+  }
+
   private static String withIdpCertificate(String idpCertificate) {
     try {
       ObjectNode config = (ObjectNode) MAPPER.readTree(original);
@@ -146,26 +203,21 @@ class SamlIdpCertificatePutIT {
     }
   }
 
-  /** What the server answered, success or not. */
+  /** What the server answered to a PUT, success or not. */
   private static String attempt(String body) {
-    String answer;
-    try {
-      answer = put(body);
-    } catch (Exception e) {
-      answer = String.valueOf(e.getMessage());
-    }
-    return answer;
+    return attempt(() -> put(body));
   }
 
-  /** Stands for a certificate that was valid when it was saved and has expired since. */
+  /**
+   * Stands for a certificate that was valid when it was saved and has expired since: the row is
+   * written as time would leave it, past the settings write step that refuses a new expired one.
+   */
   private static void storeWithoutChecks(String securityConfig) {
     JsonNode authentication = JsonUtils.readTree(securityConfig).get("authenticationConfiguration");
-    Entity.getSystemRepository()
-        .createOrUpdate(
-            new Settings()
-                .withConfigType(AUTHENTICATION_CONFIGURATION)
-                .withConfigValue(
-                    JsonUtils.convertValue(authentication, AuthenticationConfiguration.class)));
+    Entity.getCollectionDAO()
+        .systemDAO()
+        .insertSettings(AUTHENTICATION_CONFIGURATION.value(), JsonUtils.pojoToJson(authentication));
+    SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.value());
   }
 
   private static JsonNode storedAuthentication() {

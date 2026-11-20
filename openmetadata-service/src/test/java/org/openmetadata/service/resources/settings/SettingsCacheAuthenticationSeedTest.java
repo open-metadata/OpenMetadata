@@ -14,8 +14,8 @@
 package org.openmetadata.service.resources.settings;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
@@ -26,6 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 
+import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -45,8 +46,9 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.SystemRepository;
 
 /**
- * The first start stores the authentication configuration of openmetadata.yaml, and the stored
- * copy wins from then on. A SAML IdP certificate a save would refuse must never be stored.
+ * The first start stores the authentication configuration of openmetadata.yaml through the settings
+ * write step, and the stored copy wins from then on. A certificate that step refuses stops the
+ * start ({@code SystemRepositoryIdpCertificateTest} covers the refusal itself).
  */
 class SettingsCacheAuthenticationSeedTest {
   private static final String SINGLE_LINE_PEM = singleLine(resource("/saml/mock-idp.crt"));
@@ -66,19 +68,21 @@ class SettingsCacheAuthenticationSeedTest {
   }
 
   @Test
-  void aFirstStartRefusesAnUnusableIdpCertificateAndStoresNothing() {
+  void aRefusedIdpCertificateStopsTheFirstStartWithTheRefusal() {
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       final SystemRepository repository = emptyDatabase(entity);
+      final BadRequestException refusal =
+          new BadRequestException("samlConfiguration.idp.idpX509Certificate was refused");
+      when(repository.createNewSetting(
+              argThat(SettingsCacheAuthenticationSeedTest::isAuthentication)))
+          .thenThrow(refusal);
 
-      final IllegalStateException stopped =
+      final BadRequestException stopped =
           assertThrows(
-              IllegalStateException.class,
+              BadRequestException.class,
               () -> SettingsCache.initialize(deployment(SINGLE_LINE_PEM)));
 
-      assertTrue(stopped.getMessage().contains("samlConfiguration.idp.idpX509Certificate"));
-      assertTrue(stopped.getMessage().contains("openmetadata.yaml"));
-      verify(repository, never())
-          .createNewSetting(argThat(SettingsCacheAuthenticationSeedTest::isAuthentication));
+      assertSame(refusal, stopped);
     }
   }
 
