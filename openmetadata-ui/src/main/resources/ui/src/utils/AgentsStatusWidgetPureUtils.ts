@@ -168,6 +168,8 @@ const STATUS_TO_AGENT_STATUS: Record<string, AgentStatus> = Object.fromEntries([
   [Status.Running, AgentStatus.Running],
   [Status.Started, AgentStatus.Running],
   [Status.StopInProgress, AgentStatus.Running],
+  [PipelineState.Stopped, AgentStatus.Stopped],
+  [Status.Stopped, AgentStatus.Stopped],
   [PipelineState.Queued, AgentStatus.Pending],
   [Status.Pending, AgentStatus.Pending],
   [NO_RUNS_STATUS, AgentStatus.Pending],

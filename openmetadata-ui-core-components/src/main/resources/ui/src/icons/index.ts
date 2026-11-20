@@ -604,6 +604,8 @@ export { Snowflake01 } from './Snowflake01';
 export { SortAscending } from './SortAscending';
 export { SortDescending } from './SortDescending';
 export { SortKeyOff } from './SortKeyOff';
+export { SortLinesAscending } from './SortLinesAscending';
+export { SortLinesDescending } from './SortLinesDescending';
 export { Sort } from './Sort';
 export { SparkleFilled } from './SparkleFilled';
 export { Sparkle } from './Sparkle';

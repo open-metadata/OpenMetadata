@@ -377,9 +377,8 @@ public class TestCaseResolutionStatusRepository
 
   /**
    * Applies one entry of a bulk status change. An entry that keeps the open incident's status as
-   * it is only edits its severity; one that would change nothing at all — or that sends an open
-   * incident back to New, which the status flow ignores — is rejected, so the bulk result reports
-   * it instead of counting it as applied.
+   * it is only edits its severity; one that would change nothing at all is rejected, so the bulk
+   * result reports it instead of counting it as applied.
    */
   public void applyBulkStatus(TestCaseResolutionStatus incoming, String testCaseFqn) {
     TestCaseResolutionStatus latest = getLatestRecord(testCaseFqn);
@@ -391,9 +390,6 @@ public class TestCaseResolutionStatusRepository
                 "Incident is already %s", latest.getTestCaseResolutionStatusType().value()));
       }
       updateSeverity(latest, incoming.getSeverity(), incoming.getUpdatedBy());
-    } else if (isOpen
-        && incoming.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.New) {
-      throw new IllegalArgumentException("An open incident cannot be moved back to New");
     } else {
       createNewRecord(incoming, testCaseFqn);
     }
@@ -484,6 +480,7 @@ public class TestCaseResolutionStatusRepository
       TestCaseResolutionStatus recordEntity, String recordFQN, String extension) {
 
     TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
+    rejectReopeningResolvedIncident(recordEntity, lastIncident, recordFQN);
     long lastTimestamp =
         lastIncident != null && lastIncident.getTimestamp() != null
             ? lastIncident.getTimestamp()
@@ -521,9 +518,9 @@ public class TestCaseResolutionStatusRepository
               ? lastIncident.getFailureSummary()
               : recordEntity.getFailureSummary());
     } else if (lastIncident != null && isReopeningStatus(recordEntity)) {
-      // Ack/Assigned/Resolved after a Resolved incident reopens it: reuse the stateId, severity,
-      // and failure summary so the timeline stays contiguous. New is excluded — a new failure
-      // starts a fresh incident.
+      // A Resolved record after a Resolved incident keeps that incident's stateId, so the
+      // repeated resolution is a no-op. Ack/Assigned never get here: they are rejected above.
+      // New is excluded — a new failure starts a fresh incident.
       recordEntity.setStateId(lastIncident.getStateId());
       recordEntity.setSeverity(
           recordEntity.getSeverity() == null
@@ -544,9 +541,17 @@ public class TestCaseResolutionStatusRepository
         recordEntity.getStateId());
     switch (recordEntity.getTestCaseResolutionStatusType()) {
       case New -> {
+        // Moving an open incident back to New is a workflow transition on its task, falling back
+        // to a plain record for a legacy incident without a task, as Ack does. A new test failure
+        // never reaches this branch: it opens its incident through getOrCreateIncident.
         if (Boolean.TRUE.equals(unresolvedIncident(lastIncident))) {
-          LOG.debug("Skipping - already have unresolved incident");
-          return;
+          if (applyLegacyStatusToIncidentTask(recordEntity, recordFQN)) {
+            return;
+          }
+        } else if (lastIncident != null) {
+          // A resolved incident is final. A user's New must not write a task-less incident record
+          // beside it; the UI starts a new incident by creating its task.
+          throw reopenOfResolvedIncidentRejected(recordFQN);
         }
       }
       case Ack, Assigned -> {
@@ -567,6 +572,28 @@ public class TestCaseResolutionStatusRepository
           String.format("Invalid status %s", recordEntity.getTestCaseResolutionStatusType()));
     }
     persistRecord(recordFQN, recordEntity);
+  }
+
+  // Resolved is final for an incident: Ack or Assigned on it would reopen the same incident. A
+  // later failure of the test case opens a separate incident, so this is the only way back.
+  private static void rejectReopeningResolvedIncident(
+      TestCaseResolutionStatus recordEntity,
+      TestCaseResolutionStatus lastIncident,
+      String recordFQN) {
+    if (lastIncident != null
+        && lastIncident.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Resolved
+        && (recordEntity.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Ack
+            || recordEntity.getTestCaseResolutionStatusType()
+                == TestCaseResolutionStatusTypes.Assigned)) {
+      throw reopenOfResolvedIncidentRejected(recordFQN);
+    }
+  }
+
+  private static IllegalArgumentException reopenOfResolvedIncidentRejected(String recordFQN) {
+    return new IllegalArgumentException(
+        String.format(
+            "Incident for %s is resolved and cannot be reopened; a new test failure opens a new incident",
+            recordFQN));
   }
 
   private void persistRecord(String recordFQN, TestCaseResolutionStatus recordEntity) {
@@ -699,18 +726,7 @@ public class TestCaseResolutionStatusRepository
     if (TaskRepository.isTerminalStatus(task.getStatus())
         && recordEntity.getTestCaseResolutionStatusType()
             != TestCaseResolutionStatusTypes.Resolved) {
-      // Ack/Assigned on a resolved incident reopens it: same task/stateId, workflow restarted.
-      String reopeningUser =
-          recordEntity.getUpdatedBy() != null ? recordEntity.getUpdatedBy().getName() : null;
-      try {
-        task = taskRepository.reopenTaskWithWorkflow(task, reopeningUser);
-      } catch (Exception e) {
-        LOG.error("Failed to reopen incident task {} for {}", task.getId(), recordFQN, e);
-        if (e instanceof RuntimeException) {
-          throw (RuntimeException) e;
-        }
-        throw new RuntimeException(e);
-      }
+      throw reopenOfResolvedIncidentRejected(recordFQN);
     }
 
     String transitionId = resolveLegacyTransitionId(task, recordEntity);
@@ -722,7 +738,8 @@ public class TestCaseResolutionStatusRepository
           task.getWorkflowStageId());
       return true;
     }
-
+    String user =
+        recordEntity.getUpdatedBy() != null ? recordEntity.getUpdatedBy().getName() : null;
     TaskResolutionType resolutionType =
         recordEntity.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Resolved
             ? TaskResolutionType.Completed
@@ -731,13 +748,7 @@ public class TestCaseResolutionStatusRepository
     String comment = extractLegacyResolutionComment(recordEntity);
 
     taskRepository.resolveTaskWithWorkflow(
-        task,
-        transitionId,
-        resolutionType,
-        null,
-        resolvedPayload,
-        comment,
-        recordEntity.getUpdatedBy() != null ? recordEntity.getUpdatedBy().getName() : null);
+        task, transitionId, resolutionType, null, resolvedPayload, comment, user);
 
     LOG.info(
         "Applied legacy incident status {} to task {} using transition {}",
@@ -778,6 +789,9 @@ public class TestCaseResolutionStatusRepository
     return switch (recordEntity.getTestCaseResolutionStatusType()) {
       case Ack -> "ack".equals(task.getWorkflowStageId()) ? null : "ack";
       case Assigned -> "assigned".equals(task.getWorkflowStageId()) ? "reassign" : "assign";
+      case New -> IncidentWorkflowStages.NEW_STAGE_ID.equals(task.getWorkflowStageId())
+          ? null
+          : IncidentWorkflowStages.NEW_TRANSITION_ID;
       case Resolved -> TaskEntityStatus.Completed == task.getStatus() ? null : "resolve";
       default -> null;
     };
@@ -869,9 +883,6 @@ public class TestCaseResolutionStatusRepository
             Entity.TEST_CASE, testCase.getFullyQualifiedName(), "owners,domains", Include.ALL);
 
     EntityReference updatedByRef = getEntityReferenceByName(Entity.USER, updatedBy, Include.ALL);
-
-    List<EntityReference> assignees =
-        !nullOrEmpty(fullTestCase.getOwners()) ? fullTestCase.getOwners() : List.of();
     UUID taskId = UUID.randomUUID();
 
     Task task =
@@ -889,7 +900,6 @@ public class TestCaseResolutionStatusRepository
                     .withTestCaseResolutionStatusId(taskId)
                     .withFailureReason(failureReason))
             .withCreatedBy(updatedByRef)
-            .withAssignees(assignees)
             .withCreatedAt(System.currentTimeMillis())
             .withUpdatedBy(updatedBy)
             .withUpdatedAt(System.currentTimeMillis());
@@ -898,6 +908,8 @@ public class TestCaseResolutionStatusRepository
       task.withDomains(fullTestCase.getDomains());
     }
 
+    List<EntityReference> assignees = resolveAutoAssignees(task, fullTestCase.getOwners());
+    task.withAssignees(assignees);
     task = taskRepository.createInternal(task);
     LOG.info(
         "Incident task created on test failure: id={}, testCase={}",
@@ -905,6 +917,16 @@ public class TestCaseResolutionStatusRepository
         fullTestCase.getFullyQualifiedName());
     advanceAutoAssignedIncident(taskRepository, task.getId(), assignees, updatedBy);
     return task.getId();
+  }
+
+  // The owners are assigned only when the workflow the incident is bound to has owner
+  // auto-assignment on; an incident created without them waits in New, like an unowned table's.
+  private static List<EntityReference> resolveAutoAssignees(
+      Task task, List<EntityReference> owners) {
+    if (nullOrEmpty(owners) || !TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled(task)) {
+      return List.of();
+    }
+    return owners;
   }
 
   /**
@@ -998,6 +1020,11 @@ public class TestCaseResolutionStatusRepository
       // We'll keep the status as assigned but remove the deleted user as the assignee
       // Incidents are treated as immutable entities -- hence we create a new one
       setInheritedFields(testCaseResolutionStatus);
+      // A resolved incident is final, so there is nothing to clean and writing would reopen it.
+      String testCaseFqn = testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName();
+      if (!Boolean.TRUE.equals(unresolvedIncident(getLatestRecord(testCaseFqn)))) {
+        continue;
+      }
       TestCaseResolutionStatusMapper mapper = new TestCaseResolutionStatusMapper();
       TestCaseResolutionStatus newStatus =
           mapper.createToEntity(

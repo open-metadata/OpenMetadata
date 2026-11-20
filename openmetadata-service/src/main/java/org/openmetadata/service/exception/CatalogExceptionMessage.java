@@ -413,6 +413,13 @@ public final class CatalogExceptionMessage {
     return String.format("System entity [%s] of type %s can not be deleted.", name, entityType);
   }
 
+  public static String reservedRoleName(String name) {
+    return String.format(
+        "Role name [%s] is reserved: Admin is the administrator flag on a user or bot, not a role."
+            + " Choose another name.",
+        name);
+  }
+
   public static String systemEntityRenameNotAllowed(String name, String entityType) {
     return String.format("System entity [%s] of type %s can not be renamed.", name, entityType);
   }

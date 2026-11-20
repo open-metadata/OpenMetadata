@@ -45,10 +45,14 @@ public class CustomOidcValidator {
             "Discovery URI is required for custom OIDC validation. Provide either authority + /.well-known/openid-configuration or explicit discoveryUri");
       }
 
-      FieldError discoveryCheck =
-          discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
-      if (discoveryCheck != null) {
-        return discoveryCheck;
+      // A public client signs in in the browser and usually sends no server-side OIDC client
+      // settings; the checks against them apply only when they are present.
+      if (oidcConfig != null) {
+        FieldError discoveryCheck =
+            discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
+        if (discoveryCheck != null) {
+          return discoveryCheck;
+        }
       }
 
       DiscoveryEndpoints endpoints = extractEndpointsFromDiscovery(discoveryUri);
@@ -76,6 +80,12 @@ public class CustomOidcValidator {
 
   private FieldError validateCustomOidcConfidentialClient(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
+    if (oidcConfig == null) {
+      return ValidationErrorBuilder.createFieldError(
+          "authenticationConfiguration",
+          "Custom OIDC confidential client validation failed: the OIDC client configuration "
+              + "(client ID, secret and discovery URI) is required for a confidential client");
+    }
     try {
       String discoveryUri = extractDiscoveryUri(authConfig, oidcConfig);
       if (nullOrEmpty(discoveryUri)) {
@@ -129,7 +139,7 @@ public class CustomOidcValidator {
 
   private String extractDiscoveryUri(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
-    if (!nullOrEmpty(oidcConfig.getDiscoveryUri())) {
+    if (oidcConfig != null && !nullOrEmpty(oidcConfig.getDiscoveryUri())) {
       return oidcConfig.getDiscoveryUri();
     }
 
@@ -142,7 +152,7 @@ public class CustomOidcValidator {
     }
 
     // Priority 3: Try serverUrl as fallback
-    if (!nullOrEmpty(oidcConfig.getServerUrl())) {
+    if (oidcConfig != null && !nullOrEmpty(oidcConfig.getServerUrl())) {
       String serverUrl = oidcConfig.getServerUrl();
       if (!serverUrl.endsWith("/")) {
         serverUrl += "/";
