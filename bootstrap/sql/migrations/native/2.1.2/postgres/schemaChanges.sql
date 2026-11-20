@@ -1,2 +1,0 @@
-ALTER TABLE test_case ADD COLUMN IF NOT EXISTS incidentTableFqn VARCHAR(512)
-    GENERATED ALWAYS AS (TRIM(TRAILING '>' FROM SPLIT_PART(json->>'entityLink', '::', 3))) STORED;

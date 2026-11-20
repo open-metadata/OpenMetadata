@@ -12,6 +12,7 @@
  */
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -21,7 +22,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,6 +58,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.RestUtil;
 
 /**
@@ -351,6 +355,114 @@ public class StaleIncidentStatusIT {
                     .testCaseResolutionStatuses()
                     .patch(incident.getStateId(), MAPPER.createArrayNode()));
     assertEquals(404, error.getStatusCode(), "a stateId is not a record id, so it must 404");
+  }
+
+  @Test
+  void hardDeleteCleansUnlinkedAndHistoryPrunedIncidents(TestNamespace ns) throws Exception {
+    Table table = createTable(ns, "deleteOrphans");
+    TestCase unlinked = createTestCase(table, "unlinked_" + ns.uniqueShortId());
+    TestCase pruned = createTestCase(table, "pruned_" + ns.uniqueShortId());
+    UUID unlinkedState = createIncident(unlinked);
+    UUID prunedState = createIncident(pruned);
+    orphanResolutionStatusRows(unlinkedState);
+    orphanResolutionStatusRows(prunedState);
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate(
+                        "DELETE FROM test_case_resolution_status_time_series WHERE stateId = :id")
+                    .bind("id", prunedState.toString())
+                    .execute());
+    assertEquals(1, countIncidentRows("test_case_incident_open_interval", prunedState));
+    SdkClients.adminClient()
+        .tables()
+        .delete(table.getId().toString(), Map.of("recursive", "true", "hardDelete", "true"));
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              assertIncidentRemoved(unlinkedState);
+              assertIncidentRemoved(prunedState);
+            });
+  }
+
+  @Test
+  void testSoftDeleteAndRestoreRetainIncidentIntervals(TestNamespace ns) throws Exception {
+    TestCase testCase =
+        createTestCase(createTable(ns, "restoreIntervals"), "restoreCase_" + ns.uniqueShortId());
+    UUID stateId = createIncident(testCase);
+    SdkClients.adminClient()
+        .testCases()
+        .delete(testCase.getId().toString(), Map.of("recursive", "true"));
+    assertEquals(1, countIncidentRows("test_case_incident", stateId));
+    assertEquals(1, countIncidentRows("test_case_incident_open_interval", stateId));
+    SdkClients.adminClient().testCases().restore(testCase.getId().toString());
+    assertEquals(1, countIncidentRows("test_case_incident_open_interval", stateId));
+    SdkClients.adminClient()
+        .testCases()
+        .delete(testCase.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> assertIncidentRemoved(stateId));
+  }
+
+  @Test
+  void deletionRespectsStableOwnerAfterTestMoves(TestNamespace ns) throws Exception {
+    Table original = createTable(ns, "beforeMove");
+    Table destination = createTable(ns, "afterMove");
+    String name = "movedCase_" + ns.uniqueShortId();
+    TestCase moved = createTestCase(original, name);
+    UUID stateId = createIncident(moved);
+    var patch = MAPPER.createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/entityLink")
+        .put("value", "<#E::table::" + destination.getFullyQualifiedName() + "::columns::id>");
+    SdkClients.adminClient().testCases().patch(moved.getId().toString(), patch);
+    TestCase replacement = createTestCase(original, name);
+    SdkClients.adminClient()
+        .testCases()
+        .delete(replacement.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    await()
+        .during(Duration.ofMillis(200))
+        .atMost(Duration.ofSeconds(30))
+        .until(
+            () ->
+                AsyncService.getInstance()
+                            .getOperationQueuedCount(
+                                AsyncService.DatabaseOperation.TEST_CASE_CLEANUP)
+                        == 0
+                    && AsyncService.getInstance()
+                            .getOperationActiveCount(
+                                AsyncService.DatabaseOperation.TEST_CASE_CLEANUP)
+                        == 0);
+    assertEquals(1, countIncidentRows("test_case_incident", stateId));
+    assertEquals(1, countIncidentRows("test_case_incident_open_interval", stateId));
+    SdkClients.adminClient()
+        .testCases()
+        .delete(moved.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> assertIncidentRemoved(stateId));
+  }
+
+  private void assertIncidentRemoved(UUID stateId) {
+    for (String table :
+        List.of(
+            "test_case_resolution_status_time_series",
+            "test_case_incident",
+            "test_case_incident_open_interval")) {
+      assertEquals(0, countIncidentRows(table, stateId), table);
+    }
+  }
+
+  private int countIncidentRows(String table, UUID stateId) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM " + table + " WHERE stateId = :id")
+                    .bind("id", stateId.toString())
+                    .mapTo(Integer.class)
+                    .one());
   }
 
   private JsonNode readData(String response) throws Exception {

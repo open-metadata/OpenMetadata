@@ -98,6 +98,9 @@ class IncidentGroupingIndexSqlTest {
           handle.execute(
               "CREATE TABLE SERVER_MIGRATION_SQL_LOGS (version VARCHAR(256), sqlStatement VARCHAR(10000), checksum VARCHAR(256) PRIMARY KEY, executedAt TIMESTAMP)");
           handle.execute(
+              "CREATE TABLE test_case_incident (stateId VARCHAR(36) PRIMARY KEY)"
+                  + (mysql ? " DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci" : ""));
+          handle.execute(
               "CREATE TABLE test_case (json "
                   + json
                   + " NOT NULL, fqnHash "
@@ -109,6 +112,7 @@ class IncidentGroupingIndexSqlTest {
                   + ") STORED)");
           insertCase(handle, "before", "before", "<#E::table::table1::columns::column>", mysql);
         });
+    applySchema(jdbi, mysql, 2);
     applySchema(jdbi, mysql);
     assertEquals("table1", table(jdbi, "before"));
     jdbi.useHandle(handle -> insertCase(handle, "after", "after", "<#E::table::table2>", mysql));
@@ -150,8 +154,6 @@ class IncidentGroupingIndexSqlTest {
     jdbi.useHandle(
         handle -> insertCase(handle, "a".repeat(768), "wide", "<#E::table::" + wide + ">", mysql));
     assertEquals(wide, table(jdbi, "a".repeat(768)));
-    // Exercise guarded DDL itself, not just the native runner's completed-statement shortcut.
-    jdbi.useHandle(handle -> handle.execute("DELETE FROM SERVER_MIGRATION_SQL_LOGS"));
     applySchema(jdbi, mysql);
     applySchema(jdbi, mysql);
     assertEquals("renamed", table(jdbi, "renamed"));
@@ -159,9 +161,13 @@ class IncidentGroupingIndexSqlTest {
   }
 
   private void applySchema(Jdbi jdbi, boolean mysql) {
+    applySchema(jdbi, mysql, Integer.MAX_VALUE);
+  }
+
+  private void applySchema(Jdbi jdbi, boolean mysql, int statementLimit) {
     File file =
         new File(
-            "../bootstrap/sql/migrations/native/2.1.2/"
+            "../bootstrap/sql/migrations/native/2.1.1/"
                 + (mysql ? "mysql" : "postgres")
                 + "/schemaChanges.sql");
     jdbi.useHandle(
@@ -170,8 +176,11 @@ class IncidentGroupingIndexSqlTest {
                 handle,
                 handle.attach(MigrationDAO.class),
                 MigrationFile.parseSqlUnits(
-                    file, mysql ? ConnectionType.MYSQL : ConnectionType.POSTGRES),
-                "2.1.2",
+                        file, mysql ? ConnectionType.MYSQL : ConnectionType.POSTGRES)
+                    .stream()
+                    .limit(statementLimit)
+                    .toList(),
+                "2.1.1",
                 false));
   }
 

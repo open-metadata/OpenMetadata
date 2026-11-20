@@ -1324,33 +1324,59 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   protected Runnable preparePostDeleteCleanup(List<TestCase> testCases) {
-    final List<String> ids =
-        testCases.stream().map(testCase -> testCase.getId().toString()).toList();
-    final List<UUID> childIds =
-        daoCollection
-            .relationshipDAO()
-            .findToBatchAllTypes(ids, List.of(Relationship.PARENT_OF.ordinal()), ALL)
-            .stream()
-            .filter(child -> Entity.TEST_CASE.equals(child.getFromEntity()))
-            .filter(child -> Entity.TEST_CASE_RESOLUTION_STATUS.equals(child.getToEntity()))
-            .map(child -> UUID.fromString(child.getToId()))
-            .distinct()
-            .toList();
     final List<String> testCaseFQNs =
         testCases.stream().map(TestCase::getFullyQualifiedName).filter(Objects::nonNull).toList();
+    final var statusDAO = daoCollection.testCaseResolutionStatusTimeSeriesDao();
+    final Set<UUID> childIds = new HashSet<>(resolutionStatusChildren(testCases));
+    final Set<String> incidentIds = new HashSet<>();
+    if (!testCaseFQNs.isEmpty()) {
+      childIds.addAll(EntityDAO.queryInChunks(testCaseFQNs, statusDAO::listStatusIdsForTestCases));
+      incidentIds.addAll(
+          EntityDAO.queryInChunks(testCaseFQNs, statusDAO::listIncidentIdsForTestCases));
+    }
+    if (!childIds.isEmpty()) {
+      incidentIds.addAll(
+          EntityDAO.queryInChunks(
+              childIds.stream().map(UUID::toString).toList(),
+              statusDAO::listIncidentIdsForStatusRecords));
+    }
+    // Capture identities before deletion: asynchronous cleanup must not touch a recreated FQN.
     return () -> {
-      scheduleResolutionStatusCleanup(childIds);
+      scheduleResolutionStatusCleanup(List.copyOf(childIds), List.copyOf(incidentIds));
       deleteAllTestCaseResults(testCaseFQNs);
     };
   }
 
-  private void scheduleResolutionStatusCleanup(List<UUID> childIds) {
-    if (!nullOrEmpty(childIds)) {
+  private List<UUID> resolutionStatusChildren(List<TestCase> testCases) {
+    final List<String> ids =
+        testCases.stream().map(testCase -> testCase.getId().toString()).toList();
+    return daoCollection
+        .relationshipDAO()
+        .findToBatchAllTypes(ids, List.of(Relationship.PARENT_OF.ordinal()), ALL)
+        .stream()
+        .filter(child -> Entity.TEST_CASE.equals(child.getFromEntity()))
+        .filter(child -> Entity.TEST_CASE_RESOLUTION_STATUS.equals(child.getToEntity()))
+        .map(child -> UUID.fromString(child.getToId()))
+        .distinct()
+        .toList();
+  }
+
+  private void scheduleResolutionStatusCleanup(List<UUID> childIds, List<String> incidentIds) {
+    if (!nullOrEmpty(childIds) || !nullOrEmpty(incidentIds)) {
       AsyncService.getInstance()
           .executeDatabaseTask(
               DatabaseOperation.TEST_CASE_CLEANUP,
-              "resolution-status:" + childIds.getFirst(),
-              () -> deleteResolutionStatusChildren(childIds));
+              "resolution-status:"
+                  + (childIds.isEmpty() ? incidentIds.getFirst() : childIds.getFirst()),
+              () -> {
+                deleteResolutionStatusChildren(childIds);
+                for (List<String> batch :
+                    Lists.partition(incidentIds, BULK_MATCH_WRITE_BATCH_SIZE)) {
+                  daoCollection
+                      .testCaseResolutionStatusTimeSeriesDao()
+                      .deleteIncidentsByStateIds(batch);
+                }
+              });
     }
   }
 

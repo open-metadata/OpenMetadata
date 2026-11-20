@@ -2249,6 +2249,81 @@ public interface TimeSeriesDAOs {
       deleteIncidents(entityFQNHash);
     }
 
+    // FQNs can be reused after a test moves. A surviving parent relationship takes precedence.
+    String INCIDENT_OWNED_BY_MOVED_TEST =
+        """
+        SELECT 1 FROM test_case_resolution_status_time_series owned
+        INNER JOIN entity_relationship parent ON parent.toId = owned.id
+          AND parent.relation = 9 AND parent.fromEntity = 'testCase'
+          AND parent.toEntity = 'testCaseResolutionStatus'
+        INNER JOIN test_case owner ON owner.id = parent.fromId
+        WHERE owned.stateId = candidate.stateId AND owner.fqnHash != candidate.entityFQNHash
+        """;
+
+    @SqlQuery(
+        "SELECT id FROM test_case_resolution_status_time_series candidate "
+            + "WHERE entityFQNHash IN (<fqns>) AND NOT EXISTS ("
+            + INCIDENT_OWNED_BY_MOVED_TEST
+            + ")")
+    List<UUID> listStatusIdsForTestCases(@BindListFQN("fqns") List<String> fqns);
+
+    @SqlQuery(
+        "SELECT stateId FROM test_case_incident candidate "
+            + "WHERE entityFQNHash IN (<fqns>) AND NOT EXISTS ("
+            + INCIDENT_OWNED_BY_MOVED_TEST
+            + ")")
+    List<String> listIncidentIdsForTestCases(@BindListFQN("fqns") List<String> fqns);
+
+    @SqlQuery(
+        "SELECT DISTINCT stateId FROM test_case_resolution_status_time_series WHERE id IN (<ids>) AND stateId IS NOT NULL")
+    List<String> listIncidentIdsForStatusRecords(@BindList("ids") List<String> ids);
+
+    @SqlUpdate("DELETE FROM test_case_incident WHERE stateId IN (<stateIds>)")
+    void deleteIncidentSummariesByStateIds(@BindList("stateIds") List<String> stateIds);
+
+    @SqlUpdate("DELETE FROM test_case_resolution_status_time_series WHERE stateId IN (<stateIds>)")
+    void deleteIncidentHistoryByStateIds(@BindList("stateIds") List<String> stateIds);
+
+    @Transaction
+    default void deleteIncidentsByStateIds(List<String> stateIds) {
+      deleteIncidentHistoryByStateIds(stateIds);
+      deleteIncidentSummariesByStateIds(stateIds);
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            """
+          UPDATE test_case_incident i
+          INNER JOIN (
+            SELECT id, timestamp, testCaseResolutionStatusType, assignee, json
+            FROM test_case_resolution_status_time_series WHERE stateId = :stateId
+            ORDER BY timestamp DESC, id DESC LIMIT 1
+          ) latest ON TRUE
+          SET i.testCaseResolutionStatusType = latest.testCaseResolutionStatusType,
+              i.assignee = latest.assignee, i.severity = JSON_UNQUOTE(JSON_EXTRACT(latest.json, '$.severity')),
+              i.updatedAt = latest.timestamp, i.latestRecordId = latest.id,
+              i.createdAt = (SELECT MIN(timestamp) FROM test_case_resolution_status_time_series WHERE stateId = :stateId)
+          WHERE i.stateId = :stateId
+          """,
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            """
+          UPDATE test_case_incident i
+          SET testCaseResolutionStatusType = latest.testCaseResolutionStatusType,
+              assignee = latest.assignee, severity = latest.json ->> 'severity',
+              updatedAt = latest.timestamp, latestRecordId = latest.id,
+              createdAt = (SELECT MIN(timestamp) FROM test_case_resolution_status_time_series WHERE stateId = :stateId)
+          FROM (
+            SELECT id, timestamp, testCaseResolutionStatusType, assignee, json
+            FROM test_case_resolution_status_time_series WHERE stateId = :stateId
+            ORDER BY timestamp DESC, id DESC LIMIT 1
+          ) latest
+          WHERE i.stateId = :stateId
+          """,
+        connectionType = POSTGRES)
+    void refreshIncidentSummary(@Bind("stateId") String stateId);
+
     @SqlQuery("SELECT stateId FROM test_case_resolution_status_time_series WHERE id = :id")
     String getStateId(@Bind("id") String id);
 
@@ -2266,6 +2341,7 @@ public interface TimeSeriesDAOs {
       deleteById(getTimeSeriesTableName(), id.toString());
       if (hasIncident) {
         rebuildOpenIntervals(List.of(stateId));
+        refreshIncidentSummary(stateId);
         deleteIncidentWithoutRecords(stateId);
       }
     }

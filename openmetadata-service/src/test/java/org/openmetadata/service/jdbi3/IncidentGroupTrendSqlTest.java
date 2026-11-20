@@ -14,16 +14,21 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.dockerjava.api.model.Ulimit;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.File;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
@@ -32,7 +37,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v211.IncidentOpenIntervalMigration;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -96,22 +104,31 @@ class IncidentGroupTrendSqlTest {
 
   private void runChecks(Jdbi jdbi, String dialect) throws Exception {
     String schema =
-        Files.readString(
-            Path.of("../bootstrap/sql/migrations/native/2.1.1/" + dialect + "/schemaChanges.sql"));
+        MigrationFile.parseSqlUnits(
+                new File(
+                    "../bootstrap/sql/migrations/native/2.1.1/" + dialect + "/schemaChanges.sql"),
+                "mysql".equals(dialect) ? ConnectionType.MYSQL : ConnectionType.POSTGRES)
+            .getFirst()
+            .statements()
+            .getFirst();
     jdbi.useHandle(
         handle -> {
           handle.execute(
-              "CREATE TABLE test_case (fqnHash VARCHAR(36), incidentTableFqn VARCHAR(36), deleted BOOLEAN)");
+              "CREATE TABLE test_case (fqnHash VARCHAR(36), incidentTableFqn VARCHAR(36), deleted BOOLEAN, id VARCHAR(36))");
           handle.execute(
               "CREATE TABLE test_case_incident (stateId VARCHAR(36) PRIMARY KEY, entityFQNHash VARCHAR(768), createdAt BIGINT, updatedAt BIGINT, latestRecordId VARCHAR(36), testCaseResolutionStatusType VARCHAR(36), assignee VARCHAR(256), severity VARCHAR(36))");
           handle.execute(
-              "CREATE TABLE test_case_resolution_status_time_series (stateId VARCHAR(36), id VARCHAR(36), timestamp BIGINT, testCaseResolutionStatusType VARCHAR(36), entityFQNHash VARCHAR(768))");
+              "CREATE TABLE test_case_resolution_status_time_series (stateId VARCHAR(36), id VARCHAR(36), timestamp BIGINT, testCaseResolutionStatusType VARCHAR(36), entityFQNHash VARCHAR(768), assignee VARCHAR(256), json "
+                  + ("mysql".equals(dialect) ? "JSON" : "JSONB")
+                  + ")");
+          handle.execute(
+              "CREATE TABLE IF NOT EXISTS entity_relationship (fromId VARCHAR(36), toId VARCHAR(36), fromEntity VARCHAR(36), toEntity VARCHAR(36), relation INTEGER)");
           handle.execute(schema);
           handle.execute(schema);
           handle.execute(
               "CREATE INDEX incident_history_state_timestamp ON test_case_resolution_status_time_series (stateId, timestamp)");
           handle.execute(
-              "INSERT INTO test_case VALUES ('test', 'table', FALSE), ('other', 'other_table', FALSE), ('deleted', 'table', TRUE)");
+              "INSERT INTO test_case (fqnHash,incidentTableFqn,deleted) VALUES ('test', 'table', FALSE), ('other', 'other_table', FALSE), ('deleted', 'table', TRUE)");
           handle.execute(
               "INSERT INTO test_case_incident (stateId, entityFQNHash, createdAt) VALUES ('a','test',50),('b','test',110),('c','test',120),('d','test',700),('e','other',50),('f','deleted',50),"
                   + "('g','test',10),('h','test',10),('j','test',10),('k','test',10)");
@@ -134,6 +151,9 @@ class IncidentGroupTrendSqlTest {
     verifyWritesAndDeletion(jdbi);
     verifyReorderedWrites(jdbi);
     verifyWritesBeforeIntervalMigration(jdbi, schema);
+    verifyCapturedDeletion(jdbi);
+    verifyMovedOwner(jdbi);
+    verifyScale(jdbi);
     var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
     var window = new IncidentGroupTrend(100, 900);
     var rows =
@@ -388,7 +408,178 @@ class IncidentGroupTrendSqlTest {
     dao.upsertIncident("delete", "test", "Resolved", null, null, 20, closing.toString());
     dao.deleteById(closing);
     assertEquals(10L, dao.findOpenInterval("delete"));
+    assertEquals("New", summaryField(jdbi, "delete", "testCaseResolutionStatusType"));
+    assertEquals(opening.toString(), summaryField(jdbi, "delete", "latestRecordId"));
+    assertEquals("10", summaryField(jdbi, "delete", "updatedAt"));
+    UUID assigned = UUID.randomUUID();
+    jdbi.useHandle(
+        handle ->
+            handle.execute(
+                "INSERT INTO test_case_resolution_status_time_series "
+                    + "(stateId,id,timestamp,testCaseResolutionStatusType,assignee,json) "
+                    + "VALUES ('delete',?,15,'Assigned','alice','{\"severity\":\"Tier1\"}')",
+                assigned.toString()));
+    dao.upsertIncident("delete", "test", "Assigned", "alice", "Tier1", 15, assigned.toString());
     dao.deleteById(opening);
+    assertEquals(15L, dao.findOpenInterval("delete"));
+    assertEquals("15", summaryField(jdbi, "delete", "createdAt"));
+    assertEquals("Assigned", summaryField(jdbi, "delete", "testCaseResolutionStatusType"));
+    assertEquals("alice", summaryField(jdbi, "delete", "assignee"));
+    assertEquals("Tier1", summaryField(jdbi, "delete", "severity"));
+    dao.deleteById(assigned);
     assertEquals(0, intervalCount(jdbi, "delete"));
+  }
+
+  private void verifyCapturedDeletion(Jdbi jdbi) {
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    dao.upsertIncident("old", "recreated_test", "New", null, null, 10, "old_record");
+    List<String> captured = dao.listIncidentIdsForTestCases(List.of("recreated_test"));
+    assertEquals(List.of("old"), captured);
+    dao.upsertIncident("replacement", "recreated_test", "New", null, null, 20, "new_record");
+    dao.deleteIncidentsByStateIds(captured);
+    assertEquals(0, intervalCount(jdbi, "old"));
+    assertEquals(1, intervalCount(jdbi, "replacement"));
+    assertEquals(
+        List.of("replacement"), dao.listIncidentIdsForTestCases(List.of("recreated_test")));
+    dao.deleteIncidentsByStateIds(List.of("replacement"));
+  }
+
+  private void verifyMovedOwner(Jdbi jdbi) {
+    var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    UUID record = UUID.randomUUID();
+    dao.upsertIncident("moved", "before_move", "New", null, null, 10, record.toString());
+    jdbi.useHandle(
+        handle -> {
+          handle.execute(
+              "INSERT INTO test_case (id,fqnHash,deleted) VALUES ('moved_owner',?,FALSE)",
+              FullyQualifiedName.buildHash("after_move"));
+          handle.execute(
+              "INSERT INTO test_case_resolution_status_time_series "
+                  + "(stateId,id,entityFQNHash,timestamp,testCaseResolutionStatusType) VALUES ('moved',?,?,10,'New')",
+              record.toString(),
+              FullyQualifiedName.buildHash("before_move"));
+          handle.execute(
+              "INSERT INTO entity_relationship VALUES ('moved_owner',?,'testCase','testCaseResolutionStatus',9)",
+              record.toString());
+        });
+    assertTrue(dao.listStatusIdsForTestCases(List.of("before_move")).isEmpty());
+    assertTrue(dao.listIncidentIdsForTestCases(List.of("before_move")).isEmpty());
+    assertEquals(List.of("moved"), dao.listIncidentIdsForStatusRecords(List.of(record.toString())));
+    jdbi.useHandle(
+        handle -> handle.execute("DELETE FROM entity_relationship WHERE fromId = 'moved_owner'"));
+    assertEquals(List.of(record), dao.listStatusIdsForTestCases(List.of("before_move")));
+    assertEquals(List.of("moved"), dao.listIncidentIdsForTestCases(List.of("before_move")));
+    dao.deleteIncidentsByStateIds(List.of("moved"));
+    assertEquals(0, dao.countTestCaseResolutionStatusesForStateId("moved"));
+    assertEquals(0, intervalCount(jdbi, "moved"));
+    jdbi.useHandle(handle -> handle.execute("DELETE FROM test_case WHERE id = 'moved_owner'"));
+  }
+
+  private void verifyScale(Jdbi jdbi) throws Exception {
+    jdbi.useTransaction(
+        handle -> {
+          var tables =
+              handle.prepareBatch(
+                  "INSERT INTO test_case (fqnHash,incidentTableFqn,deleted) VALUES (?, ?, FALSE)");
+          for (int table = 0; table < 200; table++) {
+            tables.add("scale_test_" + table, "scale_table_" + table);
+          }
+          tables.execute();
+          var incidents =
+              handle.prepareBatch(
+                  "INSERT INTO test_case_incident "
+                      + "(stateId,entityFQNHash,createdAt) VALUES (?,?,100)");
+          var history =
+              handle.prepareBatch(
+                  "INSERT INTO test_case_resolution_status_time_series "
+                      + "(stateId,id,timestamp,testCaseResolutionStatusType) VALUES (?,?,?,?)");
+          for (int incident = 0; incident < 10000; incident++) {
+            String state = "scale_" + incident;
+            incidents.add(state, "scale_test_" + (incident / 50));
+            List<String> statuses =
+                List.of("New", "Ack", "Assigned", incident % 2 == 0 ? "Resolved" : "Ack");
+            for (int event = 0; event < statuses.size(); event++) {
+              history.add(state, state + "_" + event, (event + 1) * 100L, statuses.get(event));
+            }
+          }
+          incidents.execute();
+          history.execute();
+        });
+    jdbi.useHandle(IncidentOpenIntervalMigration::backfill);
+    assertEquals(10011, intervalCount(jdbi, null));
+    for (int concurrency : List.of(1, 5)) {
+      measureScaleQueries(jdbi, concurrency, false);
+      measureScaleQueries(jdbi, concurrency, true);
+    }
+    jdbi.useHandle(
+        handle -> {
+          handle.execute(
+              "DELETE FROM test_case_resolution_status_time_series WHERE stateId LIKE 'scale_%'");
+          handle.execute("DELETE FROM test_case_incident WHERE stateId LIKE 'scale_%'");
+          handle.execute("DELETE FROM test_case WHERE fqnHash LIKE 'scale_test_%'");
+        });
+    assertEquals(11, intervalCount(jdbi, null));
+  }
+
+  private void measureScaleQueries(Jdbi jdbi, int concurrency, boolean largeGroup)
+      throws Exception {
+    final List<String> keys =
+        largeGroup
+            ? List.of("scale_definition")
+            : IntStream.range(0, 25).mapToObj(i -> "scale_table_" + i).toList();
+    final String groupKey = largeGroup ? "'scale_definition'" : "tc.incidentTableFqn";
+    final List<Integer> expected =
+        largeGroup
+            ? List.of(0, 10000, 10000, 10000, 5000, 5000, 5000, 5000, 5000)
+            : List.of(0, 50, 50, 50, 25, 25, 25, 25, 25);
+    final var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+    Callable<Long> request =
+        () -> {
+          long started = System.nanoTime();
+          var rows =
+              dao.listIncidentGroupTrendCounts(
+                  groupKey,
+                  "",
+                  "WHERE i.stateId LIKE 'scale_%'",
+                  IncidentGroupTrend.samplesSql(),
+                  keys,
+                  new IncidentGroupTrend(0, 800).bindings());
+          long elapsed = System.nanoTime() - started;
+          var grouped =
+              rows.stream()
+                  .collect(Collectors.groupingBy(TimeSeriesDAOs.IncidentGroupTrendCount::groupKey));
+          assertEquals(Set.copyOf(keys), grouped.keySet());
+          grouped
+              .values()
+              .forEach(values -> assertEquals(expected, IncidentGroupTrend.counts(values)));
+          return elapsed;
+        };
+    request.call();
+    List<Long> timings = new ArrayList<>();
+    try (var executor = Executors.newFixedThreadPool(concurrency)) {
+      for (var result : executor.invokeAll(Collections.nCopies(30, request))) {
+        timings.add(result.get());
+      }
+    }
+    timings.sort(Long::compareTo);
+    double p95Millis = timings.get((int) Math.ceil(timings.size() * 0.95) - 1) / 1_000_000.0;
+    long budgetMillis = Long.getLong("incident.trend.scale.p95Millis", 5000L);
+    System.out.printf(
+        "Incident trend scale: largeGroup=%s concurrency=%d requests=%d p95=%.1fms budget=%dms%n",
+        largeGroup, concurrency, timings.size(), p95Millis, budgetMillis);
+    assertTrue(
+        p95Millis < budgetMillis,
+        "Trend query p95 exceeded coarse scale regression budget: " + p95Millis);
+  }
+
+  private String summaryField(Jdbi jdbi, String stateId, String field) {
+    return jdbi.withHandle(
+        handle ->
+            handle
+                .createQuery(
+                    "SELECT " + field + " FROM test_case_incident WHERE stateId = :stateId")
+                .bind("stateId", stateId)
+                .mapTo(String.class)
+                .one());
   }
 }

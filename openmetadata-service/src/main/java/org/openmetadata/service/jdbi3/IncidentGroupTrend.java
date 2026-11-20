@@ -28,6 +28,7 @@ public record IncidentGroupTrend(long start, long end) {
     return result;
   }
 
+  /** Builds the nine-row time axis shared by every group, with timestamps bound by the caller. */
   public static String samplesSql() {
     return IntStream.rangeClosed(0, INTERVALS)
         .mapToObj(

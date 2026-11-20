@@ -8,3 +8,6 @@ CREATE TABLE IF NOT EXISTS test_case_incident_open_interval (
         REFERENCES test_case_incident (stateId) ON DELETE CASCADE,
     CONSTRAINT chk_tcioi_bounds CHECK (closedAt IS NULL OR closedAt > openedAt)
 );
+
+ALTER TABLE test_case ADD COLUMN IF NOT EXISTS incidentTableFqn VARCHAR(512)
+    GENERATED ALWAYS AS (TRIM(TRAILING '>' FROM SPLIT_PART(json->>'entityLink', '::', 3))) STORED;
