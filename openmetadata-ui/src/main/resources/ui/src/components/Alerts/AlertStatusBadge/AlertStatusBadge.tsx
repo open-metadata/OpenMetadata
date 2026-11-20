@@ -10,9 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { BadgeWithDot } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
-import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 
 interface AlertStatusBadgeProps {
   enabled?: boolean;
@@ -24,11 +23,14 @@ const AlertStatusBadge = ({ enabled }: AlertStatusBadgeProps) => {
   const isDisabled = enabled === false;
 
   return (
-    <StatusBadge
-      dataTestId="alert-status-badge"
-      label={isDisabled ? t('label.disabled') : t('label.active')}
-      status={isDisabled ? StatusType.Stopped : StatusType.Success}
-    />
+    <span className="tw:shrink-0" data-testid="alert-status-badge">
+      <BadgeWithDot
+        color={isDisabled ? 'gray' : 'success'}
+        size="sm"
+        type="color">
+        {isDisabled ? t('label.disabled') : t('label.active')}
+      </BadgeWithDot>
+    </span>
   );
 };
 

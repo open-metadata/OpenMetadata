@@ -10,30 +10,58 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { BadgeWithDot } from '@openmetadata/ui-core-components';
 import { render, screen } from '@testing-library/react';
 import AlertStatusBadge from './AlertStatusBadge';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  BadgeWithDot: jest.fn(
+    ({ children, color }: { children: React.ReactNode; color: string }) => (
+      <span data-color={color} data-testid="badge-with-dot">
+        {children}
+      </span>
+    )
+  ),
+}));
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
 describe('AlertStatusBadge', () => {
-  it('shows Disabled for an alert that is switched off', () => {
+  it('shows a gray Disabled badge for an alert that is switched off', () => {
     render(<AlertStatusBadge enabled={false} />);
 
     expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
       'label.disabled'
     );
+    expect(screen.getByTestId('badge-with-dot')).toHaveAttribute(
+      'data-color',
+      'gray'
+    );
   });
 
   it.each([true, undefined])(
-    'shows Active for an alert whose enabled flag is %s',
+    'shows a green Active badge for an alert whose enabled flag is %s',
     (enabled) => {
       render(<AlertStatusBadge enabled={enabled} />);
 
       expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
         'label.active'
       );
+      expect(screen.getByTestId('badge-with-dot')).toHaveAttribute(
+        'data-color',
+        'success'
+      );
     }
   );
+
+  it('renders the small color badge from the core library', () => {
+    render(<AlertStatusBadge enabled />);
+
+    expect(BadgeWithDot).toHaveBeenCalledWith(
+      expect.objectContaining({ size: 'sm', type: 'color' }),
+      expect.anything()
+    );
+  });
 });
