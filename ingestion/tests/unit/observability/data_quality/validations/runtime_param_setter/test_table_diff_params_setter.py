@@ -187,7 +187,6 @@ def test_setter_gets_default_key_columns(
     )
 
 
-
 def test_not_null_unique_column_is_a_default_table_diff_key(
     setter: TableDiffParamsSetter, table1: Table
 ) -> None:
