@@ -25,6 +25,7 @@ import jakarta.json.JsonPatch;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
 import jakarta.validation.ConstraintViolationException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -402,8 +403,10 @@ public class SystemRepository implements DeploymentSettingPreparer {
             .withConfigValue(configuration.getAuthorizerConfiguration());
     assertDeploymentFieldsUnchanged(authentication);
     assertDeploymentFieldsUnchanged(authorizer);
-    String authenticationJson = prepareSettingForUpdate(authentication);
-    String authorizerJson = prepareSettingForUpdate(authorizer);
+    String authenticationJson =
+        prepareSettingForUpdate(authentication, storedValueOf(authentication.getConfigType()));
+    String authorizerJson =
+        prepareSettingForUpdate(authorizer, storedValueOf(authorizer.getConfigType()));
     dao.insertSettings(SettingsType.AUTHENTICATION_CONFIGURATION.value(), authenticationJson);
     dao.insertSettings(SettingsType.AUTHORIZER_CONFIGURATION.value(), authorizerJson);
     settingUpdated(SettingsType.AUTHENTICATION_CONFIGURATION);
@@ -413,7 +416,9 @@ public class SystemRepository implements DeploymentSettingPreparer {
 
   private SecuritySettingsUpdate securityUpdate(Settings setting, String expectedJson) {
     return new SecuritySettingsUpdate(
-        setting.getConfigType().value(), expectedJson, prepareSettingForUpdate(setting));
+        setting.getConfigType().value(),
+        expectedJson,
+        prepareSettingForUpdate(setting, valueOf(setting.getConfigType(), expectedJson)));
   }
 
   /**
@@ -528,8 +533,10 @@ public class SystemRepository implements DeploymentSettingPreparer {
     preserveEmailSettings(setting, oldValue);
 
     try {
-      updateSetting(setting);
-    } catch (BadRequestException | SettingsManagedByEnvironmentException ex) {
+      updateSetting(setting, storedValueOf(oldValue));
+    } catch (BadRequestException
+        | SettingsManagedByEnvironmentException
+        | WebApplicationException ex) {
       // Callers such as administration jobs only notice a rejection that is thrown.
       throw ex;
     } catch (Exception ex) {
@@ -549,7 +556,9 @@ public class SystemRepository implements DeploymentSettingPreparer {
     OpenMetadataBaseUrlValidator.validate(setting);
     try {
       updateSetting(setting);
-    } catch (BadRequestException | SettingsManagedByEnvironmentException ex) {
+    } catch (BadRequestException
+        | SettingsManagedByEnvironmentException
+        | WebApplicationException ex) {
       // Callers such as administration jobs only notice a rejection that is thrown.
       throw ex;
     } catch (Exception ex) {
@@ -725,12 +734,16 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   public void updateSetting(Settings setting) {
+    updateSetting(setting, storedValueOf(setting.getConfigType()));
+  }
+
+  private void updateSetting(Settings setting, JsonNode stored) {
     assertDeploymentFieldsUnchanged(setting);
     try {
-      String updatedJson = prepareSettingForUpdate(setting);
+      String updatedJson = prepareSettingForUpdate(setting, stored);
       dao.insertSettings(setting.getConfigType().toString(), updatedJson);
       settingUpdated(setting.getConfigType());
-    } catch (BadRequestException ex) {
+    } catch (BadRequestException | WebApplicationException ex) {
       throw ex;
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
@@ -744,7 +757,8 @@ public class SystemRepository implements DeploymentSettingPreparer {
   private void updateSettingIfCurrent(Settings setting, String expectedJson) {
     assertDeploymentFieldsUnchanged(setting);
     try {
-      String updatedJson = prepareSettingForUpdate(setting);
+      String updatedJson =
+          prepareSettingForUpdate(setting, valueOf(setting.getConfigType(), expectedJson));
       int updated =
           dao.updateSettingsIfCurrent(
               setting.getConfigType().toString(), expectedJson, updatedJson);
@@ -754,7 +768,8 @@ public class SystemRepository implements DeploymentSettingPreparer {
                 + " changed since it was read; read it again and retry");
       }
       settingUpdated(setting.getConfigType());
-    } catch (BadRequestException | PreconditionFailedException ex) {
+    } catch (BadRequestException | WebApplicationException ex) {
+      // A refused value, such as an unusable IdP certificate, or a 412 from a concurrent write.
       throw ex;
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
@@ -778,7 +793,14 @@ public class SystemRepository implements DeploymentSettingPreparer {
     updateSettingIfCurrent(setting, expectedJson);
   }
 
-  private String prepareSettingForUpdate(Settings setting) {
+  /**
+   * Every write of a setting's value passes here before it reaches the database, whichever way it
+   * came in: an API save, an administration command, a seed or a reconciled deployment value. The
+   * checks of a setting type that compare with what is stored get {@code stored}, the value this
+   * write replaces with its secrets decrypted, or null when there is none.
+   * ADR:2026-11-20-the-stored-saml-idp-certificate-is-standard-pem
+   */
+  private String prepareSettingForUpdate(Settings setting, JsonNode stored) {
     if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
       SmtpSettings emailConfig =
           JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
@@ -823,6 +845,11 @@ public class SystemRepository implements DeploymentSettingPreparer {
       AuthenticationConfiguration authConfig =
           JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
       rejectInvalidTokenValidity(authConfig);
+      SamlIdpCertificateGate.requireUsable(
+          authConfig,
+          stored == null
+              ? null
+              : JsonUtils.convertValue(stored, AuthenticationConfiguration.class));
       setting.setConfigValue(authConfig);
     } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
       AuthorizerConfiguration authorizerConfig =
@@ -831,6 +858,25 @@ public class SystemRepository implements DeploymentSettingPreparer {
       setting.setConfigValue(authorizerConfig);
     }
     return storageJsonOf(setting);
+  }
+
+  /** The stored value of a setting, with its secrets decrypted; null when it is not stored. */
+  private JsonNode storedValueOf(SettingsType type) {
+    return valueOf(type, dao.getConfigJsonWithKey(type.value()));
+  }
+
+  private static JsonNode storedValueOf(Settings stored) {
+    return stored == null || stored.getConfigValue() == null
+        ? null
+        : decryptedValue(stored.getConfigType(), JsonUtils.valueToTree(stored.getConfigValue()));
+  }
+
+  private static JsonNode valueOf(SettingsType type, String storedJson) {
+    return storedJson == null ? null : decryptedValue(type, JsonUtils.readTree(storedJson));
+  }
+
+  private static JsonNode decryptedValue(SettingsType type, JsonNode value) {
+    return value.isObject() ? SettingsSecrets.decrypted(type, value) : value;
   }
 
   /** Authentication secrets are stored Fernet-encrypted; the caller keeps the clear values. */
@@ -869,23 +915,14 @@ public class SystemRepository implements DeploymentSettingPreparer {
     OpenMetadataBaseUrlValidator.validate(setting);
     if (setting.getConfigValue() instanceof AuthenticationConfiguration authConfig) {
       ActiveProviderValidator.validate(authConfig, authConfig);
-      SamlIdpCertificateGate.requireUsable(
-          authConfig, JsonUtils.convertValue(stored, AuthenticationConfiguration.class));
     }
-    return prepareSettingForUpdate(setting);
+    return prepareSettingForUpdate(setting, stored);
   }
 
-  /**
-   * Applies the checks a first start always ran on a seeded value, and the IdP certificate check of
-   * a save, and returns the JSON to store.
-   */
+  /** Applies the checks a first start always ran on a seeded value; returns the JSON to store. */
   @Override
   public String prepareSeed(SettingsType type, JsonNode value) {
-    Settings setting = settingsOf(type, value);
-    if (setting.getConfigValue() instanceof AuthenticationConfiguration authConfig) {
-      SamlIdpCertificateGate.requireUsable(authConfig, null);
-    }
-    return prepareSettingForUpdate(setting);
+    return prepareSettingForUpdate(settingsOf(type, value), null);
   }
 
   private static Settings settingsOf(SettingsType type, JsonNode value) {
