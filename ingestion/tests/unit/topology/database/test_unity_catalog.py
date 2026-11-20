@@ -638,14 +638,16 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
         # Verify that the get method was called for the table with constraints
         mock_dbx_get_table.assert_called_once()
 
-    @patch("databricks.sdk.service.catalog.CatalogsAPI.list")
-    def test_get_database_names_raw(self, mock_list):
-        mock_list.return_value = MOCK_CATALOG_INFO
+    def test_get_database_names_raw(self):
+        self.unitycatalog_source.client.api_client.do.return_value = {
+            "catalogs": [{"name": entry.name} for entry in MOCK_CATALOG_INFO]
+        }
         assert ["demo", "main", "postgres_catalog", "system"] == list(self.unitycatalog_source.get_database_names_raw())  # noqa: SIM300
 
-    @patch("databricks.sdk.service.catalog.SchemasAPI.list")
-    def test_database_schema_names(self, mock_schema_list):
-        mock_schema_list.return_value = MOCK_SCHEMA_INFO
+    def test_database_schema_names(self):
+        self.unitycatalog_source.client.api_client.do.return_value = {
+            "schemas": [{"catalog_name": entry.catalog_name, "name": entry.name} for entry in MOCK_SCHEMA_INFO]
+        }
         assert EXPECTED_DATABASE_SCHEMA_NAMES == list(self.unitycatalog_source.get_database_schema_names())  # noqa: SIM300
 
     def test_yield_table(self):
