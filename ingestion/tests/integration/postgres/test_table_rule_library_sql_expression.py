@@ -157,7 +157,7 @@ class TableRuleLibraryTestParameter:
             ),
             expected_status=TestCaseStatus.Failed,
             expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
-            expected_inspection_query=SqlQuery(root="SELECT * FROM dvdrental.public.customer WHERE customer_id > '0'"),
+            expected_inspection_query=SqlQuery(root="SELECT * FROM public.customer WHERE customer_id > '0'"),
         ),
         TableRuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
@@ -185,7 +185,7 @@ class TableRuleLibraryTestParameter:
             ),
             expected_status=TestCaseStatus.Success,
             expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
-            expected_inspection_query=SqlQuery(root="SELECT * FROM dvdrental.public.customer WHERE customer_id > '0'"),
+            expected_inspection_query=SqlQuery(root="SELECT * FROM public.customer WHERE customer_id > '0'"),
         ),
         TableRuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
@@ -201,7 +201,7 @@ class TableRuleLibraryTestParameter:
             ),
             expected_status=TestCaseStatus.Failed,
             expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
-            expected_inspection_query=SqlQuery(root="SELECT * FROM dvdrental.public.customer WHERE customer_id > '0'"),
+            expected_inspection_query=SqlQuery(root="SELECT * FROM public.customer WHERE customer_id > '0'"),
         ),
         TableRuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
@@ -217,7 +217,7 @@ class TableRuleLibraryTestParameter:
             ),
             expected_status=TestCaseStatus.Success,
             expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
-            expected_inspection_query=SqlQuery(root="SELECT * FROM dvdrental.public.customer WHERE customer_id > '0'"),
+            expected_inspection_query=SqlQuery(root="SELECT * FROM public.customer WHERE customer_id > '0'"),
         ),
         TableRuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.payment",
@@ -230,7 +230,7 @@ class TableRuleLibraryTestParameter:
             expected_status=TestCaseStatus.Failed,
             # payment holds numeric amounts and timestamps, which the sample must serialize
             expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
-            expected_inspection_query=SqlQuery(root="SELECT * FROM dvdrental.public.payment WHERE customer_id > '0'"),
+            expected_inspection_query=SqlQuery(root="SELECT * FROM public.payment WHERE customer_id > '0'"),
         ),
     ],
     ids=lambda x: x.test_case_definition.name,
@@ -345,5 +345,5 @@ def test_aggregate_rule_output_is_not_stored_as_a_sample(
     assert test_case.testCaseResult.testResultValue[0].value == "2"
     assert metadata.get_failed_rows_sample(test_case) is None
     assert test_case.inspectionQuery == SqlQuery(
-        root="SELECT store_id, COUNT(*) AS customers FROM dvdrental.public.customer GROUP BY store_id"
+        root="SELECT store_id, COUNT(*) AS customers FROM public.customer GROUP BY store_id"
     )

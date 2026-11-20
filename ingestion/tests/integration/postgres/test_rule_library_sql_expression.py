@@ -160,9 +160,7 @@ class RuleLibraryTestParameter:
             ),
             expected_status=TestCaseStatus.Failed,
             expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
-            expected_inspection_query=SqlQuery(
-                root="SELECT customer_id FROM dvdrental.public.customer WHERE customer_id > '0'"
-            ),
+            expected_inspection_query=SqlQuery(root="SELECT customer_id FROM public.customer WHERE customer_id > '0'"),
         ),
         RuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
@@ -192,9 +190,7 @@ class RuleLibraryTestParameter:
             ),
             expected_status=TestCaseStatus.Success,
             expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
-            expected_inspection_query=SqlQuery(
-                root="SELECT customer_id FROM dvdrental.public.customer WHERE customer_id > '0'"
-            ),
+            expected_inspection_query=SqlQuery(root="SELECT customer_id FROM public.customer WHERE customer_id > '0'"),
         ),
         RuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
@@ -211,9 +207,7 @@ class RuleLibraryTestParameter:
             ),
             expected_status=TestCaseStatus.Failed,
             expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
-            expected_inspection_query=SqlQuery(
-                root="SELECT customer_id FROM dvdrental.public.customer WHERE customer_id > '0'"
-            ),
+            expected_inspection_query=SqlQuery(root="SELECT customer_id FROM public.customer WHERE customer_id > '0'"),
         ),
         RuleLibraryTestParameter(
             entity_fqn="{database_service_fqn}.dvdrental.public.customer",
@@ -230,9 +224,7 @@ class RuleLibraryTestParameter:
             ),
             expected_status=TestCaseStatus.Success,
             expected_sample_rows=FAILED_ROW_SAMPLE_SIZE,
-            expected_inspection_query=SqlQuery(
-                root="SELECT customer_id FROM dvdrental.public.customer WHERE customer_id > '0'"
-            ),
+            expected_inspection_query=SqlQuery(root="SELECT customer_id FROM public.customer WHERE customer_id > '0'"),
         ),
     ],
     ids=lambda x: x.test_case_definition.name,
