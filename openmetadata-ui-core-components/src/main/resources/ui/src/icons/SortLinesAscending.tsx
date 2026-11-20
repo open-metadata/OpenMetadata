@@ -32,7 +32,11 @@ export const SortLinesAscending: FC<Props> = ({
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M2 16h16M2 10h12M2 4h8" stroke="currentColor" strokeWidth={1.3} />
+    <path
+      d="M9.348 13.5h8.297m-8.297-3.32h5.808M9.348 6.863h3.319M4.8 4.414v11.173m2.453-8.722s-1.805-2.45-2.45-2.45c-.647-.001-2.451 2.45-2.451 2.45"
+      stroke="currentColor"
+      strokeWidth={1.3}
+    />
   </svg>
 );
 SortLinesAscending.displayName = 'SortLinesAscending';
