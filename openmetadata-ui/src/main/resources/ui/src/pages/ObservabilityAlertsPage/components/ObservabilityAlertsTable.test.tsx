@@ -159,13 +159,15 @@ jest.mock('../../../components/common/NextPrevious/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div data-testid="next-previous" />)
 );
 
-// The core library is mocked without Badge here, so the badge stands in with its own rule.
 jest.mock(
-  '../../../components/Alerts/AlertDisabledBadge/AlertDisabledBadge',
+  '../../../components/Alerts/AlertStatusBadge/AlertStatusBadge',
   () => ({
     __esModule: true,
-    default: ({ enabled }: { enabled?: boolean }) =>
-      enabled === false ? <span data-testid="alert-disabled-badge" /> : null,
+    default: ({ enabled }: { enabled?: boolean }) => (
+      <span data-testid="alert-status-badge">
+        {enabled === false ? 'label.disabled' : 'label.active'}
+      </span>
+    ),
   })
 );
 
@@ -232,18 +234,20 @@ describe('ObservabilityAlertsTable component', () => {
     expect(onViewAlert).toHaveBeenCalledWith(mockAlerts[0]);
   });
 
-  it('marks a disabled alert as disabled next to its name', () => {
+  it('shows a Disabled status for an alert that is switched off', () => {
     renderTable({ alerts: [{ ...mockAlerts[0], enabled: false }] });
 
-    expect(screen.getByTestId('alert-disabled-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
+      'label.disabled'
+    );
   });
 
-  it('shows no disabled badge for an enabled alert', () => {
+  it('shows an Active status for an enabled alert', () => {
     renderTable({ alerts: [{ ...mockAlerts[0], enabled: true }] });
 
-    expect(
-      screen.queryByTestId('alert-disabled-badge')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
+      'label.active'
+    );
   });
 
   it('should render the table with alert rows when data is present', () => {

@@ -66,7 +66,6 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import AlertDisabledBadge from '../../../../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import AlertPendingEvents from '../../../../../Alerts/AlertPendingEvents/AlertPendingEvents';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
@@ -528,7 +527,6 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
           item it would otherwise collapse to fit a tall tab panel instead of the panel scrolling. */}
       <Card className="tw:mb-2 tw:shrink-0" size="sm" variant="muted">
         <Card.Content className="tw:flex tw:flex-row tw:items-center tw:flex-wrap tw:gap-6">
-          <AlertDisabledBadge enabled={alert?.enabled} />
           <Box align="center" direction="row" gap={2}>
             <Typography className="tw:text-tertiary tw:shrink-0" size="text-sm">
               {`${t('label.owner-plural')}:`}

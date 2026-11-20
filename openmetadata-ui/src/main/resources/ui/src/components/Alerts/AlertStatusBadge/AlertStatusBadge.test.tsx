@@ -11,29 +11,29 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import AlertDisabledBadge from './AlertDisabledBadge';
+import AlertStatusBadge from './AlertStatusBadge';
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-describe('AlertDisabledBadge', () => {
-  it('says a disabled alert is disabled', () => {
-    render(<AlertDisabledBadge enabled={false} />);
+describe('AlertStatusBadge', () => {
+  it('shows Disabled for an alert that is switched off', () => {
+    render(<AlertStatusBadge enabled={false} />);
 
-    expect(screen.getByTestId('alert-disabled-badge')).toHaveTextContent(
+    expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
       'label.disabled'
     );
   });
 
   it.each([true, undefined])(
-    'shows nothing for an alert whose enabled flag is %s',
+    'shows Active for an alert whose enabled flag is %s',
     (enabled) => {
-      render(<AlertDisabledBadge enabled={enabled} />);
+      render(<AlertStatusBadge enabled={enabled} />);
 
-      expect(
-        screen.queryByTestId('alert-disabled-badge')
-      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
+        'label.active'
+      );
     }
   );
 });

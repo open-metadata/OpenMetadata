@@ -4387,6 +4387,7 @@
     "airflow-guide-message": "{{brandName}} verwendet Airflow, um Ingestion Connectors auszuführen. Wir haben verwaltete APIs entwickelt, um Ingestion Connectors bereitzustellen. Verwenden Sie bitte die {{brandName}} Airflow-Instanz oder beziehen Sie sich auf die unten stehende Anleitung, um die verwalteten APIs in Ihrer Airflow-Installation zu installieren.",
     "airflow-host-ip-address": "{{brandName}} wird sich von der IP <0>{{hostIp}}</0> mit Ihrer Ressource verbinden. Stellen Sie sicher, dass eingehender Datenverkehr in Ihren Netzwerksicherheitseinstellungen zugelassen ist.",
     "alert-choose-destination-description": "Leiten Sie sie an Slack, Teams, E-Mail oder einen beliebigen Webhook weiter.",
+    "alert-disabled-form-notice": "Diese Warnung ist deaktiviert. Sie sendet nichts, und Ereignisse, die währenddessen eintreten, werden auch später nicht gesendet.",
     "alert-not-found-description": "Diese Warnung wurde nicht gefunden. Möglicherweise wurde sie gelöscht oder umbenannt.",
     "alert-pick-a-trigger-description": "Wählen Sie, was überwacht werden soll — Testergebnisse, Pipeline-Status oder Änderungen an bestimmten Assets.",
     "alert-recent-events-description": "Liste der zuletzt ausgelösten Alarmereignisse für den Alarm {{alertName}}.",

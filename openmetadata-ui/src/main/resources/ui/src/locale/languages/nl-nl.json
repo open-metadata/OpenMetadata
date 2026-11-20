@@ -4387,6 +4387,7 @@
     "airflow-guide-message": "{{brandName}} gebruikt Airflow om ingestieconnecties uit te voeren. We hebben beheerde API's ontwikkeld om ingestieconnectoren te deployen. Gebruik alstublieft de {{brandName}} Airflow-instantie of raadpleeg de onderstaande handleiding om de beheerde API's in uw Airflow-installatie te installeren.",
     "airflow-host-ip-address": "{{brandName}} zal connectie maken met uw resource vanaf het IP <0>{{hostIp}}</0>. Zorg ervoor dat u inkomend verkeer toestaat in uw netwerkbeveiligingsinstellingen.",
     "alert-choose-destination-description": "Stuur het naar Slack, Teams, e-mail of een willekeurige webhook.",
+    "alert-disabled-form-notice": "Deze waarschuwing is uitgeschakeld. Ze verstuurt niets, en gebeurtenissen die plaatsvinden terwijl ze uit staat, worden later ook niet verstuurd.",
     "alert-not-found-description": "Deze waarschuwing is niet gevonden. Mogelijk is deze verwijderd of hernoemd.",
     "alert-pick-a-trigger-description": "Kies wat je wilt volgen — testresultaten, pipelinestatus, wijzigingen aan specifieke assets.",
     "alert-recent-events-description": "Lijst van recente alertgebeurtenissen die zijn geactiveerd voor de alert {{alertName}}.",

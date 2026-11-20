@@ -302,32 +302,38 @@ describe('Notification Alerts Page Tests', () => {
     expect(alertNameElement).toBeInTheDocument();
   });
 
-  it('marks a disabled alert as disabled next to its name', async () => {
-    (getAllAlerts as jest.Mock).mockImplementationOnce(() =>
+  it('shows a Disabled status for an alert that is switched off', async () => {
+    const defaultResponse = (getAllAlerts as jest.Mock).getMockImplementation();
+    (getAllAlerts as jest.Mock).mockImplementation(() =>
       Promise.resolve({
         data: [{ ...MOCK_DATA[0], enabled: false }],
         paging: { total: 1 },
       })
     );
 
-    await act(async () => {
-      render(<NotificationListPage />, { wrapper: MemoryRouter });
-    });
+    try {
+      await act(async () => {
+        render(<NotificationListPage />, { wrapper: MemoryRouter });
+      });
 
-    expect(
-      await screen.findByTestId('alert-disabled-badge')
-    ).toBeInTheDocument();
+      const badges = await screen.findAllByTestId('alert-status-badge');
+
+      expect(
+        badges.filter((badge) => badge.textContent === 'label.disabled')
+      ).toHaveLength(1);
+    } finally {
+      (getAllAlerts as jest.Mock).mockImplementation(defaultResponse);
+    }
   });
 
-  it('shows no disabled badge for an enabled alert', async () => {
+  it('shows an Active status for an enabled alert', async () => {
     await act(async () => {
       render(<NotificationListPage />, { wrapper: MemoryRouter });
     });
 
-    expect(await screen.findByTestId('alert-name')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('alert-disabled-badge')
-    ).not.toBeInTheDocument();
+    const badges = await screen.findAllByTestId('alert-status-badge');
+
+    badges.forEach((badge) => expect(badge).toHaveTextContent('label.active'));
   });
 
   it('Table should render descriptionTableObject', async () => {

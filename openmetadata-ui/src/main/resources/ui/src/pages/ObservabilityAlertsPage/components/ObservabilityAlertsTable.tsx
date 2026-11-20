@@ -20,7 +20,6 @@ import {
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import AlertDisabledBadge from '../../../components/Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
@@ -30,6 +29,7 @@ import { ALERT_EMPTY_STATE_FEATURES } from '../../../constants/Alerts.constants'
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { EventSubscription } from '../../../generated/events/eventSubscription';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import AlertStatusBadge from '../../../components/Alerts/AlertStatusBadge/AlertStatusBadge';
 import { ALERT_TABLE_COLUMN_IDS } from '../ObservabilityAlertsPage.constants';
 import { ObservabilityAlertsTableProps } from '../ObservabilityAlertsPage.interface';
 import {
@@ -84,27 +84,30 @@ function ObservabilityAlertsTable({
           className={getAlertTableCellLayoutClassName(
             ALERT_TABLE_COLUMN_IDS.NAME
           )}>
-          <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
-            {onViewAlert ? (
-              <Button
-                className="tw:block tw:max-w-48 tw:truncate"
-                color="link-color"
-                data-testid="alert-name"
-                title={alertName}
-                onPress={() => onViewAlert(record)}>
-                {alertName}
-              </Button>
-            ) : (
-              <Link
-                className="tw:block tw:max-w-48 tw:truncate"
-                data-testid="alert-name"
-                title={alertName}
-                to={getAlertDetailsPath(alertFqn)}>
-                {alertName}
-              </Link>
-            )}
-            <AlertDisabledBadge enabled={record.enabled} />
-          </div>
+          {onViewAlert ? (
+            <Button
+              className="tw:block tw:max-w-48 tw:truncate"
+              color="link-color"
+              data-testid="alert-name"
+              title={alertName}
+              onPress={() => onViewAlert(record)}>
+              {alertName}
+            </Button>
+          ) : (
+            <Link
+              className="tw:block tw:max-w-48 tw:truncate"
+              data-testid="alert-name"
+              title={alertName}
+              to={getAlertDetailsPath(alertFqn)}>
+              {alertName}
+            </Link>
+          )}
+        </Table.Cell>
+        <Table.Cell
+          className={getAlertTableCellLayoutClassName(
+            ALERT_TABLE_COLUMN_IDS.STATUS
+          )}>
+          <AlertStatusBadge enabled={record.enabled} />
         </Table.Cell>
         <Table.Cell
           className={getAlertTableCellLayoutClassName(

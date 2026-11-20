@@ -50,9 +50,12 @@ function ObservabilityAlertFormFields({
   templateResourcePermission,
   templates,
   validationErrors,
+  isAlertDisabled = false,
 }: Readonly<
   ObservabilityAlertFormFieldsProps & {
     validationErrors: AlertAiFormValidationErrors;
+    /** A disabled alert's fields are read-only until it is switched back on. */
+    isAlertDisabled?: boolean;
   }
 >) {
   const { t } = useTranslation();
@@ -100,6 +103,7 @@ function ObservabilityAlertFormFields({
               hint={fieldState.error?.message ?? validationErrors.displayName}
               id="displayName"
               inputDataTestId="displayName"
+              isDisabled={isAlertDisabled}
               isInvalid={
                 fieldState.invalid || Boolean(validationErrors.displayName)
               }
@@ -122,6 +126,7 @@ function ObservabilityAlertFormFields({
               <RichTextEditor
                 data-testid="description"
                 initialValue={alert?.description}
+                readonly={isAlertDisabled}
                 onTextChange={field.onChange}
               />
             )}
@@ -133,6 +138,7 @@ function ObservabilityAlertFormFields({
           <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
             <AlertFormSourceItem
               error={validationErrors.resources}
+              isViewMode={isAlertDisabled}
               value={resources}
               onChange={(next, previous) => {
                 onValuesChange(
@@ -162,7 +168,7 @@ function ObservabilityAlertFormFields({
               </Box>
               <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                 <ObservabilityFormFiltersItem
-                  isViewMode={areRulesReadOnly}
+                  isViewMode={areRulesReadOnly || isAlertDisabled}
                   validationErrors={validationErrors}
                   value={ruleValue}
                   onChange={onChange}
@@ -181,7 +187,7 @@ function ObservabilityAlertFormFields({
               </Box>
               <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
                 <ObservabilityFormTriggerItem
-                  isViewMode={areRulesReadOnly}
+                  isViewMode={areRulesReadOnly || isAlertDisabled}
                   validationErrors={validationErrors}
                   value={ruleValue}
                   onChange={onChange}
@@ -197,7 +203,7 @@ function ObservabilityAlertFormFields({
             />
           </Box>
           <Box className="layout-column tw:block tw:max-w-full tw:basis-full tw:grow-0 tw:shrink-0">
-            <DestinationFormItem />
+            <DestinationFormItem isViewMode={isAlertDisabled} />
           </Box>
 
           {!isEmpty(extraFormWidgets) && (
@@ -217,6 +223,7 @@ function ObservabilityAlertFormFields({
                       render={(values) => (
                         <Widget
                           alertDetails={alert}
+                          isViewMode={isAlertDisabled}
                           loading={isLoading}
                           templateResourcePermission={
                             templateResourcePermission

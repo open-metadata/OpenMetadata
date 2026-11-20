@@ -4387,6 +4387,7 @@
     "airflow-guide-message": "{{brandName}} משתמשת ב-Airflow להפעלת מחברי קליטה. פיתחנו API מנוהלות להפקדת מחברי קליטה. יש להשתמש במופע {{brandName}} של Airflow או לעיין במדריך למטה להתקנת ה- API המנוהלות בהתקנת Airflow שלך.",
     "airflow-host-ip-address": "{{brandName}} תתחבר למשאב שלך מה-IP <0>{{hostIp}}</0>. וודא שהמערכת מורשית לקבל תעבורה נכנסת בהגדרות אבטחת הרשת שלך.",
     "alert-choose-destination-description": "נתבו אותה ל-Slack, ל-Teams, לאימייל או לכל webhook.",
+    "alert-disabled-form-notice": "התראה זו מושבתת. היא אינה שולחת דבר, ואירועים שמתרחשים בזמן שהיא מושבתת לא יישלחו מאוחר יותר.",
     "alert-not-found-description": "לא ניתן היה למצוא את ההתראה הזו. ייתכן שהיא נמחקה או ששמה שונה.",
     "alert-pick-a-trigger-description": "בחרו על מה לעקוב — תוצאות בדיקות, סטטוס Pipeline, שינויים בנכסים מסוימים.",
     "alert-recent-events-description": "רשימת אירועי התראה אחרונים שהופעלו עבור ההתראה {{alertName}}.",

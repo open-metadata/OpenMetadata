@@ -14,22 +14,22 @@ import { useTranslation } from 'react-i18next';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 
-interface AlertDisabledBadgeProps {
+interface AlertStatusBadgeProps {
   enabled?: boolean;
 }
 
-/** Says an alert is disabled, as a tag's page does; nothing for an enabled alert. */
-const AlertDisabledBadge = ({ enabled }: AlertDisabledBadgeProps) => {
+/** Whether an alert is running: Active, or Disabled when it is switched off. */
+const AlertStatusBadge = ({ enabled }: AlertStatusBadgeProps) => {
   const { t } = useTranslation();
+  const isDisabled = enabled === false;
 
-  return enabled === false ? (
+  return (
     <StatusBadge
-      className="tw:shrink-0"
-      dataTestId="alert-disabled-badge"
-      label={t('label.disabled')}
-      status={StatusType.Stopped}
+      dataTestId="alert-status-badge"
+      label={isDisabled ? t('label.disabled') : t('label.active')}
+      status={isDisabled ? StatusType.Stopped : StatusType.Success}
     />
-  ) : null;
+  );
 };
 
-export default AlertDisabledBadge;
+export default AlertStatusBadge;

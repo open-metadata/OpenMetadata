@@ -119,6 +119,18 @@ jest.mock(
   })
 );
 
+const mockUseEntityPermissions = jest
+  .fn()
+  .mockReturnValue({ canEditAll: true });
+
+jest.mock(
+  '../../../../../../hooks/useEntityPermissions/useEntityPermissions',
+  () => ({
+    useEntityPermissions: (...args: unknown[]) =>
+      mockUseEntityPermissions(...args),
+  })
+);
+
 jest.mock('../../../../../../utils/PermissionDerivation', () => ({
   getDerivedPermissionFlags: jest.fn().mockReturnValue({ canViewAll: false }),
 }));
@@ -183,6 +195,46 @@ describe('NotificationAlertForm', () => {
 
     expect(screen.getByTestId('loader')).toBeInTheDocument();
     expect(screen.queryByTestId('alert-ai-form')).not.toBeInTheDocument();
+  });
+
+  it('starts a new alert enabled, with a switch its creator can use', async () => {
+    await act(async () => {
+      render(<NotificationAlertForm onNavigate={mockOnNavigate} />);
+    });
+
+    await waitFor(() => {
+      expect(AlertAiForm).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          canEditEnabled: true,
+          value: expect.objectContaining({ enabled: true }),
+        }),
+        expect.anything()
+      );
+    });
+  });
+
+  it('lets only someone who can edit the alert switch it off or on', async () => {
+    mockUseEntityPermissions.mockReturnValue({ canEditAll: false });
+
+    await act(async () => {
+      render(
+        <NotificationAlertForm fqn="alert.fqn" onNavigate={mockOnNavigate} />
+      );
+    });
+
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      'eventsubscription',
+      'alert.fqn',
+      { enabled: true }
+    );
+
+    await waitFor(() => {
+      expect(AlertAiForm).toHaveBeenLastCalledWith(
+        expect.objectContaining({ canEditEnabled: false }),
+        expect.anything()
+      );
+    });
+    mockUseEntityPermissions.mockReturnValue({ canEditAll: true });
   });
 
   it('should render AlertAiForm after loading', async () => {

@@ -48,7 +48,6 @@ import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import AlertDisabledBadge from '../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import {
@@ -480,7 +479,6 @@ const AlertDetailsPage = ({
           <DocumentTitle title={alertName} />
           <PageLayout.PageHeader
             actions={headerActions}
-            badge={<AlertDisabledBadge enabled={alertDetails?.enabled} />}
             breadcrumb={
               <HeaderBreadcrumb
                 noMargin

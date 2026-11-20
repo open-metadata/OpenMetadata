@@ -232,12 +232,13 @@ jest.mock(
   })
 );
 
-jest.mock('../../Alerts/AlertDisabledBadge/AlertDisabledBadge', () => ({
+jest.mock('../../Alerts/AlertStatusBadge/AlertStatusBadge', () => ({
   __esModule: true,
-  default: ({ enabled }: { enabled?: boolean }) =>
-    enabled === false ? (
-      <span data-testid="alert-disabled-badge">label.disabled</span>
-    ) : null,
+  default: ({ enabled }: { enabled?: boolean }) => (
+    <span data-testid="alert-status-badge">
+      {enabled === false ? 'label.disabled' : 'label.active'}
+    </span>
+  ),
 }));
 
 jest.mock('react-i18next', () => ({
@@ -347,12 +348,13 @@ describe('ObservabilityAlertsAiTable', () => {
 
     expect(screen.getByTestId('alert-name')).toHaveClass('tw:truncate');
     expect(screen.getByTestId('alert-name')).toHaveAttribute('title', longName);
-    expect(
-      screen.getByTestId('alert-name').closest('[data-testid="table-cell"]')
-    ).toHaveClass('tw:w-[30%]!', 'tw:max-w-0');
+    expect(screen.getByTestId('alert-name').parentElement).toHaveClass(
+      'tw:w-[30%]!',
+      'tw:max-w-0'
+    );
   });
 
-  it('marks a disabled alert as disabled next to its name', () => {
+  it('shows a Disabled status for an alert that is switched off', () => {
     render(
       <ObservabilityAlertsAiTable
         {...baseProps}
@@ -360,12 +362,12 @@ describe('ObservabilityAlertsAiTable', () => {
       />
     );
 
-    expect(screen.getByTestId('alert-disabled-badge')).toHaveTextContent(
+    expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
       'label.disabled'
     );
   });
 
-  it('shows no disabled badge for an enabled alert', () => {
+  it('shows an Active status for an enabled alert', () => {
     render(
       <ObservabilityAlertsAiTable
         {...baseProps}
@@ -373,9 +375,9 @@ describe('ObservabilityAlertsAiTable', () => {
       />
     );
 
-    expect(
-      screen.queryByTestId('alert-disabled-badge')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('alert-status-badge')).toHaveTextContent(
+      'label.active'
+    );
   });
 
   it('uses view callback instead of link when provided', () => {

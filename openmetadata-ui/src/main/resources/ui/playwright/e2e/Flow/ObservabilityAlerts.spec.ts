@@ -14,13 +14,13 @@
 import { expect, type Page } from '@playwright/test';
 import { DataContract } from '../../../src/generated/entity/data/dataContract';
 import {
-  TEST_CASE_NAME,
-  TEST_SUITE_NAME,
-  WEBHOOK_DELIVERY_COLUMN_NAME,
+    TEST_CASE_NAME,
+    TEST_SUITE_NAME,
+    WEBHOOK_DELIVERY_COLUMN_NAME
 } from '../../constant/alert';
 import {
-  AlertDetails,
-  ObservabilityCreationDetails,
+    AlertDetails,
+    ObservabilityCreationDetails
 } from '../../constant/alert.interface';
 import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { Domain } from '../../support/domain/Domain';
@@ -30,40 +30,41 @@ import { test as base } from '../../support/fixtures/isolatedUser';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
-  commonCleanup,
-  commonPrerequisites,
-  createAlert,
-  deleteAlert,
-  generateAlertName,
-  inputBasicAlertInformation,
-  saveAlertAndVerifyResponse,
-  verifyAlertDetails,
-  visitAlertDetailsPage,
+    commonCleanup,
+    commonPrerequisites,
+    createAlert,
+    deleteAlert,
+    generateAlertName,
+    inputBasicAlertInformation,
+    saveAlertAndVerifyResponse,
+    verifyAlertDetails,
+    visitAlertDetailsPage,
+    visitEditAlertPage
 } from '../../utils/alert';
 import { deleteFixtureEntity, settleAll } from '../../utils/apiResponse';
 import {
-  getApiContext,
-  getWorkerAdminAPIContext,
-  uuid,
+    getApiContext,
+    getWorkerAdminAPIContext,
+    uuid
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
-  addExternalDestination,
-  checkAlertDetailsForWithPermissionUser,
-  checkAlertFlowForWithoutPermissionUser,
-  createCommonObservabilityAlert,
-  editObservabilityAlert,
-  getObservabilityCreationDetails,
-  visitObservabilityAlertPage,
+    addExternalDestination,
+    checkAlertDetailsForWithPermissionUser,
+    checkAlertFlowForWithoutPermissionUser,
+    createCommonObservabilityAlert,
+    editObservabilityAlert,
+    getObservabilityCreationDetails,
+    visitObservabilityAlertPage
 } from '../../utils/observabilityAlert';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import {
-  clearCapturedWebhookRequests,
-  findWebhookDelivery,
-  getAddedColumnNames,
-  startWebhookReceiver,
-  stopWebhookReceiver,
+    clearCapturedWebhookRequests,
+    findWebhookDelivery,
+    getAddedColumnNames,
+    startWebhookReceiver,
+    stopWebhookReceiver
 } from '../../utils/webhook';
 
 const user1 = new UserClass();
@@ -324,6 +325,43 @@ test('Pipeline Alert', async ({ page }) => {
       // Verify the edited alert changes
       await verifyAlertDetails({ page, alertDetails: data.alertDetails });
     });
+  });
+
+  await test.step('Switch the alert off and back on from its form', async () => {
+    const saveAlert = async () => {
+      const update = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.url().includes('/api/v1/events/subscriptions') &&
+          response.request().method() === 'PATCH',
+        200
+      );
+      await page.click('[data-testid="save-button"]');
+
+      return (await update).json();
+    };
+
+    await visitEditAlertPage(page, data.alertDetails, false);
+    const enabledSwitch = page.getByRole('switch', { name: 'Enabled' });
+    await expect(enabledSwitch).toBeChecked();
+    await expect(page.locator('#displayName')).toBeEnabled();
+
+    await enabledSwitch.press('Space');
+    await expect(enabledSwitch).not.toBeChecked();
+    await expect(page.locator('#displayName')).toBeDisabled();
+    await expect(page.getByTestId('alert-disabled-notice')).toBeVisible();
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+    expect((await saveAlert()).enabled).toBe(false);
+
+    await visitEditAlertPage(page, data.alertDetails, false);
+    await expect(enabledSwitch).not.toBeChecked();
+    await expect(page.locator('#displayName')).toBeDisabled();
+
+    await enabledSwitch.press('Space');
+    await expect(enabledSwitch).toBeChecked();
+    await expect(page.locator('#displayName')).toBeEnabled();
+    await expect(page.getByTestId('alert-disabled-notice')).toHaveCount(0);
+    expect((await saveAlert()).enabled).toBe(true);
   });
 
   await test.step('Delete alert', async () => {

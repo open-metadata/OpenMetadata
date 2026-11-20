@@ -24,7 +24,6 @@ import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import AlertDisabledBadge from '../../components/Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
@@ -61,6 +60,7 @@ import { usePaging } from '../../hooks/paging/usePaging';
 import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
+import AlertStatusBadge from '../../components/Alerts/AlertStatusBadge/AlertStatusBadge';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
@@ -279,21 +279,25 @@ const NotificationListPage = () => {
         render: (_: string, record: EventSubscription) => {
           return (
             record.fullyQualifiedName && (
-              <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
-                <Link
-                  className="tw:block tw:max-w-48 tw:truncate"
-                  data-testid="alert-name"
-                  title={getEntityName(record)}
-                  to={getNotificationAlertDetailsPath(
-                    record.fullyQualifiedName
-                  )}>
-                  {getEntityName(record)}
-                </Link>
-                <AlertDisabledBadge enabled={record.enabled} />
-              </div>
+              <Link
+                className="tw:block tw:max-w-48 tw:truncate"
+                data-testid="alert-name"
+                title={getEntityName(record)}
+                to={getNotificationAlertDetailsPath(record.fullyQualifiedName)}>
+                {getEntityName(record)}
+              </Link>
             )
           );
         },
+      },
+      {
+        title: t('label.status').toString(),
+        dataIndex: 'enabled',
+        width: '120px',
+        key: 'status',
+        render: (_: boolean, record: EventSubscription) => (
+          <AlertStatusBadge enabled={record.enabled} />
+        ),
       },
       {
         title: t('label.trigger').toString(),

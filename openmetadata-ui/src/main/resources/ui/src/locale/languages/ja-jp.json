@@ -4387,6 +4387,7 @@
     "airflow-guide-message": "{{brandName}} は Airflow を使用して取り込みコネクタを実行します。マネージド API を開発しており、これによりコネクタをデプロイできます。{{brandName}} の Airflow を利用するか、以下のガイドを参照してお使いの Airflow にマネージド API をインストールしてください。",
     "airflow-host-ip-address": "{{brandName}} は <0>{{hostIp}}</0> からリソースに接続します。ネットワークセキュリティ設定でインバウンドトラフィックを許可してください。",
     "alert-choose-destination-description": "Slack、Teams、email、または任意のwebhookに送信できます。",
+    "alert-disabled-form-notice": "このアラートは無効です。何も送信されず、無効の間に発生したイベントも後から送信されません。",
     "alert-not-found-description": "このアラートが見つかりませんでした。削除されたか、名前が変更された可能性があります。",
     "alert-pick-a-trigger-description": "監視対象を選択します — テスト結果、パイプラインのステータス、特定アセットの変更など。",
     "alert-recent-events-description": "アラート {{alertName}} に対してトリガーされた最近のイベント一覧です。",

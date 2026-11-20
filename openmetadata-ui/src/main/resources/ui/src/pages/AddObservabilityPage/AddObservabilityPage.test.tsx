@@ -15,6 +15,8 @@ import { MemoryRouter } from 'react-router-dom';
 import ObservabilityFormFiltersItem from '../../components/Alerts/ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../components/Alerts/ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
 import { AlertType } from '../../generated/events/eventSubscription';
+import AlertFormSourceItem from '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem';
+import DestinationFormItem from '../../components/Alerts/DestinationFormItem/DestinationFormItem.component';
 import { getObservabilityAlertByFQN } from '../../rest/observabilityAPI';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
@@ -155,6 +157,18 @@ jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
+
+// The real editor is a tiptap instance that jsdom cannot switch between editable and read-only.
+jest.mock('../../components/common/RichTextEditor/RichTextEditor', () =>
+  jest
+    .fn()
+    .mockImplementation(({ readonly }: { readonly?: boolean }) => (
+      <div
+        data-readonly={String(Boolean(readonly))}
+        data-testid="description"
+      />
+    ))
+);
 
 jest.mock(
   '../../components/Alerts/AlertFormSourceItem/AlertFormSourceItem',
@@ -307,6 +321,55 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
 
     expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('starts a new alert enabled, and switching it off makes every field read-only with a notice', async () => {
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const toggle = await screen.findByRole('switch', { name: 'label.enabled' });
+
+    expect(toggle).toBeChecked();
+    expect(
+      screen.queryByTestId('alert-disabled-notice')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
+
+    expect(toggle).not.toBeChecked();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'message.alert-disabled-form-notice'
+    );
+    expect(screen.getByTestId('displayName')).toBeDisabled();
+    expect(screen.getByTestId('description')).toHaveAttribute(
+      'data-readonly',
+      'true'
+    );
+    expect(AlertFormSourceItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: true }),
+      expect.anything()
+    );
+    expect(DestinationFormItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: true }),
+      expect.anything()
+    );
+    expect(screen.getByTestId('save-button')).not.toBeDisabled();
+    expect(screen.getByTestId('cancel-button')).not.toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
+
+    expect(screen.getByTestId('displayName')).not.toBeDisabled();
+    expect(AlertFormSourceItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: false }),
+      expect.anything()
+    );
   });
 
   it('should render Add Observability Page', async () => {

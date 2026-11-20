@@ -2487,4 +2487,72 @@ describe('AlertAi form field components', () => {
 
     expect(document.querySelector('[data-field-doc]')).toBeNull();
   });
+
+  describe('Enabled switch', () => {
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      resources: ['table'],
+    };
+    const renderFields = (
+      next: ModifiedCreateEventSubscription,
+      onChange = jest.fn()
+    ) => {
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          selection={selectionOf()}
+          value={next}
+          onChange={onChange}
+        />
+      );
+
+      return onChange;
+    };
+
+    it('keeps the fields editable and shows no notice while the alert is enabled', () => {
+      renderFields({ ...value, enabled: true });
+
+      expect(screen.getByLabelText('label.enabled')).toBeChecked();
+      expect(screen.getByTestId('alert-name-input')).not.toBeDisabled();
+      expect(screen.getByTestId('description')).not.toBeDisabled();
+      expect(screen.queryByTestId('alert-warning')).not.toBeInTheDocument();
+    });
+
+    it('makes every field read-only and shows the notice while the alert is disabled', () => {
+      renderFields({ ...value, enabled: false });
+
+      expect(screen.getByLabelText('label.enabled')).not.toBeChecked();
+      expect(screen.getByTestId('alert-name-input')).toBeDisabled();
+      expect(screen.getByTestId('description')).toBeDisabled();
+      expect(screen.getByTestId('alert-warning')).toHaveTextContent(
+        'message.alert-disabled-form-notice'
+      );
+    });
+
+    it('switches the alert off through the form value', () => {
+      const onChange = renderFields({ ...value, enabled: true });
+
+      fireEvent.click(screen.getByLabelText('label.enabled'));
+
+      const updater = onChange.mock.calls[0][0];
+
+      expect(updater({ ...value, enabled: true }).enabled).toBe(false);
+    });
+
+    it('cannot be switched by someone who cannot edit the alert', () => {
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          canEditEnabled={false}
+          selection={selectionOf()}
+          value={{ ...value, enabled: true }}
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(screen.getByLabelText('label.enabled')).toBeDisabled();
+    });
+  });
 });

@@ -39,6 +39,7 @@ import {
   LIST_PAGE_SIZE_OPTIONS,
   NO_DATA_PLACEHOLDER,
 } from '../../../../../../constants/constants';
+import AlertStatusBadge from '../../../../../Alerts/AlertStatusBadge/AlertStatusBadge';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../../../enums/entity.enum';
@@ -57,7 +58,6 @@ import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import AlertDisabledBadge from '../../../../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
@@ -65,7 +65,7 @@ import type { NotificationView } from './Notification.types';
 
 const MAX_CURSOR_CACHE_PAGES = 100;
 
-type AlertColumnId = 'name' | 'trigger' | 'description' | 'actions';
+type AlertColumnId = 'name' | 'status' | 'trigger' | 'description' | 'actions';
 type AlertColumn = { id: AlertColumnId; label: string; className?: string };
 
 interface NotificationAlertsPanelProps {
@@ -107,6 +107,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
         label: t('label.name'),
         className: 'tw:w-70 tw:overflow-hidden',
       },
+      { id: 'status', label: t('label.status'), className: 'tw:w-28' },
       { id: 'trigger', label: t('label.trigger'), className: 'tw:w-40' },
       { id: 'description', label: t('label.description') },
       { id: 'actions', label: t('label.action-plural'), className: 'tw:w-24' },
@@ -388,25 +389,25 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
     switch (colId) {
       case 'name':
         return (
-          <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
-            <Button
-              className="tw:max-w-full tw:truncate tw:block tw:text-left"
-              color="link-color"
-              data-testid="alert-name"
-              size="sm"
-              tooltip={getEntityName(alert)}
-              onPress={() =>
-                onNavigate({
-                  type: 'detail',
-                  fqn: alert.fullyQualifiedName ?? '',
-                  name: getEntityName(alert),
-                })
-              }>
-              {getEntityName(alert)}
-            </Button>
-            <AlertDisabledBadge enabled={alert.enabled} />
-          </div>
+          <Button
+            className="tw:max-w-full tw:truncate tw:block tw:text-left"
+            color="link-color"
+            data-testid="alert-name"
+            size="sm"
+            tooltip={getEntityName(alert)}
+            onPress={() =>
+              onNavigate({
+                type: 'detail',
+                fqn: alert.fullyQualifiedName ?? '',
+                name: getEntityName(alert),
+              })
+            }>
+            {getEntityName(alert)}
+          </Button>
         );
+
+      case 'status':
+        return <AlertStatusBadge enabled={alert.enabled} />;
 
       case 'trigger':
         return (

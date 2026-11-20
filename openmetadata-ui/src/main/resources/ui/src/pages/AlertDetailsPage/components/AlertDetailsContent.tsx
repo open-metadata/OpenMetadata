@@ -28,7 +28,6 @@ import {
 import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import AlertDisabledBadge from '../../../components/Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Description from '../../../components/common/EntityDescription/Description';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -135,11 +134,6 @@ function AlertDetailsContent({
                 <Box direction="col" gap={4}>
                   <div>
                     <EntityHeaderTitle
-                      badge={
-                        alertDetails?.enabled === false ? (
-                          <AlertDisabledBadge enabled={false} />
-                        ) : undefined
-                      }
                       displayName={alertDetails?.displayName}
                       icon={alertIcon}
                       name={alertDetails?.name ?? ''}
