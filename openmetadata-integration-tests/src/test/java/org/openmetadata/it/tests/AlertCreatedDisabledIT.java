@@ -13,6 +13,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.awaitility.Awaitility;
@@ -58,9 +59,10 @@ class AlertCreatedDisabledIT {
     HttpServer receiver = HttpServer.create(new InetSocketAddress(0), 0);
     receiver.createContext("/webhook", exchange -> record(exchange, received));
     receiver.start();
+    EventSubscription alert = null;
     try {
       DatabaseSchema schema = schemaOf(ns);
-      EventSubscription alert = createDisabled(ns, receiver.getAddress().getPort());
+      alert = createDisabled(ns, receiver.getAddress().getPort());
 
       readTheDetailsPage(alert);
       assertNull(
@@ -82,7 +84,18 @@ class AlertCreatedDisabledIT {
           received.stream().anyMatch(body -> body.contains(whileDisabled)),
           "nothing from before the alert was enabled");
     } finally {
+      deleteIfCreated(alert);
       receiver.stop(0);
+    }
+  }
+
+  // Namespace cleanup does not delete alerts, and this one is enabled: left behind it would keep
+  // polling every second and failing to reach the stopped receiver for the rest of the run.
+  private static void deleteIfCreated(EventSubscription alert) {
+    if (alert != null) {
+      SdkClients.adminClient()
+          .eventSubscriptions()
+          .delete(alert.getId().toString(), Map.of("hardDelete", "true"));
     }
   }
 
@@ -112,9 +125,7 @@ class AlertCreatedDisabledIT {
                             new Webhook()
                                 .withEndpoint(
                                     URI.create("http://localhost:" + port + "/webhook")))));
-    EventSubscription alert = SdkClients.adminClient().eventSubscriptions().create(request);
-    ns.trackRoot(Entity.EVENT_SUBSCRIPTION, alert);
-    return alert;
+    return SdkClients.adminClient().eventSubscriptions().create(request);
   }
 
   // The calls the alert's details page makes.
