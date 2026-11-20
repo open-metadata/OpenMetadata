@@ -458,14 +458,19 @@ def test_needs_row_count(parameter_values, compute_passed_failed_row_count, expe
 
 
 @pytest.mark.parametrize("compute_passed_failed_row_count", [False, True])
-def test_in_set_match_enum_folds_row_count_into_one_query(create_sqlite_table, compute_passed_failed_row_count):
-    """`columnValuesToBeInSet` with `matchEnum` computes `countInSet` and `rowCount` in a single SELECT"""
+@pytest.mark.parametrize(
+    "match_enum,expected_status", [("true", TestCaseStatus.Failed), ("false", TestCaseStatus.Success)]
+)
+def test_in_set_folds_row_count_into_one_query(
+    create_sqlite_table, match_enum, expected_status, compute_passed_failed_row_count
+):
+    """`columnValuesToBeInSet` computes `countInSet` and any `rowCount` it needs in a single SELECT"""
     validator = ColumnValuesToBeInSetValidator(
         create_sqlite_table,
         test_case=build_test_case(
             [
                 TestCaseParameterValue(name="allowedValues", value="['Jane']"),
-                TestCaseParameterValue(name="matchEnum", value="true"),
+                TestCaseParameterValue(name="matchEnum", value=match_enum),
             ],
             compute_passed_failed_row_count=compute_passed_failed_row_count,
             entity_link=ENTITY_LINK_NAME,
@@ -476,10 +481,11 @@ def test_in_set_match_enum_folds_row_count_into_one_query(create_sqlite_table, c
     with executed_statements(create_sqlite_table) as statements:
         result = validator.run_validation()
 
-    assert result.testCaseStatus == TestCaseStatus.Failed
+    assert result.testCaseStatus == expected_status
     assert len(statements) == 1
     assert Metrics.countInSet.name in statements[0]
-    assert Metrics.rowCount.name in statements[0]
+    # matchEnum always needs the row count for its verdict; without it only row level results ask for it
+    assert (Metrics.rowCount.name in statements[0]) is (match_enum == "true" or compute_passed_failed_row_count)
     if compute_passed_failed_row_count:
         assert result.failedRows == 70
         assert result.passedRows == 10

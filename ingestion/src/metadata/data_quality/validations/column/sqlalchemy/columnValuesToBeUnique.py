@@ -97,7 +97,6 @@ class ColumnValuesToBeUniqueValidator(
                 grouped_cte,
                 func.sum(grouped_cte.c[UNIQUE_COUNT_GROUP_ALIAS]).label(Metrics.valuesCount.name),
                 unique_count.label(Metrics.uniqueCount.name),
-                query_group_by_=None,
             ).first()
             self.value = dict(row._mapping)  # type: ignore
             res = self.value.get(Metrics.valuesCount.name)

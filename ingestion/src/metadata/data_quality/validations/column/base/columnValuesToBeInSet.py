@@ -81,12 +81,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
-        if self.test_case.computePassedFailedRowCount:
-            row_count = metric_values.get(Metrics.rowCount.name)
-            if row_count is None:
-                row_count = self.get_row_count()
-        else:
-            row_count = None
+        row_count = metric_values.get(Metrics.rowCount.name) if self.test_case.computePassedFailedRowCount else None
 
         return self.get_test_case_result_object(
             self.execution_date,
