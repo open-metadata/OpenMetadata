@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -23,6 +24,7 @@ import org.openmetadata.service.events.ChangeEventHandler;
 import org.openmetadata.service.events.ChangeEvents;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
+import org.openmetadata.service.security.ImpersonationContext;
 
 /**
  * Unit tests for McpChangeEventUtil.publishChangeEvent().
@@ -142,6 +144,38 @@ class McpChangeEventUtilTest {
 
       verify(changeEvent).setUserName("alice");
     }
+  }
+
+  /** The event names the tool call's bot, not the bot of the entity's earlier writer. */
+  @Test
+  void publishChangeEvent_namesTheBotOfTheToolCall() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    ArgumentCaptor<String> inserted = ArgumentCaptor.forClass(String.class);
+
+    ImpersonationContext.setImpersonatedBy("mcp-bot");
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      McpChangeEventUtil.publishChangeEvent(
+          new Glossary()
+              .withId(UUID.randomUUID())
+              .withName("botGlossary")
+              .withFullyQualifiedName("botGlossary")
+              .withVersion(0.2)
+              .withUpdatedBy("alice")
+              .withImpersonatedBy("earlier-bot"),
+          EventType.ENTITY_UPDATED,
+          "alice");
+    } finally {
+      ImpersonationContext.clear();
+    }
+
+    verify(changeEventDAO).insert(inserted.capture());
+    ChangeEvent event = JsonUtils.readValue(inserted.getValue(), ChangeEvent.class);
+    assertThat(event.getUserName()).isEqualTo("alice");
+    assertThat(event.getImpersonatedBy()).isEqualTo("mcp-bot");
   }
 
   /** The stored change event carries the entity as the REST resource answers it: masked. */

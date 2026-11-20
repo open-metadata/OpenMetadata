@@ -93,6 +93,39 @@ describe('VersionButton', () => {
     expect(ownerDisplayName).toBeInTheDocument();
   });
 
+  it('should name the bot that made the change on behalf of the author', () => {
+    render(
+      <VersionButton
+        isMajorVersion={isMajorVersion}
+        selected={selected}
+        summary="Some change description"
+        version={{ ...version, impersonatedBy: 'caip-bot' }}
+        onVersionSelect={onVersionSelect}
+      />
+    );
+
+    const impersonation = screen.getByTestId('version-impersonated-by');
+
+    expect(impersonation).toHaveTextContent('label.impersonated-by-with-colon');
+    expect(impersonation).toHaveTextContent('caip-bot');
+  });
+
+  it('should not render an impersonation row for a direct change', () => {
+    render(
+      <VersionButton
+        isMajorVersion={isMajorVersion}
+        selected={selected}
+        summary="Some change description"
+        version={version}
+        onVersionSelect={onVersionSelect}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('version-impersonated-by')
+    ).not.toBeInTheDocument();
+  });
+
   it('calls onVersionSelect when clicked', () => {
     render(
       <VersionButton

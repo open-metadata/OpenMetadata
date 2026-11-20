@@ -209,6 +209,19 @@ class SecurityUtilTest {
   }
 
   @Test
+  void testGetImpersonatingBotNamesOnlyTheBotOfAnImpersonatedRequest() {
+    CatalogSecurityContext impersonatedContext =
+        new CatalogSecurityContext(
+            () -> "alice@example.com", "https", "openid", Set.of(), false, "caip-bot");
+    CatalogSecurityContext directContext =
+        new CatalogSecurityContext(() -> "alice@example.com", "https", "openid", Set.of());
+
+    assertEquals("caip-bot", SecurityUtil.getImpersonatingBot(impersonatedContext));
+    assertNull(SecurityUtil.getImpersonatingBot(directContext));
+    assertNull(SecurityUtil.getImpersonatingBot(mock(SecurityContext.class)));
+  }
+
+  @Test
   void testGetUserNameIsTheWholePrincipalName() {
     for (String name : List.of("admin/mallory", "ingestion-bot/mallory", "admin@corp")) {
       CatalogSecurityContext context =

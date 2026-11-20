@@ -19,7 +19,6 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.ResourceInfo;
 import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.ext.Provider;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -52,7 +51,7 @@ public class ImpersonationRestrictionFilter implements ContainerRequestFilter {
 
   @Override
   public void filter(ContainerRequestContext requestContext) {
-    String impersonatingBot = impersonatingBot(requestContext.getSecurityContext());
+    String impersonatingBot = SecurityUtil.getImpersonatingBot(requestContext.getSecurityContext());
     if (impersonatingBot == null) {
       return;
     }
@@ -70,11 +69,5 @@ public class ImpersonationRestrictionFilter implements ContainerRequestFilter {
     return resourceInfo.getResourceClass().getSimpleName()
         + "."
         + resourceInfo.getResourceMethod().getName();
-  }
-
-  private static String impersonatingBot(SecurityContext securityContext) {
-    return securityContext instanceof CatalogSecurityContext catalogSecurityContext
-        ? catalogSecurityContext.impersonatedUser()
-        : null;
   }
 }

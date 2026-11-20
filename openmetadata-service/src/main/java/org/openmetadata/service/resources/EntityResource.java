@@ -1505,40 +1505,43 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
             DatabaseOperation.ENTITY_DELETE_RESTORE,
             jobId,
             RequestLatencyContext.wrapWithContext(
-                () -> {
-                  try {
-                    DeleteResponse<T> deleteResponse =
-                        repository.delete(userName, id, recursive, hardDelete);
-                    if (hardDelete) {
-                      limits.invalidateCache(entityType);
-                    }
-                    repository.storeChangeEventForAsyncOperation(
-                        deleteResponse.entity(), deleteResponse.changeType(), recursive, userName);
-                    WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
-                        jobId, securityContext, deleteResponse.entity());
-                  } catch (Exception e) {
-                    // Log before notifying. The WebSocket notification is the ONLY report this path
-                    // had, so a failed async delete was invisible to anyone not holding a live
-                    // socket
-                    // — no stack trace, no error line, nothing. A 100k-table service delete that
-                    // dies
-                    // here looks exactly like one still grinding, which is precisely the ambiguity
-                    // that made the nightly scale failures undiagnosable.
-                    LOG.error(
-                        "Async delete failed for {} {} (jobId {}, recursive={}, hardDelete={})",
-                        entityType,
-                        id,
-                        jobId,
-                        recursive,
-                        hardDelete,
-                        e);
-                    WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                        jobId,
-                        securityContext,
-                        entity,
-                        e.getMessage() == null ? e.toString() : e.getMessage());
-                  }
-                }));
+                ImpersonationContext.propagate(
+                    () -> {
+                      try {
+                        DeleteResponse<T> deleteResponse =
+                            repository.delete(userName, id, recursive, hardDelete);
+                        if (hardDelete) {
+                          limits.invalidateCache(entityType);
+                        }
+                        repository.storeChangeEventForAsyncOperation(
+                            deleteResponse.entity(),
+                            deleteResponse.changeType(),
+                            recursive,
+                            userName);
+                        WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
+                            jobId, securityContext, deleteResponse.entity());
+                      } catch (Exception e) {
+                        // Log before notifying. The WebSocket notification is the ONLY report
+                        // this path had, so a failed async delete was invisible to anyone not
+                        // holding a live socket — no stack trace, no error line, nothing. A
+                        // 100k-table service delete that dies here looks exactly like one still
+                        // grinding, which is precisely the ambiguity that made the nightly scale
+                        // failures undiagnosable.
+                        LOG.error(
+                            "Async delete failed for {} {} (jobId {}, recursive={}, hardDelete={})",
+                            entityType,
+                            id,
+                            jobId,
+                            recursive,
+                            hardDelete,
+                            e);
+                        WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
+                            jobId,
+                            securityContext,
+                            entity,
+                            e.getMessage() == null ? e.toString() : e.getMessage());
+                      }
+                    })));
 
     response =
         Response.accepted()
@@ -1661,41 +1664,42 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
             DatabaseOperation.ENTITY_DELETE_RESTORE,
             jobId,
             RequestLatencyContext.wrapWithContext(
-                () -> {
-                  try {
-                    PutResponse<T> response = repository.restoreEntity(userName, id);
-                    if (response == null) {
-                      // Pre-check saw the entity in DELETED state; a null response now means a
-                      // concurrent restore won the race. Treat as idempotent success — the
-                      // operator's request is satisfied. If the entity has since been hard-
-                      // deleted, surface that as a real failure.
-                      handleAlreadyRestored(jobId, id, entityName, notifyUserId);
-                      return;
-                    }
-                    repository.restoreFromSearch(response.getEntity());
-                    repository.storeChangeEventForAsyncOperation(
-                        response.getEntity(), response.getChangeType(), false, userName);
-                    LOG.info(
-                        "[AsyncRestore] Restored {}:{} (jobId={})",
-                        Entity.getEntityTypeFromObject(response.getEntity()),
-                        response.getEntity().getId(),
-                        jobId);
-                    WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
-                        jobId, notifyUserId, response.getEntity());
-                  } catch (Exception e) {
-                    LOG.error(
-                        "[AsyncRestore] Failed to restore {}:{} (name={})",
-                        entityType,
-                        id,
-                        entityName,
-                        e);
-                    WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
-                        jobId,
-                        notifyUserId,
-                        entityName,
-                        e.getMessage() == null ? e.toString() : e.getMessage());
-                  }
-                }));
+                ImpersonationContext.propagate(
+                    () -> {
+                      try {
+                        PutResponse<T> response = repository.restoreEntity(userName, id);
+                        if (response == null) {
+                          // Pre-check saw the entity in DELETED state; a null response now means a
+                          // concurrent restore won the race. Treat as idempotent success — the
+                          // operator's request is satisfied. If the entity has since been hard-
+                          // deleted, surface that as a real failure.
+                          handleAlreadyRestored(jobId, id, entityName, notifyUserId);
+                          return;
+                        }
+                        repository.restoreFromSearch(response.getEntity());
+                        repository.storeChangeEventForAsyncOperation(
+                            response.getEntity(), response.getChangeType(), false, userName);
+                        LOG.info(
+                            "[AsyncRestore] Restored {}:{} (jobId={})",
+                            Entity.getEntityTypeFromObject(response.getEntity()),
+                            response.getEntity().getId(),
+                            jobId);
+                        WebsocketNotificationHandler.sendRestoreOperationCompleteNotification(
+                            jobId, notifyUserId, response.getEntity());
+                      } catch (Exception e) {
+                        LOG.error(
+                            "[AsyncRestore] Failed to restore {}:{} (name={})",
+                            entityType,
+                            id,
+                            entityName,
+                            e);
+                        WebsocketNotificationHandler.sendRestoreOperationFailedNotification(
+                            jobId,
+                            notifyUserId,
+                            entityName,
+                            e.getMessage() == null ? e.toString() : e.getMessage());
+                      }
+                    })));
     RestoreEntityResponse response =
         new RestoreEntityResponse(jobId, "Restore initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
@@ -1862,14 +1866,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   // impersonation from the thread: the job takes the request's, so each asset is authorized as the
   // request would be, and clears it when it ends.
   private static Runnable asRequester(PatchRequester requester, Runnable job) {
-    return () -> {
-      ImpersonationContext.setImpersonatedBy(requester.actor().impersonatedBy());
-      try {
-        job.run();
-      } finally {
-        ImpersonationContext.clear();
-      }
-    };
+    return ImpersonationContext.runAs(requester.actor().impersonatedBy(), job);
   }
 
   public Response importCsvInternalAsync(

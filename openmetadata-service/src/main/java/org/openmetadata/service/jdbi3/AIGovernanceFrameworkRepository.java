@@ -30,6 +30,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.ai.AIGovernanceFrameworkResource;
 import org.openmetadata.service.resources.ai.FrameworkCoverageComputer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -109,7 +110,7 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
       control.setFramework(created.getEntityReference());
       control.setUpdatedAt(now);
       control.setUpdatedBy(user);
-      controlRepo.create(uriInfo, control, user, null);
+      controlRepo.create(uriInfo, control, user, ImpersonationContext.getImpersonatedBy());
       copiedControls.add(
           new CopiedAIFrameworkControl().withCode(control.getCode()).withName(control.getName()));
     }

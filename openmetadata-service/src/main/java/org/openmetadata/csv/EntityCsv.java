@@ -1678,7 +1678,8 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       final String type, final EntityInterface original, final EntityInterface entity) {
     Optional<StagedChange> staged = Optional.empty();
     final EntityRepository repository = Entity.getEntityRepository(type);
-    final ChangeActor actor = ChangeActor.recorded(importedBy, null);
+    final ChangeActor actor =
+        ChangeActor.recorded(importedBy, ImpersonationContext.getImpersonatedBy());
     if (original != null && isGated(type)) {
       final EntityInterface hydrated =
           repository.get(null, original.getId(), repository.getFields("*"), Include.ALL, false);
@@ -1755,6 +1756,9 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       return;
     }
 
+    // The importer is the writer (updatedBy); impersonatedBy names only a bot importing for them.
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+
     // Group by entity type for batch processing
     Map<String, List<PendingEntityOperation>> byType = new HashMap<>();
     for (PendingEntityOperation op : pendingEntityOperations) {
@@ -1795,7 +1799,7 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
         // Batch create
         if (!toCreate.isEmpty()) {
           List<EntityInterface<?>> created =
-              repository.createManyEntitiesForImport(toCreate, importedBy);
+              repository.createManyEntitiesForImport(toCreate, impersonatedBy);
           for (EntityInterface<?> entity : created) {
             createChangeEventForBatchedEntity(entity, EventType.ENTITY_CREATED);
             pendingSearchIndexUpdates.add(entity);
@@ -1808,7 +1812,8 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
         // Batch update
         if (!toUpdate.isEmpty()) {
           List<EntityInterface<?>> updated =
-              repository.updateManyEntitiesForImport(originals, toUpdate, importedBy, importedBy);
+              repository.updateManyEntitiesForImport(
+                  originals, toUpdate, importedBy, impersonatedBy);
           for (EntityInterface<?> entity : updated) {
             createChangeEventForBatchedEntity(entity, EventType.ENTITY_UPDATED);
             pendingSearchIndexUpdates.add(entity);

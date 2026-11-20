@@ -35,6 +35,8 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.util.ChangeEventLog;
+import org.openmetadata.it.util.ChangeEventLog.EventAuthor;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -203,6 +205,41 @@ class ChangeRequestAdmissionIT {
     ChangeRequest request = onlyPendingRequest(glossary.getId());
     assertEquals(human.getName(), request.getRequestedBy());
     assertEquals(botUser.getName(), request.getImpersonatedBy());
+  }
+
+  @Test
+  void approvedChangeABotStagedForAHumanIsPublishedNamingTheBot(TestNamespace ns) throws Exception {
+    Glossary glossary = gated(ns);
+    User botUser = createBotUser(ns, "crpub");
+    createBot(ns.prefix("crpub_bot"), botUser, true);
+    User human = SharedEntities.get().USER2;
+    long since = System.currentTimeMillis();
+    patchAs(
+        impersonationClient(generateBotToken(botUser), human.getName()),
+        glossary.getId(),
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"impersonated\"}]");
+
+    resolveAs(
+        SdkClients.user1Client(),
+        awaitOpenApprovalTask(glossary.getFullyQualifiedName()),
+        "approve",
+        TaskResolutionType.Approved,
+        null);
+    Awaitility.await("approved description published")
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> "impersonated".equals(descriptionOf(glossary.getId())));
+
+    Glossary published = SdkClients.adminClient().glossaries().get(glossary.getId().toString());
+    assertEquals(human.getName(), published.getUpdatedBy());
+    assertEquals(
+        botUser.getName(),
+        published.getImpersonatedBy(),
+        "The published version must name the bot that staged the change for the human");
+    assertEquals(
+        new EventAuthor(human.getName(), botUser.getName()),
+        ChangeEventLog.awaitUpdateAuthor(Entity.GLOSSARY, glossary.getId(), "description", since),
+        "The change event of the published version must name the bot that staged it");
   }
 
   @Test

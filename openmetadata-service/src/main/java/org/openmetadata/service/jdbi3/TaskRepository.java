@@ -781,7 +781,7 @@ public class TaskRepository extends EntityRepository<Task> {
     task.setCommentCount(comments.size());
     task.setUpdatedAt(System.currentTimeMillis());
     if (comment.getAuthor() != null && comment.getAuthor().getName() != null) {
-      task.setUpdatedBy(comment.getAuthor().getName());
+      EntityUtil.recordWriter(task, comment.getAuthor().getName());
     }
     storeEntity(task, true);
 
@@ -1057,7 +1057,7 @@ public class TaskRepository extends EntityRepository<Task> {
     reopened.setWorkflowStageId(PENDING_WORKFLOW_START_STAGE_ID);
     reopened.setWorkflowStageDisplayName("Starting");
     reopened.setAvailableTransitions(List.of());
-    reopened.setUpdatedBy(user);
+    EntityUtil.recordWriter(reopened, user);
     reopened.setUpdatedAt(System.currentTimeMillis());
     storeEntity(reopened, true);
     postUpdate(openSnapshot, reopened);
@@ -1516,7 +1516,7 @@ public class TaskRepository extends EntityRepository<Task> {
     updated.setApprovedBy(approver);
     updated.setApprovedById(approver.getId() != null ? approver.getId().toString() : null);
     updated.setApprovedAt(System.currentTimeMillis());
-    updated.setUpdatedBy(updatedBy);
+    EntityUtil.recordWriter(updated, updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
     storeEntity(updated, true);
     postUpdate(original, updated);

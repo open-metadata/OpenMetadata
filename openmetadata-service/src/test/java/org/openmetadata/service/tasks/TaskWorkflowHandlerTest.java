@@ -70,6 +70,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.ActionType;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.util.EntityUtil;
@@ -1096,6 +1097,31 @@ class TaskWorkflowHandlerTest {
     }
   }
 
+  // The change is applied and recorded for the request that resolved the task, bot included.
+  @Test
+  void anApprovedChangeNamesTheBotOfTheResolvingRequest() throws Exception {
+    Table table = new Table().withId(UUID.randomUUID()).withName("orders").withDescription("old");
+    String before = JsonUtils.pojoToJson(table);
+    table.setDescription("approved");
+    EntityRepository<?> repository = repositoryAnswering(table, EventType.ENTITY_UPDATED);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    CollectionDAO collectionDAO = collectionDAOWith(changeEventDAO);
+
+    ImpersonationContext.setImpersonatedBy("caip-bot");
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      saveChange(table, repository, "steward", before);
+
+      ArgumentCaptor<String> inserted = ArgumentCaptor.forClass(String.class);
+      verify(changeEventDAO).insert(inserted.capture());
+      ChangeEvent event = JsonUtils.readValue(inserted.getValue(), ChangeEvent.class);
+      assertEquals("steward", event.getUserName());
+      assertEquals("caip-bot", event.getImpersonatedBy());
+    } finally {
+      ImpersonationContext.clear();
+    }
+  }
+
   // A write that changed nothing, or that is held until someone approves it, records no event.
   @Test
   void aWriteThatChangedNothingRecordsNoEvent() throws Exception {
@@ -1128,7 +1154,7 @@ class TaskWorkflowHandlerTest {
     EntityRepository<?> repository = mock(EntityRepository.class);
     Mockito.doReturn(new PatchResponse<>(Response.Status.OK, patched, changeType))
         .when(repository)
-        .patch(any(), any(UUID.class), anyString(), any(JsonPatch.class), any(), any());
+        .patch(any(), any(UUID.class), anyString(), any(JsonPatch.class), any());
     return repository;
   }
 
