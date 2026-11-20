@@ -861,7 +861,7 @@ class ScriptReader:
             return out
         return []
 
-    def sequence(self, node: ast.expr | None) -> list[ScalarValue] | None:
+    def sequence(self, node: ast.expr | None, *, allow_empty_range: bool = False) -> list[ScalarValue] | None:
         """Bounded constant/derived sequence elements preserving scalar types, or None if unknown."""
         if node is None:
             return None
@@ -875,7 +875,7 @@ class ScriptReader:
             if isinstance(node.func, ast.Attribute) and not node.keywords:
                 return self._sequence_from_attr_call(node, node.func)
             if isinstance(node.func, ast.Name) and node.func.id == "range" and not node.keywords:
-                return self._sequence_from_range(node)
+                return self._sequence_from_range(node, allow_empty=allow_empty_range)
         return None
 
     @classmethod
@@ -894,7 +894,7 @@ class ScriptReader:
             return self._validated_scalars(val.entries.keys())
         return None
 
-    def _sequence_from_range(self, call: ast.Call) -> list[ScalarValue] | None:
+    def _sequence_from_range(self, call: ast.Call, *, allow_empty: bool) -> list[ScalarValue] | None:
         if self.bindings.is_shadowed(call.func) or self.bindings.has_binding_in_scope(  # type: ignore[arg-type]
             self.bindings.scope_of(call.func), "range"
         ):
@@ -908,7 +908,7 @@ class ScriptReader:
         if len(int_args) == 3 and int_args[2] == 0:
             return None
         rng = range(*int_args)
-        if not (1 <= len(rng) <= MAX_LOOP_UNROLLS):
+        if (not allow_empty and not rng) or rng[MAX_LOOP_UNROLLS:]:
             return None
         return list(rng)
 

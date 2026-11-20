@@ -2949,6 +2949,11 @@ df1.join(load_mystery_df(), "id").write.format("snowflake").option("dbtable", "O
             ),
             pytest.param("run_later(lambda: populate_externally(frames))", "unresolved", id="lambda_argument"),
             pytest.param(
+                'run_later(lambda: None, {"nested": frames})',
+                "unresolved",
+                id="lambda_before_container_argument",
+            ),
+            pytest.param(
                 'def fill():\n    frames["k"] = spark.table("B")\nrun_later(fill)', "unresolved", id="callback_closure"
             ),
             pytest.param("print(frames)", Resolved((SnowflakeRef(table="RAW_A"),)), id="print_keeps"),
@@ -2965,6 +2970,16 @@ df1.join(load_mystery_df(), "id").write.format("snowflake").option("dbtable", "O
                 "ignored = True or populate_externally(frames)",
                 Resolved((SnowflakeRef(table="RAW_A"),)),
                 id="short_circuit_or_keeps",
+            ),
+            pytest.param(
+                'ignored = flag() and frames.update({"k": spark.table("B")})',
+                "unresolved",
+                id="unknown_and_assignment",
+            ),
+            pytest.param(
+                'if flag() or frames.update({"k": spark.table("B")}):\n    pass',
+                "unresolved",
+                id="unknown_or_condition",
             ),
             pytest.param(
                 "ok = 2 < 1 < populate_externally(frames)",
@@ -3025,6 +3040,109 @@ ok = flag() and df.write.saveAsTable("db.maybe_written")
 """
         assert [(g.sources, g.targets) for g in parse_script_lineage_groups(script)] == [
             (Resolved((SnowflakeRef(table="RAW_A"),)), Resolved((CatalogRef(database="db", table="maybe_written"),)))
+        ]
+
+    @pytest.mark.parametrize(
+        ("expression", "expected"),
+        [
+            pytest.param("[(df := spark.table('db.B')) for _ in []]", "A", id="empty_list"),
+            pytest.param("[(df := spark.table('db.B')) for _ in {}]", "A", id="empty_mapping"),
+            pytest.param("[(df := spark.table('db.B')) for _ in '']", "A", id="empty_string"),
+            pytest.param("[(df := spark.table('db.B')) for _ in range(0)]", "A", id="empty_range"),
+            pytest.param(
+                "[(df := spark.table('db.B')) for _ in [] for _ in populate_externally(df)]",
+                "A",
+                id="skipped_nested_iterator",
+            ),
+            pytest.param("[(df := spark.table('db.B')) for _ in [1]]", "B", id="known_iteration"),
+            pytest.param("[(df := spark.table('db.B')) for _ in batches]", None, id="unknown_iteration"),
+            pytest.param("[(df := spark.table('db.B')) for _ in [1] if flag()]", None, id="unknown_filter"),
+            pytest.param("[(df := spark.table('db.B')) for _ in [1] if False]", "A", id="false_filter"),
+            pytest.param("((df := spark.table('db.B')) for _ in [1])", None, id="lazy_body"),
+            pytest.param(
+                "[(df := spark.table('db.B')) for _ in iter_empty()]",
+                "C",
+                id="empty_iterator_still_evaluated",
+            ),
+        ],
+    )
+    def test_comprehensions_follow_reachable_iterations(self, expression: str, expected: str | None):
+        script = f"""
+df = spark.table("db.A")
+def iter_empty():
+    global df
+    df = spark.table("db.C")
+    return []
+result = {expression}
+df.write.saveAsTable("db.OUT")
+"""
+        sources = "unresolved" if expected is None else Resolved((CatalogRef(database="db", table=expected),))
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(script)] == [
+            (sources, Resolved((CatalogRef(database="db", table="OUT"),)))
+        ]
+
+    def test_comprehension_with_multiple_iterations_does_not_assume_one_mutation(self):
+        script = """
+frames = [spark.table("db.A"), spark.table("db.B"), spark.table("db.C")]
+[frames.pop(0) for _ in [1, 2]]
+frames[0].write.saveAsTable("db.OUT")
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(script)] == [
+            ("unresolved", Resolved((CatalogRef(database="db", table="OUT"),)))
+        ]
+
+    def test_deferred_callback_may_replace_a_saved_frame_or_view(self):
+        script = """
+frames = {"k": spark.table("db.A"), "kept": spark.table("db.KEPT")}
+frames["k"].createOrReplaceTempView("v")
+run_later(lambda: frames.update({"k": spark.table("db.B")}))
+run_later(lambda: spark.table("db.B").createOrReplaceTempView("v"))
+frames["k"].write.saveAsTable("db.FRAME_OUT")
+spark.sql("select * from v").write.saveAsTable("db.VIEW_OUT")
+frames["kept"].write.saveAsTable("db.KEPT_OUT")
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(script)] == [
+            ("unresolved", Resolved((CatalogRef(database="db", table="FRAME_OUT"),))),
+            ("unresolved", Resolved((CatalogRef(database="db", table="VIEW_OUT"),))),
+            (
+                Resolved((CatalogRef(database="db", table="KEPT"),)),
+                Resolved((CatalogRef(database="db", table="KEPT_OUT"),)),
+            ),
+        ]
+
+    @pytest.mark.parametrize(
+        ("comparison", "expected"),
+        [
+            pytest.param('1 < {"k": change()}.get("missing", 2) < 3', "B", id="chain"),
+            pytest.param('1 < {"k": change()}.get("missing", 2)', "B", id="single"),
+            pytest.param('flag() < 2 < {"k": change()}.get("missing", 3)', None, id="unknown_prefix"),
+            pytest.param('2 < 1 < {"k": change()}.get("missing", 3)', "A", id="skipped_suffix"),
+        ],
+    )
+    def test_comparison_keeps_effects_of_reached_operands(self, comparison: str, expected: str | None):
+        script = f"""
+frames = {{"k": spark.table("db.A")}}
+def change():
+    frames["k"] = spark.table("db.B")
+    return 1
+ok = {comparison}
+frames["k"].write.saveAsTable("db.OUT")
+"""
+        sources = "unresolved" if expected is None else Resolved((CatalogRef(database="db", table=expected),))
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(script)] == [
+            (sources, Resolved((CatalogRef(database="db", table="OUT"),)))
+        ]
+
+    def test_chained_comparison_evaluates_middle_operand_once(self):
+        script = """
+values = [2, 3]
+if 1 < values.pop(0) < 3:
+    spark.table("db.A").write.saveAsTable("db.OUT")
+else:
+    spark.table("db.B").write.saveAsTable("db.OUT")
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(script)] == [
+            (Resolved((CatalogRef(database="db", table="A"),)), Resolved((CatalogRef(database="db", table="OUT"),)))
         ]
 
     @pytest.mark.parametrize(

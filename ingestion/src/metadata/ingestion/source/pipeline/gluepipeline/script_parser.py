@@ -1862,37 +1862,54 @@ class _ProvenanceAnalyzer:
     def _eval_compare(self, test: ast.Compare, state: _ExecState, scope: ast.AST) -> bool | None:
         if len(test.ops) == 1:
             return self._eval_single_compare(test.left, test.ops[0], test.comparators[0], state, scope)
-        # A chain evaluates each operand once, left to right, and stops at the first link known to be false.
+
+        # A chain reuses the middle operand. After an unknown link, the remaining effects are conditional.
+        active = state
+        skipped: _ExecState | None = None
         result: bool | None = True
-        left = self._eval_dict_key(test.left, state, scope)
-        for op, right_expr in zip(test.ops, test.comparators, strict=True):
-            right = self._eval_dict_key(right_expr, state, scope)
+        left = self._eval_comparison_key(test.left, active, scope)
+        for index, (op, right_expr) in enumerate(zip(test.ops, test.comparators, strict=True)):
+            right = self._eval_comparison_key(right_expr, active, scope)
             link = _compare_known_keys(left, op, right)
             if link is False:
-                return False
+                result = False
+                break
             if link is None:
                 result = None
+                if index < len(test.ops) - 1:
+                    active, skipped = self._fork_optional_state(active, skipped)
             left = right
+        if skipped is not None:
+            self._overwrite_state_in_place(state, _join_states(skipped, active))
         return result
 
+    def _eval_comparison_key(self, expr: ast.expr, state: _ExecState, scope: ast.AST) -> DictKey | UnknownValue:
+        value = _dict_key_of_val(self._eval_expr(expr, state, scope))
+        return self._reader_for(state).dict_key(expr) if isinstance(value, UnknownValue) else value
+
+    @staticmethod
+    def _fork_optional_state(active: _ExecState, skipped: _ExecState | None) -> tuple[_ExecState, _ExecState]:
+        if skipped is None:
+            return active.clone(), active
+        return active, _join_states(skipped, active)
+
     def _eval_bool_op(self, test: ast.BoolOp, state: _ExecState, scope: ast.AST) -> bool | None:
-        if isinstance(test.op, ast.And):
-            all_true = True
-            for v in test.values:
-                cv = self._eval_condition(v, state, scope)
-                if cv is False:
-                    return False
-                if cv is None:
-                    all_true = False
-            return True if all_true else None
-        all_false = True
-        for v in test.values:
-            cv = self._eval_condition(v, state, scope)
-            if cv is True:
-                return True
-            if cv is None:
-                all_false = False
-        return False if all_false else None
+        stops_on = isinstance(test.op, ast.Or)
+        result: bool | None = not stops_on
+        active = state
+        skipped: _ExecState | None = None
+        for index, operand in enumerate(test.values):
+            value = self._eval_condition(operand, active, scope)
+            if value is stops_on:
+                result = stops_on
+                break
+            if value is None:
+                result = None
+                if index < len(test.values) - 1:
+                    active, skipped = self._fork_optional_state(active, skipped)
+        if skipped is not None:
+            self._overwrite_state_in_place(state, _join_states(skipped, active))
+        return result
 
     def _eval_single_compare(
         self,
@@ -1918,7 +1935,9 @@ class _ProvenanceAnalyzer:
         if isinstance(op, (ast.In, ast.NotIn)):
             return self._eval_membership_compare(left_expr, op, right_expr, state, scope)
         return _compare_known_keys(
-            self._eval_dict_key(left_expr, state, scope), op, self._eval_dict_key(right_expr, state, scope)
+            self._eval_comparison_key(left_expr, state, scope),
+            op,
+            self._eval_comparison_key(right_expr, state, scope),
         )
 
     def _eval_is_none_compare(
@@ -1951,8 +1970,8 @@ class _ProvenanceAnalyzer:
         state: _ExecState,
         scope: ast.AST,
     ) -> bool | None:
+        key = self._eval_comparison_key(left_expr, state, scope)
         container = self._eval_expr(right_expr, state, scope)
-        key = self._eval_dict_key(left_expr, state, scope)
         if isinstance(key, UnknownValue):
             return None
         if isinstance(container, _FrameDict):
@@ -2049,15 +2068,23 @@ class _ProvenanceAnalyzer:
     def _eval_bool_op_value(self, node: ast.BoolOp, state: _ExecState, scope: ast.AST) -> _ProvVal:
         # Python yields the operand that decided the result; operands after a known short-circuit never run.
         stops_on = isinstance(node.op, ast.Or)
+        active = state
+        skipped: _ExecState | None = None
         candidates: list[_ProvVal] = []
         for idx, operand in enumerate(node.values):
-            val = self._eval_expr(operand, state, scope)
+            val = self._eval_expr(operand, active, scope)
             truth = _truthiness(val)
-            if truth is None or truth is stops_on or idx == len(node.values) - 1:
+            is_last = idx == len(node.values) - 1
+            if truth is None or truth is stops_on or is_last:
                 candidates.append(val)
             if truth is stops_on:
                 break
-        return _join_alternatives(candidates)
+            if truth is None and not is_last:
+                active, skipped = self._fork_optional_state(active, skipped)
+        value = _join_alternatives(candidates)
+        if skipped is not None:
+            self._overwrite_state_in_place(state, _join_states(skipped, active))
+        return value
 
     def _eval_comprehension(
         self,
@@ -2065,23 +2092,47 @@ class _ProvenanceAnalyzer:
         state: _ExecState,
         scope: ast.AST,
     ) -> _ProvVal:
-        # Iterables, filters and the element run on the live state so their calls invalidate what they receive;
-        # targets are shadowed names that never bind here. A filter known to be false stops the element.
-        # ponytail: the element is taken as run once, so a walrus inside it binds as if definite.
-        body_runs = True
-        for gen in node.generators:
-            self._eval_expr(gen.iter, state, scope)
-            if any(self._eval_condition(cond, state, scope) is False for cond in gen.ifs):
-                body_runs = False
+        active = state
+        skipped: _ExecState | None = None
+        reaches_element = True
+        for index, gen in enumerate(node.generators):
+            item_count = self._comprehension_item_count(gen.iter, active, scope)
+            if item_count == 0:
+                reaches_element = False
+                break
+            # One probe cannot represent repeated effects, and a generator's body may never be consumed.
+            if item_count != 1 or (index == 0 and isinstance(node, ast.GeneratorExp)):
+                active, skipped = self._fork_optional_state(active, skipped)
+            for cond in gen.ifs:
+                passed = self._eval_condition(cond, active, scope)
+                if passed is False:
+                    reaches_element = False
+                    break
+                if passed is None:
+                    active, skipped = self._fork_optional_state(active, skipped)
+            if not reaches_element:
                 break
         probe: _ProvVal = _OPAQUE_VAL
-        if body_runs:
+        if reaches_element:
             if isinstance(node, ast.DictComp):
-                self._eval_expr(node.key, state, scope)
-            probe = self._eval_expr(node.value if isinstance(node, ast.DictComp) else node.elt, state, scope)
+                self._eval_expr(node.key, active, scope)
+            probe = self._eval_expr(node.value if isinstance(node, ast.DictComp) else node.elt, active, scope)
+        if skipped is not None:
+            self._overwrite_state_in_place(state, _join_states(skipped, active))
         if isinstance(node, ast.DictComp):
             return _FrameDict(entries={}, has_unknown_entries=True, contains_frames=_carries_frame(probe))
         return _ListVal([], opaque=True, contains_frames=_carries_frame(probe))
+
+    def _comprehension_item_count(self, expr: ast.expr, state: _ExecState, scope: ast.AST) -> int | None:
+        value = self._eval_expr(expr, state, scope)
+        if isinstance(value, _TupleVal) or (isinstance(value, _ListVal) and not value.opaque):
+            return len(value.items)
+        if isinstance(value, _FrameDict) and not value.has_unknown_entries:
+            return len(value.entries)
+        if isinstance(value, _ScalarVal) and isinstance(value.value, str):
+            return len(value.value)
+        sequence = self._reader_for(state).sequence(expr, allow_empty_range=True)
+        return None if sequence is None else len(sequence)
 
     def _eval_name(self, node: ast.Name, state: _ExecState, scope: ast.AST) -> _ProvVal:
         if self._bindings.is_shadowed(node):
@@ -2734,9 +2785,10 @@ class _ProvenanceAnalyzer:
             *(a.value if isinstance(a, ast.Starred) else a for a in call.args),
             *(k.value for k in call.keywords),
         ]
+        lambdas: list[ast.Lambda] = []
         for inner, val in zip(arg_exprs, passed, strict=True):
             if isinstance(inner, ast.Lambda):
-                self._run_lambda_effects(inner, state, scope)
+                lambdas.append(inner)
                 continue
             cb_fn = self._bindings.resolve_function_def(inner) if isinstance(inner, ast.Name) else None
             if cb_fn is not None:
@@ -2749,15 +2801,19 @@ class _ProvenanceAnalyzer:
             _invalidate_reachable(val)
             if _is_access_path(inner):
                 _invalidate_reachable(self._eval_expr(inner, state, scope))
+        # A join replaces the state's containers. Invalidate arguments that still refer to the old state first.
+        for callback in lambdas:
+            self._run_lambda_effects(callback, state, scope)
 
     def _run_lambda_effects(self, fn: ast.Lambda, state: _ExecState, scope: ast.AST) -> None:
-        # The callee may invoke the lambda; its parameters are shadowed names, so only its effects on the
-        # enclosing state matter. Its I/O is not attributed to this call site.
+        # An unknown callee may save the callback without invoking it. Its I/O does not belong to this call site.
+        probe = state.clone()
         self._suppress_io_depth += 1
         try:
-            self._eval_expr(fn.body, state, scope)
+            self._eval_expr(fn.body, probe, scope)
         finally:
             self._suppress_io_depth -= 1
+        self._overwrite_state_in_place(state, _join_states(state, probe))
 
     def _invalidate_function_effects(
         self,

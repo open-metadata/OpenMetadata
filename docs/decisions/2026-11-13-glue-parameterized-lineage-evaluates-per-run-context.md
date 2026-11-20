@@ -65,9 +65,17 @@ Two failure modes must be avoided when resolving runtime parameters statically:
     passed to it refers to, wherever the call appears (statement, assignment, condition, f-string
     placeholder, slice, comprehension, nested argument, or helper return). Operands Python
     short-circuits past (`False and ...`, `True or ...`, a chained comparison after a false link, a
-    comprehension behind a false filter) never run. A container that branches, `a if c else b`, or
-    `a or b` may alias in more than one way loses its tracked entries, because one joined copy cannot
-    keep every alias.
+    comprehension behind a false filter) never run. A reached comparison operand executes once
+    before its value is resolved. When a prior operand may short-circuit, later effects join with
+    the state where they were skipped.
+  - A comprehension evaluates its iterable before deciding which parts can run. An empty
+    iterable skips its filters, nested iterators, and element. If an iterator or filter has
+    unknown results, a generator body may be deferred, or a comprehension may repeat the body,
+    the analyzer joins the probed effects with the skipped state. It does not assume that a
+    single probe establishes the final provenance. A lambda passed to an uninspectable callee
+    also joins its possible effects with the state where it did not run.
+  - A container that branches, `a if c else b`, or `a or b` may alias in more than one way and
+    loses its tracked entries, because one joined copy cannot keep every alias.
 - `getResolvedOptions(sys.argv, [...])` mirrors `awsglue.utils`: the result holds only the requested
   options and Glue's built-in options, keyed by argparse dest (`--flag-name` -> `flag_name`), so
   `args.get("NOT_REQUESTED", "x")` is `"x"`. A requested option missing from the context is
