@@ -899,6 +899,52 @@ def test_parse_model_yaml_standalone_view_wins_over_inline_view():
     assert "semantic_views__sv_orders__dim_customers" in parsed
 
 
+def test_tile_reference_to_a_replaced_inline_view_resolves_to_the_view_file(omni_source):
+    from metadata.ingestion.source.dashboard.omni.client import OmniApiClient
+
+    files = {
+        "semantic_views/sv_orders__fact_orders.view": "schema: BIZ_GENERAL\ntable_name: FACT_ORDERS\n",
+        "semantic_views__sv_orders.topic": SEMANTIC_VIEW_TOPIC,
+    }
+    model = OmniModel(id="m1", name="sales")
+    omni_source.client.get_models = lambda *_: [model]
+    omni_source.client.get_model_topics = lambda *_: OmniApiClient._parse_model_yaml(model, files)
+    omni_source.prepare()
+
+    tile = QueryPresentation(
+        name="Orders",
+        query=OmniQuery(
+            table="semantic_views__sv_orders",
+            fields=["semantic_views__sv_orders__fact_orders.amount"],
+        ),
+    )
+    assert [t.name for t in omni_source._tile_topics(tile)] == [
+        "semantic_views__sv_orders",
+        "sv_orders__fact_orders",
+    ]
+
+
+@pytest.mark.parametrize("broken", ["dimensions: [id]", "dimensions: {id: 3}"])
+def test_parse_model_yaml_malformed_inline_view_is_skipped_alone(broken):
+    """One inline view that cannot be parsed does not cost the model its other views."""
+    indented = "\n".join(f"    {line}" for line in broken.splitlines())
+    files = {
+        "ANALYTICS/orders.view": "schema: ANALYTICS\ntable_name: ORDERS\n",
+        "order_summary.topic": f"base_view: analytics__orders\nviews:\n  analytics__orders:\n{indented}\n",
+        "sv_orders.topic": (
+            "semantic_view: MY_DB.SEMANTIC_VIEWS.SV_ORDERS\n"
+            "views:\n"
+            f"  sv_orders__broken:\n    schema: BIZ_GENERAL\n    table_name: BROKEN\n{indented}\n"
+            "  sv_orders__dim_customers:\n    schema: INFO_GENERAL\n    table_name: DIM_CUSTOMERS\n"
+        ),
+    }
+    parsed = _parse(files)
+
+    assert set(parsed) == {"order_summary", "orders", "sv_orders", "sv_orders__dim_customers"}
+    assert parsed["order_summary"].base_table == "ORDERS"
+    assert parsed["sv_orders__dim_customers"].base_table == "DIM_CUSTOMERS"
+
+
 def test_parse_model_yaml_inline_override_without_table_is_not_a_data_model():
     """An ordinary topic's inline entry that only overrides fields of a view neither
     becomes a data model nor changes the view it overrides."""

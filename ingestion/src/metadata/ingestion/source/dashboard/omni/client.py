@@ -256,11 +256,26 @@ class OmniApiClient:
             return []
         parsed = []
         for view_name, view_def in views.items():
-            if isinstance(view_def, dict):
+            try:
                 parsed.append((str(view_name), cls._parse_view(view_def)))
-            else:
-                logger.warning("Ignoring view %s of topic %s: expected a mapping", view_name, topic_name)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning("Ignoring malformed view %s of topic %s: %s", view_name, topic_name, exc)
         return parsed
+
+    @staticmethod
+    def _new_views(inline_views: list[tuple[str, dict]], view_lookup: dict, leaf_seen: set) -> list[tuple[str, dict]]:
+        """The inline views that define a table no ``.view`` file already defines."""
+        new_views = []
+        for name, inline in inline_views:
+            # An inline entry without a table only overrides fields of an existing view.
+            if not inline["table"]:
+                continue
+            standalone = view_lookup.get(canonical_ref(name))
+            if standalone is not None:
+                standalone.setdefault("reference", name)
+            elif canonical_ref(name) not in leaf_seen:
+                new_views.append((name, inline))
+        return new_views
 
     @classmethod
     def _parse_model_yaml(cls, model: OmniModel, files: dict) -> list[OmniTopic]:
@@ -331,12 +346,7 @@ class OmniApiClient:
             # instead.
             view = view_lookup.get(canonical_ref(base_view)) or {}
             inline_views = cls._inline_views(topic_name, topic_def)
-            # An inline entry without a table only overrides fields of an existing view.
-            view_records.extend(
-                (name, inline)
-                for name, inline in inline_views
-                if inline["table"] and canonical_ref(name) not in view_lookup.keys() | leaf_seen
-            )
+            view_records.extend(cls._new_views(inline_views, view_lookup, leaf_seen))
             database, schema, table = cls._semantic_view_parts(topic_def)
             if table:
                 fields = [
@@ -376,7 +386,8 @@ class OmniApiClient:
                     model_name=model.name,
                     name=view_name,
                     label=view.get("label"),
-                    base_view=view_name,
+                    # A view file that replaced an inline view also answers to the inline name.
+                    base_view=view.get("reference") or view_name,
                     base_schema=view.get("schema"),
                     base_table=view.get("table"),
                     fields=view.get("fields") or [],
