@@ -80,6 +80,7 @@ const createWrapper = () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockListTasks.mockReset().mockResolvedValue({ data: [] });
   mockCurrentUser = { id: 'u1' };
   [
     mockGetActivityEvents,
@@ -92,6 +93,83 @@ beforeEach(() => {
 });
 
 describe('fetchInboxActivity', () => {
+  it('keeps the time covered by cached task mentions when switching feeds', async () => {
+    const client = new QueryClient();
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(1000);
+    mockListTasks.mockResolvedValue({ data: [] });
+    try {
+      const first = await fetchInboxActivity(
+        ActivityFilter.Mentions,
+        'u1',
+        100,
+        undefined,
+        false,
+        'alice',
+        client
+      );
+      clock.mockReturnValue(2000);
+      const cached = await fetchInboxActivity(
+        ActivityFilter.All,
+        'u1',
+        100,
+        undefined,
+        false,
+        'alice',
+        client
+      );
+
+      expect(first.taskMentionsReadAt).toBe(1000);
+      expect(cached.taskMentionsReadAt).toBe(1000);
+      expect(mockListTasks).toHaveBeenCalledTimes(1);
+    } finally {
+      clock.mockRestore();
+      client.clear();
+    }
+  });
+
+  it('caps task mentions and cuts the merged feed to their complete span', async () => {
+    mockGetActivityEvents.mockResolvedValue({
+      data: [
+        { id: 'old', timestamp: 100 },
+        { id: 'recent', timestamp: 300 },
+      ],
+    });
+    mockListConversations.mockResolvedValue({ data: [] });
+    mockListTasks
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'task',
+            updatedAt: 400,
+            comments: Array.from({ length: 110 }, (_, index) => ({
+              id: String(index),
+              createdAt: 200 + index,
+              message: '<#E::user::alice>',
+            })),
+          },
+          { id: 'older', updatedAt: 50 },
+        ],
+        paging: { after: 'history' },
+      })
+      .mockResolvedValue({ data: [] });
+    const result = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u1',
+      0,
+      undefined,
+      false,
+      'alice'
+    );
+
+    expect(result.taskMentions).toHaveLength(100);
+    expect(result.isCapped).toBe(true);
+    expect(result.cutAt).toBe(210);
+    expect(result.activities.map(({ id }) => id)).toEqual(['recent']);
+    expect(mockListTasks).toHaveBeenCalledTimes(1);
+
+    mockListTasks.mockResolvedValue({ data: [] });
+  });
+
   // "All" is everything the viewer may see: every event, every conversation.
   it('fetches every activity event and conversation for All', async () => {
     const { activities, threads } = await fetchInboxActivity(
@@ -175,7 +253,10 @@ describe('fetchInboxActivity', () => {
         message: 'Please check <#E::user::"john.doe"|[@John](/users/john.doe)>',
       };
       mockListTasks
-        .mockResolvedValueOnce({ data: [], paging: { after: 'older-tasks' } })
+        .mockResolvedValueOnce({
+          data: [{ id: 'newer-task', comments: [] }],
+          paging: { after: 'older-tasks' },
+        })
         .mockResolvedValueOnce({
           data: [
             {

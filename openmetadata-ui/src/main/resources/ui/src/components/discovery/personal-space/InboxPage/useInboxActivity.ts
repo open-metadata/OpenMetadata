@@ -58,6 +58,7 @@ export interface InboxActivityResult {
   activities: ActivityEvent[];
   threads: Conversation[];
   taskMentions?: TaskCommentMention[];
+  taskMentionsReadAt?: number;
   // Either list came back a full page, so the window may hold more.
   isCapped: boolean;
   // Where the feed stops being whole: older items may be missing from here on.
@@ -274,8 +275,16 @@ const readTaskMentions = (
   endTs?: number,
   queryClient?: QueryClient
 ) => {
-  const queryFn = () =>
-    getTaskCommentMentions(mentionedUser, { startTs, endTs });
+  const queryFn = async () => {
+    const taskMentionsReadAt = Date.now();
+    const taskMentions = await getTaskCommentMentions(mentionedUser, {
+      startTs,
+      endTs,
+      maxResults: CONVERSATION_LIMIT,
+    });
+
+    return { taskMentions, taskMentionsReadAt };
+  };
 
   return queryClient
     ? queryClient.fetchQuery({
@@ -284,6 +293,35 @@ const readTaskMentions = (
         staleTime: INBOX_ACTIVITY_STALE_TIME,
       })
     : queryFn();
+};
+
+const mergeTaskMentions = (
+  filter: ActivityFilter,
+  window: InboxActivityResult,
+  mentionsResult?: Pick<
+    InboxActivityResult,
+    'taskMentions' | 'taskMentionsReadAt'
+  >
+): InboxActivityResult => {
+  const taskMentions = mentionsResult?.taskMentions;
+  const isTaskCapped = (taskMentions?.length ?? 0) >= CONVERSATION_LIMIT;
+  const taskFloor = isTaskCapped
+    ? Math.min(...(taskMentions ?? []).map(({ comment }) => comment.createdAt))
+    : 0;
+  const completeFrom = filter === ActivityFilter.Mentions ? 0 : taskFloor;
+
+  return {
+    ...window,
+    activities: window.activities.filter(
+      (activity) => getEventTimestamp(activity) >= completeFrom
+    ),
+    threads: window.threads.filter(
+      (thread) => getFeedSortTimestamp(thread) >= completeFrom
+    ),
+    ...mentionsResult,
+    isCapped: window.isCapped || isTaskCapped,
+    cutAt: Math.max(window.cutAt ?? 0, taskFloor) || undefined,
+  };
 };
 
 export const fetchInboxActivity = async (
@@ -310,14 +348,14 @@ export const fetchInboxActivity = async (
     return activityRequest;
   }
 
-  const [window, taskMentions] = await Promise.all([
+  const [window, mentionsResult] = await Promise.all([
     activityRequest,
     readTaskMentions(mentionedUser, startTs, endTs, queryClient).catch(
       () => undefined
     ),
   ]);
 
-  return { ...window, taskMentions };
+  return mergeTaskMentions(filter, window, mentionsResult);
 };
 
 /**
@@ -399,6 +437,7 @@ export interface UseInboxActivity extends InboxCount {
   cutAt?: number;
   isLoading: boolean;
   taskMentionsLoaded: boolean;
+  taskMentionsReadAt?: number;
   error: unknown;
   refetch: () => void;
 }
@@ -457,6 +496,7 @@ export const useInboxActivity = (
     cutAt: data?.cutAt,
     isLoading,
     taskMentionsLoaded: data?.taskMentions !== undefined,
+    taskMentionsReadAt: data?.taskMentionsReadAt,
     // A failed background refresh keeps the cached feed on screen.
     error: data ? null : error,
     refetch,

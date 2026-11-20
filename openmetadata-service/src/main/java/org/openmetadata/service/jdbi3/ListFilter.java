@@ -2000,11 +2000,11 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getTaskUpdatedSinceCondition(String tableName) {
     String since = queryParams.get("taskUpdatedSince");
-    if (since == null) {
+    if (nullOrEmpty(since)) {
       return "";
     }
     String column = tableName == null ? "updatedAt" : tableName + ".updatedAt";
-    return String.format("%s >= %d", column, Long.parseLong(since));
+    return "%s >= %d".formatted(column, Long.parseLong(since));
   }
 
   private String getTaskApproverCondition() {

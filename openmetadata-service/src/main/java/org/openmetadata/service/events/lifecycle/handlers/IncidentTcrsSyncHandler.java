@@ -14,7 +14,6 @@ package org.openmetadata.service.events.lifecycle.handlers;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -205,7 +204,10 @@ public final class IncidentTcrsSyncHandler {
             stateId != null ? stateId.toString() : null);
   }
 
-  /** Only the assigned stage tracks reassignment within the same stage. */
+  /**
+   * Only the assigned stage tracks reassignment; resolved details are a frozen snapshot.
+   * Compare IDs because names and other hydrated reference fields can change independently.
+   */
   private static UUID mirroredAssigneeId(TestCaseResolutionStatusTypes type, Object details) {
     if (type != TestCaseResolutionStatusTypes.Assigned || details == null) {
       return null;
@@ -219,23 +221,21 @@ public final class IncidentTcrsSyncHandler {
   private static Object buildDetailsForStage(TestCaseResolutionStatusTypes type, Task task) {
     return switch (type) {
       case Assigned -> {
-        List<EntityReference> assignees = task.getAssignees();
-        if (!nullOrEmpty(assignees)) {
-          yield new Assigned().withAssignee(assignees.get(0));
-        }
-        yield null;
+        EntityReference assignee = firstAssignee(task);
+        yield assignee == null ? null : new Assigned().withAssignee(assignee);
       }
       case Resolved -> buildResolvedDetails(task);
       default -> null;
     };
   }
 
+  private static EntityReference firstAssignee(Task task) {
+    return nullOrEmpty(task.getAssignees()) ? null : task.getAssignees().getFirst();
+  }
+
   @SuppressWarnings("unchecked")
   private static Resolved buildResolvedDetails(Task task) {
-    Resolved resolved = new Resolved();
-    if (!nullOrEmpty(task.getAssignees())) {
-      resolved.withAssignee(task.getAssignees().getFirst());
-    }
+    Resolved resolved = new Resolved().withAssignee(firstAssignee(task));
     TaskResolution resolution = task.getResolution();
     if (resolution == null) {
       return resolved;

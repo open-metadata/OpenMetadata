@@ -1392,6 +1392,13 @@ test(
             name: 'Comment',
             exact: true,
           });
+          if (entryPoint === 'popover') {
+            await editor.press('Enter');
+            await editor.press('Shift+Enter');
+            await expect(
+              page.getByTestId('submit-resolved-popover-button')
+            ).toBeDisabled();
+          }
           await editor.pressSequentially(`@${mentionedUser.responseData.name}`);
           const suggestion = page.locator(
             `#mention-item-${mentionedUser.responseData.id}`

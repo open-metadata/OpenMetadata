@@ -147,7 +147,10 @@ class ObservabilityRouterClassBase {
    * payload carries no `about` reference, `fallbackTestCaseFqn` (the test
    * case the caller is rendering) keeps the link on the Issues tab.
    */
-  public getIncidentTaskPath(task: Task, fallbackTestCaseFqn?: string): string {
+  public getIncidentTaskPath(
+    task: Pick<Task, 'id' | 'type' | 'about' | 'taskId'>,
+    fallbackTestCaseFqn?: string
+  ): string {
     const taskEntityFqn =
       getTaskEntityType(task) === EntityType.TEST_CASE
         ? getTaskEntityFQN(task)
@@ -155,7 +158,7 @@ class ObservabilityRouterClassBase {
     const testCaseFqn = taskEntityFqn ?? fallbackTestCaseFqn;
 
     if (testCaseFqn) {
-      return this.getTestCaseIncidentPath(testCaseFqn);
+      return this.getTestCaseIncidentPath(testCaseFqn, task.id);
     }
 
     return getTaskDetailPath(task);

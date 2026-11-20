@@ -15,11 +15,11 @@ import { Box, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { INCIDENT_TASK_TYPES } from '../../constants/Task.constant';
-import { EntityType } from '../../enums/entity.enum';
 import { getRelativeTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { TaskCommentMention } from '../../utils/tasks/TaskMentions.utils';
+import { getTaskDetailPath } from '../../utils/TaskUtils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 
 export const TaskMentionCard = ({
@@ -30,16 +30,9 @@ export const TaskMentionCard = ({
   const { t } = useTranslation();
   const { task, comment } = mention;
   const authorName = getEntityName(comment.author);
-  const { about } = task;
-  const path =
-    INCIDENT_TASK_TYPES.has(task.type) &&
-    about?.type === EntityType.TEST_CASE &&
-    about.fullyQualifiedName
-      ? observabilityRouterClassBase.getTestCaseIncidentPath(
-          about.fullyQualifiedName,
-          task.id
-        )
-      : `/tasks/${encodeURIComponent(task.id)}`;
+  const path = INCIDENT_TASK_TYPES.has(task.type)
+    ? observabilityRouterClassBase.getIncidentTaskPath(task)
+    : getTaskDetailPath(task);
 
   return (
     <Link data-testid="task-mention-notification" to={path}>

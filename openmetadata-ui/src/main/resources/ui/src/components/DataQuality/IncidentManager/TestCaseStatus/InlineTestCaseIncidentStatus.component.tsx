@@ -44,6 +44,7 @@ import {
 } from '../../../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
 import { ResolveTask, TaskResolutionType } from '../../../../rest/tasksAPI';
+import { isDescriptionContentEmpty } from '../../../../utils/BlockEditorPureUtils';
 import { reopenResolvedIncident } from '../../../../utils/DataQuality/IncidentManagerUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -401,7 +402,7 @@ const InlineTestCaseIncidentStatus = ({
   };
 
   const handleResolvedSubmit = () => {
-    if (selectedReason && comment) {
+    if (selectedReason && !isDescriptionContentEmpty(comment)) {
       submitStatusChange(TestCaseResolutionStatusTypes.Resolved, {
         reason: selectedReason,
         comment,
@@ -538,7 +539,9 @@ const InlineTestCaseIncidentStatus = ({
     <>
       <IncidentStatusPopoverHeader
         cancelTestId="cancel-resolved-popover-button"
-        submitDisabled={!selectedReason || !comment || isLoading}
+        submitDisabled={
+          !selectedReason || isDescriptionContentEmpty(comment) || isLoading
+        }
         submitTestId="submit-resolved-popover-button"
         title={t('label.resolved')}
         onBack={handleBackToStatusMenu}

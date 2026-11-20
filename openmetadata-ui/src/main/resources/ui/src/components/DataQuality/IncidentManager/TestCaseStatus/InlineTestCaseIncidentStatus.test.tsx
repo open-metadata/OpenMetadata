@@ -925,6 +925,29 @@ describe('InlineTestCaseIncidentStatus', () => {
       ).toBeDisabled();
     });
 
+    it.each(['{Enter}{Enter}', '{Shift>}{Enter}{/Shift}', '   '])(
+      'keeps Submit disabled for blank editor input %s',
+      async (input) => {
+        renderComponent({
+          testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
+        });
+        fireEvent.click(screen.getByTestId(CHIP_TEST_ID));
+        const reason = await screen.findByTestId(
+          `reason-chip-${TestCaseFailureReasonType.FalsePositive}`
+        );
+        fireEvent.click(reason);
+        const user = userEvent.setup({
+          advanceTimers: jest.advanceTimersByTime,
+        });
+        await user.click(screen.getByRole('textbox'));
+        await user.keyboard(input);
+
+        expect(
+          screen.getByTestId('submit-resolved-popover-button')
+        ).toBeDisabled();
+      }
+    );
+
     it('submit is enabled with both reason and comment', async () => {
       renderComponent({
         testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,

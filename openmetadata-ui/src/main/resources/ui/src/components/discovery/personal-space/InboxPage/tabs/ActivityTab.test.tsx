@@ -36,6 +36,7 @@ let activityState: {
   cutAt?: number;
   error?: unknown;
   taskMentionsLoaded?: boolean;
+  taskMentionsReadAt?: number;
 };
 const mockRefetch = jest.fn();
 const mockUseInboxActivity = jest.fn();
@@ -69,6 +70,7 @@ jest.mock('../useInboxActivity', () => ({
       cutAt: activityState.cutAt,
       error: activityState.error ?? null,
       taskMentionsLoaded: activityState.taskMentionsLoaded ?? filter === 'all',
+      taskMentionsReadAt: activityState.taskMentionsReadAt ?? 1000,
       refetch: mockRefetch,
     };
   },
@@ -738,6 +740,18 @@ describe('ActivityTab', () => {
       render(<ActivityTab />);
 
       expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
+
+    it('marks only through the loaded result when the cached feed is opened later', () => {
+      activityState = {
+        items: [],
+        total: 0,
+        isLoading: false,
+        taskMentionsReadAt: 1000,
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalledWith(1000);
     });
 
     it('does not stamp the seen-mark while the feed is loading', () => {

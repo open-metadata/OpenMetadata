@@ -399,7 +399,9 @@ public interface FeedDAOs {
     default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
       if (TaskListOrder.isRequestedBy(filter)) {
         return listByTaskTimestamp(
-            filter, limit, TaskListOrder.of(filter).after(afterName, afterId));
+            filter,
+            limit,
+            TaskListOrder.of(filter).after(afterName, afterId, filter.getSortField()));
       }
       if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
         return EntityDAO.super.listAfter(filter, limit, afterName, afterId);
@@ -417,7 +419,9 @@ public interface FeedDAOs {
         ListFilter filter, int limit, String beforeName, String beforeId) {
       if (TaskListOrder.isRequestedBy(filter)) {
         return listByTaskTimestamp(
-            filter, limit, TaskListOrder.of(filter).before(beforeName, beforeId));
+            filter,
+            limit,
+            TaskListOrder.of(filter).before(beforeName, beforeId, filter.getSortField()));
       }
       if (filter.getQueryParam(TASK_SEARCH_PARAM) == null) {
         return EntityDAO.super.listBefore(filter, limit, beforeName, beforeId);
@@ -433,11 +437,9 @@ public interface FeedDAOs {
     default List<String> listByTaskTimestamp(
         ListFilter filter, int limit, TaskListOrder.TimestampPage page) {
       final String condition = filter.getConditionForEntity(getTableName());
-      final String column =
-          TaskListOrder.usesUpdatedAt(filter) ? TaskListOrder.UPDATED_AT : TaskListOrder.SORT_FIELD;
       return filter.getQueryParam(TASK_SEARCH_PARAM) == null
-          ? listPageByTaskTimestamp(condition, column, filter.getQueryParams(), limit, page)
-          : listSearchPageByTaskTimestamp(condition, column, filter.getQueryParams(), limit, page);
+          ? listPageByTaskTimestamp(condition, filter.getQueryParams(), limit, page)
+          : listSearchPageByTaskTimestamp(condition, filter.getQueryParams(), limit, page);
     }
 
     // The timestamp bound is written twice so the outer `<op>=` stays a range the timestamp index
@@ -455,7 +457,6 @@ public interface FeedDAOs {
             + "ORDER BY task_entity.<timeColumn> <pageDir>, task_entity.id <pageDir>")
     List<String> listPageByTaskTimestamp(
         @Define("cond") String cond,
-        @Define("timeColumn") String timeColumn,
         @BindMap Map<String, ?> params,
         @Bind("limit") int limit,
         @TaskListOrder.BindPage TaskListOrder.TimestampPage page);
@@ -465,7 +466,7 @@ public interface FeedDAOs {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT task_entity.json FROM task_entity INNER JOIN ("
-                + "SELECT task_entity.id FROM task_entity IGNORE INDEX (idx_created_at) <cond> AND "
+                + "SELECT task_entity.id FROM task_entity IGNORE INDEX (idx_created_at, idx_updated_at) <cond> AND "
                 + TASK_TIMESTAMP_KEYSET
                 + " ORDER BY task_entity.<timeColumn> <scanDir>, task_entity.id <scanDir> LIMIT :limit"
                 + ") page_rows ON task_entity.id = page_rows.id "
@@ -484,7 +485,6 @@ public interface FeedDAOs {
         connectionType = POSTGRES)
     List<String> listSearchPageByTaskTimestamp(
         @Define("cond") String cond,
-        @Define("timeColumn") String timeColumn,
         @BindMap Map<String, ?> params,
         @Bind("limit") int limit,
         @TaskListOrder.BindPage TaskListOrder.TimestampPage page);

@@ -57,7 +57,10 @@ export const useUnreadInboxActivity = (): number => {
           startTs: seenTs ?? undefined,
         }),
         userName && seenTs !== null
-          ? getTaskCommentMentions(userName, { startTs: seenTs + 1 })
+          ? getTaskCommentMentions(userName, {
+              startTs: seenTs + 1,
+              maxResults: 100,
+            })
           : undefined,
       ]);
       const conversationCount =

@@ -25,18 +25,6 @@
 @callout-border: var(--tw-color-border-subtle);
 
 .block-editor-wrapper {
-  &.block-editor-wrapper--comment .om-block-editor {
-    min-height: calc(var(--tw-spacing) * 24);
-
-    > p:last-child {
-      padding-bottom: 0;
-    }
-  }
-
-  .om-block-editor > p:last-child {
-    // this is to have enough space after last node, referred from the reference editor
-    padding-bottom: 30vh;
-  }
   .om-block-editor > .tableWrapper {
     width: 100%;
     overflow-x: auto;
@@ -286,12 +274,7 @@
     }
   }
 
-  // if contenteditable is false, remove padding-bottom from last p tag
-  .om-block-editor[contenteditable='false'] {
-    > p:last-child {
-      padding-bottom: 0;
-    }
-  }
+
 }
 
 .menu-wrapper {

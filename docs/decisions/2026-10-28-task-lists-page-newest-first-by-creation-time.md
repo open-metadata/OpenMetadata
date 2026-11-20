@@ -37,6 +37,10 @@ numeric sequence column that can be sorted directly.
 
 v2 2026-11-19: `GET /v1/tasks` accepts `sortBy=updatedAt` to page by `(updatedAt, id)` and
 `updatedSince` as an inclusive lower bound in epoch milliseconds. Clients reuse the same sort
-field across a cursor walk. Inbox task mentions use the updated-time bound because a new comment
+field across a cursor walk: cursors contain a timestamp without the field name, so switching
+fields interprets the old timestamp in the new order and can skip or repeat tasks. Start a new walk
+when changing the field. Rows updated during a walk can move above its cursor and be skipped;
+this is a live feed, not a snapshot. Inbox refreshes start from the first page with the same
+`updatedSince` window, so the next refresh can recover those rows. Inbox task mentions use the updated-time bound because a new comment
 can arrive on a task created outside the Inbox window. The client still filters individual
 comments by their own timestamps, since task edits can also advance `updatedAt`.

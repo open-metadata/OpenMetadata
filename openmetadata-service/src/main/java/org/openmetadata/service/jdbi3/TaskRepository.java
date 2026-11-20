@@ -72,6 +72,7 @@ import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator;
 import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator.TaskCloseRequest;
@@ -878,6 +879,7 @@ public class TaskRepository extends EntityRepository<Task> {
           }
           comment.setMessage(newMessage);
           storeCommentMutation(current);
+          storeMentions(current, newMessage);
           return current;
         });
   }
@@ -1577,16 +1579,23 @@ public class TaskRepository extends EntityRepository<Task> {
                   resolution.getResolvedAt())));
     }
     applyTransitionTarget(updated, transition, resolution.getResolvedBy());
-    Task resolved = persistLifecycleChange(original, updated, updatedBy);
-    return addIncidentResolutionComment(original, resolved, resolution, updatedBy);
+    return executeInTransaction(
+        () -> {
+          Task resolved = persistLifecycleChange(original, updated, updatedBy);
+          return addIncidentResolutionComment(original, resolved, resolution, updatedBy);
+        });
   }
 
   private Task addIncidentResolutionComment(
       Task original, Task resolved, TaskResolution resolution, String updatedBy) {
+    String note = resolution.getComment();
+    String previousNote =
+        original.getResolution() == null ? null : original.getResolution().getComment();
     if (resolved.getType() != TaskEntityType.TestCaseResolution
-        || nullOrEmpty(resolution.getComment())
-        || (original.getResolution() != null
-            && Objects.equals(original.getResolution().getComment(), resolution.getComment()))) {
+        || nullOrEmpty(note)
+        || note.equals(previousNote)
+        || (TestCaseResultRepository.AUTO_RESOLVED_COMMENT.equals(note)
+            && WorkflowEventConsumer.GOVERNANCE_BOT.equals(updatedBy))) {
       return resolved;
     }
     Task commented =

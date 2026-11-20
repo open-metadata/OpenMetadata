@@ -80,6 +80,7 @@ public enum TaskListOrder {
     return SORT_FIELD.equals(filter.getSortField()) || usesUpdatedAt(filter);
   }
 
+  // Updates can move a row above a cursor; Inbox refreshes restart at page one with updatedSince.
   static boolean usesUpdatedAt(ListFilter filter) {
     return UPDATED_AT.equals(filter.getSortField());
   }
@@ -93,29 +94,32 @@ public enum TaskListOrder {
   }
 
   public ListFilter applyTo(ListFilter filter, String sortBy) {
-    if (nullOrEmpty(sortBy) || SORT_FIELD.equals(sortBy)) {
-      return applyTo(filter);
-    }
-    if (UPDATED_AT.equals(sortBy)) {
-      return filter.withSort(UPDATED_AT, param);
-    }
-    throw BadRequestException.of("sortBy must be 'createdAt' or 'updatedAt'");
+    return switch (nullOrEmpty(sortBy) ? SORT_FIELD : sortBy) {
+      case SORT_FIELD -> applyTo(filter);
+      case UPDATED_AT -> filter.withSort(UPDATED_AT, param);
+      default -> throw BadRequestException.of("sortBy must be 'createdAt' or 'updatedAt'");
+    };
   }
 
   /** The page that follows the cursor row in this order. */
-  TimestampPage after(String cursorTime, String cursorId) {
+  TimestampPage after(String cursorTime, String cursorId, String column) {
     return new TimestampPage(
-        parseCursor(cursorTime), cursorId, afterOperator, direction, direction);
+        parseCursor(cursorTime), cursorId, afterOperator, direction, direction, column);
   }
 
   /**
    * The page that precedes the cursor row. It is the next page of the opposite order — walked that
    * way so LIMIT keeps the rows nearest the cursor — handed back in this order.
    */
-  TimestampPage before(String cursorTime, String cursorId) {
+  TimestampPage before(String cursorTime, String cursorId, String column) {
     final TaskListOrder opposite = this == NEWEST_FIRST ? OLDEST_FIRST : NEWEST_FIRST;
     return new TimestampPage(
-        parseCursor(cursorTime), cursorId, opposite.afterOperator, opposite.direction, direction);
+        parseCursor(cursorTime),
+        cursorId,
+        opposite.afterOperator,
+        opposite.direction,
+        direction,
+        column);
   }
 
   private long parseCursor(String cursorTime) {
@@ -139,8 +143,16 @@ public enum TaskListOrder {
    * returned.
    */
   record TimestampPage(
-      long timestamp, String id, String operator, String scanDirection, String pageDirection) {
+      long timestamp,
+      String id,
+      String operator,
+      String scanDirection,
+      String pageDirection,
+      String column) {
     TimestampPage {
+      if (!SORT_FIELD.equals(column) && !UPDATED_AT.equals(column)) {
+        throw BadRequestException.of("sortBy must be 'createdAt' or 'updatedAt'");
+      }
       id = id == null ? "" : id;
     }
   }
@@ -168,7 +180,8 @@ public enum TaskListOrder {
           // Jdbi's customizer SPI passes the argument as Object; BindPage is only declared on
           // TimestampPage parameters, so the cast is the shape check the SPI leaves us.
           final TimestampPage page = (TimestampPage) arg;
-          stmt.define("op", page.operator())
+          stmt.define("timeColumn", page.column())
+              .define("op", page.operator())
               .define("scanDir", page.scanDirection())
               .define("pageDir", page.pageDirection())
               .bind("cursorTime", page.timestamp())

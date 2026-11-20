@@ -381,20 +381,25 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
     error,
     refetch,
     taskMentionsLoaded,
+    taskMentionsReadAt,
   } = useInboxActivity(filter, dateRange, userId);
 
   // Keep the unread badge until a view that includes the viewer's mentions loads.
   useEffect(() => {
     const showsUnfilteredTaskMentions =
-      taskMentionsLoaded && !isFiltered && typeKeys.length === 0;
+      taskMentionsLoaded &&
+      taskMentionsReadAt !== undefined &&
+      !isFiltered &&
+      typeKeys.length === 0;
     if (!isOtherUser && !isLoading && !error && showsUnfilteredTaskMentions) {
-      markInboxActivitySeen();
+      markInboxActivitySeen(taskMentionsReadAt);
     }
   }, [
     isOtherUser,
     isLoading,
     error,
     taskMentionsLoaded,
+    taskMentionsReadAt,
     isFiltered,
     typeKeys.length,
     markInboxActivitySeen,

@@ -99,6 +99,30 @@ describe('useUnreadInboxActivity', () => {
     );
   });
 
+  it('caps task mentions for the sidebar badge without walking older history', async () => {
+    mockListConversations.mockResolvedValue({ paging: { total: 0 } });
+    mockListTasks
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'task',
+            updatedAt: 1500,
+            comments: Array.from({ length: 110 }, (_, index) => ({
+              createdAt: 1200 + index,
+              message: '<#E::user::admin>',
+            })),
+          },
+          { id: 'older', updatedAt: 1100 },
+        ],
+        paging: { after: 'history' },
+      })
+      .mockResolvedValue({ data: [] });
+    const { result } = renderUnreadCount();
+    await waitFor(() => expect(result.current).toBe(100));
+
+    expect(mockListTasks).toHaveBeenCalledTimes(1);
+  });
+
   /**
    * A user who has never opened the Inbox has no mark to compare against;
    * counting everything would greet them with a badge for history.

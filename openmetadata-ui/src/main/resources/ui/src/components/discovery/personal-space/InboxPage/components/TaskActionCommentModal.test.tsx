@@ -215,17 +215,20 @@ describe('TaskActionCommentModal', () => {
     });
   });
 
-  it('rejects whitespace-only editor markup for a required comment', () => {
-    render(
-      <TaskActionCommentModal {...defaultProps} requiredMessage="required" />
-    );
-    fireEvent.change(screen.getByRole('textbox'), {
-      target: { value: '<p>   </p>' },
-    });
+  it.each(['<p>   </p>', '<p></p><p></p>', '<p><br></p>', '<p>&nbsp;</p>'])(
+    'rejects blank editor markup %s for a required comment',
+    (markup) => {
+      render(
+        <TaskActionCommentModal {...defaultProps} requiredMessage="required" />
+      );
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: markup },
+      });
 
-    expect(screen.getByTestId('task-action-comment-confirm')).toBeDisabled();
-    expect(defaultProps.onConfirm).not.toHaveBeenCalled();
-  });
+      expect(screen.getByTestId('task-action-comment-confirm')).toBeDisabled();
+      expect(defaultProps.onConfirm).not.toHaveBeenCalled();
+    }
+  );
 
   it('allows an empty comment when not required', () => {
     render(<TaskActionCommentModal {...defaultProps} />);

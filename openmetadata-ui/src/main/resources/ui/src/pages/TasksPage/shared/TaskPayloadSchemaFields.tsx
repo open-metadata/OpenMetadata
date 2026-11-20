@@ -142,25 +142,19 @@ type FieldWidgetKind =
   | 'objectOrArray'
   | 'default';
 
-const EXPLICIT_FIELD_WIDGETS: ReadonlyMap<unknown, FieldWidgetKind> = new Map([
-  ['descriptionTabs', 'descriptionTabs'],
-  ['tagsTabs', 'tagsTabs'],
-  ['tagSelector', 'tagSelector'],
-  ['textarea', 'textarea'],
-  ['richtext', 'richtext'],
+const OVERRIDING_WIDGETS: ReadonlySet<unknown> = new Set([
+  'descriptionTabs',
+  'tagsTabs',
+  'tagSelector',
 ]);
+const TEXT_WIDGETS: ReadonlySet<unknown> = new Set(['textarea', 'richtext']);
 
 function selectFieldWidgetKind(
   widget: unknown,
   fieldSchema?: JsonSchemaProperty
 ): FieldWidgetKind {
-  const explicitKind = EXPLICIT_FIELD_WIDGETS.get(widget);
-  if (
-    explicitKind &&
-    explicitKind !== 'textarea' &&
-    explicitKind !== 'richtext'
-  ) {
-    return explicitKind;
+  if (OVERRIDING_WIDGETS.has(widget)) {
+    return widget as FieldWidgetKind;
   }
   if (fieldSchema?.enum?.length) {
     return 'enum';
@@ -171,8 +165,8 @@ function selectFieldWidgetKind(
   if (fieldSchema?.type === 'boolean') {
     return 'boolean';
   }
-  if (explicitKind) {
-    return explicitKind;
+  if (TEXT_WIDGETS.has(widget)) {
+    return widget as FieldWidgetKind;
   }
   if (fieldSchema?.type === 'object' || fieldSchema?.type === 'array') {
     return 'objectOrArray';

@@ -18,7 +18,7 @@ import Fqn from '../Fqn';
 const TASK_MENTION_PAGE_SIZE = 100;
 
 export interface TaskCommentMention {
-  task: Pick<Task, 'id' | 'name' | 'about' | 'type'>;
+  task: Pick<Task, 'id' | 'name' | 'about' | 'type' | 'taskId'>;
   comment: TaskComment;
 }
 
@@ -96,13 +96,16 @@ export const getTaskCommentMentions = async (
       limit: TASK_MENTION_PAGE_SIZE,
       after,
     });
-    for (const { id, name: taskName, about, type, comments } of data) {
-      const task = { id, name: taskName, about, type };
+    for (const { id, name: taskName, about, type, taskId, comments } of data) {
+      const task = { id, name: taskName, about, type, taskId };
       comments
         ?.filter(includesComment)
         .forEach((comment) => mentions.push({ task, comment }));
     }
-    if (trimToNewestMentions(mentions, maxResults, data.at(-1)?.updatedAt)) {
+    if (
+      data.length === 0 ||
+      trimToNewestMentions(mentions, maxResults, data.at(-1)?.updatedAt)
+    ) {
       break;
     }
     after = paging?.after;
