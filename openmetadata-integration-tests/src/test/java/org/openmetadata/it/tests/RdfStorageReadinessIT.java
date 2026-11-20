@@ -20,6 +20,7 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.it.bootstrap.RdfStoreImage;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
@@ -64,8 +65,7 @@ class RdfStorageReadinessIT {
   @BeforeAll
   static void start() throws Exception {
     final ImageFromDockerfile image =
-        new ImageFromDockerfile()
-            .withFileFromPath(".", RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store"));
+        RdfStoreImage.get(RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store"));
     shipped =
         new GenericContainer<>(image)
             .withExposedPorts(FUSEKI_PORT)
