@@ -1,10 +1,11 @@
 # A domain lineage edge counts the edges its domains' assets hold in effect
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-20 (initial)
+- **Revisions:** v1 2026-11-20 (initial); v2 2026-11-20 (a container's domain change moves its
+  inheritors in the write's transaction)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `DomainLineageRefcountIT`, `DomainLineageRebuildIT`, `LineageDomainRollupsTest`,
-  `IngestionPipelineMigrationEntryPointTest`
+- **Guard:** `DomainLineageRefcountIT`, `DomainLineageInheritanceIT`, `DomainLineageRebuildIT`,
+  `LineageDomainRollupsTest`, `LineageDomainInheritorsTest`, `IngestionPipelineMigrationEntryPointTest`
 - **Related:** #33961
 
 ## Context
@@ -54,3 +55,69 @@ invariant meanwhile:
 
 Excluding service and data product ends by type instead, which would also close the re-sent
 rollup divergence, needs the same change in `LineageRepository`.
+
+## Amendment — 2026-11-20: a container's domain change moves its inheritors in the write's transaction
+
+- **A fourth trigger.** A write to an entity's own domains also moves the rollups of the
+  descendants whose domains in effect follow it. `LineageDomainInheritors` finds them by FQN among
+  the types that can inherit the container's domains and be a lineage end: the types search
+  carries the container's inherited fields onto (`indexMapping.json` `childAliases`,
+  transitively), plus the container's own type when it nests (a directory), kept when their search
+  index carries lineage (`SearchIndex.carriesLineage`, a `LineageIndex` whose documents hold the
+  `upstreamLineage` the lineage views read). A table's or a container's own domain write runs no
+  discovery query. The descendants found are those that are an end of a lineage edge; their
+  domains in effect are read before the write and after it, in the write's transaction, with no
+  cache answering or keeping the reads. Reading both sides gets each move right whether the
+  descendant inherits from the container, holds its own domains or inherits from a nearer parent,
+  so a move read this way replaces the caller's move for the same entity, even when it changes
+  nothing. The moves go to `LineageDomainRollups.move` with the container's own, so an edge between
+  two moved ends counts once. It runs on the updater's baseline pass, in the CSV batch flush and in
+  a data product's domain move (containers can be its assets).
+- **In the same transaction, not after commit.** The rollups commit with the domain rows they
+  follow. That does not isolate them from other rollup writers: every writer (`LineageRepository`
+  on an edge write or delete, the move) reads the rollup row without a lock and writes it back with
+  an upsert, so an edge write racing a container's move can overwrite the move's delta with a count
+  it read before the move, and it counts its new edge under the domains it read. The rebuild is the
+  backstop; making it exact would need `SELECT … FOR UPDATE` in every writer, which this does not
+  add. A post-commit job would be worse, even moving only the edges it snapshotted in the
+  transaction: counts stop at zero (`LineageRepository` skips the decrement of a missing row, the
+  move deletes a row at 0), so an edge deleted between commit and job loses its decrement on the
+  new pair and the job's increment then leaves a count no edge stands for; and two jobs whose edges
+  share a pair must run in commit order, across pods. The CONTAINS tree is not the descendant set:
+  a nested container inherits from its service.
+- **Cap: 5,000 descendants with lineage per write** (`LineageDomainInheritors.MAX_REPROJECTED`).
+  Measured on the integration-test stack (Testcontainers, a shared 32 GB host; tables with one
+  column, so wider tables read more JSON per entity), one PATCH of a database service's domains:
+
+  | Lineage-bearing tables (of all tables) | MySQL + ES: assign / move | Postgres + OS: assign / move |
+  |---|---|---|
+  | 10 (10) | 140 / 196 ms | 131 / 137 ms |
+  | 1,000 (1,000) | 236 / 286 ms | 184 / 230 ms |
+  | 10 (5,000) | 111 / 151 ms | 91 / 115 ms |
+  | 5,000 (5,000) | 1,037 / 1,000 ms | 675 / 672 ms |
+
+  Discovery bounds the matches, not the rows scanned: each query walks every descendant of its
+  type under the prefix with two `EXISTS` probes (the 10-of-5,000 row). On Postgres the 5,000
+  edges point at 50 targets: with one, OpenSearch's 2 GB test heap tripped its circuit breaker
+  while the edges were written. Each re-projected
+  descendant then costs two full-entity reads, its share of the edge reads and the neighbours'
+  domain reads, all inside the request's transaction, which holds the rollup rows it writes. At
+  5,000 the PATCH stays near a second, which leaves room under MySQL's 50 s lock wait for wider
+  tables (not measured), so the cap stays at 5,000. Above the cap nothing moves: the request succeeds and a WARN (`Domain lineage was
+  not moved for the descendants of …`) names the rebuild command. Those descendants' rollups stay
+  under their old domains, and a later delete of one of their edges is lost on the missing new
+  pair, until the rebuild runs. Which durable fallback replaces the warning (queue the rebuild,
+  re-project after commit in chunks, or persist a "rebuild due" marker) is a maintainer decision.
+- **The rebuild command**, `openmetadata-ops.sh rebuild-domain-lineage`, runs `DomainLineageRebuild`.
+  It overwrites counts tallied from a full scan of `entity_relationship`, so it needs lineage and
+  domain writes paused (or the server stopped), its run time grows with that table, and a reindex
+  of domain and dataProduct follows.
+- **Postgres prefix indexes.** Discovery's `fqnHash LIKE 'hash.%'` needs a `text_pattern_ops`
+  index under a non-C collation (as in 1.13.0); 2.1.0 adds the four that lineage-end types lacked:
+  `stored_procedure_entity`, `pipeline_entity`, `llm_model_entity`, `mcp_server_entity`.
+- **Still not moved live:** a domain's hard delete, where an asset whose own domains were all
+  deleted falls back to an inherited one nobody counts under; a directory moved to another parent
+  (the update rewrites its CONTAINS row and keeps its FQN, so it and its files inherit from a parent
+  whose prefix they are not under); inheritance that does not follow the FQN (a query's domains
+  come from its tables); and an edge on a type whose search documents carry no lineage (one written
+  through the API onto a schema). The rebuild command restores them.
