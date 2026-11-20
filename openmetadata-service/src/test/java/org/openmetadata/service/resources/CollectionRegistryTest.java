@@ -16,11 +16,14 @@ package org.openmetadata.service.resources;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Map;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -32,6 +35,28 @@ import org.openmetadata.service.security.auth.AuthenticatorHandler;
 class CollectionRegistryTest {
   private static final List<String> HIGH_ORDER_ONTOLOGY_COLLECTIONS =
       List.of("/v1/ontology/bulk", "/v1/ontology/reasoning");
+
+  @Test
+  void returnsOnlyTheInitializedInstanceAndFailsClosedWhenMissing() throws Exception {
+    final Constructor<CollectionRegistry> constructor =
+        CollectionRegistry.class.getDeclaredConstructor();
+    constructor.setAccessible(true);
+    final CollectionRegistry registry = constructor.newInstance();
+    final Field mapField = CollectionRegistry.class.getDeclaredField("collectionMap");
+    mapField.setAccessible(true);
+    @SuppressWarnings("unchecked")
+    final Map<String, CollectionRegistry.CollectionDetails> entries =
+        (Map<String, CollectionRegistry.CollectionDetails>) mapField.get(registry);
+    final var details =
+        new CollectionRegistry.CollectionDetails(null, NoArgsResource.class.getName(), 1, false);
+    entries.put("/fixture", details);
+    assertThrows(IllegalStateException.class, () -> registry.getResource(NoArgsResource.class));
+    final NoArgsResource initialized = new NoArgsResource();
+    details.setResource(initialized);
+    assertSame(initialized, registry.getResource(NoArgsResource.class));
+    assertThrows(
+        IllegalStateException.class, () -> registry.getResource(UnknownSignatureResource.class));
+  }
 
   @Test
   void resolvesKnownConstructorSignaturesInExistingPrecedenceOrder() throws Exception {

@@ -243,6 +243,82 @@ class SearchMetadataToolTest {
   }
 
   @Test
+  void relationshipCatalogSearchPreservesConstraintsAndContinuesTheCallersPage() throws Exception {
+    final Map<String, Object> constraints =
+        Map.of(
+            "rdfPredicate", "https://example.org/customerOf",
+            "inverse",
+                Map.of("type", Entity.RELATIONSHIP_TYPE, "fullyQualifiedName", "hasCustomer"),
+            "domain", List.of(Map.of("iri", "https://example.org/Customer")),
+            "range", List.of(Map.of("iri", "https://example.org/Company")),
+            "cardinality", Map.of("sourceMax", 1),
+            "entityStatus", "Approved",
+            "crossGlossaryAllowed", false,
+            "replacedBy",
+                Map.of("type", Entity.RELATIONSHIP_TYPE, "fullyQualifiedName", "newCustomerOf"));
+    when(searchRepository.getIndexMapping(Entity.RELATIONSHIP_TYPE))
+        .thenReturn(mock(IndexMapping.class));
+    when(searchRepository.getIndexOrAliasName(Entity.RELATIONSHIP_TYPE))
+        .thenReturn("relationship_type_search_index");
+    when(searchRepository.search(any(), any(SubjectContext.class)))
+        .thenAnswer(
+            invocation -> {
+              final SearchRequest request = invocation.getArgument(0);
+              final SubjectContext subject = invocation.getArgument(1);
+              assertEquals("relationship_type_search_index", request.getIndex());
+              assertEquals("*", request.getQuery());
+              assertEquals(1, request.getSize());
+              assertFalse(request.getDeleted());
+              assertEquals(mockUser.getId(), subject.user().getId());
+              assertFalse(subject.isAdmin());
+              final Map<String, Object> definition = new HashMap<>(constraints);
+              definition.put(
+                  "fullyQualifiedName", request.getFrom() == 0 ? "customerOf" : "newCustomerOf");
+              definition.put("entityType", Entity.RELATIONSHIP_TYPE);
+              return Response.ok(
+                      JsonUtils.pojoToJson(
+                          Map.of(
+                              "hits",
+                              Map.of(
+                                  "total",
+                                  Map.of("value", 2),
+                                  "hits",
+                                  List.of(Map.of("_source", definition))))))
+                  .build();
+            });
+    try (MockedStatic<SubjectCache> subjects = mockStatic(SubjectCache.class)) {
+      subjects.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      final Map<String, Object> params =
+          new HashMap<>(
+              Map.of(
+                  "entityType",
+                  Entity.RELATIONSHIP_TYPE,
+                  "query",
+                  "*",
+                  "size",
+                  1,
+                  "fields",
+                  String.join(",", constraints.keySet())));
+      final JsonNode first =
+          JsonUtils.valueToTree(searchMetadataTool.execute(authorizer, securityContext, params));
+      assertEquals(2, first.path("totalFound").asInt());
+      assertEquals("customerOf", first.at("/results/0/fullyQualifiedName").asText());
+      constraints.forEach(
+          (field, value) ->
+              assertEquals(JsonUtils.valueToTree(value), first.at("/results/0").path(field)));
+      assertTrue(first.path("hasMore").asBoolean());
+      assertEquals(1, PageCursor.decode(first.path("nextCursor").asText()).orElseThrow().offset());
+
+      params.put("cursor", first.path("nextCursor").asText());
+      final JsonNode second =
+          JsonUtils.valueToTree(searchMetadataTool.execute(authorizer, securityContext, params));
+      assertEquals("newCustomerOf", second.at("/results/0/fullyQualifiedName").asText());
+      assertFalse(second.path("hasMore").asBoolean());
+      assertFalse(second.has("nextCursor"));
+    }
+  }
+
+  @Test
   void testUnregisteredEntityTypeFallsBackToDefaultScope() {
     when(searchRepository.getIndexMapping("bogusType")).thenReturn(null);
 
@@ -885,6 +961,72 @@ class SearchMetadataToolTest {
 
     assertTrue(thrown.getMessage().contains("'from'"), thrown.getMessage());
     verify(searchRepository, never()).search(any(), any(SubjectContext.class));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"from", "size", "cursor"})
+  void aNegativeSearchPageIsRejectedByName(String parameter) throws Exception {
+    try (MockedStatic<SubjectCache> subjects = mockStatic(SubjectCache.class)) {
+      subjects.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      lenient().when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      lenient()
+          .when(searchRepository.search(any(), any(SubjectContext.class)))
+          .thenReturn(Response.ok("{\"hits\":{\"hits\":[],\"total\":{\"value\":0}}}").build());
+      Object value = parameter.equals("cursor") ? PageCursor.encodeOffset(-1) : -1;
+
+      IllegalArgumentException thrown =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  searchMetadataTool.execute(
+                      authorizer, securityContext, Map.of(parameter, value)));
+
+      assertTrue(thrown.getMessage().contains(parameter.equals("size") ? "'size'" : "'from'"));
+    }
+  }
+
+  @Test
+  void aZeroSizeRequestStillCountsMatches() throws Exception {
+    try (MockedStatic<SubjectCache> subjects = mockStatic(SubjectCache.class)) {
+      subjects.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      when(searchRepository.search(any(), any(SubjectContext.class)))
+          .thenAnswer(
+              invocation -> {
+                assertEquals(0, invocation.getArgument(0, SearchRequest.class).getSize());
+                return Response.ok("{\"hits\":{\"hits\":[],\"total\":{\"value\":37}}}").build();
+              });
+
+      final Map<String, Object> result =
+          searchMetadataTool.execute(authorizer, securityContext, Map.of("size", 0));
+
+      assertEquals(37, result.get("totalFound"));
+      assertEquals(0, result.get("returnedCount"));
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"from", "size"})
+  void nonNumericPagingStringsRetainExistingDefaults(final String parameter) throws Exception {
+    try (MockedStatic<SubjectCache> subjects = mockStatic(SubjectCache.class)) {
+      subjects.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      when(searchRepository.search(any(), any(SubjectContext.class)))
+          .thenAnswer(
+              invocation -> {
+                final SearchRequest request = invocation.getArgument(0);
+                assertEquals(10, request.getSize());
+                assertEquals(0, request.getFrom());
+                return Response.ok("{\"hits\":{\"hits\":[],\"total\":{\"value\":0}}}").build();
+              });
+
+      final Map<String, Object> result =
+          searchMetadataTool.execute(
+              authorizer, securityContext, Map.of(parameter, "not-a-number"));
+
+      assertEquals(0, result.get("totalFound"));
+      assertEquals(0, result.get("returnedCount"));
+    }
   }
 
   /** A size-0 count returns no hits, only the total, and must not report 0 matches. */

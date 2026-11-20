@@ -145,6 +145,31 @@ public class DefaultToolContext {
         case "ontology_describe":
           result = new OntologyDescribeTool().execute(authorizer, securityContext, params);
           break;
+        case "create_term_relation":
+          result =
+              new OntologyTool(OntologyTool.Action.CREATE_RELATION)
+                  .execute(authorizer, securityContext, params);
+          break;
+        case "create_ontology_change_set":
+          result =
+              new OntologyTool(OntologyTool.Action.CREATE_CHANGE_SET)
+                  .execute(authorizer, securityContext, params);
+          break;
+        case "get_ontology_change_set":
+          result =
+              new OntologyTool(OntologyTool.Action.GET_CHANGE_SET)
+                  .execute(authorizer, securityContext, params);
+          break;
+        case "ontology_change_set_lease":
+          result =
+              new OntologyTool(OntologyTool.Action.LEASE)
+                  .execute(authorizer, securityContext, params);
+          break;
+        case "submit_ontology_change_set":
+          result =
+              new OntologyTool(OntologyTool.Action.SUBMIT)
+                  .execute(authorizer, securityContext, params);
+          break;
         default:
           return new CallToolOutcome(
               errorResult(errorPayload("Unknown function: " + toolName, STATUS_BAD_REQUEST)),
