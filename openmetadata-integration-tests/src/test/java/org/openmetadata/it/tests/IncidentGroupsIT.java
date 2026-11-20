@@ -1518,7 +1518,7 @@ public class IncidentGroupsIT {
   }
 
   @Test
-  void testBulkNewOnOpenIncidentRejected() throws Exception {
+  void testBulkNewOnOpenIncidentReturnsItToNew() throws Exception {
     long ts = System.currentTimeMillis();
     Table table = createTable(schemaFqn, "incident_groups_bulk_new_" + ts);
     TestDefinition definition =
@@ -1537,9 +1537,9 @@ public class IncidentGroupsIT {
                         .withTestCaseReference(testCase.getFullyQualifiedName())
                         .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)));
 
-    assertEquals(ApiStatus.FAILURE, result.getStatus());
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
     assertEquals(
-        TestCaseResolutionStatusTypes.Ack,
+        TestCaseResolutionStatusTypes.New,
         fetchStatuses(testCase).getFirst().getTestCaseResolutionStatusType());
   }
 

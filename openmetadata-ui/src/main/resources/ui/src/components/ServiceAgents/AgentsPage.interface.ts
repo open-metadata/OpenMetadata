@@ -14,7 +14,13 @@
 import { ReactNode } from 'react';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
-export type AgentStatus = 'running' | 'success' | 'failed' | 'queued' | 'none';
+export type AgentStatus =
+  | 'running'
+  | 'success'
+  | 'failed'
+  | 'stopped'
+  | 'queued'
+  | 'none';
 
 export type RunStatus =
   | 'success'

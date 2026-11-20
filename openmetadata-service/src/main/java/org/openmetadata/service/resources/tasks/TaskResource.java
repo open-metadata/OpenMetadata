@@ -1873,7 +1873,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     validateTaskCanBeClosed(task);
     requireClosable(task);
 
-    Task closedTask = repository.closeTask(task, userName, comment);
+    Task closedTask = repository.closeTaskAndCancelWorkflowRun(task, userName, comment);
     return Response.ok(closedTask).build();
   }
 
@@ -2124,7 +2124,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
         validateTaskCanBeClosed(task);
         requireClosable(task);
-        repository.closeTask(task, userName, comment);
+        repository.closeTaskAndCancelWorkflowRun(task, userName, comment);
       }
     }
   }
