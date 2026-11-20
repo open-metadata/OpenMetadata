@@ -78,6 +78,7 @@ import org.openmetadata.schema.type.aicontext.TableDataModel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.lineage.LineagePermissionFilter;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.security.AuthorizationException;
@@ -656,10 +657,29 @@ public class AIContextBuilder {
     return value == null ? null : String.valueOf(value);
   }
 
-  private EntityLineage fetchLineage(EntityInterface<?> entity) {
+  /**
+   * Depth-1 lineage of the asset. Being allowed to view this asset does not imply access to its
+   * neighbours, and the lineage section names each of them with the columns mapped on the edge, so
+   * with a caller the graph gets the same domain prune and per-node VIEW_BASIC filter as the lineage
+   * API and the MCP lineage section. A failure in either step leaves the section empty rather than
+   * unfiltered. Server-internal callers (persona materialization) have nobody to authorize and read
+   * the graph as is, like the other caller-relative checks in this builder.
+   */
+  EntityLineage fetchLineage(EntityInterface<?> entity) {
     EntityLineage lineage = null;
     try {
-      lineage = Entity.getLineageRepository().get(entityType, entity.getId().toString(), 1, 1);
+      String id = entity.getId().toString();
+      if (authorizer == null || securityContext == null) {
+        lineage = Entity.getLineageRepository().get(entityType, id, 1, 1);
+      } else {
+        SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
+        EntityLineage scoped =
+            Entity.getLineageRepository().get(entityType, id, 1, 1, subjectContext);
+        lineage =
+            new LineagePermissionFilter(authorizer)
+                .filter(securityContext, subjectContext, scoped)
+                .lineage();
+      }
     } catch (Exception e) {
       LOG.warn("AIContext: failed to fetch lineage for {}: {}", fqn, e.getMessage());
     }
