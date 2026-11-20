@@ -146,12 +146,19 @@ class DataAssetChartScopeSqlMigrationTest {
         .collect(Collectors.toUnmodifiableSet());
   }
 
-  /** The statements this migration appends, without the rest of the 2.1.0 script. */
+  /**
+   * The statements this migration appends, without the rest of the 2.1.0 script. The section ends
+   * with its last chart statement, not at the end of the file, so statements appended after it
+   * belong to other migrations.
+   */
   private static String section(final String dialect) throws IOException {
     final String sql = Files.readString(path(dialect));
     final int start = sql.indexOf(SECTION_MARKER);
     assertTrue(start >= 0, dialect + " must carry the test case scope section");
-    return sql.substring(start);
+    final int lastChartUpdate = sql.lastIndexOf("UPDATE di_chart_entity");
+    assertTrue(
+        lastChartUpdate > start, dialect + " must update the charts after the section marker");
+    return sql.substring(start, sql.indexOf(';', lastChartUpdate) + 1);
   }
 
   private static Path path(final String dialect) {
