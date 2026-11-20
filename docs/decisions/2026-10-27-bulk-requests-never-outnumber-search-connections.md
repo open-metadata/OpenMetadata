@@ -1,7 +1,8 @@
 # Bulk requests never outnumber the search client's connections
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-27 (initial)
+- **Revisions:** v1 2026-10-27 (initial); v2 2026-10-30 (clarify "counts each bulk once" so a
+  pool-wait first attempt can no longer hide the real cluster error on a retry)
 - **Deciders:** Mohit Yadav
 - **Guard:** `OpenSearchBulkProcessorConnectionPoolTest` and `ElasticSearchBulkProcessorConnectionPoolTest`
   run the real HC5 clients against a slow fake node and fail when a bulk waits for a pooled
@@ -41,11 +42,14 @@ pool size added failures, not throughput.
   fails when it passes. A reindex bulk is therefore written or recorded as failed within 120 s plus
   at most one in-flight attempt. That is below the roughly 3 minutes after which a PartitionWorker
   reconciles sink operations that are still pending, whatever backoff is configured.
-- The bulk circuit breaker ignores pool-wait timeouts and counts each bulk once: its first attempt,
-  or its probe. When half-open it admits one probe at a time, claimed with a single compare-and-set,
-  and a probe silent for three probe intervals is replaced. A bulk asks the breaker only once it
-  holds a connection, so a claimed probe never waits for one. Bulks the open circuit rejects give
-  their connection back and are paused instead of failed.
+- The bulk circuit breaker ignores pool-wait timeouts and counts each bulk once: its first attempt
+  that reaches the cluster — a pool-wait attempt never counts, so a real cluster error on a retry
+  after one is still that bulk's one verdict, not zero — or its probe. The "once" memory is carried
+  per bulk (clear while it has only seen pool-waits, set once the breaker has counted it). When
+  half-open it admits one probe at a time, claimed with a single compare-and-set, and a probe silent
+  for three probe intervals is replaced. A bulk asks the breaker only once it holds a connection, so
+  a claimed probe never waits for one. Bulks the open circuit rejects give their connection back and
+  are paused instead of failed.
 - Live sinks build their documents on their own pool. A reindex that is out of slots blocks its
   doc-build tasks inside the reindex pool, which a reindex job resizes, and live writes queued
   behind them would hold their request threads.

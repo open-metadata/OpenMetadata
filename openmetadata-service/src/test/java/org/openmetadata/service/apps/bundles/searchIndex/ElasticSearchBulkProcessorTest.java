@@ -238,7 +238,8 @@ class ElasticSearchBulkProcessorTest {
           (boolean)
               method.invoke(
                   harness.processor,
-                  new BulkAttempt<>(List.of(operation), 99L, Integer.MAX_VALUE, Long.MAX_VALUE),
+                  new BulkAttempt<>(
+                      List.of(operation), 99L, Integer.MAX_VALUE, Long.MAX_VALUE, false),
                   new IllegalStateException("boom"));
 
       assertFalse(retry);
