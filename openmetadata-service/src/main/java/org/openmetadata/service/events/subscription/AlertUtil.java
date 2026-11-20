@@ -355,6 +355,22 @@ public final class AlertUtil {
     return triggerChangeEvent;
   }
 
+  /**
+   * Read only. An alert with no stored offset, such as one created disabled that has never run,
+   * reads as standing at the latest offset; where it starts is decided when it is first scheduled.
+   */
+  public static EventSubscriptionOffset storedOffsetOrLatest(UUID eventSubscriptionId) {
+    String json =
+        Entity.getCollectionDAO()
+            .eventSubscriptionDAO()
+            .getSubscriberExtension(eventSubscriptionId.toString(), OFFSET_EXTENSION);
+    long latest = json == null ? Entity.getCollectionDAO().changeEventDAO().getLatestOffset() : 0L;
+    return json != null
+        ? JsonUtils.readValue(json, EventSubscriptionOffset.class)
+        : new EventSubscriptionOffset().withCurrentOffset(latest).withStartingOffset(latest);
+  }
+
+  /** Called where an enabled alert is scheduled or run; saves the offset when none is stored. */
   public static EventSubscriptionOffset getStartingOffset(UUID eventSubscriptionId) {
     long startingOffset;
     long currentOffset;
