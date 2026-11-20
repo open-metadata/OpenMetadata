@@ -24,6 +24,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { guardBreadcrumbAction } from '../../../../hooks/discovery/personal-space/useUnsavedExitGuard';
 import { useUserProfile } from '../../../../hooks/discovery/personal-space/useUserProfile';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
@@ -233,11 +234,18 @@ const ProfilePage: React.FC = () => {
   const headerBreadcrumbRoot = t(PROFILE_NAV_GROUP_LABEL[activeItem.group]);
   // Tie the breadcrumb to the nav item, not the (possibly user-name-overridden)
   // title — so your own profile reads "Account > Profile".
-  const headerBreadcrumbs = headerOverride?.breadcrumbs ?? [
-    { id: 'root', label: headerBreadcrumbRoot },
-    { id: 'current', label: t(activeItem.label) },
+  // ADR:2026-11-16-settings-breadcrumb-root-is-the-sidebar-group
+  const headerBreadcrumbs = [
+    { id: 'root', label: headerBreadcrumbRoot, isDisabled: true },
+    ...(headerOverride?.breadcrumbs?.slice(1) ?? [
+      { id: 'current', label: t(activeItem.label) },
+    ]),
   ];
-  const headerBreadcrumbAction = headerOverride?.onBreadcrumbAction;
+  // Panels hand plain navigation here; the guard is applied once, for all.
+  const headerBreadcrumbAction = guardBreadcrumbAction(
+    headerOverride?.onBreadcrumbAction,
+    headerOverride?.inEditorBreadcrumbIds
+  );
 
   // Extracted so the nested loading/not-found branching lives in its own function
   // (keeps the component's cyclomatic complexity down and avoids a nested ternary).

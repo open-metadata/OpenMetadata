@@ -77,7 +77,10 @@ test.describe('Online Users Feature', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Verify table headers
     await expect(
-      page.getByRole('columnheader').filter({ hasText: 'Username' })
+      page.getByRole('columnheader').filter({ hasText: 'Name' })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('columnheader').filter({ hasText: 'Email' })
     ).toBeVisible();
     await expect(
       page.getByRole('columnheader').filter({ hasText: 'Last Activity' })

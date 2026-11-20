@@ -56,7 +56,8 @@ public class PatchEntityTool implements McpTool {
   //   announcement         authorizeAdminOrBot on system announcements (no entityLink)
   //   app                  system-app guard, scheduler teardown/reinstall
   //   contextFile          Private/Shared visibility, owner-only restriction of sharing
-  //   document             requirePublic - private doc types are not editable
+  //   document             requirePublic - private doc types are not editable; authorizeAdmin
+  //                        on email templates
   //   eventsubscription    scheduler re-registration
   //   ingestionPipeline    secret decryptOrNullify on the response
   //   intakeForm           authorizeAdmin
@@ -104,6 +105,7 @@ public class PatchEntityTool implements McpTool {
     String fqn = (String) params.get("fqn");
     requireTarget(entityType, fqn);
     requireGenericPatchLifecycle(entityType);
+    CommonUtils.refuseImpersonatedGrantWrite(securityContext, entityType);
 
     JsonPatch jsonPatch = parsePatch((String) params.get(PATCH_PARAM));
     requireConnectionUntouched(entityType, jsonPatch);
@@ -137,9 +139,11 @@ public class PatchEntityTool implements McpTool {
             null,
             ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.entity(), response.changeType(), userName);
-    return McpResponseUtils.compactPatch(
-        CommonUtils.withVisibleEvidence(response.entity(), authorizer, securityContext),
-        response.changeType());
+    return McpResponseUtils.markHeld(
+        McpResponseUtils.compactPatch(
+            CommonUtils.withVisibleEvidence(response.entity(), authorizer, securityContext),
+            response.changeType()),
+        response.pendingChangeRequestId());
   }
 
   private static void requireTarget(String entityType, String fqn) {

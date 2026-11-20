@@ -705,6 +705,7 @@ function buildBaseEdgeStyle(d: GraphEdgeMeta, isDataMode: boolean) {
     stroke: edgeColor,
     lineWidth: edgeLineWidth,
     lineAppendWidth: EDGE_LINE_APPEND_WIDTH,
+    cursor: 'pointer',
     opacity: isEdgeDimmed ? DIMMED_EDGE_OPACITY : 1,
     endArrow: !isDataMode,
     // Reset label opacity on non-dimmed edges: G6 merges style updates,

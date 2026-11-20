@@ -162,7 +162,14 @@ describe('ApplicationsPanel', () => {
 
     onHeaderChange.mock.calls.at(-1)[0].onBreadcrumbAction('applications');
 
-    expect(mockSetHash).toHaveBeenCalledWith('applications', undefined);
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'applications',
+      undefined,
+      undefined,
+      {
+        push: true,
+      }
+    );
   });
 
   it('renders a footer slot pinned below the scrolling content', () => {

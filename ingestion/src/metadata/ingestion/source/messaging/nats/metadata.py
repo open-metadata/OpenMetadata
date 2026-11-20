@@ -29,7 +29,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName, Markdown
 from metadata.generated.schema.type.schema import SchemaType
 from metadata.generated.schema.type.schema import Topic as TopicSchema
 from metadata.ingestion.api.models import Either
@@ -256,6 +256,9 @@ class NatsSource(MessagingServiceSource):
             topic = CreateTopicRequest(  # pyright: ignore[reportCallIssue]
                 name=EntityName(topic_details.topic_name),
                 service=FullyQualifiedEntityName(self.context.get().messaging_service),  # pyright: ignore[reportAttributeAccessIssue]
+                description=Markdown(metadata.config.description)
+                if metadata.config and metadata.config.description is not None
+                else None,
                 partitions=1,
                 retentionTime=retention_ms,
                 retentionSize=params["retention_size"],

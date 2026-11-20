@@ -1,6 +1,6 @@
 # Dequeue alerts report observed causes, not attribution
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-12-dequeue-alerts-compare-main-before-attributing-failures
 - **Revisions:** v1 2026-11-09 (initial) · v2 2026-11-09 (remove internal tooling tests)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** reviewer

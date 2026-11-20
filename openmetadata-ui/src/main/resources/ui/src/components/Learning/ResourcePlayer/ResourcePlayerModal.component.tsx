@@ -340,7 +340,12 @@ export const ResourcePlayer: FC<ResourcePlayerProps> = ({
       case ResourceType.Video:
         return <VideoPlayer resource={displayResource} />;
       case ResourceType.Storylane:
-        return <StorylaneTour resource={displayResource} />;
+        return (
+          <StorylaneTour
+            title={displayResource.displayName || displayResource.name}
+            url={displayResource.source.url}
+          />
+        );
       case ResourceType.Article:
         return <ArticleViewer resource={displayResource} />;
       case ResourceType.PDF:

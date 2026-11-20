@@ -62,6 +62,10 @@ public final class VersionResolver {
    * @return windows in newest-to-oldest order
    */
   public List<VersionedWindow> resolve(EntityInterface<?> latest, EnrichmentContext context) {
+    if (context.snapshotTimestamp() != null) {
+      final long day = TimestampUtils.getStartOfDayTimestamp(context.snapshotTimestamp());
+      return List.of(new VersionedWindow(latest, day, day, VersionShape.LATEST_HYDRATED));
+    }
     long startTs = context.workflowWindowStartTimestamp();
     long endTs = context.workflowWindowEndTimestamp();
 

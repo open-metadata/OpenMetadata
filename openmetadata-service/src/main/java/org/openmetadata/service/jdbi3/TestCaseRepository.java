@@ -27,6 +27,7 @@ import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
+import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Lists;
@@ -873,6 +874,28 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void prepare(TestCase test, boolean update) {
+    Table table = validateForWrite(test, update);
+    // Create/resolve the basic test suite only after all validations pass.
+    // This avoids creating side entities when request validation fails early.
+    // PATCH carries the stored suite, so a null check would not re-resolve it after an entityLink
+    // move.
+    test.setTestSuite(getOrCreateTestSuite(test, table));
+  }
+
+  /**
+   * Runs the checks {@link #prepareInternal} runs for a test case, minus the basic test suite, so a
+   * CSV dry run reports the rows the real import would and creates nothing.
+   */
+  void checkForImport(TestCase test, boolean isUpdate) {
+    validateTags(test);
+    validateForWrite(test, isUpdate);
+    validateExtension(test, isUpdate);
+    if (!isUpdate) {
+      prepareCertification(test);
+    }
+  }
+
+  private Table validateForWrite(TestCase test, boolean update) {
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
 
@@ -906,23 +929,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     if (!update) {
       TestCaseDefinitionConformance.validate(test, testDefinition, table, entityLink);
     }
-
-    // Create/resolve the basic test suite only after all validations pass.
-    // This avoids creating side entities when request validation fails early.
-    var testSuite = getOrCreateTestSuite(test, table);
-    test.setTestSuite(testSuite);
+    return table;
   }
 
   /*
    * Get the test suite for a test case. We'll use the entity linked to the test case
    * to find the basic test suite. If it doesn't exist, create a new one.
    */
-  EntityReference getOrCreateTestSuite(TestCase test) {
-    var entityLink = EntityLink.parse(test.getEntityLink());
-    EntityInterface<?> tableEntity = Entity.getEntity(entityLink, "", ALL);
-    return getOrCreateTestSuite(test, tableEntity);
-  }
-
   private EntityReference getOrCreateTestSuite(TestCase test, EntityInterface<?> tableEntity) {
     try {
       return getTestSuite(tableEntity.getId(), TEST_SUITE, TABLE, Direction.TO);
@@ -1988,6 +2001,24 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       super(original, updated, operation);
     }
 
+    private void updateBasicTestSuite() {
+      EntityReference originalSuite = original.getTestSuite();
+      EntityReference updatedSuite = updated.getTestSuite();
+      if (!recordChange(
+          TEST_SUITE_FIELD, originalSuite, updatedSuite, true, entityReferenceMatch)) {
+        return;
+      }
+      // Logical suites use CONTAINS too; replace only the previous basic-suite relationship.
+      if (originalSuite != null) {
+        deleteRelationship(
+            originalSuite.getId(), TEST_SUITE, updated.getId(), TEST_CASE, Relationship.CONTAINS);
+      }
+      if (updatedSuite != null) {
+        addRelationship(
+            updatedSuite.getId(), updated.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+      }
+    }
+
     /**
      * Rewrites the dimension relationship by hand rather than through updateFromRelationship: the
      * generic helper cannot carry the inherited marker, and losing it would make a dimension the
@@ -2032,6 +2063,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       return false;
     }
 
+    // An entityLink patch also changes these relationship-backed fields.
+    @Override
+    protected boolean shouldCompare(String fieldName) {
+      return super.shouldCompare(fieldName)
+          || (("entity".equals(fieldName) || TEST_SUITE_FIELD.equals(fieldName))
+              && super.shouldCompare("entityLink"));
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -2054,17 +2093,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                 TEST_CASE,
                 updated.getId());
           });
-      compareAndUpdate(
-          TEST_SUITE_FIELD,
-          () ->
-              updateFromRelationship(
-                  TEST_SUITE_FIELD,
-                  TEST_SUITE,
-                  original.getTestSuite(),
-                  updated.getTestSuite(),
-                  Relationship.HAS,
-                  TEST_CASE,
-                  updated.getId()));
+      compareAndUpdate(TEST_SUITE_FIELD, this::updateBasicTestSuite);
       compareAndUpdate(
           TEST_DEFINITION,
           () ->
@@ -2604,44 +2633,40 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                   parsedLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(name));
           testCase.setFullyQualifiedName(testCaseFqn);
           testCase.setEntityFQN(parsedLink.getFullyQualifiedFieldValue());
+          boolean isUpdate = repository.findByNameOrNull(testCaseFqn, Include.ALL) != null;
 
           // A row can name any table, so it is checked as the matching REST write, before anything
           // is created for it (e.g. the table's test suite)
           authorizeRowForAny(
               () ->
-                  repository.findByNameOrNull(testCaseFqn, Include.ALL) == null
-                      ? TestCaseWriteAuthRequests.forCreate(testCase)
-                      : TestCaseWriteAuthRequests.forUpdate(testCase));
+                  isUpdate
+                      ? TestCaseWriteAuthRequests.forUpdate(testCase)
+                      : TestCaseWriteAuthRequests.forCreate(testCase));
 
-          // Get test suite if provided, otherwise get or create default test suite
           if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
             TestSuite testSuite = resolveAccessibleTestSuite(printer, csvRecord, testSuiteFqn);
             if (testSuite == null) {
               continue;
             }
-            testCase.withTestSuite(testSuite.getEntityReference());
-            importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
+            validateRowTestSuite(testSuite, entityLink);
+          }
+
+          if (importResult.getDryRun()) {
+            repository.checkForImport(testCase, isUpdate);
+            importSuccess(printer, csvRecord, isUpdate ? ENTITY_UPDATED : ENTITY_CREATED);
           } else {
-            // No test suite provided - get or create the default basic test suite
-            EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
-            testCase.withTestSuite(testSuite);
-            importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
-          }
-
-          // Set required fields for new entities - createOrUpdateForImport doesn't call
-          // prepareInternal which would normally set these
-          if (testCase.getId() == null) {
-            testCase.setId(UUID.randomUUID());
-          }
-          if (testCase.getUpdatedAt() == null) {
-            testCase.setUpdatedAt(System.currentTimeMillis());
-          }
-          if (testCase.getUpdatedBy() == null) {
-            testCase.setUpdatedBy(importedBy);
-          }
-
-          if (!importResult.getDryRun()) {
-            // Use createOrUpdateForImport which handles both create and update
+            repository.prepareInternal(testCase, isUpdate);
+            importedTestSuiteIds.putIfAbsent(
+                testCase.getTestSuite().getFullyQualifiedName(), testCase.getTestSuite().getId());
+            if (testCase.getId() == null) {
+              testCase.setId(UUID.randomUUID());
+            }
+            if (testCase.getUpdatedAt() == null) {
+              testCase.setUpdatedAt(System.currentTimeMillis());
+            }
+            if (testCase.getUpdatedBy() == null) {
+              testCase.setUpdatedBy(importedBy);
+            }
             RestUtil.PutResponse<TestCase> response =
                 repository.createOrUpdateForImport(null, testCase, importedBy);
             if (targetBundleSuite != null) {
@@ -2652,10 +2677,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             } else {
               importSuccess(printer, csvRecord, ENTITY_UPDATED);
             }
-          } else {
-            // Dry run - just validate
-            repository.prepareInternal(testCase, true);
-            importSuccess(printer, csvRecord, ENTITY_CREATED);
           }
 
         } catch (Exception ex) {
@@ -2764,6 +2785,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         LOG.debug("Target '{}' named in the imported CSV is unavailable", entityFQN);
       }
       return entityLink;
+    }
+
+    private void validateRowTestSuite(TestSuite testSuite, String entityLink) {
+      Table table = Entity.getEntity(EntityLink.parse(entityLink), TEST_SUITE_FIELD, NON_DELETED);
+      if (!Boolean.TRUE.equals(testSuite.getBasic())
+          || table.getTestSuite() == null
+          || !table.getTestSuite().getId().equals(testSuite.getId())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Test suite '%s' must be the basic test suite for table '%s'",
+                testSuite.getFullyQualifiedName(), table.getFullyQualifiedName()));
+      }
     }
 
     /**

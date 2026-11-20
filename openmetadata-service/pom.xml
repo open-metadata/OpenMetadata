@@ -965,11 +965,6 @@
       <artifactId>json-logic-java</artifactId>
       <version>1.0.7</version>
     </dependency>
-    <!-- ################ -->
-    <dependency>
-      <groupId>com.microsoft.azure</groupId>
-      <artifactId>msal4j</artifactId>
-    </dependency>
     <!-- AWS SDK Core (if not already included) -->
     <dependency>
         <groupId>software.amazon.awssdk</groupId>
