@@ -1100,6 +1100,82 @@ class TestBigqueryRegionAwareQueries:
         ) is None
         assert conn.execute.call_count == 1
 
+    def test_lifecycle_spool_full_and_failed_cleanup_never_rescans(self):
+        """A full disk may reject both writing data and recording failure state."""
+        rows = [
+            SimpleNamespace(_asdict=lambda i=i: {
+                "table_schema": "dataset_a",
+                "table_name": f"table_{i}",
+                "created_at": datetime(2025, 1, 1),
+            })
+            for i in range(101)
+        ]
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter(rows)
+        self.bq_source.engine = engine
+        original_db = self.bq_source._get_region_lifecycle_db()
+
+        class FullDiskDatabase:
+            def __getattr__(self, name):
+                return getattr(original_db, name)
+
+            def execute(self, statement, *args):
+                if statement.startswith("DELETE FROM rows"):
+                    raise sqlite3.OperationalError("database or disk is full")
+                return original_db.execute(statement, *args)
+
+        self.bq_source._region_lifecycle_db = FullDiskDatabase()
+        original_write = self.bq_source._write_region_lifecycle_batch
+        batches = 0
+
+        def disk_full_on_second_batch(batch):
+            nonlocal batches
+            batches += 1
+            if batches == 2:
+                raise sqlite3.OperationalError("database or disk is full")
+            return original_write(batch)
+
+        with patch.object(
+            self.bq_source,
+            "_write_region_lifecycle_batch",
+            side_effect=disk_full_on_second_batch,
+        ):
+            assert self.bq_source._load_region_lifecycle(
+                MOCK_DB_NAME, "EU", "dataset_a"
+            ) is None
+
+        assert batches == 2
+        assert self.bq_source._region_lifecycle_spool_disabled is True
+        # The first committed batch remains because DELETE failed.
+        assert original_db.execute("SELECT COUNT(*) FROM rows").fetchone()[0] == 100
+
+        for _ in range(4):
+            assert self.bq_source._load_region_lifecycle(
+                MOCK_DB_NAME, "EU", "dataset_a"
+            ) is None
+        assert conn.execute.call_count == 1
+        self.bq_source._clear_region_lifecycle_cache()
+
+    def test_lifecycle_unavailable_spool_does_not_start_region_scan(self):
+        engine, conn = self._make_engine_mock([])
+        self.bq_source.engine = engine
+
+        with patch.object(
+            self.bq_source,
+            "_get_region_lifecycle_db",
+            side_effect=OSError("No space left on device"),
+        ) as open_db:
+            assert self.bq_source._load_region_lifecycle(
+                MOCK_DB_NAME, "EU", "dataset_a"
+            ) is None
+            assert self.bq_source._load_region_lifecycle(
+                MOCK_DB_NAME, "US", "dataset_a"
+            ) is None
+
+        assert open_db.call_count == 1
+        assert conn.execute.call_count == 0
+        assert self.bq_source._region_lifecycle_spool_disabled is True
+
     # --- get_stored_procedures ---
 
     def test_get_stored_procedures_uses_region_aware_query(self):
