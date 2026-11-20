@@ -27,7 +27,6 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -54,6 +53,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 @Slf4j
 public class SetApprovalAssigneesImpl implements JavaDelegate {
   private static final int ADMIN_PAGE_SIZE = 50;
+  private static final String CASCADE_OWNERS = "cascadeOwners";
   private Expression assigneesExpr;
   private Expression assigneesVarNameExpr;
   private Expression inputNamespaceMapExpr;
@@ -86,7 +86,9 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
       String relationshipFields =
           getRelationshipFieldsForAssigneeResolution(
               entityLink.getEntityType(), entitySupportsReviewers);
-      if (Boolean.TRUE.equals(assigneesConfig.get("addDomainOwners"))
+      if ((Boolean.TRUE.equals(assigneesConfig.get("addDomainOwners"))
+              || cascadesOwners(assigneesConfig))
+          && entityRepository.isSupportsDomains()
           && !Entity.DOMAIN.equals(entityLink.getEntityType())) {
         relationshipFields += ",domains";
       }
@@ -152,7 +154,7 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
         if (Boolean.TRUE.equals(assigneesConfig.get("addDomainOwners"))) {
           assignees.addAll(
               getEntityLinkStringFromEntityReferenceWithTeamExpansion(
-                  resolveDomainOwners(entityLink.getEntityType(), entity)));
+                  OwnerCascade.domainOwners(entityLink.getEntityType(), entity)));
         }
 
         // Process users array
@@ -181,6 +183,13 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
               }
             }
           }
+        }
+        if (assignees.isEmpty() && ownersAssignable && cascadesOwners(assigneesConfig)) {
+          assignees.addAll(
+              OwnerCascade.resolve(
+                  entity,
+                  entityLink.getEntityType(),
+                  this::getEntityLinkStringFromEntityReferenceWithTeamExpansion));
         }
       }
 
@@ -260,26 +269,13 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
     }
   }
 
+  private static boolean cascadesOwners(final Map<String, Object> assigneesConfig) {
+    return Boolean.TRUE.equals(assigneesConfig.get(CASCADE_OWNERS));
+  }
+
   // Unset means on: only a workflow that explicitly turned owner auto-assignment off skips owners.
   private static boolean isOwnerAutoAssignmentEnabled(DelegateExecution execution) {
     return !Boolean.FALSE.equals(execution.getVariable(WorkflowStartVariables.AUTO_ASSIGN_OWNERS));
-  }
-
-  private List<EntityReference> resolveDomainOwners(
-      final String entityType, final EntityInterface<?> entity) {
-    if (Entity.DOMAIN.equals(entityType)) {
-      return entity.getOwners() == null ? List.of() : entity.getOwners();
-    }
-    return entity.getDomains() == null
-        ? List.of()
-        : entity.getDomains().stream()
-            .map(
-                reference ->
-                    Entity.<Domain>getEntity(
-                        Entity.DOMAIN, reference.getId(), "owners", Include.NON_DELETED))
-            .filter(domain -> domain.getOwners() != null)
-            .flatMap(domain -> domain.getOwners().stream())
-            .toList();
   }
 
   private List<EntityReference> resolveCandidateIds(final Object value) {
