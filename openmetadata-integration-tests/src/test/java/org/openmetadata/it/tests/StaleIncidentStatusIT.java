@@ -61,6 +61,7 @@ import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 /**
@@ -409,20 +410,28 @@ public class StaleIncidentStatusIT {
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
-  void deletionRespectsStableOwnerAfterTestMoves(boolean pruneHistory, TestNamespace ns)
+  void deletionRespectsStableOwnerWithStaleIncidentFqn(boolean pruneHistory, TestNamespace ns)
       throws Exception {
     Table original = createTable(ns, "beforeMove");
     Table destination = createTable(ns, "afterMove");
     String name = "movedCase_" + ns.uniqueShortId();
-    TestCase moved = createTestCase(original, name);
-    UUID stateId = createIncident(moved);
-    var patch = MAPPER.createArrayNode();
-    patch
-        .addObject()
-        .put("op", "replace")
-        .put("path", "/entityLink")
-        .put("value", "<#E::table::" + destination.getFullyQualifiedName() + "::columns::id>");
-    SdkClients.adminClient().testCases().patch(moved.getId().toString(), patch);
+    TestCase owner = createTestCase(destination, name);
+    UUID stateId = createIncident(owner);
+    TestCase replacement = createTestCase(original, name);
+    // Reproduce legacy stale names while retaining the authoritative owner relationship.
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle -> {
+              for (String table :
+                  List.of("test_case_resolution_status_time_series", "test_case_incident")) {
+                handle
+                    .createUpdate(
+                        "UPDATE " + table + " SET entityFQNHash = :hash WHERE stateId = :id")
+                    .bind("hash", FullyQualifiedName.buildHash(replacement.getFullyQualifiedName()))
+                    .bind("id", stateId.toString())
+                    .execute();
+              }
+            });
     if (pruneHistory) {
       TestSuiteBootstrap.getJdbi()
           .useHandle(
@@ -433,7 +442,6 @@ public class StaleIncidentStatusIT {
                       .bind("id", stateId.toString())
                       .execute());
     }
-    TestCase replacement = createTestCase(original, name);
     SdkClients.adminClient()
         .testCases()
         .delete(replacement.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
@@ -454,7 +462,7 @@ public class StaleIncidentStatusIT {
     assertEquals(1, countIncidentRows("test_case_incident_open_interval", stateId));
     SdkClients.adminClient()
         .testCases()
-        .delete(moved.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+        .delete(owner.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
     await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> assertIncidentRemoved(stateId));
   }
 
