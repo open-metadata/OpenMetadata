@@ -351,6 +351,17 @@ def create_pod_diagnostics(main_pod_logs: str | None, pod_description: str | Non
     )
 
 
+def _is_application_config(raw_workflow_config: dict) -> bool:
+    """
+    Application configs (e.g. Automator) carry `sourcePythonClass` and/or `appConfig`
+    and never a `source`. `sourcePythonClass` is optional in the application schema,
+    so legacy pipelines may only have `appConfig`; rely on both keys to route them.
+    """
+    if "source" in raw_workflow_config:
+        return False
+    return bool(raw_workflow_config.get("sourcePythonClass") or raw_workflow_config.get("appConfig"))
+
+
 def create_workflow_config(config: str, pipeline_run_id: str):
     """
     Create appropriate workflow configuration based on config type.
@@ -365,7 +376,7 @@ def create_workflow_config(config: str, pipeline_run_id: str):
     raw_workflow_config = yaml.safe_load(config)
     raw_workflow_config["pipelineRunId"] = pipeline_run_id
 
-    if raw_workflow_config.get("sourcePythonClass"):
+    if _is_application_config(raw_workflow_config):
         logger.info("Creating OpenMetadataApplicationConfig")
         return OpenMetadataApplicationConfig.model_validate(raw_workflow_config)
     else:  # noqa: RET505
