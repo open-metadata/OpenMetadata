@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-20 (initial)
 - **Deciders:** Ingestion maintainers
-- **Guard:** `test_query_log_window_is_converted_to_the_doris_time_zone`, `test_usage_reads_the_queries_users_ran` and `test_unreadable_query_log_fails_with_the_grant_it_needs` in `ingestion/tests/unit/source/database/doris/test_doris_usage.py`
+- **Guard:** `test_query_log_window_is_converted_to_the_doris_time_zone`, `test_usage_reads_the_queries_users_ran` and `test_unreadable_query_log_is_reported_without_failing_the_run` in `ingestion/tests/unit/source/database/doris/test_doris_usage.py`; `test_usage_resolves_the_internal_catalog_of_the_query_log` in `ingestion/tests/unit/source/database/doris/test_doris_view_lineage.py`
 - **Related:** issue #37545, issue #37537, ADR:2026-11-13-doris-internal-catalog-names-the-service-database
 
 ## Context
@@ -29,12 +29,19 @@ The usage source reads `__internal_schema.audit_log`.
   come from parsing its text, not from `queried_tables_and_views`.
 - `catalog` is the query's database: `internal` resolves to the service's database by the record
   above, another catalog keeps its name. `db` is the schema of unqualified names.
-- Before reading, the source fails when it cannot read the table, naming the grant, and warns when
-  `enable_audit_plugin` is false.
+- Before reading, the source checks that it can read the columns it uses (releases before 3.1 lack
+  `is_internal`) and that `enable_audit_plugin` is true. Neither failure fails the run: it is logged
+  and recorded as a warning of the run, naming Doris 4.1 or later and the grant. AutoPilot stops at a
+  failed usage agent, before the profiler and classification agents, and the table needs a grant of
+  its own.
 
 ## Consequences
 
-Usage needs no setup beyond `SELECT_PRIV` on the table, which exposes the SQL of every user. Changing
-the global `time_zone` shifts the rows written before the change. Query lineage (issue #37548) is
+Usage needs no setup beyond `SELECT_PRIV` on the table, which exposes the SQL of every user; without
+it, the usage agent reads nothing and says why. Changing the global `time_zone` shifts the rows
+written before the change. Doris 4.0 and later mark a session internal for the rest of its life once
+it runs `SHOW TABLE STATUS`, or `SHOW TABLES`, `SHOW DATABASES` or `SHOW [FULL] COLUMNS` with a
+`WHERE` (`QueryState.isInternal` is never reset), so the later queries of such a session are not
+counted; that is a Doris bug, to be fixed there. Query lineage (issue #37548) is
 meant to reuse the statement with its own filters. Revisit if Doris records a UTC time or stops
 writing `time` in the global time zone.

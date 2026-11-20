@@ -12,7 +12,7 @@
 Doris usage: the query log `__internal_schema.audit_log`, whose `time` Doris writes in its global time zone
 """
 
-import re
+import logging
 from copy import deepcopy
 from datetime import datetime
 from unittest.mock import MagicMock, patch
@@ -144,7 +144,7 @@ def test_query_log_rows_become_table_queries():
     assert len(queries) == 1
     query = queries[0]
     assert query.query == "SELECT COUNT(*) FROM t_uniq"
-    # Usage resolves `internal` to the service's database, as view lineage does
+    # The catalog: the usage sink resolves `internal` to the service's database (test_doris_view_lineage.py)
     assert query.databaseName == "internal"
     assert query.databaseSchema == "om_verify"
     assert query.userName == "root"
@@ -154,12 +154,29 @@ def test_query_log_rows_become_table_queries():
     assert query.dialect == Dialect.MYSQL.value
 
 
-def test_unreadable_query_log_fails_with_the_grant_it_needs():
+@pytest.mark.parametrize(
+    "error",
+    [
+        # No SELECT_PRIV on the table
+        "errCode = 2, detailMessage = Permission denied: user ['om'@'%'] does not have privilege for [priv predicate:"
+        " OR, Admin_priv,Select_priv] command on [internal].[__internal_schema].[audit_log].[query_id]",
+        # A release before 3.1, whose query log has no is_internal
+        "errCode = 2, detailMessage = Unknown column 'is_internal' in 'table list' in FILTER clause",
+    ],
+)
+def test_unreadable_query_log_is_reported_without_failing_the_run(error, caplog):
     source = usage_source()
-    connected(source, OperationalError(DORIS_TEST_GET_QUERIES, {}, Exception("Permission denied")))
+    conn = connected(source, OperationalError(DORIS_TEST_GET_QUERIES, {}, Exception(error)))
+    caplog.clear()
 
-    with pytest.raises(InvalidSourceException, match=re.escape("SELECT_PRIV on internal.__internal_schema.audit_log")):
-        source.prepare()
+    source.prepare()
+
+    [warning] = source.status.warnings
+    reason = warning["__internal_schema.audit_log"]
+    assert "Doris 4.1 or later and SELECT_PRIV on internal.__internal_schema.audit_log" in reason
+    assert error in reason
+    assert [record.levelno for record in caplog.records] == [logging.ERROR]
+    assert conn.execute.call_count == 1
 
 
 @pytest.mark.parametrize(("audit_enabled", "warned"), [(1, False), (0, True)])
@@ -170,6 +187,7 @@ def test_disabled_audit_logging_is_reported(audit_enabled, warned, caplog):
     source.prepare()
 
     assert ("SET GLOBAL enable_audit_plugin = true" in caplog.text) is warned
+    assert bool(source.status.warnings) is warned
 
 
 def test_query_log_file_needs_no_audit_log():

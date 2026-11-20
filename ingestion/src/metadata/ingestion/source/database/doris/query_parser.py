@@ -53,20 +53,29 @@ class DorisQueryParserSource(QueryParserSource, ABC):
         return cls(config, metadata)
 
     def prepare(self):
-        """Fail when the query log cannot be read, rather than report no queries"""
+        """Say what is missing when the query log cannot be read or Doris does not record queries
+
+        Neither fails the run: AutoPilot stops at a failed usage agent, before the profiler and
+        classification agents, and reading the query log needs a grant of its own.
+        """
         if getattr(self.source_config, "queryLogFilePath", None):
             return
         with self.engine.connect() as conn:  # pyright: ignore[reportOptionalMemberAccess]
             try:
                 conn.execute(text(DORIS_TEST_GET_QUERIES)).fetchall()
             except SQLAlchemyError as exc:
-                raise InvalidSourceException(
-                    "Cannot read the Doris query log __internal_schema.audit_log, grant the user"
-                    f" SELECT_PRIV on internal.__internal_schema.audit_log: {exc}"
-                ) from exc
-            if not conn.execute(text(DORIS_GET_AUDIT_LOG_ENABLED)).scalar():
-                logger.warning(
-                    "Doris is not recording queries: enable_audit_plugin is false, which a cluster upgraded"
-                    " from a release before 3.1.2 keeps. Only the queries recorded while it was true are read;"
-                    " turn it on with SET GLOBAL enable_audit_plugin = true"
+                reason = (
+                    "Cannot read the Doris query log __internal_schema.audit_log, so no query is read. It needs"
+                    f" Doris 4.1 or later and SELECT_PRIV on internal.__internal_schema.audit_log for the user: {exc}"
                 )
+                logger.error("%s", reason)
+                self.status.warning("__internal_schema.audit_log", reason)
+                return
+            if not conn.execute(text(DORIS_GET_AUDIT_LOG_ENABLED)).scalar():
+                reason = (
+                    "Doris is not recording queries: enable_audit_plugin is false, the default before Doris 3.1.2"
+                    " that an upgraded cluster keeps. Only the queries recorded while it was true are read; turn it"
+                    " on with SET GLOBAL enable_audit_plugin = true"
+                )
+                logger.warning("%s", reason)
+                self.status.warning("enable_audit_plugin", reason)

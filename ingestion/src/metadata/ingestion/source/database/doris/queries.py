@@ -83,9 +83,10 @@ LIMIT {result_limit}
     """
 )
 
+# Reads the columns that releases before 3.1 lack, as the query log statement does
 DORIS_TEST_GET_QUERIES = textwrap.dedent(
     """
-SELECT query_id FROM __internal_schema.audit_log LIMIT 1
+SELECT query_id FROM __internal_schema.audit_log WHERE is_query = 1 AND is_internal = 0 LIMIT 1
     """
 )
 
