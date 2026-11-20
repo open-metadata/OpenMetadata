@@ -31,7 +31,7 @@
     {
       "name": "GetQueries",
       "description": "Check if we can read the query log, __internal_schema.audit_log. These queries are analyzed in the usage workflow.",
-      "errorMessage": "Failed to fetch queries, please validate if the user has SELECT_PRIV on internal.__internal_schema.audit_log",
+      "errorMessage": "Failed to fetch queries, please validate that Doris is 4.1 or later and that the user has SELECT_PRIV on internal.__internal_schema.audit_log",
       "mandatory": false
     }
   ]

@@ -8,7 +8,7 @@ You can find further information on the Doris connector in the <a href="https://
 
 ### Usage
 
-The usage workflow reads the queries Doris records in `__internal_schema.audit_log`. The table holds the SQL text of every user's queries; grant the user `SELECT_PRIV` on it:
+The usage workflow reads the queries Doris 4.1 or later records in `__internal_schema.audit_log`. The table holds the SQL text of every user's queries; grant the user `SELECT_PRIV` on it:
 
 ```sql
 GRANT SELECT_PRIV ON internal.__internal_schema.audit_log TO '<username>'@'%';

@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-20 (initial)
 - **Deciders:** Ingestion maintainers
-- **Guard:** `test_query_log_window_is_converted_to_the_doris_time_zone`, `test_usage_reads_the_queries_users_ran` and `test_unreadable_query_log_is_reported_without_failing_the_run` in `ingestion/tests/unit/source/database/doris/test_doris_usage.py`; `test_usage_resolves_the_internal_catalog_of_the_query_log` in `ingestion/tests/unit/source/database/doris/test_doris_view_lineage.py`
+- **Guard:** `test_query_log_window_is_converted_to_the_doris_time_zone`, `test_usage_reads_the_queries_users_ran`, `test_probe_reads_every_column_of_the_query_log_statement` and `test_unreadable_query_log_is_reported_without_failing_the_run` in `ingestion/tests/unit/source/database/doris/test_doris_usage.py`; `test_usage_resolves_the_internal_catalog_of_the_query_log` in `ingestion/tests/unit/source/database/doris/test_doris_view_lineage.py`
 - **Related:** issue #37545, issue #37537, ADR:2026-11-13-doris-internal-catalog-names-the-service-database
 
 ## Context

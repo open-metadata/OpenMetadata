@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import sqlglot
 from sqlalchemy.exc import OperationalError
+from sqlglot import exp
 
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -100,6 +101,16 @@ def test_query_log_window_is_converted_to_the_doris_time_zone():
     assert "`time` >= CONVERT_TZ('2026-11-19 00:00:00', '+00:00', @@global.time_zone)" in sql
     assert "`time` < CONVERT_TZ('2026-11-20 00:00:00', '+00:00', @@global.time_zone)" in sql
     assert "CONVERT_TZ(`time`, @@global.time_zone, '+00:00') AS start_time" in sql
+
+
+def test_probe_reads_every_column_of_the_query_log_statement():
+    def columns(sql: str) -> set[str]:
+        return {column.name for column in sqlglot.parse_one(sql, read="doris").find_all(exp.Column)}
+
+    sql = usage_source().get_sql_statement(start_time=datetime(2026, 11, 19), end_time=datetime(2026, 11, 20))
+
+    # prepare() and the GetQueries step catch a query log the statement cannot read
+    assert columns(sql) <= columns(DORIS_TEST_GET_QUERIES)
 
 
 @pytest.mark.parametrize(
