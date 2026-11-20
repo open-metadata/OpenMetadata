@@ -137,9 +137,10 @@ ADR:2026-10-19-native-concept-bindings-remain-operational-metadata.
 Native library preview uses the verified pack catalog and selected modules, then the same native
 change-set preview/apply path as file import. Plain SKOS preferred labels and definitions project
 onto native display names and descriptions; canonical export uses `rdfs:label` and `rdfs:comment`.
-Conflicting annotations are rejected. SKOS relation predicates retain their exact IRIs as object
-property assertions. In particular, `skos:broader` is not an OWL subclass and does not confer
-property inheritance. See ADR:2026-10-19-native-ontology-imports-use-working-drafts.
+Conflicting annotations keep the SKOS value; the RDFS one is skipped and reported. SKOS relation
+predicates retain their exact IRIs as object property assertions. In particular, `skos:broader` is
+not an OWL subclass and does not confer property inheritance. See
+ADR:2026-10-19-native-ontology-imports-use-working-drafts.
 
 ## Custom extension values
 
