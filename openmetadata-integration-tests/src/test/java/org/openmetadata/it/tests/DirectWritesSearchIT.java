@@ -29,6 +29,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
@@ -153,6 +154,28 @@ public class DirectWritesSearchIT {
 
     awaitNoDoc(TABLE_INDEX, stale.getId());
     assertFalse(awaitDoc(TABLE_INDEX, seen.getId(), doc -> true).path("deleted").asBoolean());
+  }
+
+  @Test
+  void renamingTheDatabase_reachesItsTables(TestNamespace ns) {
+    DatabaseSchema schema = schema(ns);
+    Table table = table(schema, "renamed", null, List.of());
+    awaitDoc(TABLE_INDEX, table.getId(), doc -> true);
+    String databaseId = schema.getDatabase().getId().toString();
+    Database database = client().databases().get(databaseId);
+    database.setDisplayName(ns.prefix("LAKE_ERP"));
+    client().databases().update(databaseId, database);
+
+    Table read = client().tables().get(table.getId().toString());
+    read.setDescription("rebuilds the table's search document from the stored table");
+    client().tables().update(table.getId().toString(), read);
+
+    String displayName = database.getDisplayName();
+    assertEquals(displayName, read.getDatabase().getDisplayName());
+    JsonNode doc =
+        awaitDoc(
+            TABLE_INDEX, table.getId(), d -> d.path("description").asText().startsWith("rebuilds"));
+    assertEquals(displayName, doc.path("database").path("displayName").asText(), doc.toString());
   }
 
   private static void deleteStale(DatabaseSchema schema, Table seen, boolean hardDelete)

@@ -23,6 +23,7 @@ import static org.openmetadata.csv.CsvUtil.addGlossaryTerms;
 import static org.openmetadata.csv.CsvUtil.addTagLabels;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.DATABASE;
 import static org.openmetadata.service.Entity.DATABASE_SCHEMA;
 import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_DATA_PRODUCTS;
@@ -207,6 +208,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   public void setFields(Table table, Fields fields, RelationIncludes relationIncludes) {
     setDefaultFields(table);
+    useCurrentParentRefs(List.of(table));
     if (table.getUsageSummary() == null) {
       table.setUsageSummary(
           fields.contains("usageSummary")
@@ -236,6 +238,7 @@ public class TableRepository extends EntityRepository<Table> {
   public void setFieldsInBulk(Fields fields, List<Table> entities) {
     // Bulk fetch and set default fields for all tables
     fetchAndSetDefaultFields(entities);
+    useCurrentParentRefs(entities);
 
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
@@ -517,6 +520,35 @@ public class TableRepository extends EntityRepository<Table> {
           table.withDatabaseSchema(schemaRef).withDatabase(databaseRef).withService(serviceRef);
           if (table.getServiceType() == null) {
             table.withServiceType(schema.getServiceType());
+          }
+        });
+  }
+
+  /**
+   * The stored table JSON keeps a snapshot of its database and schema references, taken when the
+   * table was written. Renaming a parent (its displayName) does not rewrite that snapshot, so swap
+   * in the parents' current references, read through the entity cache.
+   */
+  private void useCurrentParentRefs(List<Table> tables) {
+    Map<UUID, EntityReference> current = new HashMap<>();
+    for (Table table : tables) {
+      table.setDatabase(currentRef(DATABASE, table.getDatabase(), current));
+      table.setDatabaseSchema(currentRef(DATABASE_SCHEMA, table.getDatabaseSchema(), current));
+    }
+  }
+
+  private EntityReference currentRef(
+      String type, EntityReference stored, Map<UUID, EntityReference> current) {
+    if (!hasId(stored)) {
+      return stored;
+    }
+    return current.computeIfAbsent(
+        stored.getId(),
+        id -> {
+          try {
+            return getEntityReferenceById(type, id, ALL);
+          } catch (EntityNotFoundException e) {
+            return stored;
           }
         });
   }
