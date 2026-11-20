@@ -46,6 +46,7 @@ import org.openmetadata.schema.tests.type.TestCaseIncidentGroup;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IncidentGroupTrend;
@@ -53,7 +54,6 @@ import org.openmetadata.service.jdbi3.IncidentOpenIntervalDAO;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.JsonUtils;
 
 /** SQL scale regression against the scale framework's running application and migrated database. */
 @Tag("scale")
