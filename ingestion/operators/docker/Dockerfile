@@ -223,6 +223,8 @@ RUN pip uninstall -y mysqlclient
 # finding on the next build rather than being a speculative no-op. Purging it
 # instead would cascade through libc6-dev, which the -dev packages installed at
 # the top of this file still depend on.
+# The JRE (src:openjdk-NN, via default-jre-headless) sits in the same early apt
+# layer as expat, so trixie-security JDK point releases only land through here.
 # The package sets are computed from dpkg rather than hand-listed. One source
 # package produces many binaries -- here util-linux, bsdutils, login, mount,
 # liblastlog2-2, libblkid1, libmount1, libsmartcols1 and libuuid1 -- and scanners
@@ -268,7 +270,7 @@ RUN set -eu; \
     [ -n "$ossl" ] || { echo "no src:openssl packages found; refusing to skip the OpenSSL CVE patch" >&2; exit 1; }; \
     kh="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1=="linux"{print $2}')"; \
     apt-get -qq update; \
-    cve_pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^(perl|glibc|sqlite3|gzip|libssh2|libevent|pcre2|zlib)$/ {print $2}')"; \
+    cve_pkgs="$(dpkg-query -W -f='${source:Package} ${Package}\n' | awk '$1 ~ /^(perl|glibc|sqlite3|gzip|libssh2|libevent|pcre2|zlib|openjdk-[0-9]+)$/ {print $2}')"; \
     apt-get -qq install -y --only-upgrade $ul $ex $kh $ossl $cve_pkgs; \
     apt-mark manual libpq5 libgomp1 xz-utils bzip2; \
     apt-get -qq purge -y libpq-dev libmariadb-dev libmariadb-dev-compat libmariadb3 mariadb-common libunbound8; \
