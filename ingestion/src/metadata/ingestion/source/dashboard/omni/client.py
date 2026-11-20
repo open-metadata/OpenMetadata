@@ -241,14 +241,35 @@ class OmniApiClient:
             "fields": cls._extract_fields(content),
         }
 
+    @staticmethod
+    def _semantic_view_parts(topic_def: dict) -> list[str | None]:
+        """Split a topic's ``semantic_view`` (``DB.SCHEMA.NAME``) into database, schema and name."""
+        parts = [part or None for part in str(topic_def.get("semantic_view") or "").rsplit(".", 2)]
+        return [None] * (3 - len(parts)) + parts
+
+    @classmethod
+    def _inline_views(cls, topic_name: str, topic_def: dict) -> list[tuple[str, dict]]:
+        """Parse the view definitions a topic carries in its ``views`` map."""
+        views = topic_def.get("views") or {}
+        if not isinstance(views, dict):
+            logger.warning("Ignoring views of topic %s: expected a mapping", topic_name)
+            return []
+        parsed = []
+        for view_name, view_def in views.items():
+            if isinstance(view_def, dict):
+                parsed.append((str(view_name), cls._parse_view(view_def)))
+            else:
+                logger.warning("Ignoring view %s of topic %s: expected a mapping", view_name, topic_name)
+        return parsed
+
     @classmethod
     def _parse_model_yaml(cls, model: OmniModel, files: dict) -> list[OmniTopic]:
         """
         Build normalized data models from the model's YAML files.
 
-        Each ``.view`` file -> a data model backed by a physical warehouse table
-        (schema + table_name + fields). Each ``.topic`` file -> a curated data
-        model that references a base view (for warehouse-table lineage).
+        Each ``.view`` file, and each inline view with a table of its own, -> a data
+        model backed by a physical warehouse table. Each ``.topic`` file -> a curated
+        data model over its base view, or over its ``semantic_view`` when it has one.
         """
         # ``view_lookup`` maps every reference form (full path, dotted-qualified and
         # the bare leaf when unambiguous) to a parsed view, so a schema-qualified
@@ -309,6 +330,21 @@ class OmniApiClient:
             # reference cannot bind to an unrelated view -- it is left unresolved
             # instead.
             view = view_lookup.get(canonical_ref(base_view)) or {}
+            inline_views = cls._inline_views(topic_name, topic_def)
+            # An inline entry without a table only overrides fields of an existing view.
+            view_records.extend(
+                (name, inline)
+                for name, inline in inline_views
+                if inline["table"] and canonical_ref(name) not in view_lookup.keys() | leaf_seen
+            )
+            database, schema, table = cls._semantic_view_parts(topic_def)
+            if table:
+                fields = [
+                    field.model_copy(update={"name": f"{name}.{field.name}"})
+                    for name, inline in inline_views
+                    for field in inline["fields"]
+                ]
+                view = {"schema": schema, "table": table, "fields": fields}
             topics.append(
                 OmniTopic(
                     model_id=model.id,
@@ -317,6 +353,7 @@ class OmniApiClient:
                     label=topic_def.get("label"),
                     description=topic_def.get("description"),
                     base_view=base_view,
+                    base_database=database,
                     base_schema=view.get("schema"),
                     base_table=view.get("table"),
                     fields=view.get("fields") or [],

@@ -463,7 +463,7 @@ class OmniSource(DashboardServiceSource):
         try:
             fqn_search_string = build_es_fqn_search_string(
                 service_name=prefix_service_name or "*",
-                database_name=prefix_database_name,
+                database_name=prefix_database_name or topic.base_database,
                 schema_name=prefix_schema_name or topic.base_schema,
                 table_name=prefix_table_name or topic.base_table,
             )
