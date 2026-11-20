@@ -12,13 +12,13 @@
  */
 
 import {
-    Alert,
-    Box,
-    Divider,
-    FormField,
-    FormItemLabel,
-    Grid,
-    Input
+  Alert,
+  Box,
+  Divider,
+  FormField,
+  FormItemLabel,
+  Grid,
+  Input,
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
@@ -31,8 +31,8 @@ import ObservabilityFormTriggerItem from '../../../components/Alerts/Observabili
 import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
 import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
 import {
-    AlertAiFormFieldsProps,
-    AlertAiFormValidationErrors
+  AlertAiFormFieldsProps,
+  AlertAiFormValidationErrors,
 } from '../../../components/observability/Alerts/AlertAiFormFields.interface';
 import { ENTITY_NAME_REGEX } from '../../../constants/regex.constants';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
