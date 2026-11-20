@@ -18,6 +18,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.util.NamedValue;
 import jakarta.json.stream.JsonGenerator;
 import java.io.IOException;
@@ -221,6 +222,40 @@ public class SearchSourceBuilderFactoryTest {
     String esQuery = esBuilder.query().toString();
     assertTrue(osQuery.contains("extractedText"), osQuery);
     assertTrue(esQuery.contains("extractedText"), esQuery);
+  }
+
+  /**
+   * Without ranking, fuzzy n-gram fields go through the unranked fuzzy match. Querying them with
+   * their own {@code om_ngram} analyzer splits a 16-char token into ~105 grams, each fuzzy-expanded,
+   * which exceeds OpenSearch's 1024-clause cap and fails the search with a 500
+   * (SearchScoringIT on run id e5c1df09d6f64f0387781ba669f92717). The plain analyzer keeps it one
+   * term, as the ranked stages already do.
+   */
+  @Test
+  public void testUnrankedFuzzyNgramMatchUsesPlainSearchAnalyzer() {
+    String longToken = "e5c1df09f5c39786";
+    OpenSearchRequestBuilder osBuilder =
+        new OpenSearchSourceBuilderFactory(searchSettings)
+            .getSearchSourceBuilderV2("table", longToken, 0, 10);
+    ElasticSearchRequestBuilder esBuilder =
+        new ElasticSearchSourceBuilderFactory(searchSettings)
+            .getSearchSourceBuilderV2("table", longToken, 0, 10);
+
+    assertEquals(
+        "standard", ngramFuzzyClause(osBuilder.query().toJsonString()).path("analyzer").asText());
+    assertEquals(
+        "standard", ngramFuzzyClause(esBuilder.query().toString()).path("analyzer").asText());
+  }
+
+  private static JsonNode ngramFuzzyClause(String queryJson) {
+    JsonNode root = JsonUtils.readTree(queryJson.substring(queryJson.indexOf('{')));
+    return root.findParents("multi_match").stream()
+        .map(parent -> parent.get("multi_match"))
+        .filter(match -> match.has("fuzziness"))
+        .filter(match -> match.path("fields").toString().contains("name.ngram"))
+        .findFirst()
+        .orElseThrow(
+            () -> new AssertionError("no fuzzy n-gram multi_match in %s".formatted(queryJson)));
   }
 
   @Test
