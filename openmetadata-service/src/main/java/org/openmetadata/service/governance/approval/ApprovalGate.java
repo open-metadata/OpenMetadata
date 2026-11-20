@@ -36,6 +36,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -181,6 +182,19 @@ public final class ApprovalGate {
   public static Optional<StagedChange> preview(
       EntityInterface original, EntityInterface updated, String user, Edit edit) {
     return evaluate(original, updated, user, null, edit, false);
+  }
+
+  /** The ops an edit would make, whether or not a workflow gates it; nothing is stored. */
+  public static List<MutationOp> previewOps(
+      EntityInterface original, EntityInterface updated, Edit edit) {
+    String entityType = Entity.getEntityTypeFromObject(updated);
+    keepStoredStatusWhenOmitted(original, updated);
+    EntityInterface published =
+        edit.kind() == Edit.Kind.PUT ? publishedByPut(original, updated, edit) : updated;
+    JsonNode base = JsonUtils.valueToTree(original);
+    JsonNode proposed = JsonUtils.valueToTree(published);
+    return MutationPlanner.plan(
+        base, proposed, changedFields(entityType, original, base, proposed, edit), Set.of());
   }
 
   private static Optional<StagedChange> evaluate(
