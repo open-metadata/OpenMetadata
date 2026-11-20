@@ -79,7 +79,6 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.TeamHierarchy;
-import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -891,6 +890,7 @@ public class TeamRepository extends EntityRepository<Team> {
 
   @Override
   protected void entitySpecificCleanup(Team team) {
+    TaskAssigneeCleanup.removeAssignee(team.getId(), TEAM);
     // When a team is deleted, if the children team don't have another parent, set Organization as
     // the parent
     for (EntityReference child : listOrEmpty(team.getChildren())) {
@@ -940,10 +940,6 @@ public class TeamRepository extends EntityRepository<Team> {
 
   private List<EntityReference> getInheritedRoles(Team team) {
     return SubjectContext.getRolesForTeams(getParentsForInheritedRoles(team));
-  }
-
-  protected void entitySpecificCleanup(User entityInterface) {
-    TaskAssigneeCleanup.removeAssignee(entityInterface.getId(), TEAM);
   }
 
   private TeamHierarchy getTeamHierarchy(Team team) {
