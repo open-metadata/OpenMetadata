@@ -19,10 +19,11 @@ from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import pandas as pd
+import pytest
 
 from metadata.generated.schema.entity.data.container import Container, FileFormat
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
-from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
+from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table, TableData
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
 )
@@ -154,3 +155,28 @@ def test_datalake_sampler_returns_timestamps_from_a_timestamp_only_frame():
 
 def test_storage_sampler_returns_timestamps_from_a_timestamp_only_frame():
     assert _storage_rows(_timestamp_df()) == EXPECTED_TIMESTAMPS
+
+
+@pytest.mark.parametrize(
+    "df,expected",
+    [
+        (
+            pd.DataFrame({"created": pd.to_datetime(["2024-01-02 03:04:05", None])}),
+            [[pd.Timestamp("2024-01-02 03:04:05")], [None]],
+        ),
+        (
+            pd.DataFrame({"created": pd.to_datetime(["2024-01-02 03:04:05", None]), "amount": [1.5, None]}),
+            [[pd.Timestamp("2024-01-02 03:04:05"), 1.5], [None, None]],
+        ),
+        (
+            pd.DataFrame({"created": pd.to_datetime(["2024-01-02 03:04:05", None]), "name": ["a", "b"]}),
+            [[pd.Timestamp("2024-01-02 03:04:05"), "a"], [None, "b"]],
+        ),
+    ],
+)
+def test_storage_sampler_returns_missing_values_as_none(df, expected):
+    rows = _storage_rows(df)
+
+    assert rows == expected
+    # A NaT left in a row would make the upload's model_dump_json() fail.
+    TableData(columns=df.columns.tolist(), rows=rows).model_dump_json()
