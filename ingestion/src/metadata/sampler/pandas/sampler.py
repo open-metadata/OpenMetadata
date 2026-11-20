@@ -163,7 +163,9 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         empty column gives little or no sample data. Missing values arrive as NaN/NaT;
         normalize them to None so the upload sanitizer emits JSON null instead of the
         strings "nan"/"NaT". The ``is_scalar`` guard skips list/dict cells, where
-        ``pd.isna`` returns an array and would raise on truthiness."""
+        ``pd.isna`` returns an array and would raise on truthiness. ``.values`` casts
+        all columns to one dtype, so ints become floats when every column is numeric;
+        ``astype(object)`` keeps each column's own values."""
         return [
             [
                 None
@@ -171,7 +173,7 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
                 else self._truncate_cell(self._array_to_list(cell))
                 for cell in row
             ]
-            for row in data_frame.dropna(how="all").values.tolist()
+            for row in data_frame.dropna(how="all").astype(object).values.tolist()
         ]
 
     def fetch_sample_data(self, columns: list[SQALikeColumn] | None = None) -> TableData:

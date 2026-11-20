@@ -144,7 +144,7 @@ class StorageSampler(SamplerInterface):
                 col_names = [col.name for col in columns] if columns else df.columns.tolist()
                 rows = [
                     [self._truncate_cell(self._array_to_list(cell)) for cell in row]
-                    for row in df[col_names].values.tolist()[: self.sample_limit]
+                    for row in df[col_names].iloc[: self.sample_limit].astype(object).values.tolist()
                 ]
                 return TableData(columns=col_names, rows=rows)
 
