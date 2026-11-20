@@ -832,13 +832,12 @@ class DbtSource(DbtServiceSource):
         # A freshness check tests the source table itself. Sources are graph roots with no
         # depends_on, so resolving upstreams the way a dbt test node does always yields an
         # empty list and leaves the test case with no table to attach to.
-        source_fqn = self._build_table_fqn(
-            database_name=get_corrected_name(manifest_node.database),
-            schema_name=get_corrected_name(manifest_node.schema_),
-            table_name=get_source_physical_name(manifest_node),
+        table_entity = self._resolve_table(
+            get_corrected_name(manifest_node.database),
+            get_corrected_name(manifest_node.schema_),
+            get_source_physical_name(manifest_node),
             literal_table_name=True,
         )
-        table_entity = self._get_table_entity(table_fqn=source_fqn, literal_table_name=True) if source_fqn else None
         if not table_entity:
             logger.warning(f"Table entity not found for dbt source {key}, skipping its freshness test")
             return

@@ -4567,6 +4567,7 @@ class TestAddDbtSourceFreshnessResults:
         source.config.serviceName = "snowflake_svc"
         source.source_config = MagicMock()
         source.source_config.searchAcrossDatabases = search_across_databases
+        source.resolved_tables = {}
         source.context.get.return_value.dbt_tests = {}
         source.context.get.return_value.sources_generate_time = sources_generate_time
         source.context.get.return_value.run_results_generate_time = run_results_generate_time
@@ -5938,6 +5939,18 @@ class TestDbtSourceIdentifiers:
         assert freshness[DbtCommonEnum.UPSTREAM.value] == [self.PHYSICAL_FQN]
         assert freshness[DbtCommonEnum.MANIFEST_NODE.value].name == "orders_freshness"
         assert generate_entity_link(freshness) == [f"<#E::table::{self.PHYSICAL_FQN}>"]
+
+    def test_freshness_reuses_the_source_table_lookup(self):
+        """Issue #38288: a freshness result costs no extra search for its source table."""
+        with TestAddDbtSourceFreshnessResults.SOURCES_FILE.open(encoding="utf-8") as sources_file:
+            sources = json.load(sources_file)
+
+        def searches(**files):
+            source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+            self._links(source, self._objects(source, **files))
+            return source.metadata.es_search_from_fqn.call_count
+
+        assert searches(dbt_sources=sources) == searches()
 
     def test_repeated_ingestion_preserves_logical_manifest_identity(self):
         source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
