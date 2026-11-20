@@ -19,7 +19,7 @@ import {
   Utils as QbUtils,
 } from '@react-awesome-query-builder/ui';
 import '@react-awesome-query-builder/ui/css/styles.css';
-import { isEmpty, isEqual, isNil, isString } from 'lodash';
+import { isEmpty, isEqual, isNil } from 'lodash';
 import Qs from 'qs';
 import {
   createContext,
@@ -35,6 +35,7 @@ import { useNavigate } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { ExploreSearchIndex } from '../../../interface/discovery/explore.interface';
+import type { QueryFilterInterface } from '../../../interface/queryFilter.interface';
 import { TabsInfoData } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
 import {
@@ -44,9 +45,11 @@ import {
 import {
   getExploreClearQueryFilterSearchParams,
   getExploreResetFiltersSearchParams,
+  parseExploreQueryFilterParam,
 } from '../../../utils/ExplorePureUtils';
 import { getEmptyJsonTree } from '../../../utils/queryBuilder/tree';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
+import { getExploreJsonTreeFromQueryFilter } from '../../../utils/QueryBuilderPureUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Loader from '../../common/Loader/Loader';
@@ -147,29 +150,26 @@ export const AdvanceSearchProvider = ({
     [location.search]
   );
 
-  const jsonTree = useMemo(() => {
-    if (!isString(parsedSearch.queryFilter)) {
-      return undefined;
+  const urlFilter = useMemo(() => {
+    const parsed = parseExploreQueryFilterParam(parsedSearch.queryFilter);
+
+    if (
+      parsed.tree &&
+      !QbUtils.isValidTree(QbUtils.loadTree(parsed.tree), config)
+    ) {
+      return {};
     }
 
-    try {
-      const filter: OldJsonTree = JSON.parse(parsedSearch.queryFilter);
-      const immutableTree = QbUtils.loadTree(filter);
-      if (QbUtils.isValidTree(immutableTree, config)) {
-        return filter;
-      }
-    } catch {
-      return undefined;
-    }
-
-    return undefined;
+    return parsed;
   }, [parsedSearch]);
 
   const [showModal, setShowModal] = useState(false);
   const [treeInternal, setTreeInternal] = useState<ImmutableTree>(
-    jsonTree
-      ? QbUtils.Validation.sanitizeTree(QbUtils.loadTree(jsonTree), config)
-          .fixedTree
+    urlFilter.tree
+      ? QbUtils.Validation.sanitizeTree(
+          QbUtils.loadTree(urlFilter.tree),
+          config
+        ).fixedTree
       : defaultTree
   );
   const [queryFilter, setQueryFilter] = useState<
@@ -197,11 +197,11 @@ export const AdvanceSearchProvider = ({
     [setConfig, setTreeInternal]
   );
 
-  const handleTreeUpdate = useCallback(
-    (tree?: ImmutableTree) => {
+  const handleQueryFilterUpdate = useCallback(
+    (qFilter?: Partial<QueryFilterInterface>) => {
       navigate({
         pathname: location.pathname,
-        search: getExploreClearQueryFilterSearchParams(parsedSearch, tree),
+        search: getExploreClearQueryFilterSearchParams(parsedSearch, qFilter),
       });
     },
     [navigate, parsedSearch, location.pathname]
@@ -222,8 +222,8 @@ export const AdvanceSearchProvider = ({
 
   const handleResetQueryFilter = useCallback(() => {
     handleReset();
-    handleTreeUpdate();
-  }, [handleReset, handleTreeUpdate]);
+    handleQueryFilterUpdate();
+  }, [handleReset, handleQueryFilterUpdate]);
 
   // Reset all filters, quick filter and query filter
   const handleResetAllFilters = useCallback(() => {
@@ -331,14 +331,23 @@ export const AdvanceSearchProvider = ({
     if (!initialised) {
       return;
     }
-    if (jsonTree) {
+    // Read once the custom properties are in the config: a property's rule is matched to its field by them.
+    const jsonTree =
+      urlFilter.tree ??
+      (urlFilter.queryFilter &&
+        getExploreJsonTreeFromQueryFilter(
+          urlFilter.queryFilter,
+          config.fields
+        ));
+
+    if (jsonTree && !isEmpty(jsonTree)) {
       loadTree(jsonTree);
     } else {
       handleReset();
     }
 
     setLoading(false);
-  }, [jsonTree, initialised]);
+  }, [urlFilter, initialised]);
 
   const handleSubmit = useCallback(() => {
     const qFilter = {
@@ -348,9 +357,9 @@ export const AdvanceSearchProvider = ({
     const val = QbUtils.sqlFormat(treeInternal, config);
     setSQLQuery(treeInternal ? val ?? '' : '');
 
-    updateURL && handleTreeUpdate(treeInternal);
+    updateURL && handleQueryFilterUpdate(qFilter);
     setShowModal(false);
-  }, [treeInternal, config, handleTreeUpdate, updateURL]);
+  }, [treeInternal, config, handleQueryFilterUpdate, updateURL]);
 
   const contextValues = useMemo(
     () => ({

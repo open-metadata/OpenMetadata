@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import React from 'react';
@@ -56,21 +57,27 @@ jest.mock('../../common/Loader/Loader', () =>
 jest.mock('../../../utils/AdvancedSearchClassBase', () => {
   const actual = jest.requireActual('../../../utils/AdvancedSearchClassBase');
 
+  // Keep the prototype: spreading the instance would drop its methods (`getCustomPropertiesSubFields`, …).
+  const instance = Object.assign(
+    Object.create(Object.getPrototypeOf(actual.default)),
+    actual.default,
+    { autocomplete: jest.fn().mockReturnValue(jest.fn()) }
+  );
+
   return {
     __esModule: true,
     ...actual,
-    default: {
-      ...actual.default,
-      autocomplete: jest.fn().mockReturnValue(jest.fn()),
-    },
+    default: instance,
   };
 });
 
 const mockNavigate = jest.fn();
+const DEFAULT_SEARCH = 'queryFilter={"some":"value"}';
+let mockLocationSearch = DEFAULT_SEARCH;
 
 jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({
-    search: 'queryFilter={"some":"value"}',
+    search: mockLocationSearch,
     pathname: ROUTES.EXPLORE,
   }));
 });
@@ -247,5 +254,241 @@ describe('AdvanceSearchProvider — search index changes', () => {
     });
 
     expect(screen.getByTestId('is-updating')).toHaveTextContent('false');
+  });
+});
+
+describe('AdvanceSearchProvider — the advanced search in the URL', () => {
+  type Node = {
+    type: string;
+    properties?: Record<string, unknown>;
+    children1?: Node[];
+  };
+
+  // The groups the modal would show: each with its conjunction and its rules.
+  const describeGroups = (root: Node) =>
+    (root.children1 ?? []).map((group) => {
+      const rules: Array<Record<string, unknown>> = [];
+      const collect = (node: Node) =>
+        node.type === 'rule'
+          ? rules.push({
+              field: node.properties?.field,
+              operator: node.properties?.operator,
+              value: node.properties?.value,
+            })
+          : (node.children1 ?? []).forEach(collect);
+      (group.children1 ?? []).forEach(collect);
+
+      return { conjunction: group.properties?.conjunction, rules };
+    });
+
+  const FilterProbe = () => {
+    const { queryFilter, sqlQuery, treeInternal, onSubmit } =
+      useAdvanceSearch();
+    const root = QbUtils.getTree(treeInternal) as unknown as Node;
+
+    return (
+      <>
+        <span data-testid="query-filter">
+          {JSON.stringify(queryFilter ?? null)}
+        </span>
+        <span data-testid="sql">{sqlQuery}</span>
+        <span data-testid="root-conjunction">
+          {String(root.properties?.conjunction)}
+        </span>
+        <span data-testid="groups">{JSON.stringify(describeGroups(root))}</span>
+        <button onClick={onSubmit}>apply</button>
+      </>
+    );
+  };
+
+  const ProbeWithProvider = mockWithAdvanceSearch(FilterProbe);
+
+  const renderWithSearch = async (search: Record<string, unknown>) => {
+    mockLocationSearch = new URLSearchParams(
+      Object.entries(search).map(([key, value]) => [key, JSON.stringify(value)])
+    ).toString();
+    await act(async () => {
+      render(<ProbeWithProvider />);
+    });
+  };
+
+  const readJson = (testId: string) =>
+    JSON.parse(screen.getByTestId(testId).textContent ?? 'null');
+
+  // (tier AND owner) OR (tag), as the modal writes it.
+  const twoGroupFilter = {
+    query: {
+      bool: {
+        should: [
+          {
+            bool: {
+              must: [
+                { term: { 'tier.tagFQN': 'Tier.Tier1' } },
+                { term: { ownerDisplayName: 'admin' } },
+              ],
+            },
+          },
+          { bool: { should: [{ term: { 'tags.tagFQN': 'PII.Sensitive' } }] } },
+        ],
+      },
+    },
+  };
+
+  afterEach(() => {
+    mockLocationSearch = DEFAULT_SEARCH;
+    jest.mocked(getAllCustomProperties).mockResolvedValue({});
+  });
+
+  it('loads an Elasticsearch filter from the URL into its groups', async () => {
+    await renderWithSearch({ queryFilter: twoGroupFilter });
+
+    expect(screen.getByTestId('root-conjunction')).toHaveTextContent('OR');
+    expect(readJson('groups')).toEqual([
+      {
+        conjunction: 'AND',
+        rules: [
+          {
+            field: 'tier.tagFQN',
+            operator: 'select_equals',
+            value: ['Tier.Tier1'],
+          },
+          {
+            field: 'ownerDisplayName',
+            operator: 'select_equals',
+            value: ['admin'],
+          },
+        ],
+      },
+      {
+        conjunction: 'OR',
+        rules: [
+          {
+            field: 'tags.tagFQN',
+            operator: 'select_equals',
+            value: ['PII.Sensitive'],
+          },
+        ],
+      },
+    ]);
+    expect(readJson('query-filter')).toEqual(twoGroupFilter);
+    expect(screen.getByTestId('sql')).not.toBeEmptyDOMElement();
+  });
+
+  it('still loads a link that carries the builder tree', async () => {
+    const legacyTree = {
+      id: 'root',
+      type: 'group',
+      properties: { conjunction: 'AND', not: false },
+      children1: {
+        group: {
+          id: 'group',
+          type: 'group',
+          properties: { conjunction: 'AND', not: false },
+          children1: {
+            rule: {
+              id: 'rule',
+              type: 'rule',
+              properties: {
+                field: 'tier.tagFQN',
+                operator: 'select_equals',
+                value: ['Tier.Tier1'],
+                valueSrc: ['value'],
+                valueType: ['select'],
+              },
+            },
+          },
+        },
+      },
+    };
+
+    await renderWithSearch({ queryFilter: legacyTree });
+
+    expect(readJson('groups')).toEqual([
+      {
+        conjunction: 'AND',
+        rules: [
+          {
+            field: 'tier.tagFQN',
+            operator: 'select_equals',
+            value: ['Tier.Tier1'],
+          },
+        ],
+      },
+    ]);
+    expect(readJson('query-filter')).toEqual({
+      query: {
+        bool: {
+          must: [
+            { bool: { must: [{ term: { 'tier.tagFQN': 'Tier.Tier1' } }] } },
+          ],
+        },
+      },
+    });
+  });
+
+  it('reads custom properties once they have loaded', async () => {
+    jest.mocked(getAllCustomProperties).mockResolvedValue({
+      table: [{ name: 'strCP', type: 'string' }],
+    } as never);
+    // Root, group, then one `bool.must` per drill level (`extension`, `extension.table`), around the rule.
+    const wrap = (clause: unknown) => ({ bool: { must: [clause] } });
+    const rule = {
+      bool: {
+        must: [
+          {
+            nested: {
+              path: 'customPropertiesTyped',
+              ignore_unmapped: true,
+              query: {
+                bool: {
+                  must: [
+                    { term: { 'customPropertiesTyped.name': 'strCP' } },
+                    {
+                      wildcard: {
+                        'customPropertiesTyped.stringValue': {
+                          value: '*gold*',
+                        },
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          },
+          { term: { entityType: 'table' } },
+        ],
+      },
+    };
+    const customPropertyFilter = { query: wrap(wrap(wrap(wrap(rule)))) };
+
+    await renderWithSearch({ queryFilter: customPropertyFilter });
+
+    expect(readJson('groups')).toEqual([
+      {
+        conjunction: 'AND',
+        rules: [
+          {
+            field: 'extension.table.strCP.keyword',
+            operator: 'like',
+            value: ['gold'],
+          },
+        ],
+      },
+    ]);
+    expect(readJson('query-filter')).toEqual(customPropertyFilter);
+  });
+
+  it('writes the Elasticsearch filter, not the tree, when the search is applied', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await renderWithSearch({ queryFilter: twoGroupFilter });
+    mockNavigate.mockClear();
+
+    await user.click(screen.getByRole('button', { name: 'apply' }));
+
+    const { search } = mockNavigate.mock.calls[0][0];
+
+    expect(
+      JSON.parse(new URLSearchParams(search).get('queryFilter') ?? '')
+    ).toEqual(twoGroupFilter);
   });
 });
