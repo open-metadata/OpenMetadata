@@ -149,7 +149,10 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { primary, secondary, overflow } = splitTaskActions(actions);
+  const { primary, secondary, overflow } = splitTaskActions(
+    actions,
+    task.workflowStageId
+  );
   // An assignee action opens a picker rather than firing, so it cannot live in
   // the menu — it stays a button even when it did not win a header slot.
   const menuActions = overflow.filter((action) => action.kind !== 'assignee');
