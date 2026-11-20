@@ -182,6 +182,8 @@ export interface ProfileHashLinkProps {
    * in-modal view. The href is kept for middle-click / open-in-new-tab. */
   onNavigate: (target: ProfileHashTarget) => void;
   children: ReactNode;
+  className?: string;
+  title?: string;
 }
 
 export interface TimeWindowOption {

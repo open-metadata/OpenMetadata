@@ -82,6 +82,7 @@ import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionBinding;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionPlan;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.FieldPathUtils;
@@ -326,6 +327,10 @@ public class TaskWorkflowHandler {
     if (payloadAssignees != null) {
       workflowHandler.setProcessVariable(
           taskId, "taskAssignees", serializeWorkflowVariable(payloadAssignees));
+      if (task.getType() == TaskEntityType.TestCaseResolution) {
+        workflowHandler.setProcessVariable(
+            taskId, WorkflowStartVariables.INCIDENT_ASSIGNEES_CLEARED, payloadAssignees.isEmpty());
+      }
     }
 
     final boolean rejection = isRejection(resolutionType, selectedTransition);

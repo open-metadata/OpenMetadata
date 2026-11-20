@@ -277,17 +277,11 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
 
     return (
       <Box align="center" direction="row" gap={1}>
-        <CopyButton
-          size="sm"
-          testId="copy-persona-link"
-          tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
-          tooltipPlacement="right"
-          value={personaLink}
-        />
         <ButtonUtility
           data-testid="rename-persona-btn"
           icon={Edit}
           isDisabled={!canEditDescription}
+          size="lg"
           tooltip={String(
             canEditDescription ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -296,6 +290,12 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
             setRenameValue(persona.displayName || persona.name || '');
             setIsRenameOpen(true);
           }}
+        />
+        <CopyButton
+          testId="copy-persona-link"
+          tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
+          tooltipPlacement="right"
+          value={personaLink}
         />
       </Box>
     );

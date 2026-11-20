@@ -342,27 +342,25 @@ export const validateBucketsForIndexAndSort = async (
   expect(totalCount).toEqual(docCount);
 };
 
-export const selectSortOrder = async (page: Page, sortOrder: string) => {
+export const selectSortOrder = async (page: Page, sortField: string) => {
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('sorting-dropdown-label').click();
-  await page.getByRole('menuitemradio', { name: sortOrder }).waitFor({
-    state: 'visible',
-  });
-  const nameFilter = page.waitForResponse(
-    `/api/v1/search/query?q=&index=dataAsset&*sort_field=displayName.keyword&sort_order=desc*`
-  );
-  await page.getByRole('menuitemradio', { name: sortOrder }).click();
-  await nameFilter;
+  const sortMenu = page.getByRole('menu');
+  const ascOption = sortMenu
+    .getByRole('group', { name: sortField })
+    .getByRole('menuitemradio', { name: 'A to Z' });
+  await expect(ascOption).toBeVisible();
 
-  await expect(page.getByTestId('sorting-dropdown-label')).toHaveText(
-    sortOrder
-  );
-
+  // Field and order are one menu choice, so a single request carries both.
   const ascSortOrder = page.waitForResponse(
     `/api/v1/search/query?q=&index=dataAsset&*sort_field=displayName.keyword&sort_order=asc*`
   );
-  await page.getByTestId('sort-order-button').click();
+  await ascOption.click();
   await ascSortOrder;
+
+  await expect(page.getByTestId('sorting-dropdown-label')).toHaveText(
+    sortField
+  );
   await waitForAllLoadersToDisappear(page);
 };
 
