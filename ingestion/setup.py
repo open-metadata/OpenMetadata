@@ -67,7 +67,7 @@ VERSIONS = {
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
     "azure-identity": "azure-identity~=1.12",
-    "databricks-sdk": "databricks-sdk~=0.20.0",
+    "databricks-sdk": "databricks-sdk~=0.22.0",
     "databricks-sql-connector": "databricks-sql-connector>=4.7.0",
     "databricks-sqlalchemy": "databricks-sqlalchemy~=2.0.9",
     "trino": "trino[sqlalchemy]",
