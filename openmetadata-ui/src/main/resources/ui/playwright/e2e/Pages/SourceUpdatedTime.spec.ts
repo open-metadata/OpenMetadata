@@ -26,6 +26,7 @@ const HOURS_SINCE_SOURCE_UPDATE = 2;
 const table = new TableClass();
 const dashboard = new DashboardClass();
 const pipeline = new PipelineClass();
+
 const assetsWithSourceUpdate = [
   { name: 'table', entity: table },
   { name: 'dashboard', entity: dashboard },
