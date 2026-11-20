@@ -313,9 +313,6 @@
     "vitest-browser-react": "2.3.0"
   },
   "resolutions": {
-    "msw/cookie": "1.1.1",
-    "msw/tough-cookie": "6.0.1",
-    "msw/path-to-regexp": "6.3.0",
     "**/broadcast-channel/@babel/runtime": "7.29.14",
     "**/@swagger-api/apidom-reference/minimatch": "11.0.9",
     "**/eslint-plugin-sonarjs/minimatch": "11.0.9",

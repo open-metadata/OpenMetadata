@@ -16,6 +16,7 @@ import {
   serveEmptyLists,
   serveEntities,
 } from '../../test/browser/fixtures/hierarchy';
+import { isListPage } from '../../test/browser/fixtures/paging';
 import { describePaginatedList } from '../../test/browser/paginationContract';
 
 const items = many(40, (i) =>
@@ -27,8 +28,7 @@ describePaginatedList({
   route: `/service/dashboardServices/${DASHBOARD_SERVICE.name}/data-model`,
   query: {},
   listPath: '/api/v1/dashboard/datamodels',
-  // Pages also request limit=0 just to read totals for tab badges.
-  isPageRequest: (url) => url.searchParams.get('limit') !== '0',
+  isPageRequest: isListPage,
   items,
   itemLabel: (item) => item.displayName,
   search: { index: 'dashboardDataModel', urlParam: 'dataModel', term: 'pw' },

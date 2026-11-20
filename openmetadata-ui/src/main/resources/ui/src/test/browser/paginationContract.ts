@@ -50,6 +50,10 @@ export interface PaginatedListSpec<T> {
   scope?: () => Locator;
   /** Rows the page adds to page 1 itself (e.g. a pinned system alert). */
   pinnedRowsOnFirstPage?: number;
+  /**
+   * The search mock filters only on `q` (not `query_filter`), so these tests
+   * check that search pages and restores correctly, not which hits match.
+   */
   search?: { index: string; urlParam: string; term: string };
   deletedToggleTestId?: string;
   /** Set false for pages without the "N / Page" selector. */
@@ -82,7 +86,11 @@ export const describePaginatedList = <T>(spec: PaginatedListSpec<T>) => {
   const label = (i: number) => spec.itemLabel(spec.items[i]);
   const hits = [...spec.items].reverse();
   const hitLabel = (i: number) => spec.itemLabel(hits[i]);
-  const last = (calls: RecordedCall[]) => calls[calls.length - 1];
+  const last = (calls: RecordedCall[]) => {
+    expect(calls.length, 'requests recorded').toBeGreaterThan(0);
+
+    return calls[calls.length - 1];
+  };
   const rows = () =>
     Array.from(
       (spec.scope?.().element() ?? document).querySelectorAll(
@@ -377,14 +385,15 @@ export const describeClientPagedTable = (spec: ClientPagedTableSpec) => {
 
       const firstPage = visibleRows().length;
 
-      expect(firstPage).toBeLessThanOrEqual(15);
+      expect(firstPage).toBe(15);
 
       await userEvent.click(page.getByTestId('next'));
 
       await expect.element(table().getByText(spec.rowLabel(15))).toBeVisible();
       await expect.element(page.getByTestId('previous')).toBeEnabled();
       expect(new URL(location.href).searchParams.get('currentPage')).toBe('2');
-      expect(firstPage + visibleRows().length).toBe(spec.totalRows);
+      // Page 2 holds the next 15 rows, or the rest when fewer remain.
+      expect(visibleRows().length).toBe(Math.min(15, spec.totalRows - 15));
 
       const url = `${location.pathname}${location.search}`;
       await screen.unmount();

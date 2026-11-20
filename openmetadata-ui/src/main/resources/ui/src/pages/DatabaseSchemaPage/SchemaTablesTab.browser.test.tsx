@@ -19,6 +19,7 @@ import {
   serveEmptyLists,
   serveEntities,
 } from '../../test/browser/fixtures/hierarchy';
+import { isListPage } from '../../test/browser/fixtures/paging';
 import { describePaginatedList } from '../../test/browser/paginationContract';
 
 const tables = many(40, (i) => ({
@@ -33,7 +34,7 @@ describePaginatedList({
   query: { showDeletedTables: 'false' },
   listPath: '/api/v1/tables',
   // The page also asks for limit=0 just to read the total.
-  isPageRequest: (url) => url.searchParams.get('limit') !== '0',
+  isPageRequest: isListPage,
   items: tables,
   itemLabel: (t) => t.displayName ?? t.name,
   search: { index: 'table', urlParam: 'schema', term: 'pw' },

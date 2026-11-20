@@ -21,7 +21,7 @@
  */
 import { http, HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
-import { page, userEvent } from 'vitest/browser';
+import { page, server, userEvent } from 'vitest/browser';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import {
@@ -188,19 +188,24 @@ describe('Table page › Schema tab (UI integration)', () => {
     expect(calls.at(-1)?.params.get('offset')).toBe('0');
   });
 
-  test('visual: schema table page 1', async () => {
-    mockColumnsApi();
-    // Tall enough that the whole table fits, so the capture never scrolls.
-    await page.viewport(1440, 1600);
-    renderSchemaTab('?pageSize=15');
+  // The committed baseline is Linux-only (CI); other platforms render fonts
+  // differently, so the comparison runs only there.
+  test.skipIf(server.platform !== 'linux')(
+    'visual: schema table page 1',
+    async () => {
+      mockColumnsApi();
+      // Tall enough that the whole table fits, so the capture never scrolls.
+      await page.viewport(1440, 1600);
+      renderSchemaTab('?pageSize=15');
 
-    await expect.element(page.getByText('order_col_001')).toBeVisible();
+      await expect.element(page.getByText('order_col_001')).toBeVisible();
 
-    // Park the pointer so no row is in its hover state.
-    await userEvent.hover(page.getByTestId('page-indicator'));
+      // Park the pointer so no row is in its hover state.
+      await userEvent.hover(page.getByTestId('page-indicator'));
 
-    await expect(page.getByTestId('entity-table')).toMatchScreenshot(
-      'schema-table-page-1'
-    );
-  });
+      await expect(page.getByTestId('entity-table')).toMatchScreenshot(
+        'schema-table-page-1'
+      );
+    }
+  );
 });

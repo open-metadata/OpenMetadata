@@ -18,7 +18,11 @@ import {
   serveEmptyLists,
   serveEntities,
 } from '../../test/browser/fixtures/hierarchy';
-import { encodeCursor, serveList } from '../../test/browser/fixtures/paging';
+import {
+  encodeCursor,
+  isListPage,
+  serveList,
+} from '../../test/browser/fixtures/paging';
 import { describePaginatedList } from '../../test/browser/paginationContract';
 import { renderApp } from '../../test/browser/renderWithApp';
 import { scaled } from '../../test/browser/timeouts';
@@ -32,8 +36,7 @@ describePaginatedList({
   route: `/service/driveServices/${DRIVE_SERVICE.name}/files`,
   query: { showDeletedTables: 'false' },
   listPath: '/api/v1/drives/files',
-  // Pages also request limit=0 just to read totals for tab badges.
-  isPageRequest: (url) => url.searchParams.get('limit') !== '0',
+  isPageRequest: isListPage,
   items,
   itemLabel: (item) => item.displayName,
   search: { index: 'file', urlParam: 'file', term: 'pw' },

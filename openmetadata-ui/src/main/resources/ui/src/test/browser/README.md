@@ -6,7 +6,7 @@ Chromium. Only the network is fake. No backend, no DB, no login.
 ```bash
 yarn test:ui           # watch mode; add --ui to watch the page render live
 yarn test:ui:run       # CI / headless
-yarn test:ui:coverage  # istanbul -> src/test/browser/coverage (Sonar unions it with Jest)
+yarn test:ui:coverage  # istanbul -> src/test/browser/coverage (CI job summary; not in Sonar yet)
 HEADED=true yarn test:ui:run   # see the browser
 ```
 
@@ -40,7 +40,8 @@ ADR:2026-10-28-page-behaviour-is-tested-in-vitest-browser-mode-and-e2e-tests-lea
 
 - File name: `<Component>.browser.test.tsx`, next to the component.
 - One `describe` per page/feature, tests named after user-visible behaviour.
-- Visual checks: `toMatchScreenshot(name)`; set a viewport tall enough that the element
+- Visual checks: `toMatchScreenshot(name)`. Baselines are committed for Linux (CI) only, so
+  skip the comparison elsewhere (`test.skipIf(server.platform !== 'linux')`); set a viewport tall enough that the element
   fits, and park the pointer so nothing is hovered. Baselines are committed under
   `__screenshots__/`; regenerate with `--update`.
 

@@ -13,7 +13,12 @@
 import { initCoreI18n } from '@openmetadata/ui-core-components';
 import { afterAll, afterEach, beforeAll, expect } from 'vitest';
 import { cleanup } from 'vitest-browser-react';
+import { usePersistentStorage } from '../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { useAppModeStore } from '../../hooks/useAppMode';
+import { useDomainStore } from '../../hooks/useDomainStore';
 import { useExploreCache } from '../../hooks/useExploreCache';
+import { useSearchStore } from '../../hooks/useSearchStore';
 import '../../styles/globalStyles';
 import i18next from '../../utils/i18next/LocalUtil';
 import { recordImpact } from './impact';
@@ -29,6 +34,16 @@ if (__BROWSER_IMPACT__) {
 
 const runnerUrl = globalThis.location.href;
 const unhandledApiCalls: string[] = [];
+// App-wide stores pages write (signed-in user, domain, search, app mode).
+// Files run in one page (`isolate: false`), so reset them between tests;
+// otherwise a test inherits e.g. the previous test's currentUser.
+const stores = [
+  useApplicationStore,
+  usePersistentStorage,
+  useDomainStore,
+  useSearchStore,
+  useAppModeStore,
+];
 
 beforeAll(async () => {
   await worker.start({
@@ -69,6 +84,7 @@ afterEach(async () => {
     worker.resetHandlers();
     globalThis.history.replaceState(null, '', runnerUrl);
     localStorage.clear();
+    stores.forEach((store) => store.setState(store.getInitialState(), true));
     // Explore keeps search results for 30 s across mounts (as across a user's
     // tab switches); a later test would render this test's results first.
     useExploreCache.getState().clearCache();

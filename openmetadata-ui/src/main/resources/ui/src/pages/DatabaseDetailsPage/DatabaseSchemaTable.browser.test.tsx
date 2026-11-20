@@ -16,6 +16,7 @@ import {
   DB_SERVICE,
   serveEntities,
 } from '../../test/browser/fixtures/hierarchy';
+import { isListPage } from '../../test/browser/fixtures/paging';
 import { describePaginatedList } from '../../test/browser/paginationContract';
 
 const items = many(40, (i) => named('schema', i, DATABASE.fullyQualifiedName));
@@ -25,8 +26,7 @@ describePaginatedList({
   route: `/database/${DATABASE.fullyQualifiedName}`,
   query: { showDeletedTables: 'false' },
   listPath: '/api/v1/databaseSchemas',
-  // Pages also request limit=0 just to read totals for tab badges.
-  isPageRequest: (url) => url.searchParams.get('limit') !== '0',
+  isPageRequest: isListPage,
   items,
   itemLabel: (item) => item.displayName,
   search: { index: 'databaseSchema', urlParam: 'schema', term: 'pw' },
