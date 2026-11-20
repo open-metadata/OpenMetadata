@@ -237,13 +237,56 @@ class OpenSearchVectorServiceRequestTest {
   }
 
   @Test
-  void aRejectedEmbeddingWriteIsAnErrorWithoutBeingResent() throws IOException {
+  void aThrownClosedSegmentIsResentUntilItClears() throws IOException {
+    AtomicInteger attempts = new AtomicInteger();
     when(genericClient.execute(any()))
         .thenAnswer(
             call -> {
-              throw thrown(
-                  400, "{\"error\":{\"type\":\"mapper_parsing_exception\"},\"status\":400}");
+              if (attempts.getAndIncrement() < 2) {
+                throw thrown(500, CLOSED_SEGMENT);
+              }
+              return response(200, "{\"result\":\"updated\"}");
             });
+
+    assertEquals(
+        "{\"result\":\"updated\"}", service.executeGenericRequest("POST", ENDPOINT, UPDATE_BODY));
+    assertEquals(3, attempts.get());
+  }
+
+  @Test
+  void aThrownClosedSegmentStopsAfterThreeAttempts() throws IOException {
+    when(genericClient.execute(any()))
+        .thenAnswer(
+            call -> {
+              throw thrown(503, CLOSED_SEGMENT);
+            });
+
+    assertThrows(
+        RuntimeException.class, () -> service.executeGenericRequest("POST", ENDPOINT, UPDATE_BODY));
+    verify(genericClient, times(3)).execute(any());
+  }
+
+  @Test
+  void aThrownUnrelatedServerErrorIsNotResent() throws IOException {
+    when(genericClient.execute(any()))
+        .thenAnswer(
+            call -> {
+              throw thrown(500, "{\"error\":{\"type\":\"unrelated_error\"},\"status\":500}");
+            });
+
+    assertThrows(
+        RuntimeException.class, () -> service.executeGenericRequest("POST", ENDPOINT, UPDATE_BODY));
+    verify(genericClient).execute(any());
+  }
+
+  @Test
+  void aRejectedEmbeddingWriteIsAnErrorWithoutBeingResent() throws IOException {
+    // The client returns 400 (one of the statuses it ignores) rather than throwing it.
+    when(genericClient.execute(any()))
+        .thenAnswer(
+            call ->
+                response(
+                    400, "{\"error\":{\"type\":\"mapper_parsing_exception\"},\"status\":400}"));
 
     List<ILoggingEvent> logged = writeEmbeddings();
 
@@ -268,8 +311,8 @@ class OpenSearchVectorServiceRequestTest {
   }
 
   /**
-   * What the OpenSearch client throws for an error status: it never returns the response, it raises
-   * a ResponseException whose message carries the status line and the error body.
+   * What the OpenSearch client throws for a status it does not ignore (all but 400, 401, 403, 404
+   * and 405): a ResponseException whose message carries the status line and the error body.
    */
   private static ResponseException thrown(int status, String body) {
     ResponseException failure = mock(ResponseException.class);

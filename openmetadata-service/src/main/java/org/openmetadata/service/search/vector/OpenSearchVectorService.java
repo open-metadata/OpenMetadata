@@ -51,6 +51,7 @@ import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Request;
 import os.org.opensearch.client.opensearch.generic.Requests;
 import os.org.opensearch.client.opensearch.generic.Response;
+import os.org.opensearch.client.transport.httpclient5.ResponseException;
 
 @Slf4j
 public class OpenSearchVectorService implements VectorIndexService {
@@ -62,13 +63,12 @@ public class OpenSearchVectorService implements VectorIndexService {
           RetryConfig.custom()
               .maxAttempts(3)
               .intervalFunction(IntervalFunction.ofExponentialBackoff(200, 2))
-              // A version-conflicted update changed nothing, so it is resent like a closed segment;
-              // the client raises it as a 409 ResponseException rather than returning the response
+              // A version-conflicted update changed nothing, so it is resent like a closed segment
               // (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
               .retryOnException(
                   error ->
                       error instanceof UncheckedIOException
-                          && (error.getCause() instanceof ClosedSegmentException
+                          && (isClosedSegment(error.getCause())
                               || SearchUtils.isVersionConflict(error)))
               .build());
   private static final int OVER_FETCH_MULTIPLIER = 2;
@@ -1992,6 +1992,15 @@ public class OpenSearchVectorService implements VectorIndexService {
       LOG.warn("Failed to read OpenSearch response body", e);
       return "{}";
     }
+  }
+
+  // The client raises every status it does not ignore (all but 400, 401, 403, 404 and 405) as a
+  // ResponseException, so a closed segment arrives thrown, not as a returned 5xx response.
+  private static boolean isClosedSegment(Throwable cause) {
+    return cause instanceof ClosedSegmentException
+        || cause instanceof ResponseException failure
+            && failure.status() >= 500
+            && String.valueOf(failure.getMessage()).contains(ALREADY_CLOSED_EXCEPTION);
   }
 
   private static final class ClosedSegmentException extends IOException {
