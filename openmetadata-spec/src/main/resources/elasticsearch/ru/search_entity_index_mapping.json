@@ -774,6 +774,10 @@
           }
         }
       },
+      "searchIndexSettings": {
+        "type": "object",
+        "enabled": false
+      },
       "indexType": {
         "type": "text"
       },

@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -11,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.it.server.SearchTestImages;
 import org.openmetadata.schema.type.IndexMappingLanguage;
+import org.openmetadata.service.search.indexes.SearchEntityIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.opensearch.testcontainers.OpensearchContainer;
@@ -108,6 +111,14 @@ class SearchConsumerFieldBehaviorIT {
   private static final String FAILURE_COMMENT_TERM = "flakyupstream";
   private static final String FAILURE_COMMENT =
       "closed after the " + FAILURE_COMMENT_TERM + " feed was backfilled";
+  private static final String SEARCH_ENTITY_FLAT_KNN_ID = "cccccccc-cccc-cccc-cccc-cccccccccccc";
+  private static final String SEARCH_ENTITY_NESTED_KNN_ID = "dddddddd-dddd-dddd-dddd-dddddddddddd";
+  private static final String SEARCH_ENTITY_EMPTY_SETTINGS_ID =
+      "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee";
+  private static final String SEARCH_ENTITY_FLAT_FQN = "opensearch_prod.knn_vectors_flat";
+  private static final String SEARCH_ENTITY_NESTED_FQN = "opensearch_prod.knn_vectors_nested";
+  private static final String SEARCH_ENTITY_EMPTY_FQN = "opensearch_prod.plain_logs_index";
+  private static final String SEARCH_ENTITY_FIELD_NAME = "embeddingvector";
 
   // Native-script sample text per language plus a token its analyzer must produce.
   // Keyword/identifier
@@ -170,6 +181,9 @@ class SearchConsumerFieldBehaviorIT {
           "/elasticsearch/" + language + "/test_case_resolution_status_index_mapping.json");
       indexDocument(resolutionIndex(language), RESOLUTION_ID, resolutionStatusDocument());
       indexDocument(resolutionIndex(language), RESOLVED_ID, resolvedStatusDocument());
+      createIndex(
+          searchEntityIndex(language),
+          "/elasticsearch/" + language + "/search_entity_index_mapping.json");
     }
   }
 
@@ -428,6 +442,102 @@ class SearchConsumerFieldBehaviorIT {
             + broken);
   }
 
+  @Test
+  void searchEntityKnnSettingsIndexAndRoundTripInAllLanguages() throws Exception {
+    Map<String, Object> flatKnnSettings = new LinkedHashMap<>();
+    flatKnnSettings.put("index.knn", true);
+    flatKnnSettings.put("index.knn.algo_param.ef_search", 100);
+    flatKnnSettings.put("index.number_of_shards", "3");
+
+    Map<String, Object> nestedKnnSettings =
+        Map.of(
+            "index",
+            Map.of(
+                "knn",
+                Map.of("algo_param", Map.of("ef_search", 256)),
+                "knn.algo_param",
+                Map.of("ef_search", "256")));
+
+    Map<String, Object> emptySettings = Map.of();
+
+    List<String> broken = new ArrayList<>();
+    for (String language : LANGUAGES) {
+      String index = searchEntityIndex(language);
+      String[] sampleText = LANGUAGE_SAMPLE_TEXT.get(language);
+      try {
+        indexDocument(
+            index,
+            SEARCH_ENTITY_FLAT_KNN_ID,
+            searchEntityDocument(
+                SEARCH_ENTITY_FLAT_KNN_ID,
+                "knn_vectors_flat",
+                SEARCH_ENTITY_FLAT_FQN,
+                sampleText[0],
+                SEARCH_ENTITY_FIELD_NAME,
+                flatKnnSettings));
+        indexDocument(
+            index,
+            SEARCH_ENTITY_NESTED_KNN_ID,
+            searchEntityDocument(
+                SEARCH_ENTITY_NESTED_KNN_ID,
+                "knn_vectors_nested",
+                SEARCH_ENTITY_NESTED_FQN,
+                null,
+                "titleembedding",
+                nestedKnnSettings));
+        indexDocument(
+            index,
+            SEARCH_ENTITY_EMPTY_SETTINGS_ID,
+            searchEntityDocument(
+                SEARCH_ENTITY_EMPTY_SETTINGS_ID,
+                "plain_logs_index",
+                SEARCH_ENTITY_EMPTY_FQN,
+                null,
+                "logmessage",
+                emptySettings));
+
+        if (hits(index, boostedMultiMatchQuery(sampleText[1], SearchEntityIndex.getFields()))
+            != 1) {
+          broken.add(language + ": boosted multi-match on native description did not return 1 hit");
+          continue;
+        }
+        if (hits(
+                index,
+                boostedMultiMatchQuery(SEARCH_ENTITY_FIELD_NAME, SearchEntityIndex.getFields()))
+            != 1) {
+          broken.add(language + ": boosted multi-match on fields.name did not return 1 hit");
+          continue;
+        }
+        if (hits(index, termQuery("fullyQualifiedName", SEARCH_ENTITY_FLAT_FQN)) != 1
+            || hits(index, termQuery("fullyQualifiedName", SEARCH_ENTITY_NESTED_FQN)) != 1
+            || hits(index, termQuery("fullyQualifiedName", SEARCH_ENTITY_EMPTY_FQN)) != 1) {
+          broken.add(language + ": fullyQualifiedName term query did not return all 3 documents");
+          continue;
+        }
+
+        assertEquals(
+            mapper.valueToTree(flatKnnSettings),
+            documentSource(index, SEARCH_ENTITY_FLAT_KNN_ID).path("searchIndexSettings"),
+            "Flat dotted k-NN searchIndexSettings did not round-trip in [" + language + "]");
+        assertEquals(
+            mapper.valueToTree(nestedKnnSettings),
+            documentSource(index, SEARCH_ENTITY_NESTED_KNN_ID).path("searchIndexSettings"),
+            "Nested/hybrid k-NN searchIndexSettings did not round-trip in [" + language + "]");
+        assertEquals(
+            mapper.valueToTree(emptySettings),
+            documentSource(index, SEARCH_ENTITY_EMPTY_SETTINGS_ID).path("searchIndexSettings"),
+            "Empty searchIndexSettings did not round-trip in [" + language + "]");
+      } catch (Exception e) {
+        broken.add(language + ": " + e.getMessage());
+      }
+    }
+    assertTrue(
+        broken.isEmpty(),
+        "Reindexing searchIndex entities with OpenSearch k-NN searchIndexSettings failed in "
+            + "language(s): "
+            + broken);
+  }
+
   @FunctionalInterface
   private interface LanguageProbe {
     boolean passes(String language) throws Exception;
@@ -558,6 +668,26 @@ class SearchConsumerFieldBehaviorIT {
                 + ": "
                 + response.getBody().map(b -> b.bodyAsString()).orElse("no body"));
       }
+    }
+  }
+
+  private JsonNode documentSource(String index, String id) throws Exception {
+    try (var response =
+        openSearchClient
+            .generic()
+            .execute(
+                Requests.builder().method("GET").endpoint("/" + index + "/_doc/" + id).build())) {
+      if (response.getStatus() >= 400) {
+        throw new IOException(
+            "Failed to fetch document "
+                + id
+                + " from "
+                + index
+                + ": "
+                + response.getBody().map(b -> b.bodyAsString()).orElse("no body"));
+      }
+      String raw = response.getBody().map(b -> b.bodyAsString()).orElse("{}");
+      return mapper.readTree(raw).path("_source");
     }
   }
 
@@ -746,5 +876,36 @@ class SearchConsumerFieldBehaviorIT {
 
   private String resolutionIndex(String language) {
     return "behavior_resolution_" + language;
+  }
+
+  private String searchEntityIndex(String language) {
+    return "behavior_search_entity_" + language;
+  }
+
+  private String searchEntityDocument(
+      String id,
+      String name,
+      String fqn,
+      String description,
+      String fieldName,
+      Map<String, Object> searchIndexSettings)
+      throws Exception {
+    Map<String, Object> document = new LinkedHashMap<>();
+    document.put("id", id);
+    document.put("name", name);
+    document.put("displayName", name);
+    document.put("fullyQualifiedName", fqn);
+    document.put("deleted", false);
+    document.put("entityType", "searchIndex");
+    document.put("indexType", "Index");
+    document.put("fqnParts", List.of("opensearch_prod"));
+    document.put("fields", List.of(Map.of("name", fieldName, "dataType", "DENSE_VECTOR")));
+    if (description != null) {
+      document.put("description", description);
+    }
+    if (searchIndexSettings != null) {
+      document.put("searchIndexSettings", searchIndexSettings);
+    }
+    return mapper.writeValueAsString(document);
   }
 }
