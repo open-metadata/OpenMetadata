@@ -134,7 +134,14 @@ describe('BotsPanel', () => {
     render(<BotsPanel onHeaderChange={mockOnHeaderChange} />);
     fireEvent.click(screen.getByTestId('bots-list-panel-mock'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('bots', 'my%20bot%2F100%25');
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'bots',
+      'my%20bot%2F100%25',
+      undefined,
+      {
+        push: true,
+      }
+    );
   });
 
   it('does not reload the bots list when the Settings crumb is clicked', () => {

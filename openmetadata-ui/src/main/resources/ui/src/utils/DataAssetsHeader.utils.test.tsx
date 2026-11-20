@@ -12,7 +12,8 @@
  */
 
 import { Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { EntityType } from '../enums/entity.enum';
 import {
@@ -45,6 +46,10 @@ import {
   getDataAssetsHeaderInfo,
   getEntityExtraInfoLength,
 } from './DataAssetsHeader.utils';
+import {
+  DATE_TIME_12_HOUR_FORMAT,
+  formatDateTimeLong,
+} from './date-time/DateTimeUtils';
 
 // Mock only ExtraInfoLink, not ExtraInfoLabel as we want to test it
 jest.mock('./DataAssetsHeader.utils', () => ({
@@ -92,6 +97,7 @@ jest.mock('./EntityDataBreadcrumbUtils', () => ({
 jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   bytesToSize: jest.fn().mockReturnValue('bytesToSize'),
+  getSafeHttpUrl: jest.requireActual('./StringUtils').getSafeHttpUrl,
 }));
 
 jest.mock('./TablePureUtils', () => ({
@@ -209,6 +215,55 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.created-time');
     expect(JSON.stringify(assetData.extraInfo)).toContain('formatted-0');
   });
+
+  it.each([
+    {
+      entityType: EntityType.TABLE as const,
+      dataAsset: {
+        ...MOCK_TABLE,
+        lifeCycle: { created: { timestamp: 1609459200000 } },
+      },
+      testId: 'table-created-time',
+    },
+    {
+      entityType: EntityType.SPREADSHEET as const,
+      dataAsset: {
+        id: 'spreadsheet-123',
+        name: 'test-spreadsheet',
+        createdTime: 1609459200000,
+        service: { id: 'service-123', type: 'driveService' },
+      } as Spreadsheet,
+      testId: 'spreadsheet-created-time',
+    },
+  ])(
+    'shows the $entityType creation time without its UTC offset and the full time on hover',
+    async ({ entityType, dataAsset, testId }) => {
+      const createdAt = 1609459200000;
+      const { extraInfo } = getDataAssetsHeaderInfo(
+        entityType,
+        dataAsset,
+        'name',
+        []
+      );
+
+      render(<>{extraInfo}</>);
+
+      const createdTime = screen.getByTestId(testId);
+
+      expect(createdTime).toHaveTextContent(
+        formatDateTimeLong(createdAt, DATE_TIME_12_HOUR_FORMAT)
+      );
+      expect(createdTime).not.toHaveTextContent('UTC');
+
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      fireEvent.mouseMove(document);
+      await user.hover(createdTime);
+
+      expect(await screen.findByRole('tooltip')).toHaveTextContent(
+        `formatted-${createdAt}`
+      );
+    }
+  );
 
   it('Function getDataAssetsHeaderInfo should hide a year-0001 placeholder table creation time', () => {
     const assetData = getDataAssetsHeaderInfo(
@@ -433,6 +488,28 @@ describe('Tests for DataAssetsHeaderUtils', () => {
       'getUsagePercentile'
     );
   });
+
+  it.each([
+    ['http://my-server.ai', 'http://my-server.ai'],
+    ['javascript:alert(document.cookie)', null],
+    ['s3://models/forecast', null],
+  ])(
+    'should link the MlModel server %s only when it is an http(s) URL',
+    (server, expectedHref) => {
+      const { extraInfo } = getDataAssetsHeaderInfo(
+        EntityType.MLMODEL,
+        { ...mockMlModelDetails, server, dashboard: undefined },
+        'forecast_sales',
+        []
+      );
+      const { container, getByText } = render(<>{extraInfo}</>);
+
+      expect(getByText(server)).toBeInTheDocument();
+      expect(container.querySelector('a')?.getAttribute('href') ?? null).toBe(
+        expectedHref
+      );
+    }
+  );
 
   // Test for Container entity
   it('Function getDataAssetsHeaderInfo should return data for Container entity', () => {

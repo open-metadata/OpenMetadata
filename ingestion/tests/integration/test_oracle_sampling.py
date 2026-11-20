@@ -14,18 +14,39 @@ import hashlib
 import logging
 import os
 from collections.abc import Iterator
+from unittest.mock import patch
 from uuid import uuid4
 
 import oracledb
 import pytest
+from sqlalchemy import Column as SqaColumn
+from sqlalchemy import Integer, String
+from sqlalchemy.orm import DeclarativeBase
 
 from metadata.data_quality.validations.models import TableParameter
 from metadata.data_quality.validations.table.sqlalchemy.tableDiff import build_sample_where_clause
-from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType
+from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.oracleConnection import (
+    OracleConnection,
+    OracleServiceName,
+)
 from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
+from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.samplingConfig import SampleConfigType
+from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.runner import QueryRunner
+from metadata.sampler.models import ProfileSampleConfig, SampleConfig
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
+from metadata.sampler.sqlalchemy.oracle.sampler import OracleSampler
+from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 SALT = "salt"
 THRESHOLD = "19999999"
+
+
+class SampledBase(DeclarativeBase):
+    pass
 
 
 @pytest.fixture(scope="module")
@@ -111,5 +132,81 @@ def test_oracle_sampling_matches_utf8_selected_ids(
                 len(actual ^ expected),
             )
             assert actual == expected
+        finally:
+            cursor.execute(f"DROP TABLE {table_name} PURGE")
+
+
+def test_percentage_sample_reads_part_of_the_table_in_every_metric_query(
+    oracle_sampling_connection: oracledb.Connection,
+) -> None:
+    """Issue #37877: the sample filter references no column, so once the metric query
+    also counted distinct values Oracle evaluated it once per execution, and each query read
+    either every row or none."""
+    host_port, service_name = os.environ["ORACLE_SAMPLING_TEST_DSN"].split("/", 1)
+    table_name = f"OM_PCT_SAMPLING_{uuid4().hex[:12]}"
+    row_count = 400
+    with oracle_sampling_connection.cursor() as cursor:
+        cursor.execute(f"CREATE TABLE {table_name} (id NUMBER PRIMARY KEY, label VARCHAR2(20))")
+        try:
+            cursor.executemany(
+                f"INSERT INTO {table_name} VALUES (:1, :2)",
+                [(index, f"label-{index % 40}") for index in range(row_count)],
+            )
+            oracle_sampling_connection.commit()
+            sampled_table = type(
+                "PercentageSampledRows",
+                (SampledBase,),
+                {
+                    "__tablename__": table_name.lower(),
+                    "id": SqaColumn(Integer, primary_key=True),
+                    "label": SqaColumn(String(20)),
+                },
+            )
+            with patch.object(SQASampler, "build_table_orm", return_value=sampled_table):
+                sampler = OracleSampler(
+                    service_connection_config=OracleConnection(
+                        username=os.environ["ORACLE_SAMPLING_TEST_USER"],
+                        password=os.environ["ORACLE_SAMPLING_TEST_PASSWORD"],
+                        hostPort=host_port,
+                        oracleConnectionType=OracleServiceName(oracleServiceName=service_name),
+                        instantClientDirectory="",
+                    ),
+                    ometa_client=None,
+                    entity=Table(
+                        id=uuid4(),
+                        name=table_name.lower(),
+                        columns=[
+                            Column(name=ColumnName("id"), dataType=DataType.INT),
+                            Column(name=ColumnName("label"), dataType=DataType.VARCHAR),
+                        ],
+                    ),
+                    config=DatabaseSamplerConfig(
+                        sample_config=SampleConfig(
+                            profileSampleConfig=ProfileSampleConfig(
+                                sampleConfigType=SampleConfigType.STATIC,
+                                config=StaticSamplingConfig(
+                                    profileSample=50, profileSampleType=ProfileSampleType.PERCENTAGE
+                                ),
+                            )
+                        )
+                    ),
+                )
+            label = sampled_table.__table__.c.label
+            values_counts = []
+            for _ in range(8):
+                with sampler.session_factory() as session:
+                    runner = QueryRunner(
+                        session=session,
+                        dataset=sampler.get_dataset(column=label),
+                        raw_dataset=sampler.raw_dataset,
+                    )
+                    row = runner.select_first_from_sample(
+                        Metrics.valuesCount.value(label).fn(),
+                        Metrics.distinctCount.value(label).fn(),
+                    )
+                values_counts.append(row.valuesCount)
+            sampler.close()
+            logging.info("50%% sample of %s rows read %s", row_count, values_counts)
+            assert all(0 < count < row_count for count in values_counts), values_counts
         finally:
             cursor.execute(f"DROP TABLE {table_name} PURGE")

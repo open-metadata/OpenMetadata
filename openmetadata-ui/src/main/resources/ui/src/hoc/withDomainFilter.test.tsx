@@ -16,7 +16,6 @@ import {
   SKIP_DOMAIN_FILTER_HEADER,
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
-import { useProductTourStore } from '../hooks/product-tour/useProductTourStore';
 import { useDomainStore } from '../hooks/useDomainStore';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 import { withDomainFilter } from './withDomainFilter';
@@ -92,23 +91,6 @@ describe('withDomainFilter', () => {
   });
 
   describe('should not intercept requests', () => {
-    it('should leave every request unfiltered while a product tour runs', () => {
-      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
-        '/explore'
-      );
-      mockGetState.mockReturnValue({ activeDomain: 'testDomain' });
-      useProductTourStore.setState({ isActive: true });
-
-      const config = createMockConfig('get', '/search/query', {
-        index: SearchIndex.TABLE,
-      });
-      const result = withDomainFilter(config);
-      useProductTourStore.setState({ isActive: false });
-
-      expect(result).toBe(config);
-      expect(result.params).toEqual({ index: SearchIndex.TABLE });
-    });
-
     it('should return config unchanged when path starts with /domain', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockImplementationOnce(
         () => '/domain/test'
@@ -209,20 +191,94 @@ describe('withDomainFilter', () => {
       });
     });
 
-    it('should leave task lists unfiltered and keep a domain their caller set', () => {
-      (getPathNameFromWindowLocation as jest.Mock).mockReturnValue('/explore');
+    it('should scope a user task list and its count to the pick', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValue('/my-data');
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });
 
       const assigned = withDomainFilter(
         createMockConfig('get', '/tasks/assigned', { limit: 10 })
       );
-      const domainPage = withDomainFilter(
-        createMockConfig('get', '/tasks/count', { domain: 'sales' })
+      const count = withDomainFilter(
+        createMockConfig('get', '/tasks/count', { view: 'visible' })
       );
 
-      expect(assigned.params).toEqual({ limit: 10 });
-      expect(domainPage.params).toEqual({ domain: 'sales' });
+      expect(assigned.params).toEqual({ limit: 10, domain: 'engineering' });
+      expect(count.params).toEqual({ view: 'visible', domain: 'engineering' });
     });
+
+    it.each([
+      ['/activity/entity/table/name/svc.db.sch.orders', { days: 30, limit: 0 }],
+      [
+        '/activity/entity/table/7f8baaa6-6bf2-4b57-9a16-dcc0a38746b6',
+        { days: 30 },
+      ],
+    ])("should leave an asset's own activity unscoped (%s)", (url, params) => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValue(
+        '/table/svc.db.sch.orders'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const result = withDomainFilter(createMockConfig('get', url, params));
+
+      expect(result.params).toEqual(params);
+    });
+
+    it.each([
+      [
+        '/activity/entity/table/name/svc.db.sch.orders',
+        { days: 30, limit: 50 },
+      ],
+      ['/tasks', { aboutEntity: 'svc.db.sch.orders', statusGroup: 'open' }],
+      ['/tasks/count', { aboutEntity: 'svc.db.sch.orders' }],
+    ])(
+      'should drop a domain the caller passed on a request about one asset (%s)',
+      (url, params) => {
+        (getPathNameFromWindowLocation as jest.Mock).mockReturnValue(
+          '/table/svc.db.sch.orders'
+        );
+        mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+        const result = withDomainFilter(
+          createMockConfig('get', url, { ...params, domain: 'engineering' })
+        );
+
+        expect(result.params).toEqual(params);
+      }
+    );
+
+    it('should scope the activity feed, which is a list across assets', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValue('/');
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const result = withDomainFilter(
+        createMockConfig('get', '/activity', { days: 30, limit: 200 })
+      );
+
+      expect(result.params).toEqual({
+        days: 30,
+        limit: 200,
+        domain: 'engineering',
+      });
+    });
+
+    it.each([
+      ['/tasks', { aboutEntity: 'svc.db.sch.orders' }],
+      ['/tasks/count', { aboutEntity: 'svc.db.sch.orders', view: 'entity' }],
+      ['/tasks', { aboutEntityIds: 'id-1,id-2' }],
+      ['/tasks/dataAccessRequests', { dataset: 'svc.db.sch.orders' }],
+    ])(
+      'should leave a task list about given assets unscoped (%s)',
+      (url, params) => {
+        (getPathNameFromWindowLocation as jest.Mock).mockReturnValue(
+          '/table/svc.db.sch.orders'
+        );
+        mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+        const result = withDomainFilter(createMockConfig('get', url, params));
+
+        expect(result.params).toEqual(params);
+      }
+    );
   });
 
   describe('search query requests', () => {
@@ -385,6 +441,75 @@ describe('withDomainFilter', () => {
         { term: { fullyQualifiedName: 'engineering' } },
         { prefix: { fullyQualifiedName: 'engineering.' } },
       ]);
+    });
+
+    it('should scope a POST search body, keeping its own filter', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/metric/m1/assets'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const ownFilter = { ids: { values: ['a', 'b'] } };
+      const config = {
+        ...createMockConfig('post', '/search/query'),
+        data: {
+          index: SearchIndex.ALL,
+          queryFilter: JSON.stringify({ query: ownFilter }),
+        },
+      } as InternalAxiosRequestConfig;
+      const result = withDomainFilter(config);
+      const filter = JSON.parse(result.data.queryFilter);
+
+      expect(result.data.index).toBe(SearchIndex.ALL);
+      expect(filter.query.bool.must).toEqual([
+        ownFilter,
+        {
+          bool: {
+            should: [
+              { term: { 'domains.fullyQualifiedName': 'engineering' } },
+              { prefix: { 'domains.fullyQualifiedName': 'engineering.' } },
+            ],
+          },
+        },
+      ]);
+    });
+
+    it('should scope a POST search body replayed as a string after a token refresh', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/metric/m1/assets'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const ownFilter = { ids: { values: ['a'] } };
+      const config = {
+        ...createMockConfig('post', '/search/query'),
+        data: JSON.stringify({
+          index: SearchIndex.ALL,
+          from: 20,
+          queryFilter: JSON.stringify({ query: ownFilter }),
+        }),
+      } as InternalAxiosRequestConfig;
+      const result = withDomainFilter(config);
+
+      expect(result.data).toMatchObject({ index: SearchIndex.ALL, from: 20 });
+      expect(JSON.parse(result.data.queryFilter).query.bool.must[0]).toEqual(
+        ownFilter
+      );
+    });
+
+    it('should leave a POST search body unscoped when no domain is picked', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/metric/m1/assets'
+      );
+      mockGetState.mockReturnValue({ activeDomain: DEFAULT_DOMAIN_VALUE });
+
+      const data = { index: SearchIndex.ALL, queryFilter: '{"query":{}}' };
+      const config = {
+        ...createMockConfig('post', '/search/query'),
+        data,
+      } as InternalAxiosRequestConfig;
+
+      expect(withDomainFilter(config).data).toBe(data);
     });
 
     it('should preserve existing query_filter and add should filter', () => {

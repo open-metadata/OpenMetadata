@@ -51,6 +51,7 @@ import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -75,6 +76,8 @@ import org.openmetadata.service.rdf.RdfUpdater;
 @ExtendWith(TestNamespaceExtension.class)
 public class RdfSoftDeleteReindexIT {
   private static final String APP_NAME = "RdfIndexApp";
+  private static final int MAX_LOCK_ATTEMPTS = 5;
+  private static final String SKIPPED_FOR_HELD_LOCK = "Skipped: another RDF reindex is";
   private static final String RUN_LATEST = "/v1/apps/name/" + APP_NAME + "/runs/latest";
 
   @BeforeAll
@@ -167,6 +170,28 @@ public class RdfSoftDeleteReindexIT {
   }
 
   private static void triggerRecreateAndWait(final HttpClient http, final Long previousStart) {
+    // The server's scheduled storage compaction holds the reindex lock for a few seconds; a run
+    // triggered then stops without reindexing, so trigger again until one takes the lock.
+    AppRunRecord run = triggerAndAwaitTerminal(http, previousStart);
+    for (int attempt = 1; attempt < MAX_LOCK_ATTEMPTS && skippedForHeldLock(run); attempt++) {
+      run = triggerAndAwaitTerminal(http, run.getStartTime());
+    }
+    final AppRunRecord finished = run;
+    final String status = finished.getStatus().value();
+    assertTrue(
+        "completed".equalsIgnoreCase(status) || "success".equalsIgnoreCase(status),
+        () -> "RDF reindex failed: " + finished);
+  }
+
+  private static boolean skippedForHeldLock(final AppRunRecord run) {
+    final FailureContext context = run.getFailureContext();
+    final String message =
+        context == null || context.getFailure() == null ? null : context.getFailure().getMessage();
+    return message != null && message.startsWith(SKIPPED_FOR_HELD_LOCK);
+  }
+
+  private static AppRunRecord triggerAndAwaitTerminal(
+      final HttpClient http, final Long previousStart) {
     // Recreate clears the shared graph; reindexing every type rebuilds it for later classes.
     final Map<String, Object> config =
         Map.of("entities", List.of("all"), "recreateIndex", true, "batchSize", 100);
@@ -193,10 +218,7 @@ public class RdfSoftDeleteReindexIT {
               assertTrue(isTerminal(run));
               completed[0] = run;
             });
-    final String status = completed[0].getStatus().value();
-    assertTrue(
-        "completed".equalsIgnoreCase(status) || "success".equalsIgnoreCase(status),
-        () -> "RDF reindex failed: " + completed[0]);
+    return completed[0];
   }
 
   private static void awaitNoRunInFlight(final HttpClient http) {

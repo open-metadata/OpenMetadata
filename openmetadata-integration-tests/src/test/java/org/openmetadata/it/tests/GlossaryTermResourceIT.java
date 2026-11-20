@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.it.util.SearchDocs.awaitDoc;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -33,6 +34,8 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.factories.TopicTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -58,6 +61,7 @@ import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -3744,16 +3748,15 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         filteredCounts.has(term3.getFullyQualifiedName()),
         "Should not contain terms from glossary2 when filtering by glossary1");
 
-    // Get counts without parent — should include all terms
-    String countsWithoutParent = getAssetCounts(client, null);
-    assertNotNull(countsWithoutParent);
-    JsonNode unfilteredCounts = mapper.readTree(countsWithoutParent);
+    // The unfiltered count spans every term on the shared server (get_assetsCountsWithNoParent);
+    // the other parent shows the filter keeps each glossary's terms apart.
+    JsonNode glossary2Counts =
+        mapper.readTree(getAssetCounts(client, glossary2.getFullyQualifiedName()));
     assertTrue(
-        unfilteredCounts.has(term1.getFullyQualifiedName()), "Unfiltered should contain term1");
-    assertTrue(
-        unfilteredCounts.has(term2.getFullyQualifiedName()), "Unfiltered should contain term2");
-    assertTrue(
-        unfilteredCounts.has(term3.getFullyQualifiedName()), "Unfiltered should contain term3");
+        glossary2Counts.has(term3.getFullyQualifiedName()), "Should contain term3 from glossary2");
+    assertFalse(
+        glossary2Counts.has(term1.getFullyQualifiedName()),
+        "Should not contain terms from glossary1 when filtering by glossary2");
   }
 
   @Test
@@ -4382,6 +4385,112 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertEquals(setup.totalAssets(), result.getNumberOfRowsProcessed());
     assertEquals(1, result.getNumberOfRowsPassed());
     assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
+  }
+
+  @Test
+  void test_validateGlossaryTagsAddition_listsOnlyAssetsTheCallerMayView(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_view");
+    for (Table t : setup.allTables()) {
+      applyTermToTable(admin, t, setup.term);
+    }
+    // Hide the failing tables only (they carry the conflicting tag); the passing table stays
+    // visible.
+    String conflictTagFqn =
+        admin
+            .tables()
+            .get(setup.failTables.getFirst().getId().toString(), "tags")
+            .getTags()
+            .stream()
+            .filter(tag -> tag.getSource() == TagLabel.TagSource.CLASSIFICATION)
+            .findFirst()
+            .orElseThrow()
+            .getTagFQN();
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("validate_view"),
+            Entity.TABLE,
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('" + conflictTagFqn + "')");
+
+    ValidateGlossaryTagsRequest validate =
+        new ValidateGlossaryTagsRequest().withGlossaryTags(List.of(setup.glossaryTagLabel));
+    String path = "/v1/glossaryTerms/" + setup.term.getId() + "/tags/validate";
+    BulkOperationResult result =
+        denied.getHttpClient().execute(HttpMethod.PUT, path, validate, BulkOperationResult.class);
+
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+    assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
+    assertTrue(result.getFailedRequest().isEmpty());
+    assertEquals(1, result.getSuccessRequest().size());
+    assertEquals(
+        setup.passTable.getId(),
+        JsonUtils.convertValue(
+                result.getSuccessRequest().getFirst().getRequest(), EntityReference.class)
+            .getId());
+  }
+
+  @Test
+  void test_validateGlossaryTagsAddition_keepsRowsOfAssetsSearchHasNoDocumentFor(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_nodoc");
+    Topic topic = TopicTestFactory.createSimple(ns);
+    Topic fetched = admin.topics().get(topic.getId().toString(), "tags");
+    TagLabel conflictLabel =
+        admin
+            .tables()
+            .get(setup.failTables.getFirst().getId().toString(), "tags")
+            .getTags()
+            .stream()
+            .filter(tag -> TagLabel.TagSource.CLASSIFICATION.equals(tag.getSource()))
+            .findFirst()
+            .orElseThrow();
+    fetched
+        .getMessageSchema()
+        .getSchemaFields()
+        .getFirst()
+        .setTags(
+            List.of(
+                new TagLabel()
+                    .withTagFQN(setup.term.getFullyQualifiedName())
+                    .withSource(TagLabel.TagSource.GLOSSARY)
+                    .withLabelType(TagLabel.LabelType.MANUAL)
+                    .withState(TagLabel.State.CONFIRMED),
+                conflictLabel));
+    admin.topics().update(topic.getId().toString(), fetched);
+
+    ValidateGlossaryTagsRequest validate =
+        new ValidateGlossaryTagsRequest().withGlossaryTags(List.of(setup.glossaryTagLabel));
+    String path = "/v1/glossaryTerms/" + setup.term.getId() + "/tags/validate";
+    BulkOperationResult asAdmin =
+        admin.getHttpClient().execute(HttpMethod.PUT, path, validate, BulkOperationResult.class);
+    OpenMetadataClient user =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("validate_nodoc"),
+            Entity.TABLE,
+            MetadataOperation.VIEW_BASIC,
+            "isOwner()");
+    BulkOperationResult asConsumer =
+        user.getHttpClient().execute(HttpMethod.PUT, path, validate, BulkOperationResult.class);
+
+    assertEquals(1, asAdmin.getNumberOfRowsProcessed(), asAdmin.toString());
+    assertEquals(1, listOrEmpty(asAdmin.getFailedRequest()).size(), asAdmin.toString());
+    assertTrue(
+        asAdmin.getFailedRequest().getFirst().getMessage().contains(conflictLabel.getTagFQN()),
+        asAdmin.toString());
+    assertEquals(1, listOrEmpty(asConsumer.getFailedRequest()).size(), asConsumer.toString());
+    assertFalse(
+        asConsumer.getFailedRequest().getFirst().getMessage().contains(conflictLabel.getTagFQN()),
+        asConsumer.toString());
+    assertEquals(
+        rowCount(asAdmin), rowCount(asConsumer), "admin=" + asAdmin + " consumer=" + asConsumer);
+  }
+
+  private static int rowCount(BulkOperationResult result) {
+    return listOrEmpty(result.getSuccessRequest()).size()
+        + listOrEmpty(result.getFailedRequest()).size();
   }
 
   @Test
@@ -5106,6 +5215,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
                 .withParent(parent.getFullyQualifiedName())
                 .withDescription("Child that follows the rename"));
     Table table = createTableTaggedWithTerm(ns, child, "quoted_asset");
+    // The rename finds the assets whose cached tags it must drop through search, so the table has
+    // to be searchable under the child's old FQN first. Reading it then caches the old label: a
+    // rename that fails to evict it leaves that label for the read below.
+    awaitTableGlossaryTag(
+        client, new ObjectMapper(), table.getId().toString(), child.getFullyQualifiedName());
+    assertTrue(tableHasTag(client, table.getId(), child.getFullyQualifiedName()));
 
     GlossaryTerm toRename = client.glossaryTerms().get(parent.getId().toString(), "tags");
     toRename.setName(ns.shortPrefix("renamed") + " it's fine");

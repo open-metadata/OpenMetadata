@@ -16,9 +16,11 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SettingType } from '../../../../../../generated/system/settingsSourceResponse';
+import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import {
   getSecurityConfiguration,
   patchSecurityConfiguration,
@@ -26,6 +28,7 @@ import {
 import { getSettingsSource } from '../../../../../../rest/settingConfigAPI';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import ProfileContentHeader from '../../ProfileContentHeader';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import { deploymentOwnedSource } from '../platform-settings/PlatformSettings.mock';
 import SsoPanel from './SsoPanel';
@@ -118,13 +121,15 @@ const renderHeaderActions = () => render(<>{lastHeader().actions}</>);
 
 const renderPanel = async (config: unknown) => {
   (getSecurityConfiguration as jest.Mock).mockResolvedValue({ data: config });
-  renderWithQueryClient(
+  const view = renderWithQueryClient(
     <MemoryRouter>
       <SsoPanel onHeaderChange={onHeaderChange} />
     </MemoryRouter>
   );
   await waitFor(() => expect(getSecurityConfiguration).toHaveBeenCalled());
   await screen.findByTestId('sso-panel');
+
+  return view;
 };
 
 describe('SsoPanel', () => {
@@ -157,7 +162,9 @@ describe('SsoPanel', () => {
 
     fireEvent.click(await screen.findByText('Google'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('sso', 'new/google');
+    expect(mockSetHash).toHaveBeenCalledWith('sso', 'new/google', undefined, {
+      push: true,
+    });
   });
 
   it('renders the setup form with the provider in the header and a hint toggle', async () => {
@@ -239,7 +246,74 @@ describe('SsoPanel', () => {
     renderHeaderActions();
     fireEvent.click(screen.getByTestId('change-provider-button'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('sso', 'providers');
+    expect(mockSetHash).toHaveBeenCalledWith('sso', 'providers', undefined, {
+      push: false,
+    });
+  });
+
+  it('asks before Change provider drops edits on the Configure tab', async () => {
+    mockSubPath = 'configure';
+    await renderPanel(OKTA_CONFIG);
+    await screen.findByTestId('sso-configure-form');
+    // A dirty form registers the modal exit guard, which holds the exit.
+    const guard = jest.fn().mockReturnValue(true);
+    usePersonalSpaceStore.getState().setExitGuard(guard);
+
+    renderHeaderActions();
+    fireEvent.click(screen.getByTestId('change-provider-button'));
+
+    expect(guard).toHaveBeenCalledTimes(1);
+    expect(mockSetHash).not.toHaveBeenCalledWith(
+      'sso',
+      'providers',
+      undefined,
+      expect.anything()
+    );
+
+    usePersonalSpaceStore.getState().setExitGuard(null);
+  });
+
+  it('returns from Change Provider to the saved provider via its breadcrumb', async () => {
+    mockSubPath = 'providers';
+    const { unmount } = await renderPanel(OKTA_CONFIG);
+    await waitFor(() =>
+      expect(lastHeader().breadcrumbs).toContainEqual({
+        id: 'current',
+        label: 'label.change-provider',
+      })
+    );
+    const header = lastHeader();
+    render(
+      <ProfileContentHeader
+        breadcrumbRoot="label.setting-plural"
+        breadcrumbs={header.breadcrumbs}
+        description={header.description ?? ''}
+        icon={() => null}
+        title={header.title ?? ''}
+        onBreadcrumbAction={header.onBreadcrumbAction}
+      />
+    );
+
+    fireEvent.click(
+      within(screen.getByRole('list', { name: 'Breadcrumb' })).getByText('Okta')
+    );
+
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'sso',
+      'configure',
+      undefined,
+      expect.anything()
+    );
+
+    // The hash now points at Configure: the panel opens the saved provider's form.
+    unmount();
+    mockSubPath = 'configure';
+    await renderPanel(OKTA_CONFIG);
+
+    expect(await screen.findByTestId('sso-configure-form')).toHaveAttribute(
+      'data-provider',
+      'okta'
+    );
   });
 
   it('shows the Overview / Configure tabs in the header and switches them through the hash', async () => {
@@ -249,7 +323,9 @@ describe('SsoPanel', () => {
     render(<>{lastHeader().tabs}</>);
     fireEvent.click(screen.getByTestId('sso-tab-configure'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('sso', 'configure');
+    expect(mockSetHash).toHaveBeenCalledWith('sso', 'configure', undefined, {
+      push: true,
+    });
   });
 
   it('shows Test Login as a sub page in the breadcrumb, without tabs or actions', async () => {
@@ -269,6 +345,8 @@ describe('SsoPanel', () => {
 
     expect(lastHeader().tabs).toBeUndefined();
     expect(lastHeader().actions).toBeUndefined();
+    // Back to the form is not leaving it, so the unsaved-changes guard stays out.
+    expect(lastHeader().inEditorBreadcrumbIds).toEqual(['provider']);
 
     lastHeader().onBreadcrumbAction?.('provider');
 

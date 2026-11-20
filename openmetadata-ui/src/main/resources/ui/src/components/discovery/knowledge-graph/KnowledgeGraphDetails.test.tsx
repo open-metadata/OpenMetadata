@@ -73,7 +73,10 @@ it('pages and searches all loaded columns without declaring uninspected columns 
   );
 
   expect(within(grid).getByText('column_299')).toBeVisible();
-  expect(within(grid).getByText('label.kg-unknown')).toBeVisible();
+  // An uninspected column has no terms, so its Glossary Terms cell shows the
+  // same em-dash as an empty Tags cell rather than a coverage word.
+  expect(within(grid).getAllByText('—')).toHaveLength(2);
+  expect(within(grid).queryByText('label.kg-unknown')).not.toBeInTheDocument();
   expect(within(grid).queryByText('label.kg-unmapped')).not.toBeInTheDocument();
   expect(
     screen.queryByRole('button', { name: /label.kg-show-more/ })
