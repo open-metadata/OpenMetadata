@@ -28,12 +28,16 @@ import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.socketio.server.SocketIoSocket;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
+import org.openmetadata.service.security.session.SessionStore;
 import org.openmetadata.service.security.session.UserSession;
 
 class WebSocketManagerTest {
@@ -173,6 +177,38 @@ class WebSocketManagerTest {
   }
 
   @Test
+  void disconnectInactiveSessions_closesSocketsWhoseSessionProviderIsNoLongerConfigured()
+      throws Exception {
+    UUID userId = UUID.randomUUID();
+    SessionStore store = mock(SessionStore.class);
+    when(store.findById("session-g"))
+        .thenReturn(Optional.of(sessionIssuedBy(AuthProvider.GOOGLE, "session-g", userId)));
+    when(store.findById("session-z"))
+        .thenReturn(Optional.of(sessionIssuedBy(AuthProvider.AZURE, "session-z", userId)));
+    SessionService sessionService =
+        new SessionService(
+            new AuthenticationConfiguration().withProvider(AuthProvider.GOOGLE), store);
+    SocketIoSocket socketA1 = trackSocket(userId, "socket-a1", "session-g");
+    SocketIoSocket socketA2 = trackSocket(userId, "socket-a2", "session-g");
+
+    manager.disconnectInactiveSessions(sessionService, 0L);
+
+    verify(socketA1, never()).disconnect(anyBoolean());
+    verify(socketA2, never()).disconnect(anyBoolean());
+
+    sessionService.updateConfiguration(
+        new AuthenticationConfiguration().withProvider(AuthProvider.AZURE));
+    SocketIoSocket socketB = trackSocket(userId, "socket-b", "session-z");
+
+    manager.disconnectInactiveSessions(sessionService, 0L);
+
+    verify(socketA1, times(1)).disconnect(true);
+    verify(socketA2, times(1)).disconnect(true);
+    verify(socketB, never()).disconnect(anyBoolean());
+    assertEquals(Set.of("socket-b"), manager.getActivityFeedEndpoints().get(userId).keySet());
+  }
+
+  @Test
   void sendToOne_deliversLocallyAndPublishesToRelay() {
     UUID userId = UUID.randomUUID();
     SocketIoSocket socket = mock(SocketIoSocket.class);
@@ -298,6 +334,29 @@ class WebSocketManagerTest {
         .expiresAt(now + 60_000)
         .idleExpiresAt(now + 60_000)
         .build();
+  }
+
+  private UserSession sessionIssuedBy(AuthProvider provider, String sessionId, UUID userId) {
+    return activeSession(sessionId, userId).toBuilder().provider(provider.value()).build();
+  }
+
+  private SocketIoSocket trackSocket(UUID userId, String socketId, String sessionId)
+      throws Exception {
+    SocketIoSocket socket = mock(SocketIoSocket.class);
+    when(socket.getId()).thenReturn(socketId);
+    manager
+        .getActivityFeedEndpoints()
+        .computeIfAbsent(userId, id -> new ConcurrentHashMap<>())
+        .put(socketId, socket);
+    socketSessionIds().put(socketId, sessionId);
+    return socket;
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, String> socketSessionIds() throws Exception {
+    java.lang.reflect.Field field = WebSocketManager.class.getDeclaredField("socketSessionIds");
+    field.setAccessible(true);
+    return (Map<String, String>) field.get(manager);
   }
 
   private void clearManagerMap(String fieldName) throws Exception {

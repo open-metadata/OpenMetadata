@@ -1,5 +1,7 @@
 package org.openmetadata.service.socket;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -41,6 +43,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -53,6 +56,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.SessionCookieUtil;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
+import org.openmetadata.service.security.session.SessionStore;
 import org.openmetadata.service.security.session.UserSession;
 
 @ExtendWith(MockitoExtension.class)
@@ -464,6 +468,29 @@ class SocketAddressFilterTest {
     verify(chain, never()).doFilter(any(), any());
   }
 
+  /**
+   * REST already rejects a session that the swapped-out provider issued; its cookie must not reopen
+   * the push feed either.
+   */
+  @Test
+  void cookieHandshakeIsRejectedWhenItsSessionsProviderIsNoLongerConfigured() {
+    String sessionId = validSessionId('p');
+    SocketAddressFilter swapped =
+        new SocketAddressFilter(
+            authConfig,
+            authorizerConfig,
+            sessionServiceConfiguredWith(
+                AuthProvider.GOOGLE, sessionIssuedBy(AuthProvider.BASIC, sessionId)));
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+
+    HandshakeRejectedException rejected =
+        assertThrows(HandshakeRejectedException.class, () -> swapped.authenticate(request));
+
+    assertEquals(HttpServletResponse.SC_UNAUTHORIZED, rejected.getStatus());
+    assertEquals("Session is no longer active", rejected.getMessage());
+  }
+
   /** Externally-issued tokens carry no session claim and are accepted on token validity alone. */
   @Test
   void externalTokenWithoutSessionClaimIsAcceptedWithoutStoreValidation() throws Exception {
@@ -641,6 +668,20 @@ class SocketAddressFilterTest {
         .expiresAt(now + 60_000)
         .idleExpiresAt(now + 60_000)
         .build();
+  }
+
+  private UserSession sessionIssuedBy(AuthProvider provider, String sessionId) {
+    return activeSession(sessionId, "sam", UUID.randomUUID().toString()).toBuilder()
+        .provider(provider.value())
+        .build();
+  }
+
+  private static SessionService sessionServiceConfiguredWith(
+      AuthProvider configuredProvider, UserSession stored) {
+    SessionStore store = mock(SessionStore.class);
+    when(store.findById(stored.getId())).thenReturn(Optional.of(stored));
+    return new SessionService(
+        new AuthenticationConfiguration().withProvider(configuredProvider), store);
   }
 
   private SocketAddressFilter defaultConfigFilter() {
