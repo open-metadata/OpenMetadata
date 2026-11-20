@@ -1661,6 +1661,26 @@ describe('SSOConfigurationForm', () => {
       });
     });
 
+    it('should allow editing the default SAML entity ID and ACS URL', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Saml });
+
+      const entityId = await screen.findByLabelText(/SP Entity ID/);
+      const acs = screen.getByLabelText(/Assertion Consumer Service URL/);
+
+      expect(entityId).not.toHaveAttribute('readonly');
+      expect(acs).not.toHaveAttribute('readonly');
+
+      fireEvent.change(entityId, {
+        target: { value: 'urn:collate:custom-sp' },
+      });
+      fireEvent.change(acs, {
+        target: { value: 'https://public.example.com/callback' },
+      });
+
+      expect(entityId).toHaveValue('urn:collate:custom-sp');
+      expect(acs).toHaveValue('https://public.example.com/callback');
+    });
+
     it('should hide the SAML signing switches while Strict Mode is off', async () => {
       renderComponent({ selectedProvider: AuthProvider.Saml });
 

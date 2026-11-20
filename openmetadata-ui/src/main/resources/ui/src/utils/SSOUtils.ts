@@ -584,9 +584,13 @@ const cleanupSamlSp = (
   spConfig: Record<string, unknown>,
   authConfig: AuthenticationConfiguration
 ): void => {
-  if (typeof spConfig.callback === 'string') {
-    authConfig.callbackUrl = spConfig.callback;
-    spConfig.acs = spConfig.callback;
+  const callbackUrl =
+    typeof spConfig.acs === 'string' ? spConfig.acs : spConfig.callback;
+
+  if (typeof callbackUrl === 'string') {
+    authConfig.callbackUrl = callbackUrl;
+    spConfig.callback = callbackUrl;
+    spConfig.acs = callbackUrl;
   }
   if (typeof spConfig.spX509Certificate === 'string') {
     spConfig.spX509Certificate = spConfig.spX509Certificate.replaceAll(

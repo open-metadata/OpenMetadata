@@ -691,6 +691,38 @@ describe('SSOUtils', () => {
       expect(spConfig?.spPrivateKey).toBe('PRIVATE\nKEY');
     });
 
+    it('should preserve edited SAML SP values through cleanup and reload', () => {
+      const data = getDefaultsForProvider(AuthProvider.Saml, ClientType.Public);
+      const sp = data.authenticationConfiguration.samlConfiguration?.sp;
+
+      expect(sp).toBeDefined();
+
+      if (!sp) {
+        throw new Error('Missing SAML SP defaults');
+      }
+      sp.entityId = 'urn:collate:custom-sp';
+      const customAcs = 'https://public.example.com/callback';
+      sp.acs = customAcs;
+
+      const result = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+      if (!result) {
+        throw new Error('Missing cleaned configuration');
+      }
+      const authConfig = result.authenticationConfiguration;
+
+      expect(authConfig.samlConfiguration?.sp?.entityId).toBe(
+        'urn:collate:custom-sp'
+      );
+      expect(authConfig.samlConfiguration?.sp?.acs).toBe(customAcs);
+      expect(authConfig.samlConfiguration?.sp?.callback).toBe(customAcs);
+      expect(authConfig.callbackUrl).toBe(customAcs);
+
+      populateSamlSpCallback(authConfig);
+
+      expect(authConfig.samlConfiguration?.sp?.acs).toBe(customAcs);
+      expect(authConfig.samlConfiguration?.sp?.entityId).toBe(sp.entityId);
+    });
+
     it('should handle LDAP trustStore cleanup by format', () => {
       const data: FormData = {
         authenticationConfiguration: {
