@@ -71,3 +71,23 @@ def test_aggregate_accumulator_of_summed_integer_groups():
     )
 
     assert StdDev.aggregate_accumulator(accumulator) == pytest.approx(_population_stddev(first + second), rel=1e-12)
+
+
+def test_stddev_of_large_unsigned_integers():
+    """uint64 values above the int64 range must not wrap when they are summed"""
+    values = [2**63 + 1, 2**63 + 3]
+    metric = StdDev(Column("value", BigInteger()))
+    chunks = [pd.DataFrame({"value": pd.Series(values, dtype="uint64")})]
+
+    assert _pandas_stddev(metric, chunks) == pytest.approx(1.0)
+
+
+def test_aggregate_accumulator_returns_none_for_wrapped_integer_sums():
+    """Integer sums that already wrapped around in int64 give no stddev instead of raising"""
+    accumulator = SumSumSquaresCount(
+        sum_value=10,
+        sum_squares_value=-(2**62),
+        count_value=5,
+    )
+
+    assert StdDev.aggregate_accumulator(accumulator) is None

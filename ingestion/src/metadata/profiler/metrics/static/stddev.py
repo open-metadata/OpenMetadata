@@ -209,12 +209,20 @@ class StdDev(StaticMetric):
                 return sum_sum_squares_count
 
             if pd.api.types.is_integer_dtype(numeric_df) or pd.api.types.is_bool_dtype(numeric_df):
-                # Sum integers as Python ints: int64 squares wrap around silently
-                # for values above ~3e9, and float64 loses the low digits that
-                # the variance of large values (e.g. epoch milliseconds) needs.
-                numeric_df = numeric_df.astype(int).astype(object)
-                chunk_sum = int(numeric_df.sum())
-                chunk_sum_squares = int((numeric_df * numeric_df).sum())
+                # Sum integers exactly: int64 squares wrap around silently for
+                # values above ~3e9, and float64 loses the low digits that the
+                # variance of large values (e.g. epoch milliseconds) needs.
+                # Python ints, so neither uint64 values nor -min of int64 can wrap
+                max_abs = max(int(numeric_df.max()), -int(numeric_df.min()))
+                if max_abs * max_abs * len(numeric_df) < 2**63:
+                    # The sum of squares fits in int64, so stay vectorized
+                    ints = numeric_df.astype("int64")
+                    chunk_sum = int(ints.sum())
+                    chunk_sum_squares = int((ints * ints).sum())
+                else:
+                    objs = numeric_df.astype(object)
+                    chunk_sum = int(objs.sum())
+                    chunk_sum_squares = int((objs * objs).sum())
             else:
                 chunk_sum = numeric_df.sum()
                 chunk_sum_squares = (numeric_df**2).sum()
@@ -261,6 +269,10 @@ class StdDev(StaticMetric):
             # subtraction does not cancel out the variance of large values.
             count = int(sum_sum_squares_count.count_value)
             variance_numerator = count * int(sum_squares_value) - int(sum_value) ** 2
+            if variance_numerator < 0:
+                # Only possible when the sums were wrapped in int64 before they got here
+                logger.warning(f"Negative variance numerator ({variance_numerator}) encountered, returning None")
+                return None
             return math.sqrt(variance_numerator / (count * count))
 
         mean = sum_sum_squares_count.sum_value / sum_sum_squares_count.count_value
