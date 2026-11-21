@@ -1,0 +1,187 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+  Task,
+  TaskAvailableTransition,
+} from '../../../../../generated/entity/tasks/task';
+import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
+import { TaskPayload } from '../../../../../rest/tasksAPI';
+// The shared field renderer lives in the page layer; `TaskTabNew` reaches it
+// the same way to drive its transition form modal. The eslint
+// `no-lower-layer-page-imports` rule warns rather than blocks this — the
+// alternative (lazy-loading) would defer the only meaningful content of the
+// modal behind a suspense fallback on every open.
+import TaskPayloadSchemaFields from '../../../../../pages/TasksPage/shared/TaskPayloadSchemaFields';
+import {
+  applyTaskFormSchemaDefaults,
+  getEditableTaskPayload,
+  getTaskTransitionFormSchema,
+  getTaskTransitionUiSchema,
+} from '../../../../../utils/TaskFormSchemaUtils';
+
+export interface TaskTransitionFormModalProps {
+  open: boolean;
+  title: string;
+  actionLabel: string;
+  task: Task;
+  schema?: TaskFormSchema;
+  transition?: TaskAvailableTransition;
+  isLoading?: boolean;
+  onConfirm: (payload: TaskPayload) => void;
+  onCancel: () => void;
+}
+
+/**
+ * The form modal the inbox opens for a workflow transition whose
+ * `transitionForms` schema declares required fields (e.g. a custom task's
+ * `approve` requiring `targetField`/`proposedText`). It mirrors
+ * `TaskTabNew`'s edit-task modal: the same `TaskPayloadSchemaFields` form,
+ * seeded from the task payload + the transition's schema defaults, and the
+ * same `required`-field guard `onEditAndSuggest` enforces before submit.
+ *
+ * The comment modal (`TaskActionCommentModal`) still handles
+ * `requiresComment` transitions (comment / incident root cause / assignee);
+ * this modal is reached only for transitions that need form data the comment
+ * modal does not collect.
+ */
+const TaskTransitionFormModal: React.FC<TaskTransitionFormModalProps> = ({
+  open,
+  title,
+  actionLabel,
+  task,
+  schema,
+  transition,
+  isLoading = false,
+  onConfirm,
+  onCancel,
+}) => {
+  const { t } = useTranslation();
+
+  const transitionFormSchema = useMemo(
+    () => getTaskTransitionFormSchema(schema, transition),
+    [schema, transition]
+  );
+  const transitionUiSchema = useMemo(
+    () => getTaskTransitionUiSchema(schema, transition),
+    [schema, transition]
+  );
+
+  // Seed the form the way `TaskTabNew` does: the task's editable payload for
+  // this transition's uiSchema, merged with the schema's property defaults so
+  // fields with a `default` start populated.
+  const initialPayload = useMemo(
+    () =>
+      applyTaskFormSchemaDefaults(
+        getEditableTaskPayload(task, transitionUiSchema),
+        transitionFormSchema
+      ),
+    [task, transitionFormSchema, transitionUiSchema]
+  );
+
+  const [payload, setPayload] = useState<TaskPayload>(initialPayload);
+
+  // Reset the draft each time the modal opens (or the transition it is for
+  // changes), so a reopened modal never carries the previous attempt's edits.
+  useEffect(() => {
+    if (open) {
+      setPayload(initialPayload);
+    }
+  }, [open, initialPayload]);
+
+  const isMissingRequired = useMemo(() => {
+    const requiredFields = transitionFormSchema?.required;
+
+    return (
+      Array.isArray(requiredFields) &&
+      requiredFields.some(
+        (field) => typeof field !== 'string' || !payload?.[field]
+      )
+    );
+  }, [transitionFormSchema, payload]);
+
+  const handleConfirm = () => {
+    if (isLoading || isMissingRequired) {
+      return;
+    }
+    onConfirm(payload);
+  };
+
+  const handleClose = () => {
+    if (!isLoading) {
+      onCancel();
+    }
+  };
+
+  return (
+    <ModalOverlay
+      isOpen={open}
+      onOpenChange={(isOpen) => !isOpen && handleClose()}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          data-testid="task-transition-form-modal"
+          title={title}
+          width={768}
+          onClose={handleClose}>
+          <Dialog.Content>
+            <TaskPayloadSchemaFields
+              payload={payload}
+              schema={transitionFormSchema}
+              uiSchema={transitionUiSchema}
+              onChange={setPayload}
+            />
+            {isMissingRequired && (
+              <Typography
+                className="tw:text-error"
+                data-testid="task-transition-form-required-hint"
+                size="text-sm">
+                {t('message.field-text-is-required', {
+                  fieldText: t('label.required-field-plural'),
+                })}
+              </Typography>
+            )}
+          </Dialog.Content>
+          <Dialog.Footer>
+            <Button
+              color="secondary"
+              data-testid="task-transition-form-cancel"
+              isDisabled={isLoading}
+              onPress={handleClose}>
+              {t('label.cancel')}
+            </Button>
+            <Button
+              color="primary"
+              data-testid="task-transition-form-confirm"
+              isDisabled={isMissingRequired}
+              isLoading={isLoading}
+              onPress={handleConfirm}>
+              {actionLabel}
+            </Button>
+          </Dialog.Footer>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+};
+
+export default TaskTransitionFormModal;

@@ -28,6 +28,9 @@ import {
   getEditableTaskPayload,
   getTaskFormHandlerConfig,
   getTaskResolutionNewValue,
+  getTaskTransitionFormSchema,
+  getTaskTransitionUiSchema,
+  hasRequiredTaskFormFields,
   shouldRequireTaskResolutionValue,
 } from '../../../../utils/TaskFormSchemaUtils';
 import {
@@ -241,26 +244,75 @@ export interface TaskActionInput {
   requiresAssignee: boolean;
   // Incident resolutions store the reason as testCaseFailureReason.
   requiresRootCause: boolean;
+  // The transition's form schema (`transitionForms[formRef|id]`) declares
+  // required fields the resolver must supply before the transition can fire —
+  // a workflow `approve` whose form requires `targetField`/`proposedText`,
+  // for example. The inbox opens a form modal for these (mirroring
+  // `TaskTabNew`'s `shouldOpenWorkflowTransitionModal`); without it the
+  // transition would resolve with no payload and the server would no-op the
+  // form validation, silently losing the required data.
+  requiresForm: boolean;
 }
 
 /**
  * What an action must collect before it can be resolved. An action that needs
- * nothing fires straight away; anything else opens the action modal.
+ * nothing fires straight away; anything else opens the action modal (a comment
+ * / root-cause modal for `requiresComment`/`requiresRootCause`, an assignee
+ * picker for `requiresAssignee`, or the transition form modal for
+ * `requiresForm`).
+ *
+ * Pass `schema` where a resolved task form schema is available (single-task
+ * views) so `requiresForm` can inspect the transition's `transitionForms`;
+ * without it `requiresForm` is conservatively `false` (bulk resolve falls back
+ * to the per-type defaults rather than block on a schema fetch).
  */
 export const getTaskActionInput = (
   task: Task,
-  action: TaskResolveAction
+  action: TaskResolveAction,
+  schema?: TaskFormSchema
 ): TaskActionInput => ({
   requiresComment: action.requiresComment,
   requiresAssignee: action.kind === 'assignee',
   requiresRootCause:
     task.category === TaskCategory.Incident && action.requiresComment,
+  requiresForm:
+    action.transition != null &&
+    hasRequiredTaskFormFields(
+      getTaskTransitionFormSchema(schema, action.transition)
+    ),
 });
 
 export const needsTaskActionInput = (
   task: Task,
-  action: TaskResolveAction
-): boolean => Object.values(getTaskActionInput(task, action)).some(Boolean);
+  action: TaskResolveAction,
+  schema?: TaskFormSchema
+): boolean =>
+  Object.values(getTaskActionInput(task, action, schema)).some(Boolean);
+
+const buildTransitionResolveBody = (
+  transition: TaskAvailableTransition,
+  task: Task,
+  comment: { comment?: string } | Record<string, never>,
+  extras: { comment?: string; payload?: Record<string, unknown> } | undefined,
+  schema?: TaskFormSchema
+): ResolveTask => {
+  const transitionUiSchema = schema
+    ? getTaskTransitionUiSchema(schema, transition)
+    : undefined;
+  const payload = extras?.payload;
+  const newValue =
+    payload && transitionUiSchema
+      ? getTaskResolutionNewValue(task, payload, transitionUiSchema)
+      : undefined;
+
+  return getTaskResolveBody(task, {
+    transitionId: transition.id,
+    resolutionType: transition.resolutionType,
+    ...comment,
+    ...(payload ? { payload } : {}),
+    ...(newValue !== undefined ? { newValue } : {}),
+  });
+};
 
 /**
  * The `POST /tasks/{id}/resolve` body for an action. A workflow action names its
@@ -276,13 +328,16 @@ export const buildResolveBody = (
 ): ResolveTask => {
   const comment = extras?.comment ? { comment: extras.comment } : {};
 
+  // `action.transition` is narrowed to a non-optional `TaskAvailableTransition`
+  // for the helper so it needs no non-null assertion.
   if (action.transition) {
-    return getTaskResolveBody(task, {
-      transitionId: action.transition.id,
-      resolutionType: action.transition.resolutionType,
-      ...comment,
-      ...(extras?.payload ? { payload: extras.payload } : {}),
-    });
+    return buildTransitionResolveBody(
+      action.transition,
+      task,
+      comment,
+      extras,
+      schema
+    );
   }
 
   const legacy = buildLegacyResolution(
