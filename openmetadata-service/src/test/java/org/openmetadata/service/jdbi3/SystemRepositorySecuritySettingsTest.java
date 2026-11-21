@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -29,14 +30,24 @@ import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFI
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.BadRequestException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.IdentityProviderConfig;
+import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -55,6 +66,7 @@ import org.openmetadata.service.config.source.DeploymentConfig;
 import org.openmetadata.service.config.source.DeploymentSetting;
 import org.openmetadata.service.config.source.DeploymentTemplate;
 import org.openmetadata.service.config.source.DualSourceSetting;
+import org.openmetadata.service.config.source.SettingsSecrets;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.SettingsManagedByEnvironmentException;
 import org.openmetadata.service.exception.SystemSettingsException;
@@ -70,6 +82,12 @@ class SystemRepositorySecuritySettingsTest {
   private static final String AUTH = AUTHENTICATION_CONFIGURATION.value();
   private static final String AUTHZ = AUTHORIZER_CONFIGURATION.value();
   private static final String SECRET = "oidc-s3cret";
+  private static final String IDP_CERTIFICATE = resource("/saml/mock-idp.crt");
+  private static final String NOT_A_CERTIFICATE =
+      "-----BEGIN CERTIFICATE-----\nnot-a-certificate\n-----END CERTIFICATE-----";
+  private static final String OTHER_IDP_CERTIFICATE = resource("/saml/other-idp.crt");
+  private static final String EXPIRED_IDP_CERTIFICATE = resource("/saml/expired-idp.crt");
+  private static final String CERTIFICATE_FIELD = "samlConfiguration.idp.idpX509Certificate";
 
   private final Map<String, String> rows = new ConcurrentHashMap<>();
   private MockedStatic<Entity> entityMock;
@@ -243,7 +261,7 @@ class SystemRepositorySecuritySettingsTest {
         SystemSettingsException.class,
         () ->
             repository.prepareReconciled(
-                SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION, invalidUrl));
+                SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION, invalidUrl, null));
   }
 
   @Test
@@ -252,12 +270,163 @@ class SystemRepositorySecuritySettingsTest {
 
     for (String prepared :
         List.of(
-            repository.prepareReconciled(AUTHENTICATION_CONFIGURATION, value),
+            repository.prepareReconciled(AUTHENTICATION_CONFIGURATION, value, value),
             repository.prepareSeed(AUTHENTICATION_CONFIGURATION, value))) {
       assertTrue(
           Fernet.isTokenized(
               JsonUtils.readTree(prepared).at("/oidcConfiguration/secret").asText()));
     }
+  }
+
+  @Test
+  void refusesAReconciledOrSeededIdpCertificateThatASaveWouldRefuse() {
+    JsonNode unusable = JsonUtils.valueToTree(saml(NOT_A_CERTIFICATE));
+    JsonNode usable = JsonUtils.valueToTree(saml(IDP_CERTIFICATE));
+
+    BadRequestException reconciled =
+        assertThrows(
+            BadRequestException.class,
+            () -> repository.prepareReconciled(AUTHENTICATION_CONFIGURATION, unusable, usable));
+    assertTrue(reconciled.getMessage().contains("samlConfiguration.idp.idpX509Certificate"));
+    assertThrows(
+        BadRequestException.class,
+        () -> repository.prepareSeed(AUTHENTICATION_CONFIGURATION, unusable));
+  }
+
+  @Test
+  void preparesAUsableOrUnchangedIdpCertificate() {
+    JsonNode unusable = JsonUtils.valueToTree(saml(NOT_A_CERTIFICATE));
+    JsonNode usable = JsonUtils.valueToTree(saml(IDP_CERTIFICATE));
+
+    assertDoesNotThrow(() -> repository.prepareSeed(AUTHENTICATION_CONFIGURATION, usable));
+    assertDoesNotThrow(
+        () -> repository.prepareReconciled(AUTHENTICATION_CONFIGURATION, usable, unusable));
+    assertDoesNotThrow(
+        () -> repository.prepareReconciled(AUTHENTICATION_CONFIGURATION, unusable, unusable));
+  }
+
+  /**
+   * Every way that writes the authentication configuration, and the JSON it leaves to be stored.
+   * They all pass the same step before the database, so they all check the IdP certificate.
+   */
+  private Map<String, Function<AuthenticationConfiguration, String>> writePaths() {
+    Map<String, Function<AuthenticationConfiguration, String>> paths = new LinkedHashMap<>();
+    paths.put(
+        "createOrUpdate (update-security-config, settings API)",
+        config -> written(() -> repository.createOrUpdate(authenticationSettings(config))));
+    paths.put(
+        "createNewSetting (seeds)",
+        config -> written(() -> repository.createNewSetting(authenticationSettings(config))));
+    paths.put(
+        "updateSetting (seeding, migrations)",
+        config -> written(() -> repository.updateSetting(authenticationSettings(config))));
+    paths.put(
+        "replaceSettingIfCurrent (adopt-deployment-config)",
+        config ->
+            written(
+                () ->
+                    repository.replaceSettingIfCurrent(
+                        authenticationSettings(config), rows.get(AUTH))));
+    paths.put(
+        "updateSecurityConfigurationIfCurrent (security PUT and PATCH)",
+        config ->
+            written(
+                () ->
+                    repository.updateSecurityConfigurationIfCurrent(
+                        securityWith(config), repository.getStoredSecurityConfiguration())));
+    paths.put(
+        "storeSecurityConfiguration (security PUT and PATCH without a stored row)",
+        config -> written(() -> repository.storeSecurityConfiguration(securityWith(config))));
+    paths.put(
+        "prepareReconciled (deployment reconcile)",
+        config ->
+            repository.prepareReconciled(
+                AUTHENTICATION_CONFIGURATION,
+                JsonUtils.valueToTree(config),
+                SettingsSecrets.decrypted(
+                    AUTHENTICATION_CONFIGURATION, JsonUtils.readTree(rows.get(AUTH)))));
+    return paths;
+  }
+
+  private String written(Runnable write) {
+    write.run();
+    return rows.get(AUTH);
+  }
+
+  private void storeSaml(String idpCertificate) {
+    rows.clear();
+    rows.put(
+        AUTH,
+        JsonUtils.pojoToJson(
+            SettingsSecrets.encrypted(
+                AUTHENTICATION_CONFIGURATION, JsonUtils.valueToTree(saml(idpCertificate)))));
+    rows.put(AUTHZ, JsonUtils.pojoToJson(authorizer()));
+  }
+
+  private static String certificateIn(String storedJson) {
+    return JsonUtils.readTree(storedJson).at("/samlConfiguration/idp/idpX509Certificate").asText();
+  }
+
+  @Test
+  void everyWritePathRefusesANewUnusableCertificateAndKeepsTheStoredValue() {
+    for (Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
+        writePaths().entrySet()) {
+      for (String unusable : List.of(NOT_A_CERTIFICATE, EXPIRED_IDP_CERTIFICATE)) {
+        storeSaml(IDP_CERTIFICATE);
+        String before = rows.get(AUTH);
+
+        BadRequestException refused =
+            assertThrows(
+                BadRequestException.class,
+                () -> path.getValue().apply(saml(unusable)),
+                path.getKey());
+
+        assertTrue(refused.getMessage().contains(CERTIFICATE_FIELD), path.getKey());
+        assertEquals(before, rows.get(AUTH), path.getKey());
+      }
+    }
+  }
+
+  @Test
+  void everyWritePathAcceptsTheStoredExpiredCertificateUnchanged() {
+    for (Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
+        writePaths().entrySet()) {
+      storeSaml(EXPIRED_IDP_CERTIFICATE);
+
+      String stored = path.getValue().apply(saml(EXPIRED_IDP_CERTIFICATE));
+
+      assertEquals(EXPIRED_IDP_CERTIFICATE, certificateIn(stored), path.getKey());
+    }
+  }
+
+  @Test
+  void everyWritePathStoresAUsableNewCertificate() {
+    for (Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
+        writePaths().entrySet()) {
+      storeSaml(IDP_CERTIFICATE);
+
+      String stored = path.getValue().apply(saml(OTHER_IDP_CERTIFICATE));
+
+      assertEquals(OTHER_IDP_CERTIFICATE, certificateIn(stored), path.getKey());
+    }
+  }
+
+  /** A first start has nothing stored, so the seed always checks the certificate. */
+  @Test
+  void aSeedChecksTheCertificate() {
+    JsonNode unusable = JsonUtils.valueToTree(saml(EXPIRED_IDP_CERTIFICATE));
+
+    BadRequestException refused =
+        assertThrows(
+            BadRequestException.class,
+            () -> repository.prepareSeed(AUTHENTICATION_CONFIGURATION, unusable));
+
+    assertTrue(refused.getMessage().contains(CERTIFICATE_FIELD));
+    assertEquals(
+        IDP_CERTIFICATE,
+        certificateIn(
+            repository.prepareSeed(
+                AUTHENTICATION_CONFIGURATION, JsonUtils.valueToTree(saml(IDP_CERTIFICATE)))));
   }
 
   @Test
@@ -302,6 +471,33 @@ class SystemRepositorySecuritySettingsTest {
         .withConfigValue(authentication);
   }
 
+  private static AuthenticationConfiguration saml(String idpCertificate) {
+    return new AuthenticationConfiguration()
+        .withProvider(AuthProvider.SAML)
+        .withProviderName("SAML")
+        .withSamlConfiguration(
+            new SamlSSOClientConfig()
+                .withIdp(
+                    new IdentityProviderConfig()
+                        .withEntityId("https://idp.example.com/metadata")
+                        .withSsoLoginUrl("https://idp.example.com/sso")
+                        .withIdpX509Certificate(idpCertificate))
+                .withSp(
+                    new ServiceProviderConfig()
+                        .withEntityId("http://localhost:8585/api/v1/saml/metadata")
+                        .withAcs("http://localhost:8585/api/v1/saml/acs")
+                        .withCallback("http://localhost:8585/saml/callback")));
+  }
+
+  private static String resource(String path) {
+    try (InputStream stream =
+        SystemRepositorySecuritySettingsTest.class.getResourceAsStream(path)) {
+      return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
   private static AuthenticationConfiguration authentication(int maxActiveSessionsPerUser) {
     return new AuthenticationConfiguration()
         .withProvider(AuthProvider.GOOGLE)
@@ -329,6 +525,15 @@ class SystemRepositorySecuritySettingsTest {
         .thenAnswer(
             i -> rows.replace(i.getArgument(0), i.getArgument(1), i.getArgument(2)) ? 1 : 0);
     doCallRealMethod().when(dao).updateSecuritySettingsIfCurrent(any(), any());
+    when(dao.getConfigWithKey(anyString()))
+        .thenAnswer(
+            i -> {
+              String json = rows.get(i.<String>getArgument(0));
+              return json == null
+                  ? null
+                  : CollectionDAO.SettingsRowMapper.getSettings(
+                      SettingsType.fromValue(i.getArgument(0)), json);
+            });
     return dao;
   }
 }
