@@ -98,6 +98,12 @@ public interface VectorIndexService {
 
   void clearParticipantStagedTarget();
 
+  /**
+   * Throws when this node lost a chunk write into the run's staged generation without recording
+   * it, so the caller's partition fails and the generation is not promoted.
+   */
+  default void requireStagedChunkFailuresRecorded() {}
+
   default VectorSearchResponse search(
       String query,
       Map<String, List<String>> filters,

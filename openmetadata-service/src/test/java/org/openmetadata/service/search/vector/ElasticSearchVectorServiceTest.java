@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.vector;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -8,12 +9,17 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
@@ -29,16 +35,23 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 import org.apache.hc.core5.http.HttpEntity;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.slf4j.LoggerFactory;
 
 class ElasticSearchVectorServiceTest {
 
@@ -65,6 +78,19 @@ class ElasticSearchVectorServiceTest {
         .thenReturn(new float[] {0.1f, 0.2f, 0.3f});
 
     vectorService = new ElasticSearchVectorService(mockEsClient, mockEmbeddingClient);
+  }
+
+  private final ListAppender<ILoggingEvent> serviceLog = new ListAppender<>();
+
+  @BeforeEach
+  void captureServiceLog() {
+    serviceLog.start();
+    ((Logger) LoggerFactory.getLogger(AbstractVectorIndexService.class)).addAppender(serviceLog);
+  }
+
+  @AfterEach
+  void releaseServiceLog() {
+    ((Logger) LoggerFactory.getLogger(AbstractVectorIndexService.class)).detachAppender(serviceLog);
   }
 
   @Test
@@ -503,6 +529,134 @@ class ElasticSearchVectorServiceTest {
                 "POST", "/table_search_index/_update/" + parentId + "?retry_on_conflict=3"));
     assertEquals(fingerprint, update.path("doc").path("fingerprint").asText());
     assertEquals("[0.1,0.2,0.3]", update.path("doc").path("embedding").toString());
+  }
+
+  static Stream<Arguments> rejectedChunkBulks() throws Exception {
+    return Stream.of(
+        Arguments.of("an HTTP failure", response(503, "{\"error\":\"unavailable\"}")),
+        Arguments.of(
+            "an item failure in a 200",
+            response(
+                200,
+                "{\"errors\":true,\"items\":[{\"index\":{\"status\":429,\"error\":"
+                    + "{\"type\":\"es_rejected_execution_exception\"}}}]}")));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("rejectedChunkBulks")
+  void aRejectedChunkBulkStillRefreshesTheEntityDocAndTheNextUpdateRewritesTheChunks(
+      String failure, Response rejectedBulk) throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.getDimension()).thenReturn(3);
+    Table table = orders();
+    String parentId = table.getId().toString();
+    String fingerprint = VectorDocBuilder.computeFingerprintForEntity(table);
+    answerByEndpointSuffix(
+        Map.of("/_alias", response(404, "{\"status\":404}"), "/_bulk", rejectedBulk));
+
+    vectorService.updateEntityEmbeddings(table, "table_search_index");
+
+    JsonNode update =
+        bodyOf(
+            sentRequest(
+                "POST", "/table_search_index/_update/" + parentId + "?retry_on_conflict=3"));
+    assertEquals(fingerprint, update.path("doc").path("fingerprint").asText());
+    assertEquals("[0.1,0.2,0.3]", update.path("doc").path("embedding").toString());
+    assertTrue(
+        logged(Level.ERROR, "Failed to write chunks for " + parentId), "the failure is logged");
+
+    clearInvocations(mockRestClient);
+    answerByEndpointSuffix(
+        Map.of(
+            "/table_search_index/_search",
+            response(
+                200,
+                "{\"hits\":{\"hits\":[{\"_source\":{\"fingerprint\":\"" + fingerprint + "\"}}]}}"),
+            "/_bulk",
+            response(200, "{\"errors\":false,\"items\":[]}")));
+
+    vectorService.updateEntityEmbeddings(table, "table_search_index");
+
+    assertTrue(
+        bodyText(sentRequest("POST", "/_bulk")).contains(parentId + "_0"),
+        "the next update rewrites the chunks although the entity doc is current");
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
+    assertTrue(
+        sent.getAllValues().stream().noneMatch(r -> r.getEndpoint().contains("/_update/")),
+        "a current entity doc is not updated again");
+  }
+
+  @Test
+  void aChunkWriteTheCoordinatorLostBlocksPromotionWithAWarning() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.getDimension()).thenReturn(3);
+    Table table = orders();
+    answerByEndpointSuffix(
+        Map.of(
+            "/_alias", response(404, "{\"status\":404}"),
+            "/_bulk", response(503, "{\"error\":\"unavailable\"}")));
+    String staged = vectorService.beginStagedChunkRecreate();
+    assertNotNull(staged);
+
+    vectorService.writeEntityChunks(
+        table.getId().toString(), VectorDocBuilder.fromEntity(table, mockEmbeddingClient), staged);
+    AvailableEntityTypes.SET.forEach(
+        type -> vectorService.markEntityTypeReindexed(type, true, staged));
+
+    JsonNode flag = bodyOf(sentRequest("PUT", "/" + staged + "/_mapping"));
+    assertTrue(flag.path("_meta").path("incompleteChunkWrites").asBoolean());
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
+    assertTrue(
+        sent.getAllValues().stream().noneMatch(r -> r.getEndpoint().equals("/_aliases")),
+        "no alias swap");
+    assertTrue(logged(Level.WARN, "promotion blocked"), "the blocked promotion is logged");
+  }
+
+  @Test
+  void aParticipantThatCannotSaveTheFlagFailsItsPartitionUntilARetrySavesIt() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.getDimension()).thenReturn(3);
+    Table table = orders();
+    String staged = vectorService.getChunkIndexName() + "_g1";
+    vectorService.latchParticipantStagedTarget(staged);
+    answerByEndpointSuffix(
+        Map.of(
+            "/_bulk",
+            response(503, "{\"error\":\"unavailable\"}"),
+            "/" + staged + "/_mapping",
+            response(503, "{\"error\":\"unavailable\"}")));
+
+    vectorService.writeEntityChunks(
+        table.getId().toString(), VectorDocBuilder.fromEntity(table, mockEmbeddingClient), staged);
+
+    assertThrows(IllegalStateException.class, vectorService::requireStagedChunkFailuresRecorded);
+
+    answerByEndpointSuffix(Map.of());
+    assertDoesNotThrow(vectorService::requireStagedChunkFailuresRecorded);
+    JsonNode flag = bodyOf(sentRequest("PUT", "/" + staged + "/_mapping"));
+    assertTrue(flag.path("_meta").path("incompleteChunkWrites").asBoolean());
+  }
+
+  private static Table orders() {
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName("orders")
+        .withFullyQualifiedName("svc.db.schema.orders")
+        .withDescription("Orders placed online")
+        .withUpdatedAt(1L);
+  }
+
+  private boolean logged(Level level, String text) {
+    return serviceLog.list.stream()
+        .anyMatch(event -> event.getLevel() == level && event.getFormattedMessage().contains(text));
+  }
+
+  private static String bodyText(Request request) throws Exception {
+    try (InputStream content = request.getEntity().getContent()) {
+      return new String(content.readAllBytes(), StandardCharsets.UTF_8);
+    }
   }
 
   /** Answers a request from the rule its endpoint ends with, and any other with 200 and {}. */

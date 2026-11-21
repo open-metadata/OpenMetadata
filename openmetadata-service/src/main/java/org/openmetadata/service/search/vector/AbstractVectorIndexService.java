@@ -295,7 +295,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
               ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
               : VectorDocBuilder.fromEntity(entity, embeddingClient);
       if (refresh != ChunkRefresh.NONE) {
-        replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
+        writeLiveChunks(chunkIndexName, parentId, chunkDocs, header);
         mirrorToStagedGeneration(parentId, chunkDocs);
       }
       if (entityDocStale && !chunkDocs.isEmpty()) {
@@ -304,6 +304,27 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
             parentId,
             VectorDocBuilder.legacyEmbeddingFields(chunkDocs.getFirst()));
       }
+    }
+  }
+
+  /**
+   * A failed chunk write leaves the old chunk header in place, so the entity's next update sees the
+   * chunks as stale and writes them again, even when the entity document is already current.
+   */
+  private void writeLiveChunks(
+      String chunkIndexName,
+      String parentId,
+      List<Map<String, Object>> chunkDocs,
+      ChunkHeader header) {
+    try {
+      replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
+    } catch (IOException | RuntimeException e) {
+      LOG.error(
+          "Failed to write chunks for {} into {}; the entity embedding is still refreshed: {}",
+          parentId,
+          chunkIndexName,
+          e.getMessage(),
+          e);
     }
   }
 
@@ -421,7 +442,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private final Object stagedChunkLock = new Object();
   private volatile String stagedChunkIndex;
   private volatile Set<String> stagedExpectedTypes = Set.of();
-  private final Set<String> stagedCompletedTypes = ConcurrentHashMap.newKeySet();
+  private final Set<String> stagedFinalizedTypes = ConcurrentHashMap.newKeySet();
+  // Generations this JVM failed to flag as incomplete. Holds at most one name per failed run, and
+  // a new staged run or a participant leaving its run clears it.
+  private final Set<String> unflaggedGenerations = ConcurrentHashMap.newKeySet();
   private volatile boolean stagedChunkRunFailed;
   // Run-scoped staged chunk index latched by a non-coordinator participant from its ReindexContext
   // (see latchParticipantStagedTarget). Null on the coordinator, which uses stagedChunkIndex; null
@@ -483,7 +507,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       }
       stagedChunkIndex = generation;
       stagedExpectedTypes = Set.copyOf(AvailableEntityTypes.SET);
-      stagedCompletedTypes.clear();
+      stagedFinalizedTypes.clear();
+      unflaggedGenerations.clear();
       stagedChunkRunFailed = false;
       LOG.info(
           "Staged chunk index {} created; chunks stay live at {} until promotion",
@@ -521,7 +546,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     synchronized (stagedChunkLock) {
       if (generation.equals(stagedChunkIndex)) {
         stagedChunkIndex = null;
-        stagedCompletedTypes.clear();
+        stagedFinalizedTypes.clear();
         LOG.warn(
             "Cleared staged chunk state for {} — its run died before finalization; the "
                 + "generation will be swept by the next staged recreate",
@@ -580,12 +605,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     } else if (stagedChunkIndex != null
         && normalized != null
         && stagedExpectedTypes.contains(normalized)) {
-      if (success) {
-        stagedCompletedTypes.add(normalized);
-        if (!stagedChunkRunFailed && stagedCompletedTypes.containsAll(stagedExpectedTypes)) {
-          promoteStagedChunkIndex();
-        }
-      } else {
+      if (!success) {
         stagedChunkRunFailed = true;
         // Never delete mid-run: writers on other nodes may still be flushing into the generation,
         // and a write against a deleted index auto-creates a junk index. The un-promoted
@@ -595,6 +615,12 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
                 + "chunks stay live; staged index {} will be swept by the next recreate",
             entityType,
             stagedChunkIndex);
+      }
+      stagedFinalizedTypes.add(normalized);
+      // A failed run still goes through promote, which blocks the swap, warns and clears the
+      // staged state, so no later live edit mirrors into the abandoned generation.
+      if (stagedFinalizedTypes.containsAll(stagedExpectedTypes)) {
+        promoteStagedChunkIndex();
       }
     }
   }
@@ -643,18 +669,21 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * Strict like the swap: a flag that cannot be read fails the promotion.
    */
   private boolean isStagedGenerationIncomplete(String generation) {
+    boolean incomplete;
     try {
       String mappingJson = executeGenericRequest("GET", "/" + generation + "/_mapping", null);
-      return MAPPER
-          .readTree(mappingJson)
-          .path(generation)
-          .path("mappings")
-          .path("_meta")
-          .path(INCOMPLETE_CHUNK_WRITES)
-          .asBoolean(false);
+      incomplete =
+          MAPPER
+              .readTree(mappingJson)
+              .path(generation)
+              .path("mappings")
+              .path("_meta")
+              .path(INCOMPLETE_CHUNK_WRITES)
+              .asBoolean(false);
     } catch (IOException | RuntimeException e) {
       throw new RuntimeException("Failed to read staged chunk index state " + generation, e);
     }
+    return incomplete;
   }
 
   /**
@@ -667,16 +696,46 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     if (generation.equals(stagedChunkIndex)) {
       stagedChunkRunFailed = true;
     }
+    if (!flagStagedGenerationIncomplete(generation)) {
+      unflaggedGenerations.add(generation);
+    }
+  }
+
+  private boolean flagStagedGenerationIncomplete(String generation) {
+    boolean flagged;
     try {
       ObjectNode body = MAPPER.createObjectNode();
       body.set("_meta", chunkMeta().put(INCOMPLETE_CHUNK_WRITES, true));
       executeGenericRequest("PUT", "/" + generation + "/_mapping", body.toString());
+      flagged = true;
     } catch (RuntimeException e) {
       LOG.error(
-          "Could not flag staged chunk index {} as incomplete; it may be promoted without the "
-              + "failed chunks",
+          "Could not flag staged chunk index {} as incomplete; this node's partition will fail "
+              + "unless a retry saves the flag",
           generation,
           e);
+      flagged = false;
+    }
+    return flagged;
+  }
+
+  /**
+   * Fails the caller's partition when this node lost a chunk write into the run's generation and
+   * could not save the flag that blocks its promotion. The failed partition reaches the coordinator
+   * through the job's partition records and fails the entity type, which blocks the swap.
+   */
+  @Override
+  public void requireStagedChunkFailuresRecorded() {
+    String generation = stagedChunkIndex != null ? stagedChunkIndex : participantStagedTarget;
+    if (generation != null && unflaggedGenerations.contains(generation)) {
+      if (flagStagedGenerationIncomplete(generation)) {
+        unflaggedGenerations.remove(generation);
+      } else {
+        throw new IllegalStateException(
+            "A chunk write into staged chunk index "
+                + generation
+                + " failed and the flag that blocks its promotion could not be saved");
+      }
     }
   }
 
@@ -735,7 +794,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * cleared by {@link #clearParticipantStagedTarget} when the run ends.
    *
    * <p>Must NOT set {@link #stagedChunkIndex}: that field gates promotion in {@link
-   * #markEntityTypeReindexed} (checking {@code stagedCompletedTypes} against {@code
+   * #markEntityTypeReindexed} (checking {@code stagedFinalizedTypes} against {@code
    * stagedExpectedTypes}) and is coordinator-only. {@code participantStagedTarget} is safe because
    * the promotion path never reads it.
    */
@@ -752,6 +811,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   @Override
   public void clearParticipantStagedTarget() {
     participantStagedTarget = null;
+    unflaggedGenerations.clear();
   }
 
   /** Newest generation index not yet holding the read alias, or null when none exists. */

@@ -38,6 +38,9 @@ import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntitiesSource;
 import org.openmetadata.service.workflows.searchIndex.PaginatedEntityTimeSeriesSource;
@@ -340,6 +343,7 @@ public class PartitionWorker {
         }
       }
 
+      requireStagedChunkFailuresRecorded(entityType);
       // Mark partition as completed (stats are now in the database)
       coordinator.completePartition(
           partition.getId(), successCount.get(), failedCount.get(), warningsCount.get());
@@ -799,6 +803,19 @@ public class PartitionWorker {
 
   public record BatchResult(
       int successCount, int failedCount, int warningsCount, String nextCursor) {}
+
+  /**
+   * A chunk write this node lost into the run's staged chunk generation, with no flag saved to
+   * block its promotion, fails the partition instead; the coordinator then keeps the old chunks.
+   */
+  private static void requireStagedChunkFailuresRecorded(String entityType) {
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    VectorIndexService vectorService =
+        searchRepository == null ? null : searchRepository.getVectorIndexService();
+    if (vectorService != null && AvailableEntityTypes.isVectorIndexable(entityType)) {
+      vectorService.requireStagedChunkFailuresRecorded();
+    }
+  }
 
   public record PartitionResult(
       long successCount,

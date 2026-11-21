@@ -59,7 +59,11 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   delete into it sets `_meta.incompleteChunkWrites` on that generation's index. The coordinator
   reads the flag before the alias swap and keeps the old chunks live when it is set. The flag
   lives on the cluster, so a participant's failure reaches the coordinator and stays tied to the
-  generation it hit. The next staged recreate sweeps the unpromoted generation.
+  generation it hit. A node that cannot save the flag retries it when the partition ends and
+  fails the partition if it still cannot. The failed partition fails the entity type, which
+  blocks the swap the same way. The next staged recreate sweeps the unpromoted generation.
+- **A live edit refreshes the entity document even when its chunk write fails.** The old chunk
+  header stays, so the entity's next update writes the chunks again.
 - **Hybrid search stays OpenSearch-only.** The RRF search pipeline lives in
   `OpenSearchVectorService`, and `SearchRepository` creates and checks it only on OpenSearch.
 
