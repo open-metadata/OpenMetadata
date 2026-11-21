@@ -896,6 +896,49 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @Test
+  void softDeletedFailedTestIsExcludedFromSuiteDetailAndSearchList(TestNamespace ns)
+      throws Exception {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final SoftDeletedResultFixture fixture = createSoftDeletedResultFixture(client, ns);
+    final TestSuite before = client.testSuites().get(fixture.suite().getId().toString(), "summary");
+    assertEquals(1, before.getSummary().getFailed());
+
+    client.testCases().delete(fixture.failedCase().getId().toString());
+
+    assertOnlyActiveSuccessfulResults(
+        client.testSuites().get(fixture.suite().getId().toString(), "summary"));
+    Awaitility.await("deleted failing case is absent from suite list summary")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> assertOnlyActiveSuccessfulResults(searchTestSuite(client, fixture.suite())));
+  }
+
+  private SoftDeletedResultFixture createSoftDeletedResultFixture(
+      OpenMetadataClient client, TestNamespace ns) throws Exception {
+    final Table table = createTableForBasicTestSuite(ns, "soft_deleted_failure");
+    final List<TestCase> testCases = createTestCases(client, ns, table, 2);
+    final TestSuite suite =
+        createEntity(
+            new CreateTestSuite()
+                .withName(ns.prefix("suite_soft_deleted_failure"))
+                .withDescription("Soft-delete result isolation regression"));
+    addTestCasesToLogicalTestSuite(
+        suite.getId(), testCases.stream().map(TestCase::getId).toList());
+    recordTestCaseResults(client, testCases, 1, 1);
+    return new SoftDeletedResultFixture(suite, testCases.get(1));
+  }
+
+  private static void assertOnlyActiveSuccessfulResults(final TestSuite suite) {
+    assertEquals(0, suite.getSummary().getFailed());
+    assertEquals(1, suite.getSummary().getSuccess());
+    assertEquals(1, suite.getSummary().getTotal());
+    assertEquals(1, suite.getTestCaseResultSummary().size());
+  }
+
+  private record SoftDeletedResultFixture(TestSuite suite, TestCase failedCase) {}
+
+  @Test
   void test_addTestCasesToBasicTestSuite_400(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
