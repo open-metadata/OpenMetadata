@@ -118,7 +118,7 @@ def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
     )
     write(tmp_path, "openmetadata-ui/src/main/resources/ui/yarn.lock", "playwright@1")
     write(tmp_path, "openmetadata-ui/src/main/resources/ui/.nvmrc", "22\n")
-    write(tmp_path, "docker/postgresql/Dockerfile_postgres", "FROM postgres:15\n")
+    write(tmp_path, "docker/postgresql/Dockerfile_postgres", "FROM example/database:1\n")
     write(tmp_path, "docker/postgresql/postgres-script.sql", "select 1;\n")
     write(tmp_path, "docker/development/Dockerfile", "FROM eclipse-temurin:21\n")
     write(tmp_path, ".dockerignore", "docker/development/docker-volume\n")
@@ -136,7 +136,7 @@ def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
         ("openmetadata-ui/src/main/resources/ui/package.json", "{}"),
         ("openmetadata-ui/src/main/resources/ui/yarn.lock", "playwright@2"),
         ("openmetadata-ui/src/main/resources/ui/.nvmrc", "24\n"),
-        ("docker/postgresql/Dockerfile_postgres", "FROM postgres:16\n"),
+        ("docker/postgresql/Dockerfile_postgres", "FROM example/database:2\n"),
         ("docker/postgresql/postgres-script.sql", "select 2;\n"),
         ("docker/development/Dockerfile", "FROM eclipse-temurin:22\n"),
         (".dockerignore", "different-volume\n"),

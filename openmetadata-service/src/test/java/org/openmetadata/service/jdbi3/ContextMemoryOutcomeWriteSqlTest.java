@@ -27,6 +27,7 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -44,7 +45,7 @@ class ContextMemoryOutcomeWriteSqlTest {
   @Test
   void outcomeWritesAreAbsoluteMonotonicAndKeptByMetadataWritesOnMysql() {
     try (GenericContainer<?> database =
-        new GenericContainer<>("mysql:8.4.13")
+        new GenericContainer<>(TestDatabaseImages.mysql())
             .withEnv("MYSQL_DATABASE", DATABASE)
             .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
             .withEnv("MYSQL_ROOT_HOST", "%")
@@ -65,7 +66,7 @@ class ContextMemoryOutcomeWriteSqlTest {
   @Test
   void outcomeWritesAreAbsoluteMonotonicAndKeptByMetadataWritesOnPostgres() {
     try (GenericContainer<?> database =
-        new GenericContainer<>("postgres:15")
+        new GenericContainer<>(TestDatabaseImages.postgres())
             .withEnv("POSTGRES_DB", DATABASE)
             .withEnv("POSTGRES_PASSWORD", PASSWORD)
             .withExposedPorts(5432)

@@ -24,6 +24,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -46,7 +47,7 @@ class EntityExtensionCollationAlignmentTest {
 
   @Container
   static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
+      new GenericContainer<>(DockerImageName.parse(TestDatabaseImages.mysql()))
           .withEnv("MYSQL_DATABASE", DATABASE)
           .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
           .withExposedPorts(3306);
