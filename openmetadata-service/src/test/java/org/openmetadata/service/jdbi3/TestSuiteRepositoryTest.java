@@ -103,26 +103,26 @@ class TestSuiteRepositoryTest {
 
   @Test
   void softDeletedFailingCaseDoesNotAffectInMemorySuiteSummary() {
-    String liveFqn = "service.db.schema.table.live";
-    String softDeletedFqn = "service.db.schema.table.deleted";
-    TestCase live =
+    final String liveFqn = "service.db.schema.table.live";
+    final String softDeletedFqn = "service.db.schema.table.deleted";
+    final TestCase live =
         new TestCase()
             .withFullyQualifiedName(liveFqn)
             .withEntityLink("<#E::table::service.db.schema.table>");
-    List<ResultSummary> historicResults =
+    final List<ResultSummary> historicResults =
         List.of(
             new ResultSummary().withTestCaseName(liveFqn).withStatus(TestCaseStatus.Success),
             new ResultSummary()
                 .withTestCaseName(softDeletedFqn)
                 .withStatus(TestCaseStatus.Failed));
-    TestCaseRepository testCases = mock(TestCaseRepository.class);
+    final TestCaseRepository testCases = mock(TestCaseRepository.class);
     when(testCases.findByNames(anyList(), eq(Include.NON_DELETED)))
         .thenReturn(List.of(live));
 
-    try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+    try (final MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(TEST_CASE)).thenReturn(testCases);
 
-      TestSummary summary = TestSuiteRepository.getTestSummary(historicResults);
+      final TestSummary summary = TestSuiteRepository.getTestSummary(historicResults);
 
       assertEquals(1, summary.getSuccess());
       assertEquals(0, summary.getFailed());
