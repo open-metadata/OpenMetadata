@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -211,16 +210,16 @@ class EmbeddingEnricherTest {
   }
 
   @Test
-  void aFailedChunkWriteIsCountedAndStillIndexesTheEntity() {
-    doThrow(new IllegalStateException("bulk rejected"))
-        .when(vectorService)
-        .writeEntityChunks(any(), any(), any());
+  void aReusedEmbeddingOfANonRecreateRunIsSplicedAndBackfilledToTheLiveIndex() {
+    String enriched =
+        enricher.enrich(
+            table, ENTITY_JSON, Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")), tracker, null);
 
-    String enriched = enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, null);
-
-    assertSame(ENTITY_JSON, enriched);
-    assertVectorStats(0, 1);
-    verify(tracker).recordVector(StatsResult.FAILED);
+    JsonNode doc = JsonUtils.readTree(enriched);
+    assertEquals("fp-stored", doc.path("fingerprint").asText());
+    assertEquals("[0.5,0.6,0.7]", doc.path("embedding").toString());
+    verify(vectorService).backfillEntityChunks(table, null);
+    assertVectorStats(1, 0);
   }
 
   private void assertVectorStats(int succeeded, int failed) {

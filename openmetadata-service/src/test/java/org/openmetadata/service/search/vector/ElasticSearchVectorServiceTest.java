@@ -33,6 +33,7 @@ import org.apache.hc.core5.http.HttpEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -457,6 +458,51 @@ class ElasticSearchVectorServiceTest {
     assertEquals(
         "[{\"term\":{\"deleted\":false}},{\"term\":{\"parentId\":\"parent-1\"}}]",
         knn.path("filter").path("bool").path("must").toString());
+  }
+
+  @Test
+  void aSearchWithAThresholdNeverAsksForMoreThanKHitsPerPage() throws Exception {
+    answerByEndpointSuffix(Map.of("/_search", response(200, EMPTY_HITS_RESPONSE)));
+
+    vectorService.search("retention", Map.of(), 10, 0, 5, 0.5);
+
+    JsonNode search = bodyOf(sentRequest("POST", "/dataAssetEmbeddings/_search"));
+    assertEquals(5, search.path("size").asInt());
+    assertEquals(5, search.path("knn").path("k").asInt());
+  }
+
+  @Test
+  void anUnwritableChunkIndexStillRefreshesTheEntityDocEmbedding() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.getDimension()).thenReturn(3);
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders")
+            .withDescription("Orders placed online")
+            .withUpdatedAt(1L);
+    String parentId = table.getId().toString();
+    String fingerprint = VectorDocBuilder.computeFingerprintForEntity(table);
+    answerByEndpointSuffix(
+        Map.of(
+            "/_alias", response(404, "{\"status\":404}"),
+            "/data_asset_embeddings_chunks", response(503, "{\"error\":\"max shards\"}")));
+
+    vectorService.backfillEntityChunks(table, null);
+    vectorService.updateEntityEmbeddings(table, "table_search_index");
+
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
+    assertTrue(
+        sent.getAllValues().stream().noneMatch(r -> r.getEndpoint().endsWith("/_bulk")),
+        "no chunk document may be written while the chunk index is missing");
+    JsonNode update =
+        bodyOf(
+            sentRequest(
+                "POST", "/table_search_index/_update/" + parentId + "?retry_on_conflict=3"));
+    assertEquals(fingerprint, update.path("doc").path("fingerprint").asText());
+    assertEquals("[0.1,0.2,0.3]", update.path("doc").path("embedding").toString());
   }
 
   /** Answers a request from the rule its endpoint ends with, and any other with 200 and {}. */

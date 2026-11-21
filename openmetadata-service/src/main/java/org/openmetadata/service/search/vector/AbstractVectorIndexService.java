@@ -190,9 +190,21 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   @Override
   public void backfillEntityChunks(EntityInterface<?> entity, String stagedChunkTarget) {
     if (stagedChunkTarget == null) {
-      updateEntityEmbeddingChunks(entity);
+      backfillChunksToLiveIndex(entity);
     } else {
       backfillChunksToStagedGeneration(entity, stagedChunkTarget);
+    }
+  }
+
+  /**
+   * A chunk index that cannot be written must not fail the caller: the sink has already spliced
+   * the entity document's own embedding, which does not depend on the chunk index.
+   */
+  private void backfillChunksToLiveIndex(EntityInterface<?> entity) {
+    try {
+      updateEntityEmbeddingChunks(entity);
+    } catch (Exception e) {
+      LOG.warn("Failed to backfill chunks for {}: {}", entity.getId(), e.getMessage(), e);
     }
   }
 
@@ -250,32 +262,59 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     try {
       String parentId = entity.getId().toString();
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
-      requireChunkIndexForWrite();
-      String chunkIndexName = getChunkIndexName();
+      boolean chunkIndexWritable = isChunkIndexWritable();
       boolean entityDocStale =
           !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
-      ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
-      ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, header);
-      if (entityDocStale || refresh != ChunkRefresh.NONE) {
-        List<Map<String, Object>> chunkDocs =
-            refresh == ChunkRefresh.RESTAMP
-                ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
-                : VectorDocBuilder.fromEntity(entity, embeddingClient);
-        if (refresh != ChunkRefresh.NONE) {
-          replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
-          mirrorToStagedGeneration(parentId, chunkDocs);
-        }
-        if (entityDocStale && !chunkDocs.isEmpty()) {
-          partialUpdateEntity(
-              entityIndexName,
-              parentId,
-              VectorDocBuilder.legacyEmbeddingFields(chunkDocs.getFirst()));
-        }
+      if (chunkIndexWritable) {
+        refreshChunksAndEntityDoc(entity, entityIndexName, currentFingerprint, entityDocStale);
+      } else if (entityDocStale) {
+        LOG.warn(
+            "Vector chunk index unavailable; refreshing only the entity embedding for {}",
+            parentId);
+        refreshEntityDocOnly(entity, entityIndexName);
       }
     } catch (EmbeddingUnavailableException unavailable) {
       LOG.debug("Skipping embeddings for entity {}: {}", entity.getId(), unavailable.getMessage());
     } catch (Exception e) {
       LOG.error("Failed to update embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
+    }
+  }
+
+  private void refreshChunksAndEntityDoc(
+      EntityInterface<?> entity,
+      String entityIndexName,
+      String currentFingerprint,
+      boolean entityDocStale)
+      throws IOException {
+    String parentId = entity.getId().toString();
+    String chunkIndexName = getChunkIndexName();
+    ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
+    ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, header);
+    if (entityDocStale || refresh != ChunkRefresh.NONE) {
+      List<Map<String, Object>> chunkDocs =
+          refresh == ChunkRefresh.RESTAMP
+              ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
+              : VectorDocBuilder.fromEntity(entity, embeddingClient);
+      if (refresh != ChunkRefresh.NONE) {
+        replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
+        mirrorToStagedGeneration(parentId, chunkDocs);
+      }
+      if (entityDocStale && !chunkDocs.isEmpty()) {
+        partialUpdateEntity(
+            entityIndexName,
+            parentId,
+            VectorDocBuilder.legacyEmbeddingFields(chunkDocs.getFirst()));
+      }
+    }
+  }
+
+  private void refreshEntityDocOnly(EntityInterface<?> entity, String entityIndexName) {
+    List<Map<String, Object>> chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
+    if (!chunkDocs.isEmpty()) {
+      partialUpdateEntity(
+          entityIndexName,
+          entity.getId().toString(),
+          VectorDocBuilder.legacyEmbeddingFields(chunkDocs.getFirst()));
     }
   }
 
@@ -833,6 +872,11 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
           "Vector chunk index unavailable (create/upgrade failed); refusing chunk write that "
               + "would auto-create it with a non-knn mapping");
     }
+  }
+
+  private boolean isChunkIndexWritable() {
+    ensureChunkIndex();
+    return chunkIndexEnsured;
   }
 
   private void ensureChunkIndex() {
