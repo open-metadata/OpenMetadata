@@ -294,7 +294,6 @@ public class UserMetricsResourceIT {
     List<User> createdUsers = new ArrayList<>();
 
     try {
-      // Create one non-bot user and one bot user, then verify both are counted.
       String nonBotName = "ummetrics-softdelete-nonbot-" + System.nanoTime();
       User nonBot =
           usersApi.create(
@@ -326,7 +325,6 @@ public class UserMetricsResourceIT {
       int totalBefore = (Integer) beforeSoftDelete.get("total_users");
       int botsBefore = (Integer) beforeSoftDelete.get("bot_users");
 
-      // Soft-delete both created users (hardDelete=false).
       for (User u : createdUsers) {
         usersApi.delete(u.getId().toString(), Map.of("hardDelete", "false"));
       }
