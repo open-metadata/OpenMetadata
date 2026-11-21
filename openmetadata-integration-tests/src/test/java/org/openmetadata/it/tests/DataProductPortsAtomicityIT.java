@@ -52,6 +52,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -93,8 +94,7 @@ class DataProductPortsAtomicityIT {
   // The blocked bulk-port request waits on the data product row at storeEntity time, after
   // linkPorts has issued its per-port relationship writes.
   private static final List<String> BLOCK_TABLES = List.of("data_product_entity");
-  private static final int INPUT_PORT_ORDINAL =
-      org.openmetadata.schema.type.Relationship.INPUT_PORT.ordinal();
+  private static final int INPUT_PORT_ORDINAL = Relationship.INPUT_PORT.ordinal();
   private static final String EDGES_OF_INPUT_PORTS =
       """
       SELECT COUNT(*) FROM entity_relationship

@@ -21,7 +21,12 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import java.lang.reflect.Method;
 import java.util.Set;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.api.BulkAssets;
+import org.openmetadata.schema.type.api.BulkOperationResult;
+import org.openmetadata.service.security.ChangeActor;
 
 /**
  * Structural guard against re-introducing the inert-{@code @Transaction} pattern on the Data
@@ -53,10 +58,10 @@ class DataProductRepositoryTransactionTest {
         DataProductRepository.class.getDeclaredMethod(
             BULK_PORTS_OPERATION,
             String.class,
-            org.openmetadata.schema.type.api.BulkAssets.class,
-            org.openmetadata.schema.type.Relationship.class,
+            BulkAssets.class,
+            Relationship.class,
             boolean.class,
-            org.openmetadata.service.security.ChangeActor.class);
+            ChangeActor.class);
     assertFalse(
         isTransactionAnnotated(method),
         BULK_PORTS_OPERATION
@@ -78,16 +83,13 @@ class DataProductRepositoryTransactionTest {
       try {
         method =
             DataProductRepository.class.getMethod(
-                name,
-                String.class,
-                org.openmetadata.schema.type.api.BulkAssets.class,
-                org.openmetadata.service.security.ChangeActor.class);
+                name, String.class, BulkAssets.class, ChangeActor.class);
       } catch (NoSuchMethodException e) {
         fail("Missing public bulk-port entry point: %s".formatted(name));
         return;
       }
       assertEquals(
-          org.openmetadata.schema.type.api.BulkOperationResult.class,
+          BulkOperationResult.class,
           method.getReturnType(),
           "%s must return BulkOperationResult".formatted(name));
       assertFalse(
@@ -101,14 +103,13 @@ class DataProductRepositoryTransactionTest {
   @Test
   void transactionAnnotationIsResolvable() {
     assertNotNull(
-        org.jdbi.v3.sqlobject.transaction.Transaction.class,
+        Transaction.class,
         "org.jdbi.v3.sqlobject.transaction.Transaction must be resolvable for this guard");
     assertTrue(
-        org.openmetadata.schema.type.api.BulkOperationResult.class != null,
-        "BulkOperationResult schema class must be resolvable");
+        BulkOperationResult.class != null, "BulkOperationResult schema class must be resolvable");
   }
 
   private static boolean isTransactionAnnotated(Method method) {
-    return method.getAnnotation(org.jdbi.v3.sqlobject.transaction.Transaction.class) != null;
+    return method.getAnnotation(Transaction.class) != null;
   }
 }
