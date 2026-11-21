@@ -15,7 +15,7 @@ Databricks Unity Catalog Source source methods.
 import json
 import traceback
 from collections.abc import Callable, Iterable
-from functools import partial
+from functools import cached_property, partial
 from threading import RLock
 from typing import TYPE_CHECKING, Any, cast
 
@@ -205,8 +205,32 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
 
             return self._sql_connection_map[thread_id]
 
+    @cached_property
+    def _configured_catalog_name(self) -> str | None:
+        """
+        The configured catalog under the name Unity Catalog stores it with.
+
+        Unity Catalog stores names lowercase and resolves them case-insensitively, so a
+        catalog typed as `Demo` is `demo`, the name the system tables report to lineage,
+        metric-view lineage and incremental extraction. Ingested as typed, the Database
+        would never match them (ADR:2026-11-05-unity-catalog-databases-take-the-name-unity-catalog-stores).
+        """
+        configured = self.service_connection.catalog
+        if not configured:
+            return None
+        try:
+            catalog = self.client.catalogs.get(configured)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch configured catalog [%s]: %s", configured, exc)
+            return configured.lower()
+        name = catalog.name or configured.lower()
+        with self._state_lock:
+            self._catalog_cache[name] = catalog
+        return name
+
     def get_configured_database(self) -> str | None:
-        return self.service_connection.catalog
+        return self._configured_catalog_name
 
     def _iterate_listing(self, list_call: Callable[[], Iterable[Any]], listing_name: str) -> Iterable[Any]:
         """
@@ -312,16 +336,8 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
 
         Catalog ID -> Database
         """
-        if self.service_connection.catalog:
-            configured_catalog = self.service_connection.catalog
-            try:
-                logger.debug(f"Fetching configured catalog [{configured_catalog}] details to cache for later use")
-                catalog = self.client.catalogs.get(configured_catalog)
-                with self._state_lock:
-                    self._catalog_cache[configured_catalog] = catalog
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to fetch configured catalog [{configured_catalog}]: {exc}")
+        configured_catalog = self.get_configured_database()
+        if configured_catalog:
             self._set_incremental_table_processor(configured_catalog)
             yield configured_catalog
         else:

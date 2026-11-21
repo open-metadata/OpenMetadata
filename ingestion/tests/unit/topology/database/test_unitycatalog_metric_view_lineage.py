@@ -229,6 +229,23 @@ def test_source_table_refs_inherit_the_metric_view_scope(source, expected):
     assert UnitycatalogMetricViewLineage.source_table_refs(source, CATALOG, SCHEMA) == expected
 
 
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        ("Samples.TPCH.Orders", [("samples", "tpch", "orders")]),
+        ("`TPCH`.Orders", [(CATALOG, "tpch", "orders")]),
+        ("SELECT * FROM SAMPLES.TPCH.ORDERS", [("samples", "tpch", "orders")]),
+    ],
+)
+def test_source_table_refs_name_relations_as_unity_catalog_stores_them(source, expected):
+    # Unity Catalog lowercases relation names; the YAML keeps whatever case its author typed.
+    assert UnitycatalogMetricViewLineage.source_table_refs(source, CATALOG, SCHEMA) == expected
+
+
+def test_source_table_refs_keep_the_inherited_scope_as_ingested():
+    assert UnitycatalogMetricViewLineage.source_table_refs("Orders", "Demo", "Sales") == [("Demo", "Sales", "orders")]
+
+
 def test_source_table_refs_parses_a_query_source():
     references = UnitycatalogMetricViewLineage.source_table_refs(
         "SELECT * FROM samples.tpch.orders o JOIN samples.tpch.lineitem l ON o.k = l.k", CATALOG, SCHEMA

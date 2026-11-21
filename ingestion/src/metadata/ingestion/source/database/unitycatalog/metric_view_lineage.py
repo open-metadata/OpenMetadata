@@ -404,6 +404,11 @@ class UnitycatalogMetricViewLineage:
 
 def _qualify(segments: list[str], database: str, schema: str) -> list[SourceTable]:
     """Complete a 1-, 2- or 3-part relation reference with the metric view's scope."""
+    # The segments are the YAML's text, which keeps the case its author typed; Unity
+    # Catalog stores relation names lowercase and resolves them case-insensitively, so
+    # `Demo.Sales.Orders` is `demo.sales.orders`. The inherited scope is the ingested
+    # name already and is left as it is.
+    segments = [segment.lower() for segment in segments]
     if not segments:
         return []
     if len(segments) == 1:
