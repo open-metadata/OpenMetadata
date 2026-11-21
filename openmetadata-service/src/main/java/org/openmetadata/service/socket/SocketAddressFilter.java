@@ -260,9 +260,11 @@ public class SocketAddressFilter implements Filter {
     Optional<UserSession> session = sessionService.getFreshSessionById(sessionId);
     if (session.isEmpty()
         || session.get().getStatus() != SessionStatus.ACTIVE
-        || session.get().isExpired(System.currentTimeMillis())) {
+        || session.get().isExpired(System.currentTimeMillis())
+        || sessionService.isFromAnotherProvider(session.get())) {
       LOG.info(
-          "Rejecting WebSocket handshake: session {} is not active",
+          "Rejecting WebSocket handshake: session {} is not active or its provider is no longer"
+              + " configured",
           SessionService.truncateId(sessionId));
       throw new HandshakeRejectedException(
           HttpServletResponse.SC_UNAUTHORIZED, "Session is no longer active");

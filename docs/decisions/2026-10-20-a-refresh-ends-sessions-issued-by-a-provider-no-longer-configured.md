@@ -1,12 +1,18 @@
 # A refresh ends sessions issued by a provider that is no longer configured
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-20 (initial)
+- **Revisions:** v1 2026-10-20 (initial) · v2 2026-11-20 (push-feed sockets follow the rule)
 - **Deciders:** Mohit Yadav
 - **Guard:** `SessionServiceTest` (`acquireRefreshLease_revokesASessionIssuedByAProviderNoLongerConfigured`,
   `acquireRefreshLease_leasesANativePasswordSessionUnderEitherNativeProviderName`);
   `SessionProvidersTest`; `BasicAuthServletHandlerTest` and `LdapAuthServletHandlerTest`
-  (`handleRefresh_revokedSession_answersSessionRevoked`); `SsoTokenRenewalIT` (RN-16)
+  (`handleRefresh_revokedSession_answersSessionRevoked`); `SsoTokenRenewalIT` (RN-16);
+  `SocketAddressFilterTest` (`cookieHandshakeIsRejectedWhenItsSessionsProviderIsNoLongerConfigured`);
+  `WebSocketManagerTest` (`disconnectInactiveSessions_closesSocketsWhoseSessionProviderIsNoLongerConfigured`,
+  `disconnectAll_closesSessionBoundAndSessionlessSockets`); `OpenMetadataApplicationAuthReloadTest`
+  (`closeSocketsOnProviderSwitch_closesOnlyOnAProviderSwitch`,
+  `pushFeedReloadListener_closesSocketsOnlyWhenAReloadChangesTheProvider`); `SessionMultiNodeIT`
+  (`pushFeedHandshakeRejectsASessionIssuedByAProviderNoLongerConfigured`)
 - **Related:** EPIC #34298
 
 ## Context
@@ -33,3 +39,16 @@ Pods that share sessions through the database learn of a switch at their next se
 10 seconds later. In that window a refresh that lands on a pod still on the old configuration ends
 a session the new provider has just issued, and that user signs in again. Comparing the session with
 the stored setting before revoking would close the window.
+
+## Amendment
+
+v2 (2026-11-20): push-feed sockets follow the same rule (#36608). A security reload that changes
+the configured provider closes every socket on the server that applies it, with or without a
+session: a socket opened with a provider token has no session to re-check. A rename between `basic`
+and `openmetadata` closes nothing. The handshake rejects a session issued by a provider that is no
+longer configured (401), and the socket sweep closes such sockets at its next pass. None of these
+revoke the session, as `JwtFilter` does not, so a pod still on the old configuration cannot end
+sessions the new provider issued. `SessionProviders.isFromAnotherProvider` is the one predicate.
+`JwtFilter` passes its own configured provider; `SessionService.isFromAnotherProvider` passes this
+server's current one for refresh, the handshake and the sweep; and the reload compares the previous
+provider with the new one.

@@ -1033,15 +1033,11 @@ public class JwtFilter implements ContainerRequestFilter {
    * on every pod without a session sweep.
    */
   private void validateSessionProviderIsCurrent(UserSession session) {
-    String sessionProvider = session.getProvider();
-    if (nullOrEmpty(sessionProvider) || providerType == null) {
-      return;
-    }
-    if (!SessionProviders.isSameProvider(sessionProvider, providerType.value())) {
+    if (SessionProviders.isFromAnotherProvider(session.getProvider(), providerType)) {
       LOG.warn(
           "Rejecting session {} issued by provider {} — the configured provider is now {}",
           SessionService.truncateId(session.getId()),
-          sessionProvider,
+          session.getProvider(),
           providerType.value());
       throw AuthenticationException.getInvalidTokenException(
           "Session was issued by a provider that is no longer configured.");
