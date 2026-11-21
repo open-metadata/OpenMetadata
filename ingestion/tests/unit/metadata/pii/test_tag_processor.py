@@ -19,6 +19,9 @@ import pytest
 from dirty_equals import Contains, HasAttributes, IsFloat, IsInstance, IsUUID
 from presidio_analyzer.nlp_engine import NlpEngine
 
+from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.classification import (
+    ClassificationFactory,
+)
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.tag import (
     TagFactory,
 )
@@ -944,15 +947,47 @@ class TestFilterTagsToAnalyzeNestedFqns:
 
         assert self._fqns(result) == []
 
+    def test_glossary_term_does_not_block_same_named_me_classification(
+        self,
+        processor: TagProcessor,
+        pii_classification: Classification,
+    ) -> None:
+        """A glossary term whose FQN shares the classification name (e.g.
+        ``PII.Customer.Email`` under a glossary named ``PII``) must NOT occupy
+        the mutually-exclusive ``PII`` classification: candidates from ``PII``
+        are still analyzed. Only Classification-sourced labels reserve a
+        classification; glossary terms merely share the FQN string form."""
+        personal = TagFactory.create(tag_name="Personal", tag_classification=pii_classification)
+
+        column = Column(
+            name=ColumnName(root="customer_col"),
+            fullyQualifiedName="svc.db.schema.table.customer_col",
+            dataType=DataType.VARCHAR,
+            tags=[
+                TagLabel(
+                    tagFQN="PII.Customer.Email",
+                    state=State.Confirmed,
+                    source=TagSource.Glossary,
+                    labelType=LabelType.Manual,
+                ),
+            ],
+        )
+
+        result = processor.filter_tags_to_analyze(column, [personal])
+
+        assert self._fqns(result) == ["PII.Personal"]
+
 
 class TestClassificationFqnResolution:
     """Pin ``_classification_fqn_from_tag_fqn`` for dot-quoted and edge-case FQNs.
 
     The helper resolves a tag's owning classification as the FIRST quote-aware
-    FQN segment (the classification root). The flat/nested ``PII`` cases are
-    covered end-to-end by ``TestFilterTagsToAnalyzeNestedFqns``; this class pins
-    the two shapes that the filter tests do not exercise: the dot-quoted
-    classification name (``\"My.PII\".Email`` -> ``My.PII``) where the
+    FQN segment (the classification root), returned verbatim (quotes intact)
+    so it matches the ``classification_map`` key form
+    (``classification.fullyQualifiedName.root``). The flat/nested ``PII`` cases
+    are covered end-to-end by ``TestFilterTagsToAnalyzeNestedFqns``; this class
+    pins the two shapes that the filter tests do not exercise: the dot-quoted
+    classification name (``\"My.PII\".Email`` -> ``\"My.PII\"``) where the
     classification name itself contains a dot and is stored quoted in the FQN,
     and the malformed/empty inputs that must degrade to ``None`` rather than
     raise, matching the original ``rsplit``-based code's non-crashing behavior.
@@ -961,8 +996,8 @@ class TestClassificationFqnResolution:
     @pytest.mark.parametrize(
         "tag_fqn, expected",
         [
-            ('"My.PII".Email', "My.PII"),
-            ('"My.PII".Sensitive.Email', "My.PII"),
+            ('"My.PII".Email', '"My.PII"'),
+            ('"My.PII".Sensitive.Email', '"My.PII"'),
             ("PII", None),
             ("", None),
             (None, None),
@@ -972,3 +1007,109 @@ class TestClassificationFqnResolution:
         from metadata.pii.tag_processor import _classification_fqn_from_tag_fqn
 
         assert _classification_fqn_from_tag_fqn(tag_fqn) == expected
+
+
+class TestFilterTagsToAnalyzeQuotedClassificationFqn:
+    """Filter-level coverage for classifications whose names contain a dot.
+
+    The server stores such a classification's FQN quoted, e.g. ``"My.PII"``,
+    and tags under it carry the quoted first segment in their FQN
+    (``"My.PII".Email``). The mutually-exclusive guard must resolve the owning
+    classification preserving the quotes so the ``classification_map`` lookup
+    (keyed by ``classification.fullyQualifiedName.root``) hits; the earlier
+    ``unquote_name``-based version returned ``My.PII`` and the lookup silently
+    missed, so conflicting candidates stayed eligible.
+    """
+
+    @staticmethod
+    def _processor_with(classification: Classification) -> TagProcessor:
+        server_config = OpenMetadataConnection(
+            hostPort="http://localhost:8585/api",
+            authProvider="openmetadata",
+            securityConfig=OpenMetadataJWTClientConfig(jwtToken="test_token"),
+        )
+        config = OpenMetadataWorkflowConfig(
+            source=Source(
+                type="mysql",
+                serviceName="test",
+                sourceConfig=SourceConfig(
+                    config=DatabaseServiceAutoClassificationPipeline(
+                        confidence=85,
+                        enableAutoClassification=True,
+                    )
+                ),
+            ),
+            workflowConfig=WorkflowConfig(openMetadataServerConfig=server_config),
+        )
+        manager = FakeClassificationManager((classification, []))
+        return TagProcessor(
+            config=config,
+            metadata=Mock(spec=OpenMetadata),
+            classification_manager=manager,
+            score_tags_for_column=lambda *args, **kwargs: [],
+        )
+
+    @staticmethod
+    def _column_with_classification_tags(*tag_fqns: str) -> Column:
+        return Column(
+            name=ColumnName(root="customer_col"),
+            fullyQualifiedName="svc.db.schema.table.customer_col",
+            dataType=DataType.VARCHAR,
+            tags=[
+                TagLabel(
+                    tagFQN=fqn,
+                    state=State.Confirmed,
+                    source=TagSource.Classification,
+                    labelType=LabelType.Manual,
+                )
+                for fqn in tag_fqns
+            ],
+        )
+
+    def test_quoted_classification_existing_tag_blocks_candidates(self) -> None:
+        """An existing tag under a dot-named mutually-exclusive classification
+        (``"My.PII"``) blocks every candidate from that classification,
+        including nested candidates."""
+        dotted = ClassificationFactory.create(
+            fqn='"My.PII"',
+            mutuallyExclusive=True,
+            autoClassificationConfig__enabled=True,
+            autoClassificationConfig__minimumConfidence=0.7,
+        )
+        processor = self._processor_with(dotted)
+
+        email = TagFactory.create(tag_name="Email", tag_classification=dotted)
+        personal = TagFactory.create(tag_name="Personal", tag_classification=dotted)
+        nested = TagFactory.create(tag_name="Sensitive.Email", tag_classification=dotted)
+
+        assert email.fullyQualifiedName == '"My.PII".Email'
+        assert nested.fullyQualifiedName == '"My.PII".Sensitive.Email'
+
+        column = self._column_with_classification_tags('"My.PII".Sensitive')
+
+        result = processor.filter_tags_to_analyze(column, [email, personal, nested])
+
+        assert [tag.fullyQualifiedName for tag in result] == []
+
+    def test_quoted_classification_candidate_passes_without_existing_tag(self) -> None:
+        """With no existing tag under a dot-named classification, candidates
+        (flat and nested) pass through the filter untouched."""
+        dotted = ClassificationFactory.create(
+            fqn='"My.PII"',
+            mutuallyExclusive=True,
+            autoClassificationConfig__enabled=True,
+            autoClassificationConfig__minimumConfidence=0.7,
+        )
+        processor = self._processor_with(dotted)
+
+        email = TagFactory.create(tag_name="Email", tag_classification=dotted)
+        nested = TagFactory.create(tag_name="Sensitive.Email", tag_classification=dotted)
+
+        column = self._column_with_classification_tags()
+
+        result = processor.filter_tags_to_analyze(column, [email, nested])
+
+        assert [tag.fullyQualifiedName for tag in result] == [
+            '"My.PII".Email',
+            '"My.PII".Sensitive.Email',
+        ]

@@ -26,7 +26,7 @@ from metadata.pii.classification_manager import (
 )
 from metadata.pii.conflict_resolver import ConflictResolver
 from metadata.pii.models import ScoredTag
-from metadata.utils.fqn import split_raw_name, unquote_name
+from metadata.utils.fqn import split_raw_name
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -45,13 +45,20 @@ def _classification_fqn_from_tag_fqn(tag_fqn: str | None) -> str | None:
     silently misses. Splitting quote-aware (so classification names that
     contain a dot, stored quoted in the FQN, are handled) and taking the
     first segment resolves the classification for tags at any depth.
+
+    The first segment is returned verbatim (with its quotes intact) so it
+    matches the key form used in ``classification_map`` (the classification
+    ``fullyQualifiedName.root``): a classification named ``My.PII`` is stored
+    by the server as the quoted FQN ``"My.PII"``, and an existing tag under
+    it carries the quoted first segment ``"My.PII"`` in its FQN. Unquoting
+    here would yield ``My.PII`` and make the lookup miss.
     """
     if not tag_fqn or "." not in tag_fqn:
         return None
     segments = split_raw_name(tag_fqn)
     if not segments:
         return None
-    return unquote_name(segments[0]) or None
+    return segments[0] or None
 
 
 def _classification_fqn_from_tag(tag: Tag) -> str | None:
@@ -151,6 +158,17 @@ class TagProcessor(AutoClassificationProcessor):
         """
         existing_tag_fqns = {tag.tagFQN.root for tag in (column.tags or []) if tag.tagFQN}
 
+        # Only Classification-sourced labels can occupy a mutually-exclusive
+        # classification. Glossary terms (TagSource.Glossary) may share the
+        # FQN string form with a classification tag (e.g. a glossary named
+        # "PII" with the nested term "Customer.Email" yields FQN
+        # "PII.Customer.Email"), but they do not reserve the classification;
+        # including them would falsely mark a same-named mutually-exclusive
+        # classification as occupied and skip all its candidates.
+        existing_classification_tag_fqns = {
+            tag.tagFQN.root for tag in (column.tags or []) if tag.tagFQN and tag.source == TagSource.Classification
+        }
+
         # Build classification lookup map keyed by classification FQN. A tag's
         # classification is the FIRST segment of its FQN (the classification
         # root), not the prefix before the last dot: ``rsplit(".", 1)`` only
@@ -164,7 +182,7 @@ class TagProcessor(AutoClassificationProcessor):
 
         # Identify mutually exclusive classifications that already have tags applied
         mutually_exclusive_classifications_with_tags = set()
-        for existing_tag_fqn in existing_tag_fqns:
+        for existing_tag_fqn in existing_classification_tag_fqns:
             classification_fqn = _classification_fqn_from_tag_fqn(existing_tag_fqn)
             if classification_fqn is None:
                 continue
