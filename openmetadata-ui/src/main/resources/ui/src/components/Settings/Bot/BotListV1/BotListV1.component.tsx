@@ -356,10 +356,6 @@ const BotListV1 = ({
     cursorType,
   }: PagingHandlerParams) => {
     if (cursorType) {
-      fetchBots(false, {
-        [cursorType]: paging[cursorType],
-        total: paging.total,
-      } as Paging);
       handlePageChange(
         currentPage,
         { cursorType, cursorValue: paging[cursorType] },
