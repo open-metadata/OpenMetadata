@@ -1,29 +1,31 @@
 package org.openmetadata.sdk.fluent.builders;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.List;
-import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.services.dataassets.DashboardDataModelService;
+import org.openmetadata.sdk.config.OpenMetadataConfig;
 
 /**
  * Regression coverage for the bug introduced in commit {@code bb1395fc72} (PR #23239) where {@link
@@ -34,31 +36,47 @@ import org.openmetadata.sdk.services.dataassets.DashboardDataModelService;
  * The fix posts the {@code CreateDashboardDataModel} request directly and exposes setters for the
  * required fields, mirroring {@code TableBuilder}, {@code DatabaseBuilder}, {@code UserBuilder}
  * and the pure-fluent {@code DashboardDataModels.DashboardDataModelCreator}.
+ *
+ * <p>The builder is driven through a real {@link OpenMetadataClient} (and therefore a real {@link
+ * org.openmetadata.sdk.services.dataassets.DashboardDataModelService}) pointed at a stub HTTP
+ * server, so the assertions check the request that actually crosses the wire — the method, path
+ * and body — rather than mock wiring against internal classes.
  */
 class DashboardDataModelBuilderTest {
 
+  private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String NAME = "dm_test";
   private static final String SERVICE = "superset";
   private static final DataModelType MODEL_TYPE = DataModelType.SupersetDataModel;
   private static final List<Column> COLUMNS =
       List.of(new Column().withName("id").withDataType(ColumnDataType.INT));
+  private static final String EXPECTED_PATH = "/api/v1/dashboard/datamodels";
 
-  private static OpenMetadataClient mockClient() {
-    OpenMetadataClient client = mock(OpenMetadataClient.class);
-    DashboardDataModelService service = mock(DashboardDataModelService.class);
-    when(client.dashboardDataModels()).thenReturn(service);
-    return client;
+  private HttpServer server;
+  private OpenMetadataClient client;
+  private final Deque<ReceivedRequest> received = new ArrayDeque<>();
+  private String responseBody = "{}";
+
+  @BeforeEach
+  void startServer() throws IOException {
+    server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext("/api/", this::respond);
+    server.start();
+    client =
+        new OpenMetadataClient(
+            OpenMetadataConfig.builder()
+                .baseUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/api")
+                .build());
+  }
+
+  @AfterEach
+  void stopServer() {
+    server.stop(0);
   }
 
   @Test
-  void createPostsCreateDashboardDataModelRequestNotEntity() {
-    OpenMetadataClient client = mockClient();
-    DashboardDataModelService service = client.dashboardDataModels();
-
-    DashboardDataModel expected = new DashboardDataModel();
-    expected.setId(UUID.randomUUID());
-    expected.setName(NAME);
-    when(service.create(any(CreateDashboardDataModel.class))).thenReturn(expected);
+  void createPostsCreateDashboardDataModelRequestNotEntity() throws IOException {
+    responseBody = "{\"name\":\"" + NAME + "\"}";
 
     DashboardDataModel result =
         new DashboardDataModelBuilder(client)
@@ -70,37 +88,27 @@ class DashboardDataModelBuilderTest {
             .columns(COLUMNS)
             .create();
 
-    assertSame(expected, result);
-
     // The Create.Create* overload must be invoked (the old buggy code called the entity-level
     // create(DashboardDataModel) overload inherited from EntityServiceBase, dropping required
-    // fields). Capture and assert the request carries every required field.
-    ArgumentCaptor<CreateDashboardDataModel> captor =
-        ArgumentCaptor.forClass(CreateDashboardDataModel.class);
-    verify(service).create(captor.capture());
+    // fields). The request that crosses the wire must carry every required field.
+    assertEquals(NAME, result.getName());
+    ReceivedRequest sent = received.remove();
+    assertEquals("POST", sent.method());
+    assertEquals(EXPECTED_PATH, sent.path());
 
-    CreateDashboardDataModel posted = captor.getValue();
-    assertInstanceOf(CreateDashboardDataModel.class, posted);
-    assertEquals(NAME, posted.getName());
-    assertEquals(SERVICE, posted.getService());
-    assertEquals(MODEL_TYPE, posted.getDataModelType());
-    assertEquals(COLUMNS, posted.getColumns());
-    assertEquals("A test data model", posted.getDescription());
-    assertEquals("Dm Test", posted.getDisplayName());
-
-    // The entity-level overload must never be invoked.
-    verify(service, never()).create(any(DashboardDataModel.class));
+    JsonNode body = MAPPER.readTree(sent.body());
+    assertEquals(NAME, body.get("name").asText());
+    assertEquals(SERVICE, body.get("service").asText());
+    assertEquals(MODEL_TYPE.value(), body.get("dataModelType").asText());
+    assertEquals(1, body.get("columns").size());
+    assertEquals("id", body.get("columns").get(0).get("name").asText());
+    assertEquals("A test data model", body.get("description").asText());
+    assertEquals("Dm Test", body.get("displayName").asText());
   }
 
   @Test
-  void createOrUpdateUpsertsCreateDashboardDataModelRequestNotEntity() {
-    OpenMetadataClient client = mockClient();
-    DashboardDataModelService service = client.dashboardDataModels();
-
-    DashboardDataModel expected = new DashboardDataModel();
-    expected.setId(UUID.randomUUID());
-    expected.setName(NAME);
-    when(service.upsert(any(CreateDashboardDataModel.class))).thenReturn(expected);
+  void createOrUpdateUpsertsCreateDashboardDataModelRequestNotEntity() throws IOException {
+    responseBody = "{\"name\":\"" + NAME + "\"}";
 
     DashboardDataModel result =
         new DashboardDataModelBuilder(client)
@@ -110,28 +118,21 @@ class DashboardDataModelBuilderTest {
             .columns(COLUMNS)
             .createOrUpdate();
 
-    assertSame(expected, result);
+    assertEquals(NAME, result.getName());
+    ReceivedRequest sent = received.remove();
+    assertEquals("PUT", sent.method());
+    assertEquals(EXPECTED_PATH, sent.path());
 
-    ArgumentCaptor<CreateDashboardDataModel> captor =
-        ArgumentCaptor.forClass(CreateDashboardDataModel.class);
-    verify(service).upsert(captor.capture());
-
-    CreateDashboardDataModel posted = captor.getValue();
-    assertInstanceOf(CreateDashboardDataModel.class, posted);
-    assertEquals(NAME, posted.getName());
-    assertEquals(SERVICE, posted.getService());
-    assertEquals(MODEL_TYPE, posted.getDataModelType());
-    assertEquals(COLUMNS, posted.getColumns());
-
-    // The entity-level upsert(T) must never be invoked.
-    verify(service, never()).upsert(any(DashboardDataModel.class));
+    JsonNode body = MAPPER.readTree(sent.body());
+    assertEquals(NAME, body.get("name").asText());
+    assertEquals(SERVICE, body.get("service").asText());
+    assertEquals(MODEL_TYPE.value(), body.get("dataModelType").asText());
+    assertEquals(1, body.get("columns").size());
   }
 
   @Test
-  void createPostsTheExactRequestReturnedByBuild() {
-    OpenMetadataClient client = mockClient();
-    DashboardDataModelService service = client.dashboardDataModels();
-    when(service.create(any(CreateDashboardDataModel.class))).thenReturn(new DashboardDataModel());
+  void createPostsTheExactRequestReturnedByBuild() throws IOException {
+    responseBody = "{}";
 
     DashboardDataModelBuilder builder =
         new DashboardDataModelBuilder(client)
@@ -143,10 +144,10 @@ class DashboardDataModelBuilderTest {
     CreateDashboardDataModel built = builder.build();
     builder.create();
 
-    ArgumentCaptor<CreateDashboardDataModel> captor =
-        ArgumentCaptor.forClass(CreateDashboardDataModel.class);
-    verify(service).create(captor.capture());
-    assertSame(built, captor.getValue());
+    ReceivedRequest sent = received.remove();
+    assertEquals("POST", sent.method());
+    assertEquals(EXPECTED_PATH, sent.path());
+    assertEquals(MAPPER.writeValueAsString(built), sent.body());
   }
 
   @Test
@@ -233,17 +234,14 @@ class DashboardDataModelBuilderTest {
 
   @Test
   void createValidatesRequiredFieldsBeforeCallingTheService() {
-    // With a real (mocked) client, build() must reject a missing required field before the
-    // service is invoked, so the builder surfaces a clear error rather than a doomed HTTP call.
-    OpenMetadataClient client = mockClient();
-    DashboardDataModelService service = client.dashboardDataModels();
-
+    // build() must reject a missing required field before the request reaches the wire, so the
+    // builder surfaces a clear error rather than a doomed HTTP call.
     IllegalStateException ex =
         assertThrows(
             IllegalStateException.class,
             () -> new DashboardDataModelBuilder(client).name(NAME).create());
     assertEquals("DashboardDataModel service is required", ex.getMessage());
-    verifyNoInteractions(service);
+    assertTrue(received.isEmpty(), "no HTTP request should have been sent");
   }
 
   @Test
@@ -259,4 +257,20 @@ class DashboardDataModelBuilderTest {
     assertNotNull(request.getColumns());
     assertNull(request.getExtension());
   }
+
+  private void respond(HttpExchange exchange) throws IOException {
+    received.add(
+        new ReceivedRequest(
+            exchange.getRequestMethod(),
+            exchange.getRequestURI().getPath(),
+            new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)));
+    byte[] bytes = responseBody.getBytes(StandardCharsets.UTF_8);
+    exchange.getResponseHeaders().add("Content-Type", "application/json");
+    exchange.sendResponseHeaders(200, bytes.length);
+    try (exchange) {
+      exchange.getResponseBody().write(bytes);
+    }
+  }
+
+  private record ReceivedRequest(String method, String path, String body) {}
 }
