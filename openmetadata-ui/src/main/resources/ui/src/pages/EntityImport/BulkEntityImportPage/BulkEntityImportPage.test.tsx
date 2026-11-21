@@ -1593,6 +1593,9 @@ describe('BulkEntityImportPage', () => {
             <span data-testid="active-step-prop">
               {props.activeStep as number}
             </span>
+            <span data-testid="is-validating-prop">
+              {props.isValidating ? 'true' : 'false'}
+            </span>
             {(props.validationData as { abortReason?: string })
               ?.abortReason && (
               <span data-testid="abort-reason-prop">
@@ -1658,6 +1661,14 @@ describe('BulkEntityImportPage', () => {
 
         expect(lastCall?.[0].activeAsyncImportJob?.jobId).toBe('test-job-id');
       });
+
+      // The footer buttons gate on `isValidating`, so it must be true while the
+      // async validation job is in flight (i.e. before the COMPLETED frame).
+      await waitFor(() => {
+        expect(screen.getByTestId('is-validating-prop')).toHaveTextContent(
+          'true'
+        );
+      });
     };
 
     it('keeps the grid mounted on EDIT_VALIDATE and surfaces the abort reason when a bulk-edit validation is aborted', async () => {
@@ -1687,6 +1698,12 @@ describe('BulkEntityImportPage', () => {
       expect(screen.getByTestId('abort-reason-prop')).toHaveTextContent(
         abortedResult.abortReason
       );
+
+      // The completion handler must clear `isValidating` so the footer cancel/
+      // validate buttons are reusable after an abort.
+      expect(screen.getByTestId('is-validating-prop')).toHaveTextContent(
+        'false'
+      );
     });
 
     it('keeps the grid mounted when a bulk-edit validation fails before processing any rows', async () => {
@@ -1708,6 +1725,11 @@ describe('BulkEntityImportPage', () => {
       });
 
       expect(screen.getByTestId('active-step-prop')).toHaveTextContent('1');
+
+      // Empty-failure also clears `isValidating` so the footer recovers.
+      expect(screen.getByTestId('is-validating-prop')).toHaveTextContent(
+        'false'
+      );
     });
 
     it('still resets to the upload step when the import wizard (non-bulk-edit) validation is aborted', async () => {
