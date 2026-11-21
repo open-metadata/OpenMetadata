@@ -898,10 +898,27 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   @Test
   void softDeletedFailedTestIsExcludedFromSuiteDetailAndSearchList(TestNamespace ns)
       throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Table table = createTableForBasicTestSuite(ns, "soft_deleted_failure");
-    List<TestCase> testCases = createTestCases(client, ns, table, 2);
-    TestSuite suite =
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final SoftDeletedResultFixture fixture = createSoftDeletedResultFixture(client, ns);
+    final TestSuite before = client.testSuites().get(fixture.suite().getId().toString(), "summary");
+    assertEquals(1, before.getSummary().getFailed());
+
+    client.testCases().delete(fixture.failedCase().getId().toString());
+
+    assertOnlyActiveSuccessfulResults(
+        client.testSuites().get(fixture.suite().getId().toString(), "summary"));
+    Awaitility.await("deleted failing case is absent from suite list summary")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> assertOnlyActiveSuccessfulResults(searchTestSuite(client, fixture.suite())));
+  }
+
+  private SoftDeletedResultFixture createSoftDeletedResultFixture(
+      OpenMetadataClient client, TestNamespace ns) throws Exception {
+    final Table table = createTableForBasicTestSuite(ns, "soft_deleted_failure");
+    final List<TestCase> testCases = createTestCases(client, ns, table, 2);
+    final TestSuite suite =
         createEntity(
             new CreateTestSuite()
                 .withName(ns.prefix("suite_soft_deleted_failure"))
@@ -909,30 +926,17 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     addTestCasesToLogicalTestSuite(
         suite.getId(), testCases.stream().map(TestCase::getId).toList());
     recordTestCaseResults(client, testCases, 1, 1);
-
-    TestSuite before = client.testSuites().get(suite.getId().toString(), "summary");
-    assertEquals(1, before.getSummary().getFailed());
-
-    client.testCases().delete(testCases.get(1).getId().toString());
-
-    TestSuite after = client.testSuites().get(suite.getId().toString(), "summary");
-    assertEquals(0, after.getSummary().getFailed());
-    assertEquals(1, after.getSummary().getSuccess());
-    assertEquals(1, after.getSummary().getTotal());
-    assertEquals(1, after.getTestCaseResultSummary().size());
-
-    Awaitility.await("deleted failing case is absent from suite list summary")
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(2))
-        .untilAsserted(
-            () -> {
-              TestSuite listed = searchTestSuite(client, suite);
-              assertEquals(0, listed.getSummary().getFailed());
-              assertEquals(1, listed.getSummary().getSuccess());
-              assertEquals(1, listed.getSummary().getTotal());
-              assertEquals(1, listed.getTestCaseResultSummary().size());
-            });
+    return new SoftDeletedResultFixture(suite, testCases.get(1));
   }
+
+  private static void assertOnlyActiveSuccessfulResults(final TestSuite suite) {
+    assertEquals(0, suite.getSummary().getFailed());
+    assertEquals(1, suite.getSummary().getSuccess());
+    assertEquals(1, suite.getSummary().getTotal());
+    assertEquals(1, suite.getTestCaseResultSummary().size());
+  }
+
+  private record SoftDeletedResultFixture(TestSuite suite, TestCase failedCase) {}
 
   @Test
   void test_addTestCasesToBasicTestSuite_400(TestNamespace ns) {
