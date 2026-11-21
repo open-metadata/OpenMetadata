@@ -211,7 +211,7 @@ public class TeamDefaultPersonaIT {
         defaultPersonaChange,
         "defaultPersona must appear in the PATCH's recorded fieldsAdded; was: "
             + change.getFieldsAdded());
-    String recordedNewValue = defaultPersonaChange.getNewValue();
+    String recordedNewValue = (String) defaultPersonaChange.getNewValue();
     assertNotNull(recordedNewValue, "recorded defaultPersona newValue must not be null");
     EntityReference recordedRef = JsonUtils.readValue(recordedNewValue, EntityReference.class);
     assertNotNull(
