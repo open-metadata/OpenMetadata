@@ -1663,6 +1663,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   /**
    * Realtime {@code _mget} of {@code sourceFields} for {@code ids}, keyed by document id. Ids with
    * no stored document are absent. One attempt, like the by-id reads around it.
+   *
+   * <p>Naming the fields is what brings a stored vector back on Elasticsearch, which leaves a
+   * {@code dense_vector} out of {@code _source} unless the request asks for it.
    */
   private Map<String, JsonNode> multiGetSources(
       String indexName, List<String> ids, List<String> sourceFields) throws IOException {
