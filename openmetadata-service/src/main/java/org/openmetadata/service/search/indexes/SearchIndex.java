@@ -328,7 +328,7 @@ public interface SearchIndex {
   static Map<UUID, List<EsLineageData>> prefetchLineageIfSupported(
       String entityType, List<? extends EntityInterface<?>> entities) {
     Map<UUID, List<EsLineageData>> result = null;
-    if (!nullOrEmpty(entities) && supportsLineagePrefetch(entityType)) {
+    if (!nullOrEmpty(entities) && carriesLineage(entityType)) {
       Map<UUID, List<EsLineageData>> prefetched = prefetchUpstreamLineage(entities);
       if (!prefetched.isEmpty()) {
         result = prefetched;
@@ -370,8 +370,11 @@ public interface SearchIndex {
    * <p>Only successful probes are memoized into {@link #LINEAGE_PREFETCH_SUPPORT_CACHE}; if the
    * probe fails (e.g. transient class-init issue during startup, mocked Entity in tests) we
    * return {@code false} without caching so a subsequent call retries.
+   *
+   * <p>Its documents carry {@code upstreamLineage}, which the lineage views read, so it also tells
+   * which types can be an end of the lineage they show.
    */
-  private static boolean supportsLineagePrefetch(String entityType) {
+  static boolean carriesLineage(String entityType) {
     Boolean cached = LINEAGE_PREFETCH_SUPPORT_CACHE.getIfPresent(entityType);
     if (cached == null) {
       cached = probeLineagePrefetchSupport(entityType);

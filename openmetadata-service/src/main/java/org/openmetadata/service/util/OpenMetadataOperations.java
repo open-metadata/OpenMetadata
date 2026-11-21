@@ -131,6 +131,7 @@ import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
+import org.openmetadata.service.migration.utils.v210.DomainLineageRebuild;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
@@ -1582,6 +1583,31 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to cleanup orphaned tag usages due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(
+      name = "rebuild-domain-lineage",
+      description =
+          "Recounts every domain lineage edge from the asset lineage it stands for, as the 2.1.0"
+              + " migration does. It overwrites the counts, so pause lineage and domain writes"
+              + " (ingestion, the lineage API, domain and data product edits, CSV imports) or stop"
+              + " the server while it runs; it scans all of entity_relationship, so its run time"
+              + " grows with that table. Then run `reindex --entities=domain,dataProduct`.")
+  public Integer rebuildDomainLineage() {
+    try {
+      parseConfig();
+      Map<DomainLineageRebuild.Change, Long> changes = DomainLineageRebuild.rebuild(collectionDAO);
+      printToAsciiTable(
+          List.of("Change", "Domain pairs"),
+          changes.entrySet().stream()
+              .map(change -> List.of(change.getKey().name(), String.valueOf(change.getValue())))
+              .toList(),
+          "No domain lineage edge exists or is due.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to rebuild domain lineage due to ", e);
       return 1;
     }
   }

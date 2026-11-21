@@ -938,3 +938,27 @@ ALTER TABLE mcp_pending_auth_requests
 ALTER TABLE context_file ADD COLUMN IF NOT EXISTS visibility VARCHAR(16)
     GENERATED ALWAYS AS (json -> 'shareConfig' ->> 'visibility') STORED;
 CREATE INDEX IF NOT EXISTS idx_context_file_visibility ON context_file (visibility);
+
+-- A container's domain change finds its lineage-bearing descendants with `fqnHash LIKE 'hash.%'`
+-- (ADR:2026-11-20-a-domain-lineage-edge-counts-the-edges-its-domains-assets-hold-in-effect). The
+-- default-opclass unique index cannot serve that under a non-C collation, so these four tables,
+-- left out of the 1.13.0 *_fqnhash_pattern set, would be seq-scanned on every such write.
+-- text_pattern_ops for the reason given there. MySQL's ascii_bin fqnHash already serves the prefix.
+--
+-- OPERATOR RUNBOOK: an interrupted CONCURRENTLY build leaves an INVALID index that IF NOT EXISTS
+-- then skips. Detect and remediate as for the 1.13.0 indexes:
+--   SELECT c.relname FROM pg_class c
+--    JOIN pg_index i ON i.indexrelid = c.oid
+--    WHERE NOT i.indisvalid AND c.relname LIKE 'idx\_%\_fqnhash\_pattern' ESCAPE '\';
+--   DROP INDEX CONCURRENTLY <relname>;
+--   DELETE FROM server_migration_sql_logs
+--    WHERE version = '2.1.0'
+--      AND sqlstatement LIKE '%<relname>%';
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_stored_procedure_entity_fqnhash_pattern
+    ON stored_procedure_entity (fqnHash text_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_pipeline_entity_fqnhash_pattern
+    ON pipeline_entity (fqnHash text_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_llm_model_entity_fqnhash_pattern
+    ON llm_model_entity (fqnHash text_pattern_ops);
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_mcp_server_entity_fqnhash_pattern
+    ON mcp_server_entity (fqnHash text_pattern_ops);
