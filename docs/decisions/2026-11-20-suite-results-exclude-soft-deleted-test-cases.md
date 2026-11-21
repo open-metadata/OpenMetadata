@@ -1,7 +1,10 @@
 # Test-suite summaries exclude soft-deleted test cases
 
-Date: 2026-11-20
-Status: Proposed (PR #38250, Issue #38228)
+- **Status:** Accepted
+- **Revisions:** v1 2026-11-20 (initial)
+- **Deciders:** OpenMetadata contributors (PR #38250)
+- **Guard:** TestSuiteResourceIT.softDeletedFailedTestIsExcludedFromSuiteDetailAndSearchList and TestSuiteRepositoryTest.softDeletedFailingCaseDoesNotAffectInMemorySuiteSummary
+- **Related:** Issue #38228, PR #38250
 
 ## Context
 
@@ -23,7 +26,7 @@ the suite summary and downstream alert/completion processing.
   Restoring a test case makes its persisted results visible again without
   requiring new ingestion or duplicating historical rows.
 
-## Consequences and verification
+## Consequences
 
 Existing persisted history remains untouched. Current suite summaries and
 completion alerts no longer report deleted tests as active failures. Database-
