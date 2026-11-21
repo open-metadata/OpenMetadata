@@ -115,6 +115,26 @@ Here are the step-by-step instructions for finding the account name for an Azure
 4. You can use this account name to access and manage the resources associated with the account, such as creating and managing containers and directories.
 $$
 
+$$section
+### Endpoint Suffix $(id="endpointSuffix")
+
+DNS suffix for Azure Storage and Key Vault endpoints. Defaults to `core.windows.net` (Azure Commercial).
+
+Common values:
+- `core.windows.net`: Azure Commercial Cloud (default)
+- `core.usgovcloudapi.net`: Azure US Government
+- `core.chinacloudapi.cn`: Microsoft Azure operated by 21Vianet (China)
+- Custom multi-label sovereign or Azure Stack DNS suffix (for example, `core.customcloud.local`)
+$$
+
+$$section
+### Authority Host $(id="authority")
+
+Optional Microsoft Entra ID (Azure AD) authority host or HTTPS origin used for token acquisition (for example, `login.microsoftonline.us` or `https://login.microsoftonline.us`).
+
+When omitted, OpenMetadata automatically derives the authority host from **Endpoint Suffix** (`https://login.microsoftonline.us` for `core.usgovcloudapi.net`, `https://login.chinacloudapi.cn` for `core.chinacloudapi.cn`, and Azure Commercial defaults for `core.windows.net`). Specify this field when connecting to Azure Stack Hub or air-gapped sovereign clouds with a custom Entra authority.
+$$
+
 ## GCS
 
 $$section

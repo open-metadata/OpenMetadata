@@ -23,6 +23,7 @@ from metadata.generated.schema.entity.services.connections.database.datalake.azu
     AzureConfig,
 )
 from metadata.ingestion.source.database.datalake.clients.base import DatalakeBaseClient
+from metadata.readers.file.adls import release_azure_filesystems
 from metadata.utils.constants import DEFAULT_DATABASE
 from metadata.utils.logger import ingestion_logger
 
@@ -74,7 +75,15 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
             yield file.name, getattr(file, "size", None)
 
     def close(self, service_connection):
-        self._client.close()
+        credential = self._client.credential
+        try:
+            self._client.close()
+        finally:
+            if credential is not None:
+                try:
+                    release_azure_filesystems(credential)
+                finally:
+                    credential.close()
 
     def get_test_list_buckets_fn(self, bucket_name: str | None) -> Callable:
         if bucket_name:

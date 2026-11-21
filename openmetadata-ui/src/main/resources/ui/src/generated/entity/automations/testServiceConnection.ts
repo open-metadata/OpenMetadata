@@ -3192,6 +3192,13 @@ export interface AzureCredentials {
      */
     accountName?: string;
     /**
+     * Optional Microsoft Entra ID (Azure AD) authority host override (for example,
+     * 'https://login.microsoftonline.us' for Azure US Government or
+     * 'https://login.chinacloudapi.cn' for Azure China). Automatically inferred from
+     * endpointSuffix when omitted.
+     */
+    authority?: string;
+    /**
      * Your Service Principal App ID (Client ID)
      */
     clientId?: string;
@@ -3199,6 +3206,12 @@ export interface AzureCredentials {
      * Your Service Principal Password (Client Secret)
      */
     clientSecret?: string;
+    /**
+     * DNS suffix for Azure Storage endpoints. Use 'core.windows.net' for Azure Commercial
+     * (default), 'core.usgovcloudapi.net' for Azure US Government, 'core.chinacloudapi.cn' for
+     * Azure China, or a custom sovereign/private DNS suffix.
+     */
+    endpointSuffix?: string;
     /**
      * Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default
      */
@@ -3773,6 +3786,13 @@ export interface DataLakeConfigurationSource {
      */
     accountName?: string;
     /**
+     * Optional Microsoft Entra ID (Azure AD) authority host override (for example,
+     * 'https://login.microsoftonline.us' for Azure US Government or
+     * 'https://login.chinacloudapi.cn' for Azure China). Automatically inferred from
+     * endpointSuffix when omitted.
+     */
+    authority?: string;
+    /**
      * Your Service Principal App ID (Client ID)
      */
     clientId?: string;
@@ -3780,6 +3800,12 @@ export interface DataLakeConfigurationSource {
      * Your Service Principal Password (Client Secret)
      */
     clientSecret?: string;
+    /**
+     * DNS suffix for Azure Storage endpoints. Use 'core.windows.net' for Azure Commercial
+     * (default), 'core.usgovcloudapi.net' for Azure US Government, 'core.chinacloudapi.cn' for
+     * Azure China, or a custom sovereign/private DNS suffix.
+     */
+    endpointSuffix?: string;
     /**
      * Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default
      */
@@ -3827,6 +3853,13 @@ export interface SecurityConfigClass {
      */
     accountName?: string;
     /**
+     * Optional Microsoft Entra ID (Azure AD) authority host override (for example,
+     * 'https://login.microsoftonline.us' for Azure US Government or
+     * 'https://login.chinacloudapi.cn' for Azure China). Automatically inferred from
+     * endpointSuffix when omitted.
+     */
+    authority?: string;
+    /**
      * Your Service Principal App ID (Client ID)
      */
     clientId?: string;
@@ -3834,6 +3867,12 @@ export interface SecurityConfigClass {
      * Your Service Principal Password (Client Secret)
      */
     clientSecret?: string;
+    /**
+     * DNS suffix for Azure Storage endpoints. Use 'core.windows.net' for Azure Commercial
+     * (default), 'core.usgovcloudapi.net' for Azure US Government, 'core.chinacloudapi.cn' for
+     * Azure China, or a custom sovereign/private DNS suffix.
+     */
+    endpointSuffix?: string;
     /**
      * Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default
      */
@@ -4448,6 +4487,13 @@ export interface PurpleGCPCredentials {
      */
     accountName?: string;
     /**
+     * Optional Microsoft Entra ID (Azure AD) authority host override (for example,
+     * 'https://login.microsoftonline.us' for Azure US Government or
+     * 'https://login.chinacloudapi.cn' for Azure China). Automatically inferred from
+     * endpointSuffix when omitted.
+     */
+    authority?: string;
+    /**
      * Your Service Principal App ID (Client ID)
      */
     clientId?: string;
@@ -4455,6 +4501,12 @@ export interface PurpleGCPCredentials {
      * Your Service Principal Password (Client Secret)
      */
     clientSecret?: string;
+    /**
+     * DNS suffix for Azure Storage endpoints. Use 'core.windows.net' for Azure Commercial
+     * (default), 'core.usgovcloudapi.net' for Azure US Government, 'core.chinacloudapi.cn' for
+     * Azure China, or a custom sovereign/private DNS suffix.
+     */
+    endpointSuffix?: string;
     /**
      * Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default
      */
