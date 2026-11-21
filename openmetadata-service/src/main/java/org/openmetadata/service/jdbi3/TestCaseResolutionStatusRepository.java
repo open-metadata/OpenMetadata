@@ -636,13 +636,15 @@ public class TestCaseResolutionStatusRepository
   }
 
   private static EntityReference extractAssignee(TestCaseResolutionStatus recordEntity) {
-    if (recordEntity.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Assigned
-        || recordEntity.getTestCaseResolutionStatusDetails() == null) {
+    Object details = recordEntity.getTestCaseResolutionStatusDetails();
+    if (details == null) {
       return null;
     }
-    Assigned assigned =
-        JsonUtils.convertValue(recordEntity.getTestCaseResolutionStatusDetails(), Assigned.class);
-    return assigned != null ? assigned.getAssignee() : null;
+    return switch (recordEntity.getTestCaseResolutionStatusType()) {
+      case Assigned -> JsonUtils.convertValue(details, Assigned.class).getAssignee();
+      case Resolved -> JsonUtils.convertValue(details, Resolved.class).getAssignee();
+      default -> null;
+    };
   }
 
   @Override
@@ -1017,12 +1019,16 @@ public class TestCaseResolutionStatusRepository
             TestCaseResolutionStatus.class);
 
     for (TestCaseResolutionStatus testCaseResolutionStatus : testCaseResolutionStatuses) {
-      // We'll keep the status as assigned but remove the deleted user as the assignee
-      // Incidents are treated as immutable entities -- hence we create a new one
+      if (testCaseResolutionStatus.getTestCaseResolutionStatusType()
+          != TestCaseResolutionStatusTypes.Assigned) {
+        continue;
+      }
       setInheritedFields(testCaseResolutionStatus);
-      // A resolved incident is final, so there is nothing to clean and writing would reopen it.
       String testCaseFqn = testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName();
-      if (!Boolean.TRUE.equals(unresolvedIncident(getLatestRecord(testCaseFqn)))) {
+      TestCaseResolutionStatus latest = getLatestRecord(testCaseFqn);
+      if (latest == null
+          || !Objects.equals(latest.getStateId(), testCaseResolutionStatus.getStateId())
+          || !Objects.equals(latest.getId(), testCaseResolutionStatus.getId())) {
         continue;
       }
       TestCaseResolutionStatusMapper mapper = new TestCaseResolutionStatusMapper();
