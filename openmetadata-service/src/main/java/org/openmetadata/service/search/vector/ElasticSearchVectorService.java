@@ -106,11 +106,13 @@ public class ElasticSearchVectorService extends AbstractVectorIndexService {
 
   /** Rest5Client returns 4xx responses and throws 5xx ones; here both are just the response. */
   private Response respond(Request request) throws IOException {
+    Response response;
     try {
-      return restClient.performRequest(request);
+      response = restClient.performRequest(request);
     } catch (ResponseException e) {
-      return e.getResponse();
+      response = e.getResponse();
     }
+    return response;
   }
 
   private static String readEntityBody(HttpEntity entity) throws IOException {

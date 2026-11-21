@@ -34,12 +34,14 @@ public final class StoredEmbeddingReuse {
   // own reuse, not every other entity's in the batch.
   private static String currentFingerprintOrNull(
       String entityId, Supplier<String> currentFingerprint) {
+    String fingerprint;
     try {
-      return currentFingerprint.get();
+      fingerprint = currentFingerprint.get();
     } catch (RuntimeException e) {
       LOG.warn("Cannot fingerprint entity {}; re-embedding it: {}", entityId, e.getMessage());
-      return null;
+      fingerprint = null;
     }
+    return fingerprint;
   }
 
   /**

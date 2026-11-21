@@ -148,14 +148,15 @@ public interface VectorIndexService {
   String executeGenericRequest(String method, String endpoint, String body);
 
   default String getIndexAlias() {
+    String alias = VECTOR_EMBEDDING_ALIAS;
     try {
       String clusterAlias = Entity.getSearchRepository().getClusterAlias();
-      if (clusterAlias == null || clusterAlias.isEmpty()) {
-        return VECTOR_EMBEDDING_ALIAS;
+      if (clusterAlias != null && !clusterAlias.isEmpty()) {
+        alias = clusterAlias + "_" + VECTOR_EMBEDDING_ALIAS;
       }
-      return clusterAlias + "_" + VECTOR_EMBEDDING_ALIAS;
     } catch (Exception ex) {
-      return VECTOR_EMBEDDING_ALIAS;
+      alias = VECTOR_EMBEDDING_ALIAS;
     }
+    return alias;
   }
 }

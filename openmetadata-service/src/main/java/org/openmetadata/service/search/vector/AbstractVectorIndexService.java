@@ -128,10 +128,14 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   @Override
   public void updateEntityEmbedding(EntityInterface<?> entity, String entityIndexName) {
-    if (!embeddingClient.isAvailable()) {
+    if (embeddingClient.isAvailable()) {
+      refreshEntityEmbedding(entity, entityIndexName);
+    } else {
       LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
-      return;
     }
+  }
+
+  private void refreshEntityEmbedding(EntityInterface<?> entity, String entityIndexName) {
     try {
       String entityId = entity.getId().toString();
       String existingFingerprint = getExistingFingerprint(entityIndexName, entityId);
@@ -139,11 +143,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
       if (currentFingerprint.equals(existingFingerprint)) {
         LOG.debug("Skipping entity {} - fingerprint unchanged", entityId);
-        return;
+      } else {
+        Map<String, Object> embeddingFields = generateEmbeddingFields(entity);
+        partialUpdateEntity(entityIndexName, entityId, embeddingFields);
       }
-
-      Map<String, Object> embeddingFields = generateEmbeddingFields(entity);
-      partialUpdateEntity(entityIndexName, entityId, embeddingFields);
     } catch (EmbeddingUnavailableException unavailable) {
       LOG.debug("Skipping embedding for entity {}: {}", entity.getId(), unavailable.getMessage());
     } catch (Exception e) {
@@ -236,10 +239,14 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   @Override
   public void updateEntityEmbeddings(EntityInterface<?> entity, String entityIndexName) {
-    if (!embeddingClient.isAvailable()) {
+    if (embeddingClient.isAvailable()) {
+      refreshEntityEmbeddings(entity, entityIndexName);
+    } else {
       LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
-      return;
     }
+  }
+
+  private void refreshEntityEmbeddings(EntityInterface<?> entity, String entityIndexName) {
     try {
       String parentId = entity.getId().toString();
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
@@ -400,28 +407,29 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   @Override
   public String beginStagedChunkRecreate() {
-    if (!isEmbeddingAvailable()) {
+    String generation = null;
+    if (isEmbeddingAvailable()) {
+      synchronized (stagedChunkLock) {
+        generation = stageChunkGenerationIfLiveTargetKnown();
+      }
+    } else {
       LOG.warn(
           "Embedding pre-flight failed — skipping the staged chunk recreate. The entity reindex "
               + "continues and existing chunks stay live; orphaned chunks, if any, are swept by the "
               + "next recreate that runs with a working embedding provider.");
-      return null;
     }
-    synchronized (stagedChunkLock) {
-      String base = getChunkIndexName();
-      String liveTarget;
-      try {
-        liveTarget = requireResolvedLiveChunkTarget(base);
-      } catch (RuntimeException e) {
-        LOG.warn(
-            "Could not determine the live chunk target for {} — skipping the staged chunk "
-                + "recreate. The entity reindex continues and existing chunks stay live.",
-            base,
-            e);
-        return null;
-      }
+    return generation;
+  }
+
+  /** Returns the new staged generation, or null when the live chunk target cannot be resolved. */
+  private String stageChunkGenerationIfLiveTargetKnown() {
+    String base = getChunkIndexName();
+    ResolvedLiveTarget resolved = tryResolveLiveChunkTarget(base);
+    String generation = null;
+    if (resolved.known()) {
+      String liveTarget = resolved.name();
       deleteOrphanChunkGenerations(base, liveTarget);
-      String generation = nextChunkGenerationName(base);
+      generation = nextChunkGenerationName(base);
       try {
         executeGenericRequest("PUT", "/" + generation, buildChunkIndexMapping(false));
       } catch (Exception e) {
@@ -435,8 +443,26 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
           "Staged chunk index {} created; chunks stay live at {} until promotion",
           generation,
           liveTarget);
-      return generation;
     }
+    return generation;
+  }
+
+  /** {@code name} is null on a fresh install; {@code known} is false when resolution failed. */
+  private record ResolvedLiveTarget(boolean known, String name) {}
+
+  private ResolvedLiveTarget tryResolveLiveChunkTarget(String base) {
+    ResolvedLiveTarget resolved;
+    try {
+      resolved = new ResolvedLiveTarget(true, requireResolvedLiveChunkTarget(base));
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "Could not determine the live chunk target for {} — skipping the staged chunk "
+              + "recreate. The entity reindex continues and existing chunks stay live.",
+          base,
+          e);
+      resolved = new ResolvedLiveTarget(false, null);
+    }
+    return resolved;
   }
 
   /**
@@ -464,13 +490,15 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * next to the provider's own error, not wrapped in a reindex failure.
    */
   private boolean isEmbeddingAvailable() {
+    boolean available;
     try {
       embeddingClient.embedQuery("chunk index recreate pre-flight");
-      return true;
+      available = true;
     } catch (Exception e) {
       LOG.warn("Embedding client pre-flight failed: {}", e.getMessage(), e);
-      return false;
+      available = false;
     }
+    return available;
   }
 
   /**
@@ -494,9 +522,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
           entityType,
           runGeneration,
           generation);
-      return;
-    }
-    if (generation != null && runGeneration == null && normalized != null) {
+    } else if (generation != null && runGeneration == null && normalized != null) {
       // A run WITHOUT chunk staging is finalizing types while staged state lingers on this JVM —
       // stale leftovers of a dead run. Never count these marks toward promotion.
       LOG.warn(
@@ -504,9 +530,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
               + "and will be swept by the next staged recreate",
           entityType,
           generation);
-      return;
-    }
-    if (stagedChunkIndex != null
+    } else if (stagedChunkIndex != null
         && normalized != null
         && stagedExpectedTypes.contains(normalized)) {
       if (success) {
@@ -863,29 +887,30 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    *     PUT is retried on the next write rather than silently proceeding with a stale mapping.
    */
   private boolean applyChunkMappingUpgradeIfStale(String indexName) {
+    boolean upgraded;
     try {
       String mappingJson = executeGenericRequest("GET", "/" + indexName + "/_mapping", null);
       JsonNode mappings = MAPPER.readTree(mappingJson).path(indexName).path("mappings");
       int existingVersion = mappings.path("_meta").path("chunkDocVersion").asInt(0);
-      if (existingVersion >= VectorDocBuilder.CHUNK_DOC_VERSION) {
-        return true;
+      if (existingVersion < VectorDocBuilder.CHUNK_DOC_VERSION) {
+        executeGenericRequest("PUT", "/" + indexName + "/_mapping", buildChunkMappingUpgradeBody());
+        LOG.info(
+            "Upgraded chunk index {} mapping chunkDocVersion {} -> {} (denormalized fields "
+                + "backfill on next Search Reindex)",
+            indexName,
+            existingVersion,
+            VectorDocBuilder.CHUNK_DOC_VERSION);
       }
-      executeGenericRequest("PUT", "/" + indexName + "/_mapping", buildChunkMappingUpgradeBody());
-      LOG.info(
-          "Upgraded chunk index {} mapping chunkDocVersion {} -> {} (denormalized fields backfill "
-              + "on next Search Reindex)",
-          indexName,
-          existingVersion,
-          VectorDocBuilder.CHUNK_DOC_VERSION);
-      return true;
+      upgraded = true;
     } catch (Exception e) {
       LOG.error(
           "Failed to upgrade chunk index {} mapping; leaving it un-ensured to retry on the next "
               + "write rather than stamping docs with the new docVersion into a stale mapping: {}",
           indexName,
           e.getMessage());
-      return false;
+      upgraded = false;
     }
+    return upgraded;
   }
 
   private String buildChunkIndexMapping(boolean withSearchAlias) {
@@ -1098,23 +1123,33 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       EntityInterface<?> entity, String chunkIndexName, String parentId, ChunkHeader header) {
     Map<Integer, float[]> vectors =
         fetchExistingChunkVectors(chunkIndexName, parentId, header.chunkCount());
-    if (vectors.size() != header.chunkCount()) {
+    List<Map<String, Object>> chunkDocs;
+    if (vectors.size() == header.chunkCount()) {
+      chunkDocs = reuseEmbeddingsOrReembed(entity, parentId, vectors);
+    } else {
       LOG.info(
           "Chunk docVersion rebuild for {} recovered {}/{} cached vectors; re-embedding",
           parentId,
           vectors.size(),
           header.chunkCount());
-      return VectorDocBuilder.fromEntity(entity, embeddingClient);
+      chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
     }
+    return chunkDocs;
+  }
+
+  private List<Map<String, Object>> reuseEmbeddingsOrReembed(
+      EntityInterface<?> entity, String parentId, Map<Integer, float[]> vectors) {
+    List<Map<String, Object>> chunkDocs;
     try {
-      return VectorDocBuilder.fromEntityReusingEmbeddings(entity, vectors);
+      chunkDocs = VectorDocBuilder.fromEntityReusingEmbeddings(entity, vectors);
     } catch (RuntimeException e) {
       LOG.info(
           "Chunk docVersion rebuild for {} fell back to re-embedding: {}",
           parentId,
           e.getMessage());
-      return VectorDocBuilder.fromEntity(entity, embeddingClient);
+      chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
     }
+    return chunkDocs;
   }
 
   /**
@@ -1125,38 +1160,37 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private Map<Integer, float[]> fetchExistingChunkVectors(
       String chunkIndexName, String parentId, int chunkCount) {
     Map<Integer, float[]> vectors = new HashMap<>();
-    if (chunkCount <= 0) {
-      return vectors;
-    }
-    try {
-      List<String> ids = new ArrayList<>(chunkCount);
-      for (int i = 0; i < chunkCount; i++) {
-        ids.add(parentId + "_" + i);
-      }
-      List<String> sourceFields = List.of("embedding", "chunkIndex");
-      for (JsonNode source : multiGetSources(chunkIndexName, ids, sourceFields).values()) {
-        float[] vector = toFloatArray(source.path("embedding"));
-        if (vector != null) {
-          vectors.put(source.path("chunkIndex").asInt(0), vector);
+    if (chunkCount > 0) {
+      try {
+        List<String> ids = new ArrayList<>(chunkCount);
+        for (int i = 0; i < chunkCount; i++) {
+          ids.add(parentId + "_" + i);
         }
+        List<String> sourceFields = List.of("embedding", "chunkIndex");
+        for (JsonNode source : multiGetSources(chunkIndexName, ids, sourceFields).values()) {
+          float[] vector = toFloatArray(source.path("embedding"));
+          if (vector != null) {
+            vectors.put(source.path("chunkIndex").asInt(0), vector);
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to fetch existing chunk vectors for {}; will re-embed: {}",
+            parentId,
+            e.getMessage(),
+            e);
       }
-    } catch (Exception e) {
-      LOG.warn(
-          "Failed to fetch existing chunk vectors for {}; will re-embed: {}",
-          parentId,
-          e.getMessage(),
-          e);
     }
     return vectors;
   }
 
   private static float[] toFloatArray(JsonNode node) {
-    if (node == null || !node.isArray() || node.isEmpty()) {
-      return null;
-    }
-    float[] out = new float[node.size()];
-    for (int i = 0; i < node.size(); i++) {
-      out[i] = (float) node.get(i).asDouble();
+    float[] out = null;
+    if (node != null && node.isArray() && !node.isEmpty()) {
+      out = new float[node.size()];
+      for (int i = 0; i < node.size(); i++) {
+        out[i] = (float) node.get(i).asDouble();
+      }
     }
     return out;
   }
@@ -1223,13 +1257,13 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     String staged = resolveChunkSinkTarget();
     if (staged == null) {
       LOG.debug("No staged chunk generation to mirror the live update for {}", parentId);
-      return;
-    }
-    try {
-      replaceChunks(staged, parentId, chunkDocs, previousCount(getChunkHeader(staged, parentId)));
-    } catch (IOException | RuntimeException e) {
-      LOG.warn(
-          "Failed to mirror chunks for {} into staged {}: {}", parentId, staged, e.getMessage());
+    } else {
+      try {
+        replaceChunks(staged, parentId, chunkDocs, previousCount(getChunkHeader(staged, parentId)));
+      } catch (IOException | RuntimeException e) {
+        LOG.warn(
+            "Failed to mirror chunks for {} into staged {}: {}", parentId, staged, e.getMessage());
+      }
     }
   }
 
@@ -1283,9 +1317,14 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     if (previousCount == 0) {
       cleanOrphanChunks(indexName, parentId);
     }
-    if (chunkDocs.isEmpty() && previousCount == 0) {
-      return;
+    if (!chunkDocs.isEmpty() || previousCount != 0) {
+      writeChunkBulk(indexName, parentId, chunkDocs, previousCount);
     }
+  }
+
+  private void writeChunkBulk(
+      String indexName, String parentId, List<Map<String, Object>> chunkDocs, int previousCount)
+      throws IOException {
     StringBuilder bulk = new StringBuilder();
     for (int i = 0; i < chunkDocs.size(); i++) {
       bulk.append("{\"index\":{\"_index\":\"")
@@ -1312,31 +1351,15 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private void failOnBulkItemErrors(String indexName, String parentId, String response) {
     try {
       JsonNode root = MAPPER.readTree(response);
-      if (!root.path("errors").asBoolean(false)) {
-        return;
+      if (root.path("errors").asBoolean(false)) {
+        throw new IllegalStateException(
+            "Bulk chunk write for "
+                + parentId
+                + " into "
+                + indexName
+                + " had item failures: "
+                + firstBulkItemErrors(root));
       }
-      StringBuilder reasons = new StringBuilder();
-      int reported = 0;
-      for (JsonNode item : root.path("items")) {
-        // replaceChunks emits index AND delete actions (trailing-chunk cleanup); create for
-        // completeness — each item is keyed by whichever action it was.
-        for (String action : BULK_ACTIONS) {
-          JsonNode error = item.path(action).path("error");
-          if (!error.isMissingNode() && reported < 3) {
-            reasons.append(action).append(' ');
-            reasons.append(error.path("type").asText("?")).append(": ");
-            reasons.append(error.path("reason").asText("?")).append("; ");
-            reported++;
-          }
-        }
-      }
-      throw new IllegalStateException(
-          "Bulk chunk write for "
-              + parentId
-              + " into "
-              + indexName
-              + " had item failures: "
-              + reasons);
     } catch (IllegalStateException e) {
       throw e;
     } catch (Exception parseFailure) {
@@ -1350,6 +1373,25 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
               + " returned an unparseable response",
           parseFailure);
     }
+  }
+
+  private static StringBuilder firstBulkItemErrors(JsonNode root) {
+    StringBuilder reasons = new StringBuilder();
+    int reported = 0;
+    for (JsonNode item : root.path("items")) {
+      // replaceChunks emits index AND delete actions (trailing-chunk cleanup); create for
+      // completeness — each item is keyed by whichever action it was.
+      for (String action : BULK_ACTIONS) {
+        JsonNode error = item.path(action).path("error");
+        if (!error.isMissingNode() && reported < 3) {
+          reasons.append(action).append(' ');
+          reasons.append(error.path("type").asText("?")).append(": ");
+          reasons.append(error.path("reason").asText("?")).append("; ");
+          reported++;
+        }
+      }
+    }
+    return reasons;
   }
 
   private static final List<String> BULK_ACTIONS = List.of("index", "delete", "create");
@@ -1533,17 +1575,18 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   private static long extractTotalHits(JsonNode root) {
     JsonNode totalNode = root.path("hits").path("total");
+    long total = -1L;
     if (totalNode.isIntegralNumber()) {
-      return totalNode.asLong(-1L);
+      total = totalNode.asLong(-1L);
+    } else if (totalNode.isObject()) {
+      total = totalNode.path("value").asLong(-1L);
     }
-    if (totalNode.isObject()) {
-      return totalNode.path("value").asLong(-1L);
-    }
-    return -1L;
+    return total;
   }
 
   @Override
   public String getExistingFingerprint(String indexName, String entityId) {
+    String fingerprint = null;
     try {
       String query =
           "{\"size\":1,\"_source\":[\"fingerprint\"],"
@@ -1554,7 +1597,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       JsonNode root = MAPPER.readTree(response);
       JsonNode hits = root.path("hits").path("hits");
       if (hits.isArray() && !hits.isEmpty()) {
-        return hits.get(0).path("_source").path("fingerprint").asText(null);
+        fingerprint = hits.get(0).path("_source").path("fingerprint").asText(null);
       }
     } catch (Exception e) {
       LOG.debug(
@@ -1563,51 +1606,53 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
           indexName,
           e.getMessage());
     }
-    return null;
+    return fingerprint;
   }
 
   @Override
   public Map<String, String> getExistingFingerprintsBatch(
       String indexName, List<String> entityIds) {
-    if (entityIds == null || entityIds.isEmpty()) {
-      return Collections.emptyMap();
-    }
-    try {
-      StringBuilder idsArray = new StringBuilder("[");
-      for (int i = 0; i < entityIds.size(); i++) {
-        if (i > 0) idsArray.append(',');
-        idsArray
-            .append("\"")
-            .append(VectorSearchQueryBuilder.escape(entityIds.get(i)))
-            .append("\"");
+    Map<String, String> result = Collections.emptyMap();
+    if (entityIds != null && !entityIds.isEmpty()) {
+      try {
+        result = searchFingerprints(indexName, entityIds);
+      } catch (Exception e) {
+        LOG.error("Failed to batch get fingerprints in index={}: {}", indexName, e.getMessage(), e);
       }
-      idsArray.append("]");
-
-      String query =
-          "{\"size\":"
-              + entityIds.size()
-              + ",\"_source\":[\"fingerprint\"]"
-              + ",\"query\":{\"ids\":{\"values\":"
-              + idsArray
-              + "}}}";
-
-      String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
-      JsonNode root = MAPPER.readTree(response);
-      JsonNode hits = root.path("hits").path("hits");
-
-      Map<String, String> result = new HashMap<>();
-      for (JsonNode hit : hits) {
-        String id = hit.path("_id").asText();
-        String fp = hit.path("_source").path("fingerprint").asText(null);
-        if (id != null && fp != null) {
-          result.put(id, fp);
-        }
-      }
-      return result;
-    } catch (Exception e) {
-      LOG.error("Failed to batch get fingerprints in index={}: {}", indexName, e.getMessage(), e);
-      return Collections.emptyMap();
     }
+    return result;
+  }
+
+  private Map<String, String> searchFingerprints(String indexName, List<String> entityIds)
+      throws IOException {
+    StringBuilder idsArray = new StringBuilder("[");
+    for (int i = 0; i < entityIds.size(); i++) {
+      if (i > 0) idsArray.append(',');
+      idsArray.append("\"").append(VectorSearchQueryBuilder.escape(entityIds.get(i))).append("\"");
+    }
+    idsArray.append("]");
+
+    String query =
+        "{\"size\":"
+            + entityIds.size()
+            + ",\"_source\":[\"fingerprint\"]"
+            + ",\"query\":{\"ids\":{\"values\":"
+            + idsArray
+            + "}}}";
+
+    String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
+    JsonNode root = MAPPER.readTree(response);
+    JsonNode hits = root.path("hits").path("hits");
+
+    Map<String, String> result = new HashMap<>();
+    for (JsonNode hit : hits) {
+      String id = hit.path("_id").asText();
+      String fp = hit.path("_source").path("fingerprint").asText(null);
+      if (id != null && fp != null) {
+        result.put(id, fp);
+      }
+    }
+    return result;
   }
 
   /**

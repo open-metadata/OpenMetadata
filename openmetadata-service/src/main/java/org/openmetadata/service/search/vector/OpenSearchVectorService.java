@@ -190,12 +190,14 @@ public class OpenSearchVectorService extends AbstractVectorIndexService {
   }
 
   private String readBody(Body body) {
+    String text;
     try {
-      return new String(body.bodyAsBytes(), StandardCharsets.UTF_8);
+      text = new String(body.bodyAsBytes(), StandardCharsets.UTF_8);
     } catch (RuntimeException e) {
       LOG.warn("Failed to read OpenSearch response body", e);
-      return "{}";
+      text = "{}";
     }
+    return text;
   }
 
   @Override
