@@ -50,6 +50,7 @@ public class TestCaseCollection implements Iterable<TestCase> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<TestCase> response = client.testCases().list(pageParams);

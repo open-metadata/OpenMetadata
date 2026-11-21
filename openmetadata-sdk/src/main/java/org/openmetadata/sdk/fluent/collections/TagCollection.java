@@ -50,6 +50,7 @@ public class TagCollection implements Iterable<Tag> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<Tag> response = client.tags().list(pageParams);

@@ -50,6 +50,7 @@ public class DashboardDataModelCollection implements Iterable<DashboardDataModel
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<DashboardDataModel> response = client.dashboardDataModels().list(pageParams);

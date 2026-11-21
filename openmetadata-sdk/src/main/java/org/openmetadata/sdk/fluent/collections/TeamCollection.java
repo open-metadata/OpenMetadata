@@ -122,6 +122,7 @@ public class TeamCollection implements Iterable<Team> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<Team> response = client.teams().list(pageParams);

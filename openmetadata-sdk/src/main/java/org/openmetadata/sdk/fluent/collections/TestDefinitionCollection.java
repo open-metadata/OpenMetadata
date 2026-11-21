@@ -50,6 +50,7 @@ public class TestDefinitionCollection implements Iterable<TestDefinition> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<TestDefinition> response = client.testDefinitions().list(pageParams);

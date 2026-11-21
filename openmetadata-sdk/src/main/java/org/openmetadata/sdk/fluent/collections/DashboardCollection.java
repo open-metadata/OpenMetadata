@@ -50,6 +50,7 @@ public class DashboardCollection implements Iterable<Dashboard> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<Dashboard> response = client.dashboards().list(pageParams);

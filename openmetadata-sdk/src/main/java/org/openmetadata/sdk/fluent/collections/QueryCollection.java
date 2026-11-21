@@ -50,6 +50,7 @@ public class QueryCollection implements Iterable<Query> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<Query> response = client.queries().list(pageParams);

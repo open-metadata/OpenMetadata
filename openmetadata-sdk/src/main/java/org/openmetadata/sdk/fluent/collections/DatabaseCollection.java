@@ -122,6 +122,7 @@ public class DatabaseCollection implements Iterable<Database> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<Database> response = client.databases().list(pageParams);

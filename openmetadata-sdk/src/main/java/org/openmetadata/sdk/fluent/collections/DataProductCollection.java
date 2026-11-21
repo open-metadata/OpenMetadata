@@ -50,6 +50,7 @@ public class DataProductCollection implements Iterable<DataProduct> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<DataProduct> response = client.dataProducts().list(pageParams);

@@ -50,6 +50,7 @@ public class ClassificationCollection implements Iterable<Classification> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<Classification> response = client.classifications().list(pageParams);

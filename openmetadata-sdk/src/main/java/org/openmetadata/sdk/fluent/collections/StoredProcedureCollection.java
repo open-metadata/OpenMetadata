@@ -50,6 +50,7 @@ public class StoredProcedureCollection implements Iterable<StoredProcedure> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<StoredProcedure> response = client.storedProcedures().list(pageParams);
