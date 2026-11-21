@@ -51,6 +51,7 @@ import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.DataProductLineageSelfLoopRepair;
 import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration;
 import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
@@ -128,6 +129,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(IncidentWorkflowTransitionMigration.class);
         MockedStatic<LineageEdgePipelineCleanupMigration> lineageEdgeCleanup =
             mockStatic(LineageEdgePipelineCleanupMigration.class);
+        MockedStatic<DataProductLineageSelfLoopRepair> dataProductSelfLoopRepair =
+            mockStatic(DataProductLineageSelfLoopRepair.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
         MockedStatic<McpGrantUserNameIndexes> grantUserNameIndexes =
             mockStatic(McpGrantUserNameIndexes.class);
@@ -205,6 +208,8 @@ class IngestionPipelineMigrationEntryPointTest {
           () ->
               LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines(
                   handle, connectionType));
+      dataProductSelfLoopRepair.verify(
+          () -> DataProductLineageSelfLoopRepair.deleteAll(handle, collectionDAO));
       // Released versions stored misnamed Context Center files, so both engines repair them.
       contextFileFqnRepair.verify(() -> ContextFileFqnRepair.repairAll(handle, connectionType));
     }

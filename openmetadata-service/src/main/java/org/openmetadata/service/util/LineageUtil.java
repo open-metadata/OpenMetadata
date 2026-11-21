@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -260,6 +261,10 @@ public class LineageUtil {
   }
 
   private static void insertLineage(int count, EntityReference fromRef, EntityReference toRef) {
+    // Two assets of one domain or data product give it no edge to itself.
+    if (fromRef.getId().equals(toRef.getId())) {
+      return;
+    }
     if (count > 0) {
       LineageDetails domainLineageDetails =
           new LineageDetails()
@@ -361,6 +366,45 @@ public class LineageUtil {
                 Include.ALL),
             ref);
       }
+    }
+  }
+
+  /**
+   * Recounts each pair of two different data products from the stored asset edges. A pair no asset
+   * edge connects any more loses its rollup, but an edge drawn between the products stays.
+   */
+  public static void recountDataProductsLineage(Set<Pair<UUID, UUID>> pairs) {
+    for (Pair<UUID, UUID> pair : pairs) {
+      if (!pair.getLeft().equals(pair.getRight())) {
+        recountDataProductLineage(
+            Entity.getEntityReferenceById(Entity.DATA_PRODUCT, pair.getLeft(), Include.ALL),
+            Entity.getEntityReferenceById(Entity.DATA_PRODUCT, pair.getRight(), Include.ALL));
+      }
+    }
+  }
+
+  private static void recountDataProductLineage(EntityReference from, EntityReference to) {
+    int count =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .countDataProductsChildAssets(from.getId(), to.getId());
+    if (count > 0) {
+      insertLineage(count, from, to);
+    } else {
+      deleteCountedLineage(from, to);
+    }
+  }
+
+  // An edge drawn between the products counts no asset edges, so no recount deletes it.
+  private static void deleteCountedLineage(EntityReference from, EntityReference to) {
+    CollectionDAO.EntityRelationshipDAO dao = Entity.getCollectionDAO().relationshipDAO();
+    int upstream = Relationship.UPSTREAM.ordinal();
+    CollectionDAO.EntityRelationshipObject row = dao.getRecord(from.getId(), to.getId(), upstream);
+    LineageDetails stored =
+        row == null ? null : JsonUtils.readValue(row.getJson(), LineageDetails.class);
+    if (stored != null && stored.getAssetEdges() != null) {
+      dao.delete(from.getId(), from.getType(), to.getId(), to.getType(), upstream);
+      deleteLineageFromSearch(from, to, stored);
     }
   }
 
