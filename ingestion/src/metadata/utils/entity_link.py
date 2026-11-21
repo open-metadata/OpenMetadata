@@ -20,7 +20,6 @@ from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
 from antlr4.InputStream import InputStream
 from antlr4.tree.Tree import ParseTreeWalker
-from requests.compat import unquote_plus  # pyright: ignore[reportPrivateImportUsage]
 
 from metadata.antlr.split_listener import EntityLinkSplitListener
 from metadata.generated.antlr.EntityLinkLexer import EntityLinkLexer
@@ -60,21 +59,33 @@ def split(str_: str) -> list[str]:
 
 
 def get_decoded_column(entity_link: str) -> str:
-    """From an URL encoded entity link get the decoded column name
+    """From an entity link get the column name with reserved keywords reverted.
+
+    Every producer of entity links (ingestion's ``get_entity_link``, the UI, and the
+    Java server) stores the column name verbatim -- the only escaping applied is the
+    ``__reserved__colon__``/``__reserved__arrow__``/... convention handled by
+    ``CustomColumnName``'s validator for the ``::``/``>`` separators that ``split`` uses.
+    No producer percent-encodes the column segment, so applying ``unquote_plus`` here
+    would corrupt names containing a literal ``+`` or a ``%XX``-shaped sequence (e.g.
+    ``total+sales`` decoded to ``total sales``, ``pct%25off`` decoded to ``pct%off``).
+    We therefore return the verbatim segment and delegate only the reserved-keyword
+    decode to ``CustomColumnName``, matching the Java server's raw parsing.
 
     Examples:
-        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::first_name>")
-        'first name'
+        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::first+name>")
+        'first+name'
+        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::pct%25off>")
+        'pct%25off'
         >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::随机的>")
         '随机的'
-        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.table_w_space>")
-        ''
+        >>> get_decoded_column("<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::test__reserved__colon____reserved__arrow__test>")
+        'test::>test'
 
     Args:
         entity_link: entity link
     """
 
-    return CustomColumnName(root=unquote_plus(entity_link.split("::")[-1].replace(">", ""))).root  # noqa: PLC0207
+    return CustomColumnName(root=entity_link.split("::")[-1].replace(">", "")).root  # noqa: PLC0207
 
 
 def get_table_fqn(entity_link: str) -> str:

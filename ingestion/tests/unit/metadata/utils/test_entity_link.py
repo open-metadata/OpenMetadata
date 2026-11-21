@@ -16,8 +16,10 @@ test entity link utils
 import pytest
 from antlr4.error.Errors import ParseCancellationException
 
+from metadata.generated.schema.entity.data.table import Table
 from metadata.utils.entity_link import (
     get_decoded_column,
+    get_entity_link,
     get_table_fqn,
     get_table_or_column_fqn,
 )
@@ -28,7 +30,7 @@ from metadata.utils.entity_link import (
     [
         (
             "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::first+name>",
-            "first name",
+            "first+name",
         ),
         (
             "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::last_name>",
@@ -41,6 +43,18 @@ from metadata.utils.entity_link import (
         (
             "<#E::table::rds.dev.dbt_jaffle.column_w_space::columns::test__reserved__colon____reserved__arrow__test>",
             "test::>test",
+        ),
+        # No producer percent-encodes the column segment, so a literal '+' or a
+        # '%XX'-shaped sequence must round-trip verbatim, not be URL-decoded.
+        pytest.param(
+            "<#E::table::svc.db.schema.tbl::columns::total+sales>",
+            "total+sales",
+            id="plus_is_preserved",
+        ),
+        pytest.param(
+            "<#E::table::svc.db.schema.tbl::columns::pct%25off>",
+            "pct%25off",
+            id="valid_percent_sequence_is_preserved",
         ),
     ],
 )
@@ -298,3 +312,21 @@ def test_reserved_keywords_get_decoded_column(entity_link, expected_decoded_colu
         expected_decoded_column: Expected decoded column name
     """
     assert get_decoded_column(entity_link) == expected_decoded_column
+
+
+@pytest.mark.parametrize(
+    "column_name",
+    [
+        pytest.param("total+sales", id="plus_in_name"),
+        pytest.param("pct%25off", id="valid_percent_sequence"),
+    ],
+)
+def test_get_decoded_column_round_trips_verbatim(column_name):
+    """A column name produced by get_entity_link must round-trip unchanged through
+    get_decoded_column. This is the same-run invariant the CLI path relies on:
+    compare_and_create_test_cases builds the link with get_entity_link and the
+    filter decodes it with get_decoded_column in one workflow run, so a name
+    containing '+' or a '%XX' sequence must not be corrupted on the way back.
+    """
+    entity_link = get_entity_link(Table, fqn="svc.db.schema.tbl", column_name=column_name)
+    assert get_decoded_column(entity_link) == column_name
