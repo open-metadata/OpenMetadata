@@ -253,12 +253,26 @@ class TestSsrsOutageNoDropE2E:
         result = metadata.list_entities(entity=DashboardDataModel, fields=["*"], params={"service": self.SERVICE})
         return {str(d.name.root) for d in result.entities}
 
-    def test_datamodels_survive_transient_outage(self, metadata, outage_ssrs_server):
-        # Run the outage-affected workflow. The run reports 2 visible errors (one per
-        # failed stage: datamodel + lineage) instead of silently succeeding — this is
-        # the intended behavior change. We do NOT call raise_from_status so the test
-        # can inspect the resulting catalog state.
+    def test_datamodels_survive_transient_outage(self, metadata, outage_ssrs_server, healthy_ssrs_server):
+        # 0. Start with a healthy run that ingests BOTH data models, including the
+        #    one whose RDL fetch will fail during the outage. This is the
+        #    precondition the no-drop guarantee must protect: a previously
+        #    ingested data model must not be soft-deleted just because a later run
+        #    cannot reach its report definition.
         self._delete_service(metadata)
+        HealthySsrsHandler.report_subset = ["report-ok", "report-outage"]
+        workflow0 = MetadataWorkflow.create(self._config(healthy_ssrs_server))
+        workflow0.execute()
+        workflow0.print_status()
+        names_after_run0 = self._datamodel_names(metadata)
+        assert "report-ok.Orders" in names_after_run0 and "report-outage.Orders" in names_after_run0, (
+            f"both data models should be ingested on the healthy run; got {names_after_run0}"
+        )
+
+        # 1. Run the outage-affected workflow. The run reports a visible failure
+        #    record (one per failed stage: datamodel + lineage) instead of silently
+        #    succeeding — this is the intended behavior change. We do NOT call
+        #    raise_from_status so the test can inspect the resulting catalog state.
         workflow = MetadataWorkflow.create(self._config(outage_ssrs_server))
         workflow.execute()
         workflow.print_status()
@@ -270,26 +284,29 @@ class TestSsrsOutageNoDropE2E:
             "report definition" in (getattr(f, "error", "") or "").lower() for f in workflow.source.status.failures
         ), f"Expected 'report definition' error in failed records: {workflow.source.status.failures}"
 
-        # The OK report's data model must exist in the catalog; the outage report's
-        # must NOT (its RDL was never fetched).
+        # BOTH previously-ingested data models MUST still exist after the outage run.
+        # report-outage.Orders is the critical assertion: it was ingested on the
+        # healthy run but its RDL was unreachable this run, so the mark-deleted guard
+        # must skip the staleness check and preserve it. Without the guard, this
+        # model would be soft-deleted (it is absent from the run's live-FQN set).
         names_after_run1 = self._datamodel_names(metadata)
-        assert "report-ok.Orders" in names_after_run1, (
-            f"report-ok data model should have been ingested on the first run; got {names_after_run1}"
-        )
-        assert "report-outage.Orders" not in names_after_run1, (
-            "report-outage data model should not exist (RDL never fetched)"
+        assert "report-ok.Orders" in names_after_run1 and "report-outage.Orders" in names_after_run1, (
+            "both data models must survive a transient report-definition outage — the mark-deleted "
+            "guard must skip deletion when the datamodel listing failed; got "
+            f"{names_after_run1}"
         )
 
-        # 2. Run a second time. The outage persists. The previously-ingested report-ok
-        #    data model MUST still exist (the failed-listing guard skips mark-deleted).
+        # 2. Run a second time. The outage persists. Both previously-ingested data
+        #    models MUST still exist (the failed-listing guard skips mark-deleted).
         workflow2 = MetadataWorkflow.create(self._config(outage_ssrs_server))
         workflow2.execute()
         workflow2.print_status()
 
         names_after_run2 = self._datamodel_names(metadata)
-        assert "report-ok.Orders" in names_after_run2, (
-            "report-ok data model must survive a transient outage run — the mark-deleted "
-            f"guard must skip deletion when the datamodel listing failed; got {names_after_run2}"
+        assert "report-ok.Orders" in names_after_run2 and "report-outage.Orders" in names_after_run2, (
+            "both data models must survive a sustained transient outage run — the mark-deleted "
+            "guard must skip deletion when the datamodel listing failed; got "
+            f"{names_after_run2}"
         )
 
         # Cleanup
