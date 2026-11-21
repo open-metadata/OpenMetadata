@@ -916,7 +916,9 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                     "dataTypeDisplay": f"array<{element_attrs.get('dataTypeDisplay', element)}>",
                     "arrayDataType": element_attrs["dataType"],
                 }
-                if element_attrs["dataType"] == DataType.STRUCT and element_attrs.get("children") is not None:
+                # Preserve the element's nested detail (struct/map children) on the array
+                # so nested collections reach the catalog with complete types.
+                if element_attrs.get("children") is not None:
                     result["children"] = element_attrs["children"]
                 return result
             if type_name == "map":
@@ -928,18 +930,8 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                     "dataType": DataType.MAP,
                     "dataTypeDisplay": f"map<{key_attrs.get('dataTypeDisplay', key_type)},{value_attrs.get('dataTypeDisplay', value_type)}>",
                     "children": [
-                        {
-                            "name": "key",
-                            "displayName": "key",
-                            "dataType": key_attrs["dataType"].value,
-                            "dataTypeDisplay": key_attrs.get("dataTypeDisplay", key_type),
-                        },
-                        {
-                            "name": "value",
-                            "displayName": "value",
-                            "dataType": value_attrs["dataType"].value,
-                            "dataTypeDisplay": value_attrs.get("dataTypeDisplay", value_type),
-                        },
+                        self._complex_child("key", "key", key_attrs, key_type),
+                        self._complex_child("value", "value", value_attrs, value_type),
                     ],
                 }
 
@@ -988,6 +980,36 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
             )
             return {"dataType": DataType.STRING, "dataTypeDisplay": type_name}
 
+    def _complex_child(
+        self,
+        name: str,
+        display_name: str,
+        attrs: dict[str, Any],
+        raw_type: Any,
+    ) -> dict[str, Any]:
+        """Build a child column dict carrying the recursive attributes
+        (``arrayDataType``, ``precision``, ``scale``, ``dataLength``, ``children``) so
+        nested collections and decimals keep their detail instead of collapsing to
+        ``dataType``/``dataTypeDisplay``.
+        """
+        child = {
+            "name": name,
+            "displayName": display_name,
+            "dataType": attrs["dataType"].value,
+            "dataTypeDisplay": attrs.get("dataTypeDisplay", str(raw_type)),
+        }
+        if attrs.get("arrayDataType") is not None:
+            child["arrayDataType"] = attrs["arrayDataType"].value
+        if attrs.get("precision") is not None:
+            child["precision"] = attrs["precision"]
+        if attrs.get("scale") is not None:
+            child["scale"] = attrs["scale"]
+        if attrs.get("dataLength") is not None:
+            child["dataLength"] = attrs["dataLength"]
+        if attrs.get("children") is not None:
+            child["children"] = attrs["children"]
+        return child
+
     def _parse_struct_fields(self, fields: list) -> list[dict]:
         """
         Parse nested struct fields in Iceberg/Delta Lake metadata.
@@ -999,22 +1021,9 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                 child_type = field.get("type", "string")
                 attrs = self._iceberg_delta_type_to_om(child_type)
 
-                child = {
-                    "name": truncate_column_name(child_name),
-                    "displayName": child_name,
-                    "dataType": attrs["dataType"].value,
-                    "dataTypeDisplay": attrs.get("dataTypeDisplay", str(child_type)),
-                }
-                if attrs.get("arrayDataType") is not None:
-                    child["arrayDataType"] = attrs["arrayDataType"].value
-                if attrs.get("precision") is not None:
-                    child["precision"] = attrs["precision"]
-                if attrs.get("scale") is not None:
-                    child["scale"] = attrs["scale"]
-                if attrs.get("dataLength") is not None:
-                    child["dataLength"] = attrs["dataLength"]
-                if attrs.get("children") is not None:
-                    child["children"] = attrs["children"]
+                child = self._complex_child(
+                    truncate_column_name(child_name), child_name, attrs, child_type
+                )
 
                 children.append(child)
             except Exception as exc:

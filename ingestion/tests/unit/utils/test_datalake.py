@@ -939,7 +939,6 @@ class TestIcebergDeltaTypeMapping:
         """Primitive Iceberg/Delta/Spark names map to the correct DataType, not STRING."""
         columns = self._parse([{"name": "col", "type": type_name}])
         assert columns[0].dataType == expected
-        # dataTypeDisplay preserves the original source type name
         assert columns[0].dataTypeDisplay == type_name
 
     def test_decimal_with_precision_and_scale(self):
@@ -1046,6 +1045,76 @@ class TestIcebergDeltaTypeMapping:
         assert key_child["dataType"] == DataType.STRING.value
         assert value_child["dataType"] == DataType.TIMESTAMP.value
 
+    def test_map_with_struct_value_preserves_value_children(self):
+        columns = self._parse(
+            [
+                {
+                    "name": "props",
+                    "type": {
+                        "type": "map",
+                        "key": "string",
+                        "value": {
+                            "type": "struct",
+                            "fields": [
+                                {"name": "id", "type": "integer"},
+                                {"name": "amount", "type": "decimal(10,2)"},
+                            ],
+                        },
+                    },
+                }
+            ]
+        )
+        col = columns[0]
+        assert col.dataType == DataType.MAP
+        _, value_child = col.children
+        assert value_child["dataType"] == DataType.STRUCT.value
+        assert value_child["children"] is not None
+        fields = {c["displayName"]: c for c in value_child["children"]}
+        assert fields["id"]["dataType"] == DataType.INT.value
+        assert fields["amount"]["dataType"] == DataType.DECIMAL.value
+        assert fields["amount"]["precision"] == 10
+        assert fields["amount"]["scale"] == 2
+
+    def test_map_with_array_value_preserves_array_data_type(self):
+        columns = self._parse(
+            [{"name": "props", "type": {"type": "map", "key": "string", "value": {"type": "list", "element": "int"}}}]
+        )
+        col = columns[0]
+        assert col.dataType == DataType.MAP
+        _, value_child = col.children
+        assert value_child["dataType"] == DataType.ARRAY.value
+        assert value_child["arrayDataType"] == DataType.INT.value
+
+    def test_map_with_decimal_value_preserves_precision_and_scale(self):
+        columns = self._parse(
+            [{"name": "props", "type": {"type": "map", "key": "string", "value": "decimal(8,3)"}}]
+        )
+        col = columns[0]
+        _, value_child = col.children
+        assert value_child["dataType"] == DataType.DECIMAL.value
+        assert value_child["precision"] == 8
+        assert value_child["scale"] == 3
+
+    def test_array_of_map_preserves_map_children(self):
+        columns = self._parse(
+            [
+                {
+                    "name": "entries",
+                    "type": {
+                        "type": "array",
+                        "elementType": {"type": "map", "key": "string", "value": "long"},
+                    },
+                }
+            ]
+        )
+        col = columns[0]
+        assert col.dataType == DataType.ARRAY
+        assert col.arrayDataType == DataType.MAP
+        assert col.children is not None
+        key_child, value_child = col.children
+        assert key_child["dataType"] == DataType.STRING.value
+        assert value_child["dataType"] == DataType.LONG.value
+
     def test_nested_struct_fields_are_correctly_typed(self):
         """Regression: nested struct fields used the same lossy lookup and dropped to STRING."""
         columns = self._parse(
@@ -1073,7 +1142,6 @@ class TestIcebergDeltaTypeMapping:
         assert children["amount"]["dataType"] == DataType.DECIMAL.value
         assert children["amount"]["precision"] == 10
         assert children["amount"]["scale"] == 2
-        # list nested in a struct preserves the element type
         assert children["tags"]["dataType"] == DataType.ARRAY.value
         assert children["tags"]["arrayDataType"] == DataType.STRING.value
 
