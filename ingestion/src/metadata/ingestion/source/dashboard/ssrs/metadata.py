@@ -53,8 +53,10 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.ssrs.models import SsrsReport
@@ -159,9 +161,13 @@ class SsrsSource(DashboardServiceSource):
         O(1) across the ingestion run — the previous report's RDL is released
         the moment a new report is requested.
 
-        ``SourceConnectionException`` propagates so that mark-deleted flows do
-        not drop entities during a transient SSRS outage. ``ValueError`` from a
-        malformed RDL is treated as a per-report problem and skipped."""
+        ``SourceConnectionException`` (raised when the report-definition endpoint is
+        unavailable) is caught by the ``yield_datamodel`` and
+        ``yield_dashboard_lineage_details`` stage processors, which mark the datamodel
+        listing as failed. The end-of-run mark-deleted post-process then skips deletion
+        for the service, so a transient SSRS outage does not soft-delete previously
+        ingested data models. ``ValueError`` from a malformed RDL is treated as a
+        per-report problem and skipped."""
         if self._current_rdl and self._current_rdl[0] == dashboard.id:
             return self._current_rdl[1]
         self._current_rdl = None
@@ -289,7 +295,18 @@ class SsrsSource(DashboardServiceSource):
     def yield_datamodel(self, dashboard_details: SsrsReport) -> Iterable[Either[CreateDashboardDataModelRequest]]:
         if not self.source_config.includeDataModels:
             return
-        rdl = self._get_report_definition(dashboard_details)
+        try:
+            rdl = self._get_report_definition(dashboard_details)
+        except SourceConnectionException as exc:
+            self.datamodel_listing.mark_failed()
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name=dashboard_details.name,
+                    error=(f"Error fetching report definition for data models [{dashboard_details.name}]: {exc}"),
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+            return
         if not rdl:
             return
         for dataset in rdl.data_sets:
@@ -356,7 +373,18 @@ class SsrsSource(DashboardServiceSource):
         dashboard_details: SsrsReport,
         db_service_prefix: str | None = None,
     ) -> Iterable[Either[AddLineageRequest]]:
-        rdl = self._get_report_definition(dashboard_details)
+        try:
+            rdl = self._get_report_definition(dashboard_details)
+        except SourceConnectionException as exc:
+            self.datamodel_listing.mark_failed()
+            yield Either(  # pyright: ignore[reportCallIssue]
+                left=StackTraceError(
+                    name=dashboard_details.name,
+                    error=(f"Error fetching report definition for lineage [{dashboard_details.name}]: {exc}"),
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+            return
         if not rdl:
             return
 
@@ -524,6 +552,24 @@ class SsrsSource(DashboardServiceSource):
         lineage = self._get_add_lineage_request(to_entity=to_entity, from_entity=table_entity, sql=command_text)
         if lineage is not None:
             yield lineage
+
+    def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """Skip the staleness check when the datamodel listing failed this run.
+
+        A transient SSRS outage on the report-definition endpoint leaves some report
+        RDLs un-fetched, so their data models are absent from the run's live-FQN set.
+        Without this guard the server would soft-delete those previously ingested data
+        models — exactly the outage data-drop this connector must prevent. Skipping
+        deletion preserves them until a later, fully successful run re-confirms them.
+        """
+        if self.source_config.markDeletedDataModels and self.datamodel_listing.has_failed:
+            logger.warning(
+                "Skipping mark-deleted for data models: the datamodel listing failed "
+                "this run, so some data models were not confirmed. A staleness check "
+                "would risk soft-deleting previously ingested data models."
+            )
+            return
+        yield from super().mark_datamodels_as_deleted()
 
     def close(self):
         self.client.close()
