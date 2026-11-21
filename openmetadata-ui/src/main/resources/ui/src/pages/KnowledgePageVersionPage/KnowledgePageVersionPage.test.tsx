@@ -252,6 +252,79 @@ describe('KnowledgePageVersionPage', () => {
     );
   });
 
+  it('shows a per-region skeleton in the content area instead of a blank frame when the version list resolves before the version data on mount', async () => {
+    const deferredData: { resolve: (value: unknown) => void } = {
+      resolve: () => undefined,
+    };
+    mockGetKnowledgePageVersionData.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          deferredData.resolve = resolve;
+        })
+    );
+
+    await act(async () => {
+      renderPage();
+      await flushPromises();
+    });
+
+    // Version list resolved -> full-page skeleton dismissed, timeline mounted
+    // with versions. Version data still pending -> content area shows a
+    // per-region skeleton (NOT a blank frame, NOT committed previous content).
+    expect(screen.getByTestId('EntityVersionTimeLine')).toBeInTheDocument();
+    expect(screen.getByTestId('skeleton')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('page-version-content')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      deferredData.resolve(PAGE_V1_DATA);
+      await flushPromises();
+    });
+
+    expect(screen.getByTestId('page-version-content').textContent).toBe(
+      'Version 1 Title'
+    );
+  });
+
+  it('keeps the full-page skeleton until the version list resolves even when the version data resolves first on mount', async () => {
+    const deferredList: { resolve: (value: unknown) => void } = {
+      resolve: () => undefined,
+    };
+    mockGetKnowledgePageVersionsList.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          deferredList.resolve = resolve;
+        })
+    );
+
+    await act(async () => {
+      renderPage();
+      await flushPromises();
+    });
+
+    // Version data resolved but version list still pending -> the full-page
+    // skeleton must persist (no torn frame with content visible and an empty
+    // timeline shell). The timeline and content both stay absent.
+    expect(screen.getByTestId('skeleton')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('page-version-content')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('EntityVersionTimeLine')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      deferredList.resolve(VERSIONS_LIST);
+      await flushPromises();
+    });
+
+    expect(screen.getByTestId('page-version-content').textContent).toBe(
+      'Version 1 Title'
+    );
+    expect(screen.getByTestId('EntityVersionTimeLine')).toBeInTheDocument();
+  });
+
   it('re-fetches the base page, version list, and version data when the FQN changes', async () => {
     let rerender: (ui: React.ReactElement) => void;
     await act(async () => {

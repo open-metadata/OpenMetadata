@@ -52,7 +52,8 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     fqn: string;
     version: string;
   }>();
-  const [loading, setLoading] = useState(false);
+  const [isVersionListLoading, setIsVersionListLoading] = useState(true);
+  const [isVersionDataLoading, setIsVersionDataLoading] = useState(true);
   const [knowledgePage, setKnowledgePage] = useState<KnowledgePage>();
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
@@ -63,26 +64,25 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     if (!knowledgePage) {
       return;
     }
-    setLoading(true);
+    setIsVersionDataLoading(true);
     try {
       const res = await getKnowledgePageVersionData(knowledgePage.id, version);
       setSelectedData(res);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setLoading(false);
+      setIsVersionDataLoading(false);
     }
   }, [knowledgePage, version]);
 
   const fetchKnowledgePage = useCallback(async () => {
+    setIsVersionListLoading(true);
     try {
-      setLoading(true);
       const res = await getKnowledgePageByFqn(fqn);
       setKnowledgePage(res);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
+      setIsVersionListLoading(false);
     }
   }, [fqn]);
 
@@ -90,14 +90,14 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     if (!knowledgePage) {
       return;
     }
+    setIsVersionListLoading(true);
     try {
-      setLoading(true);
       const res = await getKnowledgePageVersionsList(knowledgePage.id);
       setVersionList(res);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setLoading(false);
+      setIsVersionListLoading(false);
     }
   }, [knowledgePage]);
 
@@ -149,42 +149,49 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
       title: getKnowledgePageName(selectedData, t),
       data: knowledgePage,
     });
-  }, [selectedData, loading, versionList, version, knowledgePage]);
+  }, [
+    selectedData,
+    isVersionListLoading,
+    isVersionDataLoading,
+    versionList,
+    version,
+    knowledgePage,
+  ]);
 
-  if (loading) {
-    return (
-      <>
-        <div className="version-data">
-          <Box
-            inline
-            align="stretch"
-            className="layout-space"
-            direction="col"
-            gap={2}
-            itemClassName="layout-space-item"
-            style={{ width: '650px' }}>
-            <div className="tw:flex tw:gap-4">
-              <Skeleton className="tw:shrink-0" variant="circular" width={40} />
-              <div className="tw:flex-1">
-                <SkeletonParagraph rows={2} title={false} />
-              </div>
-            </div>
-            <SkeletonParagraph className="m-t-sm" rows={8} title={false} />
-          </Box>
+  const versionDataSkeleton = (
+    <Box
+      inline
+      align="stretch"
+      className="layout-space"
+      direction="col"
+      gap={2}
+      itemClassName="layout-space-item"
+      style={{ width: '650px' }}>
+      <div className="tw:flex tw:gap-4">
+        <Skeleton className="tw:shrink-0" variant="circular" width={40} />
+        <div className="tw:flex-1">
+          <SkeletonParagraph rows={2} title={false} />
         </div>
-      </>
-    );
+      </div>
+      <SkeletonParagraph className="m-t-sm" rows={8} title={false} />
+    </Box>
+  );
+
+  if (isVersionListLoading) {
+    return <div className="version-data">{versionDataSkeleton}</div>;
   }
 
   return (
     <>
       <div className="version-data">
-        {selectedData && (
-          <KnowledgePageVersion
-            knowledgePage={selectedData}
-            loading={loading}
-          />
-        )}
+        {isVersionDataLoading
+          ? versionDataSkeleton
+          : selectedData && (
+              <KnowledgePageVersion
+                knowledgePage={selectedData}
+                loading={isVersionDataLoading}
+              />
+            )}
       </div>
       {getVersionTimeLineElement()}
     </>
