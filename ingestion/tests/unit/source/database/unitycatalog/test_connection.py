@@ -225,11 +225,11 @@ class TestCheckAccess:
             _checks(client).check_access()
 
         assert failure.value.evidence.command == "TCP connect my-workspace.cloud.databricks.com:443"
-        client.catalogs.list.assert_not_called()
+        client.api_client.do.assert_not_called()
 
     def test_rejected_credentials_surface_as_a_check_error_with_the_command(self):
         client = MagicMock()
-        client.catalogs.list.side_effect = Unauthenticated("invalid access token")
+        client.api_client.do.side_effect = Unauthenticated("invalid access token")
         with patch("metadata.core.connections.test_connection.network.tcp_probe"), pytest.raises(CheckError) as failure:
             _checks(client).check_access()
 
@@ -240,7 +240,7 @@ class TestCheckAccess:
 class TestMetadataSteps:
     def test_get_databases_resolves_the_first_non_internal_catalog(self):
         client = MagicMock()
-        client.catalogs.list.return_value = iter([_named("__databricks_internal"), _named("main")])
+        client.api_client.do.return_value = {"catalogs": [{"name": "__databricks_internal"}, {"name": "main"}]}
         checks = _checks(client)
 
         evidence = checks.check_databases()
@@ -251,30 +251,35 @@ class TestMetadataSteps:
 
     def test_get_databases_validates_the_configured_catalog(self):
         client = MagicMock()
-        client.catalogs.get.return_value = _named("my_catalog")
+        client.api_client.do.return_value = {"name": "my_catalog"}
         checks = _checks(client, catalog="my_catalog")
 
         evidence = checks.check_databases()
 
-        client.catalogs.get.assert_called_once_with("my_catalog")
-        client.catalogs.list.assert_not_called()
+        client.api_client.do.assert_called_once_with(
+            "GET", "/api/2.1/unity-catalog/catalogs/my_catalog",
+            query={"include_browse": "true"},
+        )
         assert evidence.command == "catalogs.get('my_catalog')"
 
     def test_get_schemas_validates_the_configured_schema(self):
         client = MagicMock()
-        client.schemas.get.return_value = _named("my_schema")
+        client.api_client.do.return_value = {"name": "my_schema"}
         checks = _checks(client, databaseSchema="my_schema")
         checks.table_obj.catalog_name = "my_catalog"
 
         evidence = checks.check_schemas()
 
-        client.schemas.get.assert_called_once_with("my_catalog.my_schema")
+        client.api_client.do.assert_called_once_with(
+            "GET", "/api/2.1/unity-catalog/schemas/my_catalog.my_schema",
+            query={"include_browse": "true"},
+        )
         assert evidence.command == "schemas.get('my_schema')"
         assert evidence.summary == "schema 'my_schema' resolved"
 
     def test_get_tables_reports_the_resolved_scope(self):
         client = MagicMock()
-        client.tables.list.return_value = iter([_named("orders")])
+        client.api_client.do.return_value = {"tables": [{"name": "orders"}]}
         checks = _checks(client)
         checks.table_obj.catalog_name = "my_catalog"
         checks.table_obj.schema_name = "my_schema"
@@ -291,7 +296,7 @@ class TestMetadataSteps:
             _checks(client).check_views()
 
         assert failure.value.evidence.command == "tables.list(omit_columns=True)"
-        client.tables.list.assert_not_called()
+        client.api_client.do.assert_not_called()
 
 
 class TestWarehouseSteps:

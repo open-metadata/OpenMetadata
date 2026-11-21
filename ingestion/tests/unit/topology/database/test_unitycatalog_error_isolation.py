@@ -131,10 +131,10 @@ class TestListingErrorIsolation:
     """SDK listing failures record a status failure and keep prior results."""
 
     def test_catalog_listing_failure_keeps_prior_catalogs(self, uc_source):
-        uc_source.client.catalogs.list.return_value = _raising_listing(
-            [CatalogInfo(name="demo"), CatalogInfo(name="main")],
+        uc_source.client.api_client.do.side_effect = [
+            {"catalogs": [{"name": "demo"}, {"name": "main"}], "next_page_token": "page-2"},
             Exception("429 Too Many Requests"),
-        )
+        ]
 
         names = list(uc_source.get_database_names_raw())
 
@@ -143,8 +143,26 @@ class TestListingErrorIsolation:
         assert uc_source.status.failures[0].name == "catalogs"
         assert "429 Too Many Requests" in uc_source.status.failures[0].error
 
+    def test_catalog_listing_includes_browse_only_catalogs(self, uc_source):
+        uc_source.client.api_client.do.return_value = {
+            "catalogs": [{"name": "metadata_only", "browse_only": True}]
+        }
+        assert list(uc_source.get_database_names_raw()) == ["metadata_only"]
+        assert uc_source.client.api_client.do.call_args.kwargs["query"]["include_browse"] == "true"
+
+    def test_schema_listing_includes_browse_only_schemas(self, uc_source):
+        uc_source.client.api_client.do.return_value = {
+            "schemas": [{"catalog_name": "hive_metastore", "name": "metadata_only"}]
+        }
+        assert list(uc_source.get_database_schema_names()) == ["metadata_only"]
+        assert uc_source.client.api_client.do.call_args.kwargs["query"] == {
+            "include_browse": "true",
+            "max_results": 0,
+            "catalog_name": "hive_metastore",
+        }
+
     def test_catalog_listing_immediate_failure_records_status(self, uc_source):
-        uc_source.client.catalogs.list.side_effect = Exception("503 Service Unavailable")
+        uc_source.client.api_client.do.side_effect = Exception("503 Service Unavailable")
 
         names = list(uc_source.get_database_names_raw())
 
@@ -153,13 +171,16 @@ class TestListingErrorIsolation:
         assert "503 Service Unavailable" in uc_source.status.failures[0].error
 
     def test_schema_listing_failure_keeps_prior_schemas(self, uc_source):
-        uc_source.client.schemas.list.return_value = _raising_listing(
-            [
-                SchemaInfo(catalog_name="hive_metastore", name="schema1"),
-                SchemaInfo(catalog_name="hive_metastore", name="schema2"),
-            ],
+        uc_source.client.api_client.do.side_effect = [
+            {
+                "schemas": [
+                    {"catalog_name": "hive_metastore", "name": "schema1"},
+                    {"catalog_name": "hive_metastore", "name": "schema2"},
+                ],
+                "next_page_token": "page-2",
+            },
             Exception("token expired"),
-        )
+        ]
 
         names = list(uc_source.get_database_schema_names())
 
