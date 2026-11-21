@@ -138,3 +138,56 @@ def test_filter_keeps_a_dotted_literal_column_name():
 
     assert kept == [test_case]
     status.failed.assert_not_called()
+
+
+def test_filter_keeps_a_plus_column_name_instead_of_decoding_it_to_a_space():
+    """A column name containing a literal '+' must round-trip verbatim and be kept.
+
+    Regression for the lossy ``unquote_plus`` decode: a column ``total+sales`` was
+    decoded to ``total sales``, the test case was dropped as "column does not exist"
+    (or mistargeted to a look-alike ``total sales`` column) within the same run that
+    created it.
+    """
+    table = Table(
+        id=uuid.uuid4(),
+        name="users",
+        columns=[Column(name="total+sales", dataType=DataType.INT)],
+    )
+    kept, test_case, status = _filter(_make_test_definition([DataType.INT]), table=table, column="total+sales")
+
+    assert kept == [test_case]
+    status.failed.assert_not_called()
+
+
+def test_filter_does_not_mistarget_a_plus_column_to_a_lookalike_space_column():
+    """When both ``total+sales`` (correct) and ``total sales`` (look-alike) exist, the
+    ``+`` column test must resolve to ``total+sales`` and pass type check, not be
+    silently retargeted to the VARCHAR ``total sales`` and dropped as incompatible.
+    """
+    table = Table(
+        id=uuid.uuid4(),
+        name="users",
+        columns=[
+            Column(name="total+sales", dataType=DataType.INT),
+            Column(name="total sales", dataType=DataType.VARCHAR),
+        ],
+    )
+    kept, test_case, status = _filter(_make_test_definition([DataType.INT]), table=table, column="total+sales")
+
+    assert kept == [test_case]
+    status.failed.assert_not_called()
+
+
+def test_filter_keeps_a_percent_sequence_column_name_verbatim():
+    """A column name carrying a '%XX'-shaped sequence must round-trip verbatim and be
+    kept, rather than being percent-decoded (e.g. ``pct%25off`` -> ``pct%off``).
+    """
+    table = Table(
+        id=uuid.uuid4(),
+        name="users",
+        columns=[Column(name="pct%25off", dataType=DataType.INT)],
+    )
+    kept, test_case, status = _filter(_make_test_definition([DataType.INT]), table=table, column="pct%25off")
+
+    assert kept == [test_case]
+    status.failed.assert_not_called()
