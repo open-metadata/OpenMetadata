@@ -19,10 +19,12 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
 import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -47,6 +49,7 @@ class ContextFileFqnRepairMigrationIT {
   private static final String FILES = "/v1/contextCenter/drive/files";
   private static final String FOLDERS = "/v1/contextCenter/drive/folders";
   private static final String GLOSSARIES = "/v1/glossaries";
+  private static final String GLOSSARY_TERMS = "/v1/glossaryTerms";
   private static final String TAG_BEFORE_THE_EDIT = "PII.NonSensitive";
   private static final String TAG_FROM_THE_EDIT = "PersonalData.Personal";
   private static final String OTHER_ENTITY_TAG = "PII.NonSensitive";
@@ -129,6 +132,90 @@ class ContextFileFqnRepairMigrationIT {
     ContextFile file = createFile(bareName, createFolder(ns.shortPrefix("Archive")), FILE_TAG);
 
     assertSharedRowsStayWithTheOtherEntity(file, () -> glossaryTags(glossary));
+  }
+
+  @Test
+  void aSubfolderNamedLikeTheFileUnderTheSameParentKeepsEveryTagRowUnderTheBareName(
+      TestNamespace ns) {
+    // A subfolder under the file's folder holds the file's derived FQN, as a glossary term or
+    // subdomain named like the file can too. Moving the file's tag_usage rows onto that hash
+    // would merge them with the subfolder's, so the repair gives the file its folder FQN and
+    // leaves every row under the bare name where it is, mirroring the stored-FQN policy.
+    Folder parent = createFolder(ns.shortPrefix("Y"));
+    String name = ns.shortPrefix("x");
+    ContextFile file = createFile(name, parent, FILE_TAG);
+    damageAsAnEditDid(file, TAG_FROM_THE_EDIT);
+    Folder subfolder = createFolder(name, parent, OTHER_ENTITY_TAG, FILE_TAG);
+    String folderFqn = subfolder.getFullyQualifiedName();
+    List<String> subfolderTagsBefore = folderTags(subfolder);
+    assertEquals(List.of(OTHER_ENTITY_TAG, FILE_TAG), subfolderTagsBefore);
+    int rowsUnderBareName = tagRowsUnder(name);
+
+    assertEquals(1, repairAll());
+
+    ContextFile repaired = getByName(folderFqn);
+    assertEquals(file.getId(), repaired.getId());
+    assertEquals(FullyQualifiedName.buildHash(folderFqn), storedNameHash(file.getId()));
+    assertEquals(
+        subfolderTagsBefore,
+        folderTags(subfolder),
+        "the subfolder keeps every tag it had; none of the file's tags moved onto its hash");
+    assertEquals(rowsUnderBareName, tagRowsUnder(name), "no row under the bare name moves or goes");
+    assertEquals(0, repairAll(), "a repaired file needs nothing on a second run");
+  }
+
+  /** A glossary term named like the file under a glossary named like the file's folder. */
+  @Test
+  void aGlossaryTermNamedLikeTheFileKeepsEveryTagRowUnderTheBareName(TestNamespace ns) {
+    String folderName = ns.shortPrefix("Y");
+    String name = ns.shortPrefix("x");
+    Glossary glossary =
+        ns.trackRoot(
+            Entity.GLOSSARY,
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.POST,
+                    GLOSSARIES,
+                    new CreateGlossary()
+                        .withName(folderName)
+                        .withDescription("Named like the file's folder"),
+                    Glossary.class));
+    GlossaryTerm term =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                GLOSSARY_TERMS,
+                new CreateGlossaryTerm()
+                    .withName(name)
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Named like the file; holds the file's derived FQN")
+                    .withTags(List.of(tagLabel(OTHER_ENTITY_TAG), tagLabel(FILE_TAG))),
+                GlossaryTerm.class);
+    Folder parent = createFolder(folderName);
+    ContextFile file = createFile(name, parent, FILE_TAG);
+    damageAsAnEditDid(file, TAG_FROM_THE_EDIT);
+    String termFqn = term.getFullyQualifiedName();
+    List<String> termTagsBefore = glossaryTermTags(term);
+    assertEquals(List.of(OTHER_ENTITY_TAG, FILE_TAG), termTagsBefore);
+    int rowsUnderBareName = tagRowsUnder(name);
+    int rowsUnderDerivedFqn = tagRowsUnder(termFqn);
+
+    assertEquals(1, repairAll());
+
+    assertEquals(
+        FullyQualifiedName.buildHash(termFqn),
+        storedNameHash(file.getId()),
+        "the file takes the derived FQN");
+    assertEquals(
+        termTagsBefore,
+        glossaryTermTags(term),
+        "the glossary term keeps every tag it had; the file's edit tag did not merge in");
+    assertEquals(rowsUnderBareName, tagRowsUnder(name), "no row under the bare name moves or goes");
+    assertEquals(
+        rowsUnderDerivedFqn, tagRowsUnder(termFqn), "no row moved onto the glossary term's hash");
+    assertEquals(0, repairAll(), "a repaired file needs nothing on a second run");
   }
 
   /**
@@ -228,6 +315,21 @@ class ContextFileFqnRepairMigrationIT {
             .getTags());
   }
 
+  private static List<String> glossaryTermTags(GlossaryTerm term) {
+    return tagFqns(
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                GLOSSARY_TERMS
+                    + "/name/"
+                    + encodeURIComponent(term.getFullyQualifiedName())
+                    + "?fields=tags",
+                null,
+                GlossaryTerm.class)
+            .getTags());
+  }
+
   private static List<String> folderTags(Folder folder) {
     return tagFqns(
         SdkClients.adminClient()
@@ -239,6 +341,17 @@ class ContextFileFqnRepairMigrationIT {
 
   private static Folder createFolder(String name, String... tags) {
     CreateFolder request = new CreateFolder().withName(name);
+    if (tags.length > 0) {
+      request.withTags(Stream.of(tags).map(ContextFileFqnRepairMigrationIT::tagLabel).toList());
+    }
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.POST, FOLDERS, request, Folder.class);
+  }
+
+  private static Folder createFolder(String name, Folder parent, String... tags) {
+    CreateFolder request =
+        new CreateFolder().withName(name).withParent(parent.getFullyQualifiedName());
     if (tags.length > 0) {
       request.withTags(Stream.of(tags).map(ContextFileFqnRepairMigrationIT::tagLabel).toList());
     }
