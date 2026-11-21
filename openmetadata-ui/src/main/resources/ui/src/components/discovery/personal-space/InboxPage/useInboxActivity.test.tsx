@@ -304,6 +304,38 @@ describe('fetchInboxActivity', () => {
     }
   );
 
+  it.each([undefined, 1, 100])(
+    'finds mentions after permission-filtered empty pages with maxResults %s',
+    async (maxResults) => {
+      const comment = {
+        id: 'visible-mention',
+        createdAt: 200,
+        message: '<#E::user::alice>',
+      };
+      mockListTasks
+        .mockResolvedValueOnce({ data: [], paging: { after: 'second-page' } })
+        .mockResolvedValueOnce({ data: [], paging: { after: 'third-page' } })
+        .mockResolvedValueOnce({
+          data: [{ id: 'visible-task', updatedAt: 200, comments: [comment] }],
+          paging: { after: 'last-page' },
+        })
+        .mockResolvedValueOnce({ data: [] });
+
+      const mentions = await getTaskCommentMentions('alice', { maxResults });
+
+      expect(mentions).toEqual([
+        {
+          task: expect.objectContaining({ id: 'visible-task' }),
+          comment,
+        },
+      ]);
+      expect(mockListTasks).toHaveBeenCalledTimes(4);
+      expect(mockListTasks).toHaveBeenLastCalledWith(
+        expect.objectContaining({ after: 'last-page' })
+      );
+    }
+  );
+
   it('stops reading task pages once they cannot contain newer mentions', async () => {
     const mention = '<#E::user::alice>';
     mockListTasks

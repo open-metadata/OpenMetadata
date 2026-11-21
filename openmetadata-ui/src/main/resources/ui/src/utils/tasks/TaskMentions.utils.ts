@@ -102,12 +102,10 @@ export const getTaskCommentMentions = async (
         ?.filter(includesComment)
         .forEach((comment) => mentions.push({ task, comment }));
     }
-    if (
-      data.length === 0 ||
-      trimToNewestMentions(mentions, maxResults, data.at(-1)?.updatedAt)
-    ) {
+    if (trimToNewestMentions(mentions, maxResults, data.at(-1)?.updatedAt)) {
       break;
     }
+    // Permission filtering can empty a page without exhausting its cursor.
     after = paging?.after;
   } while (after);
 
