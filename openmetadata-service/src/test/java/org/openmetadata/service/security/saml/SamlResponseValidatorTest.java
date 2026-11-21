@@ -20,6 +20,8 @@ import com.onelogin.saml2.authn.SamlResponse;
 import com.onelogin.saml2.http.HttpRequest;
 import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.settings.SettingsBuilder;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
@@ -48,6 +50,27 @@ class SamlResponseValidatorTest {
   void aCurrentResponseForThisServiceProviderIsAccepted() {
     String response = idp.signedResponse(SUBJECT, ACS_URL, SP_ENTITY_ID);
 
+    assertDoesNotThrow(() -> SamlResponseValidator.validate(settings, request(response)));
+  }
+
+  @Test
+  void requiredEncryptionRejectsPlaintextOutsideStrictMode() throws Exception {
+    settings.setWantAssertionsEncrypted(true);
+    String response = idp.signedResponse(SUBJECT, ACS_URL, SP_ENTITY_ID);
+    assertTrue(
+        parse(response).isValid(null), "java-saml alone ignores encryption outside strict mode");
+    AuthenticationException error =
+        assertThrows(
+            AuthenticationException.class,
+            () -> SamlResponseValidator.validate(settings, request(response)));
+    assertTrue(error.getMessage().contains("not encrypted"));
+  }
+
+  @Test
+  void requiredEncryptionAcceptsAnEncryptedSignedAssertionOutsideStrictMode() throws Exception {
+    settings.setWantAssertionsEncrypted(true);
+    String response = idp.encryptedResponse(SUBJECT, ACS_URL, SP_ENTITY_ID);
+    assertTrue(parse(response).isValid(null));
     assertDoesNotThrow(() -> SamlResponseValidator.validate(settings, request(response)));
   }
 
@@ -113,6 +136,14 @@ class SamlResponseValidatorTest {
         SettingsBuilder.IDP_SINGLE_SIGN_ON_SERVICE_URL_PROPERTY_KEY,
         "https://mock-idp.openmetadata.test/sso");
     values.put(SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, idp.idpCertificatePem());
+    values.put(SettingsBuilder.SP_X509CERT_PROPERTY_KEY, idp.idpCertificatePem());
+    try (var input = getClass().getResourceAsStream("/saml/mock-idp-pkcs8.key")) {
+      values.put(
+          SettingsBuilder.SP_PRIVATEKEY_PROPERTY_KEY,
+          new String(input.readAllBytes(), StandardCharsets.UTF_8));
+    } catch (IOException e) {
+      throw new IllegalStateException(e);
+    }
     values.put(SettingsBuilder.SECURITY_WANT_ASSERTIONS_SIGNED, false);
     values.put(SettingsBuilder.SECURITY_WANT_MESSAGES_SIGNED, false);
     return new SettingsBuilder().fromValues(values).build();
