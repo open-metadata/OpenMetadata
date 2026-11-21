@@ -142,7 +142,10 @@ public class PasswordEntityMasker extends EntityMasker {
       try {
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(originalIngestionPipeline, NEW_KEY, passwordsMap);
+        rejectMasksWithoutStoredSecret(ingestionPipeline, passwordsMap);
         unmaskPasswordFields(ingestionPipeline, NEW_KEY, passwordsMap);
+      } catch (EntityMaskException e) {
+        throw e;
       } catch (Exception e) {
         throw new EntityMaskException(
             String.format(
