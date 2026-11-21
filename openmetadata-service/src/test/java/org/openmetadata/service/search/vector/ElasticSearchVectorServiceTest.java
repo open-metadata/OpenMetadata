@@ -30,6 +30,7 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -585,6 +586,42 @@ class ElasticSearchVectorServiceTest {
     assertTrue(
         sent.getAllValues().stream().noneMatch(r -> r.getEndpoint().contains("/_update/")),
         "a current entity doc is not updated again");
+  }
+
+  @Test
+  void aChunkRejectedBesideTheHeaderNeverMovesTheHeaderForward() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.getDimension()).thenReturn(3);
+    Table table = orders().withDescription("Orders placed online. ".repeat(300));
+    String parentId = table.getId().toString();
+    assertTrue(
+        VectorDocBuilder.fromEntity(table, mockEmbeddingClient).size() > 1,
+        "the entity spans several chunks");
+    answerByEndpointSuffix(
+        Map.of(
+            "/_alias",
+            response(404, "{\"status\":404}"),
+            "/_bulk",
+            response(
+                200,
+                "{\"errors\":true,\"items\":[{\"index\":{\"status\":429,\"error\":"
+                    + "{\"type\":\"es_rejected_execution_exception\"}}}]}")));
+
+    vectorService.updateEntityEmbeddings(table, "table_search_index");
+
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
+    List<String> bulks = new ArrayList<>();
+    for (Request request : sent.getAllValues()) {
+      if (request.getEndpoint().equals("/_bulk")) {
+        bulks.add(bodyText(request));
+      }
+    }
+    assertEquals(1, bulks.size(), "the rejected bulk stops the write");
+    assertTrue(bulks.getFirst().contains("\"_id\":\"" + parentId + "_1\""), bulks::toString);
+    assertFalse(
+        bulks.getFirst().contains("\"_id\":\"" + parentId + "_0\""),
+        "chunk 0 is not written beside the rejected chunk");
   }
 
   @Test

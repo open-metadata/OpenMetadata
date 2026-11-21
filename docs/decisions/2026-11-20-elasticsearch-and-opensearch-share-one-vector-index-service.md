@@ -62,8 +62,15 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   generation it hit. A node that cannot save the flag retries it when the partition ends and
   fails the partition if it still cannot. The failed partition fails the entity type, which
   blocks the swap the same way. The next staged recreate sweeps the unpromoted generation.
-- **A live edit refreshes the entity document even when its chunk write fails.** The old chunk
-  header stays, so the entity's next update writes the chunks again.
+  Reindex writes are covered completely. A live edit's mirror or delete into the generation is
+  covered only when the flag saves or the node still has a vector partition to finish, and an
+  edit that fails after the coordinator reads the flag misses the generation even when the flag
+  saves. A missed update heals on the entity's next edit. A missed delete leaves the deleted
+  entity's chunks in the promoted generation until the next full recreate.
+- **A live edit refreshes the entity document even when its chunk write fails.** Chunk 0
+  carries the header the next update compares against, so it is written in its own request
+  after every other chunk and delete succeeded. A failed write leaves the old header, and the
+  entity's next update writes the chunks again.
 - **Hybrid search stays OpenSearch-only.** The RRF search pipeline lives in
   `OpenSearchVectorService`, and `SearchRepository` creates and checks it only on OpenSearch.
 

@@ -1482,24 +1482,46 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     }
   }
 
+  /**
+   * Chunk 0 carries the header the next update compares against, and a bulk request is not atomic.
+   * So the other chunks and the trailing deletes go first, and chunk 0 follows only when they all
+   * succeeded: a rejected chunk leaves the old header, and the next update writes the set again.
+   */
   private void writeChunkBulk(
       String indexName, String parentId, List<Map<String, Object>> chunkDocs, int previousCount)
       throws IOException {
-    StringBuilder bulk = new StringBuilder();
-    for (int i = 0; i < chunkDocs.size(); i++) {
-      bulk.append("{\"index\":{\"_index\":\"")
-          .append(indexName)
-          .append("\",\"_id\":\"")
-          .append(parentId)
-          .append('_')
-          .append(i)
-          .append("\"}}\n")
-          .append(MAPPER.writeValueAsString(chunkDocs.get(i)))
-          .append('\n');
+    StringBuilder bodyChunks = new StringBuilder();
+    for (int i = 1; i < chunkDocs.size(); i++) {
+      appendChunkIndex(bodyChunks, indexName, parentId, i, chunkDocs.get(i));
     }
-    appendChunkDeletes(bulk, indexName, parentId, chunkDocs.size(), previousCount);
-    String response = executeGenericRequest("POST", "/_bulk", bulk.toString());
-    failOnBulkItemErrors(indexName, parentId, response);
+    appendChunkDeletes(bodyChunks, indexName, parentId, chunkDocs.size(), previousCount);
+    sendChunkBulk(indexName, parentId, bodyChunks);
+    if (!chunkDocs.isEmpty()) {
+      StringBuilder header = new StringBuilder();
+      appendChunkIndex(header, indexName, parentId, 0, chunkDocs.getFirst());
+      sendChunkBulk(indexName, parentId, header);
+    }
+  }
+
+  private static void appendChunkIndex(
+      StringBuilder bulk, String indexName, String parentId, int index, Map<String, Object> doc)
+      throws IOException {
+    bulk.append("{\"index\":{\"_index\":\"")
+        .append(indexName)
+        .append("\",\"_id\":\"")
+        .append(parentId)
+        .append('_')
+        .append(index)
+        .append("\"}}\n")
+        .append(MAPPER.writeValueAsString(doc))
+        .append('\n');
+  }
+
+  private void sendChunkBulk(String indexName, String parentId, StringBuilder bulk) {
+    if (!bulk.isEmpty()) {
+      String response = executeGenericRequest("POST", "/_bulk", bulk.toString());
+      failOnBulkItemErrors(indexName, parentId, response);
+    }
   }
 
   /**
