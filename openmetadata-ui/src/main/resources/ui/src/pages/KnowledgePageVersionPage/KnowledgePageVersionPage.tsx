@@ -12,7 +12,7 @@
  */
 import { AxiosError } from 'axios';
 import { toString } from 'lodash';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import KnowledgePageVersion from '../../components/KnowledgeCenter/KnowledgePageVersion/KnowledgePageVersion';
@@ -60,18 +60,31 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
   );
   const [selectedData, setSelectedData] = useState<KnowledgePage>();
 
+  // Guards against a stale version-data response overwriting a newer one when
+  // the user switches versions while a previous request is still in flight.
+  const activeVersionReqId = useRef(0);
+
   const fetchActiveVersion = useCallback(async () => {
     if (!knowledgePage) {
       return;
     }
+    const reqId = ++activeVersionReqId.current;
     setIsVersionDataLoading(true);
     try {
       const res = await getKnowledgePageVersionData(knowledgePage.id, version);
+      if (reqId !== activeVersionReqId.current) {
+        return;
+      }
       setSelectedData(res);
     } catch (error) {
+      if (reqId !== activeVersionReqId.current) {
+        return;
+      }
       showErrorToast(error as AxiosError);
     } finally {
-      setIsVersionDataLoading(false);
+      if (reqId === activeVersionReqId.current) {
+        setIsVersionDataLoading(false);
+      }
     }
   }, [knowledgePage, version]);
 
@@ -83,6 +96,9 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     } catch (error) {
       showErrorToast(error as AxiosError);
       setIsVersionListLoading(false);
+      // No knowledgePage means no version-data request will start, so the
+      // content skeleton would otherwise hang — clear it here too.
+      setIsVersionDataLoading(false);
     }
   }, [fqn]);
 

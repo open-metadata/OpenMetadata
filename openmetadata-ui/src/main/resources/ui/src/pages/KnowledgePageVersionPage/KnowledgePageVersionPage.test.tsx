@@ -89,6 +89,10 @@ jest.mock('../../utils/KnowledgePagePureUtils', () => ({
   getKnowledgePageName: jest.fn(() => 'PageName'),
 }));
 
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
 const PAGE_V1_BASE = {
   id: 'kp-1',
   name: 'articleFqn',
@@ -111,6 +115,14 @@ const PAGE_V2_DATA = {
   fullyQualifiedName: 'articleFqn',
   version: 0.2,
   displayName: 'Version 2 Title',
+};
+
+const PAGE_V3_DATA = {
+  id: 'kp-1',
+  name: 'articleFqn',
+  fullyQualifiedName: 'articleFqn',
+  version: 0.3,
+  displayName: 'Version 3 Title',
 };
 
 const PAGE_OTHER_BASE = {
@@ -352,6 +364,82 @@ describe('KnowledgePageVersionPage', () => {
     expect(mockGetKnowledgePageByFqn).toHaveBeenLastCalledWith('otherFqn');
     expect(screen.getByTestId('page-version-content').textContent).toBe(
       'Other Title'
+    );
+  });
+
+  it('clears both loading states when the initial article lookup fails so the page does not hang on the content skeleton', async () => {
+    mockGetKnowledgePageByFqn.mockRejectedValueOnce(new Error('not found'));
+
+    await act(async () => {
+      renderPage();
+      await flushPromises();
+    });
+
+    // Without knowledgePage, no version list or version-data request is made.
+    expect(mockGetKnowledgePageVersionsList).not.toHaveBeenCalled();
+    expect(mockGetKnowledgePageVersionData).not.toHaveBeenCalled();
+    // Both loading flags cleared by the failed base fetch — neither the
+    // full-page nor the content skeleton should remain on screen.
+    expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('page-version-content')
+    ).not.toBeInTheDocument();
+  });
+
+  it('ignores a stale version-data response when the user switches versions before the first request resolves', async () => {
+    let rerender: (ui: React.ReactElement) => void;
+    await act(async () => {
+      const utils = renderPage();
+      rerender = utils.rerender;
+      await flushPromises();
+    });
+
+    expect(screen.getByTestId('page-version-content').textContent).toBe(
+      'Version 1 Title'
+    );
+
+    // Switch to 0.2 with a deferred V2 response (the stale request).
+    const deferredV2: { resolve: (value: unknown) => void } = {
+      resolve: () => undefined,
+    };
+    mockGetKnowledgePageVersionData.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          deferredV2.resolve = resolve;
+        })
+    );
+    mockParams = { fqn: 'articleFqn', version: '0.2' };
+
+    await act(async () => {
+      rerender(<KnowledgePageVersionPage onPageChange={mockOnPageChange} />);
+      await flushPromises();
+    });
+
+    // Switch to 0.3 which resolves immediately with V3 data (the current
+    // request that supersedes the deferred V2).
+    mockGetKnowledgePageVersionData.mockResolvedValueOnce(PAGE_V3_DATA);
+    mockParams = { fqn: 'articleFqn', version: '0.3' };
+
+    await act(async () => {
+      rerender(<KnowledgePageVersionPage onPageChange={mockOnPageChange} />);
+      await flushPromises();
+    });
+    await act(async () => {
+      await flushPromises();
+    });
+
+    expect(screen.getByTestId('page-version-content').textContent).toBe(
+      'Version 3 Title'
+    );
+
+    // Resolve the stale V2 request last — it must NOT overwrite V3.
+    await act(async () => {
+      deferredV2.resolve(PAGE_V2_DATA);
+      await flushPromises();
+    });
+
+    expect(screen.getByTestId('page-version-content').textContent).toBe(
+      'Version 3 Title'
     );
   });
 });
