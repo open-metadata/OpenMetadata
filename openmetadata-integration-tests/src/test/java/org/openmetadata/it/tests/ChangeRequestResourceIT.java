@@ -205,6 +205,51 @@ class ChangeRequestResourceIT {
   }
 
   @Test
+  void anUngatedDescriptionEditIsPreviewedWithItsOpsAndNothingIsSaved(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = gatedGlossary(ns);
+
+    var preview =
+        sendAsAdmin(
+            "POST",
+            "/v1/changeRequests/preview/glossary/" + glossary.getId(),
+            "application/json-patch+json",
+            "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"previewed\"}]");
+
+    assertEquals(200, preview.statusCode());
+    JsonNode body = JsonUtils.readTree(preview.body());
+    assertFalse(body.path("requiresApproval").asBoolean());
+    JsonNode op = body.path("ops").get(0);
+    assertEquals("description", op.path("field").asText());
+    assertEquals("previewed", JsonUtils.readTree(op.path("value").asText()).asText());
+    assertEquals(PUBLISHED, JsonUtils.readTree(op.path("baseValue").asText()).asText());
+    assertEquals(PUBLISHED, descriptionOf(glossary.getId()));
+    assertEquals(0, visibleCount(SdkClients.adminClient(), glossary.getId()));
+  }
+
+  @Test
+  void anUngatedEditBeyondDescriptiveMetadataIsPreviewedWithoutOps(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = gatedGlossary(ns);
+
+    var preview =
+        sendAsAdmin(
+            "POST",
+            "/v1/changeRequests/preview/glossary/" + glossary.getId(),
+            "application/json-patch+json",
+            """
+            [{"op":"replace","path":"/description","value":"previewed"},
+             {"op":"add","path":"/mutuallyExclusive","value":true}]
+            """);
+
+    assertEquals(200, preview.statusCode());
+    JsonNode body = JsonUtils.readTree(preview.body());
+    assertFalse(body.path("requiresApproval").asBoolean());
+    assertEquals(0, body.path("ops").size());
+    assertEquals(PUBLISHED, descriptionOf(glossary.getId()));
+  }
+
+  @Test
   void requesterAndReviewerSeeTheRequestButOthersDoNot(TestNamespace ns) {
     Glossary glossary = gated(ns);
     stageAsUser2(glossary);

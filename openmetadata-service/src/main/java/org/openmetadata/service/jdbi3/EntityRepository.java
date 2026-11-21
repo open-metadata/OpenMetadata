@@ -5351,6 +5351,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return ApprovalGate.preview(original, updated, actor.userName(), edit);
   }
 
+  /** The ops a PATCH by {@code user} would make, gated or not, without storing anything. */
+  public final List<MutationOp> previewPatchOps(UUID id, String user, JsonPatch patch) {
+    T original = get(null, id, patchFields, NON_DELETED, false);
+    return ApprovalGate.previewOps(
+        original,
+        preparePatched(original, patch, user, null),
+        Edit.patch(JsonUtils.extractPatchedFields(patch)));
+  }
+
   /** Runs the preparation and validation a PATCH by {@code user} would, without storing anything. */
   public final void validatePatch(UUID id, String user, JsonPatch patch) {
     T original = get(null, id, patchFields, NON_DELETED, false);
