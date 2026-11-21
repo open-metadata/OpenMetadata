@@ -16,7 +16,6 @@ Define constraints helper methods useful for the metadata ingestion
 from metadata.generated.schema.entity.data.table import (
     Column,
     Constraint,
-    ConstraintType,
     RelationshipType,
 )
 from metadata.ingestion.ometa.utils import model_str
