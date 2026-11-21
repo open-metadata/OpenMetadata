@@ -8183,6 +8183,10 @@
                           "title": "Supports Metadata Extraction",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
                         },
+                        "supportsUsageExtraction": {
+                          "title": "Supports Usage Extraction",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsUsageExtraction"
+                        },
                         "supportsDBTExtraction": {
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsDBTExtraction"
                         },
