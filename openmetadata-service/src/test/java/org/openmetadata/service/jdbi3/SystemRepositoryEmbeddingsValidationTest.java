@@ -142,7 +142,11 @@ class SystemRepositoryEmbeddingsValidationTest {
 
     assertFalse(result.getPassed());
     assertTrue(result.getMessage().contains("OpenSearch connection refused"));
-    assertTrue(result.getMessage().contains("OpenSearch vector service failed to start"));
+    assertTrue(
+        result
+            .getMessage()
+            .contains(
+                "The embedding client is configured but the vector service failed to start."));
   }
 
   @Test

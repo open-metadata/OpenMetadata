@@ -53,7 +53,7 @@ public class VectorDocBuilder {
    * Schema version of the denormalized chunk document (issue #862/#858). Stamped on every chunk doc
    * as {@code docVersion} and mirrored on the chunk index mapping as {@code _meta.chunkDocVersion}.
    * Bump this whenever {@link #buildDenormalizedFields} materializes a new field or changes an existing one
-   * so {@code OpenSearchVectorService} triggers an additive {@code PUT _mapping} and an
+   * so {@code AbstractVectorIndexService} triggers an additive {@code PUT _mapping} and an
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
    * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
    */

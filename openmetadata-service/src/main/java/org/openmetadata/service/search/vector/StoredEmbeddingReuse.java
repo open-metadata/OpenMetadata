@@ -7,14 +7,15 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * When a reindex may copy the embedding stored on an entity search doc into the rebuilt doc instead
- * of calling the embedding provider. Shared by the OpenSearch and Elasticsearch vector services.
+ * of calling the embedding provider. The vector index service selects stored embeddings by these
+ * rules and the reindex bulk sinks check them again where they splice.
  *
  * <p>The stored fingerprint is the only reuse key. An unchanged {@code updatedAt} is not enough: a
  * release that changes the embedding text leaves every entity's {@code updatedAt} as it was.
  * ADR:2026-11-11-reindex-reuses-an-embedding-only-when-its-fingerprint-matches
  */
 @Slf4j
-final class StoredEmbeddingReuse {
+public final class StoredEmbeddingReuse {
 
   static final String FINGERPRINT_FIELD = "fingerprint";
   static final List<String> HEADER_FIELDS = List.of(FINGERPRINT_FIELD);
@@ -52,6 +53,16 @@ final class StoredEmbeddingReuse {
         && hasEmbedding(cached)
         && cached.path(FINGERPRINT_FIELD).isTextual()
         && !cached.path(FINGERPRINT_FIELD).asText().isBlank();
+  }
+
+  /**
+   * As {@link #isSpliceable(JsonNode)}, for an index built with {@code dimension}-dimensional
+   * vectors. The fingerprint covers the entity's text and not the embedding model, so after a model
+   * change a stored vector still matches by fingerprint while the new index would reject its
+   * length. A non-positive {@code dimension} means no embedding client and skips the comparison.
+   */
+  public static boolean isSpliceable(JsonNode cached, int dimension) {
+    return isSpliceable(cached) && (dimension <= 0 || cached.path("embedding").size() == dimension);
   }
 
   private static boolean hasEmbedding(JsonNode cached) {

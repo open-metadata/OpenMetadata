@@ -145,6 +145,7 @@ import org.openmetadata.service.search.fitness.FitnessVerdict;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -1792,8 +1793,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
 
       repo.prepareForReindex();
-      org.openmetadata.service.search.vector.OpenSearchVectorService vecService =
-          org.openmetadata.service.search.vector.OpenSearchVectorService.getInstance();
+      VectorIndexService vecService = repo.getVectorIndexService();
       if (vecService == null || vecService.getEmbeddingClient() == null) {
         LOG.warn("Vector embeddings are disabled or not initialized. Skipping re-embedding.");
         return 1;
@@ -1912,7 +1912,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       java.util.concurrent.ExecutorService consumerExecutor,
       java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
       java.util.concurrent.atomic.AtomicBoolean producersDone,
-      org.openmetadata.service.search.vector.OpenSearchVectorService vecService,
+      VectorIndexService vecService,
       Map<String, java.util.concurrent.atomic.AtomicInteger> processedCounts,
       Map<String, java.util.concurrent.atomic.AtomicInteger> failedCounts) {
     java.util.concurrent.CountDownLatch consumerLatch =
@@ -1936,7 +1936,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       int consumerId,
       java.util.concurrent.BlockingQueue<ReembedTask> taskQueue,
       java.util.concurrent.atomic.AtomicBoolean producersDone,
-      org.openmetadata.service.search.vector.OpenSearchVectorService vecService,
+      VectorIndexService vecService,
       Map<String, java.util.concurrent.atomic.AtomicInteger> processedCounts,
       Map<String, java.util.concurrent.atomic.AtomicInteger> failedCounts) {
     LOG.debug("Consumer {} started", consumerId);
