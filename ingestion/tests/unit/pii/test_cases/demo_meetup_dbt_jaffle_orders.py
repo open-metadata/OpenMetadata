@@ -16,14 +16,6 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     Uuid,
 )
-from metadata.generated.schema.type.tagLabel import (
-    LabelType,
-    State,
-    TagFQN,
-    TagLabel,
-    TagSource,
-)
-from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.sampler.models import SampleData
 
 table = Table(
@@ -222,16 +214,9 @@ sample_data = SampleData(
 )
 
 expected_column_tags = [
-    ColumnTag(
-        column_fqn="Service.database.schema.orders.order_date",
-        tag_label=TagLabel(
-            source=TagSource.Classification,
-            labelType=LabelType.Generated,
-            state=State.Suggested,
-            name="NonSensitive",
-            tagFQN=TagFQN(
-                root="PII.NonSensitive",
-            ),
-        ),
-    ),
+    # order_date is a business-event date (when an order was placed), not a
+    # personal-date column.  Under the allowlist approach, DATE_TIME content
+    # hits require a column-name match against the personal-date allowlist
+    # (birth_date, hire_date, registration_date, …).  order_date does not
+    # match and is therefore not tagged as PII.
 ]

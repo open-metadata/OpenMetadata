@@ -23,6 +23,7 @@ from metadata.generated.schema.type.classificationLanguages import (
 from metadata.generated.schema.type.predefinedRecognizer import Name
 from metadata.generated.schema.type.recognizer import RecognizerException
 from metadata.pii.algorithms import presidio_constants
+from metadata.pii.algorithms.column_patterns import is_personal_date_text, normalize_name
 from metadata.pii.algorithms.feature_extraction import split_column_name
 from metadata.pii.algorithms.preprocessing import ner_normalize_values
 from metadata.pii.algorithms.presidio_patches import (
@@ -38,6 +39,7 @@ from metadata.pii.algorithms.presidio_utils import (
     explain_recognition_results,
     load_nlp_engine,
 )
+from metadata.pii.constants import PII
 from metadata.utils.entity_link import (
     get_entity_link,  # pyright: ignore[reportUnknownVariableType]
 )
@@ -50,6 +52,51 @@ TARGET_MAP = {
 
 _NAMED_ENTITY_TYPES = frozenset({"PERSON", "LOCATION", "NRP"})
 _MIN_DISTINCT_UNCONTEXTUALIZED_NER_MATCHES = 2
+
+# DATE_TIME entity types that require personal-date corroboration before a content hit
+# is accepted as PII.  A DateRecognizer scores any parseable date at ≥0.6, so
+# event_timestamp / created_at would otherwise always be tagged PII.NonSensitive.
+# For tags in the PII classification we keep the hit only with personal-date evidence:
+# - the column name matches the tag's own column-name recognizers,
+# - the column name matches the built-in allowlist (birth_date, dob, hire_date, …) in
+#   column_patterns.py,
+# - the column name contains a non-generic `context` word configured on the tag's date
+#   recognizers (e.g. "geburtsdatum"), or
+# - the sampled value itself names a personal date ("date of birth: 1990-04-12").
+# Tags in other classifications (e.g. a custom General.Date) keep their content hits.
+_CORROBORATION_REQUIRED_ENTITY_TYPES: frozenset[str] = frozenset({"DATE_TIME"})
+
+# Context words that say a value is a date, not whose date it is.
+_GENERIC_DATE_CONTEXT_TOKENS: frozenset[str] = frozenset(
+    {"date", "dates", "time", "times", "datetime", "timestamp", "ts", "dt", "day", "month", "year"}
+)
+
+
+def _personal_date_context(recognizers: Sequence[EntityRecognizer]) -> set[str]:
+    """Normalized, non-generic context words configured on date-only recognizers.
+
+    Recognizers that also detect other entities (e.g. spaCy for DATE_TIME and LOCATION)
+    are skipped: their context mixes in words such as "address" or "state" that say
+    nothing about whose date a value is.
+    """
+    words: set[str] = set()
+    for rec in recognizers:
+        entities = set(rec.supported_entities)
+        if not entities or not entities <= _CORROBORATION_REQUIRED_ENTITY_TYPES:
+            continue
+        for word in rec.context or []:
+            normalized = normalize_name(word)
+            if normalized and not set(normalized.split("_")) <= _GENERIC_DATE_CONTEXT_TOKENS:
+                words.add(normalized)
+    return words
+
+
+def _names_personal_date(text: str, context_words: set[str]) -> bool:
+    if is_personal_date_text(text):
+        return True
+    # Whole-token match, so a context word "dob" does not match "adobe".
+    normalized = f"_{normalize_name(text)}_"
+    return any(f"_{word}_" in normalized for word in context_words)
 
 
 @dataclass(frozen=True)
@@ -189,6 +236,34 @@ class TagAnalyzer:
     @property
     def _column_name(self) -> str:
         return self._column.name.root
+
+    @property
+    def _is_pii_tag(self) -> bool:
+        classification = self.tag.classification
+        return classification is not None and classification.name == PII
+
+    def _is_personal_date_column(self, context_words: set[str]) -> bool:
+        if _names_personal_date(self._column_name, context_words):
+            return True
+        column_recognizers = self.column_recognizers
+        return bool(column_recognizers) and bool(self._analyze_with(self._column_name, column_recognizers))
+
+    def _drop_uncorroborated_dates(
+        self, evidence: list[_RecognitionEvidence], content_recognizers: Sequence[EntityRecognizer]
+    ) -> list[_RecognitionEvidence]:
+        if not self._is_pii_tag or not any(
+            item.result.entity_type in _CORROBORATION_REQUIRED_ENTITY_TYPES for item in evidence
+        ):
+            return evidence
+        context_words = _personal_date_context(content_recognizers)
+        if self._is_personal_date_column(context_words):
+            return evidence
+        return [
+            item
+            for item in evidence
+            if item.result.entity_type not in _CORROBORATION_REQUIRED_ENTITY_TYPES
+            or _names_personal_date(item.value, context_words)
+        ]
 
     def _normalize_recognizer_language(
         self, recognizer_obj: EntityRecognizer, effective_language: str
@@ -336,6 +411,7 @@ class TagAnalyzer:
                 content_evidence += self._analyze_upper_cased_names(
                     str_values, content_recognizers, context, result_patcher
                 )
+                content_evidence = self._drop_uncorroborated_dates(content_evidence, content_recognizers)
                 content_results = _corroborated_content_results(content_evidence)
                 # Use the maximum individual recogniser score rather than the average over all
                 # sampled values.  Averaging dilutes genuine PII hits: a single social-insurance
