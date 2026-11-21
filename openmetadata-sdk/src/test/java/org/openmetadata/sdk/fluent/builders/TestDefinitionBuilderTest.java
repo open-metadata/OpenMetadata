@@ -4,11 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,10 +13,10 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
@@ -53,23 +48,23 @@ class TestDefinitionBuilderTest {
 
   @Test
   void buildValidatesNameIsRequired() {
-    TestDefinitionBuilder builder =
+    final TestDefinitionBuilder builder =
         new TestDefinitionBuilder(null).entityType(TABLE).testPlatforms(List.of(OPEN_METADATA));
-    IllegalStateException ex = assertThrows(IllegalStateException.class, builder::build);
+    final IllegalStateException ex = assertThrows(IllegalStateException.class, builder::build);
     assertEquals("TestDefinition name is required", ex.getMessage());
   }
 
   @Test
   void buildValidatesEntityTypeIsRequired() {
-    TestDefinitionBuilder builder =
+    final TestDefinitionBuilder builder =
         new TestDefinitionBuilder(null).name("x").testPlatforms(List.of(OPEN_METADATA));
-    IllegalStateException ex = assertThrows(IllegalStateException.class, builder::build);
+    final IllegalStateException ex = assertThrows(IllegalStateException.class, builder::build);
     assertEquals("TestDefinition entityType is required", ex.getMessage());
   }
 
   @Test
   void buildValidatesTestPlatformsIsRequiredAndNonEmpty() {
-    IllegalStateException missingEx =
+    final IllegalStateException missingEx =
         assertThrows(
             IllegalStateException.class,
             () -> new TestDefinitionBuilder(null).name("x").entityType(TABLE).build());
@@ -77,12 +72,12 @@ class TestDefinitionBuilderTest {
         "TestDefinition testPlatforms is required and must not be empty", missingEx.getMessage());
 
     // testPlatforms defaults to an empty list in CreateTestDefinition; build() must reject it.
-    CreateTestDefinition req = new CreateTestDefinition();
+    final CreateTestDefinition req = new CreateTestDefinition();
     req.setName("x");
     req.setEntityType(TABLE);
     assertNotNull(req.getTestPlatforms());
     assertEquals(0, req.getTestPlatforms().size());
-    IllegalStateException emptyEx =
+    final IllegalStateException emptyEx =
         assertThrows(
             IllegalStateException.class,
             () ->
@@ -97,9 +92,8 @@ class TestDefinitionBuilderTest {
 
   @Test
   void buildPropagatesAllFieldsToTheCreateRequest() {
-    EntityReference owner =
-        new EntityReference().withId(java.util.UUID.randomUUID()).withType("user");
-    CreateTestDefinition request =
+    final EntityReference owner = new EntityReference().withId(UUID.randomUUID()).withType("user");
+    final CreateTestDefinition request =
         new TestDefinitionBuilder(null)
             .name("table_column_value_to_be_not_null")
             .displayName("Column Not Null")
@@ -133,8 +127,8 @@ class TestDefinitionBuilderTest {
   }
 
   @Test
-  void testPlatformAddOneAppendsToTheRequestPlatforms() {
-    CreateTestDefinition request =
+  void testPlatformAppendsToTheBuilderOwnedList() {
+    final CreateTestDefinition request =
         new TestDefinitionBuilder(null)
             .name("x")
             .entityType(TABLE)
@@ -145,99 +139,30 @@ class TestDefinitionBuilderTest {
   }
 
   @Test
+  void testPlatformAppendsAfterTestPlatformsReceivesAnImmutableList() {
+    // testPlatforms() must copy its argument into a builder-owned mutable list, otherwise
+    // chaining .testPlatform(...) after .testPlatforms(List.of(...)) throws
+    // UnsupportedOperationException because List.of(...) is unmodifiable.
+    final CreateTestDefinition request =
+        new TestDefinitionBuilder(null)
+            .name("x")
+            .entityType(TABLE)
+            .testPlatforms(List.of(OPEN_METADATA))
+            .testPlatform(TestPlatform.DBT)
+            .build();
+    assertEquals(List.of(OPEN_METADATA, TestPlatform.DBT), request.getTestPlatforms());
+  }
+
+  @Test
   void buildReturnsTheSameRequestInstanceAndDoesNotMutateAfterBuild() {
-    TestDefinitionBuilder builder =
+    final TestDefinitionBuilder builder =
         new TestDefinitionBuilder(null)
             .name("x")
             .entityType(TABLE)
             .testPlatforms(List.of(OPEN_METADATA));
-    CreateTestDefinition first = builder.build();
-    CreateTestDefinition second = builder.build();
+    final CreateTestDefinition first = builder.build();
+    final CreateTestDefinition second = builder.build();
     assertSame(first, second);
-  }
-
-  // ===================================================================================
-  // create() / createOrUpdate() use the typed Create* overload (not the entity overload)
-  // ===================================================================================
-
-  @Test
-  void createSendsCreateTestDefinitionRequestNotEntity() {
-    OpenMetadataClient client = mock(OpenMetadataClient.class);
-    org.openmetadata.sdk.services.tests.TestDefinitionService service =
-        mock(org.openmetadata.sdk.services.tests.TestDefinitionService.class);
-    when(client.testDefinitions()).thenReturn(service);
-
-    TestDefinition created = new TestDefinition().withName("table_row_count_to_equal");
-    when(service.create(any(CreateTestDefinition.class))).thenReturn(created);
-
-    TestDefinition result =
-        new TestDefinitionBuilder(client)
-            .name("table_row_count_to_equal")
-            .description("Counts rows")
-            .entityType(TABLE)
-            .testPlatforms(List.of(OPEN_METADATA))
-            .create();
-
-    assertSame(created, result);
-
-    ArgumentCaptor<CreateTestDefinition> captor =
-        ArgumentCaptor.forClass(CreateTestDefinition.class);
-    verify(service).create(captor.capture());
-    CreateTestDefinition sent = captor.getValue();
-    assertEquals("table_row_count_to_equal", sent.getName());
-    assertEquals("Counts rows", sent.getDescription());
-    assertEquals(TABLE, sent.getEntityType());
-    assertEquals(List.of(OPEN_METADATA), sent.getTestPlatforms());
-
-    // The entity-based overload must NOT be invoked — that is the bug.
-    verify(service, never()).create(any(TestDefinition.class));
-  }
-
-  @Test
-  void createOrUpdateSendsCreateTestDefinitionRequestNotEntity() {
-    OpenMetadataClient client = mock(OpenMetadataClient.class);
-    org.openmetadata.sdk.services.tests.TestDefinitionService service =
-        mock(org.openmetadata.sdk.services.tests.TestDefinitionService.class);
-    when(client.testDefinitions()).thenReturn(service);
-
-    TestDefinition upserted = new TestDefinition().withName("table_row_count_to_equal");
-    when(service.upsert(any(CreateTestDefinition.class))).thenReturn(upserted);
-
-    TestDefinition result =
-        new TestDefinitionBuilder(client)
-            .name("table_row_count_to_equal")
-            .entityType(TABLE)
-            .testPlatforms(List.of(OPEN_METADATA))
-            .createOrUpdate();
-
-    assertSame(upserted, result);
-
-    ArgumentCaptor<CreateTestDefinition> captor =
-        ArgumentCaptor.forClass(CreateTestDefinition.class);
-    verify(service).upsert(captor.capture());
-    CreateTestDefinition sent = captor.getValue();
-    assertEquals("table_row_count_to_equal", sent.getName());
-    assertEquals(TABLE, sent.getEntityType());
-    assertEquals(List.of(OPEN_METADATA), sent.getTestPlatforms());
-
-    // The entity-based upsert overload must NOT be invoked — that is the bug.
-    verify(service, never()).upsert(any(TestDefinition.class));
-  }
-
-  @Test
-  void createThrowsBeforeSendingWhenRequiredFieldsAreMissing() {
-    OpenMetadataClient client = mock(OpenMetadataClient.class);
-    org.openmetadata.sdk.services.tests.TestDefinitionService service =
-        mock(org.openmetadata.sdk.services.tests.TestDefinitionService.class);
-    when(client.testDefinitions()).thenReturn(service);
-
-    assertThrows(
-        IllegalStateException.class, () -> new TestDefinitionBuilder(client).name("x").create());
-    assertThrows(
-        IllegalStateException.class,
-        () -> new TestDefinitionBuilder(client).name("x").entityType(TABLE).create());
-    verify(service, never()).create(any(CreateTestDefinition.class));
-    verify(service, never()).create(any(TestDefinition.class));
   }
 
   // ===================================================================================
@@ -257,38 +182,47 @@ class TestDefinitionBuilderTest {
 
   private ReceivedRequest captureRequest(String responseBody, Consumer<OpenMetadataClient> action)
       throws IOException {
-    HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-    AtomicReference<ReceivedRequest> received = new AtomicReference<>();
-    server.createContext(
-        "/api/v1/",
-        (HttpExchange ex) -> {
-          String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
-          received.set(
-              new ReceivedRequest(ex.getRequestMethod(), ex.getRequestURI().getPath(), body));
-          byte[] bytes = responseBody.getBytes(StandardCharsets.UTF_8);
-          ex.getResponseHeaders().add("Content-Type", "application/json");
-          ex.sendResponseHeaders(200, bytes.length);
-          try (ex) {
-            ex.getResponseBody().write(bytes);
-          }
-        });
+    final AtomicReference<ReceivedRequest> received = new AtomicReference<>();
+    final HttpServer server = newCaptureServer(responseBody, received);
     server.start();
     try {
-      OpenMetadataClient client =
-          new OpenMetadataClient(
-              OpenMetadataConfig.builder()
-                  .baseUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/api")
-                  .build());
-      action.accept(client);
+      action.accept(newClient(server));
     } finally {
       server.stop(0);
     }
     return received.get();
   }
 
+  private HttpServer newCaptureServer(
+      String responseBody, AtomicReference<ReceivedRequest> received) throws IOException {
+    final HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    server.createContext("/api/v1/", ex -> handleCapture(ex, responseBody, received));
+    return server;
+  }
+
+  private void handleCapture(
+      HttpExchange ex, String responseBody, AtomicReference<ReceivedRequest> received)
+      throws IOException {
+    final String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+    received.set(new ReceivedRequest(ex.getRequestMethod(), ex.getRequestURI().getPath(), body));
+    final byte[] bytes = responseBody.getBytes(StandardCharsets.UTF_8);
+    ex.getResponseHeaders().add("Content-Type", "application/json");
+    ex.sendResponseHeaders(200, bytes.length);
+    try (ex) {
+      ex.getResponseBody().write(bytes);
+    }
+  }
+
+  private OpenMetadataClient newClient(HttpServer server) {
+    return new OpenMetadataClient(
+        OpenMetadataConfig.builder()
+            .baseUrl("http://127.0.0.1:" + server.getAddress().getPort() + "/api")
+            .build());
+  }
+
   @Test
   void createPostsCreateTestDefinitionWithRequiredFieldsOverTheWire() throws IOException {
-    ReceivedRequest sent =
+    final ReceivedRequest sent =
         captureRequest(
             TEST_DEFINITION_RESPONSE,
             client ->
@@ -302,7 +236,7 @@ class TestDefinitionBuilderTest {
     assertEquals("POST", sent.method());
     assertEquals("/api/v1/dataQuality/testDefinitions", sent.path());
 
-    JsonNode body = MAPPER.readTree(sent.body());
+    final JsonNode body = MAPPER.readTree(sent.body());
     assertEquals("table_row_count_to_equal", body.get("name").asText());
     assertEquals("Counts table rows", body.get("description").asText());
     assertEquals("TABLE", body.get("entityType").asText());
@@ -315,7 +249,7 @@ class TestDefinitionBuilderTest {
 
   @Test
   void createOrUpdatePutsCreateTestDefinitionWithRequiredFieldsOverTheWire() throws IOException {
-    ReceivedRequest sent =
+    final ReceivedRequest sent =
         captureRequest(
             TEST_DEFINITION_RESPONSE,
             client ->
@@ -328,7 +262,7 @@ class TestDefinitionBuilderTest {
     assertEquals("PUT", sent.method());
     assertEquals("/api/v1/dataQuality/testDefinitions", sent.path());
 
-    JsonNode body = MAPPER.readTree(sent.body());
+    final JsonNode body = MAPPER.readTree(sent.body());
     assertEquals("table_row_count_to_equal", body.get("name").asText());
     assertEquals("TABLE", body.get("entityType").asText());
     assertEquals(1, body.get("testPlatforms").size());

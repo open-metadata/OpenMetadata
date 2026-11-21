@@ -1,5 +1,8 @@
 package org.openmetadata.sdk.fluent.builders;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
+import java.util.ArrayList;
 import java.util.List;
 import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.tests.TestCaseParameter;
@@ -35,7 +38,7 @@ public class TestDefinitionBuilder {
   /**
    * Create a new TestDefinitionBuilder with the given client.
    */
-  public static TestDefinitionBuilder create(OpenMetadataClient client) {
+  public static TestDefinitionBuilder create(final OpenMetadataClient client) {
     return new TestDefinitionBuilder(client);
   }
 
@@ -66,23 +69,27 @@ public class TestDefinitionBuilder {
   /**
    * Set the entity type the test definition applies to (required).
    */
-  public TestDefinitionBuilder entityType(TestDefinitionEntityType entityType) {
+  public TestDefinitionBuilder entityType(final TestDefinitionEntityType entityType) {
     request.setEntityType(entityType);
     return this;
   }
 
   /**
-   * Set the platforms where the test runs (required, non-empty).
+   * Set the platforms where the test runs (required, non-empty). The supplied list is copied into a
+   * builder-owned mutable list so {@link #testPlatform(TestPlatform)} can append to it.
    */
-  public TestDefinitionBuilder testPlatforms(List<TestPlatform> testPlatforms) {
-    request.setTestPlatforms(testPlatforms);
+  public TestDefinitionBuilder testPlatforms(final List<TestPlatform> testPlatforms) {
+    request.setTestPlatforms(new ArrayList<>(testPlatforms));
     return this;
   }
 
   /**
-   * Add a single test platform.
+   * Add a single test platform to the builder-owned platform list.
    */
-  public TestDefinitionBuilder testPlatform(TestPlatform testPlatform) {
+  public TestDefinitionBuilder testPlatform(final TestPlatform testPlatform) {
+    if (request.getTestPlatforms() == null) {
+      request.setTestPlatforms(new ArrayList<>());
+    }
     request.getTestPlatforms().add(testPlatform);
     return this;
   }
@@ -90,7 +97,7 @@ public class TestDefinitionBuilder {
   /**
    * Set the owners.
    */
-  public TestDefinitionBuilder owners(List<EntityReference> owners) {
+  public TestDefinitionBuilder owners(final List<EntityReference> owners) {
     request.setOwners(owners);
     return this;
   }
@@ -98,7 +105,7 @@ public class TestDefinitionBuilder {
   /**
    * Set a single owner.
    */
-  public TestDefinitionBuilder owner(EntityReference owner) {
+  public TestDefinitionBuilder owner(final EntityReference owner) {
     request.setOwners(List.of(owner));
     return this;
   }
@@ -106,7 +113,7 @@ public class TestDefinitionBuilder {
   /**
    * Set the supported column data types.
    */
-  public TestDefinitionBuilder supportedDataTypes(List<ColumnDataType> supportedDataTypes) {
+  public TestDefinitionBuilder supportedDataTypes(final List<ColumnDataType> supportedDataTypes) {
     request.setSupportedDataTypes(supportedDataTypes);
     return this;
   }
@@ -114,7 +121,7 @@ public class TestDefinitionBuilder {
   /**
    * Set the provider type.
    */
-  public TestDefinitionBuilder provider(ProviderType provider) {
+  public TestDefinitionBuilder provider(final ProviderType provider) {
     request.setProvider(provider);
     return this;
   }
@@ -122,7 +129,8 @@ public class TestDefinitionBuilder {
   /**
    * Set the parameter definitions.
    */
-  public TestDefinitionBuilder parameterDefinition(List<TestCaseParameter> parameterDefinition) {
+  public TestDefinitionBuilder parameterDefinition(
+      final List<TestCaseParameter> parameterDefinition) {
     request.setParameterDefinition(parameterDefinition);
     return this;
   }
@@ -130,7 +138,7 @@ public class TestDefinitionBuilder {
   /**
    * Set the data quality dimension.
    */
-  public TestDefinitionBuilder dataQualityDimension(String dataQualityDimension) {
+  public TestDefinitionBuilder dataQualityDimension(final String dataQualityDimension) {
     request.setDataQualityDimension(dataQualityDimension);
     return this;
   }
@@ -138,7 +146,7 @@ public class TestDefinitionBuilder {
   /**
    * Set the supported services.
    */
-  public TestDefinitionBuilder supportedServices(List<String> supportedServices) {
+  public TestDefinitionBuilder supportedServices(final List<String> supportedServices) {
     request.setSupportedServices(supportedServices);
     return this;
   }
@@ -146,7 +154,7 @@ public class TestDefinitionBuilder {
   /**
    * Set the domains.
    */
-  public TestDefinitionBuilder domains(List<String> domains) {
+  public TestDefinitionBuilder domains(final List<String> domains) {
     request.setDomains(domains);
     return this;
   }
@@ -154,7 +162,7 @@ public class TestDefinitionBuilder {
   /**
    * Set the SQL expression template.
    */
-  public TestDefinitionBuilder sqlExpression(String sqlExpression) {
+  public TestDefinitionBuilder sqlExpression(final String sqlExpression) {
     request.setSqlExpression(sqlExpression);
     return this;
   }
@@ -162,7 +170,7 @@ public class TestDefinitionBuilder {
   /**
    * Set the validator class.
    */
-  public TestDefinitionBuilder validatorClass(String validatorClass) {
+  public TestDefinitionBuilder validatorClass(final String validatorClass) {
     request.setValidatorClass(validatorClass);
     return this;
   }
@@ -177,7 +185,7 @@ public class TestDefinitionBuilder {
     if (request.getEntityType() == null) {
       throw new IllegalStateException("TestDefinition entityType is required");
     }
-    if (request.getTestPlatforms() == null || request.getTestPlatforms().isEmpty()) {
+    if (nullOrEmpty(request.getTestPlatforms())) {
       throw new IllegalStateException(
           "TestDefinition testPlatforms is required and must not be empty");
     }
