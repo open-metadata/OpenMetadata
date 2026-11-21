@@ -30,6 +30,7 @@ from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_TOTAL_COUNT_KEY,
     DIMENSION_VALUE_KEY,
     BaseTestValidator,
+    DimensionInfo,
 )
 from metadata.data_quality.validations.impact_score import calculate_impact_score
 from metadata.data_quality.validations.utils import casefold_if_string
@@ -177,6 +178,11 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
     ) -> str:
         """Format the result message for location validation.
 
+        Names the tolerance and the verdict, the way every sibling row-counting
+        validator does, so a passing run no longer reads as a zero-failure
+        expectation. The invalid rows are the violations, the evaluated rows
+        (valid plus invalid) are the population they were counted against.
+
         Args:
             counts: CountResult with valid/invalid/unknown counts
             dimension_col: Optional dimension column name
@@ -185,15 +191,18 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
         Returns:
             str: Formatted result message
         """
+        dimension_info: DimensionInfo | None = None
         if dimension_col and dimension_value:
-            return (
-                f"Dimension {dimension_col}={dimension_value}: "
-                f"Found validLocation={counts.valid_count}, invalidLocation={counts.invalid_count}, "
-                f"unknownLocation={counts.unknown_count} vs. expected 0 invalidLocation."
+            dimension_info = DimensionInfo(
+                dimension_name=dimension_col,
+                dimension_value=dimension_value,
             )
-        return (
-            f"Found validLocation={counts.valid_count}, invalidLocation={counts.invalid_count},"
-            f"unknownLocation={counts.unknown_count} vs. expected 0 invalidLocation."
+        return self.format_violation_message(
+            violations=counts.invalid_count,
+            population=counts.valid_count + counts.invalid_count,
+            violation_noun="invalid locations",
+            matched=self._evaluate_test_condition(counts),
+            dimension_info=dimension_info,
         )
 
     def _get_test_result_values(self, counts: CountResult) -> list[TestResultValue]:
