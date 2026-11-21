@@ -982,7 +982,10 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
         try:
             return {"dataType": DataType(upper), "dataTypeDisplay": type_name}
         except ValueError:
-            logger.debug(f"Unrecognized Iceberg/Delta/Spark data type '{type_name}'. Defaulting to STRING.")
+            logger.debug(
+                "Unrecognized Iceberg/Delta/Spark data type '%s'. Defaulting to STRING.",
+                type_name,
+            )
             return {"dataType": DataType.STRING, "dataTypeDisplay": type_name}
 
     def _parse_struct_fields(self, fields: list) -> list[dict]:
