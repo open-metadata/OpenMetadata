@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -424,6 +424,15 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // transition with no payload (silent data loss). Typeless tasks have no
   // schema, so they are never gated. See `getTaskActionInput.requiresForm`.
   const [formSchemaLoaded, setFormSchemaLoaded] = useState(false);
+  // Set when the schema lookup rejected (`getResolvedTaskFormSchema` was called
+  // with `allowFallback: false`). Actions stay blocked until the user retries —
+  // falling back to the built-in default on a failure would hide a required-form
+  // transition's `transitionForms` and let it fire with no payload (the bug this
+  // PR fixes). A confirmed-missing schema is NOT an error: it resolves to
+  // `undefined` and the actions fire straight through (no form to collect).
+  const [formSchemaError, setFormSchemaError] = useState(false);
+  // Bumped by the schema-retry button to re-run the fetch effect.
+  const [formSchemaRetryKey, setFormSchemaRetryKey] = useState(0);
 
   const loadTask = useCallback(async () => {
     setIsLoading(true);
@@ -503,10 +512,12 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     if (!taskType || !taskCategory) {
       setFormSchema(undefined);
       setFormSchemaLoaded(true);
+      setFormSchemaError(false);
 
       return;
     }
     setFormSchemaLoaded(false);
+    setFormSchemaError(false);
   }, [taskType, taskCategory]);
 
   useEffect(() => {
@@ -515,6 +526,14 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       return undefined;
     }
 
+    // `allowFallback: false` distinguishes a failed lookup (rejects) from a
+    // confirmed-missing schema (resolves to `undefined`). On rejection the
+    // actions stay blocked and a retry is offered, so a required-form
+    // transition can never fire silently because the schema fetch failed.
+    // Scoped to workflow-driven tasks (those with available transitions): a
+    // legacy task has no transition guard and still needs *a* schema to build
+    // the resolve body, so it keeps the built-in default fallback on failure.
+    const isWorkflowDriven = Boolean(task?.availableTransitions?.length);
     getResolvedTaskFormSchema(taskType, taskCategory, {
       // Suggestion tasks share one taskType+taskCategory binding across two
       // seeded schemas; pass the stamped id (and payload for fallback
@@ -522,25 +541,42 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       // DescriptionSuggestion form. See TaskFormSchemaUtils.
       taskFormSchemaId: task?.taskFormSchemaId,
       payload: task?.payload,
+      allowFallback: !isWorkflowDriven,
     })
       .then((schema) => {
         if (active) {
           setFormSchema(schema);
           setFormSchemaLoaded(true);
+          setFormSchemaError(false);
         }
       })
-      // Without a schema the per-type defaults still produce a correct body.
+      // A confirmed-missing schema resolved to `undefined` above and reached
+      // `.then`; only a genuine fetch failure reaches here.
       .catch(() => {
         if (active) {
           setFormSchema(undefined);
-          setFormSchemaLoaded(true);
+          setFormSchemaLoaded(false);
+          setFormSchemaError(true);
         }
       });
 
     return () => {
       active = false;
     };
-  }, [taskType, taskCategory, task?.taskFormSchemaId, task?.payload]);
+  }, [
+    taskType,
+    taskCategory,
+    task?.taskFormSchemaId,
+    task?.payload,
+    task?.availableTransitions?.length,
+    formSchemaRetryKey,
+  ]);
+
+  const retryFormSchema = useCallback(() => {
+    setFormSchemaError(false);
+    setFormSchemaLoaded(false);
+    setFormSchemaRetryKey((key) => key + 1);
+  }, []);
 
   // A plugin can refine how a task type it owns renders — its summary rows, its
   // stat tiles — without owning the pane. The first matching contribution wins.
@@ -1018,6 +1054,20 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
               isAssignee={isAllowedDecider(task, currentUserIds)}
               isFiler={currentUserIds.has(task.createdBy?.id)}
             />
+          )}
+          {formSchemaError && (
+            <Box className="tw:flex tw:items-center tw:gap-2" direction="row">
+              <Typography className="tw:text-error" size="text-sm">
+                {t('message.something-went-wrong')}
+              </Typography>
+              <Button
+                color="link-gray"
+                data-testid="task-form-schema-retry"
+                size="sm"
+                onPress={retryFormSchema}>
+                {t('label.reload')}
+              </Button>
+            </Box>
           )}
         </Box>
       </Box>
