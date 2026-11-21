@@ -2,20 +2,30 @@ package org.openmetadata.service.resources.drive;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
+import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.junit.jupiter.api.Test;
+import org.jvnet.mimepull.MIMEConfig;
+import org.jvnet.mimepull.MIMEMessage;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ContextFileType;
 
 class ContextFileUploadSupportTest {
+  private static final String ASCII_FILE_NAME = "report-2026.pdf";
+  private static final String CYRILLIC_FILE_NAME = "Отчёт.xlsx";
+  private static final String CJK_FILE_NAME = "報告.pdf";
+  private static final String LATIN1_FILE_NAME = "Café.txt";
 
   @Test
   void detectFileTypeUsesMimeMappings() {
@@ -92,5 +102,40 @@ class ContextFileUploadSupportTest {
 
     assertEquals(bytes.length, ex.getActualSize());
     assertEquals(3, ex.getMaxFileSize());
+  }
+
+  @Test
+  void decodeMultipartFileNameRecoversUtf8NameFromParsedUpload() throws Exception {
+    final String body =
+        "--XX\r\n"
+            + "Content-Disposition: form-data; name=\"file\"; filename=\""
+            + CYRILLIC_FILE_NAME
+            + "\"\r\n"
+            + "Content-Type: application/octet-stream\r\n\r\n"
+            + "abc\r\n"
+            + "--XX--\r\n";
+    final MIMEMessage message =
+        new MIMEMessage(
+            new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)),
+            "XX",
+            new MIMEConfig());
+    final List<String> header =
+        message.getAttachments().getFirst().getHeader("Content-Disposition");
+    final String parsed = new FormDataContentDisposition(header.getFirst()).getFileName();
+
+    assertNotEquals(CYRILLIC_FILE_NAME, parsed);
+    assertEquals(CYRILLIC_FILE_NAME, ContextFileUploadSupport.decodeMultipartFileName(parsed));
+  }
+
+  @Test
+  void decodeMultipartFileNameLeavesOtherNamesUnchanged() {
+    assertNull(ContextFileUploadSupport.decodeMultipartFileName(null));
+    assertEquals(
+        ASCII_FILE_NAME, ContextFileUploadSupport.decodeMultipartFileName(ASCII_FILE_NAME));
+    assertEquals(
+        CYRILLIC_FILE_NAME, ContextFileUploadSupport.decodeMultipartFileName(CYRILLIC_FILE_NAME));
+    assertEquals(CJK_FILE_NAME, ContextFileUploadSupport.decodeMultipartFileName(CJK_FILE_NAME));
+    assertEquals(
+        LATIN1_FILE_NAME, ContextFileUploadSupport.decodeMultipartFileName(LATIN1_FILE_NAME));
   }
 }
