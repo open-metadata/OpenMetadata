@@ -11,10 +11,13 @@
 """send_progress_update maps ProgressRegistry.eta_seconds into the SSE payload."""
 
 from copy import deepcopy
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from threading import Thread
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 from requests import Response
 from requests.exceptions import HTTPError
 
@@ -321,3 +324,92 @@ class TestTerminalStatusWriteRetry:
         assert refreshed.endDate is not None
         assert attempts["writes"] == 2
         delay.assert_called_once()
+
+
+class TestHttpTerminalPersistence:
+    def test_real_http_gateway_recovers_terminal_status(self):
+        """Exercise a real HTTP 502 response and durable reread over loopback."""
+        state = {"status": "running", "finished": False, "puts": 0}
+
+        class StatusEndpoint(BaseHTTPRequestHandler):
+            def do_GET(self):
+                payload = requests.models.complexjson.dumps(
+                    {"state": state["status"], "finished": state["finished"]}
+                ).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+
+            def do_PUT(self):
+                state["puts"] += 1
+                length = int(self.headers["Content-Length"])
+                payload = requests.models.complexjson.loads(
+                    self.rfile.read(length).decode("utf-8")
+                )
+                if state["puts"] == 1:
+                    self.send_response(502)
+                    self.send_header("Content-Type", "text/html")
+                    self.end_headers()
+                    self.wfile.write(b"<html>temporary gateway failure</html>")
+                    return
+                state["status"] = payload["state"]
+                state["finished"] = payload["finished"]
+                self.send_response(204)
+                self.end_headers()
+
+            def log_message(self, format, *args):
+                pass
+
+        server = ThreadingHTTPServer(("127.0.0.1", 0), StatusEndpoint)
+        thread = Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        url = f"http://127.0.0.1:{server.server_port}/status/run-1"
+
+        class HttpMetadata:
+            def get_pipeline_status(self, fqn, run_id):
+                assert (fqn, run_id) == ("svc.pipeline", "run-1")
+                response = requests.get(url, timeout=5)
+                response.raise_for_status()
+                info = response.json()
+                return SimpleNamespace(
+                    pipelineState=PipelineState(info["state"]),
+                    endDate=info["finished"],
+                    status=None,
+                )
+
+            def create_or_update_pipeline_status(self, fqn, status):
+                assert fqn == "svc.pipeline"
+                response = requests.put(
+                    url,
+                    json={
+                        "state": status.pipelineState.value,
+                        "finished": status.endDate is not None,
+                    },
+                    timeout=5,
+                )
+                response.raise_for_status()
+
+        try:
+            harness = _Harness(ProgressRegistry(), HttpMetadata())
+            harness.config = MagicMock()
+            harness.config.ingestionPipelineFQN = "svc.pipeline"
+            harness.config.model_dump.return_value = {}
+            with (
+                patch("metadata.workflow.workflow_status_mixin.sleep") as delay,
+                patch(
+                    "metadata.workflow.workflow_status_mixin.ContextManager.dump_contexts",
+                    return_value={},
+                ),
+            ):
+                harness.set_ingestion_pipeline_status(PipelineState.success)
+
+            saved = requests.get(url, timeout=5).json()
+            assert saved == {"state": PipelineState.success.value, "finished": True}
+            assert state["puts"] == 2
+            delay.assert_called_once()
+        finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=5)
