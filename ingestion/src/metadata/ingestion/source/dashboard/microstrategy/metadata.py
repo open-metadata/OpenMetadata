@@ -568,17 +568,18 @@ class MicrostrategySource(DashboardServiceSource):
         definition: to the projections of the metrics it is built from, and to the columns of the
         facts it aggregates. A name another object of the dataset shares matches no alias.
         """
-        key = normalized(metric.name or "")
-        if key and key not in ambiguous and key in alias_reads:
-            return {column for table, column in alias_reads[key] & reads}
-        parts = self.client.get_metric_parts(project_id, metric.id, known=lambda name: normalized(name) in alias_reads)
+
+        def named(name: str) -> bool:
+            key = normalized(name)
+            return bool(key) and key not in ambiguous and key in alias_reads
+
+        if named(metric.name or ""):
+            return {column for table, column in alias_reads[normalized(metric.name)] & reads}
+        parts = self.client.get_metric_parts(project_id, metric.id, known=named)
         if not parts:
             return set()
         columns = {
-            column
-            for name in parts.metrics
-            if (part := normalized(name)) in alias_reads
-            for table, column in alias_reads[part] & reads
+            column for name in parts.metrics if named(name) for table, column in alias_reads[normalized(name)] & reads
         }
         for fact in parts.facts:
             fact_columns = self.client.get_fact_columns(project_id, fact) or frozenset()

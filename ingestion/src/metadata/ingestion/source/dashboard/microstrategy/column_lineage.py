@@ -63,7 +63,8 @@ class ParsedCube:
     tables: tuple[str, ...] = ()
     read_columns: frozenset[SourceColumn] = field(default_factory=frozenset)
     cube: str | None = None
-    alias_reads: AliasReads = NO_ALIASES
+    # A default the class shares must be hashable on Python 3.11, and a mapping proxy is not.
+    alias_reads: AliasReads = field(default_factory=lambda: NO_ALIASES)
 
 
 def table_name_of(table: exp.Table) -> str:
