@@ -1044,13 +1044,28 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             elif state[0] == "failed":
                 return None
 
+            # A table lifecycle is requested once per table. Read only that table
+            # from the indexed spool instead of reparsing every table in its dataset
+            # for each call (which becomes quadratic for large datasets).
+            # Retain full-dataset results for callers without an active table.
+            selected_table = getattr(self.context.get(), "table", None)
+            if selected_table:
+                sql = (
+                    "SELECT table_name, payload FROM rows "
+                    "WHERE project = ? AND region = ? AND schema_name = ? "
+                    "AND table_name = ?"
+                )
+                params = (database, normalized_region, schema_name, selected_table)
+            else:
+                sql = (
+                    "SELECT table_name, payload FROM rows "
+                    "WHERE project = ? AND region = ? AND schema_name = ?"
+                )
+                params = (database, normalized_region, schema_name)
+
             with self._region_lifecycle_lock:
                 try:
-                    records = db.execute(
-                        "SELECT table_name, payload FROM rows "
-                        "WHERE project = ? AND region = ? AND schema_name = ?",
-                        (database, normalized_region, schema_name),
-                    ).fetchall()
+                    records = db.execute(sql, params).fetchall()
                 except (sqlite3.Error, OSError) as exc:
                     raise _RegionLifecycleSpoolError("Could not read cached rows") from exc
             return {
