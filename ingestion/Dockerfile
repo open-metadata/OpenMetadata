@@ -9,6 +9,14 @@ ARG TARGETARCH
 RUN --mount=type=bind,source=ingestion/scripts/rebuild_adbc_flightsql.sh,target=/rebuild.sh \
     bash /rebuild.sh build /out
 
+# Rebuilds the Go library bundled in adbc-driver-flightsql against patched modules;
+# see ingestion/scripts/rebuild_adbc_flightsql.sh. Cross-compiled on the build host,
+# and on bookworm so the library needs no newer glibc than any of these images ship.
+FROM --platform=$BUILDPLATFORM golang:1.26.11-bookworm AS adbc-flightsql
+ARG TARGETARCH
+RUN --mount=type=bind,source=ingestion/scripts/rebuild_adbc_flightsql.sh,target=/rebuild.sh \
+    bash /rebuild.sh build /out
+
 FROM ${BASE_IMAGE}
 
 # gRPC ships a separate CA bundle that can lag behind OS distrust updates.
