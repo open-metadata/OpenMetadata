@@ -132,8 +132,8 @@ UNITY_CATALOG_ERRORS = ErrorPack(
     ),
     when(Matchers.exception(ResourceDoesNotExist, NotFound)).diagnose(
         "Object not found",
-        fix="The configured catalog or schema does not exist, or is not visible to the "
-        "connection's principal. Verify the names and the USE CATALOG / USE SCHEMA grants.",
+        fix="The catalog or schema does not exist, or is not visible to the connection's "
+        "principal. Verify the configured catalog and the USE CATALOG / USE SCHEMA grants.",
     ),
     when(Matchers.contains("no_such_catalog")).diagnose(
         "Catalog not found",
@@ -142,8 +142,7 @@ UNITY_CATALOG_ERRORS = ErrorPack(
     ),
     when(Matchers.contains("no_such_schema")).diagnose(
         "Schema not found",
-        fix="The configured schema does not exist or is not visible. Verify the schema name and "
-        "that the principal has USE SCHEMA on it.",
+        fix="The schema does not exist or is not visible. Verify that the principal has USE SCHEMA on it.",
     ),
     when(Matchers.contains("table_or_view_not_found")).diagnose(
         "Table or view not found",
@@ -176,8 +175,8 @@ UNITY_CATALOG_ERRORS = ErrorPack(
     ),
     when(Matchers.contains("does not exist")).diagnose(
         "Object not found",
-        fix="Verify the configured catalog, schema, and HTTP path exist and the connection's "
-        "principal is authorized to use them.",
+        fix="Verify the configured catalog and HTTP path exist and the connection's principal is "
+        "authorized to use them.",
     ),
 ).including(NETWORK_ERRORS)
 
@@ -190,8 +189,8 @@ def _require_resolved_catalog_and_schema(table_obj: DatabricksTable) -> tuple[st
     if not (table_obj.catalog_name and table_obj.schema_name):
         raise SourceConnectionException(
             f"Could not resolve a catalog (got: {table_obj.catalog_name}) and schema "
-            f"(got: {table_obj.schema_name}) from the previous steps. Validate that the configured "
-            "catalog and schema exist and that the user has `USE CATALOG` and `USE SCHEMA` privileges on them."
+            f"(got: {table_obj.schema_name}) from the previous steps. Validate that the catalog exists "
+            "and that the user has `USE CATALOG` on it and `USE SCHEMA` on at least one of its schemas."
         )
     return table_obj.catalog_name, table_obj.schema_name
 
@@ -211,23 +210,20 @@ def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable, catalo
     table_obj.catalog_name = pick.name if pick else None
 
 
-def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable, schema_name: str | None = None) -> None:
+def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable) -> None:
     """
-    Resolve the schema used by the remaining test connection steps. If a databaseSchema is
-    configured on the connection, validate access to that exact schema.
+    Resolve the schema used by the remaining test connection steps: the first one the
+    resolved catalog lists.
     """
     if not table_obj.catalog_name:
         raise SourceConnectionException(
             "Could not resolve a catalog from the previous steps. Validate that the user "
             "has `USE CATALOG` privilege on at least one catalog."
         )
-    if schema_name:
-        table_obj.schema_name = connection.schemas.get(f"{table_obj.catalog_name}.{schema_name}").name
-    else:
-        for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):
-            if schema.name:
-                table_obj.schema_name = schema.name
-                break
+    for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):
+        if schema.name:
+            table_obj.schema_name = schema.name
+            break
 
 
 def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable) -> None:
@@ -413,10 +409,9 @@ class UnityCatalogChecks:
 
     @check(DatabaseStep.GetSchemas)
     def check_schemas(self) -> Evidence:
-        configured = self.service_connection.databaseSchema
         return self._probe(
-            lambda: get_schemas(self._workspace.client, self.table_obj, configured),
-            f"schemas.get({configured!r})" if configured else "schemas.list()",
+            lambda: get_schemas(self._workspace.client, self.table_obj),
+            "schemas.list()",
             lambda: f"schema '{self.table_obj.schema_name}' resolved",
         )
 

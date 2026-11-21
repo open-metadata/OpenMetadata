@@ -67,6 +67,7 @@ import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
 import org.openmetadata.service.migration.utils.v210.TaskFieldPathMigration;
+import org.openmetadata.service.migration.utils.v210.UnityCatalogDatabaseSchemaMigration;
 import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 
@@ -271,5 +272,10 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ServiceVersionSecretsMasking.STEP_NAME,
         () -> ServiceVersionSecretsMasking.maskPlainTextSecrets(handle, MYSQL));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        UnityCatalogDatabaseSchemaMigration.STEP_NAME,
+        () -> UnityCatalogDatabaseSchemaMigration.removeFromTestConnectionRequests(handle, MYSQL));
   }
 }

@@ -1060,3 +1060,22 @@ WHERE name IN (
   )
   AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.chartDetails.groupBy')) = 'entityType.keyword'
   AND COALESCE(JSON_EXTRACT(json, '$.chartDetails.excludeGroups'), CAST('null' AS JSON)) <> CAST('["tag","glossaryTerm","glossaryterm","dataProduct","dataproduct","testCase","testcase"]' AS JSON);
+
+-- Unity Catalog connections no longer have `databaseSchema`: ingestion never read it, only Test
+-- Connection did. Connection schemas set additionalProperties false, so a stored service or version
+-- snapshot still carrying it would no longer load. Databricks connections keep their own
+-- `databaseSchema`, so each statement is scoped to Unity Catalog. Saved Test Connection requests are
+-- repaired by the v210 data migration UnityCatalogDatabaseSchemaMigration, in id batches.
+UPDATE dbservice_entity
+SET json = JSON_REMOVE(json, '$.connection.config.databaseSchema')
+WHERE serviceType = 'UnityCatalog'
+  AND JSON_CONTAINS_PATH(json, 'one', '$.connection.config.databaseSchema');
+
+-- Joined on the service id, the leading primary-key column, so version history is not scanned.
+UPDATE entity_extension ee
+JOIN dbservice_entity de ON de.id = ee.id
+SET ee.json = JSON_REMOVE(ee.json, '$.connection.config.databaseSchema')
+WHERE de.serviceType = 'UnityCatalog'
+  AND ee.extension LIKE 'databaseService.version.%'
+  AND ee.json->>'$.serviceType' = 'UnityCatalog'
+  AND JSON_CONTAINS_PATH(ee.json, 'one', '$.connection.config.databaseSchema');

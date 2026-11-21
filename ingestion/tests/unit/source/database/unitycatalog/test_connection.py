@@ -260,16 +260,16 @@ class TestMetadataSteps:
         client.catalogs.list.assert_not_called()
         assert evidence.command == "catalogs.get('my_catalog')"
 
-    def test_get_schemas_validates_the_configured_schema(self):
+    def test_get_schemas_uses_the_first_schema_the_catalog_lists(self):
         client = MagicMock()
-        client.schemas.get.return_value = _named("my_schema")
-        checks = _checks(client, databaseSchema="my_schema")
+        client.schemas.list.return_value = [_named("my_schema"), _named("other_schema")]
+        checks = _checks(client)
         checks.table_obj.catalog_name = "my_catalog"
 
         evidence = checks.check_schemas()
 
-        client.schemas.get.assert_called_once_with("my_catalog.my_schema")
-        assert evidence.command == "schemas.get('my_schema')"
+        client.schemas.list.assert_called_once_with(catalog_name="my_catalog")
+        assert evidence.command == "schemas.list()"
         assert evidence.summary == "schema 'my_schema' resolved"
 
     def test_get_tables_reports_the_resolved_scope(self):
