@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Box, Button, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
@@ -46,6 +46,7 @@ import {
   addTaskComment,
   getTask,
   resolveTask,
+  TaskPayload,
 } from '../../../../../rest/tasksAPI';
 import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
@@ -85,6 +86,7 @@ import {
   applyActionLabels,
   buildResolveBody,
   getReassignBlocker,
+  getTaskActionInput,
   getTaskResolveActions,
   TaskResolveAction,
 } from '../taskResolve.utils';
@@ -99,6 +101,7 @@ import TaskDetailHeader from './TaskDetailHeader';
 import TaskDetailSkeleton from './TaskDetailSkeleton';
 import TaskDetailSummary from './TaskDetailSummary';
 import TaskTitle from './TaskTitle';
+import TaskTransitionFormModal from './TaskTransitionFormModal';
 
 const TASK_FIELDS =
   'about,createdBy,reviewers,assignees,resolution,approvedBy,approvedAt,availableTransitions,payload,comments';
@@ -405,7 +408,26 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const syncRunRef = useRef(0);
   const syncTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const [commentAction, setCommentAction] = useState<TaskResolveAction>();
+  // A transition whose form declares required fields (a custom task `approve`
+  // needing `targetField`/`proposedText`); resolving it opens the form modal
+  // instead of firing. The comment modal still handles `requiresComment`.
+  const [formAction, setFormAction] = useState<TaskResolveAction>();
   const [formSchema, setFormSchema] = useState<TaskFormSchema>();
+  // Gates the resolve actions until the task form schema has resolved. A
+  // workflow transition may declare required form fields only the schema
+  // reveals, so a fast click before the schema loads could fire a form-bearing
+  // transition with no payload (silent data loss). Typeless tasks have no
+  // schema, so they are never gated. See `getTaskActionInput.requiresForm`.
+  const [formSchemaLoaded, setFormSchemaLoaded] = useState(false);
+  // Set when the schema lookup rejected (`getResolvedTaskFormSchema` was called
+  // with `allowFallback: false`). Actions stay blocked until the user retries —
+  // falling back to the built-in default on a failure would hide a required-form
+  // transition's `transitionForms` and let it fire with no payload (the bug this
+  // PR fixes). A confirmed-missing schema is NOT an error: it resolves to
+  // `undefined` and the actions fire straight through (no form to collect).
+  const [formSchemaError, setFormSchemaError] = useState(false);
+  // Bumped by the schema-retry button to re-run the fetch effect.
+  const [formSchemaRetryKey, setFormSchemaRetryKey] = useState(0);
 
   const loadTask = useCallback(async () => {
     setIsLoading(true);
@@ -467,43 +489,89 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     };
   }, [getEntityPermission, task?.id, task?.type]);
 
-  // A task the workflow engine never touched resolves through the legacy path,
-  // whose newValue comes from the type's form schema (resolution is cached per
-  // type+category, so switching between tasks of one type refetches nothing).
-  const isLegacyTask = Boolean(task) && !task?.availableTransitions?.length;
+  // The form schema drives both the legacy resolve body (an approval / suggestion
+  // seninel / applied value comes from the type's schema) and the workflow
+  // transition guard (a `transitionForms` binding may declare required fields
+  // the inbox must collect before resolving). It is cached per type+category,
+  // so switching between tasks of one type refetches nothing, and resolved for
+  // every typed task — including workflow-driven ones — so the transition guard
+  // can see `transitionForms`. (Previously only legacy tasks fetched it, so the
+  // inbox never knew a workflow transition required form data.)
   const taskType = task?.type;
   const taskCategory = task?.category;
 
+  // Reset the gate when the task's type/category changes; a payload-only reload
+  // (a comment save) must NOT re-gate the actions, so the gate stays open while
+  // the schema re-resolves transparently.
+  useEffect(() => {
+    if (!taskType || !taskCategory) {
+      setFormSchema(undefined);
+      setFormSchemaLoaded(true);
+      setFormSchemaError(false);
+
+      return;
+    }
+    setFormSchemaLoaded(false);
+    setFormSchemaError(false);
+  }, [taskType, taskCategory]);
+
   useEffect(() => {
     let active = true;
-    if (!isLegacyTask || !taskType || !taskCategory) {
-      setFormSchema(undefined);
-
+    if (!taskType || !taskCategory) {
       return undefined;
     }
 
+    // `allowFallback: false` distinguishes a failed lookup (rejects) from a
+    // confirmed-missing schema (resolves to `undefined`). On rejection the
+    // actions stay blocked and a retry is offered, so a required-form
+    // transition can never fire silently because the schema fetch failed.
+    // Scoped to workflow-driven tasks (those with available transitions): a
+    // legacy task has no transition guard and still needs *a* schema to build
+    // the resolve body, so it keeps the built-in default fallback on failure.
+    const isWorkflowDriven = Boolean(task?.availableTransitions?.length);
     getResolvedTaskFormSchema(taskType, taskCategory, {
       // Suggestion tasks share one taskType+taskCategory binding across two
       // seeded schemas; pass the stamped id (and payload for fallback
-      // disambiguation) so a tag-suggestion legacy task does not render the
+      // disambiguation) so a tag-suggestion task does not render the
       // DescriptionSuggestion form. See TaskFormSchemaUtils.
       taskFormSchemaId: task?.taskFormSchemaId,
       payload: task?.payload,
+      allowFallback: !isWorkflowDriven,
     })
-      .then((schema) => active && setFormSchema(schema))
-      // Without a schema the per-type defaults still produce a correct body.
-      .catch(() => active && setFormSchema(undefined));
+      .then((schema) => {
+        if (active) {
+          setFormSchema(schema);
+          setFormSchemaLoaded(true);
+          setFormSchemaError(false);
+        }
+      })
+      // A confirmed-missing schema resolved to `undefined` above and reached
+      // `.then`; only a genuine fetch failure reaches here.
+      .catch(() => {
+        if (active) {
+          setFormSchema(undefined);
+          setFormSchemaLoaded(false);
+          setFormSchemaError(true);
+        }
+      });
 
     return () => {
       active = false;
     };
   }, [
-    isLegacyTask,
     taskType,
     taskCategory,
     task?.taskFormSchemaId,
     task?.payload,
+    task?.availableTransitions?.length,
+    formSchemaRetryKey,
   ]);
+
+  const retryFormSchema = useCallback(() => {
+    setFormSchemaError(false);
+    setFormSchemaLoaded(false);
+    setFormSchemaRetryKey((key) => key + 1);
+  }, []);
 
   // A plugin can refine how a task type it owns renders — its summary rows, its
   // stat tiles — without owning the pane. The first matching contribution wins.
@@ -538,7 +606,10 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   }, [task, hasFullTask, onLoaded]);
 
   const { actions, isResolveDenied } = useMemo(() => {
-    if (!task || !hasFullTask || isSyncingTransitions) {
+    // The form schema gates workflow transitions whose `transitionForms`
+    // declare required fields — without it a fast click would fire one with
+    // no payload. Typeless tasks set `formSchemaLoaded` immediately.
+    if (!task || !hasFullTask || isSyncingTransitions || !formSchemaLoaded) {
       return { actions: [], isResolveDenied: false };
     }
     const effective = applyActionLabels(
@@ -599,6 +670,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     task,
     hasFullTask,
     isSyncingTransitions,
+    formSchemaLoaded,
     canResolveTask,
     currentUserIds,
     currentUserId,
@@ -709,6 +781,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         consumedTransitionIdsRef.current.add(action.id);
         setTask(resolved);
         setCommentAction(undefined);
+        setFormAction(undefined);
         if (extras?.isAssigneeChange) {
           onTaskUpdated?.(resolved);
         } else {
@@ -736,14 +809,46 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
   const handleTransition = useCallback(
     (action: TaskResolveAction) => () => {
-      if (action.requiresComment) {
+      if (!task) {
+        return;
+      }
+      const input = getTaskActionInput(task, action, formSchema);
+      // A `requiresComment` transition opens the comment modal (it collects
+      // the comment, and an incident's root cause, and an assignee picker for
+      // (re)assign). A transition whose form declares required fields (and no
+      // `requiresComment`) opens the form modal so the resolver supplies the
+      // data the workflow needs; without it the transition would fire with no
+      // payload and the server would silently no-op the form validation.
+      if (input.requiresComment) {
         setCommentAction(action);
+
+        return;
+      }
+      if (input.requiresForm) {
+        setFormAction(action);
 
         return;
       }
       runTransition(action);
     },
-    [runTransition]
+    [runTransition, task, formSchema]
+  );
+
+  // The form modal collected the transition's required fields; resolve with
+  // them as the payload. A `comment` field in the form (e.g. a transition whose
+  // own schema carries a comment) is also forwarded as the top-level comment,
+  // mirroring `TaskTabNew.runWorkflowTransition`.
+  const handleFormConfirm = useCallback(
+    (payload: TaskPayload) => {
+      const action = formAction;
+      if (!action) {
+        return;
+      }
+      const comment =
+        typeof payload?.comment === 'string' ? payload.comment : undefined;
+      runTransition(action, { payload, ...(comment ? { comment } : {}) });
+    },
+    [formAction, runTransition]
   );
 
   // The backend reads payload.assignees, persists them and routes the workflow
@@ -794,6 +899,30 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   );
 
   const { about, isLoading: isAboutLoading } = useTaskAboutEntity(task);
+
+  // Rendered as a helper so the modal's optional-label fallbacks do not push
+  // the component's cyclomatic complexity over the lint threshold — the
+  // `action.label ?? t(...)` lives in this nested function's scope, not the
+  // panel's.
+  const renderTransitionFormModal = () => {
+    if (!formAction || !task) {
+      return null;
+    }
+
+    return (
+      <TaskTransitionFormModal
+        open
+        actionLabel={formAction.label ?? t('label.submit')}
+        isLoading={loadingTransitionId !== undefined}
+        schema={formSchema}
+        task={task}
+        title={formAction.label ?? t('label.resolve')}
+        transition={formAction.transition}
+        onCancel={() => setFormAction(undefined)}
+        onConfirm={handleFormConfirm}
+      />
+    );
+  };
 
   if (!task || !descriptor) {
     return isLoading ? (
@@ -906,6 +1035,20 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
               isFiler={currentUserIds.has(task.createdBy?.id)}
             />
           )}
+          {formSchemaError && (
+            <Box className="tw:flex tw:items-center tw:gap-2" direction="row">
+              <Typography className="tw:text-error" size="text-sm">
+                {t('message.something-went-wrong')}
+              </Typography>
+              <Button
+                color="link-gray"
+                data-testid="task-form-schema-retry"
+                size="sm"
+                onPress={retryFormSchema}>
+                {t('label.reload')}
+              </Button>
+            </Box>
+          )}
         </Box>
       </Box>
 
@@ -955,6 +1098,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           })
         }
       />
+
+      {renderTransitionFormModal()}
     </Box>
   );
 };

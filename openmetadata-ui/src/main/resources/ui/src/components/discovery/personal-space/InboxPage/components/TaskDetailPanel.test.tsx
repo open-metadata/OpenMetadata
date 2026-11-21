@@ -31,6 +31,8 @@ const mockDeleteComment = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockGetEntityPermission = jest.fn();
 const mockGetResolvedTaskFormSchema = jest.fn();
+const mockGetTaskTransitionFormSchema = jest.fn();
+const mockGetTaskTransitionUiSchema = jest.fn();
 
 let mockCurrentUser: {
   id?: string;
@@ -96,6 +98,17 @@ jest.mock('utils/TaskFormSchemaUtils', () => ({
     payload: Record<string, unknown>
   ) => payload.newDescription,
   shouldRequireTaskResolutionValue: () => false,
+  getTaskTransitionFormSchema: (...a: unknown[]) =>
+    mockGetTaskTransitionFormSchema(...a),
+  getTaskTransitionUiSchema: (...a: unknown[]) =>
+    mockGetTaskTransitionUiSchema(...a),
+  // The real helper checks the schema's `required` array; keep that contract so
+  // the panel's `requiresForm` guard mirrors production.
+  hasRequiredTaskFormFields: (schema?: { required?: unknown }) => {
+    const required = schema?.required;
+
+    return Array.isArray(required) && required.length > 0;
+  },
 }));
 
 jest.mock('hooks/useApplicationStore', () => ({
@@ -256,6 +269,43 @@ jest.mock('./TaskActionCommentModal', () => ({
         <button
           aria-label="modal-cancel"
           data-testid="modal-cancel"
+          onClick={onCancel}
+        />
+      </div>
+    ) : null,
+}));
+
+// The transition form modal is exercised through its onConfirm payload; the
+// real `TaskPayloadSchemaFields` form has its own suite, so stub the modal to a
+// confirm button that emits the form payload the test wants to send.
+const mockFormConfirmPayload = jest.fn();
+jest.mock('./TaskTransitionFormModal', () => ({
+  __esModule: true,
+  default: ({
+    open,
+    title,
+    actionLabel,
+    onConfirm,
+    onCancel,
+  }: {
+    open?: boolean;
+    title?: string;
+    actionLabel?: string;
+    onConfirm: (payload: unknown) => void;
+    onCancel?: (...args: unknown[]) => void;
+  }) =>
+    open ? (
+      <div data-testid="transition-form-modal">
+        <span data-testid="transition-form-title">{title}</span>
+        <span data-testid="transition-form-action-label">{actionLabel}</span>
+        <button
+          aria-label="transition-form-confirm"
+          data-testid="transition-form-confirm"
+          onClick={() => onConfirm(mockFormConfirmPayload())}
+        />
+        <button
+          aria-label="transition-form-cancel"
+          data-testid="transition-form-cancel"
           onClick={onCancel}
         />
       </div>
@@ -546,6 +596,11 @@ beforeEach(() => {
   mockGetTaskById.mockResolvedValue({ data: TASK });
   mockGetEntityPermission.mockResolvedValue({ ResolveTask: true });
   mockGetResolvedTaskFormSchema.mockResolvedValue(undefined);
+  // By default no transition carries a form with required fields, so the
+  // existing behaviour (fire requiresComment transitions, fire plain ones)
+  // is unchanged; individual tests override this to exercise the form modal.
+  mockGetTaskTransitionFormSchema.mockReturnValue(undefined);
+  mockGetTaskTransitionUiSchema.mockReturnValue(undefined);
 });
 
 describe('TaskDetailPanel', () => {
@@ -1196,6 +1251,176 @@ describe('TaskDetailPanel', () => {
 
     expect(mockResolveTask).not.toHaveBeenCalled();
     expect(screen.queryByTestId('comment-modal')).not.toBeInTheDocument();
+  });
+
+  // The bug: a workflow transition whose form (`transitionForms[formRef]`)
+  // declares required fields but is not `requiresComment` used to fire
+  // immediately with no payload, silently losing the required data. The fix
+  // opens the transition form modal instead, mirroring `TaskTabNew`.
+  describe('transition form modal', () => {
+    const FORM_TASK = {
+      ...TASK,
+      type: 'CustomTask',
+      category: 'Custom',
+      availableTransitions: [
+        {
+          id: 'approve',
+          label: 'label.approve',
+          resolutionType: 'Approved',
+          formRef: 'approve',
+          targetTaskStatus: 'Approved',
+        },
+      ],
+    };
+    const FORM_SCHEMA = {
+      name: 'CustomTask',
+      taskType: 'CustomTask',
+      taskCategory: 'Custom',
+      formSchema: { type: 'object', properties: {} },
+      transitionForms: {
+        approve: {
+          formSchema: {
+            type: 'object',
+            required: ['targetField', 'proposedText'],
+            properties: {
+              targetField: { type: 'string' },
+              proposedText: { type: 'string' },
+            },
+          },
+          uiSchema: { 'ui:resolution': { mode: 'payload' } },
+        },
+      },
+    };
+
+    beforeEach(() => {
+      mockGetTaskById.mockResolvedValue({ data: FORM_TASK });
+      mockGetResolvedTaskFormSchema.mockResolvedValue(FORM_SCHEMA);
+      mockGetTaskTransitionFormSchema.mockReturnValue(
+        FORM_SCHEMA.transitionForms.approve.formSchema
+      );
+      mockGetTaskTransitionUiSchema.mockReturnValue(
+        FORM_SCHEMA.transitionForms.approve.uiSchema
+      );
+      mockResolveTask.mockResolvedValue({ ...FORM_TASK, status: 'Approved' });
+      mockFormConfirmPayload.mockReturnValue({
+        targetField: 'description',
+        proposedText: 'updated by resolver',
+      });
+    });
+
+    it('opens the form modal instead of firing for a transition with required form fields', async () => {
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+
+      // The transition must NOT fire until the form is collected.
+      expect(mockResolveTask).not.toHaveBeenCalled();
+      expect(screen.getByTestId('transition-form-modal')).toBeInTheDocument();
+    });
+
+    it('sends the form payload through the resolve body when the form is confirmed', async () => {
+      const onResolved = jest.fn();
+      await act(async () =>
+        render(<TaskDetailPanel taskId="task-1" onResolved={onResolved} />)
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('transition-form-confirm'));
+      });
+
+      expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+        transitionId: 'approve',
+        resolutionType: 'Approved',
+        payload: {
+          targetField: 'description',
+          proposedText: 'updated by resolver',
+        },
+      });
+      expect(onResolved).toHaveBeenCalled();
+    });
+
+    it('cancelling the form modal fires nothing', async () => {
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('transition-form-cancel'));
+      });
+
+      expect(mockResolveTask).not.toHaveBeenCalled();
+      expect(
+        screen.queryByTestId('transition-form-modal')
+      ).not.toBeInTheDocument();
+    });
+
+    // A transition whose form has no required fields keeps firing straight
+    // through — the inbox does not gain a modal for every optional form (the
+    // seeded DAR `approve` with an optional comment stays a one-click action).
+    it('fires immediately when the transition form has no required fields', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: {
+          ...TASK,
+          type: 'DataAccessRequest',
+          category: 'DataAccess',
+          availableTransitions: [
+            {
+              id: 'approve',
+              label: 'label.approve',
+              resolutionType: 'Approved',
+            },
+          ],
+        },
+      });
+      mockGetResolvedTaskFormSchema.mockResolvedValue(undefined);
+      mockGetTaskTransitionFormSchema.mockReturnValue({
+        type: 'object',
+        properties: { comment: { type: 'string' } },
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+
+      expect(mockResolveTask).toHaveBeenCalledWith('task-1', {
+        transitionId: 'approve',
+        resolutionType: 'Approved',
+      });
+      expect(
+        screen.queryByTestId('transition-form-modal')
+      ).not.toBeInTheDocument();
+    });
+
+    // If the schema fetch fails, a required-form transition must not fire
+    // silently with no payload (the bug this PR fixes). The actions stay
+    // blocked and a retry re-runs the fetch; once it resolves the transition
+    // is offered again.
+    it('blocks the transition and offers a retry when the form schema fetch fails', async () => {
+      mockGetResolvedTaskFormSchema.mockReset();
+      mockGetResolvedTaskFormSchema.mockRejectedValueOnce(
+        new Error('schema fetch failed')
+      );
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+      expect(screen.getByTestId('task-form-schema-retry')).toBeInTheDocument();
+
+      mockGetResolvedTaskFormSchema.mockResolvedValueOnce(FORM_SCHEMA);
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('task-form-schema-retry'));
+      });
+
+      expect(screen.getByText('label.approve')).toBeInTheDocument();
+    });
   });
 
   it('links only the asset name within the title', async () => {
@@ -1892,7 +2117,7 @@ describe('TaskDetailPanel', () => {
       });
     });
 
-    it('resolves the form schema for a legacy task only', async () => {
+    it('resolves the form schema for a typed task, legacy or workflow', async () => {
       mockGetTaskById.mockResolvedValue({ data: LEGACY_APPROVAL_TASK });
 
       await act(async () => render(<TaskDetailPanel taskId="task-1" />));
@@ -1910,7 +2135,43 @@ describe('TaskDetailPanel', () => {
       );
     });
 
-    it('skips the form schema fetch for a workflow-driven task', async () => {
+    // The fix fetches the schema for workflow-driven tasks too, so the
+    // transition guard can see `transitionForms` (previously only legacy tasks
+    // fetched it, so a workflow transition declaring required form fields was
+    // resolved with no payload — silent data loss).
+    it('fetches the form schema for a workflow-driven task so the transition guard can see it', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: {
+          ...TASK,
+          type: 'CustomTask',
+          category: 'Custom',
+          availableTransitions: [
+            {
+              id: 'approve',
+              label: 'Approve',
+              resolutionType: 'Approved',
+              formRef: 'approve',
+              targetTaskStatus: 'Approved',
+            },
+          ],
+        },
+      });
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(mockGetResolvedTaskFormSchema).toHaveBeenCalledWith(
+        'CustomTask',
+        'Custom',
+        expect.objectContaining({
+          taskFormSchemaId: undefined,
+          payload: undefined,
+        })
+      );
+    });
+
+    // A typeless task (the fixture's plain TASK) has no schema to fetch; the
+    // panel gates nothing and renders actions straight away.
+    it('skips the form schema fetch for a typeless workflow task', async () => {
       await act(async () => render(<TaskDetailPanel taskId="task-1" />));
 
       expect(mockGetResolvedTaskFormSchema).not.toHaveBeenCalled();
