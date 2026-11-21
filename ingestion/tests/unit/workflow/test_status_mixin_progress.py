@@ -10,6 +10,7 @@
 #  limitations under the License.
 """send_progress_update maps ProgressRegistry.eta_seconds into the SSE payload."""
 
+import json
 from copy import deepcopy
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
@@ -333,7 +334,7 @@ class TestHttpTerminalPersistence:
 
         class StatusEndpoint(BaseHTTPRequestHandler):
             def do_GET(self):
-                payload = requests.models.complexjson.dumps(
+                payload = json.dumps(
                     {"state": state["status"], "finished": state["finished"]}
                 ).encode("utf-8")
                 self.send_response(200)
@@ -345,7 +346,7 @@ class TestHttpTerminalPersistence:
             def do_PUT(self):
                 state["puts"] += 1
                 length = int(self.headers["Content-Length"])
-                payload = requests.models.complexjson.loads(
+                payload = json.loads(
                     self.rfile.read(length).decode("utf-8")
                 )
                 if state["puts"] == 1:
