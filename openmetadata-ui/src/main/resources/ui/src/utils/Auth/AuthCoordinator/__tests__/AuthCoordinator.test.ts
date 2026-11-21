@@ -155,14 +155,15 @@ describe('AuthCoordinator', () => {
   });
 
   it('emits refreshed on success', async () => {
-    const renewer = jest.fn(async () => ({ expiresAt: 42, idToken: 'fresh' }));
+    const expiresAt = Date.now() + 300_000;
+    const renewer = jest.fn(async () => ({ expiresAt, idToken: 'fresh' }));
     coordinator.registerRenewer(renewer);
     const events: unknown[] = [];
     coordinator.on('refreshed', (p) => events.push(p));
 
     await coordinator.ensureFreshToken();
 
-    expect(events).toEqual([{ expiresAt: 42, idToken: 'fresh' }]);
+    expect(events).toEqual([{ expiresAt, idToken: 'fresh' }]);
   });
 
   it('emits refresh-failed and rejects on renewer error', async () => {
@@ -1133,6 +1134,70 @@ describe('AuthCoordinator', () => {
       const notifyOrder = mockNotifyDone.mock.invocationCallOrder[0];
 
       expect(setOrder).toBeLessThan(notifyOrder);
+      expect(mockNotifyDone).toHaveBeenCalledWith(payload);
+    });
+
+    // Hardening symmetric to the follower's isRenewResult guard. A renewer
+    // that violates its contract by returning a missing/empty idToken or an
+    // already-expired expiresAt would otherwise be persisted under the
+    // lock and re-arm the proactive timer with the past expiry (delay
+    // clamps to 0 → a self-sustaining renew loop → circuit-breaker
+    // sign-out). With the leader-path validation the symptom collapses to
+    // a single refresh-failed (source 'renewer', matching the existing
+    // renewer-throws path), and no dead token reaches storage or sibling
+    // tabs. Defense-in-depth for the Auth0 v2 cache regression (PR #35717).
+    it('leader path rejects an expired renewer result instead of persisting a dead token', async () => {
+      const deadPayload = {
+        idToken: 'expired-from-renewer',
+        expiresAt: Date.now() - 100_000, // 100s in the past, beyond the 60s leeway
+      };
+      coordinator.registerRenewer(async () => deadPayload);
+      const { setOidcTokenStrict } = jest.requireMock(
+        '../../../SwTokenStorageUtils'
+      ) as { setOidcTokenStrict: jest.Mock };
+      setOidcTokenStrict.mockClear();
+      mockNotifyDone.mockClear();
+      const failures: RefreshFailedPayload[] = [];
+      const refreshed: unknown[] = [];
+      coordinator.on('refresh-failed', (p) => failures.push(p));
+      coordinator.on('refreshed', (p) => refreshed.push(p));
+
+      await expect(coordinator.ensureFreshToken()).rejects.toThrow(
+        /invalid or already-expired/i
+      );
+
+      // No dead token persisted, no `done` broadcast to followers, no
+      // `refreshed` event. The error surfaces exactly like a renewer that
+      // threw — one `refresh-failed` with source 'renewer'.
+      expect(setOidcTokenStrict).not.toHaveBeenCalled();
+      expect(mockNotifyDone).not.toHaveBeenCalled();
+      expect(refreshed).toEqual([]);
+      expect(failures).toHaveLength(1);
+      expect(failures[0].source).toBe('renewer');
+      expect(failures[0].error).toBeInstanceOf(Error);
+    });
+
+    it('leader path accepts a renewer result whose expiresAt is within the pre-expiry leeway', async () => {
+      // isRenewResult allows expiresAt up to EXPIRY_THRESHOLD_MILLES in the
+      // past (clock skew / processing delay). The leader path must honour
+      // the same leeway as the follower path — otherwise a token minted at
+      // the boundary would be rejected on the leader and accepted on the
+      // follower, a cross-tab asymmetry.
+      const payload = {
+        idToken: 'just-minted',
+        expiresAt: Date.now() - 5_000, // 5s in the past, within 60s leeway
+      };
+      coordinator.registerRenewer(async () => payload);
+      const { setOidcTokenStrict } = jest.requireMock(
+        '../../../SwTokenStorageUtils'
+      ) as { setOidcTokenStrict: jest.Mock };
+      setOidcTokenStrict.mockClear();
+      mockNotifyDone.mockClear();
+
+      const token = await coordinator.ensureFreshToken();
+
+      expect(token).toBe('just-minted');
+      expect(setOidcTokenStrict).toHaveBeenCalledWith('just-minted');
       expect(mockNotifyDone).toHaveBeenCalledWith(payload);
     });
 

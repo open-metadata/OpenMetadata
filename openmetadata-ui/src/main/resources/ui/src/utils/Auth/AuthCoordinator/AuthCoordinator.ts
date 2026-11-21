@@ -371,6 +371,26 @@ export class AuthCoordinator {
           if (signedOut()) {
             throw new SignedOutDuringRefreshError();
           }
+          // The renewer contract is to return a not-yet-expired ID token
+          // or throw. A result with a missing/empty `idToken` or an
+          // `expiresAt` already in the past (beyond the pre-expiry leeway
+          // `isRenewResult` allows) would otherwise be persisted under the
+          // lock and re-arm the proactive timer with the past expiry
+          // (delay clamps to 0 → a self-sustaining renew loop → circuit
+          // breaker sign-out). Reject it here so the symptom collapses to
+          // a single `refresh-failed` exactly like a renewer that threw,
+          // and no dead token reaches storage or sibling tabs. Symmetric
+          // to the follower's `isRenewResult` guard on the `done` payload.
+          if (!this.isRenewResult(result)) {
+            throw new Error(
+              `Renewer returned an invalid or already-expired token (idToken present=${Boolean(
+                (result as { idToken?: unknown } | null | undefined)?.idToken
+              )}, expiresAt=${
+                (result as { expiresAt?: unknown } | null | undefined)
+                  ?.expiresAt ?? 'n/a'
+              })`
+            );
+          }
           renewedResult = result;
 
           return result;
