@@ -152,13 +152,22 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
     def _evaluate_test_condition(self, counts: CountResult) -> bool:
         """Evaluate if test passes based on location counts.
 
+        The configured `threshold` tolerates that many invalid locations, counted
+        against the evaluated rows the way every sibling row-counting validator does:
+        an ABSOLUTE threshold allows that many invalid rows, a PERCENTAGE one allows
+        that share of the valid plus invalid rows. With the default threshold of 0 the
+        test still passes only when no row is invalid.
+
         Args:
             counts: CountResult with valid/invalid/unknown counts
 
         Returns:
-            bool: True if test passes (no invalid locations)
+            bool: True if the test passes
         """
-        return counts.invalid_count == 0
+        return self._apply_row_threshold(
+            counts.invalid_count,
+            counts.valid_count + counts.invalid_count,
+        )
 
     def _format_result_message(
         self,
