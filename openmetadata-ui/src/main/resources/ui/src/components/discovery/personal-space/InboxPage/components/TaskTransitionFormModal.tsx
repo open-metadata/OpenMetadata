@@ -108,14 +108,24 @@ const TaskTransitionFormModal: React.FC<TaskTransitionFormModalProps> = ({
     }
   }, [open, initialPayload]);
 
+  // A field is "missing" only when it is absent, null, or an empty string —
+  // not when it is a valid falsy value. `!payload?.[field]` would treat `false`
+  // (a required boolean) and `0` (a required number) as unfilled and keep the
+  // confirm button disabled, so the resolver could never submit a legitimate
+  // `false`/`0` answer.
   const isMissingRequired = useMemo(() => {
     const requiredFields = transitionFormSchema?.required;
 
     return (
       Array.isArray(requiredFields) &&
-      requiredFields.some(
-        (field) => typeof field !== 'string' || !payload?.[field]
-      )
+      requiredFields.some((field) => {
+        if (typeof field !== 'string') {
+          return true;
+        }
+        const value = payload?.[field];
+
+        return value === undefined || value === null || value === '';
+      })
     );
   }, [transitionFormSchema, payload]);
 

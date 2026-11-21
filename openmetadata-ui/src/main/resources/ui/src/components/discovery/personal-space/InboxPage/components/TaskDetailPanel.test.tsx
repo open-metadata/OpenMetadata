@@ -1398,6 +1398,29 @@ describe('TaskDetailPanel', () => {
         screen.queryByTestId('transition-form-modal')
       ).not.toBeInTheDocument();
     });
+
+    // If the schema fetch fails, a required-form transition must not fire
+    // silently with no payload (the bug this PR fixes). The actions stay
+    // blocked and a retry re-runs the fetch; once it resolves the transition
+    // is offered again.
+    it('blocks the transition and offers a retry when the form schema fetch fails', async () => {
+      mockGetResolvedTaskFormSchema.mockReset();
+      mockGetResolvedTaskFormSchema.mockRejectedValueOnce(
+        new Error('schema fetch failed')
+      );
+
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+      expect(screen.getByTestId('task-form-schema-retry')).toBeInTheDocument();
+
+      mockGetResolvedTaskFormSchema.mockResolvedValueOnce(FORM_SCHEMA);
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('task-form-schema-retry'));
+      });
+
+      expect(screen.getByText('label.approve')).toBeInTheDocument();
+    });
   });
 
   it('links only the asset name within the title', async () => {

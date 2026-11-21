@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import {
   TaskAvailableTransition,
@@ -19,77 +19,87 @@ import {
 } from '../../../../../generated/entity/tasks/task';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
 
-jest.mock('@openmetadata/ui-core-components', () => ({
-  ModalOverlay: ({
-    isOpen,
-    onOpenChange,
-    children,
-  }: {
-    isOpen?: boolean;
-    onOpenChange: (...args: unknown[]) => void;
-    children?: ReactNode;
-  }) =>
-    isOpen ? (
-      <div data-testid="overlay">
-        <button
-          aria-label="overlay-dismiss"
-          data-testid="overlay-dismiss"
-          onClick={() => onOpenChange(false)}
-        />
-        {children}
-      </div>
-    ) : null,
-  Modal: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
-  Dialog: Object.assign(
-    ({
+// The modal shell is a render/portal boundary (react-aria overlays, focus traps);
+// stub it so the test asserts the modal's wiring, not the overlay plumbing.
+// The field widgets (Input, TextArea, Checkbox, Select, FormItemLabel, Grid)
+// stay real so the form really renders and really edits — mocks belong at
+// boundaries, not in the internal schema/field code (see CLAUDE.md).
+jest.mock('@openmetadata/ui-core-components', () => {
+  const actual = jest.requireActual('@openmetadata/ui-core-components');
+
+  return {
+    ...actual,
+    ModalOverlay: ({
+      isOpen,
+      onOpenChange,
       children,
-      title,
+    }: {
+      isOpen?: boolean;
+      onOpenChange: (...args: unknown[]) => void;
+      children?: ReactNode;
+    }) =>
+      isOpen ? (
+        <div data-testid="overlay">
+          <button
+            aria-label="overlay-dismiss"
+            data-testid="overlay-dismiss"
+            onClick={() => onOpenChange(false)}
+          />
+          {children}
+        </div>
+      ) : null,
+    Modal: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+    Dialog: Object.assign(
+      ({
+        children,
+        title,
+        'data-testid': testId,
+      }: {
+        children?: ReactNode;
+        title?: string;
+        'data-testid'?: string;
+      }) => (
+        <div data-testid={testId ?? 'dialog'} data-title={title}>
+          {children}
+        </div>
+      ),
+      {
+        Content: ({ children }: { children?: ReactNode }) => (
+          <div data-testid="dialog-content">{children}</div>
+        ),
+        Footer: ({ children }: { children?: ReactNode }) => (
+          <div data-testid="dialog-footer">{children}</div>
+        ),
+      }
+    ),
+    Typography: ({
+      children,
       'data-testid': testId,
     }: {
       children?: ReactNode;
-      title?: string;
+      'data-testid'?: string;
+    }) => <span data-testid={testId}>{children}</span>,
+    Button: ({
+      children,
+      onPress,
+      isDisabled,
+      'data-testid': testId,
+    }: {
+      children?: ReactNode;
+      onPress?: (...args: unknown[]) => void;
+      isDisabled?: boolean;
       'data-testid'?: string;
     }) => (
-      <div data-testid={testId ?? 'dialog'} data-title={title}>
+      <button
+        data-testid={testId}
+        disabled={isDisabled}
+        type="button"
+        onClick={onPress}>
         {children}
-      </div>
+      </button>
     ),
-    {
-      Content: ({ children }: { children?: ReactNode }) => (
-        <div data-testid="dialog-content">{children}</div>
-      ),
-      Footer: ({ children }: { children?: ReactNode }) => (
-        <div data-testid="dialog-footer">{children}</div>
-      ),
-    }
-  ),
-  Typography: ({
-    children,
-    'data-testid': testId,
-  }: {
-    children?: ReactNode;
-    'data-testid'?: string;
-  }) => <span data-testid={testId}>{children}</span>,
-  Button: ({
-    children,
-    onPress,
-    isDisabled,
-    'data-testid': testId,
-  }: {
-    children?: ReactNode;
-    onPress?: (...args: unknown[]) => void;
-    isDisabled?: boolean;
-    'data-testid'?: string;
-  }) => (
-    <button
-      data-testid={testId}
-      disabled={isDisabled}
-      type="button"
-      onClick={onPress}>
-      {children}
-    </button>
-  ),
-}));
+  };
+});
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -98,57 +108,19 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// A controllable form: renders one field per schema property and reports the
-// current value, with a setter so a test can fill a required field. The real
-// `TaskPayloadSchemaFields` has its own suite; here we only verify the modal
-// wires `onChange`, the required guard and `onConfirm`/`onCancel` correctly.
-let lastPayload: Record<string, unknown> | undefined;
-let setField: ((field: string, value: unknown) => void) | undefined;
-jest.mock(
-  '../../../../../pages/TasksPage/shared/TaskPayloadSchemaFields',
-  () => ({
-    __esModule: true,
-    default: ({
-      payload,
-      schema,
-      onChange,
-    }: {
-      payload?: Record<string, unknown>;
-      schema?: { properties?: Record<string, unknown> };
-      onChange?: (next: Record<string, unknown>) => void;
-    }) => {
-      lastPayload = payload;
-      setField = (field: string, value: unknown) =>
-        onChange?.({ ...payload, [field]: value });
-
-      return (
-        <div data-testid="task-payload-fields">
-          <span data-testid="field-names">
-            {Object.keys(schema?.properties ?? {}).join(',')}
-          </span>
-          <span data-testid="field-targetField">
-            {String(payload?.targetField)}
-          </span>
-          <span data-testid="field-proposedText">
-            {String(payload?.proposedText)}
-          </span>
-        </div>
-      );
-    },
-  })
-);
-
-const mockGetTaskTransitionFormSchema = jest.fn();
-const mockGetTaskTransitionUiSchema = jest.fn();
-const mockGetEditableTaskPayload = jest.fn();
-
-jest.mock('../../../../../utils/TaskFormSchemaUtils', () => ({
-  applyTaskFormSchemaDefaults: (payload: Record<string, unknown>) => payload,
-  getEditableTaskPayload: (...a: unknown[]) => mockGetEditableTaskPayload(...a),
-  getTaskTransitionFormSchema: (...a: unknown[]) =>
-    mockGetTaskTransitionFormSchema(...a),
-  getTaskTransitionUiSchema: (...a: unknown[]) =>
-    mockGetTaskTransitionUiSchema(...a),
+// `TaskPayloadSchemaFields` pulls in the rich-text / diff / tag-selector
+// editors for description- and tag-task widgets. Our transition forms only use
+// plain string / number / boolean widgets, so these never render — but they are
+// imported at module load, so stub them to keep the test off the editor stack.
+jest.mock('../../../../../pages/TasksPage/shared/DescriptionTabs', () => ({
+  DescriptionTabs: () => <div data-testid="description-tabs" />,
+}));
+jest.mock('../../../../../pages/TasksPage/shared/TagsTabs', () => ({
+  TagsTabs: () => <div data-testid="tags-tabs" />,
+}));
+jest.mock('../../../../../pages/TasksPage/shared/TagSuggestion', () => ({
+  __esModule: true,
+  default: () => <div data-testid="tag-suggestion" />,
 }));
 
 import TaskTransitionFormModal from './TaskTransitionFormModal';
@@ -173,8 +145,8 @@ const SCHEMA: TaskFormSchema = {
         type: 'object',
         required: ['targetField', 'proposedText'],
         properties: {
-          targetField: { type: 'string' },
-          proposedText: { type: 'string' },
+          targetField: { type: 'string', title: 'Target Field' },
+          proposedText: { type: 'string', title: 'Proposed Text' },
         },
       },
       uiSchema: { 'ui:resolution': { mode: 'payload' } },
@@ -189,26 +161,6 @@ const TASK = {
   status: TaskStatus.Open,
   payload: { targetField: 'description' },
 } as never;
-
-beforeEach(() => {
-  jest.clearAllMocks();
-  const approveForm = SCHEMA.transitionForms?.approve;
-  mockGetTaskTransitionFormSchema.mockReturnValue(approveForm?.formSchema);
-  mockGetTaskTransitionUiSchema.mockReturnValue(approveForm?.uiSchema);
-  // The editable payload seeds the form with the task's existing values.
-  mockGetEditableTaskPayload.mockReturnValue({ targetField: 'description' });
-});
-
-// Helper so tests can drive the mocked `TaskPayloadSchemaFields` `onChange`.
-function actSetField(field: string, value: unknown) {
-  const setter = setField;
-  if (!setter) {
-    throw new Error('TaskPayloadSchemaFields was not rendered');
-  }
-  act(() => {
-    setter(field, value);
-  });
-}
 
 describe('TaskTransitionFormModal', () => {
   it('renders the form seeded from the task payload', () => {
@@ -232,18 +184,12 @@ describe('TaskTransitionFormModal', () => {
       'data-title',
       'Approve'
     );
-    expect(screen.getByTestId('field-names').textContent).toBe(
-      'targetField,proposedText'
-    );
-    // The `proposedText` is not in the task payload, so it reads as `undefined`.
-    expect(screen.getByTestId('field-targetField').textContent).toBe(
+    expect(screen.getByRole('textbox', { name: /Target Field/ })).toHaveValue(
       'description'
     );
-    expect(screen.getByTestId('field-proposedText').textContent).toBe(
-      'undefined'
+    expect(screen.getByRole('textbox', { name: /Proposed Text/ })).toHaveValue(
+      ''
     );
-    // The editable payload the form was seeded with is the task payload.
-    expect(lastPayload).toEqual({ targetField: 'description' });
   });
 
   it('disables confirm and shows the required hint while a required field is missing', () => {
@@ -260,7 +206,6 @@ describe('TaskTransitionFormModal', () => {
       />
     );
 
-    // `proposedText` is required and missing → confirm disabled, hint shown.
     expect(screen.getByTestId('task-transition-form-confirm')).toBeDisabled();
     expect(
       screen.getByTestId('task-transition-form-required-hint')
@@ -282,10 +227,9 @@ describe('TaskTransitionFormModal', () => {
       />
     );
 
-    expect(setField).toBeDefined();
-
-    // Fill the missing required field.
-    actSetField('proposedText', 'new description');
+    fireEvent.change(screen.getByRole('textbox', { name: /Proposed Text/ }), {
+      target: { value: 'new description' },
+    });
 
     expect(
       screen.getByTestId('task-transition-form-confirm')
@@ -300,6 +244,100 @@ describe('TaskTransitionFormModal', () => {
       targetField: 'description',
       proposedText: 'new description',
     });
+  });
+
+  // A required boolean field set to `false` is a valid answer, not a missing
+  // one — confirm must stay enabled so the resolver can submit `false`.
+  it('does not block confirm for a required boolean field set to false', () => {
+    const onConfirm = jest.fn();
+    const booleanSchema: TaskFormSchema = {
+      ...SCHEMA,
+      transitionForms: {
+        approve: {
+          formSchema: {
+            type: 'object',
+            required: ['approved'],
+            properties: {
+              approved: { type: 'boolean', title: 'Approved', default: false },
+            },
+          },
+          uiSchema: { 'ui:resolution': { mode: 'payload' } },
+        },
+      },
+    };
+    const booleanTask = {
+      ...TASK,
+      payload: { approved: false },
+    } as never;
+
+    render(
+      <TaskTransitionFormModal
+        open
+        actionLabel="Approve"
+        schema={booleanSchema}
+        task={booleanTask}
+        title="Approve"
+        transition={TRANSITION}
+        onCancel={jest.fn()}
+        onConfirm={onConfirm}
+      />
+    );
+
+    expect(
+      screen.getByTestId('task-transition-form-confirm')
+    ).not.toBeDisabled();
+    expect(
+      screen.queryByTestId('task-transition-form-required-hint')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('task-transition-form-confirm'));
+
+    expect(onConfirm).toHaveBeenCalledWith({ approved: false });
+  });
+
+  // A required number field set to `0` is a valid answer, not a missing one.
+  it('does not block confirm for a required number field set to 0', () => {
+    const onConfirm = jest.fn();
+    const numberSchema: TaskFormSchema = {
+      ...SCHEMA,
+      transitionForms: {
+        approve: {
+          formSchema: {
+            type: 'object',
+            required: ['confidence'],
+            properties: {
+              confidence: { type: 'number', title: 'Confidence' },
+            },
+          },
+          uiSchema: { 'ui:resolution': { mode: 'payload' } },
+        },
+      },
+    };
+    const numberTask = {
+      ...TASK,
+      payload: { confidence: 0 },
+    } as never;
+
+    render(
+      <TaskTransitionFormModal
+        open
+        actionLabel="Approve"
+        schema={numberSchema}
+        task={numberTask}
+        title="Approve"
+        transition={TRANSITION}
+        onCancel={jest.fn()}
+        onConfirm={onConfirm}
+      />
+    );
+
+    expect(
+      screen.getByTestId('task-transition-form-confirm')
+    ).not.toBeDisabled();
+
+    fireEvent.click(screen.getByTestId('task-transition-form-confirm'));
+
+    expect(onConfirm).toHaveBeenCalledWith({ confidence: 0 });
   });
 
   it('does not fire onConfirm while loading', () => {
@@ -318,10 +356,9 @@ describe('TaskTransitionFormModal', () => {
       />
     );
 
-    actSetField('proposedText', 'new description');
-    // The confirm button stays clickable (it is only `isLoading`-disabled by
-    // the button's own loading state, not `isDisabled`), but the handler must
-    // not fire while loading to avoid a double-submit.
+    fireEvent.change(screen.getByRole('textbox', { name: /Proposed Text/ }), {
+      target: { value: 'new description' },
+    });
     fireEvent.click(screen.getByTestId('task-transition-form-confirm'));
 
     expect(onConfirm).not.toHaveBeenCalled();
