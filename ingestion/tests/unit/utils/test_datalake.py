@@ -1086,9 +1086,7 @@ class TestIcebergDeltaTypeMapping:
         assert value_child["arrayDataType"] == DataType.INT.value
 
     def test_map_with_decimal_value_preserves_precision_and_scale(self):
-        columns = self._parse(
-            [{"name": "props", "type": {"type": "map", "key": "string", "value": "decimal(8,3)"}}]
-        )
+        columns = self._parse([{"name": "props", "type": {"type": "map", "key": "string", "value": "decimal(8,3)"}}])
         col = columns[0]
         _, value_child = col.children
         assert value_child["dataType"] == DataType.DECIMAL.value

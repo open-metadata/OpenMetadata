@@ -1021,9 +1021,7 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
                 child_type = field.get("type", "string")
                 attrs = self._iceberg_delta_type_to_om(child_type)
 
-                child = self._complex_child(
-                    truncate_column_name(child_name), child_name, attrs, child_type
-                )
+                child = self._complex_child(truncate_column_name(child_name), child_name, attrs, child_type)
 
                 children.append(child)
             except Exception as exc:
