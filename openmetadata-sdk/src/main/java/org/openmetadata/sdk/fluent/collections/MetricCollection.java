@@ -50,6 +50,7 @@ public class MetricCollection implements Iterable<Metric> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<Metric> response = client.metrics().list(pageParams);

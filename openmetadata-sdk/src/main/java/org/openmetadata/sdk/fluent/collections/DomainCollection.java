@@ -50,6 +50,7 @@ public class DomainCollection implements Iterable<Domain> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<Domain> response = client.domains().list(pageParams);

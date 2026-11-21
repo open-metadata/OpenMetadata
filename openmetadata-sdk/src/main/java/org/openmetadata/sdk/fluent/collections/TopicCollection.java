@@ -50,6 +50,7 @@ public class TopicCollection implements Iterable<Topic> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<Topic> response = client.topics().list(pageParams);

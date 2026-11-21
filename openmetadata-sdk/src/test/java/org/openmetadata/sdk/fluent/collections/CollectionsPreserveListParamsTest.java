@@ -165,9 +165,7 @@ class CollectionsPreserveListParamsTest {
 
     PipelineCollection collection = new PipelineCollection(client, params).autoPaginate();
     // Drain the auto-paginating iterator to force both pages to be fetched.
-    for (Pipeline ignored : collection) {
-      // consume
-    }
+    for (Pipeline ignored : collection) {}
 
     List<ListParams> sent = capturePipelineList(2);
     ListParams first = sent.get(0);
@@ -223,10 +221,10 @@ class CollectionsPreserveListParamsTest {
                 Arrays.asList(new Pipeline().withName("p1-again")), "server-cursor-1"));
 
     PipelineCollection collection = new PipelineCollection(client, params);
-    collection.getCurrentPage(); // page 1
-    collection.loadNextPage(); // page 2 (cursor overrides)
+    collection.getCurrentPage();
+    collection.loadNextPage();
     collection.reset(); // drop state, must re-request page 1 with the user cursor again
-    collection.getCurrentPage(); // page 1 again
+    collection.getCurrentPage();
 
     List<ListParams> sent = capturePipelineList(3);
     // After reset, the first-page request must carry the user's original params (no cursor leak).
@@ -238,6 +236,44 @@ class CollectionsPreserveListParamsTest {
       assertEquals("owner", page.getFields());
       assertEquals(7, page.getLimit());
     }
+  }
+
+  @Test
+  void pipelineCollection_beforeOnlyStartClearsBeforeWhenPagingAfterServerCursor() {
+    // A caller that starts iteration with only `before` (no `after`) must not still send `before`
+    // once the server hands back an `after` token: the server rejects a request carrying both
+    // cursors with HTTP 400, so the second page would never load. `loadNextPage()` copies the
+    // constructor params (keeping `before`) and then overrides `after` from the server token, so it
+    // must clear `before` on the same request to avoid the dual-cursor rejection.
+    ListParams params =
+        new ListParams()
+            .setLimit(7)
+            .setFields("owner")
+            .setBefore("user-before")
+            .addFilter("serviceType", "Airflow");
+
+    when(pipelineService.list(any(ListParams.class)))
+        .thenReturn(
+            pipelineResponse(Arrays.asList(new Pipeline().withName("p1")), "server-cursor-1"),
+            pipelineResponse(Arrays.asList(new Pipeline().withName("p2")), null));
+
+    PipelineCollection collection = new PipelineCollection(client, params);
+    collection.getCurrentPage();
+    collection.loadNextPage();
+
+    List<ListParams> sent = capturePipelineList(2);
+    // First page keeps the user's `before` cursor and every filter/param.
+    assertEquals("user-before", sent.get(0).getBefore());
+    assertEquals(null, sent.get(0).getAfter());
+    assertEquals("Airflow", sent.get(0).getFilters().get("serviceType"));
+    assertEquals("owner", sent.get(0).getFields());
+    assertEquals(7, sent.get(0).getLimit());
+    // Second page switches to the server's `after` token and drops `before` to avoid the 400.
+    assertEquals("server-cursor-1", sent.get(1).getAfter());
+    assertEquals(null, sent.get(1).getBefore());
+    assertEquals("Airflow", sent.get(1).getFilters().get("serviceType"));
+    assertEquals("owner", sent.get(1).getFields());
+    assertEquals(7, sent.get(1).getLimit());
   }
 
   // ==================== Group 2: TopicCollection ====================

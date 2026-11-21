@@ -122,6 +122,7 @@ public class TableCollection implements Iterable<Table> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<Table> response = client.tables().list(pageParams);

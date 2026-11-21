@@ -122,6 +122,7 @@ public class DatabaseSchemaCollection implements Iterable<DatabaseSchema> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<DatabaseSchema> response = client.databaseSchemas().list(pageParams);

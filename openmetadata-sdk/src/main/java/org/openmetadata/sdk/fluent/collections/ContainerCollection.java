@@ -50,6 +50,7 @@ public class ContainerCollection implements Iterable<Container> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<Container> response = client.containers().list(pageParams);

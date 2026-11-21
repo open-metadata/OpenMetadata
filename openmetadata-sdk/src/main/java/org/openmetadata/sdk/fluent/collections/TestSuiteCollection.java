@@ -50,6 +50,7 @@ public class TestSuiteCollection implements Iterable<TestSuite> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<TestSuite> response = client.testSuites().list(pageParams);

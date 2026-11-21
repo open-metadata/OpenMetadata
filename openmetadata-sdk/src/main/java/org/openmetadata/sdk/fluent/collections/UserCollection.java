@@ -122,6 +122,7 @@ public class UserCollection implements Iterable<User> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<User> response = client.users().list(pageParams);

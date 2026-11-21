@@ -122,6 +122,7 @@ public class GlossaryTermCollection implements Iterable<GlossaryTerm> {
       ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
+        pageParams.setBefore(null);
       }
 
       ListResponse<GlossaryTerm> response = client.glossaryTerms().list(pageParams);
