@@ -3486,7 +3486,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())),
         "The column must carry the tag used by the PII masker");
     ns.trackRoot(Entity.DATABASE_SERVICE, table.getService().getId());
-    TestCase testCase =
+    TestCase createdTestCase =
         admin
             .testCases()
             .create(
@@ -3503,7 +3503,10 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                     .withParameterValues(
                         List.of(
                             new TestCaseParameterValue().withName("regex").withValue("^078-"))));
-    ns.trackRoot(Entity.TEST_CASE, testCase);
+    String inspectionQuery = "SELECT ssn FROM customers WHERE ssn = 'synthetic_forbidden_value'";
+    ns.trackRoot(Entity.TEST_CASE, createdTestCase);
+    TestCase testCase =
+        admin.testCases().setInspectionQuery(createdTestCase.getId().toString(), inspectionQuery);
     TestCaseResult createdResult =
         admin
             .testCaseResults()
@@ -3558,6 +3561,12 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                       TestCase complete =
                           admin.testCases().get(testCase.getId().toString(), "incidentStatus");
                       assertNotNull(complete.getIncidentStatus());
+                      assertEquals(
+                          inspectionQuery,
+                          searchTestHit(admin, "test_case_search_index", testCase.getId())
+                              .path("_source")
+                              .path("inspectionQuery")
+                              .asText());
                       assertTrue(
                           complete
                               .getIncidentStatus()
@@ -3692,6 +3701,22 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
       TestCase visible =
           privileged.testCases().get(testCase.getId().toString(), "testCaseResult,incidentStatus");
       assertEquals("Sensitive description", visible.getDescription());
+      assertEquals(inspectionQuery, visible.getInspectionQuery());
+      assertEquals(
+          inspectionQuery,
+          privileged.testCases().getByName(testCase.getFullyQualifiedName()).getInspectionQuery());
+      assertEquals(
+          inspectionQuery,
+          privileged
+              .testCases()
+              .getVersion(testCase.getId(), testCase.getVersion())
+              .getInspectionQuery());
+      assertEquals(
+          inspectionQuery,
+          searchTestHit(privileged, "test_case_search_index", testCase.getId())
+              .path("_source")
+              .path("inspectionQuery")
+              .asText());
       assertEquals(testCase.getParameterValues(), visible.getParameterValues());
       assertEquals("Sensitive failure", visible.getTestCaseResult().getResult());
       assertTrue(visible.getIncidentStatus().getFailureSummary().contains("Sensitive failure"));
@@ -3872,6 +3897,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertEquals(original.getName() + " [MASKED]", masked.getName());
     assertEquals(original.getId(), masked.getId());
     assertNull(masked.getDescription());
+    assertNull(masked.getInspectionQuery());
     assertTrue(nullOrEmpty(masked.getParameterValues()));
     assertNull(masked.getTestCaseResult());
     assertNull(masked.getIncidentStatus());

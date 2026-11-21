@@ -16,6 +16,7 @@ To be used by OpenMetadata class
 
 import traceback
 from datetime import datetime
+from typing import TYPE_CHECKING, cast
 from urllib.parse import urlencode, urljoin
 from uuid import UUID
 
@@ -44,9 +45,12 @@ from metadata.generated.schema.tests.testDefinition import (
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.client import REST, APIError
 from metadata.ingestion.ometa.utils import model_str, quote
 from metadata.utils.logger import ometa_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 logger = ometa_logger()
 
@@ -371,6 +375,17 @@ class OMetaTestsMixin:
                 )
 
         return None
+
+    def delete_failed_rows_sample(self, test_case: TestCase) -> None:
+        """Clear a previous sample when current collection deliberately omitted it."""
+        if test_case.id is None:
+            raise ValueError("Deleting a failed rows sample requires a persisted test case")
+        metadata = cast("OpenMetadata", self)
+        try:
+            self.client.delete(f"{metadata.get_suffix(TestCase)}/{test_case.id.root}/failedRowsSample")
+        except APIError as exc:
+            if exc.status_code != 404:
+                raise
 
     def get_failed_rows_sample(self, test_case: TestCase) -> TableData | None:
         """

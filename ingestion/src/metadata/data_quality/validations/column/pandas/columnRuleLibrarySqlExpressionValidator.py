@@ -11,8 +11,14 @@
 
 """Pandas validator for rule library SQL expression tests"""
 
+from typing import Any
+
 from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
     ColumnRuleLibrarySqlExpressionValidator as BaseValidator,
+)
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    FAILED_ROW_SAMPLE_SIZE,
+    frame_sample_rows,
 )
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
@@ -55,6 +61,8 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixi
             raise RuntimeError(f"Unsafe pandas query expression\n\n{sql_expression}")
         total_count = 0
         evaluated_rows = 0
+        columns: list[str] = []
+        sample: list[list[Any]] = []
         for df in self.runner:
             evaluated_rows += len(df)
             try:
@@ -63,7 +71,11 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, PandasValidatorMixi
             except Exception as exc:
                 logger.exception(f"Error executing pandas query expression on chunk: {exc}")  # noqa: TRY401
                 raise exc  # noqa: TRY201
+            if len(sample) < FAILED_ROW_SAMPLE_SIZE and not matching_rows.empty:
+                columns = columns or matching_rows.columns.tolist()
+                sample.extend(frame_sample_rows(matching_rows, columns, FAILED_ROW_SAMPLE_SIZE - len(sample)))
         self._evaluated_rows = evaluated_rows
+        self._failed_rows = (columns, sample) if sample else None
         return total_count
 
     def _run_row_count(self) -> int:
