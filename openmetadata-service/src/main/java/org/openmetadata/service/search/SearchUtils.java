@@ -190,7 +190,10 @@ public final class SearchUtils {
    *
    * <p>The two shapes are told apart by the {@code .*} wrapper the literal path always adds —
    * {@code isBestMatchSearchPattern} already guarantees {@code containsPattern} is non-empty and
-   * not the bare {@code .*} match-all.
+   * not the bare {@code .*} match-all. For the pre-built regexp shape all three sub-aggregations
+   * use the caller's pattern verbatim: appending {@code .*} for the prefix sub-agg would let child
+   * tags (e.g. {@code pii.a.child}) displace requested tags (e.g. {@code pii.b}) under the
+   * best-match merge limit, producing false-zero bucket counts.
    */
   public static BestMatchPatterns buildBestMatchIncludePatterns(String containsPattern) {
     boolean isLiteralWildcard = containsPattern.startsWith(".*") && containsPattern.endsWith(".*");
@@ -198,7 +201,7 @@ public final class SearchUtils {
       String escapedRaw = escapeLuceneRegexp(extractRawSearchValue(containsPattern));
       return new BestMatchPatterns(escapedRaw, escapedRaw + ".*", ".*" + escapedRaw + ".*");
     }
-    return new BestMatchPatterns(containsPattern, containsPattern + ".*", containsPattern);
+    return new BestMatchPatterns(containsPattern, containsPattern, containsPattern);
   }
 
   /**

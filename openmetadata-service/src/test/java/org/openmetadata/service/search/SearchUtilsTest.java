@@ -1176,10 +1176,13 @@ class SearchUtilsTest {
     // by buildTagFqnIncludeRegex) and posts it raw via postExactAggregateFieldOptions.
     // It has no .*….* wrapper, so it must pass through verbatim — escaping the
     // ( | ) operators would turn the alternation into a literal and break it.
+    // All three sub-aggregations use the pattern verbatim: appending .* for the
+    // prefix sub-agg would let child tags (pii.sensitive.child) displace a
+    // requested sibling (pii.nonsensitive) under the best-match merge limit.
     String alternation = "(pii\\.sensitive|pii\\.nonsensitive)";
     SearchUtils.BestMatchPatterns patterns = SearchUtils.buildBestMatchIncludePatterns(alternation);
     assertEquals(alternation, patterns.exact());
-    assertEquals(alternation + ".*", patterns.prefix());
+    assertEquals(alternation, patterns.prefix());
     assertEquals(alternation, patterns.contains());
 
     // The alternation still behaves as an alternation (matches either FQN):
@@ -1188,23 +1191,6 @@ class SearchUtilsTest {
     assertTrue(
         java.util.regex.Pattern.compile(patterns.exact()).matcher("pii.nonsensitive").matches());
     assertFalse(java.util.regex.Pattern.compile(patterns.exact()).matcher("pii.other").matches());
-  }
-
-  @Test
-  void buildBestMatchIncludePatternsPreBuiltAnchoredRegexpRespectsAnchors() {
-    // A caller that fully anchors terms (^…$) to forbid prefix over-matching:
-    // adding .* for the prefix sub-agg keeps the anchors, so the prefix still
-    // matches only the anchored term.
-    String anchored = "^(pii\\.sensitive|pii\\.nonsensitive)$";
-    SearchUtils.BestMatchPatterns patterns = SearchUtils.buildBestMatchIncludePatterns(anchored);
-    assertEquals(anchored, patterns.exact());
-    assertEquals(anchored + ".*", patterns.prefix());
-    assertEquals(anchored, patterns.contains());
-    assertTrue(
-        java.util.regex.Pattern.compile(patterns.exact()).matcher("pii.sensitive").matches());
-    assertFalse(
-        java.util.regex.Pattern.compile(patterns.prefix()).matcher("pii.sensitive.child").matches(),
-        "anchored prefix must not over-match children");
   }
 
   @Test
