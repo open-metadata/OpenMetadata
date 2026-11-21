@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-20 (initial)
 - **Deciders:** Sriharsha Chintalapani
-- **Guard:** reviewer
+- **Guard:** reviewer, per the `REVIEW.md` "Do not report" exception for the return rule
 - **Related:** ADR:2026-11-20-elasticsearch-and-opensearch-share-one-vector-index-service
 
 ## Context
