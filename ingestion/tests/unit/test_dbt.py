@@ -72,9 +72,10 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     validate_table_structure,
     validate_time_interval,
 )
-from metadata.ingestion.source.database.dbt.metadata import DbtSource
+from metadata.ingestion.source.database.dbt.metadata import RESOLVED_TABLES_CACHE_SIZE, DbtSource
 from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects, UpstreamNode
 from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.utils.lru_cache import LRUCache
 from metadata.utils.tag_utils import get_tag_label, get_tag_labels
 from metadata.utils.time_utils import datetime_to_timestamp
 
@@ -4417,6 +4418,7 @@ class TestDbtLineageReusesParsedUpstream:
         source.status = MagicMock()
         source.tag_classification_name = "dbtTags"
         source.reported_unresolved_upstreams = set()
+        source.resolved_tables = LRUCache(RESOLVED_TABLES_CACHE_SIZE)
         source.context = SimpleNamespace(get=lambda: self._ctx)
         return source
 
@@ -4446,6 +4448,33 @@ class TestDbtLineageReusesParsedUpstream:
         assert len(results) == 1
         assert results[0].right.lineage_request.edge.fromEntity.id.root == catalog[self.RAW_FQN].id.root
         source.status.warning.assert_not_called()
+
+    def test_a_table_used_as_model_and_upstream_is_searched_for_once(self):
+        """Issue #38288.
+
+        raw_orders is a model and the parent of orders, so parsing meets it twice.
+        It must cost no more searches than orders, which parsing meets once.
+        """
+        from metadata.ingestion.source.database.dbt.models import DbtObjects
+
+        catalog = self._catalog()
+        searches = []
+        self._ctx = SimpleNamespace()
+        source = self._source(catalog, searches)
+
+        with self.MANIFEST.open(encoding="utf-8") as manifest_file:
+            manifest = parse_manifest(json.load(manifest_file))
+
+        links = [item.right for item in source.yield_data_models(DbtObjects(dbt_manifest=manifest))]
+
+        orders = next(link for link in links if str(link.table_entity.fullyQualifiedName.root) == self.ORDERS_FQN)
+        assert orders.upstream_table_ids == {self.RAW_FQN: catalog[self.RAW_FQN].id.root}
+
+        def searched(table_name):
+            return sum(1 for search in searches if search.rsplit(".", 1)[-1] == table_name)
+
+        assert searched("orders") > 0
+        assert searched("raw_orders") == searched("orders"), searches
 
 
 class TestAddDbtTestResultFailureReporting:
@@ -4540,6 +4569,7 @@ class TestAddDbtSourceFreshnessResults:
         source.config.serviceName = "snowflake_svc"
         source.source_config = MagicMock()
         source.source_config.searchAcrossDatabases = search_across_databases
+        source.resolved_tables = LRUCache(RESOLVED_TABLES_CACHE_SIZE)
         source.context.get.return_value.dbt_tests = {}
         source.context.get.return_value.sources_generate_time = sources_generate_time
         source.context.get.return_value.run_results_generate_time = run_results_generate_time
@@ -5911,6 +5941,18 @@ class TestDbtSourceIdentifiers:
         assert freshness[DbtCommonEnum.UPSTREAM.value] == [self.PHYSICAL_FQN]
         assert freshness[DbtCommonEnum.MANIFEST_NODE.value].name == "orders_freshness"
         assert generate_entity_link(freshness) == [f"<#E::table::{self.PHYSICAL_FQN}>"]
+
+    def test_freshness_reuses_the_source_table_lookup(self):
+        """Issue #38288: a freshness result costs no extra search for its source table."""
+        with TestAddDbtSourceFreshnessResults.SOURCES_FILE.open(encoding="utf-8") as sources_file:
+            sources = json.load(sources_file)
+
+        def searches(**files):
+            source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
+            self._links(source, self._objects(source, **files))
+            return source.metadata.es_search_from_fqn.call_count
+
+        assert searches(dbt_sources=sources) == searches()
 
     def test_repeated_ingestion_preserves_logical_manifest_identity(self):
         source = self._source(self.PHYSICAL_FQN, self.MODEL_FQN)
