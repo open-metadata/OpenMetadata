@@ -24,4 +24,11 @@ public class TestDefinitionService
     return httpClient.execute(
         HttpMethod.POST, basePath, request, org.openmetadata.schema.tests.TestDefinition.class);
   }
+
+  // Create or update using CreateTestDefinition request
+  public org.openmetadata.schema.tests.TestDefinition upsert(CreateTestDefinition request)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT, basePath, request, org.openmetadata.schema.tests.TestDefinition.class);
+  }
 }
