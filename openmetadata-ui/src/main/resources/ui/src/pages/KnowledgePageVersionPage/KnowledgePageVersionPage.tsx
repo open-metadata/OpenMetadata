@@ -162,11 +162,10 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     <Box
       inline
       align="stretch"
-      className="layout-space"
+      className="layout-space tw:w-[650px]"
       direction="col"
       gap={2}
-      itemClassName="layout-space-item"
-      style={{ width: '650px' }}>
+      itemClassName="layout-space-item">
       <div className="tw:flex tw:gap-4">
         <Skeleton className="tw:shrink-0" variant="circular" width={40} />
         <div className="tw:flex-1">
