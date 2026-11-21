@@ -963,19 +963,26 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       // aboutEntity uses server-side prefix matching (FQN LIKE 'glossary.%'), so
       // only tasks for terms under this glossary are returned — no client-side
       // prefix filter needed and the limit is now glossary-scoped, not platform-wide.
-      const { data } = await listTasks({
+      const baseParams = {
         status: TaskEntityStatus.Open,
         category: TaskCategory.Approval,
         type: TaskEntityType.RequestApproval,
         aboutEntity: fqn,
         limit: PAGE_SIZE_LARGE,
         fields: 'about,assignees,createdBy',
-      });
+      };
+      const tasks: Task[] = [];
+      let after: string | undefined;
+      do {
+        const { data, paging } = await listTasks({ ...baseParams, after });
+        tasks.push(...data);
+        after = paging?.after;
+      } while (after);
       lastFetchedTaskFqnRef.current = fqn;
 
       // Glossary approvals are now workflow-managed RequestApproval tasks created
       // for each glossary term, not legacy glossary-root tasks.
-      const tasksByTerm = data.reduce(
+      const tasksByTerm = tasks.reduce(
         (acc: Record<string, Task[]>, task: Task) => {
           const termFQN = task.about?.fullyQualifiedName;
           // Keep only term tasks — the prefix filter also returns the root glossary
