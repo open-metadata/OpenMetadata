@@ -292,14 +292,15 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       int size,
       AggregationRequest request,
       List<String> sourceExcludes) {
-    String escapedRaw = SearchUtils.extractRawSearchValue(containsPattern).replace(".", "\\.");
+    SearchUtils.BestMatchPatterns patterns =
+        SearchUtils.buildBestMatchIncludePatterns(containsPattern);
     return Map.of(
         SearchUtils.exactAggKey(field),
-        buildSingleAgg(field, escapedRaw, 1, request, sourceExcludes),
+        buildSingleAgg(field, patterns.exact(), 1, request, sourceExcludes),
         SearchUtils.prefixAggKey(field),
-        buildSingleAgg(field, escapedRaw + ".*", size, request, sourceExcludes),
+        buildSingleAgg(field, patterns.prefix(), size, request, sourceExcludes),
         SearchUtils.containsAggKey(field),
-        buildSingleAgg(field, containsPattern, size, request, sourceExcludes));
+        buildSingleAgg(field, patterns.contains(), size, request, sourceExcludes));
   }
 
   private Aggregation buildSingleAgg(
