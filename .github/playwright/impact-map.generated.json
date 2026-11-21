@@ -6926,7 +6926,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts"
+        "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts"
       ]
     },
     {
@@ -8525,6 +8526,14 @@
       ],
       "specs": [
         "playwright/e2e/Pages/Glossary.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/NotificationBox/TaskMentionCard.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/IncidentManager.spec.ts"
       ]
     },
     {
@@ -10792,6 +10801,14 @@
       "specs": [
         "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryAiGeneratedTerm.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskDetailSummary.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/IncidentManager.spec.ts"
       ]
     },
     {
