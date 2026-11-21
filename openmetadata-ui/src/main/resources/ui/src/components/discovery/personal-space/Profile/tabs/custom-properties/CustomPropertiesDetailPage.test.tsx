@@ -514,7 +514,32 @@ describe('CustomPropertiesDetailPage', () => {
     });
   });
 
-  it('passes the edit and delete permissions to the table', async () => {
+  it('gates both edit and delete on EditAll (matching the PATCH /metadata/types endpoint authorization)', async () => {
+    render(
+      <DetailPageWithHeader
+        {...defaultProps}
+        permission={
+          {
+            Create: false,
+            EditAll: true,
+            Delete: false,
+          } as unknown as OperationPermission
+        }
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();
+    });
+
+    // Deleting a custom property is a PATCH remove on /metadata/types/{id},
+    // which the backend authorizes as EDIT_ALL — so an EditAll-only user
+    // (no Delete) can both edit and delete, matching the Settings page.
+    expect(screen.getAllByLabelText('label.edit')).toHaveLength(2);
+    expect(screen.getAllByLabelText('label.delete')).toHaveLength(2);
+  });
+
+  it('hides the delete button from a Delete-only user (regression: delete must not gate on raw Delete)', async () => {
     render(
       <DetailPageWithHeader
         {...defaultProps}
@@ -532,7 +557,11 @@ describe('CustomPropertiesDetailPage', () => {
       expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();
     });
 
+    // A Delete-only user cannot satisfy the PATCH's EDIT_ALL requirement,
+    // so neither edit nor delete actions are surfaced — preventing a
+    // visible button that would always 403 with "operations [EDIT_ALL]
+    // not allowed".
     expect(screen.queryByLabelText('label.edit')).not.toBeInTheDocument();
-    expect(screen.getAllByLabelText('label.delete')).toHaveLength(2);
+    expect(screen.queryByLabelText('label.delete')).not.toBeInTheDocument();
   });
 });
