@@ -677,7 +677,8 @@ public class EventSubscriptionResource
       operationId = "checkIfThePublisherProcessedALlEvents",
       summary = "Check If the Publisher Processed All Events",
       description =
-          "Return a boolean 'true' or 'false' to indicate if the publisher processed all events",
+          "Return true when no events are left that the alert will still process. A disabled alert"
+              + " is not running and returns true: enabling it starts from the latest event.",
       responses = {
         @ApiResponse(
             responseCode = "200",
