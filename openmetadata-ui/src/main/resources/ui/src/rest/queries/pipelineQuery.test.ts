@@ -10,14 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { QueryClient } from '@tanstack/react-query';
-import { act } from '@testing-library/react';
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from '@tanstack/react-query';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import React from 'react';
 import { TabSpecificField } from '../../enums/entity.enum';
 import { Pipeline } from '../../generated/entity/data/pipeline';
 import { defaultFields } from '../../utils/PipelineDetailsUtils';
 import { getPipelineByFqn } from '../pipelineAPI';
 import {
   normalizeFields,
+  pipelineQueryFn,
   pipelineQueryKey,
   prefetchPipeline,
   prefetchPipelineByFqn,
@@ -130,23 +136,83 @@ describe('pipelineQuery', () => {
       });
     });
 
-    it('does not refetch when the page reads the warmed slot', async () => {
+    it('renders the prefetched cached data immediately while the background refetch runs (app staleTime: 0)', async () => {
+      // Mirror the app's real QueryClient defaults (queryClient.ts): staleTime 0
+      // renders cached data synchronously AND fires a background refetch
+      // (stale-while-revalidate). The earlier `staleTime: Infinity` + `fetchQuery`
+      // variant never exercised this path — it asserted no request at all, which
+      // is not what the shipping page does, so it could not detect a regression
+      // where the warm slot misses and the page stalls on a cold fetch.
+      const appClient = new QueryClient({
+        defaultOptions: {
+          queries: {
+            retry: false,
+            staleTime: 0,
+            gcTime: 30 * 60 * 1000,
+            refetchOnWindowFocus: false,
+          },
+        },
+      });
+      const wrapper = ({ children }: { children: React.ReactNode }) =>
+        React.createElement(
+          QueryClientProvider,
+          { client: appClient },
+          children
+        );
+
       await act(async () => {
-        await prefetchPipeline(queryClient, FQN);
+        await prefetchPipeline(appClient, FQN);
       });
 
       getPipelineByFqnMock.mockClear();
 
+      // Hold the page's background refetch open so we can observe it in flight.
+      let resolveBackground: (value: Pipeline) => void = (_value: Pipeline) =>
+        undefined;
+      getPipelineByFqnMock.mockImplementationOnce(
+        () =>
+          new Promise<Pipeline>((resolve) => {
+            resolveBackground = resolve;
+          })
+      );
+
       const pageFieldsWithUsage = `${defaultFields},${TabSpecificField.USAGE_SUMMARY}`;
 
+      const { result, unmount } = renderHook(
+        () =>
+          useQuery({
+            queryKey: pipelineQueryKey(FQN, pageFieldsWithUsage),
+            queryFn: pipelineQueryFn(FQN, pageFieldsWithUsage),
+          }),
+        { wrapper }
+      );
+
+      // The warm slot paints synchronously — this is the bug fix: the page
+      // reads the prefetched data immediately instead of stalling on a cold
+      // fetch.
+      expect(result.current.data).toEqual(fixturePipeline);
+      expect(result.current.isLoading).toBe(false);
+
+      // With the app's staleTime: 0 a background refetch fires even though
+      // cached data is already on screen — exactly the documented
+      // stale-while-revalidate behavior.
+      await waitFor(() =>
+        expect(getPipelineByFqnMock).toHaveBeenCalledTimes(1)
+      );
+
+      expect(result.current.isFetching).toBe(true);
+
+      // Let the background refetch settle and confirm the page keeps the data.
       await act(async () => {
-        await queryClient.fetchQuery({
-          queryKey: pipelineQueryKey(FQN, pageFieldsWithUsage),
-          queryFn: () => getPipelineByFqn(FQN, { fields: pageFieldsWithUsage }),
-        });
+        resolveBackground(fixturePipeline);
       });
 
-      expect(getPipelineByFqnMock).not.toHaveBeenCalled();
+      await waitFor(() => expect(result.current.isFetching).toBe(false));
+
+      expect(result.current.data).toEqual(fixturePipeline);
+
+      unmount();
+      appClient.clear();
     });
 
     it('page key without ViewUsage permission is a different slot (not the prefetch slot)', async () => {
