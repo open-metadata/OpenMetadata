@@ -238,6 +238,7 @@ public class SecurityServiceRepository
       addField(
           recordList,
           entity.getDomains() == null
+                  || entity.getDomains().isEmpty()
                   || Boolean.TRUE.equals(entity.getDomains().get(0).getInherited())
               ? ""
               : entity.getDomains().get(0).getFullyQualifiedName());

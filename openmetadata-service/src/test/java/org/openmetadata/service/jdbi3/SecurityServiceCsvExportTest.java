@@ -134,6 +134,25 @@ class SecurityServiceCsvExportTest {
     assertFalse(csv.contains(DOMAIN_FQN), "a stripped service must not emit a domain column");
   }
 
+  /**
+   * Exporting a service that fetched {@code domains} but has none must not throw — the field is an
+   * empty list (not null) once {@code exportToCsv} requests it via {@code getFields}. Regression
+   * for {@code addRecord} calling {@code get(0)} on an empty list.
+   */
+  @Test
+  void csvWriterHandlesServiceWithoutDomain() throws Exception {
+    SecurityService noDomain = enrichedSecurityService();
+    noDomain.setDomains(List.of());
+
+    String csv =
+        new SecurityServiceRepository.SecurityServiceCsv(noDomain, "admin")
+            .exportCsv(List.of(noDomain));
+
+    assertTrue(csv.contains(OWNER_CELL), "owner column must still be serialized: " + csv);
+    assertTrue(csv.contains(TAG_FQN), "tag column must still be serialized: " + csv);
+    assertFalse(csv.contains(DOMAIN_FQN), "an empty domains list must not emit a domain column");
+  }
+
   private static SecurityService enrichedSecurityService() {
     EntityReference owner =
         new EntityReference()

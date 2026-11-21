@@ -15,7 +15,6 @@ import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -606,12 +605,7 @@ public class SecurityServiceResourceIT {
                     .withName(ns.prefix("csv_rt_domain"))
                     .withDomainType(CreateDomain.DomainType.AGGREGATE)
                     .withDescription("Round-trip domain for SecurityService CSV test"));
-    EntityReference owner =
-        new EntityReference()
-            .withId(UUID.randomUUID())
-            .withType("user")
-            .withName("admin")
-            .withFullyQualifiedName("admin");
+    EntityReference owner = client.users().getByName("admin").getEntityReference();
     TagLabel tag = new TagLabel().withTagFQN("PII.Sensitive");
 
     RangerConnection rangerConn =
@@ -676,8 +670,13 @@ public class SecurityServiceResourceIT {
     assertNotNull(
         afterWetRun.getDomains(), "export->import round trip must preserve direct domain");
 
+    // Prepend the real CSV header (the import path treats the first row as the header).
+    String headerLine = exportedCsv.split("\\r?\\n", 2)[0];
     String emptyColumnsCsv =
-        String.join(",", serviceName, "", "Round-trip Security service", "Ranger", "", "", "", "");
+        headerLine
+            + "\n"
+            + String.join(
+                ",", serviceName, "", "Round-trip Security service", "Ranger", "", "", "", "");
     CsvImportResult clearResult = importSecurityServiceCsv(serviceName, emptyColumnsCsv, false);
     assertEquals(0, clearResult.getNumberOfRowsFailed());
     SecurityService afterClear = getSecurityServiceByName(serviceName, "owners,tags,domains");
