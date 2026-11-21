@@ -587,6 +587,32 @@ describe('ExploreTree', () => {
     ).toHaveLength(1);
   });
 
+  it('scopes the service level to the selected domain', async () => {
+    useDomainStore.setState({ activeDomain: 'Finance' });
+    const postAggregateSpy = jest
+      .spyOn(miscAPI, 'postAggregateFieldOptions')
+      .mockResolvedValue(
+        buildFieldAggregationResponse('service.displayName.keyword', [])
+      );
+
+    await getExploreTreeAggregationResponse({
+      bucketToFind: EntityFields.SERVICE,
+      countQueryFilter: { query: { bool: {} } },
+      searchQueryParam: '',
+    });
+
+    const { query } = postAggregateSpy.mock.calls[0][0];
+
+    expect(JSON.parse(query ?? '{}').query.bool.must).toContainEqual({
+      bool: {
+        should: [
+          { term: { 'domains.fullyQualifiedName': 'Finance' } },
+          { prefix: { 'domains.fullyQualifiedName': 'Finance.' } },
+        ],
+      },
+    });
+  });
+
   const treeWithServiceMock = () =>
     ({
       aggregations: {

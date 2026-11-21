@@ -39,6 +39,7 @@ import { SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { scopeSearchFilterToActiveDomain } from '../../../hoc/withDomainFilter';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { postAggregateFieldOptions } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
@@ -290,7 +291,12 @@ export const getExploreTreeAggregationResponse = async ({
   bucketToFind === EntityFields.SERVICE
     ? (
         await postAggregateFieldOptions({
-          query: JSON.stringify(countQueryFilter),
+          // A POSTed aggregation is not scoped by the request interceptor, unlike the
+          // searches for the other tree levels, so the service level scopes itself.
+          query: scopeSearchFilterToActiveDomain(
+            SearchIndex.DATA_ASSET,
+            JSON.stringify(countQueryFilter)
+          ),
           queryText: searchQueryParam,
           fieldName: bucketToFind,
           fieldValue: '',
