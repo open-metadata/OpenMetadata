@@ -12,4 +12,9 @@
 SQL Queries used during ingestion
 """
 
-AZURE_SQL_GET_DATABASES = "SELECT name FROM master.sys.databases order by name"
+# Azure SQL Database (the single-database tier) rejects three-part names such as
+# `master.sys.databases` with error 40515 ("Reference to database and/or server
+# name in 'master.sys.databases' is not supported in this version of SQL Server").
+# SQL Server and Azure SQL Managed Instance accept the `master.` prefix, but the
+# in-context `sys.databases` form works on every tier, so it is the one we use.
+AZURE_SQL_GET_DATABASES = "SELECT name FROM sys.databases order by name"

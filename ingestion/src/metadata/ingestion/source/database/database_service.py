@@ -595,8 +595,26 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
     def _get_filtered_database_names(self, return_fqn: bool = False, add_to_status: bool = True) -> Iterable[str]:
         """
         Get filtered database names based on the database filter pattern
+
+        Honours the configured-database short-circuit the topology walk already
+        applies in ``get_database_names``. When a source exposes
+        ``get_configured_database`` and it returns a name (single-database mode),
+        list only that database here instead of calling ``get_database_names_raw``,
+        the server-wide listing. On Azure SQL Database that listing uses a
+        cross-database reference (``master.sys.databases``) the server rejects
+        with error 40515; on every connector it enumerates databases the user
+        never asked to ingest, which would then keep stale, previously-ingested
+        databases from being marked deleted. ``get_database_names``
+        short-circuits identically, so the post-process step and the walk stay
+        consistent. Sources without ``get_configured_database`` (non-MultiDBSource)
+        keep the legacy ``get_database_names`` fallback.
         """
-        database_names_iterable = getattr(self, "get_database_names_raw", self.get_database_names)()
+        get_configured_database = getattr(self, "get_configured_database", None)
+        configured_database = get_configured_database() if callable(get_configured_database) else None
+        if configured_database:
+            database_names_iterable = [configured_database]
+        else:
+            database_names_iterable = getattr(self, "get_database_names_raw", self.get_database_names)()
         for database_name in database_names_iterable:
             database_fqn = fqn.build(
                 self.metadata,
