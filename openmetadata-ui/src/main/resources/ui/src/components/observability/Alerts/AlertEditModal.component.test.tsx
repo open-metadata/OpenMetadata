@@ -42,9 +42,19 @@ jest.mock('../../../components/common/Loader/Loader', () => ({
   default: () => <div data-testid="loader" />,
 }));
 
+const mockUseEntityPermissions = jest
+  .fn()
+  .mockReturnValue({ canEditAll: true });
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
+
 jest.mock('./AlertAiForm.component', () => ({
   __esModule: true,
   default: ({
+    canEditEnabled,
     mode,
     onChange,
     onSubmit,
@@ -54,6 +64,7 @@ jest.mock('./AlertAiForm.component', () => ({
     templatesLoading,
     value,
   }: {
+    canEditEnabled?: boolean;
     mode: string;
     onChange: (value: ModifiedCreateEventSubscription) => void;
     onSubmit: (value: ModifiedCreateEventSubscription) => void;
@@ -77,6 +88,8 @@ jest.mock('./AlertAiForm.component', () => ({
       <span data-testid="form-name">{value.name}</span>
       <span data-testid="form-display-name">{value.displayName}</span>
       <span data-testid="form-show-hint">{String(showHint)}</span>
+      <span data-testid="form-enabled">{String(value.enabled)}</span>
+      <span data-testid="form-can-edit-enabled">{String(canEditEnabled)}</span>
       <button
         data-testid="change-form"
         onClick={() => onChange({ ...value, name: 'updated-alert' })}>
@@ -128,6 +141,7 @@ const getHookState = (overrides = {}) => ({
 
 describe('AlertEditModal', () => {
   beforeEach(() => {
+    mockUseEntityPermissions.mockReturnValue({ canEditAll: true });
     jest.clearAllMocks();
     mockUseAlertFormData.mockReturnValue(getHookState());
   });
@@ -255,6 +269,45 @@ describe('AlertEditModal', () => {
         name: 'test-alert',
         resources: ['table'],
       })
+    );
+  });
+
+  it('starts a new alert enabled, with a switch its creator can use', () => {
+    render(
+      <AlertEditModal
+        isOpen
+        mode="add"
+        onClose={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('form-enabled')).toHaveTextContent('true');
+    expect(screen.getByTestId('form-can-edit-enabled')).toHaveTextContent(
+      'true'
+    );
+  });
+
+  it('lets only someone who can edit the alert switch it off or on', () => {
+    mockUseEntityPermissions.mockReturnValue({ canEditAll: false });
+
+    render(
+      <AlertEditModal
+        isOpen
+        fqn="alert.fqn"
+        mode="edit"
+        onClose={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+      'eventsubscription',
+      'alert.fqn',
+      { enabled: true }
+    );
+    expect(screen.getByTestId('form-can-edit-enabled')).toHaveTextContent(
+      'false'
     );
   });
 

@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  FormField,
   Grid,
   HookForm,
   Typography,
@@ -22,6 +23,7 @@ import { isUndefined } from 'lodash';
 import { useEffect, useState } from 'react';
 import { FormProvider, useWatch, Watch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import AlertEnabledSwitch from '../../../components/Alerts/AlertEnabledSwitch/AlertEnabledSwitch';
 import { DESTINATIONS_MIN_COUNT_ERROR_PATH } from '../../../components/Alerts/DestinationFormItem/DestinationFormItem.constants';
 import InlineAlert from '../../../components/common/InlineAlert/InlineAlert';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -41,6 +43,7 @@ const NO_ERRORS: AlertAiFormValidationErrors = {};
 function ObservabilityAlertForm({
   alert,
   breadcrumb,
+  canEditEnabled = true,
   extraFormButtons,
   extraFormWidgets,
   form,
@@ -55,7 +58,7 @@ function ObservabilityAlertForm({
   shouldShowFiltersSection,
   templateResourcePermission,
   templates,
-}: Readonly<ObservabilityAlertFormProps>) {
+}: Readonly<ObservabilityAlertFormProps & { canEditEnabled?: boolean }>) {
   const { t } = useTranslation();
   const [hasSubmitted, setHasSubmitted] = useState(false);
   // `compute` re-renders this form only when the errors change, not on every keystroke.
@@ -63,6 +66,8 @@ function ObservabilityAlertForm({
     control: form.control,
     compute: (values) => validateAlertAiForm(values, t),
   });
+  const isAlertEnabled =
+    useWatch({ control: form.control, name: 'enabled' }) !== false;
   const validationErrors: AlertAiFormValidationErrors = hasSubmitted
     ? currentErrors
     : NO_ERRORS;
@@ -114,11 +119,23 @@ function ObservabilityAlertForm({
             <Grid
               className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5"
               rowGap="5">
+              <Grid.Item className="layout-column" span={24}>
+                <FormField control={form.control} name="enabled">
+                  {({ field }) => (
+                    <AlertEnabledSwitch
+                      canEdit={canEditEnabled}
+                      isEnabled={field.value !== false}
+                      onChange={field.onChange}
+                    />
+                  )}
+                </FormField>
+              </Grid.Item>
               <AlertSelectionProvider value={selection}>
                 <ObservabilityAlertFormFields
                   alert={alert}
                   extraFormWidgets={extraFormWidgets}
                   form={form}
+                  isAlertDisabled={!isAlertEnabled}
                   isLoading={isLoading}
                   shouldShowActionsSection={shouldShowActionsSection}
                   shouldShowFiltersSection={shouldShowFiltersSection}

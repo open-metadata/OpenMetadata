@@ -146,6 +146,7 @@ function AddObservabilityPage({
             <Card.Content>
               <ObservabilityAlertForm
                 {...formState}
+                canEditEnabled={hasAccess}
                 shouldShowActionsSection={
                   !isNotification && formState.shouldShowActionsSection
                 }

@@ -5880,6 +5880,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Alerts/AlertEnabledSwitch/AlertEnabledSwitch.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Alerts/AlertSourcePicker/AlertSourcePicker.tsx"
       ],
       "specs": [

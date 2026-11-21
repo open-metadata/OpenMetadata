@@ -196,6 +196,7 @@ jest.mock('../../../components/common/EntityDescription/Description', () => ({
 }));
 
 interface MockCoreProps {
+  'aria-label'?: string;
   children?: ReactNode;
   className?: string;
   'data-testid'?: string;
@@ -347,6 +348,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <option value={id}>{children}</option>
   );
 
+  const Card = ({
+    children,
+    className,
+    'data-testid': testId,
+  }: MockCoreProps) => (
+    <section className={className} data-testid={testId}>
+      {children}
+    </section>
+  );
+
+  Card.Content = ({ children }: MockCoreProps) => <div>{children}</div>;
+
   return {
     Accordion: ({ children }: MockCoreProps) => <div>{children}</div>,
     AccordionHeader: ({ children }: MockCoreProps) => <div>{children}</div>,
@@ -393,11 +406,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }: MockCoreProps) => (
       <button data-testid={testId} disabled={isDisabled} onClick={onClick} />
     ),
-    Card: ({ children, className, 'data-testid': testId }: MockCoreProps) => (
-      <section className={className} data-testid={testId}>
-        {children}
-      </section>
-    ),
+    Card,
     Checkbox: ({ 'data-testid': testId, isSelected }: MockCoreProps) => (
       <input
         readOnly
@@ -533,10 +542,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
         onChange={(event) => onChange?.(event.target.value)}
       />
     ),
-    Toggle: ({ isDisabled, isSelected, label, onChange }: MockCoreProps) => (
+    Toggle: ({
+      'aria-label': ariaLabel,
+      isDisabled,
+      isSelected,
+      label,
+      onChange,
+    }: MockCoreProps) => (
       <label>
         {label}
         <input
+          aria-label={ariaLabel}
           checked={Boolean(isSelected)}
           disabled={isDisabled}
           type="checkbox"
@@ -2486,5 +2502,76 @@ describe('AlertAi form field components', () => {
     });
 
     expect(document.querySelector('[data-field-doc]')).toBeNull();
+  });
+
+  describe('Enabled switch', () => {
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      resources: ['table'],
+    };
+    const renderFields = (
+      next: ModifiedCreateEventSubscription,
+      onChange = jest.fn()
+    ) => {
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          selection={selectionOf()}
+          value={next}
+          onChange={onChange}
+        />
+      );
+
+      return onChange;
+    };
+
+    it('keeps the fields editable and describes what an enabled alert sends', () => {
+      renderFields({ ...value, enabled: true });
+
+      expect(screen.getByLabelText('label.enabled')).toBeChecked();
+      expect(screen.getByTestId('alert-name-input')).not.toBeDisabled();
+      expect(screen.getByTestId('description')).not.toBeDisabled();
+      expect(screen.getByTestId('alert-enabled-description')).toHaveTextContent(
+        'message.alert-enabled-description'
+      );
+    });
+
+    it('makes every field read-only and says a disabled alert sends nothing', () => {
+      renderFields({ ...value, enabled: false });
+
+      expect(screen.getByLabelText('label.enabled')).not.toBeChecked();
+      expect(screen.getByTestId('alert-name-input')).toBeDisabled();
+      expect(screen.getByTestId('description')).toBeDisabled();
+      expect(screen.getByTestId('alert-enabled-description')).toHaveTextContent(
+        'message.alert-disabled-description'
+      );
+      expect(screen.queryByTestId('alert-warning')).not.toBeInTheDocument();
+    });
+
+    it('switches the alert off through the form value', () => {
+      const onChange = renderFields({ ...value, enabled: true });
+
+      fireEvent.click(screen.getByLabelText('label.enabled'));
+
+      const updater = onChange.mock.calls[0][0];
+
+      expect(updater({ ...value, enabled: true }).enabled).toBe(false);
+    });
+
+    it('cannot be switched by someone who cannot edit the alert', () => {
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          canEditEnabled={false}
+          selection={selectionOf()}
+          value={{ ...value, enabled: true }}
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(screen.getByLabelText('label.enabled')).toBeDisabled();
+    });
   });
 });
