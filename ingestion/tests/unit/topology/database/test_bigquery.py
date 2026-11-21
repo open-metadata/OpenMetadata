@@ -866,6 +866,45 @@ class TestBigqueryRegionAwareQueries:
         assert "t.table_schema as table_schema" in sql
         assert "where t.table_schema = 'dataset_a'" not in sql
 
+    def test_lifecycle_reads_only_active_table_from_spool(self):
+        self._set_dataset_location("EU")
+        rows = [
+            SimpleNamespace(_asdict=lambda name=name: {
+                "table_schema": "dataset_a",
+                "table_name": name,
+                "created_at": datetime(2025, 1, 2),
+                "updated_at": datetime(2025, 1, 3),
+            })
+            for name in ("selected", "other")
+        ]
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter(rows)
+        self.bq_source.engine = engine
+
+        context = self.bq_source.context.get()
+        context.database_schema = "dataset_a"
+        context.table = "selected"
+        selected = self.bq_source.life_cycle_query_dict(
+            self.bq_source.get_life_cycle_query()
+        )
+        assert list(selected) == ["selected"]
+        db = self.bq_source._region_lifecycle_db
+        assert db.execute("SELECT COUNT(*) FROM rows").fetchone()[0] == 2
+
+        traced = []
+        db.set_trace_callback(traced.append)
+        try:
+            context.table = "other"
+            other = self.bq_source.life_cycle_query_dict(
+                self.bq_source.get_life_cycle_query()
+            )
+        finally:
+            db.set_trace_callback(None)
+
+        assert list(other) == ["other"]
+        assert any("AND table_name = 'other'" in sql for sql in traced)
+        assert conn.execute.call_count == 1
+
     def test_lifecycle_parallel_workers_share_one_region_query(self):
         engine, conn = self._make_engine_mock([])
         conn.execute.return_value.__iter__.return_value = iter([])
