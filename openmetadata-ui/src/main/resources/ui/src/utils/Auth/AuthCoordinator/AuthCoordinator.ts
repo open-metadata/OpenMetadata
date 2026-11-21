@@ -586,9 +586,22 @@ export class AuthCoordinator {
       expiresAt: result.expiresAt,
       idToken: result.idToken,
     });
-    this.timer.schedule(result.expiresAt, () => {
-      this.ensureFreshToken().catch(() => undefined);
-    });
+    // `isRenewResult` accepts a result whose `expiresAt` is up to
+    // `EXPIRY_THRESHOLD_MILLES` in the past (clock skew / processing
+    // delay). ProactiveTimer clamps a non-positive delay to 0, so
+    // scheduling such a result would fire the timer immediately,
+    // re-enter `ensureFreshToken`, and — if the renewer kept returning
+    // that same cached boundary token (the Auth0 v2 fast-path
+    // regression this PR guards against) — renew, write, and broadcast
+    // in a tight loop that never reaches the 401 circuit breaker. Only
+    // arm the timer when the remaining lifetime clears the pre-expiry
+    // buffer; otherwise the next real 401 still drives a refresh via
+    // the axios interceptor (Greptile P1 review on this PR).
+    if (result.expiresAt > Date.now() + EXPIRY_THRESHOLD_MILLES) {
+      this.timer.schedule(result.expiresAt, () => {
+        this.ensureFreshToken().catch(() => undefined);
+      });
+    }
 
     return result.idToken;
   }

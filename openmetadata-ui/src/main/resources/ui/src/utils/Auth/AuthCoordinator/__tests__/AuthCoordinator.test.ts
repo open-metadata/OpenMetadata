@@ -1201,6 +1201,50 @@ describe('AuthCoordinator', () => {
       expect(mockNotifyDone).toHaveBeenCalledWith(payload);
     });
 
+    it('does not rearm an immediate proactive timer for a result accepted within the pre-expiry leeway', async () => {
+      // The leeway-accept test above proves the leader path persists a
+      // boundary result. Without the applyRefreshed guard, ProactiveTimer
+      // would clamp the negative delay to 0, fire immediately, re-enter
+      // ensureFreshToken, and — if the renewer kept returning that same
+      // cached token — renew, write, and broadcast in a tight loop that
+      // never reaches the 401 circuit breaker (Greptile P1 review on
+      // this PR). Advancing fake timers must NOT re-invoke the renewer.
+      jest.useFakeTimers();
+      try {
+        const payload = {
+          idToken: 'boundary-token',
+          expiresAt: Date.now() - 5_000, // 5s in the past, within 60s leeway
+        };
+        const renewer = jest.fn(async () => payload);
+        coordinator.registerRenewer(renewer);
+        const { setOidcTokenStrict } = jest.requireMock(
+          '../../../SwTokenStorageUtils'
+        ) as { setOidcTokenStrict: jest.Mock };
+        setOidcTokenStrict.mockClear();
+        mockNotifyDone.mockClear();
+
+        const token = await coordinator.ensureFreshToken();
+
+        expect(token).toBe('boundary-token');
+        expect(renewer).toHaveBeenCalledTimes(1);
+
+        // Advancing time past any plausible immediate-fire window must
+        // not drive a second renewal — the timer is unarmed for boundary
+        // results, so the next refresh comes only from a real 401.
+        await (
+          jest as unknown as {
+            advanceTimersByTimeAsync: (ms: number) => Promise<void>;
+          }
+        ).advanceTimersByTimeAsync(120_000);
+
+        expect(renewer).toHaveBeenCalledTimes(1);
+        expect(setOidcTokenStrict).toHaveBeenCalledTimes(1);
+        expect(mockNotifyDone).toHaveBeenCalledTimes(1);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
     // Greptile P1 (r4035047159 + r4039793087): the fail-silent
     // `setOidcToken` used to let the leader broadcast `done` with a
     // payload no sibling tab could trust across a reload. The strict
