@@ -118,11 +118,18 @@ def test_checks_borrow_the_clients_their_connections_own():
     assert mock_engine.call_count == 1
 
 
-def test_sql_engine_is_never_built_when_no_warehouse_step_runs():
+@pytest.fixture
+def catalog_client():
+    client = MagicMock()
+    client.api_client.do.return_value = {"catalogs": [{"name": "main"}]}
+    return client
+
+
+def test_sql_engine_is_never_built_when_no_warehouse_step_runs(catalog_client):
     # The lineage and tag steps need a SQL warehouse; a workspace configured
     # without an httpPath must never pay for an engine it does not use.
     with (
-        patch(f"{CONNECTION_MODULE}.get_connection"),
+        patch(f"{CONNECTION_MODULE}.get_connection", return_value=catalog_client),
         patch("metadata.core.connections.test_connection.network.tcp_probe"),
         patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection") as mock_engine,
     ):
@@ -184,18 +191,20 @@ class TestHostNormalization:
 
 
 class TestCheckAccess:
-    def test_probes_the_host_before_listing_catalogs(self):
-        client = MagicMock()
+    def test_probes_the_host_before_listing_catalogs(self, catalog_client):
         with patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe:
-            evidence = _checks(client).check_access()
+            evidence = _checks(catalog_client).check_access()
 
         mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
+        catalog_client.api_client.do.assert_called_once_with(
+            "GET", "/api/2.1/unity-catalog/catalogs", query={"include_browse": "true", "max_results": 0}
+        )
         assert evidence.summary == "connection established"
         assert evidence.command == "catalogs.list()"
 
-    def test_defaults_to_port_443_when_host_port_omits_the_port(self):
+    def test_defaults_to_port_443_when_host_port_omits_the_port(self, catalog_client):
         with patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe:
-            _checks(MagicMock(), hostPort="my-workspace.cloud.databricks.com").check_access()
+            _checks(catalog_client, hostPort="my-workspace.cloud.databricks.com").check_access()
 
         mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
 
@@ -207,9 +216,9 @@ class TestCheckAccess:
             "my-workspace.cloud.databricks.com",
         ],
     )
-    def test_normalizes_a_pasted_workspace_url_before_probing(self, host_port):
+    def test_normalizes_a_pasted_workspace_url_before_probing(self, host_port, catalog_client):
         with patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe:
-            _checks(MagicMock(), hostPort=host_port).check_access()
+            _checks(catalog_client, hostPort=host_port).check_access()
 
         mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
 

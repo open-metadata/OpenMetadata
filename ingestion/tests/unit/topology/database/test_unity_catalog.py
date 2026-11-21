@@ -610,12 +610,14 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
                     "catalog_name": "demo",
                     "schema_name": "default",
                     "name": "table_with_constraints",
+                    "full_name": "demo.default.table_with_constraints",
                     "table_type": "MANAGED",
                 },
                 {
                     "catalog_name": "demo",
                     "schema_name": "default",
                     "name": "table_no_constraints",
+                    "full_name": "demo.default.table_no_constraints",
                     "table_type": "MANAGED",
                 },
             ]
@@ -636,10 +638,9 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
         ]
 
         list(self.unitycatalog_source.get_tables_name_and_type())
-        # A BROWSE-aware metadata GET was made for the constrained table.
-        assert any(
-            "/api/2.1/unity-catalog/tables/demo.default.table_with_constraints" in call.args
-            for call in mock_api_do.call_args_list
+        assert mock_api_do.call_count == 2
+        mock_api_do.assert_called_with(
+            "GET", "/api/2.1/unity-catalog/tables/demo.default.table_with_constraints", query={"include_browse": "true"}
         )
 
     @patch("databricks.sdk.core.ApiClient.do")
