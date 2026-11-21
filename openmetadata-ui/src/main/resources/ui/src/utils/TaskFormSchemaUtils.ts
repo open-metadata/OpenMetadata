@@ -297,6 +297,20 @@ export const hasTaskFormFields = (schema?: JsonSchemaObject) => {
   );
 };
 
+/**
+ * Whether a form schema declares any `required` fields. The inbox's transition
+ * guard uses this to decide whether a workflow transition must open a form
+ * modal (the resolver has to supply the required inputs) before it can fire —
+ * mirroring `TaskTabNew`'s form-modal guard without forcing a modal for
+ * transitions whose form only carries optional fields (e.g. a DAR `approve`
+ * with an optional comment), which keep firing straight through.
+ */
+export const hasRequiredTaskFormFields = (schema?: JsonSchemaObject) => {
+  const required = schema?.required;
+
+  return Array.isArray(required) && required.length > 0;
+};
+
 const DEFAULT_APPROVAL_VALUES = {
   approvedValue: 'approved',
   rejectedValue: 'rejected',
