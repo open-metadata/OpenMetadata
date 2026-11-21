@@ -10,6 +10,7 @@ import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +24,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.vector.AbstractVectorIndexService;
@@ -40,8 +43,9 @@ import os.org.opensearch.client.transport.httpclient5.ApacheHttpClient5Transport
 
 /**
  * The chunk index is one implementation for both engines, and an engine supplies only its request
- * dialect. A mocked transport cannot tell whether a real engine accepts that dialect, so one
- * scenario runs here against OpenSearch and against Elasticsearch.
+ * dialect. A mocked transport cannot tell whether a real engine accepts that dialect, so each
+ * scenario runs here against OpenSearch and against Elasticsearch. The scenarios of one engine
+ * share its cluster and its staged-recreate state, so they run one at a time.
  */
 class VectorChunkIndexIT {
 
@@ -74,6 +78,7 @@ class VectorChunkIndexIT {
 
   @Nested
   @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+  @Execution(ExecutionMode.SAME_THREAD)
   class OnOpenSearch {
     private final CountingProvider provider = new CountingProvider();
     private final OpensearchContainer<?> container =
@@ -108,10 +113,16 @@ class VectorChunkIndexIT {
     void aFullRecreateServesOnlyTheEntitiesItIndexed() {
       assertAFullRecreateServesOnlyTheEntitiesItIndexed(service, provider);
     }
+
+    @Test
+    void aGenerationThatMissedAChunkWriteIsNeverPromoted() {
+      assertAGenerationThatMissedAChunkWriteIsNeverPromoted(service);
+    }
   }
 
   @Nested
   @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+  @Execution(ExecutionMode.SAME_THREAD)
   class OnElasticsearch {
     private final CountingProvider provider = new CountingProvider();
     private final ElasticsearchContainer container =
@@ -147,6 +158,11 @@ class VectorChunkIndexIT {
     @Test
     void aFullRecreateServesOnlyTheEntitiesItIndexed() {
       assertAFullRecreateServesOnlyTheEntitiesItIndexed(service, provider);
+    }
+
+    @Test
+    void aGenerationThatMissedAChunkWriteIsNeverPromoted() {
+      assertAGenerationThatMissedAChunkWriteIsNeverPromoted(service);
     }
   }
 
@@ -188,6 +204,57 @@ class VectorChunkIndexIT {
         List.of(), service.searchChunksByParent(id(deletedWithoutAnEvent), QUESTION, 5, null));
     assertEquals(
         Set.of(service.getChunkIndexName(), service.getIndexAlias()), aliasesOf(service, staged));
+  }
+
+  /**
+   * The cluster rejects one bulk item while the run's entity types all finalize successfully. The
+   * old chunks stay live, and a clean retry promotes its own generation.
+   */
+  private static void assertAGenerationThatMissedAChunkWriteIsNeverPromoted(
+      AbstractVectorIndexService service) {
+    Table invoices = table("invoices", "Invoices sent");
+    try {
+      writeChunks(service, invoices, null);
+      refresh(service, service.getChunkIndexName());
+      Set<String> liveBefore = parentsFound(service);
+      assertTrue(liveBefore.contains(id(invoices)), liveBefore::toString);
+
+      String rejected = service.beginStagedChunkRecreate();
+      assertNotNull(rejected, "A reachable embedding provider stages a generation");
+      service.writeEntityChunks(id(invoices), unindexableChunks(service, invoices), rejected);
+      AvailableEntityTypes.SET.forEach(
+          type -> service.markEntityTypeReindexed(type, true, rejected));
+
+      assertEquals(Set.of(), aliasesOf(service, rejected), "The generation is not promoted");
+      assertEquals(liveBefore, parentsFound(service), "Reads keep the old chunks");
+
+      String retry = service.beginStagedChunkRecreate();
+      writeChunks(service, invoices, retry);
+      refresh(service, retry);
+      AvailableEntityTypes.SET.forEach(type -> service.markEntityTypeReindexed(type, true, retry));
+
+      assertEquals(
+          Set.of(service.getChunkIndexName(), service.getIndexAlias()), aliasesOf(service, retry));
+      assertEquals(Set.of(id(invoices)), parentsFound(service));
+      assertOnePassage(service, invoices, "Invoices sent");
+    } finally {
+      service.deleteEntityChunks(id(invoices));
+      refresh(service, service.getChunkIndexName());
+    }
+  }
+
+  // An integer field holding text fails that bulk item on both engines.
+  private static List<Map<String, Object>> unindexableChunks(
+      AbstractVectorIndexService service, Table table) {
+    return VectorDocBuilder.fromEntity(table, service.getEmbeddingClient()).stream()
+        .map(VectorChunkIndexIT::withTextChunkCount)
+        .toList();
+  }
+
+  private static Map<String, Object> withTextChunkCount(Map<String, Object> chunk) {
+    Map<String, Object> broken = new HashMap<>(chunk);
+    broken.put("chunkCount", "not a number");
+    return broken;
   }
 
   private static void writeChunks(

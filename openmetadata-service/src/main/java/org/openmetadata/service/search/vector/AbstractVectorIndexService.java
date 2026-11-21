@@ -155,6 +155,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   private static final String CHUNK_INDEX_BASE = "data_asset_embeddings_chunks";
+  private static final String INCOMPLETE_CHUNK_WRITES = "incompleteChunkWrites";
   private volatile boolean chunkIndexEnsured = false;
 
   /**
@@ -230,16 +231,14 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
         replaceChunks(staged, parentId, chunkDocs, previousCount(stagedHeader));
       }
     } catch (Exception e) {
-      // A failed chunk write is tolerated like any failed document index: the chunk is simply
-      // absent from the staged generation. Promotion is gated on the run's aggregate success
-      // (see markEntityTypeReindexed), so a run that failed overall never promotes; a sub-document
-      // failure on an otherwise-successful run leaves a gap that the next recreate heals.
+      // The entity keeps its spliced embedding; the generation it missed is never promoted.
       LOG.error(
           "Failed to backfill chunks for {} into staged {}: {}",
           entity.getId(),
           staged,
           e.getMessage(),
           e);
+      markStagedGenerationIncomplete(staged);
     }
   }
 
@@ -337,9 +336,12 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       ChunkHeader header = getChunkHeader(target, parentId);
       replaceChunks(target, parentId, chunkDocs, previousCount(header));
     } catch (Exception e) {
-      // Tolerated like a failed document index — the chunk is absent, and the run's aggregate
-      // success (see markEntityTypeReindexed) gates whether the staged generation ever promotes.
+      // The entity keeps its embedding either way. A live-index gap heals on the entity's next
+      // write; a staged generation with a gap is never promoted.
       LOG.error("Failed to write chunk docs for {}: {}", parentId, e.getMessage(), e);
+      if (stagedChunkTarget != null) {
+        markStagedGenerationIncomplete(stagedChunkTarget);
+      }
     }
   }
 
@@ -351,18 +353,22 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     deleteChunksFrom(getChunkIndexName(), parentId);
     // Also delete from an in-flight staged generation so a promoted run does not resurrect them.
     String staged = resolveChunkSinkTarget();
-    if (staged != null) {
-      deleteChunksFrom(staged, parentId);
+    if (staged != null && !deleteChunksFrom(staged, parentId)) {
+      markStagedGenerationIncomplete(staged);
     }
   }
 
-  private void deleteChunksFrom(String indexName, String parentId) {
+  private boolean deleteChunksFrom(String indexName, String parentId) {
+    boolean deleted;
     try {
       ChunkHeader header = getChunkHeader(indexName, parentId);
       replaceChunks(indexName, parentId, List.of(), previousCount(header));
+      deleted = true;
     } catch (Exception e) {
       LOG.debug("Failed to delete chunks for {} from {}: {}", parentId, indexName, e.getMessage());
+      deleted = false;
     }
+    return deleted;
   }
 
   /**
@@ -407,9 +413,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   // wipe-and-remigrate), but dropping the live index up front turns any mid-run failure into a
   // retrieval outage. Instead the run writes into a bare next-generation index
   // ({chunk_base}_g<N>), invisible to reads, and only when every vector-indexable entity type
-  // finalizes successfully is the generation promoted: one atomic _aliases call points the read
-  // and search aliases at it and removes the previous target. Any failure before promotion leaves
-  // the old chunks fully live; abandoned generations are swept at the next staged recreate.
+  // finalizes successfully, and no chunk write into the generation failed, is the generation
+  // promoted: one atomic _aliases call points the read and search aliases at it and removes the
+  // previous target. Any failure before promotion leaves the old chunks fully live; abandoned
+  // generations are swept at the next staged recreate.
 
   private final Object stagedChunkLock = new Object();
   private volatile String stagedChunkIndex;
@@ -545,7 +552,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * aggregate success signal every other index promotes on. A type finalizing with {@code
    * success=false} marks the run failed, so the staged generation is never promoted and the old
    * chunks stay live (swept by the next recreate). Once every vector-indexable type finalizes
-   * successfully the staged generation is promoted atomically. This runs on the coordinator — the
+   * successfully the staged generation is promoted atomically, unless a chunk write into it failed
+   * on any node. This runs on the coordinator — the
    * only JVM that finalizes entity types (participant-completed partitions are reconciled to the
    * coordinator's completion callbacks). No-op when no staged recreate is active or for non-vector
    * types.
@@ -598,30 +606,77 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private void promoteStagedChunkIndex() {
     synchronized (stagedChunkLock) {
       String generation = stagedChunkIndex;
-      if (generation != null && stagedChunkRunFailed) {
-        // Re-check under the lock: a type may have finalized as failed between the caller's
-        // containsAll check and this swap.
-        LOG.warn(
-            "Staged chunk index {} — run marked failed, promotion blocked; old chunks stay live",
-            generation);
-        stagedChunkIndex = null;
-        generation = null;
-      }
       if (generation != null) {
-        String base = getChunkIndexName();
-        String oldTarget = requireResolvedLiveChunkTarget(base);
-        try {
-          executeGenericRequest(
-              "POST",
-              "/_aliases",
-              buildChunkPromoteActions(generation, base, getIndexAlias(), oldTarget));
-        } catch (Exception e) {
-          throw new RuntimeException("Failed to promote staged chunk index " + generation, e);
+        // Re-check the run under the lock: a type may have finalized as failed between the
+        // caller's containsAll check and this swap.
+        if (stagedChunkRunFailed || isStagedGenerationIncomplete(generation)) {
+          LOG.warn(
+              "Staged chunk index {} failed its run or missed chunk writes — promotion blocked; "
+                  + "old chunks stay live and the next staged recreate sweeps it",
+              generation);
+        } else {
+          swapInStagedGeneration(generation);
         }
         stagedChunkIndex = null;
-        chunkIndexEnsured = true;
-        LOG.info("Promoted staged chunk index {} (previous target: {})", generation, oldTarget);
       }
+    }
+  }
+
+  private void swapInStagedGeneration(String generation) {
+    String base = getChunkIndexName();
+    String oldTarget = requireResolvedLiveChunkTarget(base);
+    try {
+      executeGenericRequest(
+          "POST",
+          "/_aliases",
+          buildChunkPromoteActions(generation, base, getIndexAlias(), oldTarget));
+    } catch (RuntimeException e) {
+      throw new RuntimeException("Failed to promote staged chunk index " + generation, e);
+    }
+    chunkIndexEnsured = true;
+    LOG.info("Promoted staged chunk index {} (previous target: {})", generation, oldTarget);
+  }
+
+  /**
+   * Any node whose chunk write into the generation failed flagged it on the index itself (see
+   * {@link #markStagedGenerationIncomplete}), so the coordinator sees participants' failures too.
+   * Strict like the swap: a flag that cannot be read fails the promotion.
+   */
+  private boolean isStagedGenerationIncomplete(String generation) {
+    try {
+      String mappingJson = executeGenericRequest("GET", "/" + generation + "/_mapping", null);
+      return MAPPER
+          .readTree(mappingJson)
+          .path(generation)
+          .path("mappings")
+          .path("_meta")
+          .path(INCOMPLETE_CHUNK_WRITES)
+          .asBoolean(false);
+    } catch (IOException | RuntimeException e) {
+      throw new RuntimeException("Failed to read staged chunk index state " + generation, e);
+    }
+  }
+
+  /**
+   * Records on the staged generation that it lacks a chunk write, so no node promotes it. A chunk
+   * absent from the generation would vanish from retrieval at promotion while the live index still
+   * holds it. The flag is a {@code _meta} entry rather than JVM state because the write may fail on
+   * a participant while the coordinator promotes.
+   */
+  private void markStagedGenerationIncomplete(String generation) {
+    if (generation.equals(stagedChunkIndex)) {
+      stagedChunkRunFailed = true;
+    }
+    try {
+      ObjectNode body = MAPPER.createObjectNode();
+      body.set("_meta", chunkMeta().put(INCOMPLETE_CHUNK_WRITES, true));
+      executeGenericRequest("PUT", "/" + generation + "/_mapping", body.toString());
+    } catch (RuntimeException e) {
+      LOG.error(
+          "Could not flag staged chunk index {} as incomplete; it may be promoted without the "
+              + "failed chunks",
+          generation,
+          e);
     }
   }
 
@@ -1307,6 +1362,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       } catch (IOException | RuntimeException e) {
         LOG.warn(
             "Failed to mirror chunks for {} into staged {}: {}", parentId, staged, e.getMessage());
+        markStagedGenerationIncomplete(staged);
       }
     }
   }

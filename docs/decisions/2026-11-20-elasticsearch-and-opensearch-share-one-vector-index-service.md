@@ -2,9 +2,9 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-20 (initial); v2 2026-11-21 (an unwritable chunk index keeps the entity
-  embedding; a failed chunk write does not block promotion)
+  embedding; a generation that missed a chunk write is never promoted)
 - **Deciders:** Search and AI context maintainers
-- **Guard:** `VectorChunkIndexIT` (one scenario on a real cluster of each engine),
+- **Guard:** `VectorChunkIndexIT` (each scenario on a real cluster of each engine),
   `ElasticSearchVectorServiceTest` (the Elasticsearch dialect), `EmbeddingEnricherTest` (the
   reindex embedding step), `StoredEmbeddingReuseIT` (both engines); `reviewer` for a new caller
   that names an engine class
@@ -55,6 +55,11 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
 - **A chunk index that cannot be written never costs an entity its document embedding.** A live
   edit refreshes only a stale entity-doc embedding and skips the chunk write. A reindex keeps the
   spliced embedding and logs the chunk failure. No raw chunk write goes to a missing index.
+- **A staged generation that missed a chunk write is never promoted.** Any failed write, mirror or
+  delete into it sets `_meta.incompleteChunkWrites` on that generation's index. The coordinator
+  reads the flag before the alias swap and keeps the old chunks live when it is set. The flag
+  lives on the cluster, so a participant's failure reaches the coordinator and stays tied to the
+  generation it hit. The next staged recreate sweeps the unpromoted generation.
 - **Hybrid search stays OpenSearch-only.** The RRF search pipeline lives in
   `OpenSearchVectorService`, and `SearchRepository` creates and checks it only on OpenSearch.
 
@@ -65,11 +70,10 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
 - **OpenSearch sends the same requests, creates the same mappings and retries the same way**,
   with one exception. An unwritable chunk index now keeps the entity embedding instead of
   dropping it.
-- **A failed chunk write does not block promotion of a staged generation.** The run counts the
-  entity as embedded, and promotion waits only on entity indexing. A rebuild that loses chunk
-  writes can therefore replace a complete chunk index with an incomplete one. This came from the
-  OpenSearch implementation and now applies to Elasticsearch too. Revisit by reporting chunk
-  failures per generation to the coordinator and refusing to promote an incomplete one.
+- **One failed chunk write keeps a whole rebuild from going live**, on both engines. Before, a
+  rebuild could replace a complete chunk index with one that had lost chunks. The entity indexes
+  still promote, and the run's vector stats do not count the chunk failure, so the error log and
+  the blocked-promotion warning are the signal.
 - **Upgrade cost on Elasticsearch.** No chunk documents exist before this change. The first
   Search Indexing run after the upgrade creates the chunk index and embeds every chunk of each
   vector-indexable entity it covers, one provider call per chunk. That includes entities whose
