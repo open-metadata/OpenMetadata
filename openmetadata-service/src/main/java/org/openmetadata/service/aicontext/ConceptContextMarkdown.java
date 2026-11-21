@@ -16,6 +16,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.aicontext.AIContextMarkdown.appendHeading;
 import static org.openmetadata.service.aicontext.AIContextMarkdown.cell;
+import static org.openmetadata.service.aicontext.AIContextMarkdown.sampleCell;
 
 import java.time.Instant;
 import java.util.List;
@@ -148,7 +149,7 @@ final class ConceptContextMarkdown {
           .append("\nStored samples for `")
           .append(cell(binding.getColumn()))
           .append("`: ")
-          .append(cell(values))
+          .append(sampleCell(values))
           .append(" (representative rows; never count or aggregate over them).\n");
     }
   }
