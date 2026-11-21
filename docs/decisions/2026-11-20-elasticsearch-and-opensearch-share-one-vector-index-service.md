@@ -1,7 +1,8 @@
 # Elasticsearch and OpenSearch share one vector index service
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-20 (initial)
+- **Revisions:** v1 2026-11-20 (initial); v2 2026-11-21 (an unwritable chunk index keeps the entity
+  embedding; a failed chunk write does not block promotion)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `VectorChunkIndexIT` (one scenario on a real cluster of each engine),
   `ElasticSearchVectorServiceTest` (the Elasticsearch dialect), `EmbeddingEnricherTest` (the
@@ -51,6 +52,9 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   lists `embedding` in `_source_includes`. The chunk index keeps the Elasticsearch default, as the
   entity indexes do. OpenSearch keeps vectors in stored source
   (ADR:2026-10-21-opensearch-vectors-stay-in-source).
+- **A chunk index that cannot be written never costs an entity its document embedding.** A live
+  edit refreshes only a stale entity-doc embedding and skips the chunk write. A reindex keeps the
+  spliced embedding and logs the chunk failure. No raw chunk write goes to a missing index.
 - **Hybrid search stays OpenSearch-only.** The RRF search pipeline lives in
   `OpenSearchVectorService`, and `SearchRepository` creates and checks it only on OpenSearch.
 
@@ -58,8 +62,14 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
 
 - **A capability added to `VectorIndexService` exists on both engines.** An engine difference is a
   new hook on the base class, not a second copy of the logic.
-- **OpenSearch is unchanged.** It sends the same requests, creates the same mappings and retries
-  the same way.
+- **OpenSearch sends the same requests, creates the same mappings and retries the same way**,
+  with one exception. An unwritable chunk index now keeps the entity embedding instead of
+  dropping it.
+- **A failed chunk write does not block promotion of a staged generation.** The run counts the
+  entity as embedded, and promotion waits only on entity indexing. A rebuild that loses chunk
+  writes can therefore replace a complete chunk index with an incomplete one. This came from the
+  OpenSearch implementation and now applies to Elasticsearch too. Revisit by reporting chunk
+  failures per generation to the coordinator and refusing to promote an incomplete one.
 - **Upgrade cost on Elasticsearch.** No chunk documents exist before this change. The first
   Search Indexing run after the upgrade creates the chunk index and embeds every chunk of each
   vector-indexable entity it covers, one provider call per chunk. That includes entities whose
