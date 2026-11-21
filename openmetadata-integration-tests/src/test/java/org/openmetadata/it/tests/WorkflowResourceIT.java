@@ -16,6 +16,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -38,8 +39,10 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.pipeline.DatabricksPipelineConnection;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -135,6 +138,59 @@ public class WorkflowResourceIT {
     assertEquals(
         service.getName(),
         JsonUtils.valueToTree(runnerWorkflow.getRequest()).get("serviceName").asText());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"POST", "PUT"})
+  void testConnectionAcceptsAnEncryptedPasswordOnlyAsItsServicesStoredValue(
+      HttpMethod method, TestNamespace ns) {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final DatabaseService service =
+        testConnectionService(ns, UserTestFactory.createUser(ns, "cipherOwner"));
+    final String serviceToken = storedServicePassword(service);
+
+    final CreateWorkflow fromService =
+        encryptedPasswordRequest(
+            ns.shortPrefix() + "cipherFromService", serviceToken, service.getName());
+    final Workflow created = createWorkflow(admin, fromService, method, ns);
+    assertEquals(
+        SERVICE_PASSWORD,
+        workflowPassword(
+            SdkClients.ingestionBotClient()
+                .workflows()
+                .getByName(created.getFullyQualifiedName())));
+
+    for (final String serviceName : new String[] {null, ns.shortPrefix() + "unregisteredService"}) {
+      final CreateWorkflow copy =
+          encryptedPasswordRequest(ns.shortPrefix() + "cipherCopy", serviceToken, serviceName);
+      final InvalidRequestException refused =
+          assertThrows(
+              InvalidRequestException.class, () -> createWorkflow(admin, copy, method, ns));
+      assertEquals(400, refused.getStatusCode());
+    }
+  }
+
+  private CreateWorkflow encryptedPasswordRequest(String name, String token, String serviceName) {
+    final CreateWorkflow request = createRequest(name);
+    ((TestServiceConnectionRequest) request.getRequest())
+        .withServiceName(serviceName)
+        .withConnection(mysqlConnection(token));
+    return request;
+  }
+
+  private static String storedServicePassword(DatabaseService service) {
+    final String json =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery("SELECT json FROM dbservice_entity WHERE id = :id")
+                        .bind("id", service.getId().toString())
+                        .mapTo(String.class)
+                        .one());
+    return JsonUtils.readTree(json).at("/connection/config/authType/password").asText();
   }
 
   private WorkflowOperator workflowOperator(TestNamespace ns) {
@@ -506,6 +562,31 @@ public class WorkflowResourceIT {
         Exception.class,
         () -> client.workflows().create(duplicateRequest),
         "Creating duplicate workflow with same name should fail");
+  }
+
+  @Test
+  void post_testConnectionWithAuthTypeMatchingNoOption_400(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String token = "databricks-workflow-token";
+    DatabricksPipelineConnection config =
+        new DatabricksPipelineConnection()
+            .withHostPort("databricks.example:443")
+            .withAuthType(Map.of("token", token, "region", "eu"));
+    CreateWorkflow createRequest =
+        new CreateWorkflow()
+            .withName(ns.prefix("databricksUnmatchedAuth"))
+            .withWorkflowType(WorkflowType.TEST_CONNECTION)
+            .withRequest(
+                new TestServiceConnectionRequest()
+                    .withServiceType(ServiceType.PIPELINE)
+                    .withConnectionType("DatabricksPipeline")
+                    .withConnection(new PipelineConnection().withConfig(config)));
+
+    InvalidRequestException error =
+        assertThrows(InvalidRequestException.class, () -> client.workflows().create(createRequest));
+
+    assertEquals(400, error.getStatusCode());
+    assertFalse(error.getMessage().contains(token), error.getMessage());
   }
 
   @Test

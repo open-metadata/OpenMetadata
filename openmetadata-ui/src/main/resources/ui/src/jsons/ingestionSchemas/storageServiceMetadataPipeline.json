@@ -284,38 +284,6 @@
                     }
                   }
                 },
-                "gcpCredentialsPath": {
-                  "title": "GCP Credentials Path",
-                  "description": "Pass the path of file containing the GCP credentials info",
-                  "type": "object",
-                  "properties": {
-                    "type": {
-                      "title": "Credentials Type",
-                      "description": "Google Cloud Platform account type.",
-                      "type": "string",
-                      "default": "gcp_credential_path",
-                      "const": "gcp_credential_path"
-                    },
-                    "path": {
-                      "title": "Path",
-                      "description": "Path of the file containing the GCP credentials info",
-                      "type": "string"
-                    },
-                    "projectId": {
-                      "title": "GCP Project ID",
-                      "description": "GCP Project ID to parse metadata from",
-                      "oneOf": [
-                        {
-                          "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
-                        },
-                        {
-                          "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
-                        }
-                      ],
-                      "default": null
-                    }
-                  }
-                },
                 "GCPImpersonateServiceAccountValues": {
                   "title": "GCP impersonate service account values",
                   "description": "Pass the values to impersonate a service account of Google Cloud",
@@ -437,7 +405,38 @@
                       "additionalProperties": false
                     },
                     {
-                      "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/definitions/gcpCredentialsPath"
+                      "title": "GCP Credentials Path",
+                      "description": "Pass the path of file containing the GCP credentials info",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.security.credentials.GCPCredentialsPath",
+                      "properties": {
+                        "type": {
+                          "title": "Credentials Type",
+                          "description": "Google Cloud Platform account type.",
+                          "type": "string",
+                          "default": "gcp_credential_path",
+                          "const": "gcp_credential_path"
+                        },
+                        "path": {
+                          "title": "Path",
+                          "description": "Path of the file containing the GCP credentials info",
+                          "type": "string"
+                        },
+                        "projectId": {
+                          "title": "GCP Project ID",
+                          "description": "GCP Project ID to parse metadata from",
+                          "oneOf": [
+                            {
+                              "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                            },
+                            {
+                              "$ref": "#/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                            }
+                          ],
+                          "default": null
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     {
                       "type": "object",

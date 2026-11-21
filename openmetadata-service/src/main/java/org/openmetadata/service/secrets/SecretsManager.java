@@ -53,6 +53,7 @@ import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
+import org.openmetadata.service.secrets.converter.UnmatchedOptions;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
@@ -134,7 +135,12 @@ public abstract class SecretsManager {
       boolean persistExternalSecrets) {
     try {
       Object newConnectionConfig =
-          SecretsUtil.convert(connectionConfig, connectionType, connectionName, serviceType);
+          SecretsUtil.convert(
+              connectionConfig,
+              connectionType,
+              connectionName,
+              serviceType,
+              UnmatchedOptions.refuse());
       return encryptPasswordFields(
           newConnectionConfig,
           buildSecretId(true, serviceType.value(), connectionName),
@@ -168,7 +174,12 @@ public abstract class SecretsManager {
       Object connectionConfig, String connectionType, ServiceType serviceType) {
     try {
       Object newConnectionConfig =
-          SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
+          SecretsUtil.convert(
+              connectionConfig,
+              connectionType,
+              null,
+              serviceType,
+              UnmatchedOptions.replaceLeaves(this::decryptIfTokenized));
       return decryptPasswordFields(newConnectionConfig);
     } catch (Exception e) {
       String message =
@@ -182,6 +193,10 @@ public abstract class SecretsManager {
               "Failed to decrypt connection instance of %s. Did the Fernet Key change?",
               connectionType));
     }
+  }
+
+  private Object decryptIfTokenized(Object leaf) {
+    return leaf instanceof String value && Fernet.isTokenized(value) ? fernet.decrypt(value) : leaf;
   }
 
   public Object encryptAuthenticationMechanism(
@@ -360,7 +375,9 @@ public abstract class SecretsManager {
         encryptOpenMetadataConnection(ingestionPipeline.getOpenMetadataServerConnection(), true);
     ingestionPipeline.setOpenMetadataServerConnection(null);
     // we don't store OM conn sensitive data
-    IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
+    UnmatchedOptions.runDuring(
+        UnmatchedOptions.refuse(),
+        () -> IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline));
     try {
       // A pipeline name is unique only within its service, so it cannot key the vault entry.
       encryptPasswordFields(
@@ -381,7 +398,9 @@ public abstract class SecretsManager {
         decryptOpenMetadataConnection(ingestionPipeline.getOpenMetadataServerConnection());
     ingestionPipeline.setOpenMetadataServerConnection(null);
     // we don't store OM conn sensitive data
-    IngestionPipelineBuilder.addDefinedConfigForRead(ingestionPipeline);
+    UnmatchedOptions.runDuring(
+        UnmatchedOptions.replaceLeaves(this::decryptIfTokenized),
+        () -> IngestionPipelineBuilder.addDefinedConfigForRead(ingestionPipeline));
     try {
       decryptPasswordFields(ingestionPipeline);
     } catch (Exception e) {
@@ -397,7 +416,9 @@ public abstract class SecretsManager {
     OpenMetadataConnection openMetadataConnection =
         encryptOpenMetadataConnection(workflow.getOpenMetadataServerConnection(), true);
     Workflow workflowConverted =
-        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+        UnmatchedOptions.during(
+            UnmatchedOptions.refuse(),
+            () -> (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow));
     // we don't store OM conn sensitive data
     workflowConverted.setOpenMetadataServerConnection(null);
     try {
@@ -416,7 +437,9 @@ public abstract class SecretsManager {
     OpenMetadataConnection openMetadataConnection =
         decryptOpenMetadataConnection(workflow.getOpenMetadataServerConnection());
     Workflow workflowConverted =
-        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+        UnmatchedOptions.during(
+            UnmatchedOptions.replaceLeaves(this::decryptIfTokenized),
+            () -> (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow));
     // we don't store OM conn sensitive data
     workflowConverted.setOpenMetadataServerConnection(null);
     try {

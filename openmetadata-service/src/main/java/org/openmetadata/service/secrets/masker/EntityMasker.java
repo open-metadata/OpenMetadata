@@ -54,4 +54,16 @@ public abstract class EntityMasker {
       AuthenticationMechanism originalAuthenticationMechanism);
 
   public abstract Workflow unmaskWorkflow(Workflow workflow, Workflow originalWorkflow);
+
+  /**
+   * Refuses an encrypted value in a secret field of a connection that has nothing stored yet. Only
+   * the server encrypts secrets, so a new connection has no stored value one could match. An update
+   * gets the same check from the unmask methods, against the value stored for each field.
+   */
+  public abstract void requireNoEncryptedSecrets(
+      Object connectionConfig, String connectionType, ServiceType serviceType);
+
+  public abstract void requireNoEncryptedSecrets(IngestionPipeline ingestionPipeline);
+
+  public abstract void requireNoEncryptedSecrets(Workflow workflow);
 }

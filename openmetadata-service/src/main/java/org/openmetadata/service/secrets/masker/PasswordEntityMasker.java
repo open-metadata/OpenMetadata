@@ -21,15 +21,18 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.EntityMaskException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
+import org.openmetadata.service.secrets.converter.UnmatchedOptions;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
@@ -38,6 +41,11 @@ public class PasswordEntityMasker extends EntityMasker {
   public static final String PASSWORD_MASK = "*********";
   private static final String NEW_KEY = "";
   private static final String OPENMETADATA_PACKAGE = "org.openmetadata";
+  private static final String ENCRYPTED_SECRET_REFUSED =
+      "Field [%s] has an encrypted value that is not the one stored for it. Send the secret itself.";
+
+  /** The server builds this connection for every run and never stores the one it is sent. */
+  private static final String SERVER_CONNECTION_KEY = "OpenMetadataServerConnection.";
 
   protected PasswordEntityMasker() {}
 
@@ -46,7 +54,12 @@ public class PasswordEntityMasker extends EntityMasker {
     if (connectionConfig != null) {
       try {
         Object convertedConnectionConfig =
-            SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
+            SecretsUtil.convert(
+                connectionConfig,
+                connectionType,
+                null,
+                serviceType,
+                UnmatchedOptions.replaceLeaves(leaf -> PASSWORD_MASK));
         maskPasswordFields(convertedConnectionConfig);
         return convertedConnectionConfig;
       } catch (Exception e) {
@@ -76,7 +89,9 @@ public class PasswordEntityMasker extends EntityMasker {
 
   public void maskIngestionPipeline(IngestionPipeline ingestionPipeline) {
     if (ingestionPipeline != null) {
-      IngestionPipelineBuilder.addDefinedConfigForRead(ingestionPipeline);
+      UnmatchedOptions.runDuring(
+          UnmatchedOptions.replaceLeaves(leaf -> PASSWORD_MASK),
+          () -> IngestionPipelineBuilder.addDefinedConfigForRead(ingestionPipeline));
       try {
         maskPasswordFields(ingestionPipeline);
       } catch (Exception e) {
@@ -91,7 +106,10 @@ public class PasswordEntityMasker extends EntityMasker {
   public Workflow maskWorkflow(Workflow workflow) {
     if (workflow != null) {
       Workflow workflowConverted =
-          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+          UnmatchedOptions.during(
+              UnmatchedOptions.replaceLeaves(leaf -> PASSWORD_MASK),
+              () ->
+                  (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow));
       try {
         maskPasswordFields(workflowConverted);
       } catch (Exception e) {
@@ -117,6 +135,7 @@ public class PasswordEntityMasker extends EntityMasker {
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(originalConvertedConfig, NEW_KEY, passwordsMap);
         rejectMasksWithoutStoredSecret(toUnmaskConfig, passwordsMap);
+        requireStoredEncryptedSecrets(toUnmaskConfig, originalConvertedConfig);
         unmaskPasswordFields(toUnmaskConfig, NEW_KEY, passwordsMap);
         return toUnmaskConfig;
       } catch (EntityMaskException e) {
@@ -139,6 +158,7 @@ public class PasswordEntityMasker extends EntityMasker {
     if (ingestionPipeline != null && originalIngestionPipeline != null) {
       IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
       IngestionPipelineBuilder.addDefinedConfigForRead(originalIngestionPipeline);
+      requireStoredEncryptedSecrets(ingestionPipeline, originalIngestionPipeline);
       try {
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(originalIngestionPipeline, NEW_KEY, passwordsMap);
@@ -176,6 +196,7 @@ public class PasswordEntityMasker extends EntityMasker {
           (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
       Workflow origWorkflowConverted =
           (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(originalWorkflow);
+      requireStoredEncryptedSecrets(workflowConverted, origWorkflowConverted);
       try {
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(origWorkflowConverted, NEW_KEY, passwordsMap);
@@ -187,6 +208,87 @@ public class PasswordEntityMasker extends EntityMasker {
       }
     }
     return workflow;
+  }
+
+  @Override
+  public void requireNoEncryptedSecrets(
+      Object connectionConfig, String connectionType, ServiceType serviceType) {
+    if (connectionConfig != null) {
+      requireNoEncryptedSecretsIn(
+          () ->
+              SecretsUtil.convert(
+                  jsonCopy(connectionConfig, Object.class), connectionType, null, serviceType));
+    }
+  }
+
+  @Override
+  public void requireNoEncryptedSecrets(IngestionPipeline ingestionPipeline) {
+    if (ingestionPipeline != null) {
+      requireNoEncryptedSecretsIn(
+          () -> {
+            IngestionPipeline copy = JsonUtils.deepCopy(ingestionPipeline, IngestionPipeline.class);
+            IngestionPipelineBuilder.addDefinedConfig(copy);
+            return copy;
+          });
+    }
+  }
+
+  @Override
+  public void requireNoEncryptedSecrets(Workflow workflow) {
+    if (workflow != null) {
+      requireNoEncryptedSecretsIn(
+          () ->
+              ClassConverterFactory.getConverter(Workflow.class)
+                  .convert(jsonCopy(workflow, Workflow.class)));
+    }
+  }
+
+  /**
+   * A value that cannot be typed is refused where it is saved, with the reason, so here it is left
+   * to that check.
+   */
+  private void requireNoEncryptedSecretsIn(Supplier<Object> typed) {
+    Object typedValue;
+    try {
+      typedValue = typed.get();
+    } catch (RuntimeException e) {
+      typedValue = null;
+    }
+    requireStoredEncryptedSecrets(typedValue, null);
+  }
+
+  /**
+   * Only the server encrypts secrets, and no response is meant to carry an encrypted value, so a
+   * write may carry one only where it sends back the value already stored for that same field.
+   * ADR:2026-11-19-a-save-keeps-an-encrypted-secret-only-as-its-stored-value
+   */
+  private void requireStoredEncryptedSecrets(Object incoming, Object stored) {
+    Map<String, String> storedValues = new HashMap<>();
+    walkPasswordFields(
+        stored,
+        NEW_KEY,
+        (holder, fieldName, fieldKey, value) -> storedValues.put(fieldKey, String.valueOf(value)));
+    walkPasswordFields(
+        incoming,
+        NEW_KEY,
+        (holder, fieldName, fieldKey, value) -> {
+          if (isEncryptedButNotStored(fieldKey, value, storedValues)) {
+            throw new EntityMaskException(
+                Response.Status.BAD_REQUEST, ENCRYPTED_SECRET_REFUSED.formatted(fieldKey));
+          }
+        });
+  }
+
+  private static boolean isEncryptedButNotStored(
+      String fieldKey, Object value, Map<String, String> storedValues) {
+    return value instanceof String text
+        && Fernet.isTokenized(text)
+        && !fieldKey.startsWith(SERVER_CONNECTION_KEY)
+        && !text.equals(storedValues.get(fieldKey));
+  }
+
+  private static <T> T jsonCopy(Object value, Class<T> type) {
+    return JsonUtils.readValue(JsonUtils.pojoToJson(value), type);
   }
 
   private void maskPasswordFields(Object toMaskObject) {

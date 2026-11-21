@@ -44,6 +44,8 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 )
 from metadata.generated.schema.security.credentials.gcpCredentials import (
     GcpADC,
+)
+from metadata.generated.schema.security.credentials.gcpCredentialsPath import (
     GcpCredentialsPath,
 )
 from metadata.generated.schema.security.credentials.gcpValues import (

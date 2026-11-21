@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -18,8 +19,10 @@ import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
+import org.openmetadata.schema.services.connections.pipeline.DatabricksPipelineConnection;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.PipelineConnection;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
@@ -178,6 +181,25 @@ public class PipelineServiceResourceIT
     PipelineService service = createEntity(request);
     assertNotNull(service);
     assertEquals(PipelineServiceType.Airflow, service.getServiceType());
+  }
+
+  @Test
+  void post_databricksServiceWithAuthTypeMatchingNoOption_400(TestNamespace ns) {
+    DatabricksPipelineConnection conn =
+        new DatabricksPipelineConnection()
+            .withHostPort("databricks.example:443")
+            .withAuthType(Map.of("token", "databricks-token", "region", "eu"));
+    CreatePipelineService request =
+        new CreatePipelineService()
+            .withName(ns.prefix("databricks_unmatched_auth"))
+            .withServiceType(PipelineServiceType.DatabricksPipeline)
+            .withConnection(new PipelineConnection().withConfig(conn));
+
+    OpenMetadataException e =
+        assertThrows(OpenMetadataException.class, () -> createEntity(request));
+    assertEquals(400, e.getStatusCode());
+    assertTrue(e.getMessage().contains("[authType]"), e.getMessage());
+    assertTrue(e.getMessage().contains("[region]"), e.getMessage());
   }
 
   @Test

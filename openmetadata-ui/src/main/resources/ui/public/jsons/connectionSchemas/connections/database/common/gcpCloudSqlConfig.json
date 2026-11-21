@@ -54,43 +54,6 @@
             }
           }
         },
-        "gcpCredentialsPath": {
-          "title": "GCP Credentials Path",
-          "description": "Pass the path of file containing the GCP credentials info",
-          "type": "object",
-          "properties": {
-            "type": {
-              "title": "Credentials Type",
-              "description": "Google Cloud Platform account type.",
-              "type": "string",
-              "default": "gcp_credential_path",
-              "const": "gcp_credential_path"
-            },
-            "path": {
-              "title": "Path",
-              "description": "Path of the file containing the GCP credentials info",
-              "type": "string"
-            },
-            "projectId": {
-              "title": "GCP Project ID",
-              "description": "GCP Project ID to parse metadata from",
-              "oneOf": [
-                {
-                  "title": "Single Project ID",
-                  "type": "string"
-                },
-                {
-                  "title": "Multiple Project ID",
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              ],
-              "default": null
-            }
-          }
-        },
         "GCPImpersonateServiceAccountValues": {
           "title": "GCP impersonate service account values",
           "description": "Pass the values to impersonate a service account of Google Cloud",
@@ -220,6 +183,7 @@
               "title": "GCP Credentials Path",
               "description": "Pass the path of file containing the GCP credentials info",
               "type": "object",
+              "javaType": "org.openmetadata.schema.security.credentials.GCPCredentialsPath",
               "properties": {
                 "type": {
                   "title": "Credentials Type",
@@ -251,7 +215,8 @@
                   ],
                   "default": null
                 }
-              }
+              },
+              "additionalProperties": false
             },
             {
               "type": "object",

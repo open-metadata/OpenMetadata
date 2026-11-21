@@ -27,6 +27,8 @@ from metadata.generated.schema.entity.services.connections.database.common.azure
 from metadata.generated.schema.security.credentials.gcpCredentials import (
     GcpADC,
     GCPCredentials,
+)
+from metadata.generated.schema.security.credentials.gcpCredentialsPath import (
     GcpCredentialsPath,
 )
 from metadata.generated.schema.security.credentials.gcpExternalAccount import (
