@@ -1,0 +1,654 @@
+{
+  "successful_run": [
+    {
+      "eventType": "START",
+      "eventTime": "2026-11-17T07:34:33.907Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "orders_app",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "APPLICATION",
+            "processingType": "NONE"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86d-dc26-7000-8000-000000000001",
+        "facets": {}
+      },
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "eventType": "START",
+      "eventTime": "2026-11-17T07:34:37.653Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "orders_app.execute_save_into_data_source_command.public_orders_copy",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "SQL_JOB",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86d-e15a-7000-8000-000000000002",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "spark_jobs",
+              "name": "orders_app"
+            },
+            "run": {
+              "runId": "01a1e86d-dc26-7000-8000-000000000001"
+            },
+            "root": {
+              "job": {
+                "namespace": "spark_jobs",
+                "name": "orders_app"
+              },
+              "run": {
+                "runId": "01a1e86d-dc26-7000-8000-000000000001"
+              }
+            }
+          }
+        }
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders"
+        }
+      ],
+      "outputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders_copy"
+        }
+      ]
+    },
+    {
+      "eventType": "START",
+      "eventTime": "2026-11-17T07:34:37.747Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "orders_app.deserialize_to_object",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "SQL_JOB",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86d-e1b8-7000-8000-000000000003",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "spark_jobs",
+              "name": "orders_app"
+            },
+            "run": {
+              "runId": "01a1e86d-dc26-7000-8000-000000000001"
+            },
+            "root": {
+              "job": {
+                "namespace": "spark_jobs",
+                "name": "orders_app"
+              },
+              "run": {
+                "runId": "01a1e86d-dc26-7000-8000-000000000001"
+              }
+            }
+          }
+        }
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "eventType": "RUNNING",
+      "eventTime": "2026-11-17T07:34:38.009Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "orders_app.deserialize_to_object",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "SQL_JOB",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86d-e1b8-7000-8000-000000000003",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "spark_jobs",
+              "name": "orders_app"
+            },
+            "run": {
+              "runId": "01a1e86d-dc26-7000-8000-000000000001"
+            },
+            "root": {
+              "job": {
+                "namespace": "spark_jobs",
+                "name": "orders_app"
+              },
+              "run": {
+                "runId": "01a1e86d-dc26-7000-8000-000000000001"
+              }
+            }
+          }
+        }
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "eventType": "RUNNING",
+      "eventTime": "2026-11-17T07:34:38.752Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "orders_app.deserialize_to_object",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "SQL_JOB",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86d-e1b8-7000-8000-000000000003",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "spark_jobs",
+              "name": "orders_app"
+            },
+            "run": {
+              "runId": "01a1e86d-dc26-7000-8000-000000000001"
+            },
+            "root": {
+              "job": {
+                "namespace": "spark_jobs",
+                "name": "orders_app"
+              },
+              "run": {
+                "runId": "01a1e86d-dc26-7000-8000-000000000001"
+              }
+            }
+          }
+        }
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "eventType": "COMPLETE",
+      "eventTime": "2026-11-17T07:34:38.754Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "orders_app.deserialize_to_object",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "SQL_JOB",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86d-e1b8-7000-8000-000000000003",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "spark_jobs",
+              "name": "orders_app"
+            },
+            "run": {
+              "runId": "01a1e86d-dc26-7000-8000-000000000001"
+            },
+            "root": {
+              "job": {
+                "namespace": "spark_jobs",
+                "name": "orders_app"
+              },
+              "run": {
+                "runId": "01a1e86d-dc26-7000-8000-000000000001"
+              }
+            }
+          }
+        }
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "eventType": "COMPLETE",
+      "eventTime": "2026-11-17T07:34:38.778Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "orders_app.execute_save_into_data_source_command.public_orders_copy",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "SQL_JOB",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86d-e15a-7000-8000-000000000002",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "spark_jobs",
+              "name": "orders_app"
+            },
+            "run": {
+              "runId": "01a1e86d-dc26-7000-8000-000000000001"
+            },
+            "root": {
+              "job": {
+                "namespace": "spark_jobs",
+                "name": "orders_app"
+              },
+              "run": {
+                "runId": "01a1e86d-dc26-7000-8000-000000000001"
+              }
+            }
+          }
+        }
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders"
+        }
+      ],
+      "outputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders_copy"
+        }
+      ]
+    },
+    {
+      "eventType": "COMPLETE",
+      "eventTime": "2026-11-17T07:34:38.78Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "orders_app",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "APPLICATION",
+            "processingType": "NONE"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86d-dc26-7000-8000-000000000001",
+        "facets": {}
+      },
+      "inputs": [],
+      "outputs": []
+    }
+  ],
+  "failed_run": [
+    {
+      "eventType": "START",
+      "eventTime": "2026-11-17T07:34:47.537Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "report_app",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "APPLICATION",
+            "processingType": "NONE"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86e-0e08-7000-8000-000000000004",
+        "facets": {}
+      },
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "eventType": "START",
+      "eventTime": "2026-11-17T07:34:50.123Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "report_app.execute_save_into_data_source_command.public_report",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "SQL_JOB",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86e-120f-7000-8000-000000000005",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "spark_jobs",
+              "name": "report_app"
+            },
+            "run": {
+              "runId": "01a1e86e-0e08-7000-8000-000000000004"
+            },
+            "root": {
+              "job": {
+                "namespace": "spark_jobs",
+                "name": "report_app"
+              },
+              "run": {
+                "runId": "01a1e86e-0e08-7000-8000-000000000004"
+              }
+            }
+          }
+        }
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders"
+        }
+      ],
+      "outputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.report"
+        }
+      ]
+    },
+    {
+      "eventType": "START",
+      "eventTime": "2026-11-17T07:34:50.233Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "report_app.deserialize_to_object",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "SQL_JOB",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86e-127f-7000-8000-000000000006",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "spark_jobs",
+              "name": "report_app"
+            },
+            "run": {
+              "runId": "01a1e86e-0e08-7000-8000-000000000004"
+            },
+            "root": {
+              "job": {
+                "namespace": "spark_jobs",
+                "name": "report_app"
+              },
+              "run": {
+                "runId": "01a1e86e-0e08-7000-8000-000000000004"
+              }
+            }
+          }
+        }
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "eventType": "RUNNING",
+      "eventTime": "2026-11-17T07:34:50.504Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "report_app.deserialize_to_object",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "SQL_JOB",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86e-127f-7000-8000-000000000006",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "spark_jobs",
+              "name": "report_app"
+            },
+            "run": {
+              "runId": "01a1e86e-0e08-7000-8000-000000000004"
+            },
+            "root": {
+              "job": {
+                "namespace": "spark_jobs",
+                "name": "report_app"
+              },
+              "run": {
+                "runId": "01a1e86e-0e08-7000-8000-000000000004"
+              }
+            }
+          }
+        }
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "eventType": "FAIL",
+      "eventTime": "2026-11-17T07:34:51.761Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "report_app.deserialize_to_object",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "SQL_JOB",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86e-127f-7000-8000-000000000006",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "spark_jobs",
+              "name": "report_app"
+            },
+            "run": {
+              "runId": "01a1e86e-0e08-7000-8000-000000000004"
+            },
+            "root": {
+              "job": {
+                "namespace": "spark_jobs",
+                "name": "report_app"
+              },
+              "run": {
+                "runId": "01a1e86e-0e08-7000-8000-000000000004"
+              }
+            }
+          },
+          "spark.exception": {
+            "message": "Job aborted due to stage failure: ValueError: intentional failure",
+            "stackTrace": "org.apache.spark.SparkException: Job aborted due to stage failure: ValueError: intentional failure\n\tat org.apache.spark.scheduler.DAGScheduler.failJobAndIndependentStages(DAGScheduler.scala:2898)"
+          }
+        }
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "eventType": "COMPLETE",
+      "eventTime": "2026-11-17T07:34:51.811Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "report_app.deserialize_to_object",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "SQL_JOB",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86e-127f-7000-8000-000000000006",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "spark_jobs",
+              "name": "report_app"
+            },
+            "run": {
+              "runId": "01a1e86e-0e08-7000-8000-000000000004"
+            },
+            "root": {
+              "job": {
+                "namespace": "spark_jobs",
+                "name": "report_app"
+              },
+              "run": {
+                "runId": "01a1e86e-0e08-7000-8000-000000000004"
+              }
+            }
+          }
+        }
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders"
+        }
+      ],
+      "outputs": []
+    },
+    {
+      "eventType": "COMPLETE",
+      "eventTime": "2026-11-17T07:34:51.812Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "report_app.execute_save_into_data_source_command.public_report",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "SQL_JOB",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86e-120f-7000-8000-000000000005",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "spark_jobs",
+              "name": "report_app"
+            },
+            "run": {
+              "runId": "01a1e86e-0e08-7000-8000-000000000004"
+            },
+            "root": {
+              "job": {
+                "namespace": "spark_jobs",
+                "name": "report_app"
+              },
+              "run": {
+                "runId": "01a1e86e-0e08-7000-8000-000000000004"
+              }
+            }
+          }
+        }
+      },
+      "inputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.orders"
+        }
+      ],
+      "outputs": [
+        {
+          "namespace": "postgres://db:5432",
+          "name": "shop.public.report"
+        }
+      ]
+    },
+    {
+      "eventType": "COMPLETE",
+      "eventTime": "2026-11-17T07:34:51.85Z",
+      "job": {
+        "namespace": "spark_jobs",
+        "name": "report_app",
+        "facets": {
+          "jobType": {
+            "integration": "SPARK",
+            "jobType": "APPLICATION",
+            "processingType": "NONE"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e86e-0e08-7000-8000-000000000004",
+        "facets": {}
+      },
+      "inputs": [],
+      "outputs": []
+    }
+  ]
+}

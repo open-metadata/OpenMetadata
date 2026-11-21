@@ -43,6 +43,7 @@ def message_to_open_lineage_event(incoming_event: dict) -> OpenLineageEvent:
         job=job,
         inputs=inputs,
         outputs=outputs,
+        event_time=incoming_event.get("eventTime"),
     )
 
     return result  # noqa: RET504
