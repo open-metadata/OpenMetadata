@@ -439,10 +439,16 @@ class S3Source(StorageServiceSource):
                     if structured_container:
                         yield structured_container
         except Exception as err:
-            logger.warning(
-                f"Error while generating structured containers by depth for {metadata_entry.dataPath} - {err}"
+            # Surface the error on the workflow status (e.g. AccessDenied from
+            # list_s3_objects) instead of silently logging it, so a partial or
+            # empty listing is reported as a failure rather than success.
+            self.status.failed(
+                StackTraceError(
+                    name=metadata_entry.dataPath,
+                    error=f"Error while generating structured containers by depth for {metadata_entry.dataPath} - {err}",
+                    stackTrace=traceback.format_exc(),
+                )
             )
-            logger.debug(traceback.format_exc())
 
     def _generate_structured_containers(
         self,
