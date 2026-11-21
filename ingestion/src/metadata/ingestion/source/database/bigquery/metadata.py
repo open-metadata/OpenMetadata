@@ -1048,7 +1048,12 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             # from the indexed spool instead of reparsing every table in its dataset
             # for each call (which becomes quadratic for large datasets).
             # Retain full-dataset results for callers without an active table.
-            selected_table = getattr(self.context.get(), "table", None)
+            try:
+                selected_table = getattr(self.context.get(), "table", None)
+            except KeyError:
+                # Background region workers may not have a topology context
+                # bound to their thread. In that case return the full dataset.
+                selected_table = None
             if selected_table:
                 sql = (
                     "SELECT table_name, payload FROM rows "
