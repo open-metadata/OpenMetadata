@@ -1827,11 +1827,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (!Boolean.TRUE.equals(request.getDryRun())
         && !CommonUtil.nullOrEmpty(request.getAssets())
         && CommonUtil.nullOrEmpty(result.getFailedRequest())
-        && (!(term.getTags().isEmpty() && glossary.getTags().isEmpty()))) {
+        && !CommonUtil.nullOrEmpty(glossary.getTags())) {
       // Remove current entity tags in the database. It will be added back later from the merged tag
       // list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(term.getFullyQualifiedName());
-      applyTags(getUniqueTags(glossary.getTags()), term.getFullyQualifiedName());
+      List<TagLabel> merged = new ArrayList<>(getUniqueTags(glossary.getTags()));
+      EntityUtil.mergeTags(merged, getUniqueTags(term.getTags()));
+      deleteTagsPreservingCertification(term.getFullyQualifiedName());
+      applyTags(merged, term.getFullyQualifiedName());
       invalidateCacheAfterTagMutation(term.getEntityReference());
 
       searchRepository.updateEntity(term.getEntityReference());
