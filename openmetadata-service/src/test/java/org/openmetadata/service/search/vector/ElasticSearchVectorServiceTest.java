@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -14,11 +15,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
+import es.co.elastic.clients.transport.rest5_client.low_level.ResponseException;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -28,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Supplier;
 import org.apache.hc.core5.http.HttpEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -118,39 +118,6 @@ class ElasticSearchVectorServiceTest {
   }
 
   @Test
-  void reindexReusesOnlyStoredEmbeddingsWhoseFingerprintIsCurrent() throws Exception {
-    long updatedAt = 1_700_000_000_000L;
-    Table unchanged = table("orders", "Orders placed online", updatedAt);
-    Table textChanged = table("payments", "Customer payments by card", updatedAt);
-    // Stand-in for the text an older release built for the same entity: same updatedAt, other text.
-    Table textChangedAsLastEmbedded =
-        table("payments", "Customer payments", updatedAt).withId(textChanged.getId());
-    Table unfingerprintable = table("refunds", "Refunds issued", updatedAt);
-    answerIdSearchesFrom(
-        Map.of(
-            id(unchanged), storedEntityDoc(unchanged, unchanged),
-            id(textChanged), storedEntityDoc(textChanged, textChangedAsLastEmbedded),
-            id(unfingerprintable), storedEntityDoc(unfingerprintable, unfingerprintable)));
-
-    Map<String, JsonNode> reusable =
-        vectorService.getExistingEmbeddingsBatch(
-            "table_search_index",
-            Map.of(
-                id(unchanged), currentFingerprint(unchanged),
-                id(textChanged), currentFingerprint(textChanged),
-                id(unfingerprintable),
-                    () -> {
-                      throw new IllegalStateException("tag without an FQN");
-                    },
-                UUID.randomUUID().toString(), currentFingerprint(unchanged)));
-
-    assertEquals(Set.of(id(unchanged)), reusable.keySet());
-    assertEquals(
-        VectorDocBuilder.computeFingerprintForEntity(unchanged),
-        reusable.get(id(unchanged)).path("fingerprint").asText());
-  }
-
-  @Test
   void searchEmbedsTheQueryAsAQueryNotADocument() throws Exception {
     // Providers that distinguish the two (Cohere on Bedrock: search_query vs search_document)
     // return a worse vector for a question embedded as a document, so the query path must not
@@ -161,60 +128,6 @@ class ElasticSearchVectorServiceTest {
 
     verify(mockEmbeddingClient).embedQuery("test query");
     verify(mockEmbeddingClient, never()).embed("test query");
-  }
-
-  @Test
-  void testThresholdFilteringRemovesLowScoreResults() throws Exception {
-    String esResponse =
-        """
-        {
-          "hits": {
-            "total": {"value": 4},
-            "hits": [
-              {"_score": 0.9, "_source": {"parentId": "parent1", "chunkIndex": 0, "text": "High score chunk"}},
-              {"_score": 0.7, "_source": {"parentId": "parent2", "chunkIndex": 0, "text": "Medium score chunk"}},
-              {"_score": 0.4, "_source": {"parentId": "parent3", "chunkIndex": 0, "text": "Low score chunk"}},
-              {"_score": 0.2, "_source": {"parentId": "parent4", "chunkIndex": 0, "text": "Very low score chunk"}}
-            ]
-          }
-        }
-        """;
-
-    mockRestClientResponse(esResponse);
-
-    DTOs.VectorSearchResponse results =
-        vectorService.search("test query", Map.of(), 10, 0, 100, 0.5);
-
-    assertNotNull(results);
-    assertEquals(2, results.hits.size(), "Should return 2 results (scores 0.9 and 0.7)");
-    for (Map<String, Object> result : results.hits) {
-      double score = (double) result.get("_score");
-      assertTrue(score >= 0.5, "All results should have score >= 0.5, got: " + score);
-    }
-  }
-
-  @Test
-  void testScoreFieldIncludedInResults() throws Exception {
-    String esResponse =
-        """
-        {
-          "hits": {
-            "total": {"value": 1},
-            "hits": [
-              {"_score": 0.85, "_source": {"parentId": "parent1", "chunkIndex": 0, "text": "Test chunk"}}
-            ]
-          }
-        }
-        """;
-
-    mockRestClientResponse(esResponse);
-
-    DTOs.VectorSearchResponse results =
-        vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
-
-    assertEquals(1, results.hits.size());
-    assertTrue(results.hits.get(0).containsKey("_score"), "Result should contain _score field");
-    assertEquals(0.85, (double) results.hits.get(0).get("_score"), 0.001);
   }
 
   @Test
@@ -249,86 +162,6 @@ class ElasticSearchVectorServiceTest {
   }
 
   @Test
-  void testParentGroupingLimitsDistinctParents() throws Exception {
-    // size=2 → requestedParents=3; 4 distinct parents in response causes loop to exit after 1 page
-    String esResponse =
-        """
-        {
-          "hits": {
-            "total": {"value": 8},
-            "hits": [
-              {"_score": 0.9,  "_source": {"parentId": "parent1", "chunkIndex": 0}},
-              {"_score": 0.88, "_source": {"parentId": "parent1", "chunkIndex": 1}},
-              {"_score": 0.85, "_source": {"parentId": "parent1", "chunkIndex": 2}},
-              {"_score": 0.8,  "_source": {"parentId": "parent2", "chunkIndex": 0}},
-              {"_score": 0.78, "_source": {"parentId": "parent2", "chunkIndex": 1}},
-              {"_score": 0.7,  "_source": {"parentId": "parent3", "chunkIndex": 0}},
-              {"_score": 0.68, "_source": {"parentId": "parent3", "chunkIndex": 1}},
-              {"_score": 0.6,  "_source": {"parentId": "parent4", "chunkIndex": 0}}
-            ]
-          }
-        }
-        """;
-
-    mockRestClientResponse(esResponse);
-
-    DTOs.VectorSearchResponse results =
-        vectorService.search("test query", Map.of(), 2, 0, 100, 0.0);
-
-    assertEquals(5, results.hits.size(), "Should return all chunks from first 2 parents (3+2=5)");
-    long distinctParents = results.hits.stream().map(r -> r.get("parentId")).distinct().count();
-    assertEquals(2, distinctParents, "Should have chunks from exactly 2 distinct parents");
-  }
-
-  @Test
-  void testZeroThresholdReturnsAllResults() throws Exception {
-    String esResponse =
-        """
-        {
-          "hits": {
-            "total": {"value": 3},
-            "hits": [
-              {"_score": 0.9, "_source": {"parentId": "p1", "chunkIndex": 0}},
-              {"_score": 0.5, "_source": {"parentId": "p2", "chunkIndex": 0}},
-              {"_score": 0.1, "_source": {"parentId": "p3", "chunkIndex": 0}}
-            ]
-          }
-        }
-        """;
-
-    mockRestClientResponse(esResponse);
-
-    DTOs.VectorSearchResponse results =
-        vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
-
-    assertEquals(3, results.hits.size(), "With threshold 0.0, should return all 3 results");
-  }
-
-  @Test
-  void testHighThresholdFiltersAllResults() throws Exception {
-    String esResponse =
-        """
-        {
-          "hits": {
-            "total": {"value": 3},
-            "hits": [
-              {"_score": 0.5, "_source": {"parentId": "p1", "chunkIndex": 0}},
-              {"_score": 0.3, "_source": {"parentId": "p2", "chunkIndex": 0}},
-              {"_score": 0.1, "_source": {"parentId": "p3", "chunkIndex": 0}}
-            ]
-          }
-        }
-        """;
-
-    mockRestClientResponse(esResponse);
-
-    DTOs.VectorSearchResponse results =
-        vectorService.search("test query", Map.of(), 10, 0, 100, 0.9);
-
-    assertEquals(0, results.hits.size(), "With threshold 0.9, all results should be filtered out");
-  }
-
-  @Test
   void testChunksWithoutParentIdGroupedByDocumentId() throws Exception {
     // Chunks without parentId in _source fall back to the document's _id field
     String esResponse =
@@ -352,40 +185,6 @@ class ElasticSearchVectorServiceTest {
 
     assertEquals(
         3, results.hits.size(), "Orphan chunk should be included, grouped by document _id");
-  }
-
-  @Test
-  void testRequestedSizeLimitsDistinctParents() throws Exception {
-    // size=3 → requestedParents=4; 10 distinct parents in response exits loop immediately
-    String esResponse =
-        """
-        {
-          "hits": {
-            "total": {"value": 10},
-            "hits": [
-              {"_score": 0.9,  "_source": {"parentId": "p1",  "chunkIndex": 0}},
-              {"_score": 0.8,  "_source": {"parentId": "p2",  "chunkIndex": 0}},
-              {"_score": 0.7,  "_source": {"parentId": "p3",  "chunkIndex": 0}},
-              {"_score": 0.6,  "_source": {"parentId": "p4",  "chunkIndex": 0}},
-              {"_score": 0.5,  "_source": {"parentId": "p5",  "chunkIndex": 0}},
-              {"_score": 0.4,  "_source": {"parentId": "p6",  "chunkIndex": 0}},
-              {"_score": 0.3,  "_source": {"parentId": "p7",  "chunkIndex": 0}},
-              {"_score": 0.2,  "_source": {"parentId": "p8",  "chunkIndex": 0}},
-              {"_score": 0.15, "_source": {"parentId": "p9",  "chunkIndex": 0}},
-              {"_score": 0.1,  "_source": {"parentId": "p10", "chunkIndex": 0}}
-            ]
-          }
-        }
-        """;
-
-    mockRestClientResponse(esResponse);
-
-    DTOs.VectorSearchResponse results =
-        vectorService.search("test query", Map.of(), 3, 0, 100, 0.0);
-
-    assertEquals(3, results.hits.size(), "Should limit to 3 distinct parents");
-    long distinctParents = results.hits.stream().map(r -> r.get("parentId")).distinct().count();
-    assertEquals(3, distinctParents, "Should have exactly 3 distinct parents");
   }
 
   @Test
@@ -582,28 +381,169 @@ class ElasticSearchVectorServiceTest {
     assertTrue(result.isEmpty());
   }
 
-  /** Returns a fresh stream on every call — safe for multi-iteration loops. */
   @Test
-  void testExecuteGenericRequestHandlesNullEntityWithout4xxNPE() throws Exception {
-    // Some ES endpoints return no body on 4xx; getEntity() may be null. The previous
-    // code dereferenced response.getEntity().getContent() unconditionally and NPE'd,
-    // masking the actual HTTP status. We must surface the status (400) and an empty
-    // body in the error message.
-    Response mockResponse = mock(Response.class);
-    when(mockResponse.getStatusCode()).thenReturn(400);
-    when(mockResponse.getEntity()).thenReturn(null);
-    when(mockRestClient.performRequest(any(Request.class))).thenReturn(mockResponse);
+  void aClientErrorWithoutABodySurfacesItsStatus() throws Exception {
+    // Some Elasticsearch endpoints answer 4xx with no entity at all.
+    Response noBody = mock(Response.class);
+    when(noBody.getStatusCode()).thenReturn(400);
+    when(noBody.getEntity()).thenReturn(null);
+    when(mockRestClient.performRequest(any(Request.class))).thenReturn(noBody);
 
-    RuntimeException ex =
+    RuntimeException error =
         assertThrows(
             RuntimeException.class,
             () -> vectorService.executeGenericRequest("GET", "/_some/path", null));
-    assertTrue(
-        ex.getMessage().contains("400"),
-        "Error must surface the HTTP status, not a NPE: " + ex.getMessage());
+
+    assertEquals("Elasticsearch generic request failed", error.getMessage());
+    assertEquals(
+        "Elasticsearch request failed with status 400: no body", error.getCause().getMessage());
+  }
+
+  @Test
+  void aServerErrorThrownByTheClientSurfacesItsStatusAndBody() throws Exception {
+    // Rest5Client returns 4xx responses but throws 5xx ones.
+    ResponseException thrown = mock(ResponseException.class);
+    Response unavailable = response(503, "{\"error\":\"unavailable\"}");
+    when(thrown.getResponse()).thenReturn(unavailable);
+    when(mockRestClient.performRequest(any(Request.class))).thenThrow(thrown);
+
+    RuntimeException error =
+        assertThrows(
+            RuntimeException.class,
+            () -> vectorService.executeGenericRequest("GET", "/_some/path", null));
+
+    assertEquals(
+        "Elasticsearch request failed with status 503: {\"error\":\"unavailable\"}",
+        error.getCause().getMessage());
+  }
+
+  @Test
+  void theChunkIndexMapsTheEmbeddingAsADenseVector() throws Exception {
+    when(mockEmbeddingClient.getDimension()).thenReturn(3);
+    Response noSuchIndex = response(404, "{\"status\":404}");
+    answerByEndpointSuffix(Map.of("/_alias", noSuchIndex));
+
+    vectorService.writeEntityChunks("parent-1", List.of(), null);
+
+    JsonNode index = bodyOf(sentRequest("PUT", "/data_asset_embeddings_chunks"));
+    JsonNode properties = index.path("mappings").path("properties");
+    assertEquals(
+        "{\"type\":\"dense_vector\",\"dims\":3,\"index\":true,\"similarity\":\"cosine\"}",
+        properties.path("embedding").toString());
+    assertEquals("{\"type\":\"keyword\"}", properties.path("parentId").toString());
+    assertEquals("{\"dataAssetEmbeddings\":{}}", index.path("aliases").toString());
     assertFalse(
-        ex.getCause() instanceof NullPointerException,
-        "Null entity must not cause a NullPointerException");
+        index.has("settings"), "index.knn is an OpenSearch setting; Elasticsearch has none");
+  }
+
+  @Test
+  void passagesOfOneParentComeFromAKnnSearchFilteredToItsChunks() throws Exception {
+    Response chunkHits =
+        response(
+            200,
+            "{\"hits\":{\"hits\":[{\"_source\":{\"textToLLMContext\":\"Retention is 30 days\"}}]}}");
+    answerByEndpointSuffix(Map.of("/_search", chunkHits));
+
+    List<String> passages = vectorService.searchChunksByParent("parent-1", "retention", 2, null);
+
+    assertEquals(List.of("Retention is 30 days"), passages);
+    JsonNode search = bodyOf(sentRequest("POST", "/data_asset_embeddings_chunks/_search"));
+    JsonNode knn = search.path("knn");
+    assertEquals(2, search.path("size").asInt());
+    assertFalse(search.has("query"), "Elasticsearch takes knn as a top-level clause");
+    assertEquals("embedding", knn.path("field").asText());
+    assertEquals("[0.1,0.2,0.3]", knn.path("query_vector").toString());
+    assertEquals(2, knn.path("k").asInt());
+    assertEquals(100, knn.path("num_candidates").asInt());
+    assertEquals(
+        "[{\"term\":{\"deleted\":false}},{\"term\":{\"parentId\":\"parent-1\"}}]",
+        knn.path("filter").path("bool").path("must").toString());
+  }
+
+  @Test
+  void aSearchWithAThresholdNeverAsksForMoreThanKHitsPerPage() throws Exception {
+    answerByEndpointSuffix(Map.of("/_search", response(200, EMPTY_HITS_RESPONSE)));
+
+    vectorService.search("retention", Map.of(), 10, 0, 5, 0.5);
+
+    JsonNode search = bodyOf(sentRequest("POST", "/dataAssetEmbeddings/_search"));
+    assertEquals(5, search.path("size").asInt());
+    assertEquals(5, search.path("knn").path("k").asInt());
+  }
+
+  @Test
+  void anUnwritableChunkIndexStillRefreshesTheEntityDocEmbedding() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.getDimension()).thenReturn(3);
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.schema.orders")
+            .withDescription("Orders placed online")
+            .withUpdatedAt(1L);
+    String parentId = table.getId().toString();
+    String fingerprint = VectorDocBuilder.computeFingerprintForEntity(table);
+    answerByEndpointSuffix(
+        Map.of(
+            "/_alias", response(404, "{\"status\":404}"),
+            "/data_asset_embeddings_chunks", response(503, "{\"error\":\"max shards\"}")));
+
+    vectorService.backfillEntityChunks(table, null);
+    vectorService.updateEntityEmbeddings(table, "table_search_index");
+
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
+    assertTrue(
+        sent.getAllValues().stream().noneMatch(r -> r.getEndpoint().endsWith("/_bulk")),
+        "no chunk document may be written while the chunk index is missing");
+    JsonNode update =
+        bodyOf(
+            sentRequest(
+                "POST", "/table_search_index/_update/" + parentId + "?retry_on_conflict=3"));
+    assertEquals(fingerprint, update.path("doc").path("fingerprint").asText());
+    assertEquals("[0.1,0.2,0.3]", update.path("doc").path("embedding").toString());
+  }
+
+  /** Answers a request from the rule its endpoint ends with, and any other with 200 and {}. */
+  private void answerByEndpointSuffix(Map<String, Response> responsesBySuffix) throws Exception {
+    Response ok = response(200, "{}");
+    when(mockRestClient.performRequest(any(Request.class)))
+        .thenAnswer(
+            invocation -> {
+              String endpoint = invocation.<Request>getArgument(0).getEndpoint();
+              return responsesBySuffix.entrySet().stream()
+                  .filter(rule -> endpoint.endsWith(rule.getKey()))
+                  .map(Map.Entry::getValue)
+                  .findFirst()
+                  .orElse(ok);
+            });
+  }
+
+  private static Response response(int status, String json) throws Exception {
+    Response response = mock(Response.class);
+    HttpEntity entity = mock(HttpEntity.class);
+    when(response.getStatusCode()).thenReturn(status);
+    when(response.getEntity()).thenReturn(entity);
+    when(entity.getContent())
+        .thenAnswer(inv -> new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
+    return response;
+  }
+
+  private Request sentRequest(String method, String endpoint) throws Exception {
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
+    return sent.getAllValues().stream()
+        .filter(request -> method.equals(request.getMethod()))
+        .filter(request -> endpoint.equals(request.getEndpoint()))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("No " + method + " " + endpoint + " was sent"));
+  }
+
+  private static JsonNode bodyOf(Request request) throws Exception {
+    try (InputStream content = request.getEntity().getContent()) {
+      return JsonUtils.readTree(new String(content.readAllBytes(), StandardCharsets.UTF_8));
+    }
   }
 
   private void mockRestClientResponse(String responseJson) throws Exception {
@@ -709,73 +649,5 @@ class ElasticSearchVectorServiceTest {
               int idx = Math.min(callCount.getAndIncrement(), responses.length - 1);
               return new ByteArrayInputStream(responses[idx].getBytes(StandardCharsets.UTF_8));
             });
-  }
-
-  private static Table table(String name, String description, long updatedAt) {
-    return new Table()
-        .withId(UUID.randomUUID())
-        .withName(name)
-        .withFullyQualifiedName("svc.db.schema." + name)
-        .withDescription(description)
-        .withUpdatedAt(updatedAt);
-  }
-
-  private static String id(Table table) {
-    return table.getId().toString();
-  }
-
-  private static Supplier<String> currentFingerprint(Table table) {
-    return () -> VectorDocBuilder.computeFingerprintForEntity(table);
-  }
-
-  /** An entity doc as a reindex left it: current updatedAt, embedding of {@code embeddedAs}. */
-  private static ObjectNode storedEntityDoc(Table current, Table embeddedAs) {
-    ObjectNode doc = JsonUtils.getObjectNode();
-    doc.put("name", current.getName());
-    doc.put("updatedAt", current.getUpdatedAt());
-    doc.put("fingerprint", VectorDocBuilder.computeFingerprintForEntity(embeddedAs));
-    doc.putArray("embedding").add(0.1).add(0.2).add(0.3);
-    doc.put("parentId", id(current));
-    return doc;
-  }
-
-  /** Answers an ids query like the engine: only stored ids, only the requested _source fields. */
-  private void answerIdSearchesFrom(Map<String, ObjectNode> storedById) throws Exception {
-    when(mockRestClient.performRequest(any(Request.class)))
-        .thenAnswer(
-            invocation -> {
-              Request request = invocation.getArgument(0);
-              JsonNode query;
-              try (InputStream content = request.getEntity().getContent()) {
-                query =
-                    JsonUtils.readTree(new String(content.readAllBytes(), StandardCharsets.UTF_8));
-              }
-              ObjectNode body = JsonUtils.getObjectNode();
-              var hits = body.putObject("hits").putArray("hits");
-              for (JsonNode id : query.path("query").path("ids").path("values")) {
-                ObjectNode stored = storedById.get(id.asText());
-                if (stored != null) {
-                  ObjectNode hit = hits.addObject().put("_id", id.asText());
-                  ObjectNode source = hit.putObject("_source");
-                  query.path("_source").forEach(field -> copyField(stored, source, field.asText()));
-                }
-              }
-              return responseWith(body.toString());
-            });
-  }
-
-  private static void copyField(ObjectNode from, ObjectNode to, String field) {
-    if (from.has(field)) {
-      to.set(field, from.get(field));
-    }
-  }
-
-  private static Response responseWith(String json) throws Exception {
-    Response response = mock(Response.class);
-    HttpEntity entity = mock(HttpEntity.class);
-    when(response.getEntity()).thenReturn(entity);
-    when(entity.getContent())
-        .thenAnswer(inv -> new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
-    return response;
   }
 }

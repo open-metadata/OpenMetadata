@@ -6,7 +6,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 
 @Slf4j
@@ -31,8 +31,12 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
     return context;
   }
 
+  private static VectorIndexService vectorService() {
+    return Entity.getSearchRepository().getVectorIndexService();
+  }
+
   private void clearStagedChunkStateQuietly(String stagedChunkIndex) {
-    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+    VectorIndexService vectorService = vectorService();
     if (stagedChunkIndex != null && vectorService != null) {
       vectorService.clearStagedChunkState(stagedChunkIndex);
     }
@@ -52,7 +56,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
    * re-embed).
    */
   private String recreateChunkIndexIfFullRun(Set<String> entities) {
-    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+    VectorIndexService vectorService = vectorService();
     if (vectorService == null || entities == null || getJobData() == null) {
       return null;
     }
@@ -144,7 +148,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   private void markChunkTypeOutcomeAndRethrow(
       EntityReindexContext context, boolean reindexSuccess, RuntimeException superFailure) {
     try {
-      OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+      VectorIndexService vectorService = vectorService();
       if (vectorService != null) {
         vectorService.markEntityTypeReindexed(
             context.getEntityType(),
