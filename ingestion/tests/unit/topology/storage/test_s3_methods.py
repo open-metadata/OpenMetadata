@@ -690,6 +690,9 @@ class TestGenerateStructuredContainersByDepth:
         failed_arg = source.status.failed.call_args[0][0]
         assert failed_arg.name == "data/raw"
         assert "AccessDenied" in failed_arg.error
+        # A listing failure must mark the listing incomplete so that container
+        # deletion is skipped (the source state is missing unlisted containers).
+        assert source._listing_incomplete is True
 
     @patch("metadata.ingestion.source.storage.s3.metadata.list_s3_objects")
     def test_mid_pagination_listing_error_records_status_failed(self, mock_list):
@@ -715,6 +718,36 @@ class TestGenerateStructuredContainersByDepth:
         list(source._generate_structured_containers_by_depth(bucket, entry))
 
         source.status.failed.assert_called_once()
+        assert source._listing_incomplete is True
+
+    def test_listing_failure_skips_container_deletion(self):
+        """``mark_containers_as_deleted`` must yield nothing when an S3 listing
+        failed mid-run, otherwise live containers absent from the incomplete
+        source state would be marked deleted."""
+        source = _make_s3_source()
+        source._listing_incomplete = True
+        source.mark_containers_as_deleted = S3Source.mark_containers_as_deleted.__get__(source)
+        # If deletion were not skipped, the base implementation would be
+        # invoked; here it must never be called.
+        source.container_source_state = set()
+        source.source_config.markDeletedContainers = True
+
+        results = list(source.mark_containers_as_deleted())
+
+        assert results == []
+
+    def test_listing_complete_runs_container_deletion(self):
+        """When no listing failed, deletion must delegate to the base step."""
+        source = _make_s3_source()
+        source._listing_incomplete = False
+        with patch(
+            "metadata.ingestion.source.storage.s3.metadata.StorageServiceSource.mark_containers_as_deleted"
+        ) as base:
+            base.return_value = iter([("deleted",)])
+            source.mark_containers_as_deleted = S3Source.mark_containers_as_deleted.__get__(source)
+            results = list(source.mark_containers_as_deleted())
+        base.assert_called_once()
+        assert results == [("deleted",)]
 
 
 class TestGenerateUnstructuredContainers:
