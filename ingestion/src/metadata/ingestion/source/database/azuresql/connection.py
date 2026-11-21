@@ -105,6 +105,11 @@ class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
         scheme = connection.scheme or AzureSQLScheme.mssql_pyodbc
 
         connection_dict = {
+            # connectionOptions used to ride along as query params on the rendered
+            # URL and land in pyodbc's kwargs. This dict replaces that URL, so it
+            # has to carry them or extra ODBC keywords stop applying to diffs. The
+            # derived values below win: they are what makes domain auth work.
+            **(get_connection_options_dict(connection) or {}),
             "driver": scheme.value,
             "host": host,
             "port": int(port) if port else DEFAULT_SQL_SERVER_PORT,

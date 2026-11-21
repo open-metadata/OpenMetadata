@@ -28,6 +28,9 @@ from metadata.generated.schema.entity.data.table import (
     DataType,
     Table,
 )
+from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+    ConnectionOptions,
+)
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     Authentication,
     AuthenticationMode,
@@ -48,6 +51,9 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
     DatabaseServiceType,
+)
+from metadata.ingestion.source.database.azuresql.connection import (
+    AzureSQLConnection,
 )
 from metadata.ingestion.source.database.azuresql.data_diff.data_diff import (
     AzureSQLTableParameter,
@@ -281,6 +287,89 @@ def test_azuresql_data_diff_url_connects_to_the_mssql_client():
     assert client._args["server"] == "my-server.database.windows.net"
     assert client._args["user"] == "user@example.com"
     assert client._args["Authentication"] == "ActiveDirectoryPassword"
+
+
+def test_azuresql_get_data_diff_url_carries_connection_options():
+    """connectionOptions rode along as URL query params and reached pyodbc.
+
+    The dict path replaces that URL, so it has to carry them too or extra ODBC
+    keywords (ApplicationIntent, MultiSubnetFailover, ...) silently stop applying
+    to diffs.
+    """
+    db_service = azuresql_service()
+    db_service.connection.config.connectionOptions = ConnectionOptions(
+        root={"ApplicationIntent": "ReadOnly", "MultiSubnetFailover": "Yes"}
+    )
+
+    result = AzureSQLTableParameter().get_data_diff_url(db_service, "azuresql_service.my_db.my_schema.my_table")
+
+    assert result["ApplicationIntent"] == "ReadOnly"
+    assert result["MultiSubnetFailover"] == "Yes"
+
+
+def test_azuresql_connection_options_cannot_override_the_derived_keys():
+    """Derived essentials and the authentication-mode keywords are authoritative.
+
+    The derived values (`driver`, `host`, `port`, `user`, `password`, `database`)
+    and the auth-mode `Authentication`/`Encrypt` must win over identically-named
+    `connectionOptions`, mirroring the MSSQL connector.
+    """
+    config = AzureSQLConnectionConfig(
+        hostPort="my-server.database.windows.net:1433",
+        username="user@example.com",
+        password="my_password",
+        database="my_default_db",
+        authenticationMode=AuthenticationMode(
+            authentication=Authentication.ActiveDirectoryPassword,
+            encrypt=True,
+            trustServerCertificate=False,
+        ),
+    )
+    config.connectionOptions = ConnectionOptions(
+        root={
+            "driver": "mssql+pymssql",
+            "host": "evil.example.com",
+            "port": "9999",
+            "database": "other_db",
+            "Authentication": "SqlPassword",
+            "Encrypt": "no",
+        }
+    )
+
+    connection_dict = AzureSQLConnection(config).get_connection_dict()
+
+    assert connection_dict["driver"] == "mssql+pyodbc"
+    assert connection_dict["host"] == "my-server.database.windows.net"
+    assert connection_dict["port"] == 1433
+    assert connection_dict["database"] == "my_default_db"
+    # auth-derived keys win over connectionOptions
+    assert connection_dict["Authentication"] == "ActiveDirectoryPassword"
+    assert connection_dict["Encrypt"] == "yes"
+
+
+def test_azuresql_data_diff_url_passes_connection_options_to_the_mssql_client():
+    """The dict must reach data_diff's MsSQL client args, not just the dict.
+
+    `Authentication` already lands in `client._args` (see
+    test_azuresql_data_diff_url_connects_to_the_mssql_client), so anything else
+    merged into the dict applies to the diff connection too.
+    """
+    db_service = azuresql_service(
+        AuthenticationMode(
+            authentication=Authentication.ActiveDirectoryPassword,
+            encrypt=True,
+            trustServerCertificate=False,
+        )
+    )
+    db_service.connection.config.connectionOptions = ConnectionOptions(
+        root={"ApplicationIntent": "ReadOnly", "MultiSubnetFailover": "Yes"}
+    )
+
+    source_url = AzureSQLTableParameter().get_data_diff_url(db_service, "azuresql_service.my_db.my_schema.my_table")
+    client = data_diff.connect(source_url, 1)
+
+    assert client._args["ApplicationIntent"] == "ReadOnly"
+    assert client._args["MultiSubnetFailover"] == "Yes"
 
 
 def test_snowflake_private_key_drops_the_password_from_the_service_url():
