@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -15,10 +17,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -174,6 +178,76 @@ class UserMetricsServletTest {
       assertEquals(
           Instant.ofEpochMilli(now - 3600000).toString(),
           metrics.get("last_activity")); // Most recent non-bot activity
+    }
+  }
+
+  @Test
+  void testCountFiltersExcludeSoftDeletedUsers() throws Exception {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+
+      servlet.init();
+
+      when(userDAO.listCount(any(ListFilter.class))).thenReturn(10, 3);
+      when(userDAO.countDailyActiveUsers(anyLong())).thenReturn(5);
+      when(userDAO.getMaxLastActivityTime()).thenReturn(System.currentTimeMillis());
+
+      servlet.doGet(request, response);
+
+      ArgumentCaptor<ListFilter> captor = ArgumentCaptor.forClass(ListFilter.class);
+      verify(userDAO, times(2)).listCount(captor.capture());
+      List<ListFilter> filters = captor.getAllValues();
+
+      ListFilter totalFilter = filters.get(0);
+      assertEquals(
+          "ue.deleted = FALSE",
+          totalFilter.getIncludeCondition("ue"),
+          "total_users count must filter out soft-deleted users");
+      assertNull(
+          totalFilter.getQueryParam("isBot"), "total_users count must not restrict by isBot");
+
+      ListFilter botFilter = filters.get(1);
+      assertEquals(
+          "ue.deleted = FALSE",
+          botFilter.getIncludeCondition("ue"),
+          "bot_users count must filter out soft-deleted users");
+      assertEquals(
+          "true", botFilter.getQueryParam("isBot"), "bot_users count must restrict to bots");
+    }
+  }
+
+  @Test
+  void testLastActivityFallbackFilterExcludesSoftDeletedUsers() throws Exception {
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+
+      servlet.init();
+
+      when(userDAO.listCount(any(ListFilter.class))).thenReturn(10, 3);
+      when(userDAO.countDailyActiveUsers(anyLong())).thenReturn(5);
+      when(userDAO.getMaxLastActivityTime()).thenReturn(null); // forces the listAfter fallback
+
+      ResultList<User> emptyResult = new ResultList<>();
+      when(userRepository.listAfter(
+              any(), any(EntityUtil.Fields.class), any(ListFilter.class), anyInt(), any()))
+          .thenReturn(emptyResult);
+
+      servlet.doGet(request, response);
+
+      ArgumentCaptor<ListFilter> captor = ArgumentCaptor.forClass(ListFilter.class);
+      verify(userRepository, atLeastOnce())
+          .listAfter(any(), any(EntityUtil.Fields.class), captor.capture(), anyInt(), any());
+
+      for (ListFilter filter : captor.getAllValues()) {
+        assertEquals(
+            "ue.deleted = FALSE",
+            filter.getIncludeCondition("ue"),
+            "last_activity fallback must filter out soft-deleted users");
+        assertEquals(
+            "false",
+            filter.getQueryParam("isBot"),
+            "last_activity fallback must restrict to non-bot users");
+      }
     }
   }
 }
