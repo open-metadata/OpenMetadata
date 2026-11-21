@@ -74,16 +74,19 @@ class OmniTopic(BaseModel):
     """
     A curated, queryable dataset within a model (analogous to a Looker explore).
 
-    ``base_schema``/``base_table`` are resolved from the topic's base view
-    ``sql_table_name`` and are used to build warehouse table lineage.
+    ``base_database``/``base_schema``/``base_table`` name the warehouse table, or
+    the semantic view, that the data model reads, for warehouse table lineage.
     """
 
     model_id: str
     model_name: str | None = None
     name: str
+    # A second name this data model answers to: the inline view its view file replaced.
+    alias: str | None = None
     label: str | None = None
     description: str | None = None
     base_view: str | None = None
+    base_database: str | None = None
     base_schema: str | None = None
     base_table: str | None = None
     fields: list[OmniField] = Field(default_factory=list)
