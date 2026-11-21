@@ -98,6 +98,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.cache.CacheConfig;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.config.source.ConfigSources;
 import org.openmetadata.service.config.source.ConfigTemplateKind;
@@ -3552,6 +3553,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             configFilePath);
     IndexMappingLoader.init(config.getElasticSearchConfiguration());
     Fernet.getInstance().setFernetKey(config);
+    LlmConfigHolder.initialize(config.getLlmConfiguration());
     DataSourceFactory dataSourceFactory = config.getDataSourceFactory();
     if (dataSourceFactory == null) {
       throw new IllegalArgumentException("No database in config file");
