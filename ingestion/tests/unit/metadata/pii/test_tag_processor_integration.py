@@ -1062,6 +1062,7 @@ class TestTagProcessorMultiClassification:
                 TagLabelFactory.create(
                     parent="General",
                     name="Date",
+                    source=TagSource.Classification,
                 )
             ],
         )
