@@ -119,14 +119,9 @@ public class TableCollection implements Iterable<Table> {
     }
 
     try {
-      ListParams pageParams = new ListParams();
-      pageParams.setLimit(params.getLimit());
-      pageParams.setFields(params.getFields());
-
+      ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
-      } else if (params.getAfter() != null) {
-        pageParams.setAfter(params.getAfter());
       }
 
       ListResponse<Table> response = client.tables().list(pageParams);
