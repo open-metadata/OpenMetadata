@@ -60,7 +60,8 @@ export type DecideProposal = (
 
 const NO_DERIVATIONS: MemoryDerivation[] = [];
 
-// A proposal in review, an AI agent's or a person's, has an approval request; one read gets them.
+// A proposal in review, an AI agent's or a person's, has an approval request;
+// page through every one so a large review queue is not truncated at the first page.
 const getApprovalTasks = async (terms: GlossaryTerm[]) => {
   const inReview = terms
     .filter((term) => term.entityStatus === EntityStatus.InReview)
@@ -68,16 +69,23 @@ const getApprovalTasks = async (terms: GlossaryTerm[]) => {
   if (inReview.length === 0) {
     return [];
   }
-  const { data } = await listTasks({
+  const baseParams = {
     status: TaskEntityStatus.Open,
     category: TaskCategory.Approval,
     type: TaskEntityType.RequestApproval,
     aboutEntityIds: inReview.join(','),
     limit: PAGE_SIZE_LARGE,
     fields: 'about,assignees,createdBy,comments',
-  });
+  };
+  const tasks: Task[] = [];
+  let after: string | undefined;
+  do {
+    const { data, paging } = await listTasks({ ...baseParams, after });
+    tasks.push(...data);
+    after = paging?.after;
+  } while (after);
 
-  return data;
+  return tasks;
 };
 
 // The evidence is an extra: a caller who may not read memories still reviews the terms.
