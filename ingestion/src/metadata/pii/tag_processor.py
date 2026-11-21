@@ -26,11 +26,48 @@ from metadata.pii.classification_manager import (
 )
 from metadata.pii.conflict_resolver import ConflictResolver
 from metadata.pii.models import ScoredTag
+from metadata.utils.fqn import split_raw_name, unquote_name
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
 
 ScoreTagsForColumn = Callable[[Column, Sequence[Any], list[Tag]], list[ScoredTag]]
+
+
+def _classification_fqn_from_tag_fqn(tag_fqn: str | None) -> str | None:
+    """Return the owning classification FQN of a tag FQN, or ``None``.
+
+    A tag's classification is the FIRST segment of its FQN (the classification
+    root), e.g. ``PII.Sensitive.Email`` -> ``PII``. A single-level
+    ``rsplit(".", 1)`` only works for non-nested tags; for a nested tag it
+    yields the parent tag FQN (``PII.Sensitive``) instead of the
+    classification (``PII``), so the mutually-exclusive classification lookup
+    silently misses. Splitting quote-aware (so classification names that
+    contain a dot, stored quoted in the FQN, are handled) and taking the
+    first segment resolves the classification for tags at any depth.
+    """
+    if not tag_fqn or "." not in tag_fqn:
+        return None
+    segments = split_raw_name(tag_fqn)
+    if not segments:
+        return None
+    return unquote_name(segments[0]) or None
+
+
+def _classification_fqn_from_tag(tag: Tag) -> str | None:
+    """Return the classification FQN of a candidate ``Tag``.
+
+    Prefer the classification reference already fetched on the tag rather
+    than reconstructing it from the FQN; fall back to the first FQN segment
+    when the reference is not populated (e.g. a tag without a classification
+    back-reference).
+    """
+    classification = tag.classification
+    if classification is not None:
+        classification_fqn = classification.fullyQualifiedName
+        if classification_fqn:
+            return classification_fqn
+    return _classification_fqn_from_tag_fqn(tag.fullyQualifiedName)
 
 
 class TagProcessor(AutoClassificationProcessor):
@@ -114,7 +151,13 @@ class TagProcessor(AutoClassificationProcessor):
         """
         existing_tag_fqns = {tag.tagFQN.root for tag in (column.tags or []) if tag.tagFQN}
 
-        # Build classification lookup map
+        # Build classification lookup map keyed by classification FQN. A tag's
+        # classification is the FIRST segment of its FQN (the classification
+        # root), not the prefix before the last dot: ``rsplit(".", 1)`` only
+        # works for non-nested tags (one dot) and for a nested tag such as
+        # ``PII.Sensitive.Email`` it yields the parent tag FQN
+        # ``PII.Sensitive`` instead of the classification ``PII``, so the
+        # mutually-exclusive lookup silently misses.
         classification_map = {
             classification.fullyQualifiedName.root: classification for classification in self.enabled_classifications
         }
@@ -122,11 +165,12 @@ class TagProcessor(AutoClassificationProcessor):
         # Identify mutually exclusive classifications that already have tags applied
         mutually_exclusive_classifications_with_tags = set()
         for existing_tag_fqn in existing_tag_fqns:
-            if "." in existing_tag_fqn:
-                classification_fqn = existing_tag_fqn.rsplit(".", 1)[0]
-                classification = classification_map.get(classification_fqn)
-                if classification and classification.mutuallyExclusive:
-                    mutually_exclusive_classifications_with_tags.add(classification_fqn)
+            classification_fqn = _classification_fqn_from_tag_fqn(existing_tag_fqn)
+            if classification_fqn is None:
+                continue
+            classification = classification_map.get(classification_fqn)
+            if classification and classification.mutuallyExclusive:
+                mutually_exclusive_classifications_with_tags.add(classification_fqn)
 
         # Filter candidate tags
         tags_to_analyze = []
@@ -136,12 +180,15 @@ class TagProcessor(AutoClassificationProcessor):
             if tag_fqn in existing_tag_fqns:
                 continue
 
-            # Extract classification FQN from tag
-            tag_classification_fqn = tag_fqn.rsplit(".", 1)[0] if "." in tag_fqn else ""
+            # Use the tag's already-fetched classification reference rather than
+            # reconstructing the classification from the FQN, which breaks for
+            # nested tags. Fall back to the first FQN segment when the reference
+            # is not populated.
+            tag_classification_fqn = _classification_fqn_from_tag(tag)
 
             # Skip if tag belongs to a mutually exclusive classification
             # that already has a tag applied
-            if tag_classification_fqn in mutually_exclusive_classifications_with_tags:
+            if tag_classification_fqn and tag_classification_fqn in mutually_exclusive_classifications_with_tags:
                 logger.debug(
                     f"Skipping tag {tag_fqn} - mutually exclusive "
                     f"classification {tag_classification_fqn} already has a tag applied"
