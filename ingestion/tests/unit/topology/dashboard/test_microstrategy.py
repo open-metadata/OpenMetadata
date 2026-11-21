@@ -1023,6 +1023,8 @@ MODEL_METRICS = {
     "M_AVG": [("metric", "M_PRICE", "Total Unit Price"), ("metric", "M_QTY", "Total Quantity")],
     "M_LOOP": [("metric", "M_LOOP_BACK", "Loop back")],
     "M_LOOP_BACK": [("metric", "M_LOOP", "Loop")],
+    "M_PCT_QTY": [("fact", "F_QTY", "Quantity")],
+    "M_SHARE": [("metric", "M_PCT_QTY", "% Margin")],
 }
 
 
@@ -1420,6 +1422,38 @@ class TestColumnLineage:
         )
 
         assert lineage == []
+
+    def test_a_referenced_metric_whose_name_another_object_shares_is_followed_to_its_definition(self, server, client):
+        # Margin Share is built from % Margin, whose name Margin shares: the MARGIN projection may be
+        # Margin's, so % Margin is followed to its fact instead.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_VAR", "name": "Margin", "type": "metric"},
+                {"id": "M_PCT_QTY", "name": "% Margin", "type": "metric"},
+                {"id": "M_SHARE", "name": "Margin Share", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.revenue) MARGIN, sum(a11.quantity) WJXBFS1 from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "revenue"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [
+            (["quantity"], f"{SCHEMA_CUBE}.% Margin"),
+            (["quantity"], f"{SCHEMA_CUBE}.Margin Share"),
+        ]
 
     def test_a_metric_without_a_schema_definition_is_warned_about_once(self, server, client, caplog):
         _model_routes(server, {SCHEMA_CUBE: 776})
