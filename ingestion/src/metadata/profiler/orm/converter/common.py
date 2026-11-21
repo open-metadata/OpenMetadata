@@ -21,6 +21,7 @@ import sqlalchemy
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.ingestion.source import sqa_types
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
+from metadata.profiler.constants import BINARY_DATA_TYPES
 from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.orm.types.custom_xml import XML
 
@@ -175,7 +176,7 @@ class CommonMapTypes:
             },
             sqlalchemy.INT: {DataType.INT},
             sqlalchemy.BIGINT: {DataType.BIGINT},
-            CustomTypes.BYTES.value: {DataType.BLOB, DataType.BYTES, DataType.BYTEA},
+            CustomTypes.BYTES.value: set(BINARY_DATA_TYPES),
             sqlalchemy.FLOAT: {DataType.FLOAT},
             sqlalchemy.DECIMAL: {DataType.DOUBLE, DataType.DECIMAL},
             CustomTypes.TIMESTAMP.value: {DataType.TIMESTAMP},
