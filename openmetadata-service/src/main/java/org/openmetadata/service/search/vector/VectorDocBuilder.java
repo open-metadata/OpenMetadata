@@ -610,6 +610,33 @@ public class VectorDocBuilder {
     return fields;
   }
 
+  /** The embedding fields an entity document carries; the {@code _source} a reindex reuses. */
+  static final List<String> EMBEDDING_SOURCE_FIELDS =
+      List.of(
+          "fingerprint",
+          "embedding",
+          "textToLLMContext",
+          "textToEmbed",
+          "chunkIndex",
+          "chunkCount",
+          "parentId");
+
+  /**
+   * The legacy entity-doc embedding payload extracted from a chunk document: only the embedding
+   * fields, never the chunk doc's trimmed filter fields (tags/domains/tier), which would clobber
+   * the entity doc's rich versions of those fields on partial update.
+   */
+  public static Map<String, Object> legacyEmbeddingFields(Map<String, Object> chunkDoc) {
+    Map<String, Object> fields = new HashMap<>();
+    for (String key : EMBEDDING_SOURCE_FIELDS) {
+      Object value = chunkDoc.get(key);
+      if (value != null) {
+        fields.put(key, value);
+      }
+    }
+    return fields;
+  }
+
   public static String computeFingerprintForEntity(EntityInterface<?> entity) {
     String entityType = entity.getEntityReference().getType();
     String metaLight = buildMetaLightText(entity, entityType);

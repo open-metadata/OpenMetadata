@@ -1214,7 +1214,7 @@ public class OpenSearchBulkSink implements BulkSink {
           doc.setAll(
               (ObjectNode)
                   OBJECT_MAPPER.valueToTree(
-                      OpenSearchVectorService.legacyEmbeddingFields(chunkDocs.get(0))));
+                      VectorDocBuilder.legacyEmbeddingFields(chunkDocs.getFirst())));
           vectorService.writeEntityChunks(entity.getId().toString(), chunkDocs, stagedChunkTarget);
         }
       }

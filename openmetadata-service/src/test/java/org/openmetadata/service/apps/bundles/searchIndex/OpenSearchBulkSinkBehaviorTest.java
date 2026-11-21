@@ -773,8 +773,8 @@ class OpenSearchBulkSinkBehaviorTest {
     legacyFields.put("embedding", embedding);
     legacyFields.put("textToEmbed", textToEmbed);
     docBuilderMock.when(() -> VectorDocBuilder.fromEntity(eq(entity), any())).thenReturn(chunkDocs);
-    vectorServiceMock
-        .when(() -> OpenSearchVectorService.legacyEmbeddingFields(chunk0))
+    docBuilderMock
+        .when(() -> VectorDocBuilder.legacyEmbeddingFields(chunk0))
         .thenReturn(legacyFields);
     return chunkDocs;
   }
