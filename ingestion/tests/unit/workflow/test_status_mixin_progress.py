@@ -10,6 +10,7 @@
 #  limitations under the License.
 """send_progress_update maps ProgressRegistry.eta_seconds into the SSE payload."""
 
+from copy import deepcopy
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -272,3 +273,51 @@ class TestTerminalStatusWriteRetry:
         assert saved_status.pipelineState is PipelineState.success
         assert saved_status.endDate is not None
         assert delay.call_count == 2
+
+    def test_terminal_retry_persists_success_after_transient_gateway_failure(self):
+        """After a transient PUT failure, a refreshed status must be durable success."""
+        persisted = {
+            "value": SimpleNamespace(
+                pipelineState=PipelineState.running,
+                endDate=None,
+                status=None,
+            )
+        }
+        attempts = {"writes": 0}
+        metadata = MagicMock()
+
+        def read_saved_status(fqn, run_id):
+            assert (fqn, run_id) == ("svc.pipeline", "run-1")
+            return deepcopy(persisted["value"])
+
+        def save_status(fqn, status):
+            assert fqn == "svc.pipeline"
+            attempts["writes"] += 1
+            if attempts["writes"] == 1:
+                response = Response()
+                response.status_code = 502
+                raise HTTPError("temporary gateway failure", response=response)
+            persisted["value"] = deepcopy(status)
+
+        metadata.get_pipeline_status.side_effect = read_saved_status
+        metadata.create_or_update_pipeline_status.side_effect = save_status
+        harness = _Harness(ProgressRegistry(), metadata)
+        harness.config = MagicMock()
+        harness.config.ingestionPipelineFQN = "svc.pipeline"
+        harness.config.model_dump.return_value = {}
+
+        assert read_saved_status("svc.pipeline", "run-1").pipelineState is PipelineState.running
+        with (
+            patch("metadata.workflow.workflow_status_mixin.sleep") as delay,
+            patch(
+                "metadata.workflow.workflow_status_mixin.ContextManager.dump_contexts",
+                return_value={},
+            ),
+        ):
+            harness.set_ingestion_pipeline_status(PipelineState.success)
+
+        refreshed = read_saved_status("svc.pipeline", "run-1")
+        assert refreshed.pipelineState is PipelineState.success
+        assert refreshed.endDate is not None
+        assert attempts["writes"] == 2
+        delay.assert_called_once()
