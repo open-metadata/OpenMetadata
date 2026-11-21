@@ -372,7 +372,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const { getEntityPermission } = usePermissionProvider();
   const currentUserId = useApplicationStore().currentUser?.id;
   const currentUserIds = useCurrentUserIds();
-  const { extensionRegistry } = useApplicationsProvider();
+  const { getContributions } = useApplicationsProvider();
   const ReviewPanel = ontologyExplorerClassBase.getReviewPanel();
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
@@ -507,16 +507,20 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
   // A plugin can refine how a task type it owns renders — its summary rows, its
   // stat tiles — without owning the pane. The first matching contribution wins.
+  // Depend on the provider's `getContributions` wrapper, not `extensionRegistry`
+  // directly: the registry is a mutable singleton, so its identity never changes
+  // when a plugin contributes after this task loaded — a memo keyed only on it
+  // would pin a deep-linked task to the empty registry it first saw and never
+  // recompute. The wrapper's identity updates once `contributionsVersion` bumps
+  // (right after registration), so a late-arriving contribution still applies.
   const contribution = useMemo(
     () =>
       task
-        ? extensionRegistry
-            .getContributions<InboxTaskPanelContribution>(
-              EXTENSION_POINTS.INBOX_TASK_PANELS
-            )
-            .find((panel) => panel.condition(task))
+        ? getContributions<InboxTaskPanelContribution>(
+            EXTENSION_POINTS.INBOX_TASK_PANELS
+          ).find((panel) => panel.condition(task))
         : undefined,
-    [extensionRegistry, task]
+    [getContributions, task]
   );
 
   const descriptor = useMemo(
