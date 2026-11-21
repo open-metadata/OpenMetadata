@@ -90,6 +90,8 @@ check it isn't already cached a layer down (e.g. `OpenMetadata._search_es_entity
 **Comments explain *why*, never restate code.** Do NOT add comments that describe what obvious code does (`// Create user` before `createUser()`). Only comment complex business
 logic, non-obvious algorithms/workarounds, public-API JavaDoc, or `TODO/FIXME` with a ticket reference. If code needs a comment to be understood, refactor it to be clearer instead.
 
+**One return per method, at the end (Java).** Compute the result through `if`/`else`, a ternary or a `switch` expression and return it once as the last statement; a `void` method has no `return` and puts its work inside the condition that allows it. No guard-clause or early returns; throwing a specific validation exception is allowed, and conditions nested past three levels move into a named helper. Details and examples in `.claude/rules/java.md`; rationale in ADR:2026-11-20-a-method-returns-once.
+
 **Testing philosophy.** Test real behavior, not mock wiring — if a test mocks 3+ of your own classes to verify a method call, it tests the wrong thing. Prefer integration tests
 over heavily-mocked unit tests (this project has real ITs: `OpenMetadataApplicationTest`, Docker, real OpenSearch). Mocks are for boundaries (HTTP clients, third-party APIs), not
 internals. Ask "what breaks if this test passes but the code is wrong?" — if the answer is "nothing", rewrite it. Assert on observable outcomes (API responses, DB state), not
@@ -102,8 +104,7 @@ is enforced — the `ui-license-header` pre-commit hook and CI `ui-checkstyle`; 
 **Schema-first.** JSON Schemas in `openmetadata-spec/` are the single source of truth; all generated code (Java POJOs, Pydantic models, TS types) is derived. **Edit the schema,
 then regenerate — never hand-edit generated output.** Details in `.claude/rules/schema-first.md`.
 
-**Output style.** Clean code blocks, no unnecessary explanation; assume an experienced reader; focus on functionality over education. Do not add unnecessary blank lines between
-prose and code blocks.
+**Output style.** Clean code blocks, no unnecessary explanation; assume an experienced reader; focus on functionality over education. Do not add unnecessary blank lines between prose and code blocks.
 
 **No wrappers around core-ui components.** If a wrapper component exists that wraps a core-ui component, skip it — use the `openmetadata-ui-core-components` component directly at the call site. Only create a wrapper if it adds genuine, non-trivial behaviour (custom hook logic, composed sub-components, domain-specific state). A wrapper that only passes props through is a maintenance liability: it hides which core component is in use and drifts from upstream updates.
 
