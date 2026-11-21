@@ -11,6 +11,12 @@
         "mandatory": true
       },
       {
+        "name": "GetDatabases",
+        "description": "List all the databases available to the user. The metadata workflow runs this query when ingestAllDatabases is enabled and during the mark-deleted-databases post-process step. On Azure SQL Database the query must use sys.databases (not master.sys.databases), which the single-database tier rejects with error 40515.",
+        "errorMessage": "Failed to fetch databases, please validate if the user has enough privilege to fetch databases. On Azure SQL Database this also fires when the listing query uses an unsupported cross-database reference.",
+        "mandatory": false
+      },
+      {
         "name": "GetSchemas",
         "description": "List all the schemas available to the user.",
         "errorMessage": "Failed to fetch schemas, please validate if the user has enough privilege to fetch schemas.",

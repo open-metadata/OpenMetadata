@@ -42,6 +42,7 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_db_common
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.azuresql.queries import AZURE_SQL_GET_DATABASES
 from metadata.utils.constants import THREE_MIN
 
 DEFAULT_SQL_SERVER_PORT = 1433
@@ -135,5 +136,12 @@ class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
             engine=self.client,
             service_connection=self.service_connection,
             automation_workflow=automation_workflow,
+            # Surface the database-listing query the metadata workflow runs in
+            # ingest-all-databases mode (and the mark-deleted post-process step
+            # uses) as a Test Connection step, so a tier or role that rejects it
+            # (e.g. Azure SQL Database error 40515 on `master.sys.databases`) is
+            # caught before the workflow runs. Non-mandatory so a role that can
+            # read the connected database but not list siblings still passes.
+            queries={"GetDatabases": AZURE_SQL_GET_DATABASES},
             timeout_seconds=timeout_seconds,
         )
