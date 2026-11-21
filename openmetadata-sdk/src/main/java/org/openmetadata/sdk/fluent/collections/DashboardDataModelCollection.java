@@ -47,8 +47,7 @@ public class DashboardDataModelCollection implements Iterable<DashboardDataModel
     }
 
     try {
-      ListParams pageParams = new ListParams();
-      pageParams.setLimit(params.getLimit());
+      ListParams pageParams = params.copy();
       if (nextPageToken != null) {
         pageParams.setAfter(nextPageToken);
       }
