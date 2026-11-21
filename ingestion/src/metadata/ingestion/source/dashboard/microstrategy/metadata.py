@@ -72,11 +72,13 @@ from metadata.ingestion.source.dashboard.microstrategy.client import (
     cached,
 )
 from metadata.ingestion.source.dashboard.microstrategy.column_lineage import (
+    NO_ALIASES,
+    AliasReads,
     ParsedCube,
     SourceColumn,
     name_match,
     normalized,
-    read_columns,
+    read_projections,
     same_table,
     table_matches,
 )
@@ -385,6 +387,7 @@ class MicrostrategySource(DashboardServiceSource):
                         table_entity,
                         datamodel_entity,
                         parsed.cube,
+                        parsed.alias_reads,
                     )
                     yield Either(
                         left=None,
@@ -444,13 +447,13 @@ class MicrostrategySource(DashboardServiceSource):
         # The third-party cached_property is not read as a descriptor by type checkers.
         tables = tuple(str(table) for table in cast("list", parser.source_tables))
         try:
-            columns = read_columns(cube_sql, dialect)
+            columns, alias_reads = read_projections(cube_sql, dialect)
         except Exception as exc:
             # The tables were read; losing the columns must not lose them.
             logger.debug(traceback.format_exc())
             logger.warning("Could not read the columns of cube %s: %s", cube_id, exc)
-            columns = frozenset()
-        return ParsedCube(tables=tables, read_columns=columns, cube=details.cube)
+            columns, alias_reads = frozenset(), NO_ALIASES
+        return ParsedCube(tables=tables, read_columns=columns, cube=details.cube, alias_reads=alias_reads)
 
     def _safe_column_lineage(self, *args: Any) -> list[ColumnLineage]:
         """Column lineage, or none: a failure here must not drop the table lineage it decorates"""
@@ -469,12 +472,13 @@ class MicrostrategySource(DashboardServiceSource):
         table_entity: Table,
         datamodel_entity: DashboardDataModel,
         sql_cube: str | None = None,
+        alias_reads: AliasReads = NO_ALIASES,
     ) -> list[ColumnLineage]:
         """
         Column lineage from one table to a data model. A data model column is matched on the
-        warehouse columns the cube SQL reads: through its schema attribute's form expressions, or
-        for a Data Import cube on its name, which the import derives from the column. Metrics of a
-        schema cube are left out: the API does not tell which fact column a metric aggregates.
+        warehouse columns the cube SQL reads: for a Data Import cube on its name, which the import
+        derives from the column; for a schema attribute through its form expressions; for a schema
+        metric through the alias MicroStrategy derives from its name, else through its definition.
         ``sql_cube`` is the cube the SQL came from, whose type decides how objects are matched.
         """
         schema = getattr(table_entity.databaseSchema, "name", None)
@@ -498,7 +502,7 @@ class MicrostrategySource(DashboardServiceSource):
         lineage = []
         for available_object in objects.values():
             for target, columns in self._object_columns(
-                project_id, available_object, data_import, reads, targets, ambiguous, repeated
+                project_id, available_object, data_import, reads, targets, ambiguous, repeated, alias_reads
             ):
                 from_columns = sorted({fqn for column in columns if (fqn := get_column_fqn(table_entity, column))})
                 if from_columns:
@@ -519,6 +523,7 @@ class MicrostrategySource(DashboardServiceSource):
         targets: dict[str, str],
         ambiguous: set[str],
         repeated: set[str],
+        alias_reads: AliasReads = NO_ALIASES,
     ) -> Iterable[tuple[str, set[str]]]:
         """
         (data model column FQN, warehouse columns of this table it reads) for one dataset object.
@@ -541,10 +546,50 @@ class MicrostrategySource(DashboardServiceSource):
                 for form_table, form_column in expression
                 if form_column == column and same_table(table, form_table)
             }
+        elif available_object.type == "metric":
+            columns = self._metric_columns(project_id, available_object, reads, ambiguous, alias_reads)
         else:
             columns = set()
         if columns:
             yield target, columns
+
+    def _metric_columns(
+        self,
+        project_id: str,
+        metric: MstrAvailableObject,
+        reads: set[SourceColumn],
+        ambiguous: set[str],
+        alias_reads: AliasReads,
+    ) -> set[str]:
+        """
+        The warehouse columns of this table a schema metric reads. The SQL names a metric's
+        projection after it (``Revenue Rank`` is ``REVENUERANK``) unless the alias is a
+        generated one (``WJXBFS1``); a metric the SQL does not name is followed through its
+        definition: to the projections of the metrics it is built from, and to the columns of the
+        facts it aggregates. A name another object of the dataset shares matches no alias.
+        """
+
+        def named(name: str) -> bool:
+            key = normalized(name)
+            return bool(key) and key not in ambiguous and key in alias_reads
+
+        if named(metric.name or ""):
+            return {column for table, column in alias_reads[normalized(metric.name)] & reads}
+        parts = self.client.get_metric_parts(project_id, metric.id, known=named)
+        if not parts:
+            return set()
+        columns = {
+            column for name in parts.metrics if named(name) for table, column in alias_reads[normalized(name)] & reads
+        }
+        for fact in parts.facts:
+            fact_columns = self.client.get_fact_columns(project_id, fact) or frozenset()
+            columns.update(
+                column
+                for table, column in reads
+                for fact_table, fact_column in fact_columns
+                if fact_column == column and same_table(table, fact_table)
+            )
+        return columns
 
     def _data_model_columns(self, dataset: MstrDataset, datamodel_entity: DashboardDataModel) -> dict[str, str]:
         """
