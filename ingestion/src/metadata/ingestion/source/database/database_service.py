@@ -876,6 +876,36 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 )
                 all_database_fqns.add(database_fqn)
 
+            # Single-database mode: the topology walk only ingested the configured
+            # database (``get_configured_database`` returned a name) and the listing
+            # above short-circuits to just that database. The server's stale-deletion
+            # scope for ``Database`` is the whole service, so a service-wide call with
+            # a seen-set of only the configured database would soft-delete every live
+            # sibling database the user never asked to ingest -- including ones that
+            # still exist on the source. On Azure SQL Database the cross-database
+            # listing (``master.sys.databases``) is rejected with error 40515, so the
+            # siblings cannot be enumerated to protect them. Keep databases outside the
+            # configured scope out of deletion when the only database we can see is the
+            # configured one; if the listing returned databases beyond it we have a
+            # broader view and can safely mark the missing ones stale.
+            get_configured_database = getattr(self, "get_configured_database", None)
+            configured_database = get_configured_database() if callable(get_configured_database) else None
+            if configured_database:
+                configured_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=configured_database,
+                )
+                if all_database_fqns.issubset({configured_fqn}):
+                    logger.info(
+                        "Single-database mode for [%s]; skipping service-wide "
+                        "database stale-deletion so live sibling databases are not "
+                        "marked deleted.",
+                        configured_database,
+                    )
+                    return
+
             # Combine the processed databases with all databases from source
             complete_db_source_state = self.database_entity_source_state.union(all_database_fqns)
 

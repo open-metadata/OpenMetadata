@@ -15,7 +15,7 @@ tests/unit/test_build_connection_url.py.
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     AzureSQLConnection as AzureSQLConnectionConfig,
@@ -95,20 +95,31 @@ def test_seed_get_databases_step_is_not_mandatory():
 
 
 def test_every_seed_step_resolves_to_a_check():
-    """Every step in the seed must resolve to a function the Python
-    ``test_connection_db_common`` handler supplies, or a Test Connection run
-    fails with a ``KeyError`` instead of a meaningful step failure.
+    """Drive ``AzureSQLConnection.test_connection`` with the real seed the
+    server ships and a mocked engine, so every step runs against the actual
+    handler dict ``test_connection_db_common`` builds (``CheckAccess``,
+    ``GetSchemas``, ``GetTables``, ``GetViews`` plus the ``GetDatabases`` query
+    handler). ``test_connection_steps`` resolves ``step.function`` via
+    ``test_fn[step.name]``; a seed step whose handler was removed or renamed
+    raises ``KeyError`` *before* any step runs, failing this test -- unlike a
+    hand-written dictionary, which would keep passing while real Test
+    Connection raised ``KeyError``. Asserts the ran-step set equals the seed
+    set, so a missing handler cannot pass silently.
     """
-    seed_steps = {step.name for step in _azuresql_definition().steps}
-    # The keys ``test_connection_db_common`` builds, with the handler's
-    # ``queries={"GetDatabases": ...}`` applied. The GetDatabases value is
-    # backed by AZURE_SQL_GET_DATABASES (asserted above), so a step by that
-    # name resolves to a function.
-    test_fn = {
-        "CheckAccess": MagicMock(),
-        "GetSchemas": MagicMock(),
-        "GetTables": MagicMock(),
-        "GetViews": MagicMock(),
-        "GetDatabases": MagicMock(),
-    }
-    assert seed_steps.issubset(test_fn.keys()), f"Seed steps with no Python handler: {seed_steps - set(test_fn.keys())}"
+    definition = _azuresql_definition()
+    seed_step_names = [step.name for step in definition.steps]
+
+    metadata = MagicMock()
+    metadata.get_by_name.return_value = definition
+
+    engine = MagicMock()
+    connection = AzureSQLConnection(_config())
+    with patch.object(type(connection), "client", new_callable=PropertyMock) as mock_client:
+        mock_client.return_value = engine
+        result = connection.test_connection(metadata=metadata, timeout_seconds=None)
+
+    ran_step_names = [step.name for step in result.steps]
+    assert ran_step_names == seed_step_names, (
+        "Every seed step must resolve to a handler in test_connection_db_common; "
+        f"a missing handler raises KeyError before any step runs. Seed={seed_step_names}, Ran={ran_step_names}"
+    )

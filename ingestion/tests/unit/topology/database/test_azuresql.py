@@ -103,13 +103,21 @@ class AzuresqlUnitTest(TestCase):
         assert result == ["mydb"]
         mock_raw.assert_not_called()
 
-    def test_mark_databases_as_deleted_single_db_mode_executes_no_listing_sql(self):
+    def test_mark_databases_as_deleted_single_db_mode_skips_service_wide_deletion(self):
         """End-to-end proof the listing query never reaches the wire in
-        single-database mode: a real ``connection.execute`` mock records every
-        statement the post-process step runs, and none of them is the
-        ``sys.databases`` listing. This is the bug repro - on the un-fixed code
+        single-database mode AND the service-wide stale-deletion is not issued.
+
+        A service-wide ``deleteStale`` with a seen-set of only the configured
+        database would soft-delete every live sibling database the user never
+        asked to ingest. On Azure SQL Database the cross-database listing the
+        legacy path used to populate that seen-set is rejected with error 40515,
+        so the siblings cannot be listed to protect them. The post-process step
+        therefore skips the service-wide call in single-database mode.
+
+        This is also the bug repro for the listing query: on the un-fixed code
         the captured SQL is ``['SELECT name FROM master.sys.databases order by name']``."""
         self._connection_config.ingestAllDatabases = False
+        self._connection_config.database = "mydb"
         self.azuresql.source_config.markDeletedDatabases = True
         self.azuresql.database_entity_source_state = set()
 
@@ -132,7 +140,7 @@ class AzuresqlUnitTest(TestCase):
             list(self.azuresql.mark_databases_as_deleted())
 
         assert not any("sys.databases" in stmt for stmt in executed_statements), executed_statements
-        mock_delete.assert_called_once()
+        mock_delete.assert_not_called()
 
     def test_mark_databases_as_deleted_multi_db_mode_lists_databases(self):
         """No regression for ingest-all-databases mode: the raw listing is
