@@ -221,11 +221,6 @@ jest.mock('./TaskDetailSummary', () => ({
   ),
 }));
 
-jest.mock('./TaskActivityTimeline', () => ({
-  __esModule: true,
-  default: () => <div data-testid="task-activity-timeline" />,
-}));
-
 jest.mock('./TaskActionCommentModal', () => ({
   __esModule: true,
   default: ({
@@ -585,6 +580,12 @@ describe('TaskDetailPanel about-entity cache invalidation', () => {
 
     expect(mockGetIncidents).toHaveBeenCalledWith('task-1');
 
+    // The panel's only the opening record so far, so the timeline it renders
+    // through the real TaskActivityTimeline shows no acknowledgment yet.
+    expect(
+      screen.queryByText('message.task-event-incident-acknowledged')
+    ).not.toBeInTheDocument();
+
     mockGetIncidents.mockResolvedValue({ data: [NEW_STATUS, ACK_STATUS] });
 
     await act(async () => {
@@ -603,6 +604,15 @@ describe('TaskDetailPanel about-entity cache invalidation', () => {
     await waitFor(() => expect(mockGetIncidents).toHaveBeenCalledTimes(2));
 
     expect(mockGetIncidents).toHaveBeenLastCalledWith('task-1');
+
+    // The invalidated about-entity query refetched the appended ACK record,
+    // and the real timeline now renders the acknowledgment event — proving the
+    // refreshed history reaches the timeline, not just the cache wiring.
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.task-event-incident-acknowledged')
+      ).toBeInTheDocument();
+    });
 
     queryClient.clear();
   });
