@@ -57,18 +57,19 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
    */
   private String recreateChunkIndexIfFullRun(Set<String> entities) {
     VectorIndexService vectorService = vectorService();
-    if (vectorService == null || entities == null || getJobData() == null) {
-      return null;
+    String stagedGeneration = null;
+    if (vectorService != null && entities != null && getJobData() != null) {
+      if (shouldStageChunkRecreate(getJobData(), entities)) {
+        stagedGeneration = vectorService.beginStagedChunkRecreate();
+      } else {
+        LOG.info(
+            "Partial recreate ({} of {} vector-indexable types) — keeping the chunk index; "
+                + "orphaned chunks, if any, are only swept by a full recreate",
+            coveredVectorTypeCount(entities),
+            AvailableEntityTypes.SET.size());
+      }
     }
-    if (shouldStageChunkRecreate(getJobData(), entities)) {
-      return vectorService.beginStagedChunkRecreate();
-    }
-    LOG.info(
-        "Partial recreate ({} of {} vector-indexable types) — keeping the chunk index; orphaned "
-            + "chunks, if any, are only swept by a full recreate",
-        coveredVectorTypeCount(entities),
-        AvailableEntityTypes.SET.size());
-    return null;
+    return stagedGeneration;
   }
 
   /**
