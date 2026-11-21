@@ -12,7 +12,7 @@
  */
 import { AxiosError } from 'axios';
 import { toString } from 'lodash';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { FC, useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import KnowledgePageVersion from '../../components/KnowledgeCenter/KnowledgePageVersion/KnowledgePageVersion';
@@ -52,37 +52,53 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     fqn: string;
     version: string;
   }>();
-  const [loading, setLoading] = useState(false);
+  const [isVersionListLoading, setIsVersionListLoading] = useState(true);
+  const [isVersionDataLoading, setIsVersionDataLoading] = useState(true);
   const [knowledgePage, setKnowledgePage] = useState<KnowledgePage>();
   const [versionList, setVersionList] = useState<EntityHistory>(
     {} as EntityHistory
   );
   const [selectedData, setSelectedData] = useState<KnowledgePage>();
 
+  // Guards against a stale version-data response overwriting a newer one when
+  // the user switches versions while a previous request is still in flight.
+  const activeVersionReqId = useRef(0);
+
   const fetchActiveVersion = useCallback(async () => {
     if (!knowledgePage) {
       return;
     }
-    setLoading(true);
+    const reqId = ++activeVersionReqId.current;
+    setIsVersionDataLoading(true);
     try {
       const res = await getKnowledgePageVersionData(knowledgePage.id, version);
+      if (reqId !== activeVersionReqId.current) {
+        return;
+      }
       setSelectedData(res);
     } catch (error) {
+      if (reqId !== activeVersionReqId.current) {
+        return;
+      }
       showErrorToast(error as AxiosError);
     } finally {
-      setLoading(false);
+      if (reqId === activeVersionReqId.current) {
+        setIsVersionDataLoading(false);
+      }
     }
   }, [knowledgePage, version]);
 
   const fetchKnowledgePage = useCallback(async () => {
+    setIsVersionListLoading(true);
     try {
-      setLoading(true);
       const res = await getKnowledgePageByFqn(fqn);
       setKnowledgePage(res);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
+      setIsVersionListLoading(false);
+      // No knowledgePage means no version-data request will start, so the
+      // content skeleton would otherwise hang — clear it here too.
+      setIsVersionDataLoading(false);
     }
   }, [fqn]);
 
@@ -90,14 +106,14 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     if (!knowledgePage) {
       return;
     }
+    setIsVersionListLoading(true);
     try {
-      setLoading(true);
       const res = await getKnowledgePageVersionsList(knowledgePage.id);
       setVersionList(res);
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
-      setLoading(false);
+      setIsVersionListLoading(false);
     }
   }, [knowledgePage]);
 
@@ -149,42 +165,48 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
       title: getKnowledgePageName(selectedData, t),
       data: knowledgePage,
     });
-  }, [selectedData, loading, versionList, version, knowledgePage]);
+  }, [
+    selectedData,
+    isVersionListLoading,
+    isVersionDataLoading,
+    versionList,
+    version,
+    knowledgePage,
+  ]);
 
-  if (loading) {
-    return (
-      <>
-        <div className="version-data">
-          <Box
-            inline
-            align="stretch"
-            className="layout-space"
-            direction="col"
-            gap={2}
-            itemClassName="layout-space-item"
-            style={{ width: '650px' }}>
-            <div className="tw:flex tw:gap-4">
-              <Skeleton className="tw:shrink-0" variant="circular" width={40} />
-              <div className="tw:flex-1">
-                <SkeletonParagraph rows={2} title={false} />
-              </div>
-            </div>
-            <SkeletonParagraph className="m-t-sm" rows={8} title={false} />
-          </Box>
+  const versionDataSkeleton = (
+    <Box
+      inline
+      align="stretch"
+      className="layout-space tw:w-[650px]"
+      direction="col"
+      gap={2}
+      itemClassName="layout-space-item">
+      <div className="tw:flex tw:gap-4">
+        <Skeleton className="tw:shrink-0" variant="circular" width={40} />
+        <div className="tw:flex-1">
+          <SkeletonParagraph rows={2} title={false} />
         </div>
-      </>
-    );
+      </div>
+      <SkeletonParagraph className="m-t-sm" rows={8} title={false} />
+    </Box>
+  );
+
+  if (isVersionListLoading) {
+    return <div className="version-data">{versionDataSkeleton}</div>;
   }
 
   return (
     <>
       <div className="version-data">
-        {selectedData && (
-          <KnowledgePageVersion
-            knowledgePage={selectedData}
-            loading={loading}
-          />
-        )}
+        {isVersionDataLoading
+          ? versionDataSkeleton
+          : selectedData && (
+              <KnowledgePageVersion
+                knowledgePage={selectedData}
+                loading={isVersionDataLoading}
+              />
+            )}
       </div>
       {getVersionTimeLineElement()}
     </>
