@@ -66,7 +66,7 @@
     "playwright:codegen": "playwright codegen",
     "generate:app-docs": "node generateApplicationDocs.js",
     "generate:e2e-docs": "PLAYWRIGHT_IS_OSS=true node playwright/doc-generator/generate.js",
-    "tsc:check": "node ./node_modules/typescript-native/bin/tsc --noEmit",
+    "tsc:check": "node ./node_modules/typescript-native/bin/tsc --noEmit --declaration false --declarationMap false",
     "tsc:check:tsrs": "node ./node_modules/tsrs/bin/tsrs --noEmit --checkers 4 --checkerAssignment go --tsBuildInfoFile node_modules/.cache/tsrs/app.tsbuildinfo",
     "tsc:playwright": "node ./node_modules/typescript-native/bin/tsc --project playwright/tsconfig.json --noEmit",
     "tsc:playwright:tsrs": "node ./node_modules/tsrs/bin/tsrs --project playwright/tsconfig.json --noEmit --checkers 4 --checkerAssignment go --tsBuildInfoFile node_modules/.cache/tsrs/playwright.tsbuildinfo",
