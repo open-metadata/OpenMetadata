@@ -53,6 +53,7 @@ import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigr
 import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration;
 import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
+import org.openmetadata.service.migration.utils.v210.DomainLineageRebuild;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.HealthyDataAssetsChartMigration;
 import org.openmetadata.service.migration.utils.v210.IncidentWorkflowTransitionMigration;
@@ -138,6 +139,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(EntityExtensionCollationAlignment.class);
         MockedStatic<ContextFileFqnRepair> contextFileFqnRepair =
             mockStatic(ContextFileFqnRepair.class);
+        MockedStatic<DomainLineageRebuild> domainLineageRebuild =
+            mockStatic(DomainLineageRebuild.class);
         // v206 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
             v206MigrationUtil =
@@ -207,6 +210,8 @@ class IngestionPipelineMigrationEntryPointTest {
                   handle, connectionType));
       // Released versions stored misnamed Context Center files, so both engines repair them.
       contextFileFqnRepair.verify(() -> ContextFileFqnRepair.repairAll(handle, connectionType));
+      // The live domain lineage delta is only correct over rollups this repair has recounted.
+      domainLineageRebuild.verify(() -> DomainLineageRebuild.rebuild(collectionDAO));
     }
   }
 

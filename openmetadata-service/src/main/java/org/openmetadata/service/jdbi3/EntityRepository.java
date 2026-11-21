@@ -85,9 +85,7 @@ import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReference;
 import static org.openmetadata.service.util.EntityUtil.validateCustomPropertyEntityReferenceList;
 import static org.openmetadata.service.util.LineageUtil.addDataProductsLineage;
-import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
-import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
@@ -306,6 +304,8 @@ import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.LifeCycles;
+import org.openmetadata.service.util.LineageDomainRollups;
+import org.openmetadata.service.util.LineageDomainRollups.DomainMove;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.PostCommitActionQueue;
@@ -3727,7 +3727,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                   .toEntity(entityType)
                   .relation(Relationship.HAS.ordinal())
                   .build());
-          addDomainLineage(domain.getId(), entityType, domain);
         }
       }
     }
@@ -4675,6 +4674,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // parents before the flush rewrites their edges.
     List<List<EntityReference>> previousParents =
         originals.stream().map(this::getCountingParents).toList();
+    List<DomainMove> domainMoves = importDomainMoves(originals, updatedEntities);
 
     // Store the row, extension, and relationship rewrites in one atomic transaction. The cache
     // invalidations issued here are recorded and drained once the transaction ends so no Redis
@@ -4686,6 +4686,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           replaceExtensions(originals, updatedEntities);
           clearRelationshipsForUpdateMany(updatedEntities);
           storeRelationshipsInternal(updatedEntities);
+          LineageDomainRollups.move(domainMoves);
           // Drop every cached variant for each updated entity so the next GET rebuilds from the
           // freshly-stored row + relationships.
           for (T entity : updatedEntities) {
@@ -4695,6 +4696,43 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     refreshCountingParentsMovedInBatch(previousParents, updatedEntities);
     return updatedEntities;
+  }
+
+  private List<DomainMove> importDomainMoves(final List<T> originals, final List<T> updates) {
+    return supportsDomains
+        ? IntStream.range(0, originals.size())
+            .mapToObj(i -> domainMove(originals.get(i), updates.get(i)))
+            .toList()
+        : List.of();
+  }
+
+  // Inheritance is resolved only when the entity's own domains changed: it costs a parent read.
+  private DomainMove domainMove(final T original, final T update) {
+    final List<EntityReference> ownBefore =
+        EntityUpdater.getEntityReferences(original.getDomains());
+    final List<EntityReference> ownAfter = EntityUpdater.getEntityReferences(update.getDomains());
+    final DomainMove own = new DomainMove(original.getEntityReference(), ownBefore, ownAfter);
+    return own.changes()
+        ? new DomainMove(
+            own.entity(), domainsInEffect(original, ownBefore), domainsInEffect(update, ownAfter))
+        : own;
+  }
+
+  /**
+   * The domains an entity's lineage rolls up under: its own, or else the ones it inherits now. The
+   * inherited ones are resolved on a scratch copy, as {@link #withInheritedOwnersAndDomains} does,
+   * so the entity being written keeps its references.
+   */
+  private List<EntityReference> domainsInEffect(
+      final T entity, final List<EntityReference> ownDomains) {
+    return nullOrEmpty(ownDomains) ? inheritedDomains(entity) : ownDomains;
+  }
+
+  private List<EntityReference> inheritedDomains(final T entity) {
+    final T inheriting = JsonUtils.deepCopy(entity, entityClass);
+    inheriting.setDomains(new ArrayList<>());
+    setInheritedFields(inheriting, new Fields(allowedFields, FIELD_DOMAINS, true));
+    return listOrEmpty(inheriting.getDomains());
   }
 
   /**
@@ -10481,7 +10519,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             entityType,
             entity.getId());
         addRelationship(domain.getId(), entity.getId(), DOMAIN, entityType, Relationship.HAS);
-        addDomainLineage(domain.getId(), entityType, domain);
       }
     }
   }
@@ -12289,11 +12326,25 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               removedDomains,
               entityReferenceMatch)) {
         updateDomains(original, origDomains, writtenDomains);
+        moveDomainRollups(origDomains, writtenDomains);
         // Inherited domains are not written, but an entity without its own still holds them.
         updated.setDomains(
             writtenDomains.isEmpty() ? inheritedOnly(updated.getDomains()) : writtenDomains);
       } else {
         updated.setDomains(original.getDomains());
+      }
+    }
+
+    // Consolidation replays this diff against reverted baselines the stored rollups never saw.
+    private void moveDomainRollups(
+        final List<EntityReference> ownBefore, final List<EntityReference> ownAfter) {
+      if (isIndexBaselinePass()) {
+        LineageDomainRollups.move(
+            List.of(
+                new DomainMove(
+                    original.getEntityReference(),
+                    domainsInEffect(original, ownBefore),
+                    domainsInEffect(updated, ownAfter))));
       }
     }
 
@@ -12331,7 +12382,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               domain.getType(),
               domain.getFullyQualifiedName(),
               entity.getId());
-          removeDomainLineage(updated.getId(), entityType, domain);
           deleteRelationship(domain.getId(), DOMAIN, entity.getId(), entityType, Relationship.HAS);
         }
       }

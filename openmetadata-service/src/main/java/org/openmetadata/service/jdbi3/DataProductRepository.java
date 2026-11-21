@@ -26,9 +26,7 @@ import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNameAlreadyExists;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
-import static org.openmetadata.service.util.LineageUtil.addDomainLineage;
 import static org.openmetadata.service.util.LineageUtil.removeDataProductsLineage;
-import static org.openmetadata.service.util.LineageUtil.removeDomainLineage;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.Lists;
@@ -97,6 +95,8 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.EntityWithType;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.IntakeFormValidator;
+import org.openmetadata.service.util.LineageDomainRollups;
+import org.openmetadata.service.util.LineageDomainRollups.DomainMove;
 
 @Slf4j
 public class DataProductRepository extends EntityRepository<DataProduct> {
@@ -267,15 +267,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     List<EntityReference> updatedDomains = getDomains(original, ALL);
     List<EntityReference> removedDomains = subtractById(originalDomains, updatedDomains);
     if (!removedDomains.isEmpty()) {
-      removeDomainLineageForDetached(dataProductId, removedDomains);
+      LineageDomainRollups.move(
+          List.of(new DomainMove(original.getEntityReference(), originalDomains, updatedDomains)));
       persistDomainDetachVersion(original, updatedDomains, removedDomains, updatedBy);
-    }
-  }
-
-  private void removeDomainLineageForDetached(
-      UUID dataProductId, List<EntityReference> removedDomains) {
-    for (EntityReference removedDomain : removedDomains) {
-      removeDomainLineage(dataProductId, DATA_PRODUCT, removedDomain);
     }
   }
 
@@ -1254,15 +1248,12 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
         assetsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
       }
+      List<DomainMove> domainMoves = assetDomainMoves(assetRecords, oldDomains, newDomains);
 
       for (EntityReference oldDomain : oldDomains) {
         for (Map.Entry<String, List<UUID>> entry : assetsByType.entrySet()) {
           String assetType = entry.getKey();
           List<UUID> assetIds = entry.getValue();
-
-          for (UUID assetId : assetIds) {
-            removeDomainLineage(assetId, assetType, oldDomain);
-          }
 
           daoCollection
               .relationshipDAO()
@@ -1280,12 +1271,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
               .relationshipDAO()
               .bulkInsertToRelationship(
                   newDomain.getId(), assetIds, DOMAIN, assetType, Relationship.HAS.ordinal());
-
-          for (UUID assetId : assetIds) {
-            addDomainLineage(assetId, assetType, newDomain);
-          }
         }
       }
+      LineageDomainRollups.move(inheritingWhenBare(domainMoves));
 
       // Drop every cache layer for each migrated asset - the bundle cache stores domains as a
       // field and would otherwise serve stale data. invalidateCacheForReferencedEntity pulls the
@@ -1294,6 +1282,60 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       for (CollectionDAO.EntityRelationshipRecord record : assetRecords) {
         EntityRepository.invalidateCacheForReferencedEntity(record);
       }
+    }
+
+    // Read before the HAS rewrite below, which the move must not depend on.
+    private List<DomainMove> assetDomainMoves(
+        List<CollectionDAO.EntityRelationshipRecord> assetRecords,
+        List<EntityReference> oldDomains,
+        List<EntityReference> newDomains) {
+      Set<UUID> leaving =
+          oldDomains.stream().map(EntityReference::getId).collect(Collectors.toSet());
+      List<EntityReference> assets =
+          assetRecords.stream()
+              .map(
+                  record -> new EntityReference().withId(record.getId()).withType(record.getType()))
+              .toList();
+      Map<UUID, List<EntityReference>> before = LineageDomainRollups.domainsHeldBy(assets);
+      return assets.stream()
+          .map(
+              asset -> {
+                List<EntityReference> held = before.getOrDefault(asset.getId(), List.of());
+                return new DomainMove(asset, held, domainsAfterMove(held, leaving, newDomains));
+              })
+          .toList();
+    }
+
+    // The rewrite stores the arriving domains as HAS rows, so an inherited domain stops applying:
+    // the asset keeps its own domains that are not leaving and gains the arriving ones.
+    private static List<EntityReference> domainsAfterMove(
+        List<EntityReference> before, Set<UUID> leaving, List<EntityReference> arriving) {
+      return Stream.concat(
+              before.stream()
+                  .filter(domain -> !Boolean.TRUE.equals(domain.getInherited()))
+                  .filter(domain -> !leaving.contains(domain.getId())),
+              arriving.stream())
+          .toList();
+    }
+
+    // Read after the HAS rewrite: an asset a move to no domain leaves bare inherits again.
+    private static List<DomainMove> inheritingWhenBare(List<DomainMove> moves) {
+      Map<UUID, List<EntityReference>> inherited =
+          LineageDomainRollups.domainsHeldBy(
+              moves.stream()
+                  .filter(move -> move.after().isEmpty())
+                  .map(DomainMove::entity)
+                  .toList());
+      return moves.stream()
+          .map(
+              move ->
+                  move.after().isEmpty()
+                      ? new DomainMove(
+                          move.entity(),
+                          move.before(),
+                          inherited.getOrDefault(move.entity().getId(), List.of()))
+                      : move)
+          .toList();
     }
 
     private void updateName(DataProduct updated) {

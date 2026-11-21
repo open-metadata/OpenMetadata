@@ -3,7 +3,6 @@ package org.openmetadata.service.util;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrDefault;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.jdbi3.LineageRepository.buildEntityLineageData;
 import static org.openmetadata.service.jdbi3.LineageRepository.getDocumentUniqueId;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
@@ -136,6 +135,11 @@ public class LineageUtil {
     }
   }
 
+  /**
+   * @deprecated No caller in this repository; kept for callers outside it. It recounts from direct
+   *     domain assignments only, missing inherited ones: use {@link LineageDomainRollups#move}.
+   */
+  @Deprecated(since = "2.1.0")
   public static void addDomainLineage(
       UUID entityId, String entityType, EntityReference updatedDomain) {
     if (!nullOrEmpty(updatedDomain)) {
@@ -162,6 +166,11 @@ public class LineageUtil {
     }
   }
 
+  /**
+   * @deprecated No caller in this repository; kept for callers outside it. It recounts from direct
+   *     domain assignments only, missing inherited ones: use {@link LineageDomainRollups#move}.
+   */
+  @Deprecated(since = "2.1.0")
   public static void removeDomainLineage(
       UUID entityId, String entityType, EntityReference updatedDomain) {
     if (!nullOrEmpty(updatedDomain)) {
@@ -225,7 +234,7 @@ public class LineageUtil {
     }
   }
 
-  private static void deleteLineageFromSearch(
+  static void deleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     deferOrRun(() -> doDeleteLineageFromSearch(fromEntity, toEntity), toEntity);
   }
@@ -261,14 +270,7 @@ public class LineageUtil {
 
   private static void insertLineage(int count, EntityReference fromRef, EntityReference toRef) {
     if (count > 0) {
-      LineageDetails domainLineageDetails =
-          new LineageDetails()
-              .withCreatedAt(System.currentTimeMillis())
-              .withUpdatedAt(System.currentTimeMillis())
-              .withCreatedBy(ADMIN_USER_NAME)
-              .withUpdatedBy(ADMIN_USER_NAME)
-              .withSource(LineageDetails.Source.CHILD_ASSETS)
-              .withAssetEdges(count);
+      LineageDetails domainLineageDetails = LineageDomainRollups.newRollupDetails(count);
       Entity.getCollectionDAO()
           .relationshipDAO()
           .insert(
@@ -282,7 +284,7 @@ public class LineageUtil {
     }
   }
 
-  private static void addLineageToSearch(
+  static void addLineageToSearch(
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     deferOrRun(() -> doAddLineageToSearch(fromEntity, toEntity, lineageDetails), toEntity);
   }
