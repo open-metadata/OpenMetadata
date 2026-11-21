@@ -271,7 +271,7 @@ class StdDev(StaticMetric):
             variance_numerator = count * int(sum_squares_value) - int(sum_value) ** 2
             if variance_numerator < 0:
                 # Only possible when the sums were wrapped in int64 before they got here
-                logger.warning(f"Negative variance numerator ({variance_numerator}) encountered, returning None")
+                logger.warning("Negative variance numerator (%s) encountered, returning None", variance_numerator)
                 return None
             return math.sqrt(variance_numerator / (count * count))
 
