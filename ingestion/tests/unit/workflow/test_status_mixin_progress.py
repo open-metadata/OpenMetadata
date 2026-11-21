@@ -17,6 +17,9 @@ import pytest
 from requests import Response
 from requests.exceptions import HTTPError
 
+from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
+    PipelineState,
+)
 from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
     ProgressUpdateType,
 )
@@ -228,3 +231,44 @@ class TestTerminalStatusWriteRetry:
 
         metadata.get_pipeline_status.assert_called_once()
         delay.assert_not_called()
+
+    def test_terminal_flow_retries_get_and_put_without_changing_outcome(self):
+        metadata = MagicMock()
+        saved_status = MagicMock()
+        metadata.get_pipeline_status.side_effect = [
+            RestTransportError("GET", "/pipelineStatus/run-1", TimeoutError("reset")),
+            saved_status,
+        ]
+        response = Response()
+        response.status_code = 502
+        metadata.create_or_update_pipeline_status.side_effect = [
+            HTTPError("Bad Gateway", response=response),
+            None,
+        ]
+        harness = _Harness(ProgressRegistry(), metadata)
+        harness.config = MagicMock()
+        harness.config.ingestionPipelineFQN = "svc.pipeline"
+        harness.config.model_dump.return_value = {}
+
+        with (
+            patch("metadata.workflow.workflow_status_mixin.sleep") as delay,
+            patch(
+                "metadata.workflow.workflow_status_mixin.ContextManager.dump_contexts",
+                return_value={},
+            ),
+        ):
+            harness.set_ingestion_pipeline_status(PipelineState.success)
+
+        assert metadata.get_pipeline_status.call_count == 2
+        assert all(
+            call.args == ("svc.pipeline", "run-1")
+            for call in metadata.get_pipeline_status.call_args_list
+        )
+        assert metadata.create_or_update_pipeline_status.call_count == 2
+        assert all(
+            call.args == ("svc.pipeline", saved_status)
+            for call in metadata.create_or_update_pipeline_status.call_args_list
+        )
+        assert saved_status.pipelineState is PipelineState.success
+        assert saved_status.endDate is not None
+        assert delay.call_count == 2
