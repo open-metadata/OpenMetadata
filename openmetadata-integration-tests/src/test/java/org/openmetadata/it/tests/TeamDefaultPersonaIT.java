@@ -166,6 +166,39 @@ public class TeamDefaultPersonaIT {
     assertEquals(persona2.getId(), updated.getDefaultPersona().getId());
   }
 
+  /**
+   * Regression test for the CheckChangeDescription governance-rule bypass: when a PATCH sends a
+   * schema-valid but "sparse" {@code EntityReference} (only {@code id} + {@code type}, the only
+   * fields the {@code EntityReference} schema requires) for {@code defaultPersona}, the team
+   * repository must hydrate the reference via {@code validateDefaultPersona} so the recorded {@code
+   * ChangeDescription} carries a {@code fullyQualifiedName}. Without this, {@code
+   * FieldChangeValueExtractor} cannot extract a matchable value from the new value and governance
+   * rules keyed on {@code defaultPersona} are silently skipped (the rule never triggers).
+   */
+  @Test
+  void test_sparseRefPatchIsHydratedWithFullyQualifiedName(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Persona persona = createPersona(ns, "sparsePersona");
+    Team team = createGroupTeam(ns, "sparseRefTeam");
+
+    // PATCH /v1/teams/{id} with the exact sparse shape a Python-SDK / curl client sends:
+    // [{"op":"add","path":"/defaultPersona","value":{"id":"<uuid>","type":"persona"}}]
+    // No fullyQualifiedName, no name — yet the schema accepts it.
+    patch(client, "/v1/teams/" + team.getId(), setDefaultPersonaPatch(persona));
+
+    Team updated = client.teams().get(team.getId().toString(), "defaultPersona");
+    assertNotNull(updated.getDefaultPersona(), "defaultPersona should be set after the PATCH");
+    assertEquals(persona.getId(), updated.getDefaultPersona().getId());
+    assertNotNull(
+        updated.getDefaultPersona().getFullyQualifiedName(),
+        "sparse-ref PATCH must be hydrated by validateDefaultPersona so the recorded"
+            + " ChangeDescription carries a fullyQualifiedName; without hydration, governance"
+            + " rules keyed on defaultPersona are silently bypassed");
+    assertEquals(
+        persona.getFullyQualifiedName(), updated.getDefaultPersona().getFullyQualifiedName());
+  }
+
   @Test
   void test_removeDefaultPersonaViaPatch(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -930,6 +963,10 @@ public class TeamDefaultPersonaIT {
     clientFor(caller)
         .getHttpClient()
         .executeForString(HttpMethod.PATCH, path, jsonPatch, JSON_PATCH_OPTIONS);
+  }
+
+  private static void patch(OpenMetadataClient client, String path, String jsonPatch) {
+    client.getHttpClient().executeForString(HttpMethod.PATCH, path, jsonPatch, JSON_PATCH_OPTIONS);
   }
 
   private static OpenMetadataClient clientFor(User user) {
