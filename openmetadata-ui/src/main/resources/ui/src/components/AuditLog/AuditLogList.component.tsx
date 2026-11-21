@@ -13,7 +13,7 @@
 
 import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
 import { NoSearch } from '@openmetadata/ui-core-components/icons';
-import { compact, startCase } from 'lodash';
+import { compact, isNil, startCase } from 'lodash';
 import {
   FC,
   isValidElement,
@@ -31,7 +31,10 @@ import {
   FieldChange,
 } from '../../generated/type/changeEvent';
 import { getTextFromHtmlString } from '../../utils/BlockEditorPureUtils';
-import { getRelativeTime } from '../../utils/date-time/DateTimeUtils';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../utils/date-time/DateTimeUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import Fqn from '../../utils/Fqn';
@@ -60,9 +63,17 @@ const getFieldLabel = (name?: string) => {
   if (!name) {
     return '';
   }
-  const parts = name.split('.');
+  // Keep the full path so a column-level change names its column: `columns.customer_id.tags`
+  // reads "Columns › customer_id › Tags". Inner segments are entity names, so they stay verbatim
+  // apart from FQN quoting (`columns."order.id".tags`).
+  const parts = Fqn.split(name).map((part) => Fqn.unquoteName(part));
+  if (parts.length === 1) {
+    return startCase(parts[0]);
+  }
+  const [first, ...rest] = parts;
+  const last = rest.pop();
 
-  return startCase(parts[parts.length - 1]);
+  return [startCase(first), ...rest, startCase(last)].join(' › ');
 };
 
 const parseValue = (value: unknown): unknown => {
@@ -364,14 +375,36 @@ interface AuditLogItemDescriptionProps {
   descriptionNodes: ReactNode[];
   eventType: string;
   entityLink: ReactNode;
+  entityFQN?: string;
+  showEntity: boolean;
 }
 
 const AuditLogItemDescription: FC<AuditLogItemDescriptionProps> = ({
   descriptionNodes,
   eventType,
   entityLink,
+  entityFQN,
+  showEntity,
 }) => (
   <div data-testid="description-content">
+    {showEntity && (
+      <Box
+        align="center"
+        data-testid="affected-entity"
+        direction="row"
+        gap={1}
+        wrap="wrap">
+        {entityLink}
+        {entityFQN && (
+          <Typography
+            className="tw:text-tertiary"
+            data-testid="affected-entity-fqn"
+            size="text-xs">
+            ({entityFQN})
+          </Typography>
+        )}
+      </Box>
+    )}
     {descriptionNodes.length > 0 ? (
       <div>
         {descriptionNodes.map((node, idx) => (
@@ -427,7 +460,7 @@ const AuditLogItemMeta: FC<AuditLogItemMetaProps> = ({
         className="tw:text-quaternary"
         data-testid="timestamp"
         size="text-xs">
-        {getRelativeTime(timestamp)}
+        {`${formatDateTime(timestamp)} · ${getRelativeTime(timestamp)}`}
       </Typography>
     )}
   </Box>
@@ -476,7 +509,8 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
 
   const renderChangeValue = useCallback(
     (change: FieldChange, value: unknown, keyPrefix: string): ReactNode => {
-      if (!value) {
+      // `false` and `0` are real values (e.g. disabled: true → false), only absence is skipped.
+      if (isNil(value) || value === '') {
         return null;
       }
 
@@ -626,16 +660,19 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
     [t, renderChangeValue]
   );
 
+  // The field changes carry the full path and old → new values; the server summary drops both,
+  // so it is only the fallback for events without field changes (create, delete, login).
+  const fieldChangeNodes = useMemo(
+    () => getChangeDetails(log.changeEvent?.changeDescription),
+    [log, getChangeDetails]
+  );
   const descriptionNodes = useMemo((): ReactNode[] => {
-    if (log.summary) {
-      return [<span key="summary">{log.summary}</span>];
-    }
-    if (log.changeEvent?.changeDescription) {
-      return getChangeDetails(log.changeEvent.changeDescription);
+    if (fieldChangeNodes.length > 0) {
+      return fieldChangeNodes;
     }
 
-    return [];
-  }, [log, getChangeDetails]);
+    return log.summary ? [<span key="summary">{log.summary}</span>] : [];
+  }, [log.summary, fieldChangeNodes]);
 
   const entityLink = useMemo(() => {
     if (normalizedType === EntityType.USER) {
@@ -695,8 +732,10 @@ const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
         />
         <AuditLogItemDescription
           descriptionNodes={descriptionNodes}
+          entityFQN={entityFQN === entityLabel ? undefined : entityFQN}
           entityLink={entityLink}
           eventType={eventType}
+          showEntity={fieldChangeNodes.length > 0}
         />
         <AuditLogItemMeta entityType={entityType} timestamp={timestamp} />
       </Box>

@@ -15,6 +15,10 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ChangeEvent, EventType } from '../../generated/type/changeEvent';
 import { AuditLogEntry } from '../../types/auditLogs.interface';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../utils/date-time/DateTimeUtils';
 import AuditLogList from './AuditLogList.component';
 
 // Helper to create partial ChangeEvent mocks without strict type enforcement
@@ -188,12 +192,79 @@ describe('AuditLogList', () => {
     expect(entityTypeBadges[0]).toHaveTextContent('Table');
   });
 
-  it('should display relative timestamps', () => {
+  it('should display the exact date-time alongside the relative time', () => {
     renderWithRouter(<AuditLogList isLoading={false} logs={mockLogs} />);
 
     const timestamps = screen.getAllByTestId('timestamp');
 
     expect(timestamps).toHaveLength(2);
+    expect(timestamps[0]).toHaveTextContent(
+      `${formatDateTime(mockLogs[0].eventTs)} · ${getRelativeTime(
+        mockLogs[0].eventTs
+      )}`
+    );
+  });
+
+  it('should show the column path and old → new values instead of the summary', () => {
+    const logs: AuditLogEntry[] = [
+      {
+        id: 1,
+        eventTs: Date.now(),
+        eventType: EventType.EntityUpdated,
+        userName: 'admin',
+        entityType: 'table',
+        entityFQN: 'sample_data.ecommerce_db.shopify.dim_customer',
+        summary: 'Added tags: PII.Sensitive, Updated description: new',
+        changeEvent: mockChangeEvent({
+          eventType: EventType.EntityUpdated,
+          entityType: 'table',
+          entity: {
+            id: 'table-1',
+            name: 'dim_customer',
+            fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_customer',
+          },
+          changeDescription: {
+            fieldsAdded: [
+              {
+                name: 'columns.customer_id.tags',
+                newValue: JSON.stringify([
+                  { tagFQN: 'PII.Sensitive', name: 'Sensitive' },
+                ]),
+              },
+            ],
+            fieldsUpdated: [
+              {
+                name: 'columns.customer_id.dataType',
+                oldValue: 'INT',
+                newValue: 'BIGINT',
+              },
+            ],
+            fieldsDeleted: [],
+          },
+        }),
+      },
+    ];
+
+    renderWithRouter(<AuditLogList isLoading={false} logs={logs} />);
+
+    const description = screen.getByTestId('description-content');
+
+    expect(description).toHaveTextContent('Columns › customer_id › Tags');
+    expect(description).toHaveTextContent(
+      'Columns › customer_id › Data Type: INT → BIGINT'
+    );
+    expect(screen.getByRole('link', { name: 'Sensitive' })).toHaveAttribute(
+      'href',
+      '/tags/PII.Sensitive'
+    );
+    expect(description).not.toHaveTextContent('Added tags: PII.Sensitive');
+    expect(screen.getByRole('link', { name: 'dim_customer' })).toHaveAttribute(
+      'href',
+      '/table/sample_data.ecommerce_db.shopify.dim_customer'
+    );
+    expect(screen.getByTestId('affected-entity-fqn')).toHaveTextContent(
+      '(sample_data.ecommerce_db.shopify.dim_customer)'
+    );
   });
 
   it('should render tag links when tags are added', () => {
@@ -455,6 +526,94 @@ describe('AuditLogList', () => {
     expect(
       screen.getByText('Created table orders with 5 columns')
     ).toBeInTheDocument();
+  });
+
+  it('should not repeat the actor as the affected entity on login events', () => {
+    const logs: AuditLogEntry[] = [
+      {
+        id: 1,
+        eventTs: Date.now(),
+        eventType: EventType.UserLogin,
+        userName: 'admin',
+        entityType: 'user',
+        entityFQN: 'admin',
+        summary: 'User logged in',
+      },
+    ];
+
+    renderWithRouter(<AuditLogList isLoading={false} logs={logs} />);
+
+    expect(screen.getByText('User logged in')).toBeInTheDocument();
+    expect(screen.queryByTestId('affected-entity')).not.toBeInTheDocument();
+  });
+
+  it('should fall back to the summary when the only change is the deleted flag', () => {
+    const logs: AuditLogEntry[] = [
+      {
+        id: 1,
+        eventTs: Date.now(),
+        eventType: EventType.EntitySoftDeleted,
+        userName: 'admin',
+        entityType: 'table',
+        entityFQN: 'svc.db.schema.orders',
+        summary: 'Soft deleted table: svc.db.schema.orders',
+        changeEvent: mockChangeEvent({
+          eventType: EventType.EntitySoftDeleted,
+          entityType: 'table',
+          changeDescription: {
+            fieldsAdded: [],
+            fieldsUpdated: [
+              { name: 'deleted', oldValue: false, newValue: true },
+            ],
+            fieldsDeleted: [],
+          },
+        }),
+      },
+    ];
+
+    renderWithRouter(<AuditLogList isLoading={false} logs={logs} />);
+
+    expect(
+      screen.getByText('Soft deleted table: svc.db.schema.orders')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('affected-entity')).not.toBeInTheDocument();
+  });
+
+  it('should show false as a real new value and unquote quoted column names', () => {
+    const logs: AuditLogEntry[] = [
+      {
+        id: 1,
+        eventTs: Date.now(),
+        eventType: EventType.EntityUpdated,
+        userName: 'admin',
+        entityType: 'table',
+        changeEvent: mockChangeEvent({
+          eventType: EventType.EntityUpdated,
+          entityType: 'table',
+          changeDescription: {
+            fieldsAdded: [],
+            fieldsUpdated: [
+              { name: 'disabled', oldValue: true, newValue: false },
+              {
+                name: 'columns."order.id".dataType',
+                oldValue: 'INT',
+                newValue: 'BIGINT',
+              },
+            ],
+            fieldsDeleted: [],
+          },
+        }),
+      },
+    ];
+
+    renderWithRouter(<AuditLogList isLoading={false} logs={logs} />);
+
+    const description = screen.getByTestId('description-content');
+
+    expect(description).toHaveTextContent('Disabled: true → false');
+    expect(description).toHaveTextContent(
+      'Columns › order.id › Data Type: INT → BIGINT'
+    );
   });
 
   it('should display System for logs without userName', () => {
