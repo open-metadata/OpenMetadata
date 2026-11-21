@@ -986,7 +986,10 @@ const SchemaTable = () => {
     () =>
       COLUMN_CONSTRAINT_TYPE_OPTIONS.map((option) => ({
         ...option,
-        label: t(option.label),
+        label:
+          option.value === Constraint.NotNullUnique
+            ? `${t('label.not-null')} + ${t('label.unique')}`
+            : t(option.label),
       })),
     [t]
   );

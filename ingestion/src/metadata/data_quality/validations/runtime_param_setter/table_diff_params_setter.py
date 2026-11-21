@@ -221,7 +221,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
                     key_columns.append(column.name.root)  # noqa: PERF401
         if not key_columns:
             for column in self.table_entity.columns:
-                if column.constraint == Constraint.UNIQUE:
+                if column.constraint in (Constraint.UNIQUE, Constraint.NOT_NULL_UNIQUE):
                     key_columns.append(column.name.root)  # noqa: PERF401
         if not key_columns:
             raise ValueError(
