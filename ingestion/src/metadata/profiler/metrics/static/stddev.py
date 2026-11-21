@@ -17,6 +17,7 @@ Population Standard deviation Metric definition
 # pylint: disable=consider-using-f-string,duplicate-code
 
 import math
+import numbers
 from typing import TYPE_CHECKING, NamedTuple, Optional
 
 from sqlalchemy import column
@@ -168,7 +169,7 @@ class StdDev(StaticMetric):
             PandasComputation: Computation protocol with create/update/aggregate methods
         """
         return PandasComputation[SumSumSquaresCount, float | None](
-            create_accumulator=lambda: SumSumSquaresCount(0.0, 0.0, 0),
+            create_accumulator=lambda: SumSumSquaresCount(0, 0, 0),
             update_accumulator=lambda acc, df: StdDev.update_accumulator(acc, df, self.col),
             aggregate_accumulator=StdDev.aggregate_accumulator,
         )
@@ -207,8 +208,16 @@ class StdDev(StaticMetric):
             if numeric_df.empty:
                 return sum_sum_squares_count
 
-            chunk_sum = numeric_df.sum()
-            chunk_sum_squares = (numeric_df**2).sum()
+            if pd.api.types.is_integer_dtype(numeric_df) or pd.api.types.is_bool_dtype(numeric_df):
+                # Sum integers as Python ints: int64 squares wrap around silently
+                # for values above ~3e9, and float64 loses the low digits that
+                # the variance of large values (e.g. epoch milliseconds) needs.
+                numeric_df = numeric_df.astype(int).astype(object)
+                chunk_sum = int(numeric_df.sum())
+                chunk_sum_squares = int((numeric_df * numeric_df).sum())
+            else:
+                chunk_sum = numeric_df.sum()
+                chunk_sum_squares = (numeric_df**2).sum()
             chunk_count = len(numeric_df)
 
         else:
@@ -241,6 +250,18 @@ class StdDev(StaticMetric):
         """
         if sum_sum_squares_count.count_value == 0:
             return None
+
+        sum_value = sum_sum_squares_count.sum_value
+        sum_squares_value = sum_sum_squares_count.sum_squares_value
+        if all(
+            isinstance(value, numbers.Integral)
+            for value in (sum_value, sum_squares_value, sum_sum_squares_count.count_value)
+        ):
+            # Integer columns: compute n * sum(x²) - sum(x)² exactly, so the
+            # subtraction does not cancel out the variance of large values.
+            count = int(sum_sum_squares_count.count_value)
+            variance_numerator = count * int(sum_squares_value) - int(sum_value) ** 2
+            return math.sqrt(variance_numerator / (count * count))
 
         mean = sum_sum_squares_count.sum_value / sum_sum_squares_count.count_value
         mean_of_squares = sum_sum_squares_count.sum_squares_value / sum_sum_squares_count.count_value
