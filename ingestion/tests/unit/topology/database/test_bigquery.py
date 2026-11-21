@@ -15,9 +15,13 @@ bigquery unit tests
 
 # pylint: disable=line-too-long
 import logging
+import os
+import sqlite3
 import threading
 import types
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+from datetime import datetime
 from types import SimpleNamespace
 from typing import ClassVar
 from unittest import TestCase
@@ -28,6 +32,7 @@ from google.api_core.exceptions import Forbidden
 from google.cloud.bigquery.table import Table as BQTable
 from google.cloud.bigquery.table import TableListItem
 from sqlalchemy import Integer, String
+from sqlalchemy.exc import DatabaseError
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -65,7 +70,10 @@ from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.parser import parse_workflow_config_gracefully
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.lineage import BigqueryLineageSource
-from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
+from metadata.ingestion.source.database.bigquery.metadata import (
+    BigquerySource,
+    _RegionLifecycleSpoolError,
+)
 from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_STORED_PROCEDURES,
     BIGQUERY_GET_STORED_PROCEDURES_BY_REGION,
@@ -821,6 +829,432 @@ class TestBigqueryRegionAwareQueries:
         mock_dataset.location = location
         self.bq_source.client.get_dataset.return_value = mock_dataset
         self.bq_source._dataset_obj_cache.clear()
+
+    # --- life cycle query cost regression (#38207) ---
+
+    def test_lifecycle_one_region_query_for_multiple_datasets(self):
+        self._set_dataset_location("EU")
+        row_a = SimpleNamespace(_asdict=lambda: {
+            "table_schema": "dataset_a",
+            "table_name": "same_table",
+            "table_type": "BASE TABLE",
+            "created_at": datetime(2025, 1, 2),
+            "updated_at": datetime(2025, 1, 3),
+        })
+        row_b = SimpleNamespace(_asdict=lambda: {
+            "table_schema": "dataset_b",
+            "table_name": "same_table",
+            "table_type": "BASE TABLE",
+            "created_at": datetime(2025, 2, 2),
+            "updated_at": datetime(2025, 2, 3),
+        })
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter([row_a, row_b])
+        self.bq_source.engine = engine
+
+        context = self.bq_source.context.get()
+        context.database_schema = "dataset_a"
+        result_a = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+        context.database_schema = "dataset_b"
+        result_b = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+
+        assert result_a["same_table"].created_at == datetime(2025, 1, 2)
+        assert result_b["same_table"].updated_at == datetime(2025, 2, 3)
+        assert conn.execute.call_count == 1
+        sql = str(conn.execute.call_args.args[0])
+        assert "TABLE_STORAGE" in sql
+        assert "t.table_schema as table_schema" in sql
+        assert "where t.table_schema = 'dataset_a'" not in sql
+
+    def test_lifecycle_reads_only_active_table_from_spool(self):
+        self._set_dataset_location("EU")
+        rows = [
+            SimpleNamespace(_asdict=lambda name=name: {
+                "table_schema": "dataset_a",
+                "table_name": name,
+                "created_at": datetime(2025, 1, 2),
+                "updated_at": datetime(2025, 1, 3),
+            })
+            for name in ("selected", "other")
+        ]
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter(rows)
+        self.bq_source.engine = engine
+
+        context = self.bq_source.context.get()
+        context.database_schema = "dataset_a"
+        context.table = "selected"
+        selected = self.bq_source.life_cycle_query_dict(
+            self.bq_source.get_life_cycle_query()
+        )
+        assert list(selected) == ["selected"]
+        db = self.bq_source._region_lifecycle_db
+        assert db.execute("SELECT COUNT(*) FROM rows").fetchone()[0] == 2
+
+        traced = []
+        db.set_trace_callback(traced.append)
+        try:
+            context.table = "other"
+            other = self.bq_source.life_cycle_query_dict(
+                self.bq_source.get_life_cycle_query()
+            )
+        finally:
+            db.set_trace_callback(None)
+
+        assert list(other) == ["other"]
+        assert any("AND table_name = 'other'" in sql for sql in traced)
+        assert conn.execute.call_count == 1
+
+    def test_lifecycle_parallel_workers_share_one_region_query(self):
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter([])
+        self.bq_source.engine = engine
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(
+                lambda _: self.bq_source._load_region_lifecycle(MOCK_DB_NAME, "EU", "dataset_a"),
+                range(8),
+            ))
+
+        assert all(result == {} for result in results)
+        assert conn.execute.call_count == 1
+
+    def test_lifecycle_cache_separates_projects_and_regions(self):
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter([])
+        self.bq_source.engine = engine
+
+        for project, region in [
+            ("project-a", "EU"),
+            ("project-a", "eu"),
+            ("project-a", "US"),
+            ("project-b", "EU"),
+        ]:
+            assert self.bq_source._load_region_lifecycle(project, region, "dataset_a") == {}
+
+        assert conn.execute.call_count == 3
+
+    def test_lifecycle_region_failure_falls_back_to_dataset_queries(self):
+        self._set_dataset_location("EU")
+        engine, conn = self._make_engine_mock([])
+        statements = []
+
+        def execute(statement):
+            sql = str(statement)
+            statements.append(sql)
+            if "region-EU" in sql:
+                raise RuntimeError("TABLE_STORAGE permission denied")
+            rows = MagicMock()
+            rows.all.return_value = [
+                SimpleNamespace(_asdict=lambda: {
+                    "table_name": "alpha",
+                    "table_type": "BASE TABLE",
+                    "created_at": datetime(2025, 1, 1),
+                    "updated_at": None,
+                })
+            ]
+            return rows
+
+        conn.execute.side_effect = execute
+        self.bq_source.engine = engine
+        context = self.bq_source.context.get()
+        context.database_schema = "dataset_a"
+        result_a = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+        context.database_schema = "dataset_b"
+        result_b = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+        context.database_schema = "dataset_c"
+        result_c = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+
+        assert result_a["alpha"].created_at == datetime(2025, 1, 1)
+        assert result_b["alpha"].created_at == datetime(2025, 1, 1)
+        assert result_c["alpha"].created_at == datetime(2025, 1, 1)
+        assert len([sql for sql in statements if "region-EU" in sql]) == 2
+        assert len(statements) == 5  # two bounded region attempts; three cheap fallbacks
+
+
+    def test_lifecycle_invalid_row_keeps_other_tables_and_schemas(self):
+        self._set_dataset_location("EU")
+        invalid = SimpleNamespace(_asdict=lambda: {
+            "table_schema": "dataset_a",
+            "table_name": "invalid",
+            "created_at": "not-a-datetime",
+        })
+        valid_a = SimpleNamespace(_asdict=lambda: {
+            "table_schema": "dataset_a",
+            "table_name": "valid",
+            "created_at": datetime(2025, 3, 1),
+            "updated_at": datetime(2025, 3, 2),
+        })
+        valid_b = SimpleNamespace(_asdict=lambda: {
+            "table_schema": "dataset_b",
+            "table_name": "other",
+            "created_at": datetime(2025, 3, 3),
+            "updated_at": datetime(2025, 3, 4),
+        })
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter([invalid, valid_a, valid_b])
+        self.bq_source.engine = engine
+
+        context = self.bq_source.context.get()
+        context.database_schema = "dataset_a"
+        a = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+        context.database_schema = "dataset_b"
+        b = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+
+        assert set(a) == {"valid"}
+        assert a["valid"].updated_at == datetime(2025, 3, 2)
+        assert b["other"].created_at == datetime(2025, 3, 3)
+        assert conn.execute.call_count == 1
+
+    def test_lifecycle_transient_region_error_recovers_updated_timestamp(self):
+        self._set_dataset_location("EU")
+        engine, conn = self._make_engine_mock([])
+        sqls = []
+        successful_row = SimpleNamespace(_asdict=lambda: {
+            "table_schema": "dataset_b",
+            "table_name": "recovered",
+            "created_at": datetime(2025, 4, 1),
+            "updated_at": datetime(2025, 4, 2),
+        })
+
+        def execute(statement):
+            sql = str(statement)
+            sqls.append(sql)
+            rows = MagicMock()
+            if "region-EU" in sql:
+                if len([s for s in sqls if "region-EU" in s]) == 1:
+                    raise RuntimeError("transient timeout")
+                rows.__iter__.return_value = iter([successful_row])
+            else:
+                rows.all.return_value = []
+            return rows
+
+        conn.execute.side_effect = execute
+        self.bq_source.engine = engine
+        context = self.bq_source.context.get()
+        context.database_schema = "dataset_a"
+        assert self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query()) == {}
+        context.database_schema = "dataset_b"
+        b = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+        assert b["recovered"].updated_at == datetime(2025, 4, 2)
+
+        context.database_schema = "dataset_c"
+        assert self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query()) == {}
+        assert len([s for s in sqls if "region-EU" in s]) == 2
+
+    def test_lifecycle_disk_cache_has_size_limit_and_explicit_cleanup(self):
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter([])
+        self.bq_source.engine = engine
+        assert self.bq_source._load_region_lifecycle(MOCK_DB_NAME, "EU", "dataset_a") == {}
+
+        db = self.bq_source._region_lifecycle_db
+        folder = self.bq_source._region_lifecycle_dir.name
+        assert os.path.isdir(folder)
+        assert db.execute("PRAGMA page_size").fetchone()[0] == 4096
+        assert db.execute("PRAGMA max_page_count").fetchone()[0] == 65536
+
+        self.bq_source._clear_region_lifecycle_cache()
+        assert self.bq_source._region_lifecycle_db is None
+        assert not os.path.exists(folder)
+
+    def test_lifecycle_parallel_regions_do_not_block_each_other(self):
+        started = threading.Event()
+        release = threading.Event()
+        engine, conn = self._make_engine_mock([])
+
+        def execute(sql):
+            if "region-EU" in str(sql):
+                started.set()
+                assert release.wait(timeout=5)
+            rows = MagicMock()
+            rows.__iter__.return_value = iter([])
+            return rows
+
+        conn.execute.side_effect = execute
+        self.bq_source.engine = engine
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            eu = pool.submit(
+                self.bq_source._load_region_lifecycle, MOCK_DB_NAME, "EU", "dataset_a"
+            )
+            assert started.wait(timeout=5)
+            us = pool.submit(
+                self.bq_source._load_region_lifecycle, MOCK_DB_NAME, "US", "dataset_a"
+            )
+            try:
+                assert us.result(timeout=3) == {}
+            finally:
+                release.set()
+            assert eu.result(timeout=5) == {}
+
+        assert conn.execute.call_count == 2
+        assert self.bq_source._region_lifecycle_inflight == {}
+
+    def test_lifecycle_wrapped_forbidden_does_not_retry_costly_scan(self):
+        # SQLAlchemy wraps a Google 403, and its own error code is a string.
+        engine, conn = self._make_engine_mock([])
+        wrapped = DatabaseError("SELECT region", (), Forbidden("BQ permission denied"))
+        assert not isinstance(wrapped.code, int)
+        conn.execute.side_effect = wrapped
+        self.bq_source.engine = engine
+        for _ in range(4):
+            assert self.bq_source._load_region_lifecycle(
+                MOCK_DB_NAME, "EU", "dataset_a"
+            ) is None
+        assert conn.execute.call_count == 1
+        db = self.bq_source._region_lifecycle_db
+        assert db.execute("SELECT status FROM scans").fetchone()[0] == "failed"
+
+    def test_lifecycle_spool_overflow_rolls_back_partial_region_and_stops_retry(self):
+        rows = [
+            SimpleNamespace(_asdict=lambda i=i: {
+                "table_schema": "dataset_a",
+                "table_name": f"table_{i}",
+                "created_at": datetime(2025, 1, 1),
+                "updated_at": None,
+            })
+            for i in range(101)
+        ]
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter(rows)
+        self.bq_source.engine = engine
+        write = self.bq_source._write_region_lifecycle_batch
+        count = 0
+
+        def capped_write(batch):
+            nonlocal count
+            count += 1
+            if count == 2:
+                raise _RegionLifecycleSpoolError("database or disk is full")
+            return write(batch)
+
+        with patch.object(
+            self.bq_source, "_write_region_lifecycle_batch", side_effect=capped_write
+        ):
+            assert self.bq_source._load_region_lifecycle(
+                MOCK_DB_NAME, "EU", "dataset_a"
+            ) is None
+        assert count == 2
+        db = self.bq_source._region_lifecycle_db
+        assert db.execute("SELECT COUNT(*) FROM rows").fetchone()[0] == 0
+        assert self.bq_source._load_region_lifecycle(
+            MOCK_DB_NAME, "EU", "dataset_a"
+        ) is None
+        assert conn.execute.call_count == 1
+
+    def test_lifecycle_spool_full_and_failed_cleanup_never_rescans(self):
+        """A full disk may reject both writing data and recording failure state."""
+        rows = [
+            SimpleNamespace(_asdict=lambda i=i: {
+                "table_schema": "dataset_a",
+                "table_name": f"table_{i}",
+                "created_at": datetime(2025, 1, 1),
+            })
+            for i in range(101)
+        ]
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter(rows)
+        self.bq_source.engine = engine
+        original_db = self.bq_source._get_region_lifecycle_db()
+
+        class FullDiskDatabase:
+            def __getattr__(self, name):
+                return getattr(original_db, name)
+
+            def execute(self, statement, *args):
+                if statement.startswith("DELETE FROM rows"):
+                    raise sqlite3.OperationalError("database or disk is full")
+                return original_db.execute(statement, *args)
+
+        self.bq_source._region_lifecycle_db = FullDiskDatabase()
+        original_write = self.bq_source._write_region_lifecycle_batch
+        batches = 0
+
+        def disk_full_on_second_batch(batch):
+            nonlocal batches
+            batches += 1
+            if batches == 2:
+                raise _RegionLifecycleSpoolError("database or disk is full")
+            return original_write(batch)
+
+        with patch.object(
+            self.bq_source,
+            "_write_region_lifecycle_batch",
+            side_effect=disk_full_on_second_batch,
+        ):
+            assert self.bq_source._load_region_lifecycle(
+                MOCK_DB_NAME, "EU", "dataset_a"
+            ) is None
+
+        assert batches == 2
+        assert self.bq_source._region_lifecycle_spool_disabled is True
+        # The first committed batch remains because DELETE failed.
+        assert original_db.execute("SELECT COUNT(*) FROM rows").fetchone()[0] == 100
+
+        for _ in range(4):
+            assert self.bq_source._load_region_lifecycle(
+                MOCK_DB_NAME, "EU", "dataset_a"
+            ) is None
+        assert conn.execute.call_count == 1
+        self.bq_source._clear_region_lifecycle_cache()
+
+    def test_lifecycle_unavailable_spool_does_not_start_region_scan(self):
+        engine, conn = self._make_engine_mock([])
+        self.bq_source.engine = engine
+
+        with patch.object(
+            self.bq_source,
+            "_get_region_lifecycle_db",
+            side_effect=OSError("No space left on device"),
+        ) as open_db:
+            assert self.bq_source._load_region_lifecycle(
+                MOCK_DB_NAME, "EU", "dataset_a"
+            ) is None
+            assert self.bq_source._load_region_lifecycle(
+                MOCK_DB_NAME, "US", "dataset_a"
+            ) is None
+
+        assert open_db.call_count == 1
+        assert conn.execute.call_count == 0
+        assert self.bq_source._region_lifecycle_spool_disabled is True
+
+    def test_lifecycle_network_oserror_does_not_disable_other_regions(self):
+        """BigQuery transport errors must not trip the SQLite-spool breaker."""
+        engine, conn = self._make_engine_mock([])
+        scans = []
+
+        def network_scan(statement):
+            sql = str(statement)
+            scans.append(sql)
+            if "region-EU" in sql:
+                raise ConnectionResetError("BigQuery connection reset")
+            rows = MagicMock()
+            rows.__iter__.return_value = iter([])
+            return rows
+
+        conn.execute.side_effect = network_scan
+        self.bq_source.engine = engine
+
+        assert self.bq_source._load_region_lifecycle(
+            MOCK_DB_NAME, "EU", "dataset_a"
+        ) is None
+        assert self.bq_source._region_lifecycle_spool_disabled is False
+        assert self.bq_source._load_region_lifecycle(
+            MOCK_DB_NAME, "US", "dataset_a"
+        ) == {}
+        assert self.bq_source._load_region_lifecycle(
+            MOCK_DB_NAME, "EU", "dataset_a"
+        ) is None
+        assert self.bq_source._region_lifecycle_spool_disabled is False
+        assert sum("region-EU" in sql for sql in scans) == 2
+        assert sum("region-US" in sql for sql in scans) == 1
+        db = self.bq_source._region_lifecycle_db
+        assert db.execute(
+            "SELECT status FROM scans WHERE region = 'eu'"
+        ).fetchone()[0] == "failed"
+        assert db.execute(
+            "SELECT status FROM scans WHERE region = 'us'"
+        ).fetchone()[0] == "ok"
 
     # --- get_stored_procedures ---
 
