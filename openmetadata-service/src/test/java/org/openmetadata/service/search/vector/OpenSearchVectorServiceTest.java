@@ -970,10 +970,12 @@ class OpenSearchVectorServiceTest {
     // Stand-in for the text an older release built for the same entity: same updatedAt, other text.
     Table textChangedAsLastEmbedded =
         reuseTable("payments", "Customer payments", updatedAt).withId(textChanged.getId());
+    Table unfingerprintable = reuseTable("refunds", "Refunds issued", updatedAt);
     answerMgetsFrom(
         Map.of(
             textId(unchanged), storedEntityDoc(unchanged, unchanged),
-            textId(textChanged), storedEntityDoc(textChanged, textChangedAsLastEmbedded)));
+            textId(textChanged), storedEntityDoc(textChanged, textChangedAsLastEmbedded),
+            textId(unfingerprintable), storedEntityDoc(unfingerprintable, unfingerprintable)));
 
     Map<String, JsonNode> reusable =
         vectorService.getExistingEmbeddingsBatch(
@@ -981,7 +983,13 @@ class OpenSearchVectorServiceTest {
             Map.of(
                 textId(unchanged), () -> VectorDocBuilder.computeFingerprintForEntity(unchanged),
                 textId(textChanged),
-                    () -> VectorDocBuilder.computeFingerprintForEntity(textChanged)));
+                    () -> VectorDocBuilder.computeFingerprintForEntity(textChanged),
+                textId(unfingerprintable),
+                    () -> {
+                      throw new IllegalStateException("tag without an FQN");
+                    },
+                UUID.randomUUID().toString(),
+                    () -> VectorDocBuilder.computeFingerprintForEntity(unchanged)));
 
     assertEquals(java.util.Set.of(textId(unchanged)), reusable.keySet());
     assertEquals(

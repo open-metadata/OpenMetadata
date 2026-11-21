@@ -184,6 +184,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * comes from the sink's own ReindexContext, so writers of normal (non-recreate) runs never
    * consult generation discovery and can never land in a crashed run's orphan.
    */
+  @Override
   public void backfillEntityChunks(EntityInterface<?> entity, String stagedChunkTarget) {
     if (stagedChunkTarget == null) {
       updateEntityEmbeddingChunks(entity);
@@ -272,21 +273,13 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   /**
-   * Write the given prebuilt chunk documents for an entity. Used by the reindex sink, which builds
-   * the chunk docs itself so chunk 0 can also be spliced into the staged entity doc without a
-   * second embedding pass.
-   */
-  public void writeEntityChunks(String parentId, List<Map<String, Object>> chunkDocs) {
-    writeEntityChunks(parentId, chunkDocs, null);
-  }
-
-  /**
    * Reindex-sink chunk write. {@code stagedChunkTarget} is the staged generation created by the
    * run's own reCreateIndexes call and carried in its ReindexContext — the same propagation the
    * staged ENTITY indexes rely on — so writes are scoped to the current run by construction:
    * partial recreates and normal runs carry no target and write to the live index, and a crashed
    * run's orphan can never capture anything.
    */
+  @Override
   public void writeEntityChunks(
       String parentId, List<Map<String, Object>> chunkDocs, String stagedChunkTarget) {
     try {
@@ -336,6 +329,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * <p>Context memory visibility is resolved for {@code subjectContext} even though the parent is
    * known: a parent may be a restricted memory, which yields no passages without it.
    */
+  @Override
   public List<String> searchChunksByParent(
       String parentId, String query, int k, SubjectContext subjectContext) {
     List<String> passages = new ArrayList<>();
@@ -404,6 +398,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * <p>Still throws on index create — a half-made generation is a state the next run must not
    * inherit silently.
    */
+  @Override
   public String beginStagedChunkRecreate() {
     if (!isEmbeddingAvailable()) {
       LOG.warn(
@@ -449,6 +444,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * without this, a later unrelated run's callbacks could complete and promote the dead
    * generation. The bare generation index is left for the next staged recreate's sweep.
    */
+  @Override
   public void clearStagedChunkState(String generation) {
     synchronized (stagedChunkLock) {
       if (generation.equals(stagedChunkIndex)) {
@@ -487,6 +483,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * coordinator's completion callbacks). No-op when no staged recreate is active or for non-vector
    * types.
    */
+  @Override
   public void markEntityTypeReindexed(String entityType, boolean success, String runGeneration) {
     String normalized = entityType == null ? null : entityType.toLowerCase(Locale.ROOT);
     String generation = stagedChunkIndex;
@@ -624,6 +621,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * stagedExpectedTypes}) and is coordinator-only. {@code participantStagedTarget} is safe because
    * the promotion path never reads it.
    */
+  @Override
   public void latchParticipantStagedTarget(String staged) {
     participantStagedTarget = staged;
   }
@@ -633,6 +631,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * a later run cannot mirror or delete into a generation that belongs to a finished (promoted or
    * abandoned) run.
    */
+  @Override
   public void clearParticipantStagedTarget() {
     participantStagedTarget = null;
   }
@@ -799,8 +798,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   /**
    * Write-path gate: throws when the chunk index could not be ensured. A raw write against a
-   * missing index would auto-create it with dynamic mappings ({@code embedding} as float, not
-   * knn_vector), permanently wedging vector search until manual index surgery — worse than the
+   * missing index would auto-create it with dynamic mappings ({@code embedding} as float, not a
+   * vector field), permanently wedging vector search until manual index surgery — worse than the
    * skipped write. Read paths stay lenient: reads cannot auto-create an index.
    */
   private void requireChunkIndexForWrite() {
@@ -816,7 +815,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     if (!chunkIndexEnsured) {
       synchronized (this) {
         if (!chunkIndexEnsured) {
-          // Only latch on success so a transient failure (e.g. OpenSearch outage during startup)
+          // Only latch on success so a transient failure (e.g. a cluster outage during startup)
           // is retried on the next write instead of disabling chunk indexing until restart.
           chunkIndexEnsured = createChunkIndexIfAbsent();
         }
@@ -906,8 +905,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   /**
    * Additive {@code PUT _mapping} body applied by {@link #applyChunkMappingUpgradeIfStale}. Sends the
-   * property set <b>minus the {@code embedding} knn_vector</b> plus the bumped
-   * {@code _meta.chunkDocVersion}. Re-declaring the existing {@code knn_vector} is rejected by some
+   * property set <b>minus the {@code embedding} vector field</b> plus the bumped
+   * {@code _meta.chunkDocVersion}. Re-declaring the existing vector field is rejected by some
    * OpenSearch versions/plugins even with identical parameters; because {@code PUT _mapping} is
    * atomic, that would fail the whole request and silently leave the genuinely new denormalized
    * fields unmapped (on a {@code dynamic:false} index) while docs are still stamped with the new
@@ -1406,22 +1405,6 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   @Override
   @SuppressWarnings("unchecked")
-  public VectorSearchResponse search(
-      String query,
-      Map<String, List<String>> filters,
-      int size,
-      int from,
-      int k,
-      double threshold,
-      String preference,
-      SubjectContext subjectContext) {
-    return search(
-        new VectorSearchParameters(
-            query, filters, size, from, k, threshold, preference, subjectContext, null));
-  }
-
-  @Override
-  @SuppressWarnings("unchecked")
   public VectorSearchResponse search(VectorSearchParameters parameters) {
     String query = parameters.query();
     int size = parameters.size();
@@ -1501,9 +1484,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     for (JsonNode hit : hitsNode) {
       pageHitCount++;
       double score = hit.path("_score").asDouble(0.0);
-      // When threshold > 0, OpenSearch already applies min_score at the KNN query level.
-      // This post-filter acts as a safety net for the no-threshold case (k-based retrieval),
-      // where low-scoring neighbors may still be returned to fill the k count.
+      // OpenSearch applies a positive threshold as min_score in the query. Elasticsearch's kNN
+      // has no such option, and k-based retrieval on either engine returns low-scoring
+      // neighbors to fill the k count, so the threshold is enforced here as well.
       if (score < threshold) {
         continue;
       }
@@ -1641,6 +1624,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * @param currentFingerprintById each entity's current fingerprint, computed only when a stored
    *     one exists
    */
+  @Override
   public Map<String, JsonNode> getExistingEmbeddingsBatch(
       String indexName, Map<String, Supplier<String>> currentFingerprintById) {
     Map<String, JsonNode> reusable = Collections.emptyMap();
