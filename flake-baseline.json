@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-20T03:05:55Z",
+  "generatedAt": "2026-11-21T03:06:13Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "43482948785",
-      "sourceSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
-      "recordedAt": "2026-11-13T19:07:41Z"
-    },
     {
       "runId": "43547153622",
       "sourceSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
@@ -53,6 +48,11 @@
       "runId": "44661891093",
       "sourceSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
       "recordedAt": "2026-11-20T03:05:55Z"
+    },
+    {
+      "runId": "44856696294",
+      "sourceSha": "0b8b4e875530e3a6cf20cc5f1638d77bbd72c484",
+      "recordedAt": "2026-11-21T03:06:13Z"
     }
   ],
   "entries": {
@@ -86,16 +86,6 @@
       "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
       "hardFailure": true
     },
-    "Basic :: Pages/BotsProfile.spec.ts :: Bots Panel in AI Profile Modal \u203a should restore a soft-deleted bot from the list": {
-      "observations": [
-        "43482948785"
-      ],
-      "project": "Basic",
-      "file": "Pages/BotsProfile.spec.ts",
-      "title": "Bots Panel in AI Profile Modal \u203a should restore a soft-deleted bot from the list",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
-      "hardFailure": false
-    },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a a bot writing the field supersedes the held edit": {
       "observations": [
         "43617762853",
@@ -119,7 +109,6 @@
     },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a accepting one of two competing edits supersedes the other": {
       "observations": [
-        "43482948785",
         "43668471513",
         "44004103039",
         "44224347886",
@@ -189,12 +178,13 @@
         "44004103039",
         "44224347886",
         "44445461359",
-        "44661891093"
+        "44661891093",
+        "44856696294"
       ],
       "project": "Ingestion",
       "file": "Features/DataQuality/AddTestCaseNewFlow.spec.ts",
       "title": "Add TestCase New Flow \u203a Add Column Test Case",
-      "lastSeenSha": "2cc8c5525582f44dd70ed861b2aef44ea0e0be1e",
+      "lastSeenSha": "0b8b4e875530e3a6cf20cc5f1638d77bbd72c484",
       "hardFailure": false
     },
     "Ingestion :: Flow/ServiceForm.spec.ts :: Service form functionality \u203a Superset \u203a Verify SSL cert upload with long filename and UI overflow handling": {
@@ -422,7 +412,6 @@
     },
     "chromium :: Features/OntologyNativeDataMode.spec.ts :: Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API": {
       "observations": [
-        "43482948785",
         "43547153622",
         "43617762853",
         "43668471513"
@@ -441,26 +430,6 @@
       "file": "Features/OntologyNativeLiveData.spec.ts",
       "title": "Native ontology Live data \u203a a failed bindings read shows an error with Retry, not a missing binding, and Retry reaches the SQL",
       "lastSeenSha": "d47d0c5f208bdb9ff6f8d73603b6747169b0e4ee",
-      "hardFailure": false
-    },
-    "chromium :: Features/OntologyNativeLiveData.spec.ts :: Native ontology Live data \u203a shows the generated SQL, one search-around hop and the not stored badge": {
-      "observations": [
-        "43482948785"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyNativeLiveData.spec.ts",
-      "title": "Native ontology Live data \u203a shows the generated SQL, one search-around hop and the not stored badge",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
-      "hardFailure": false
-    },
-    "chromium :: Features/OntologyNativeRelations.spec.ts :: Native ontology relations \u203a offers registry relation types with their inverses": {
-      "observations": [
-        "43482948785"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyNativeRelations.spec.ts",
-      "title": "Native ontology relations \u203a offers registry relation types with their inverses",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": false
     },
     "chromium :: Features/OntologyNativeStudio.spec.ts :: Native Ontology Studio \u203a authors a native model through the shared View, Edit, and Query shell": {
@@ -506,7 +475,6 @@
     },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed": {
       "observations": [
-        "43482948785",
         "43547153622"
       ],
       "project": "chromium",
@@ -517,7 +485,6 @@
     },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a reads Published without review on a directly published release row and detail": {
       "observations": [
-        "43482948785",
         "43617762853"
       ],
       "project": "chromium",
@@ -526,19 +493,8 @@
       "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
       "hardFailure": false
     },
-    "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a says there are no differences when a release is compared with itself": {
-      "observations": [
-        "43482948785"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyReview.spec.ts",
-      "title": "Release history and compare (G8) \u203a says there are no differences when a release is compared with itself",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
-      "hardFailure": false
-    },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases": {
       "observations": [
-        "43482948785",
         "43668471513"
       ],
       "project": "chromium",
@@ -575,26 +531,6 @@
       "file": "Features/OntologyStudioFlows.spec.ts",
       "title": "Ontology Studio flows \u203a flow 7: a rejection shows its reason to the author, who edits and asks again, and withdraws the second request, in classic mode",
       "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyStudioPermissions.spec.ts :: Ontology Studio shows only the actions a user can take \u203a a user with only OntologyReviewer cannot edit or connect but opens Tasks": {
-      "observations": [
-        "43482948785"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyStudioPermissions.spec.ts",
-      "title": "Ontology Studio shows only the actions a user can take \u203a a user with only OntologyReviewer cannot edit or connect but opens Tasks",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyStudioPermissions.spec.ts :: Ontology Studio shows only the actions a user can take \u203a keyboard focus in the header reaches each visible control and skips what is hidden": {
-      "observations": [
-        "43482948785"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyStudioPermissions.spec.ts",
-      "title": "Ontology Studio shows only the actions a user can take \u203a keyboard focus in the header reaches each visible control and skips what is hidden",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
       "hardFailure": true
     },
     "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed": {
@@ -637,6 +573,16 @@
       "title": "Profile SSO Settings \u203a an existing configuration patches self signup and discards unsaved edits",
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
       "hardFailure": true
+    },
+    "chromium :: Flow/AppBasic.spec.ts :: should call installed app api and it should respond with 200": {
+      "observations": [
+        "44856696294"
+      ],
+      "project": "chromium",
+      "file": "Flow/AppBasic.spec.ts",
+      "title": "should call installed app api and it should respond with 200",
+      "lastSeenSha": "0b8b4e875530e3a6cf20cc5f1638d77bbd72c484",
+      "hardFailure": false
     },
     "chromium :: Pages/AIProfile/ProfileDetails.spec.ts :: Profile \u2014 Profile security \u203a submission is blocked until the new password meets every requirement": {
       "observations": [
@@ -870,7 +816,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-custom-properties": {
       "observations": [
-        "43482948785",
         "43547153622",
         "43617762853"
       ],
@@ -906,7 +851,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-custom-properties": {
       "observations": [
-        "43482948785",
         "43547153622",
         "43617762853"
       ],
@@ -1079,7 +1023,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-publish-releases": {
       "observations": [
-        "43482948785",
         "43547153622",
         "43793180722"
       ],
@@ -1289,16 +1232,6 @@
       "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Settings dark \u203a settings-audit-logs": {
-      "observations": [
-        "43482948785"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Settings dark \u203a settings-audit-logs",
-      "lastSeenSha": "6f80037555a2fcb74776f68b9871fdd299fffac5",
-      "hardFailure": false
-    },
     "visual-regression :: VisualRegression/connectionBranches.spec.ts :: Connection branches dark \u203a connection-branch-dashboardServices-Tableau-root-authType-3512437263": {
       "observations": [
         "44224347886"
@@ -1351,7 +1284,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices MicroStrategy configuration form": {
       "observations": [
-        "43482948785",
         "43547153622",
         "43617762853"
       ],
@@ -1383,7 +1315,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Sigma configuration form": {
       "observations": [
-        "43482948785",
         "43547153622",
         "43617762853"
       ],
@@ -1535,7 +1466,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices MicroStrategy configuration form": {
       "observations": [
-        "43482948785",
         "43547153622",
         "43617762853"
       ],
@@ -1567,7 +1497,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Sigma configuration form": {
       "observations": [
-        "43482948785",
         "43547153622",
         "43617762853"
       ],
@@ -1780,7 +1709,6 @@
     },
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions dark \u203a glossary-late-activity-count": {
       "observations": [
-        "43482948785",
         "43547153622",
         "43617762853",
         "43793180722"
@@ -1793,7 +1721,6 @@
     },
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count": {
       "observations": [
-        "43482948785",
         "43547153622",
         "43617762853",
         "43793180722",
@@ -1949,7 +1876,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: glossary matches baseline": {
       "observations": [
-        "43482948785",
         "43547153622",
         "43617762853",
         "44224347886"
@@ -2041,9 +1967,6 @@
     "chromium :: Features/McpAdministration.spec.ts :: admin controls MCP access and revokes registered clients",
     "chromium :: Features/OntologyNativeDataMode.spec.ts :: Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API",
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a fills history rows and compares two releases in classic mode",
-    "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed",
-    "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a reads Published without review on a directly published release row and detail",
-    "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases",
     "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-custom-properties",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-schema-definition",
