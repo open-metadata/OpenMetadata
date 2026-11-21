@@ -67,6 +67,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 
 /**
@@ -902,9 +903,11 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     final SoftDeletedResultFixture fixture = createSoftDeletedResultFixture(client, ns);
     final TestSuite before = client.testSuites().get(fixture.suite().getId().toString(), "summary");
     assertEquals(1, before.getSummary().getFailed());
+    assertLatestResultTimestamp(fixture.suite(), fixture.failedAt());
 
     client.testCases().delete(fixture.failedCase().getId().toString());
 
+    assertLatestResultTimestamp(fixture.suite(), fixture.passedAt());
     assertOnlyActiveSuccessfulResults(
         client.testSuites().get(fixture.suite().getId().toString(), "summary"));
     Awaitility.await("deleted failing case is absent from suite list summary")
@@ -923,10 +926,18 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
             new CreateTestSuite()
                 .withName(ns.prefix("suite_soft_deleted_failure"))
                 .withDescription("Soft-delete result isolation regression"));
-    addTestCasesToLogicalTestSuite(
-        suite.getId(), testCases.stream().map(TestCase::getId).toList());
-    recordTestCaseResults(client, testCases, 1, 1);
-    return new SoftDeletedResultFixture(suite, testCases.get(1));
+    addTestCasesToLogicalTestSuite(suite.getId(), testCases.stream().map(TestCase::getId).toList());
+    final long failedAt = System.currentTimeMillis();
+    final long passedAt = failedAt - 1000;
+    final String passedCase = testCases.get(0).getFullyQualifiedName();
+    client.testCaseResults().forTestCase(passedCase).timestamp(passedAt).passed().create();
+    client
+        .testCaseResults()
+        .forTestCase(testCases.get(1).getFullyQualifiedName())
+        .timestamp(failedAt)
+        .failed()
+        .create();
+    return new SoftDeletedResultFixture(suite, testCases.get(1), passedCase, passedAt, failedAt);
   }
 
   private static void assertOnlyActiveSuccessfulResults(final TestSuite suite) {
@@ -936,7 +947,58 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     assertEquals(1, suite.getTestCaseResultSummary().size());
   }
 
-  private record SoftDeletedResultFixture(TestSuite suite, TestCase failedCase) {}
+  private static void assertLatestResultTimestamp(final TestSuite suite, final long expected) {
+    final var rows =
+        Entity.getCollectionDAO()
+            .testCaseResultTimeSeriesDao()
+            .getMaxTimestampForTestSuites(List.of(suite.getId().toString()));
+    assertEquals(1, rows.size());
+    assertEquals(expected, rows.getFirst().maxTimestamp());
+  }
+
+  @Test
+  void suiteCompletionEmitsOnlyTheSurvivingResult(final TestNamespace ns) throws Exception {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final SoftDeletedResultFixture fixture = createSoftDeletedResultFixture(client, ns);
+    client.testCases().delete(fixture.failedCase().getId().toString());
+    final IngestionPipeline pipeline = createTestSuitePipeline(client, ns, fixture.suite());
+    final long offset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    putPipelineStatus(client, pipeline, PipelineStatusType.SUCCESS);
+
+    Awaitility.await("completion event includes only the live success")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(() -> assertCompletionResults(fixture, offset));
+  }
+
+  private static void assertCompletionResults(
+      final SoftDeletedResultFixture fixture, final long offset) {
+    final var events =
+        Entity.getChangeEventRepository()
+            .list(
+                0,
+                Long.MAX_VALUE,
+                List.of(),
+                List.of(Entity.TEST_SUITE),
+                List.of(),
+                List.of(),
+                offset,
+                1000);
+    final JsonNode results =
+        events.getData().stream()
+            .filter(event -> fixture.suite().getId().equals(event.getEntityId()))
+            .filter(event -> event.getChangeDescription() != null)
+            .flatMap(event -> event.getChangeDescription().getFieldsUpdated().stream())
+            .filter(field -> "testCaseResultSummary".equals(field.getName()))
+            .map(field -> JsonUtils.valueToTree(field.getNewValue()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("No suite completion event"));
+    assertEquals(1, results.size());
+    assertEquals(fixture.passedCase(), results.get(0).path("testCaseName").asText());
+    assertEquals("Success", results.get(0).path("status").asText());
+  }
+
+  private record SoftDeletedResultFixture(
+      TestSuite suite, TestCase failedCase, String passedCase, long passedAt, long failedAt) {}
 
   @Test
   void test_addTestCasesToBasicTestSuite_400(TestNamespace ns) {
