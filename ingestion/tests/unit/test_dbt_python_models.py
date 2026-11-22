@@ -20,7 +20,8 @@ import pytest
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
 from metadata.ingestion.source.database.dbt.dbt_utils import is_dbt_sql_node
-from tests.unit import test_dbt as dbt_cases
+
+from . import test_dbt as dbt_cases  # noqa: TID252
 
 MODEL_KEY = dbt_cases.TestDbtSourceIdentifiers.MODEL_KEY
 PHYSICAL_FQN = dbt_cases.TestDbtSourceIdentifiers.PHYSICAL_FQN
