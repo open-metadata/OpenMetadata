@@ -38,6 +38,9 @@ from metadata.generated.schema.entity.services.apiService import (
 from metadata.generated.schema.entity.services.connections.api.openAPISchemaS3 import (
     OpenAPISchemaS3,
 )
+from metadata.generated.schema.entity.services.connections.api.openAPISchemaURL import (
+    OpenAPISchemaURL,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -858,6 +861,16 @@ class TestRest:
         collection = deepcopy(MOCK_SINGLE_COLLECTION)
         collection.url = None
         assert self.rest_source._generate_endpoint_url(collection, MOCK_SINGLE_ENDPOINT) is None
+
+    def test_endpoint_url_preserves_schema_url_without_documentation(self):
+        schema_url = AnyUrl("https://petstore3.swagger.io/api/v3/openapi.json")
+        connection = self.rest_source.config.serviceConnection.root.config
+        connection.docURL = None
+        connection.openAPISchemaConnection = OpenAPISchemaURL(openAPISchemaURL=schema_url)
+        collection = deepcopy(MOCK_SINGLE_COLLECTION)
+        collection.url = self.rest_source._generate_collection_url("store")
+
+        assert self.rest_source._generate_endpoint_url(collection, MOCK_SINGLE_ENDPOINT) == schema_url
 
     def test_url_helpers_recover_from_errors(self):
         with patch(
