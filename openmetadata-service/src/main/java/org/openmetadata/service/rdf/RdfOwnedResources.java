@@ -1,5 +1,8 @@
 package org.openmetadata.service.rdf;
 
+import static org.openmetadata.service.rdf.translator.RdfConceptBindingMapper.BOUND_ASSET;
+import static org.openmetadata.service.rdf.translator.RdfConceptBindingMapper.BOUND_COLUMN;
+
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
@@ -11,7 +14,6 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.vocabulary.RDF;
-import org.openmetadata.service.rdf.translator.RdfConceptBindingMapper;
 
 /** Owned subresources must be replaced along with the entity links that identify them. */
 public final class RdfOwnedResources {
@@ -31,8 +33,6 @@ public final class RdfOwnedResources {
       NodeFactory.createURI(OM_NS + "hasConstraintMember");
   private static final Node HAS_CONSTRAINED_COLUMN =
       NodeFactory.createURI(OM_NS + "hasConstrainedColumn");
-  private static final String BOUND_ASSET = RdfConceptBindingMapper.BOUND_ASSET;
-  private static final String BOUND_COLUMN = RdfConceptBindingMapper.BOUND_COLUMN;
   private static final Node HAS_TEST_RESULT = NodeFactory.createURI(OM_NS + "hasTestResult");
   private static final Node HAS_RESULT_VALUE = NodeFactory.createURI(OM_NS + "hasResultValue");
   private static final Node HAS_OPEN_INCIDENT = NodeFactory.createURI(OM_NS + "hasOpenIncident");
@@ -127,7 +127,7 @@ public final class RdfOwnedResources {
           BIND(<%2$s> AS ?p)
         }
         """
-        .formatted(RdfConceptBindingMapper.BOUND_ASSET, RdfConceptBindingMapper.BOUND_COLUMN);
+        .formatted(BOUND_ASSET, BOUND_COLUMN);
   }
 
   /** Whether {@code triple} of the entity's projection is one of its incoming binding edges. */

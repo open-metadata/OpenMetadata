@@ -117,37 +117,37 @@ final class RdfTableKeyMapper {
             constraint.addProperty(model.createProperty(OM_NS, "hasConstrainedColumn"), column));
     referred.forEach(
         column -> constraint.addProperty(model.createProperty(OM_NS, "hasReferredColumn"), column));
-    emitMembers(constraint, columns, referred, model);
-    flagColumns(key, columns, referred, model);
+    final List<Resource> pairedColumns = columns.size() == referred.size() ? referred : List.of();
+    emitMembers(constraint, columns, pairedColumns, model);
+    flagColumns(key, columns, model);
   }
 
-  /** Members are numbered from 1 in declared order; the i-th referred column pairs with the i-th. */
+  /** Members are numbered from 1 in declared order. Only complete pairings state join edges. */
   private static void emitMembers(
       final Resource constraint,
       final List<Resource> columns,
       final List<Resource> referred,
       final Model model) {
     final Property hasMember = model.createProperty(OM_NS, "hasConstraintMember");
+    final Property references = model.createProperty(OM_NS, "references");
     for (int index = 0; index < columns.size(); index++) {
       final Resource member =
           model.createResource(constraint.getURI() + MEMBER_SEGMENT + (index + 1));
       member.addProperty(RDF.type, model.createResource(OM_NS + "ConstraintMember"));
       member.addProperty(
           model.createProperty(OM_NS, "memberPosition"), model.createTypedLiteral(index + 1));
-      member.addProperty(model.createProperty(OM_NS, "memberColumn"), columns.get(index));
-      if (index < referred.size()) {
-        member.addProperty(
-            model.createProperty(OM_NS, "memberReferredColumn"), referred.get(index));
+      final Resource column = columns.get(index);
+      member.addProperty(model.createProperty(OM_NS, "memberColumn"), column);
+      if (!referred.isEmpty()) {
+        final Resource target = referred.get(index);
+        member.addProperty(model.createProperty(OM_NS, "memberReferredColumn"), target);
+        column.addProperty(references, target);
       }
       constraint.addProperty(hasMember, member);
     }
   }
 
-  private static void flagColumns(
-      final Key key,
-      final List<Resource> columns,
-      final List<Resource> referred,
-      final Model model) {
+  private static void flagColumns(final Key key, final List<Resource> columns, final Model model) {
     for (final Resource column : columns) {
       if (key.isPrimaryKey()) {
         column.addLiteral(model.createProperty(OM_NS, "isPrimaryKey"), true);
@@ -156,12 +156,6 @@ final class RdfTableKeyMapper {
       if (columns.size() == 1 && key.isKey()) {
         column.addLiteral(model.createProperty(OM_NS, "isUnique"), true);
       }
-    }
-    final int pairs = Math.min(columns.size(), referred.size());
-    for (int index = 0; index < pairs; index++) {
-      columns
-          .get(index)
-          .addProperty(model.createProperty(OM_NS, "references"), referred.get(index));
     }
   }
 

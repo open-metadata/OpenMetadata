@@ -55,7 +55,10 @@ public final class RdfQualityEvidence {
     return new RdfQualityEvidence(new DatabaseRdfQualityEvidenceSource());
   }
 
-  /** Attaches the evidence of one page of {@code entityType} entities, with one read per kind. */
+  /**
+   * Attaches evidence to one page of {@code entityType} entities. Time-series reads are batched by
+   * kind. Masking loads column tags per table and loads each distinct tested table once per page.
+   */
   public void attach(final String entityType, final List<? extends EntityInterface<?>> entities) {
     switch (entityType) {
       case Entity.TABLE -> attachProfiles(entities.stream().map(Table.class::cast).toList());
@@ -70,7 +73,11 @@ public final class RdfQualityEvidence {
   private void attachProfiles(final List<Table> tables) {
     final Map<String, TableProfile> tableProfiles =
         source.latestTableProfiles(tables.stream().map(Table::getFullyQualifiedName).toList());
-    tables.forEach(table -> table.setProfile(tableProfiles.get(table.getFullyQualifiedName())));
+    for (final Table table : tables) {
+      table.setProfile(tableProfiles.get(table.getFullyQualifiedName()));
+      EntityUtil.getFlattenedEntityField(table.getColumns())
+          .forEach(column -> column.setProfile(null));
+    }
     final List<Column> unmasked = tables.stream().flatMap(this::unmaskedColumns).toList();
     final Map<String, ColumnProfile> columnProfiles =
         source.latestColumnProfiles(unmasked.stream().map(Column::getFullyQualifiedName).toList());
@@ -78,10 +85,8 @@ public final class RdfQualityEvidence {
         column -> column.setProfile(columnProfiles.get(column.getFullyQualifiedName())));
   }
 
-  /** Clears every column's profile and returns the columns whose profile may be shown. */
   private Stream<Column> unmaskedColumns(final Table table) {
     final List<Column> columns = EntityUtil.getFlattenedEntityField(table.getColumns());
-    columns.forEach(column -> column.setProfile(null));
     final Set<String> unmaskedFqns = unmaskedFqns(table, source.columnTags(table));
     return columns.stream().filter(column -> unmaskedFqns.contains(column.getFullyQualifiedName()));
   }

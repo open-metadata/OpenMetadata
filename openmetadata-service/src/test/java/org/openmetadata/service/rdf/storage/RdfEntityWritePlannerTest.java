@@ -65,6 +65,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteRequest;
@@ -92,7 +93,13 @@ class RdfEntityWritePlannerTest {
 
   private final JsonLdTranslator translator =
       new JsonLdTranslator(
-          JsonUtils.getObjectMapper(), BASE, (type, fqns) -> Map.of(), ReferenceScope.ALL);
+          JsonUtils.getObjectMapper(),
+          BASE,
+          (type, fqns) ->
+              Entity.TABLE.equals(type) && fqns.contains(TABLE_FQN)
+                  ? Map.of(TABLE_FQN, TABLE_ID)
+                  : Map.of(),
+          ReferenceScope.ALL);
   private final Store diff = new Store();
   private final Store replace = new Store();
 
@@ -353,6 +360,9 @@ class RdfEntityWritePlannerTest {
 
   @Test
   void aNewerTestResultReplacesTheOlderOneAndDeletingTheTestCaseRemovesIt() {
+    final Table table = table(List.of(column("amount")));
+    final Model tableProjection = translator.toRdf(table);
+    writeBoth(TABLE_URI, table);
     final TestCase testCase =
         new TestCase()
             .withId(TEST_CASE_ID)
@@ -372,17 +382,25 @@ class RdfEntityWritePlannerTest {
     testCase.setIncidentStatus(null);
     writeBoth(TEST_CASE_URI, testCase);
     assertSameGraph();
-    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(testCase)));
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(testCase).union(tableProjection)));
 
     testCase.setTestCaseResult(null);
     writeBoth(TEST_CASE_URI, testCase);
     assertSameGraph();
-    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(testCase)));
+    assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(testCase).union(tableProjection)));
 
     testCase.setTestCaseResult(testResult(3000L, TestCaseStatus.Aborted, "1"));
     writeBoth(TEST_CASE_URI, testCase);
+    assertTrue(
+        diff.graph()
+            .contains(
+                diff.graph().createResource(TEST_CASE_URI),
+                diff.graph().createProperty(OM, "testsEntity"),
+                diff.graph().createResource(TABLE_URI)));
     UpdateAction.parseExecute(RdfRepository.buildEntityDeleteUpdate(TEST_CASE_URI), diff.dataset);
-    assertTrue(diff.graph().isEmpty(), () -> diff.graph().listStatements().toList().toString());
+    assertTrue(
+        diff.graph().isIsomorphicWith(tableProjection),
+        () -> diff.graph().listStatements().toList().toString());
   }
 
   private static TestCaseResult testResult(

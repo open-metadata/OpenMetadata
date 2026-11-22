@@ -120,7 +120,9 @@ downstream of the source column take 330 ms in memory, and 11 pages of 250 rows 
 ## Table keys
 
 Each table constraint is an `om:TableConstraint` whose `om:ConstraintMember`s give its columns in
-order. A foreign key pairs each member column with the referred column at the same position:
+order. A foreign key pairs columns by position when the filtered column lists have equal length.
+When their lengths differ, the constraint reports `om:hasConstrainedColumn` and
+`om:hasReferredColumn` membership without stating any column pairings.
 
 ```sparql
 PREFIX om: <https://open-metadata.org/ontology/>
@@ -336,8 +338,8 @@ domain is the class or one of its superclasses, in full, and with every shared p
 it by label and comment; a property comes back on its own. A shared property is one with an open
 domain: `schema:domainIncludes` records each class the projection writes it on, as an annotation that
 entails nothing, so `om:hasColumn` and `om:downstream` appear in the entry for `om:Table`. Like the
-full ontology, a term read needs no permission. The largest class entry, `om:Table`, is about 53 KB of
-Turtle against the 80,000-byte default response budget; the full file is about 349 KB. See ADR:2026-11-18-ontology-terms-describe-themselves-and-read-one-at-a-time.
+full ontology, a term read needs no permission. The largest class entry, `om:Table`, fits within
+the 80,000-byte default response budget. See ADR:2026-11-18-ontology-terms-describe-themselves-and-read-one-at-a-time.
 
 ## Regression coverage
 

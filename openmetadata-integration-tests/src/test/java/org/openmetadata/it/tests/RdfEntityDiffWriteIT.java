@@ -383,7 +383,10 @@ public class RdfEntityDiffWriteIT {
     final String releaseTriples =
         diff.executeSparqlQuery(
             "SELECT (COUNT(*) AS ?n) WHERE { GRAPH <" + release + "> { ?s ?p ?o } }", "json");
-    assertTrue(releaseTriples.contains("\"3\""), releaseTriples);
+    assertEquals(
+        3L,
+        JsonUtils.readTree(releaseTriples).at("/results/bindings/0/n/value").asLong(),
+        releaseTriples);
 
     served.put(TABLE_ID, List.of(new ServedBinding(CUSTOMER, List.of())));
     writeBoth(bound, table);

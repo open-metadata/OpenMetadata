@@ -14,18 +14,16 @@ package org.openmetadata.service.rdf.translator;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.MissingNode;
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.rdf.model.ResourceFactory;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfQualityEvidence;
 import org.openmetadata.service.rdf.RdfUtils;
@@ -44,7 +42,7 @@ final class RdfTestResultMapper {
   private static final String GENERATED_AT = "http://www.w3.org/ns/prov#generatedAtTime";
   private static final String LATEST_RESULT = "/result/latest";
   private static final String OPEN_INCIDENT = "/incident/open";
-  private static final String RESOLVED = "Resolved";
+  private static final String RESOLVED = TestCaseResolutionStatusTypes.Resolved.value();
   private static final List<String> RESULT_NUMBERS =
       List.of("passedRows", "failedRows", "minBound", "maxBound");
 
@@ -144,7 +142,7 @@ final class RdfTestResultMapper {
   private static Optional<Literal> timestamp(final JsonNode record) {
     return RdfJsonNode.field(record, "timestamp")
         .filter(JsonNode::isNumber)
-        .map(RdfTestResultMapper::dateTime);
+        .map(RdfJsonNode::epochDateTime);
   }
 
   private static void emitResultNumbers(final JsonNode result, final Resource resultNode) {
@@ -154,7 +152,8 @@ final class RdfTestResultMapper {
           .filter(JsonNode::isNumber)
           .ifPresent(
               value ->
-                  resultNode.addProperty(model.createProperty(OM_NS, field), number(value, model)));
+                  resultNode.addProperty(
+                      model.createProperty(OM_NS, field), RdfJsonNode.number(value, model)));
     }
   }
 
@@ -187,17 +186,6 @@ final class RdfTestResultMapper {
 
   private static void literal(final Resource node, final String predicate, final String value) {
     node.addProperty(node.getModel().createProperty(OM_NS, predicate), value);
-  }
-
-  private static Literal number(final JsonNode value, final Model model) {
-    return value.isIntegralNumber()
-        ? model.createTypedLiteral(value.asLong())
-        : model.createTypedLiteral(value.asDouble());
-  }
-
-  private static Literal dateTime(final JsonNode epochMillis) {
-    return ResourceFactory.createTypedLiteral(
-        Instant.ofEpochMilli(epochMillis.asLong()).toString(), XSDDatatype.XSDdateTime);
   }
 
   private static String tableIri(final String baseUri, final UUID tableId) {

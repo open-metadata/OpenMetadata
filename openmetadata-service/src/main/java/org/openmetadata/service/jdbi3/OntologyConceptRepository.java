@@ -125,7 +125,8 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
    */
   @Override
   protected void entitySpecificCleanup(final OntologyConcept concept) {
-    final List<EntityReference> bound = boundAssets(concept.getId());
+    final List<EntityReference> bound =
+        RdfUpdater.isEnabled() ? boundAssets(concept.getId()) : List.of();
     daoCollection.ontologyConceptBindingDAO().deleteConcept(concept.getId());
     RdfUpdater.refreshEntities(bound);
   }

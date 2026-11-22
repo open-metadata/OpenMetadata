@@ -35,6 +35,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityProfileRepository;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.LatestRecordWithFQNHash;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.LatestExtensionRecord;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -55,14 +56,10 @@ final class DatabaseRdfQualityEvidenceSource implements RdfQualityEvidenceSource
 
   @Override
   public Map<String, TestCaseResult> latestTestCaseResults(final List<String> testCaseFqns) {
-    final Map<String, String> jsonByHash = new HashMap<>();
-    if (!testCaseFqns.isEmpty()) {
-      Entity.getCollectionDAO()
-          .dataQualityDataTimeSeriesDao()
-          .getLatestRecordBatch(testCaseFqns)
-          .forEach(row -> jsonByHash.put(row.getEntityFQNHash(), row.getJson()));
-    }
-    return byFqn(testCaseFqns, jsonByHash, json -> JsonUtils.readValue(json, TestCaseResult.class));
+    return latestTestRecords(
+        testCaseFqns,
+        fqns -> Entity.getCollectionDAO().dataQualityDataTimeSeriesDao().getLatestRecordBatch(fqns),
+        TestCaseResult.class);
   }
 
   /** The tags a table read with tags gives each column, derived glossary tags included. */
@@ -79,31 +76,35 @@ final class DatabaseRdfQualityEvidenceSource implements RdfQualityEvidenceSource
   @Override
   public Map<String, TestCaseResolutionStatus> latestIncidentStatuses(
       final List<String> testCaseFqns) {
-    final Map<String, String> jsonByHash = new HashMap<>();
-    if (!testCaseFqns.isEmpty()) {
-      Entity.getCollectionDAO()
-          .testCaseResolutionStatusTimeSeriesDao()
-          .getLatestRecordBatch(testCaseFqns)
-          .forEach(row -> jsonByHash.put(row.getEntityFQNHash(), row.getJson()));
-    }
-    return byFqn(
+    return latestTestRecords(
         testCaseFqns,
-        jsonByHash,
-        json -> JsonUtils.readValue(json, TestCaseResolutionStatus.class));
+        fqns ->
+            Entity.getCollectionDAO()
+                .testCaseResolutionStatusTimeSeriesDao()
+                .getLatestRecordBatch(fqns),
+        TestCaseResolutionStatus.class);
   }
 
   @Override
   public Optional<Table> liveTable(final String tableFqn) {
-    Optional<Table> table;
     try {
-      table =
-          Optional.of(
-              Entity.getEntityByName(
-                  Entity.TABLE, tableFqn, TESTED_TABLE_FIELDS, Include.NON_DELETED));
+      return Optional.of(
+          Entity.getEntityByName(Entity.TABLE, tableFqn, TESTED_TABLE_FIELDS, Include.NON_DELETED));
     } catch (EntityNotFoundException missing) {
-      table = Optional.empty();
+      return Optional.empty();
     }
-    return table;
+  }
+
+  private static <T> Map<String, T> latestTestRecords(
+      final List<String> fqns,
+      final Function<List<String>, List<LatestRecordWithFQNHash>> batchRead,
+      final Class<T> recordType) {
+    if (fqns.isEmpty()) {
+      return Map.of();
+    }
+    final Map<String, String> jsonByHash = new HashMap<>();
+    batchRead.apply(fqns).forEach(row -> jsonByHash.put(row.getEntityFQNHash(), row.getJson()));
+    return byFqn(fqns, jsonByHash, json -> JsonUtils.readValue(json, recordType));
   }
 
   private static <T> Map<String, T> latestProfiles(

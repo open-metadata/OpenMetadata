@@ -37,6 +37,7 @@ public final class RdfLiveWriteStore {
   // (ADR:2026-10-26-the-rdf-graph-projects-the-live-catalog-only).
   private static final int MAX_WRITES_PER_ENQUEUE = 500;
   private static final int LATER_COPY_WINDOW = 100;
+  private static final long MAX_REFRESH_RETIRE_AGE_MILLIS = Duration.ofSeconds(60).toMillis();
   private static final String WRITER_LOCK =
       "SELECT id FROM rdf_live_write_guard WHERE id = 'drain-v2' FOR UPDATE";
   private static final String RECORD_ENQUEUED =
@@ -190,7 +191,7 @@ public final class RdfLiveWriteStore {
   /**
    * As {@link #processNext(Consumer)}, except that a head write {@code supersededByALaterCopy}
    * accepts is retired without being applied when the same payload is queued again shortly after
-   * it.
+   * it and the head is younger than the retirement age cap.
    */
   public boolean processNext(
       final Consumer<String> write, final Predicate<String> supersededByALaterCopy) {
@@ -241,15 +242,18 @@ public final class RdfLiveWriteStore {
       final Consumer<String> write,
       final Predicate<String> supersededByALaterCopy) {
     final Entry entry = head(handle);
-    if (entry == null || entry.nextAttemptAt() > clock.millis()) {
+    final long now = clock.millis();
+    if (entry == null || entry.nextAttemptAt() > now) {
       return false;
     }
-    if (supersededByALaterCopy.test(entry.payload()) && hasLaterCopy(handle, entry)) {
+    final long ageMillis = Math.max(0, now - entry.createdAt());
+    if (ageMillis < MAX_REFRESH_RETIRE_AGE_MILLIS
+        && supersededByALaterCopy.test(entry.payload())
+        && hasLaterCopy(handle, entry)) {
       retire(handle, entry.id());
       return true;
     }
-    OntologyMetrics.recordRdfQueueLag(
-        Duration.ofMillis(Math.max(0, clock.millis() - entry.createdAt())));
+    OntologyMetrics.recordRdfQueueLag(Duration.ofMillis(ageMillis));
     try {
       write.accept(entry.payload());
     } catch (RuntimeException exception) {

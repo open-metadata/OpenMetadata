@@ -36,7 +36,10 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
+import org.openmetadata.service.rdf.translator.ReferenceScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -599,7 +602,6 @@ class RdfPropertyMapperTest {
     @Test
     @DisplayName("FOREIGN_KEY table constraint emits om:references and TableConstraint resource")
     void testForeignKeyTableConstraint() throws Exception {
-      ArrayNode constraints = objectMapper.createArrayNode();
       ObjectNode fk = objectMapper.createObjectNode();
       fk.put("constraintType", "FOREIGN_KEY");
       fk.put("relationshipType", "MANY_TO_ONE");
@@ -609,15 +611,8 @@ class RdfPropertyMapperTest {
       ArrayNode referred = objectMapper.createArrayNode();
       referred.add("service.db.s.customers.id");
       fk.set("referredColumns", referred);
-      constraints.add(fk);
 
-      invokePrivate(
-          "emitTableConstraints",
-          new Class[] {JsonNode.class, String.class, Resource.class, Model.class},
-          constraints,
-          "service.db.s.orders",
-          entityResource,
-          model);
+      projectTableConstraint(fk, "service.db.s.orders");
 
       Resource customerIdCol =
           model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.orders.customer_id"));
@@ -664,7 +659,6 @@ class RdfPropertyMapperTest {
     })
     void testKeyUniquenessAppliesToTheWholeConstraint(
         String type, int columnCount, String firstColumn) throws Exception {
-      ArrayNode constraints = objectMapper.createArrayNode();
       ObjectNode pk = objectMapper.createObjectNode();
       pk.put("constraintType", type);
       ArrayNode cols = objectMapper.createArrayNode();
@@ -673,15 +667,8 @@ class RdfPropertyMapperTest {
         cols.add("user_id");
       }
       pk.set("columns", cols);
-      constraints.add(pk);
 
-      invokePrivate(
-          "emitTableConstraints",
-          new Class[] {JsonNode.class, String.class, Resource.class, Model.class},
-          constraints,
-          "service.db.s.users",
-          entityResource,
-          model);
+      projectTableConstraint(pk, "service.db.s.users");
 
       Resource constraint =
           model
@@ -716,6 +703,22 @@ class RdfPropertyMapperTest {
       }
     }
 
+    private void projectTableConstraint(final ObjectNode constraint, final String tableFqn) {
+      EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", "table");
+      final Table table =
+          new Table()
+              .withId(UUID.randomUUID())
+              .withName("table")
+              .withFullyQualifiedName(tableFqn)
+              .withTableConstraints(
+                  List.of(objectMapper.convertValue(constraint, TableConstraint.class)));
+      final JsonLdTranslator translator =
+          new JsonLdTranslator(
+              objectMapper, BASE_URI, (type, fqns) -> Map.of(), ReferenceScope.ALL);
+      model.add(translator.toRdf(table));
+      entityResource = model.createResource(BASE_URI + "entity/table/" + table.getId());
+    }
+
     private ObjectNode columnNode(String name, String dataType, String fqn, String constraint) {
       ObjectNode col = objectMapper.createObjectNode();
       col.put("name", name);
@@ -729,7 +732,7 @@ class RdfPropertyMapperTest {
 
     @Test
     @DisplayName("Column.profile is emitted as facts on the column rather than a JSON literal")
-    void testColumnProfileEmittedAsDqv() throws Exception {
+    void testColumnProfileEmittedAsColumnFacts() throws Exception {
       ArrayNode columns = objectMapper.createArrayNode();
       ObjectNode col = objectMapper.createObjectNode();
       col.put("name", "email");

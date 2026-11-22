@@ -111,14 +111,11 @@ public final class RdfLiveWriter implements AutoCloseable {
    * stores a profile per column queues one refresh of the table per column.
    */
   static boolean isEntityRefresh(final String payload) {
-    boolean refresh;
     try {
-      refresh =
-          JsonUtils.readValue(payload, RdfLiveWrite.class) instanceof RdfLiveWrite.EntityUpdate;
+      return JsonUtils.readValue(payload, RdfLiveWrite.class) instanceof RdfLiveWrite.EntityUpdate;
     } catch (JsonParsingException unreadable) {
-      refresh = false;
+      return false;
     }
-    return refresh;
   }
 
   private void apply(final String payload) {

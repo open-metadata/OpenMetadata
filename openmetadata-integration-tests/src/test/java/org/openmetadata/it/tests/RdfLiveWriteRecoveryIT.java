@@ -399,6 +399,44 @@ public class RdfLiveWriteRecoveryIT {
 
   @ParameterizedTest
   @EnumSource(RdfTestDatabase.Backend.class)
+  void anOldRefreshIsAppliedEvenWhenAnotherCopyIsPending(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final String refresh = insert(1);
+      fixture.primary.enqueue(refresh);
+      fixture.clock.advance(61_000);
+      fixture.primary.enqueue(refresh);
+      final List<String> applied = new ArrayList<>();
+
+      assertTrue(fixture.other.processNext(applied::add, refresh::equals));
+
+      assertEquals(List.of(refresh), applied);
+      assertEquals(1, fixture.primary.pendingWrites());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aCopyOutsideTheNextHundredRowsDoesNotRetireTheHead(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final String refresh = insert(1);
+      final List<String> queued = new ArrayList<>();
+      queued.add(refresh);
+      for (int index = 2; index <= 101; index++) {
+        queued.add(insert(index));
+      }
+      queued.add(refresh);
+      fixture.primary.enqueueAll(queued);
+      final List<String> applied = new ArrayList<>();
+
+      assertTrue(fixture.other.processNext(applied::add, refresh::equals));
+
+      assertEquals(List.of(refresh), applied);
+      assertEquals(101, fixture.primary.pendingWrites());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
   void theWatermarkPassesAWriteOnlyOnceItIsApplied(final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       fixture.primary.enqueue(insert(1));

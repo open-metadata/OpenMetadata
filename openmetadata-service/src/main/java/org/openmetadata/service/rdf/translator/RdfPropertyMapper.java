@@ -98,8 +98,8 @@ public class RdfPropertyMapper {
 
   // Properties that DO belong in the graph but are emitted by a dedicated structured-emission step
   // (emitStructuredProperties) rather than the generic field loop, so the generic loop must not
-  // also write them as opaque JSON literals: tableConstraints (emitTableConstraints, needs the
-  // parent table FQN to mint constrained-column URIs), profile (RdfQualityMapper DQV measurements),
+  // also write them as opaque JSON literals: tableConstraints (RdfTableKeyMapper needs the
+  // parent table FQN to mint constrained-column URIs), profile (RdfQualityMapper literal facts),
   // pipelineStatus (RdfActivityMapper prov:Activity), usageSummary (RdfUsageMapper usage-count
   // triples), testCaseResult and incidentStatus (RdfTestResultMapper, the latest result and the
   // open incident).
@@ -335,7 +335,7 @@ public class RdfPropertyMapper {
     RdfJsonNode.array(entityJson, "tableConstraints")
         .ifPresent(
             constraints ->
-                emitTableConstraints(
+                keyMapper.emitDeclared(
                     constraints, entity.getFullyQualifiedName(), entityResource, model));
     RdfJsonNode.object(entityJson, "profile")
         .ifPresent(profile -> RdfQualityMapper.emitTableProfile(profile, entityResource, model));
@@ -1381,12 +1381,6 @@ public class RdfPropertyMapper {
         }
       }
     }
-  }
-
-  /** Declared table constraints; see {@link RdfTableKeyMapper}. */
-  private void emitTableConstraints(
-      JsonNode constraints, String tableFqn, Resource tableResource, Model model) {
-    keyMapper.emitDeclared(constraints, tableFqn, tableResource, model);
   }
 
   private void emitColumnChildren(JsonNode children, Resource parentColumn, Model model) {

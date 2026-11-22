@@ -178,6 +178,31 @@ class RdfTableKeyProjectionTest {
     assertFalse(model.listStatements(customer, null, (RDFNode) null).hasNext());
   }
 
+  @Test
+  void aForeignKeyWithUnequalListsKeepsTheColumnsWithoutPairingThem() {
+    final Table table =
+        table(column("tenant_id"), column("customer_id"))
+            .withTableConstraints(
+                List.of(
+                    new TableConstraint()
+                        .withConstraintType(ConstraintType.FOREIGN_KEY)
+                        .withColumns(List.of("tenant_id", "customer_id"))
+                        .withReferredColumns(List.of("", CUSTOMERS + ".id"))));
+
+    final Model model = translator.toRdf(table);
+    final Resource key = onlyConstraint(model, "FOREIGN_KEY");
+
+    assertTrue(model.contains(key, property("hasConstrainedColumn"), columnNode("tenant_id")));
+    assertTrue(model.contains(key, property("hasConstrainedColumn"), columnNode("customer_id")));
+    assertTrue(model.contains(key, property("hasReferredColumn"), referredNode("id")));
+    assertEquals(
+        List.of(
+            new Member(1, columnNode("tenant_id"), null),
+            new Member(2, columnNode("customer_id"), null)),
+        members(model, key));
+    assertFalse(model.contains(null, property("references"), (RDFNode) null));
+  }
+
   private static List<Member> members(final Model model, final Resource constraint) {
     final List<Member> members = new ArrayList<>();
     model

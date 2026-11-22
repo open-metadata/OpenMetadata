@@ -120,12 +120,6 @@ final class RdfReindexer {
     this.readers = readers;
   }
 
-  /** Loads the latest quality evidence onto one page of entities before they are written. */
-  @FunctionalInterface
-  interface QualityEvidence {
-    void attach(String entityType, List<? extends EntityInterface<?>> entities);
-  }
-
   /**
    * Reads the stored entities of {@code entityType} through its repository, with the latest
    * profiles and test results the live write projects too
@@ -133,16 +127,16 @@ final class RdfReindexer {
    */
   static EntityPages repositoryPages(final String entityType) {
     return withQualityEvidence(
-        entityType, RepositoryPages.of(entityType), RdfQualityEvidence.database()::attach);
+        entityType, RepositoryPages.of(entityType), RdfQualityEvidence.database());
   }
 
   /** {@code pages}, whose loaded entities carry {@code evidence}; stored-data-only ones too. */
   static EntityPages withQualityEvidence(
-      final String entityType, final EntityPages pages, final QualityEvidence evidence) {
+      final String entityType, final EntityPages pages, final RdfQualityEvidence evidence) {
     return new EvidencePages(entityType, pages, evidence);
   }
 
-  private record EvidencePages(String entityType, EntityPages pages, QualityEvidence evidence)
+  private record EvidencePages(String entityType, EntityPages pages, RdfQualityEvidence evidence)
       implements EntityPages {
     @Override
     public List<String> readPage(final KeysetCursor after, final int limit) {

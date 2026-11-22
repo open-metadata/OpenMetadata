@@ -1,13 +1,13 @@
 package org.openmetadata.service.rdf.translator;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Literal;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.rdf.model.ResourceFactory;
 
 /**
  * Emits the latest table and column profile as literal facts on the profiled table or column, so a
@@ -66,32 +66,20 @@ public final class RdfQualityMapper {
                 .ifPresent(
                     value ->
                         subject.addLiteral(
-                            model.createProperty(OM_NS, predicate), number(value, model))));
+                            model.createProperty(OM_NS, predicate),
+                            RdfJsonNode.number(value, model))));
     profiledAt(profile)
-        .ifPresent(
-            time ->
-                subject.addLiteral(
-                    model.createProperty(OM_NS, PROFILED_AT),
-                    model.createTypedLiteral(time, XSDDatatype.XSDdateTime)));
+        .ifPresent(time -> subject.addLiteral(model.createProperty(OM_NS, PROFILED_AT), time));
   }
 
-  private static Literal number(JsonNode value, Model model) {
-    return value.isIntegralNumber()
-        ? model.createTypedLiteral(value.asLong())
-        : model.createTypedLiteral(value.asDouble());
-  }
-
-  private static Optional<String> profiledAt(JsonNode profile) {
-    return RdfJsonNode.field(profile, "timestamp").flatMap(RdfQualityMapper::timestampValue);
-  }
-
-  private static Optional<String> timestampValue(JsonNode timestamp) {
-    Optional<String> value = Optional.empty();
-    if (timestamp.isTextual()) {
-      value = Optional.of(timestamp.asText());
-    } else if (timestamp.isNumber()) {
-      value = Optional.of(Instant.ofEpochMilli(timestamp.asLong()).toString());
-    }
-    return value;
+  private static Optional<Literal> profiledAt(final JsonNode profile) {
+    return RdfJsonNode.field(profile, "timestamp")
+        .filter(timestamp -> timestamp.isTextual() || timestamp.isNumber())
+        .map(
+            timestamp ->
+                timestamp.isTextual()
+                    ? ResourceFactory.createTypedLiteral(
+                        timestamp.asText(), XSDDatatype.XSDdateTime)
+                    : RdfJsonNode.epochDateTime(timestamp));
   }
 }

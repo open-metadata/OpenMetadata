@@ -1,12 +1,14 @@
 # The RDF graph carries the latest quality evidence of each table, column and test case
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-18 (initial) · v2 2026-11-22 (shared test case masking) · v3 2026-11-22 (column changes requeue tests)
+- **Revisions:** v1 2026-11-18 (initial)
 - **Deciders:** OpenMetadata RDF maintainers
 - **Guard:** `RdfQualityProjectionTest`, `RdfQualityEvidenceTest`, `QualityWritesRefreshRdfTest`,
   `RdfEntityWritePlannerTest#aNewerTestResultReplacesTheOlderOneAndDeletingTheTestCaseRemovesIt`,
   `RdfReindexerTest#everyPageIsWrittenWithTheQualityEvidenceLoadedOntoItsEntities`,
   `RdfLiveWriterTest`, `RdfLiveWriteRecoveryIT#aRefreshQueuedAgainLaterIsRetiredWithoutBeingApplied`,
+  `RdfLiveWriteRecoveryIT#anOldRefreshIsAppliedEvenWhenAnotherCopyIsPending`,
+  `RdfLiveWriteRecoveryIT#aCopyOutsideTheNextHundredRowsDoesNotRetireTheHead`,
   `RdfQualityEvidenceIT`, `RdfOntologyContractTest`
 - **Related:** ADR:2026-11-03-live-rdf-entity-writes-send-only-the-changed-triples,
   ADR:2026-10-26-the-rdf-graph-projects-the-live-catalog-only,
@@ -39,21 +41,29 @@ card shows a node's literal values as facts, and anything behind an edge costs a
 - **Live triggers.** A profile write or delete queues its table; a result updates its test case,
   whose entity hook queues it; an incident status change queues its test case. A table refresh
   that changes the set of columns or any column's tags requeues the table's test cases before
-  storing the projection. A failed requeue leaves the prior projection for retry.
-- **Repeated refreshes collapse.** A queued entity refresh is retired without being applied when
-  the same refresh is queued again within the next 100 rows: it reads the entity when applied, so
-  the later copy projects the same state or a newer one. Retirement goes through `retire`, so the
-  watermarks stay exact.
+  storing the projection. The comparison includes untagged and nested columns. If a column is
+  dropped or renamed and the old path no longer resolves, the replayed test case loses its
+  `om:testsColumn` link and evidence. A failed requeue leaves the prior projection for retry.
+- **Repeated refreshes collapse.** A queued entity refresh younger than 60 seconds is retired
+  when the next 100 rows contain the same refresh. The later copy reads current state when applied.
+  The age cap gives brief bursts time to coalesce and ensures an old refresh is applied when it
+  reaches the head, even if new copies keep arriving. The row limit bounds the work per lookup.
+  Retirement goes through `retire`, which preserves the watermarks.
 - **PII, fail closed.** The graph gets what an API caller without PII access gets (`PIIMasker`),
   using tags the evidence reads itself. A `PII.Sensitive` column and the fields beneath it have
   no profile. A test on a sensitive column or an unresolved column or table has no result or
-  incident in the graph.
+  incident in the graph. The graph and entity RDF endpoint use the same test case masking helper
+  as the test-case API. It clears the result, incident status, parameter values, description and
+  both change descriptions. RDF keeps the stored test case name for graph labels. A reindex
+  removes masked fields from existing projections.
 
 ## Consequences
 
-- **Access.** Through the API a profile needs the view-profile permission on its table and a
-  result or incident the tests permission. In the graph they are readable by anyone allowed to
-  query it. Filtering the graph per asset is deferred by decision of the project owner.
+- **Access.** Granting `ExecuteSparqlQuery` on the RDF resource grants read access to projected
+  profile values and test results through the `sparql_query` MCP tool and
+  `/v1/rdf/sparql/agent`. These reads do not require the REST API's per-table `ViewDataProfile`
+  and `ViewTests` permissions. Operators should grant `ExecuteSparqlQuery` accordingly.
+  The project owner deferred per-asset filtering to a follow-up.
 - The write scope still deletes DQV measurement nodes and their links, so stores written by an
   earlier build of this branch clean up on the next write.
 - The legacy `om:incidentStatus` JSON literal on test cases is no longer written.
@@ -64,16 +74,3 @@ card shows a node's literal values as facts, and anything behind an edge costs a
 - A result written while RDF was off appears after a reindex or the next write of its test case.
   Existing stores hold no evidence until a reindex.
 - Revisit if the per-column measure set must grow, or if profile history becomes a graph need.
-
-## Amendment — 2026-11-22
-
-For test cases that require masking, the graph and entity RDF endpoint call the same
-`PIIMasker` helper as the test-case API. It clears the result, incident status, parameter values,
-description, and both change descriptions. RDF keeps the stored test case name for graph
-labels. A reindex removes masked fields from test cases projected before this change.
-
-## Amendment — 2026-11-22. Column changes requeue tests
-
-The comparison includes untagged and nested columns. When a column is dropped or renamed, the
-replayed test case loses its `om:testsColumn` link and evidence if the old column path no longer
-resolves.

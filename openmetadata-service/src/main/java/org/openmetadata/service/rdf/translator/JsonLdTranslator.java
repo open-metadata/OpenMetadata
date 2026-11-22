@@ -84,7 +84,8 @@ public class JsonLdTranslator {
         objectMapper,
         baseUri,
         entity -> entity.getEntityReference().getType(),
-        new Lookups(tagLookup, bindingLookup),
+        tagLookup,
+        bindingLookup,
         referenceScope);
   }
 
@@ -96,7 +97,8 @@ public class JsonLdTranslator {
         objectMapper,
         baseUri,
         entityTypeResolver,
-        new Lookups(LiveTagLookup.database(), ConceptBindingLookup.NONE),
+        LiveTagLookup.database(),
+        ConceptBindingLookup.NONE,
         ReferenceScope.LIVE);
   }
 
@@ -104,19 +106,18 @@ public class JsonLdTranslator {
       ObjectMapper objectMapper,
       String baseUri,
       Function<EntityInterface<?>, String> entityTypeResolver,
-      Lookups lookups,
+      LiveTagLookup tagLookup,
+      ConceptBindingLookup bindingLookup,
       ReferenceScope referenceScope) {
     this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
     this.contextCache = new HashMap<>();
     this.baseUri = Objects.requireNonNull(baseUri, "baseUri");
     this.entityTypeResolver = Objects.requireNonNull(entityTypeResolver, "entityTypeResolver");
-    this.bindingLookup = Objects.requireNonNull(lookups.bindings(), "bindingLookup");
+    this.bindingLookup = Objects.requireNonNull(bindingLookup, "bindingLookup");
     loadContexts();
     this.propertyMapper =
-        new RdfPropertyMapper(baseUri, objectMapper, contextCache, lookups.tags(), referenceScope);
+        new RdfPropertyMapper(baseUri, objectMapper, contextCache, tagLookup, referenceScope);
   }
-
-  private record Lookups(LiveTagLookup tags, ConceptBindingLookup bindings) {}
 
   private void loadContexts() {
     contextCache.put("base", contextValue("base.jsonld"));

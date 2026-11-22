@@ -25,11 +25,11 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
@@ -51,6 +51,7 @@ import org.openmetadata.service.util.PostCommitActionQueue;
  * Profiles and incident statuses are time-series rows, not entity updates, so no entity hook
  * projects them: each write refreshes the projection of the table or test case it is about.
  */
+@Isolated
 class QualityWritesRefreshRdfTest {
   private static final String TABLE_FQN = "svc.db.schema.orders";
   private static final long PROFILED_AT = 1_763_000_000_000L;
@@ -61,8 +62,7 @@ class QualityWritesRefreshRdfTest {
   private final CollectionDAO dao = mock(CollectionDAO.class);
   private final TimeSeriesDAOs.ProfilerDataTimeSeriesDAO profiles =
       mock(TimeSeriesDAOs.ProfilerDataTimeSeriesDAO.class);
-  private Field queueField;
-  private Object originalQueue;
+  private AutoCloseable capturedQueue;
 
   @BeforeAll
   static void registerEntityTypes() {
@@ -70,18 +70,15 @@ class QualityWritesRefreshRdfTest {
   }
 
   @BeforeEach
-  void captureTheLiveQueue() throws ReflectiveOperationException {
-    queueField = RdfUpdater.class.getDeclaredField("writeQueue");
-    queueField.setAccessible(true);
-    originalQueue = queueField.get(null);
-    queueField.set(null, (Consumer<List<RdfLiveWrite>>) queued::addAll);
+  void captureTheLiveQueue() {
+    capturedQueue = RdfUpdater.captureWrites(queued::addAll);
     when(dao.profilerDataTimeSeriesDao()).thenReturn(profiles);
   }
 
   @AfterEach
-  void restoreTheLiveQueue() throws ReflectiveOperationException {
+  void restoreTheLiveQueue() throws Exception {
     PostCommitActionQueue.clear();
-    queueField.set(null, originalQueue);
+    capturedQueue.close();
   }
 
   @Test

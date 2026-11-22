@@ -10,8 +10,8 @@
 ## Context
 A model exploring the knowledge graph sees which predicates leave a node, not what is behind them.
 Most predicates in `openmetadata.ttl` carried only a label and a projection status, so the meaning
-lived in prompts kept in other repositories. The whole file is about 310 KB as Turtle, several times
-the MCP response budget, so `ontology_describe` without a `resource` returned a truncated prefix.
+lived in prompts kept in other repositories. The full Turtle file exceeds the MCP response
+budget, so `ontology_describe` without a `resource` returned a truncated prefix.
 
 ## Decision
 - Every predicate that is declared and either written by the projection fixtures or the writers'
@@ -30,10 +30,11 @@ the MCP response budget, so `ontology_describe` without a `resource` returned a 
   its own statements, those of every property whose `rdfs:domain` is the class or a superclass, and
   the label and comment of every shared property whose `schema:domainIncludes` names one of them;
   a property returns its own statements. Shared properties are cut to label and comment so the
-  largest class stays inside the response budget (`om:Table` is about 53 KB of the 80,000 bytes);
-  their own entry gives the range and classes. Blank-node objects are followed so lists stay whole. It is
-  served from the same static file as the full ontology and needs no permission; `term` and
-  `resource` are not combined. An undeclared term is an argument error.
+  largest class entry (`om:Table`) fits within the 80,000-byte default response budget.
+  Each shared property's own entry gives its range and classes. The tool follows blank-node
+  objects to preserve lists. It serves term entries from the same static file as the full ontology,
+  without requiring a permission. Supply at most one of `term` and `resource`. An undeclared term is an
+  argument error.
 - `owl:versionInfo` moves once per release, with one changelog entry for everything in it. A
   release that adds terms and corrects domains is a minor bump, as 1.1.0 was; the knowledge-graph
   release that carries these descriptions is 2.1.0.

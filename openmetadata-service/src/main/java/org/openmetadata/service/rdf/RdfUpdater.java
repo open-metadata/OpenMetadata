@@ -12,6 +12,7 @@
  */
 package org.openmetadata.service.rdf;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Collection;
@@ -124,6 +125,13 @@ public final class RdfUpdater {
 
   public static boolean isEnabled() {
     return writeQueue != null;
+  }
+
+  @VisibleForTesting
+  public static AutoCloseable captureWrites(final Consumer<List<RdfLiveWrite>> queue) {
+    final Consumer<List<RdfLiveWrite>> original = writeQueue;
+    writeQueue = queue;
+    return () -> writeQueue = original;
   }
 
   public static void enqueueOntologyGraph(final CollectionDAO dao, final UUID ontologyId) {

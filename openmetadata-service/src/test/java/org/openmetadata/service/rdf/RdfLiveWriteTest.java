@@ -25,7 +25,6 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.lang.reflect.Field;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -34,7 +33,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.jena.query.Dataset;
@@ -46,6 +44,7 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.update.UpdateAction;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -70,6 +69,7 @@ import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 
+@Isolated
 class RdfLiveWriteTest {
   private static final String BASE = "https://open-metadata.org/";
   private static final String GRAPH = BASE + "graph/knowledge";
@@ -283,7 +283,7 @@ class RdfLiveWriteTest {
 
   @Test
   void anActiveReleaseChangeReplacesTheGraphAndQueuesEachBoundAssetAsItsOwnWrite()
-      throws ReflectiveOperationException {
+      throws Exception {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", Entity.TABLE);
     final UUID ontologyId = UUID.randomUUID();
     for (int index = 0; index <= RdfProjectionLoaders.BoundAssets.PAGE_SIZE; index++) {
@@ -291,14 +291,8 @@ class RdfLiveWriteTest {
     }
     unreadableAsset = new UUID(0, 2);
     final List<RdfLiveWrite> queued = new ArrayList<>();
-    final Field queue = RdfUpdater.class.getDeclaredField("writeQueue");
-    queue.setAccessible(true);
-    final Object original = queue.get(null);
-    queue.set(null, (Consumer<List<RdfLiveWrite>>) queued::addAll);
-    try {
+    try (final var ignored = RdfUpdater.captureWrites(queued::addAll)) {
       replay(new RdfLiveWrite.OntologyGraph(ontologyId));
-    } finally {
-      queue.set(null, original);
     }
 
     assertEquals(List.of(ontologyId), refreshedOntologyGraphs);
@@ -390,7 +384,8 @@ class RdfLiveWriteTest {
                 boundAssets.stream()
                     .filter(asset -> asset.getId().toString().compareTo(after) > 0)
                     .limit(limit)
-                    .toList()));
+                    .toList(),
+            tableFqn -> {}));
   }
 
   private EntityInterface<?> load(final UUID id) {

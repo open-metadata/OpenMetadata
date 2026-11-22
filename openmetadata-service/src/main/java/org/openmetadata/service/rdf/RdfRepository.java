@@ -606,18 +606,22 @@ public class RdfRepository {
    * (ADR:2026-11-18-the-rdf-graph-carries-the-latest-quality-evidence).
    */
   private void refreshTable(final EntityInterface<?> table) {
-    final String tableUri = entityUri(Entity.TABLE, table.getId());
-    final Map<String, Set<RDFNode>> previousColumnTags =
-        RdfColumnTags.read(
-            storageService.executeSparqlQuery(
-                RdfColumnTags.storedQuery(KNOWLEDGE_GRAPH, tableUri),
-                RdfColumnTags.RESULTS_FORMAT));
-    final Model projection = translateProjection(table);
-    if (!previousColumnTags.equals(RdfColumnTags.of(projection, tableUri))) {
-      // A failed requeue must leave the previous projection for the retry to compare.
-      projectionLoaders.testCaseRequeue().requeueTestCasesOf(table.getFullyQualifiedName());
+    try {
+      final String tableUri = entityUri(Entity.TABLE, table.getId());
+      final Map<String, Set<RDFNode>> previousColumnTags =
+          RdfColumnTags.read(
+              storageService.executeSparqlQuery(
+                  RdfColumnTags.storedQuery(KNOWLEDGE_GRAPH, tableUri),
+                  RdfColumnTags.RESULTS_FORMAT));
+      final Model projection = translator.toRdf(table);
+      if (!previousColumnTags.equals(RdfColumnTags.of(projection, tableUri))) {
+        // A failed requeue must leave the previous projection for the retry to compare.
+        projectionLoaders.testCaseRequeue().requeueTestCasesOf(table.getFullyQualifiedName());
+      }
+      storeProjection(table, projection);
+    } catch (RuntimeException failure) {
+      throw projectionFailure(table, failure);
     }
-    storeProjection(table, projection);
   }
 
   public void refreshOntologyGraph(final UUID ontologyId) {
@@ -709,32 +713,24 @@ public class RdfRepository {
 
   public void createOrUpdate(EntityInterface<?> entity) {
     if (isEnabled()) {
-      storeProjection(entity, translateProjection(entity));
-    }
-  }
-
-  private Model translateProjection(final EntityInterface<?> entity) {
-    try {
-      return translator.toRdf(entity);
-    } catch (RuntimeException failure) {
-      throw projectionFailure(entity, failure);
+      try {
+        storeProjection(entity, translator.toRdf(entity));
+      } catch (RuntimeException failure) {
+        throw projectionFailure(entity, failure);
+      }
     }
   }
 
   private void storeProjection(final EntityInterface<?> entity, final Model projection) {
-    try {
-      final String entityType = entity.getEntityReference().getType();
-      LOG.debug(
-          "Storing entity in RDF - Type: {}, FQN: {}, Name: {}, ID: {}",
-          entityType,
-          entity.getFullyQualifiedName(),
-          entity.getName(),
-          entity.getId());
-      storageService.storeEntity(entityType, entity.getId(), projection);
-      LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
-    } catch (RuntimeException failure) {
-      throw projectionFailure(entity, failure);
-    }
+    final String entityType = entity.getEntityReference().getType();
+    LOG.debug(
+        "Storing entity in RDF - Type: {}, FQN: {}, Name: {}, ID: {}",
+        entityType,
+        entity.getFullyQualifiedName(),
+        entity.getName(),
+        entity.getId());
+    storageService.storeEntity(entityType, entity.getId(), projection);
+    LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
   }
 
   private RuntimeException projectionFailure(

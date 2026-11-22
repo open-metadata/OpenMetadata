@@ -42,6 +42,7 @@ import static org.openmetadata.service.rdf.RdfQualityFixtures.profiledTable;
 import static org.openmetadata.service.rdf.RdfQualityFixtures.sensitive;
 
 import java.io.ByteArrayOutputStream;
+import java.math.BigInteger;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -51,6 +52,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiFunction;
+import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.query.QueryExecution;
@@ -63,6 +65,7 @@ import org.apache.jena.update.UpdateAction;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.entity.data.Table;
@@ -79,6 +82,7 @@ import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.rdf.translator.ReferenceScope;
 
 /** How the latest profiles, results and incidents reach entities before they are projected. */
+@Isolated
 class RdfQualityEvidenceTest {
   private final JsonLdTranslator translator =
       new JsonLdTranslator(
@@ -91,6 +95,7 @@ class RdfQualityEvidenceTest {
           ReferenceScope.ALL);
   private final Dataset dataset = DatasetFactory.create();
   private final List<String> requeuedTables = new ArrayList<>();
+  private boolean failColumnTagRead;
 
   @BeforeAll
   static void registerEntityTypes() {
@@ -100,6 +105,7 @@ class RdfQualityEvidenceTest {
 
   @AfterEach
   void close() {
+    RdfProjectionHealth.markReady();
     dataset.close();
   }
 
@@ -237,10 +243,41 @@ class RdfQualityEvidenceTest {
     repository.createOrUpdate(stored);
     stored.getColumns().getFirst().withTags(List.of(sensitive()));
 
-    assertThrows(IllegalStateException.class, () -> repository.refreshEntity("table", TABLE_ID));
+    final long before = RdfProjectionHealth.failureVersion();
+    assertThrows(RuntimeException.class, () -> repository.refreshEntity("table", TABLE_ID));
+    final long after = RdfProjectionHealth.failureVersion();
     repository.refreshEntity("table", TABLE_ID);
 
     assertEquals(List.of(TABLE_FQN), requeuedTables);
+    assertEquals(before + 1, after);
+  }
+
+  @Test
+  void aStoredColumnTagReadFailureIsRecordedInProjectionHealth() {
+    final Table stored = profiledTable(100.0, 4.0);
+    final RdfRepository repository = liveRepository(FakeEvidence.storing(stored), stored);
+    final long before = RdfProjectionHealth.failureVersion();
+    failColumnTagRead = true;
+
+    assertThrows(RuntimeException.class, () -> repository.refreshEntity(Entity.TABLE, TABLE_ID));
+
+    assertEquals(before + 1, RdfProjectionHealth.failureVersion());
+  }
+
+  @Test
+  void aColumnProfilePreservesAnIntegerAboveLongMax() {
+    final BigInteger minimum = BigInteger.valueOf(Long.MAX_VALUE).add(BigInteger.ONE);
+    final Table table = profiledTable(100.0, 4.0);
+    table.getColumns().getFirst().getProfile().setMin(minimum);
+
+    final Model model = translator.toRdf(table);
+
+    final var projected =
+        column(model, "amount")
+            .getRequiredProperty(model.createProperty(OM, "profileMin"))
+            .getLiteral();
+    assertEquals(minimum.toString(), projected.getLexicalForm());
+    assertEquals(XSDDatatype.XSDinteger.getURI(), projected.getDatatypeURI());
   }
 
   @Test
@@ -385,7 +422,13 @@ class RdfQualityEvidenceTest {
             })
         .when(storage)
         .storeEntity(anyString(), any(UUID.class), any(Model.class));
-    doAnswer(call -> select(call.getArgument(0)))
+    doAnswer(
+            call -> {
+              if (failColumnTagRead) {
+                throw new IllegalStateException("stored column tags unavailable");
+              }
+              return select(call.getArgument(0));
+            })
         .when(storage)
         .executeSparqlQuery(anyString(), anyString());
     return new RdfRepository(

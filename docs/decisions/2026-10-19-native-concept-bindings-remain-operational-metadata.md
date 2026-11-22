@@ -111,7 +111,7 @@ and export are unchanged: bindings stay out of them, as the decision above says.
 Accepted consequence: the bindings API omits links to assets a reader cannot view, and the serving
 graph shows every link to anyone allowed to query it. Access filtering on the graph is deferred
 work. Guarded by `RdfConceptBindingProjectionTest`, `RdfConceptBindingWriteTest`,
-`OntologyServedBindingsStorageTest`, `OntologyConceptBindingProjectionTest`, `RdfLiveWriteTest`,
+`OntologyServedBindingsStorageTest`, `RdfLiveWriteTest`,
 `RdfUpdaterTest`, `RdfOntologyContractTest`,
 `OntologyActiveGraphStorageTest#aWriteBeingDeliveredQueuesTheBoundAssetsItRefreshesAfterItself`
 and, against the Fuseki image,

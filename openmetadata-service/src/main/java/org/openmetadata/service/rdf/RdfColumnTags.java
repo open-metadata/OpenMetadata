@@ -29,19 +29,23 @@ import org.apache.jena.riot.resultset.ResultSetLang;
 /** The tags by column IRI, including untagged and nested columns. */
 final class RdfColumnTags {
   static final String RESULTS_FORMAT = "application/sparql-results+json";
+  private static final String PREFIX =
+      "PREFIX om: <%s>\n".formatted(OntologyRdfVocabulary.NAMESPACE);
   private static final String PATTERN =
-      "<%s> <https://open-metadata.org/ontology/hasColumn>/"
-          + "<https://open-metadata.org/ontology/hasChildColumn>* ?column . "
-          + "OPTIONAL { ?column <https://open-metadata.org/ontology/hasTag> ?tag }";
+      """
+      <%s> om:hasColumn/om:hasChildColumn* ?column .
+      OPTIONAL { ?column om:hasTag ?tag }
+      """;
 
   private RdfColumnTags() {}
 
   /** Selects the columns and tags the store holds for {@code tableUri}. */
   static String storedQuery(final String graph, final String tableUri) {
-    return "SELECT ?column ?tag WHERE { GRAPH <"
+    return PREFIX
+        + "SELECT ?column ?tag WHERE { GRAPH <"
         + graph
         + "> { "
-        + String.format(PATTERN, tableUri)
+        + PATTERN.formatted(tableUri)
         + " } }";
   }
 
@@ -55,7 +59,8 @@ final class RdfColumnTags {
   }
 
   static Map<String, Set<RDFNode>> of(final Model projection, final String tableUri) {
-    final String query = "SELECT ?column ?tag WHERE { " + String.format(PATTERN, tableUri) + " }";
+    final String query =
+        PREFIX + "SELECT ?column ?tag WHERE { " + PATTERN.formatted(tableUri) + " }";
     try (QueryExecution execution = QueryExecutionFactory.create(query, projection)) {
       return tagsByColumn(execution.execSelect());
     }
