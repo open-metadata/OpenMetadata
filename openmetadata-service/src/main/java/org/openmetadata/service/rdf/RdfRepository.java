@@ -1856,7 +1856,8 @@ public class RdfRepository {
     final boolean isTestCase = Entity.TEST_CASE.equals(entityType);
     final String fields =
         isTestCase ? String.join(",", RdfIndexingFields.forEntityType(entityType)) : "*";
-    final EntityInterface<?> entity = Entity.getEntity(entityType, entityId, fields, Include.ALL);
+    final EntityInterface<?> entity =
+        Entity.getEntity(entityType, entityId, fields, Include.NON_DELETED);
     if (isTestCase) {
       RdfQualityEvidence.database().attach(entityType, List.of(entity));
     }
