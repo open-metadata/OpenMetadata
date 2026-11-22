@@ -147,6 +147,7 @@
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/FailureThreshold.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
@@ -385,6 +386,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryBulkAssetPermissions.spec.ts",
         "playwright/e2e/Features/MetricBulkImportExportEdit.spec.ts",
         "playwright/e2e/Features/MetricHierarchy.spec.ts",
@@ -929,6 +931,7 @@
         "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
@@ -968,6 +971,7 @@
         "playwright/e2e/Features/AIMode/ObservabilityPermissions.spec.ts",
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
         "playwright/e2e/Features/BulkEditImportPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseIncidentPermissions.spec.ts",
@@ -1774,6 +1778,7 @@
         "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/FailureThreshold.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterOwnerChange.spec.ts",
@@ -2490,6 +2495,7 @@
         "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/CustomizeDetailPage.spec.ts",
         "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/NavigationBlocker.spec.ts",
         "playwright/e2e/Features/Permissions/TableQueriesTabPermissions.spec.ts",
@@ -2929,6 +2935,7 @@
         "playwright/e2e/Features/DataProductRenameConsolidation.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterOwnerChange.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportBasic.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseImportExportE2eFlow.spec.ts",
@@ -3179,6 +3186,7 @@
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerSqlQuery.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
@@ -3637,6 +3645,7 @@
         "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/FailureThreshold.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterOwnerChange.spec.ts",
@@ -4296,6 +4305,7 @@
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCaseExportFilters.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCasePagination.spec.ts",
@@ -5405,6 +5415,7 @@
         "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/FailureThreshold.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerSqlQuery.spec.ts",
         "playwright/e2e/Features/DataQuality/Profiler.spec.ts",
@@ -5524,6 +5535,7 @@
         "playwright/e2e/Features/CustomizeTabWidgetKgRace.spec.ts",
         "playwright/e2e/Features/DataProductPersonaCustomization.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQuality.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerDateFilter.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerSqlQuery.spec.ts",
         "playwright/e2e/Features/DataQuality/TableTestCaseExportFilters.spec.ts",
@@ -6782,6 +6794,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/IncidentManager/FailedTestCaseSampleData/FailedTestCaseSampleData.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerSqlQuery.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts"
@@ -6880,6 +6893,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseConfigurationCard/TestCaseConfigurationCard.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseDetailsPage.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/VersionPages/TestCaseVersionPage.spec.ts"
@@ -7111,6 +7125,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Database/SampleDataTable/SampleDataTable.component.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts"
       ]
@@ -8889,6 +8904,7 @@
         "playwright/e2e/Features/AIMode/CustomPropertiesPanel.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
@@ -11942,6 +11958,7 @@
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
@@ -12790,6 +12807,7 @@
         "playwright/e2e/Features/DataQuality/DataQualityListAfterReindex.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/Dimensionality.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/FailureThreshold.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentHistoryPagination.spec.ts",
         "playwright/e2e/Features/DataQuality/IncidentManagerAfterOwnerChange.spec.ts",
@@ -13535,6 +13553,7 @@
         "playwright/e2e/Features/AIMode/AiObservabilityAlerts.spec.ts",
         "playwright/e2e/Features/Dashboards.spec.ts",
         "playwright/e2e/Features/DataQuality/DataQualityPermissions.spec.ts",
+        "playwright/e2e/Features/DataQuality/FailedRowsSampleDeletePermissions.spec.ts",
         "playwright/e2e/Features/DataQuality/TestCaseSoftDeleteRestore.spec.ts",
         "playwright/e2e/Features/FailedTestCaseSampleData.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryMiscOperations.spec.ts",
