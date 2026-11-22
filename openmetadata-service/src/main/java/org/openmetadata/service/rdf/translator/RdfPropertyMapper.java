@@ -328,7 +328,10 @@ public class RdfPropertyMapper {
 
   private void emitStructuredProperties(
       EntityInterface<?> entity, JsonNode entityJson, Resource entityResource, Model model) {
-    keyMapper.emitColumnLevelKey(entityJson, entity.getFullyQualifiedName(), entityResource, model);
+    if (Entity.TABLE.equals(entity.getEntityReference().getType())) {
+      keyMapper.emitColumnLevelKey(
+          entityJson, entity.getFullyQualifiedName(), entityResource, model);
+    }
     RdfJsonNode.array(entityJson, "tableConstraints")
         .ifPresent(
             constraints ->

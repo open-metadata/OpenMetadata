@@ -36,6 +36,7 @@ import org.apache.jena.query.QueryExecution;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -601,20 +602,19 @@ public class RdfRepository {
   }
 
   /**
-   * Which test results the graph may show depends on the tags of the tested columns, so a write
-   * that changes a column tag requeues the table's test cases
+   * A column test can show its evidence only while its column resolves and its tags allow it
    * (ADR:2026-11-18-the-rdf-graph-carries-the-latest-quality-evidence).
    */
   private void refreshTable(final EntityInterface<?> table) {
     final String tableUri = entityUri(Entity.TABLE, table.getId());
-    final Set<String> before =
+    final Map<String, Set<RDFNode>> previousColumnTags =
         RdfColumnTags.read(
             storageService.executeSparqlQuery(
                 RdfColumnTags.storedQuery(KNOWLEDGE_GRAPH, tableUri),
                 RdfColumnTags.RESULTS_FORMAT));
     final Model projection = translateProjection(table);
-    if (!before.equals(RdfColumnTags.of(projection, tableUri))) {
-      // A failed requeue must leave the previous tags for the retry to compare.
+    if (!previousColumnTags.equals(RdfColumnTags.of(projection, tableUri))) {
+      // A failed requeue must leave the previous projection for the retry to compare.
       projectionLoaders.testCaseRequeue().requeueTestCasesOf(table.getFullyQualifiedName());
     }
     storeProjection(table, projection);

@@ -28,6 +28,7 @@ import static org.openmetadata.service.rdf.RdfQualityFixtures.PROFILED_AT;
 import static org.openmetadata.service.rdf.RdfQualityFixtures.TABLE_FQN;
 import static org.openmetadata.service.rdf.RdfQualityFixtures.TABLE_ID;
 import static org.openmetadata.service.rdf.RdfQualityFixtures.TABLE_URI;
+import static org.openmetadata.service.rdf.RdfQualityFixtures.TEST_ID;
 import static org.openmetadata.service.rdf.RdfQualityFixtures.TEST_URI;
 import static org.openmetadata.service.rdf.RdfQualityFixtures.assignedIncident;
 import static org.openmetadata.service.rdf.RdfQualityFixtures.clearProfiles;
@@ -56,6 +57,7 @@ import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryExecutionFactory;
 import org.apache.jena.query.ResultSetFormatter;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.update.UpdateAction;
 import org.junit.jupiter.api.AfterEach;
@@ -70,6 +72,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfQualityFixtures.FakeEvidence;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
@@ -167,13 +170,53 @@ class RdfQualityEvidenceTest {
   void aColumnTagChangeRequeuesTheTestCasesOfTheTableAndAnUnchangedRefreshDoesNot() {
     final Table stored = profiledTable(100.0, 4.0);
     final RdfRepository repository = liveRepository(FakeEvidence.storing(stored), stored);
-    repository.refreshEntity("table", TABLE_ID);
+    repository.createOrUpdate(stored);
     repository.refreshEntity("table", TABLE_ID);
     assertEquals(List.of(), requeuedTables);
 
     stored.getColumns().getFirst().withTags(List.of(sensitive()));
     repository.refreshEntity("table", TABLE_ID);
 
+    assertEquals(List.of(TABLE_FQN), requeuedTables);
+  }
+
+  @Test
+  void droppingAnUntaggedColumnRequeuesItsTestAndRemovesItsColumnLinkAndResult() {
+    final Table stored = profiledTable(100.0, 4.0);
+    final TestCase testCase = columnTest("amount", null);
+    final FakeEvidence evidence = FakeEvidence.storing(stored);
+    evidence.results.put(testCase.getFullyQualifiedName(), failedResult(PROFILED_AT, 10L));
+    final RdfRepository repository =
+        liveRepository(
+            evidence,
+            (type, id) ->
+                Entity.TEST_CASE.equals(type)
+                    ? JsonUtils.deepCopy(testCase, TestCase.class)
+                    : JsonUtils.deepCopy(stored, Table.class),
+            requeuedTables::add);
+    repository.createOrUpdate(stored);
+    repository.refreshEntity(Entity.TEST_CASE, TEST_ID);
+
+    final Model graph = dataset.getNamedModel(GRAPH);
+    final Resource test = graph.createResource(TEST_URI);
+    final Resource table = graph.createResource(TABLE_URI);
+    final String testsColumn = OM + "testsColumn";
+    final String hasTestResult = OM + "hasTestResult";
+    assertEquals(Set.of(column(graph, "amount")), objects(graph, test, testsColumn));
+    assertEquals(
+        Set.of(graph.createResource(TEST_URI + "/result/latest")),
+        objects(graph, test, hasTestResult));
+
+    stored.withColumns(List.of(stored.getColumns().getLast()));
+    repository.refreshEntity(Entity.TABLE, TABLE_ID);
+    if (requeuedTables.contains(TABLE_FQN)) {
+      repository.refreshEntity(Entity.TEST_CASE, TEST_ID);
+    }
+
+    assertEquals(Set.of(column(graph, "status")), objects(graph, table, OM + "hasColumn"));
+    assertEquals(Set.of(), objects(graph, test, testsColumn));
+    assertEquals(Set.of(), objects(graph, test, hasTestResult));
+    assertEquals(Set.of(table), objects(graph, test, OM + "testsEntity"));
     assertEquals(List.of(TABLE_FQN), requeuedTables);
   }
 
@@ -191,7 +234,7 @@ class RdfQualityEvidenceTest {
               }
               requeuedTables.add(tableFqn);
             });
-    repository.refreshEntity("table", TABLE_ID);
+    repository.createOrUpdate(stored);
     stored.getColumns().getFirst().withTags(List.of(sensitive()));
 
     assertThrows(IllegalStateException.class, () -> repository.refreshEntity("table", TABLE_ID));
@@ -201,9 +244,11 @@ class RdfQualityEvidenceTest {
   }
 
   @Test
-  void theColumnTagComparisonSeesOnlyColumnTagsNotBindingsOrKeyMembers() {
+  void theColumnTagComparisonIncludesUntaggedColumnsAndIgnoresBindingsAndKeyMembers() {
     final Table table = profiledTable(100.0, 4.0);
     table.getColumns().getFirst().withTags(List.of(sensitive()));
+    final Column zip = nestedColumn("status", "zip");
+    table.getColumns().getLast().withChildren(List.of(zip));
     table.withTableConstraints(
         List.of(
             new TableConstraint()
@@ -220,10 +265,18 @@ class RdfQualityEvidenceTest {
         projection.createProperty(OM, "boundAsset"),
         projection.createResource(TABLE_URI));
 
-    final Set<String> pairs = RdfColumnTags.of(projection, TABLE_URI);
+    final Map<String, Set<RDFNode>> tagsByColumn = RdfColumnTags.of(projection, TABLE_URI);
 
-    assertEquals(1, pairs.size(), pairs::toString);
-    assertTrue(pairs.iterator().next().startsWith(amount.getURI() + " "), pairs::toString);
+    assertEquals(1, tagsByColumn.get(amount.getURI()).size());
+    assertEquals(
+        Map.of(
+            amount.getURI(),
+            objects(projection, amount, OM + "hasTag"),
+            column(projection, "status").getURI(),
+            Set.of(),
+            column(projection, "status.zip").getURI(),
+            Set.of()),
+        tagsByColumn);
   }
 
   @Test
@@ -308,6 +361,20 @@ class RdfQualityEvidenceTest {
       final FakeEvidence evidence,
       final Table stored,
       final RdfProjectionLoaders.TestCaseRequeue testCaseRequeue) {
+    return liveRepository(
+        evidence,
+        (type, id) -> {
+          final Table read = JsonUtils.deepCopy(stored, Table.class);
+          clearProfiles(read);
+          return read;
+        },
+        testCaseRequeue);
+  }
+
+  private RdfRepository liveRepository(
+      final FakeEvidence evidence,
+      final BiFunction<String, UUID, EntityInterface<?>> entityRead,
+      final RdfProjectionLoaders.TestCaseRequeue testCaseRequeue) {
     final RdfStorageInterface storage = mock(RdfStorageInterface.class);
     doAnswer(
             call -> {
@@ -321,20 +388,13 @@ class RdfQualityEvidenceTest {
     doAnswer(call -> select(call.getArgument(0)))
         .when(storage)
         .executeSparqlQuery(anyString(), anyString());
-    final BiFunction<String, UUID, EntityInterface<?>> unprofiledRead =
-        (type, id) -> {
-          final Table read = JsonUtils.deepCopy(stored, Table.class);
-          clearProfiles(read);
-          return read;
-        };
     return new RdfRepository(
         new RdfConfiguration().withEnabled(true).withBaseUri(URI.create(BASE)),
         storage,
         translator,
         () -> null,
         new RdfProjectionLoaders(
-            RdfProjectionLoaders.withQualityEvidence(
-                unprofiledRead, new RdfQualityEvidence(evidence)),
+            RdfProjectionLoaders.withQualityEvidence(entityRead, new RdfQualityEvidence(evidence)),
             null,
             null,
             null,

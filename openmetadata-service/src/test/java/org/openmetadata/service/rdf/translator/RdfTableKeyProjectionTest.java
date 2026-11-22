@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.jena.rdf.model.Model;
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
@@ -27,6 +29,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableConstraint.ConstraintType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.rdf.RdfUtils;
 
 /**
@@ -53,6 +56,8 @@ class RdfTableKeyProjectionTest {
   @BeforeAll
   static void registerEntityTypes() {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", "table");
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(
+        Entity.DASHBOARD_DATA_MODEL.toLowerCase(Locale.ROOT), Entity.DASHBOARD_DATA_MODEL);
   }
 
   @ParameterizedTest
@@ -82,6 +87,27 @@ class RdfTableKeyProjectionTest {
       assertTrue(model.contains(columnNode(name), property("isPrimaryKey"), literal(true)));
       assertTrue(model.contains(columnNode(name), property("isNullable"), literal(false)));
     }
+  }
+
+  @Test
+  void multiplePrimaryKeyMarkersOnADataModelDoNotStateATableConstraint() {
+    final DashboardDataModel dataModel =
+        new DashboardDataModel()
+            .withId(UUID.randomUUID())
+            .withName("order_lines")
+            .withFullyQualifiedName(FQN)
+            .withColumns(
+                List.of(
+                    column("tenant_id").withConstraint(ColumnConstraint.PRIMARY_KEY),
+                    column("line_no").withConstraint(ColumnConstraint.PRIMARY_KEY)));
+
+    final Model model = translator.toRdf(dataModel);
+    final Resource asset =
+        model.createResource(
+            BASE + "entity/" + Entity.DASHBOARD_DATA_MODEL + "/" + dataModel.getId());
+
+    assertEquals(2, model.listObjectsOfProperty(asset, property("hasColumn")).toList().size());
+    assertFalse(model.contains(asset, property("hasConstraint")));
   }
 
   @Test

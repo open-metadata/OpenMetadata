@@ -1,7 +1,7 @@
 # The RDF graph carries the latest quality evidence of each table, column and test case
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-18 (initial) · v2 2026-11-22 (shared test case masking)
+- **Revisions:** v1 2026-11-18 (initial) · v2 2026-11-22 (shared test case masking) · v3 2026-11-22 (column changes requeue tests)
 - **Deciders:** OpenMetadata RDF maintainers
 - **Guard:** `RdfQualityProjectionTest`, `RdfQualityEvidenceTest`, `QualityWritesRefreshRdfTest`,
   `RdfEntityWritePlannerTest#aNewerTestResultReplacesTheOlderOneAndDeletingTheTestCaseRemovesIt`,
@@ -38,16 +38,16 @@ card shows a node's literal values as facts, and anything behind an edge costs a
   with state, severity and assignee, and leaves when it is resolved. Sample rows are never emitted.
 - **Live triggers.** A profile write or delete queues its table; a result updates its test case,
   whose entity hook queues it; an incident status change queues its test case. A table refresh
-  that changes a column's tags requeues the table's test cases before storing the projection,
-  because masking depends on them and a failed requeue must leave the prior tags for retry.
+  that changes the set of columns or any column's tags requeues the table's test cases before
+  storing the projection. A failed requeue leaves the prior projection for retry.
 - **Repeated refreshes collapse.** A queued entity refresh is retired without being applied when
   the same refresh is queued again within the next 100 rows: it reads the entity when applied, so
   the later copy projects the same state or a newer one. Retirement goes through `retire`, so the
   watermarks stay exact.
 - **PII, fail closed.** The graph gets what an API caller without PII access gets (`PIIMasker`),
-  judged on tags the evidence reads itself, never on whatever tags the caller loaded: no profile
-  for a `PII.Sensitive` column or the fields beneath one, no result or incident for a test on such
-  a column or on a table that does not resolve.
+  using tags the evidence reads itself. A `PII.Sensitive` column and the fields beneath it have
+  no profile. A test on a sensitive column or an unresolved column or table has no result or
+  incident in the graph.
 
 ## Consequences
 
@@ -57,8 +57,8 @@ card shows a node's literal values as facts, and anything behind an edge costs a
 - The write scope still deletes DQV measurement nodes and their links, so stores written by an
   earlier build of this branch clean up on the next write.
 - The legacy `om:incidentStatus` JSON literal on test cases is no longer written.
-- A live table refresh reads the projected column tags from the graph. Table evidence uses two
-  profile batch reads (table and column profiles, chunked as needed) and one
+- A live table refresh reads the projected column IRIs and their tags from the graph. Table
+  evidence uses two profile batch reads (table and column profiles, chunked as needed) and one
   `populateEntityFieldTags` call per table. Test case evidence uses two batch reads (results and
   incidents) and one `getEntityByName` call per distinct tested table in the batch.
 - A result written while RDF was off appears after a reindex or the next write of its test case.
@@ -71,3 +71,9 @@ For test cases that require masking, the graph and entity RDF endpoint call the 
 `PIIMasker` helper as the test-case API. It clears the result, incident status, parameter values,
 description, and both change descriptions. RDF keeps the stored test case name for graph
 labels. A reindex removes masked fields from test cases projected before this change.
+
+## Amendment — 2026-11-22. Column changes requeue tests
+
+The comparison includes untagged and nested columns. When a column is dropped or renamed, the
+replayed test case loses its `om:testsColumn` link and evidence if the old column path no longer
+resolves.

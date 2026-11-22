@@ -135,9 +135,10 @@ SELECT ?position ?column ?referred WHERE {
 } ORDER BY ?key ?position
 ```
 
-`om:isUnique true` means the column alone is unique. A member of a composite key, including a key
-stated through column-level PRIMARY_KEY markers on several columns, carries `om:isPrimaryKey` but
-not `om:isUnique`; join on every member of the key. See
+`om:isUnique true` means the column alone is unique. Each member of a composite primary key
+carries `om:isPrimaryKey` and needs an independent single-column key to carry `om:isUnique`.
+Join on every member of the composite key.
+Only tables project `om:hasConstraint` from column-level PRIMARY_KEY markers. See
 ADR:2026-11-13-column-uniqueness-means-the-column-alone-is-unique.
 
 ## Quality evidence
@@ -176,11 +177,14 @@ test results APIs. See ADR:2026-11-18-the-rdf-graph-carries-the-latest-quality-e
 ```
 
 Columns measure values, nulls, distinct and unique counts, mean, min and max (numeric columns only)
-and string lengths; tables measure rows, columns and size. A newer profile, result or incident
-state replaces the previous one exactly, and deleting a table, column or test case removes its
-evidence. Columns tagged `PII.Sensitive`, and fields beneath one, carry no profile, and tests on
-them carry no result or incident, as for an API caller without PII access. Anyone who may query
-the graph can read this evidence; per-asset filtering is deferred. Failing tests on a table:
+and string lengths. Tables measure rows, columns and size. A newer profile, result or incident
+state replaces the previous one exactly. Deleting a table, column or test case removes its evidence.
+A live table refresh requeues its test cases when its columns or their tags change. When a tested
+column is dropped or renamed and its old path no longer resolves, the test case loses its
+`om:testsColumn` link, result, and incident. Columns tagged `PII.Sensitive`, and fields beneath one,
+carry no profile. Tests on those columns carry no result or incident, as for an API caller
+without PII access. Anyone who may query the graph can read this evidence. Per-asset filtering
+is deferred. This query finds failing tests on a table.
 
 ```sparql
 PREFIX om: <https://open-metadata.org/ontology/>

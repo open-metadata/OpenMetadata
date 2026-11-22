@@ -42,7 +42,7 @@ record RdfProjectionLoaders(
     BoundAssets boundAssets,
     TestCaseRequeue testCaseRequeue) {
 
-  /** Loaders that requeue no test cases, for replays that never refresh a table's tags. */
+  /** Loaders that requeue no test cases, for replays that never refresh a table's columns. */
   RdfProjectionLoaders(
       final BiFunction<String, UUID, EntityInterface<?>> entityLoader,
       final LineageDetailsLoader lineageDetailsLoader,
@@ -52,7 +52,7 @@ record RdfProjectionLoaders(
     this(entityLoader, lineageDetailsLoader, ontologyGraphs, liveness, boundAssets, tableFqn -> {});
   }
 
-  /** Queues a fresh projection of every test case on a table whose column tags changed. */
+  /** Queues a fresh projection of every test case on a table whose columns or tags changed. */
   @FunctionalInterface
   interface TestCaseRequeue {
     void requeueTestCasesOf(String tableFqn);
