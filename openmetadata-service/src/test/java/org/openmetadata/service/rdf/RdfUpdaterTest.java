@@ -155,6 +155,27 @@ class RdfUpdaterTest {
   }
 
   @Test
+  void assetsWhoseBindingsChangedAreReprojectedFromTheDatabaseAfterTheCommit() {
+    final UUID table = UUID.randomUUID();
+    final UUID topic = UUID.randomUUID();
+    PostCommitActionQueue.begin();
+    RdfUpdater.refreshEntities(
+        List.of(
+            new EntityReference().withType(Entity.TABLE).withId(table),
+            new EntityReference().withType(Entity.ONTOLOGY_CONCEPT).withId(UUID.randomUUID()),
+            new EntityReference().withType(Entity.TOPIC).withId(topic)));
+    assertTrue(submitted.isEmpty());
+
+    PostCommitActionQueue.run(PostCommitActionQueue.drain());
+
+    assertEquals(
+        List.of(
+            new RdfLiveWrite.EntityUpdate(Entity.TABLE, table),
+            new RdfLiveWrite.EntityUpdate(Entity.TOPIC, topic)),
+        submitted);
+  }
+
+  @Test
   void aSoftDeletedEntityLeavesTheGraph() {
     final Table table = new Table().withId(UUID.randomUUID()).withName("t").withDeleted(true);
     RdfUpdater.updateEntity(table);

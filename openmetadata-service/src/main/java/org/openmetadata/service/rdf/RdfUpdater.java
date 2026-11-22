@@ -258,6 +258,22 @@ public final class RdfUpdater {
     }
   }
 
+  /**
+   * Re-projects entities whose projection depends on rows outside their own record, such as the
+   * concept bindings into an asset or a test case's latest result and incident. The replay reads
+   * those rows when it runs.
+   */
+  public static void refreshEntities(final Collection<EntityReference> entities) {
+    if (isEnabled()) {
+      submitAll(
+          entities.stream()
+              .filter(entity -> !RdfExcludedEntities.isExcluded(entity.getType()))
+              .<RdfLiveWrite>map(
+                  entity -> new RdfLiveWrite.EntityUpdate(entity.getType(), entity.getId()))
+              .toList());
+    }
+  }
+
   public static void deleteEntity(final EntityReference entity) {
     if (isEnabled() && !RdfExcludedEntities.isExcluded(entity.getType())) {
       submit(new RdfLiveWrite.EntityDelete(entity.getType(), entity.getId()));

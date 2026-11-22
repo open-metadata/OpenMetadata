@@ -728,7 +728,7 @@ class RdfPropertyMapperTest {
     }
 
     @Test
-    @DisplayName("Column.profile is emitted as DQV measurements rather than a JSON literal")
+    @DisplayName("Column.profile is emitted as facts on the column rather than a JSON literal")
     void testColumnProfileEmittedAsDqv() throws Exception {
       ArrayNode columns = objectMapper.createArrayNode();
       ObjectNode col = objectMapper.createObjectNode();
@@ -753,36 +753,32 @@ class RdfPropertyMapperTest {
 
       Resource emailColumn =
           model.createResource(RdfUtils.columnUri(BASE_URI, "service.db.s.users.email"));
-      Property hasMeasurement =
-          model.createProperty("http://www.w3.org/ns/dqv#", "hasQualityMeasurement");
-      java.util.List<Resource> measurements =
-          model.listObjectsOfProperty(emailColumn, hasMeasurement).toList().stream()
-              .map(node -> node.asResource())
-              .toList();
       assertEquals(
-          4,
-          measurements.size(),
-          "Expected 4 numeric profile metrics (valuesCount, nullCount, nullProportion, uniqueCount)");
-
-      Property isMeasurementOf =
-          model.createProperty("http://www.w3.org/ns/dqv#", "isMeasurementOf");
-      Property dqvValue = model.createProperty("http://www.w3.org/ns/dqv#", "value");
-      java.util.Map<String, Double> byMetric = new java.util.HashMap<>();
-      for (Resource m : measurements) {
-        Resource metric = model.getProperty(m, isMeasurementOf).getObject().asResource();
-        double v = model.getProperty(m, dqvValue).getDouble();
-        byMetric.put(metric.getURI(), v);
-      }
-      assertEquals(1000.0, byMetric.get(OM_NS + "ValuesCountMetric"), 0.0);
-      assertEquals(12.0, byMetric.get(OM_NS + "NullCountMetric"), 0.0);
-      assertEquals(0.012, byMetric.get(OM_NS + "NullProportionMetric"), 1e-9);
-      assertEquals(985.0, byMetric.get(OM_NS + "UniqueCountMetric"), 0.0);
-
-      // Each measurement should also be tied back to the column via dqv:computedOn.
-      Property computedOn = model.createProperty("http://www.w3.org/ns/dqv#", "computedOn");
-      for (Resource m : measurements) {
-        assertTrue(model.contains(m, computedOn, emailColumn));
-      }
+          1000L,
+          model
+              .getProperty(emailColumn, model.createProperty(OM_NS, "profileValuesCount"))
+              .getLong());
+      assertEquals(
+          12L,
+          model
+              .getProperty(emailColumn, model.createProperty(OM_NS, "profileNullCount"))
+              .getLong());
+      assertEquals(
+          0.012,
+          model
+              .getProperty(emailColumn, model.createProperty(OM_NS, "profileNullProportion"))
+              .getDouble(),
+          1e-9);
+      assertEquals(
+          985L,
+          model
+              .getProperty(emailColumn, model.createProperty(OM_NS, "profileUniqueCount"))
+              .getLong());
+      assertTrue(model.contains(emailColumn, model.createProperty(OM_NS, "profiledAt")));
+      assertFalse(
+          model.contains(
+              emailColumn,
+              model.createProperty("http://www.w3.org/ns/dqv#", "hasQualityMeasurement")));
     }
 
     @Test
