@@ -5613,6 +5613,7 @@ class TestCatalogMapping:
         )
         data_model_link = SimpleNamespace(
             table_entity=tables[1],
+            parse_query_lineage=True,
             datamodel=SimpleNamespace(
                 sql=SimpleNamespace(root='select id, upper(name) as name from "bq_catalog"."raw"."customers"')
             ),

@@ -136,6 +136,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_snapshot_effective_schema_and_database,
     get_source_physical_name,
     is_compiled_only_result,
+    is_dbt_sql_node,
     map_dbt_metric_type,
     order_metrics_by_dependency,
     validate_custom_property_value,
@@ -1117,6 +1118,7 @@ class DbtSource(DbtServiceSource):
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
                             upstream_table_ids={node.fqn: node.table_id for node in upstream_nodes if node.table_id},
+                            parse_query_lineage=is_dbt_sql_node(manifest_node),
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
                                 resourceType=resource_type,
@@ -1485,6 +1487,13 @@ class DbtSource(DbtServiceSource):
         """
         Method to process DBT lineage from queries
         """
+        if data_model_link.datamodel.sql and not data_model_link.parse_query_lineage:
+            logger.debug(
+                "Skipping query lineage for %s: its dbt code is not SQL, so its lineage comes from the dbt"
+                " dependencies only",
+                model_str(data_model_link.table_entity.fullyQualifiedName),
+            )
+            return
         if data_model_link.datamodel.sql:
             to_entity: Table = data_model_link.table_entity
             logger.debug(f"Processing DBT Query lineage for: {to_entity.fullyQualifiedName.root}")

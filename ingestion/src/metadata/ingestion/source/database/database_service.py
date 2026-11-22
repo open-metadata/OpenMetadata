@@ -90,6 +90,10 @@ class DataModelLink(BaseModel):
     table_entity: Table
     datamodel: DataModel
     upstream_table_ids: dict[str, UUID] = Field(default_factory=dict)
+    parse_query_lineage: bool = Field(
+        default=True,
+        description="False when datamodel.sql is not SQL, e.g. the code of a dbt Python model",
+    )
 
 
 class DatabaseServiceTopology(ServiceTopology):

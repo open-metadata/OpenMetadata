@@ -28,6 +28,7 @@ from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt.constants import (
+    DBT_SQL_LANGUAGE,
     NONE_KEYWORDS_LIST,
     CompiledQueriesEnum,
     DbtCommonEnum,
@@ -901,6 +902,15 @@ def get_dbt_raw_query(mnode) -> str | None:
         return mnode.raw_sql
     logger.debug(f"Unable to get DBT raw query for node - {mnode.name}")
     return None
+
+
+def is_dbt_sql_node(mnode: object) -> bool:
+    """
+    dbt writes a node's language from manifest v7 (dbt 1.3, which introduced Python models) and
+    never on seeds, so a node without one is SQL
+    """
+    language = getattr(mnode, "language", None)
+    return not language or str(language).lower() == DBT_SQL_LANGUAGE
 
 
 def check_or_create_test_suite(metadata: OpenMetadata, test_entity_link: str) -> TestSuite | EntityReference:
