@@ -173,8 +173,7 @@ export enum MemoryType {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Principal receiving access. Supported principal types are user, team, domain, and
- * persona.
+ * Principal receiving access. Supported principal types are user, team, and domain.
  *
  * The Context Center entity (file or page) this memory was extracted from.
  *
@@ -239,7 +238,7 @@ export interface ShareConfig {
  */
 export interface SharedPrincipal {
     /**
-     * Principal receiving access. Supported principal types are user, team, domain, and persona.
+     * Principal receiving access. Supported principal types are user, team, and domain.
      */
     principal?: EntityReference;
     /**

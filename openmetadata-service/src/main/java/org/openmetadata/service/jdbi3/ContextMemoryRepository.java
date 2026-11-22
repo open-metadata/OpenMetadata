@@ -60,7 +60,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
@@ -574,7 +573,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       Set.of(Entity.CONTEXT_FILE, Entity.PAGE);
 
   private static final Set<String> ALLOWED_SHARED_PRINCIPAL_TYPES =
-      Set.of(Entity.USER, Entity.TEAM, Entity.DOMAIN, Entity.PERSONA);
+      Set.of(Entity.USER, Entity.TEAM, Entity.DOMAIN);
 
   @Override
   public void prepare(ContextMemory entity, boolean update) {
@@ -718,7 +717,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       if (sharedPrincipal.getPrincipal() == null) {
         continue;
       }
-      EntityReference principal = resolveSharedPrincipal(sharedPrincipal.getPrincipal());
+      EntityReference principal =
+          Entity.getEntityReference(sharedPrincipal.getPrincipal(), Include.NON_DELETED);
       if (!ALLOWED_SHARED_PRINCIPAL_TYPES.contains(principal.getType())) {
         throw new BadRequestException(
             String.format(
@@ -727,15 +727,6 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       }
       sharedPrincipal.setPrincipal(principal);
     }
-  }
-
-  private EntityReference resolveSharedPrincipal(EntityReference principal) {
-    if (Entity.PERSONA.equals(principal.getType())) {
-      try (var ignored = FreshReadScope.enter()) {
-        return Entity.getEntityReference(principal, Include.NON_DELETED);
-      }
-    }
-    return Entity.getEntityReference(principal, Include.NON_DELETED);
   }
 
   /**

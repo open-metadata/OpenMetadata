@@ -820,13 +820,9 @@ public class UserRepository extends EntityRepository<User> {
     return getFromEntityRef(user.getId(), USER, Relationship.DEFAULTS_TO, Entity.DOMAIN, false);
   }
 
-  /** The user's own default persona assignment. */
-  public EntityReference getExplicitDefaultPersona(UUID userId) {
-    return getFromEntityRef(userId, USER, Relationship.DEFAULTS_TO, Entity.PERSONA, false);
-  }
-
   public EntityReference getDefaultPersona(User user) {
-    EntityReference userDefaultPersona = getExplicitDefaultPersona(user.getId());
+    EntityReference userDefaultPersona =
+        getFromEntityRef(user.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA, false);
     if (userDefaultPersona != null) {
       return userDefaultPersona;
     }
@@ -2227,7 +2223,8 @@ public class UserRepository extends EntityRepository<User> {
     private void updateDefaultPersona(User original, User updated) {
       // Get the actual default persona from the database (not the system default)
       // The relationship is: persona --DEFAULTS_TO--> user, so we need to find FROM user
-      EntityReference originalDefaultPersona = getExplicitDefaultPersona(original.getId());
+      EntityReference originalDefaultPersona =
+          getFromEntityRef(original.getId(), USER, Relationship.DEFAULTS_TO, Entity.PERSONA, false);
 
       EntityReference updatedDefaultPersona = updated.getDefaultPersona();
       PersonaRepository personaRepository =

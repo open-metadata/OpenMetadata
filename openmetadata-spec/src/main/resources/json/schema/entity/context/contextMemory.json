@@ -79,7 +79,7 @@
       "type": "object",
       "properties": {
         "principal": {
-          "description": "Principal receiving access. Supported principal types are user, team, domain, and persona.",
+          "description": "Principal receiving access. Supported principal types are user, team, and domain.",
           "$ref": "../../type/entityReference.json"
         },
         "role": {

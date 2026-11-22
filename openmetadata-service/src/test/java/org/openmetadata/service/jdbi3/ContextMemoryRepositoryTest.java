@@ -51,7 +51,6 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
@@ -61,7 +60,6 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
-import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.teams.User;
@@ -136,31 +134,6 @@ class ContextMemoryRepositoryTest {
     assertThrows(
         AuthorizationException.class,
         () -> repository.prepare(new ContextMemory().withName("unstamped"), true));
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {Entity.USER, Entity.TEAM, Entity.DOMAIN, Entity.PERSONA})
-  void acceptsBuiltInShareTargets(String type) {
-    EntityReference target = new EntityReference().withType(type).withId(UUID.randomUUID());
-    try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
-      entities
-          .when(() -> Entity.getEntityReference(target, Include.NON_DELETED))
-          .thenReturn(target);
-
-      assertEquals(target, prepareSharedMemory(target));
-    }
-  }
-
-  private EntityReference prepareSharedMemory(EntityReference target) {
-    MemorySharedPrincipal share = new MemorySharedPrincipal().withPrincipal(target);
-    ContextMemory memory =
-        byWriter(Entity.ADMIN_USER_NAME, null)
-            .withShareConfig(
-                new MemoryShareConfig()
-                    .withVisibility(MemoryVisibility.SHARED)
-                    .withSharedWith(List.of(share)));
-    repository.prepare(memory, true);
-    return share.getPrincipal();
   }
 
   @Test
