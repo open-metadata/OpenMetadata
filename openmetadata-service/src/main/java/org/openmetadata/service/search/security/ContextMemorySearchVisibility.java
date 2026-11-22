@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.BiFunction;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -28,6 +29,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.ContextMemorySharePrincipals;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
@@ -503,8 +505,8 @@ public class ContextMemorySearchVisibility {
 
   /**
    * The principals a {@code Shared} memory may name to reach this user: the user, their teams and
-   * their domains. Public and static so every rendering of the rule derives the same set — see the
-   * class doc on the two renderings.
+   * their domains, plus any additional principals from the distribution. Every rendering of the
+   * rule uses the same set.
    */
   public static List<String> sharedPrincipalIds(User user) {
     List<String> principalIds = new ArrayList<>();
@@ -514,6 +516,9 @@ public class ContextMemorySearchVisibility {
     }
     for (EntityReference domain : listOrEmpty(user.getDomains())) {
       principalIds.add(domain.getId().toString());
+    }
+    for (UUID id : ContextMemorySharePrincipals.get().additionalPrincipalIds(user)) {
+      principalIds.add(id.toString());
     }
     return principalIds;
   }

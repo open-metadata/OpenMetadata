@@ -39,6 +39,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.ContextMemorySharePrincipals;
 import org.openmetadata.service.context.center.ArchivedWithSources;
 import org.openmetadata.service.context.center.MemoryGlossaryDerivationQueue;
 import org.openmetadata.service.context.center.MemoryRelinking;
@@ -719,7 +720,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       }
       EntityReference principal =
           Entity.getEntityReference(sharedPrincipal.getPrincipal(), Include.NON_DELETED);
-      if (!ALLOWED_SHARED_PRINCIPAL_TYPES.contains(principal.getType())) {
+      if (!ALLOWED_SHARED_PRINCIPAL_TYPES.contains(principal.getType())
+          && !ContextMemorySharePrincipals.get().validateAdditionalTarget(principal)) {
         throw new BadRequestException(
             String.format(
                 "Invalid shared principal type '%s'. Supported types: %s",
