@@ -907,7 +907,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     assertEquals(1, before.getSummary().getFailed());
     assertLatestResultTimestamp(fixture.suite(), fixture.failedAt());
 
-    client.testCases().delete(fixture.failedCase().getId().toString());
+    client.testCases().delete(fixture.failedCase().getId().toString(), Map.of("recursive", "true"));
 
     assertLatestResultTimestamp(fixture.suite(), fixture.passedAt());
     assertOnlyActiveSuccessfulResults(
@@ -962,7 +962,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   void suiteCompletionEmitsOnlyTheSurvivingResult(final TestNamespace ns) throws Exception {
     final OpenMetadataClient client = SdkClients.adminClient();
     final SoftDeletedResultFixture fixture = createSoftDeletedResultFixture(client, ns);
-    client.testCases().delete(fixture.failedCase().getId().toString());
+    client.testCases().delete(fixture.failedCase().getId().toString(), Map.of("recursive", "true"));
     final IngestionPipeline pipeline = createTestSuitePipeline(client, ns, fixture.suite());
     final long offset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
     putPipelineStatus(client, pipeline, PipelineStatusType.SUCCESS);
