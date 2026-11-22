@@ -12,11 +12,13 @@
  */
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
-import static org.openmetadata.it.tests.RdfQualityEvidenceFixtures.columnTest;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.it.tests.RdfQualityEvidenceFixtures.enableAutoCloseIncident;
 import static org.openmetadata.it.tests.RdfQualityEvidenceFixtures.postResult;
 import static org.openmetadata.it.tests.RdfQualityEvidenceFixtures.putProfile;
@@ -25,6 +27,7 @@ import static org.openmetadata.it.tests.RdfQualityEvidenceFixtures.tagSensitive;
 import static org.openmetadata.it.util.RdfGraphAssertions.BASE_URI;
 import static org.openmetadata.it.util.RdfGraphAssertions.awaitCount;
 import static org.openmetadata.it.util.RdfGraphAssertions.awaitPresent;
+import static org.openmetadata.it.util.RdfGraphAssertions.count;
 import static org.openmetadata.it.util.RdfGraphAssertions.iri;
 import static org.openmetadata.it.util.RdfGraphAssertions.om;
 
@@ -52,6 +55,7 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestResultValue;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.rdf.RdfUpdater;
 
@@ -65,6 +69,8 @@ public class RdfQualityEvidenceIT {
   private static final Map<String, String> HARD_DELETE =
       Map.of("hardDelete", "true", "recursive", "true");
   private static final long MINUTE = 60_000L;
+  private static final String PARAMETER_MARKER = "quality-regex-marker";
+  private static final String DESCRIPTION_MARKER = "quality-description-marker";
 
   private final OpenMetadataClient client = SdkClients.adminClient();
 
@@ -107,35 +113,45 @@ public class RdfQualityEvidenceIT {
   void aTestCarriesItsLatestResultAndOpenIncidentUntilTheColumnTurnsSensitive(
       final TestNamespace namespace) throws Exception {
     final Table table = table(namespace);
-    final TestCase onAmount = columnTest(client, namespace, table, "amount");
-    final String test = "<" + BASE_URI + "entity/testCase/" + onAmount.getId() + ">";
+    final TestCase onStatus = regexTest(namespace, table, "status");
+    final String test = iri("testCase", onStatus);
+    final String parameters = test + " " + om("hasParameterValue") + " ?parameters";
+    final String description = test + " <http://purl.org/dc/terms/description> ?description";
+    final String changes = test + " " + om("incrementalChangeDescription") + " ?change";
     final long ranAt = System.currentTimeMillis() - MINUTE;
 
-    postResult(client, onAmount, ranAt, TestCaseStatus.Failed, 3L);
+    postResult(client, onStatus, ranAt, TestCaseStatus.Failed, 3L);
     awaitCount(test + " " + om("latestResultStatus") + " \"Failed\"", 1);
     awaitCount(
         test + " " + om("hasTestResult") + "/" + om("failedRows") + " ?rows FILTER(?rows = 3)", 1);
     awaitPresent(test + " " + om("hasOpenIncident") + "/" + om("incidentState") + " ?state");
 
-    enableAutoCloseIncident(client, onAmount);
-    postResult(client, onAmount, ranAt + MINUTE / 2, TestCaseStatus.Success, 0L);
+    enableAutoCloseIncident(client, onStatus);
+    postResult(client, onStatus, ranAt + MINUTE / 2, TestCaseStatus.Success, 0L);
     awaitCount(test + " " + om("latestResultStatus") + " \"Success\"", 1);
     awaitCount(test + " " + om("hasTestResult") + "/" + om("failedRows") + " ?rows", 1);
     awaitCount(test + " " + om("hasOpenIncident") + " ?incident", 0);
 
-    tagSensitive(client, table, "amount");
+    awaitPresent(changes);
+    awaitPresent(parameters + " FILTER(CONTAINS(STR(?parameters), \"" + PARAMETER_MARKER + "\"))");
+    awaitPresent(description + " FILTER(STR(?description) = \"" + DESCRIPTION_MARKER + "\")");
+
+    tagSensitive(client, table, "status");
     awaitCount(test + " " + om("hasTestResult") + " ?result", 0);
     awaitCount(test + " " + om("latestResultStatus") + " ?status", 0);
-    awaitCount(test + " " + om("incrementalChangeDescription") + " ?change", 0);
+    awaitCount(changes, 0);
+    assertAll(
+        () -> assertEquals(0, count(parameters), "Test parameter leaked into the graph"),
+        () -> assertEquals(0, count(description), "Test description leaked into the graph"));
 
-    client.testCases().delete(onAmount.getId().toString(), HARD_DELETE);
+    client.testCases().delete(onStatus.getId().toString(), HARD_DELETE);
     awaitCount(
         "{ "
             + test
             + " ?p ?o } UNION { <"
             + BASE_URI
             + "entity/testCase/"
-            + onAmount.getId()
+            + onStatus.getId()
             + "/result/latest> ?p ?o }",
         0);
   }
@@ -145,8 +161,8 @@ public class RdfQualityEvidenceIT {
   void entityRdfMasksSensitiveColumnTestEvidence(
       final String format, final TestNamespace namespace) {
     final Table table = table(namespace);
-    final TestCase sensitive = columnTest(client, namespace, table, "email");
-    final TestCase visible = columnTest(client, namespace, table, "status");
+    final TestCase sensitive = regexTest(namespace, table, "email");
+    final TestCase visible = regexTest(namespace, table, "status");
     final String message = "quality-result-marker";
     final String observed = "quality-observation-marker";
     postTestEvidence(sensitive, message, observed);
@@ -155,14 +171,37 @@ public class RdfQualityEvidenceIT {
     final User user = UserTestFactory.createUser(namespace, "rdf_evidence_reader");
     final OpenMetadataClient reader =
         SdkClients.createClient(user.getEmail(), user.getEmail(), new String[0]);
-    assertNull(
-        reader.testCases().get(sensitive.getId().toString(), "testCaseResult").getTestCaseResult());
+    final TestCase maskedCase =
+        reader.testCases().get(sensitive.getId().toString(), "testCaseResult");
+    assertAll(
+        () -> assertNull(maskedCase.getTestCaseResult()),
+        () -> assertTrue(nullOrEmpty(maskedCase.getParameterValues())),
+        () -> assertNull(maskedCase.getDescription()));
 
     final String visibleBody = entityRdf(reader, visible, format);
-    assertTrue(visibleBody.contains(message) && visibleBody.contains(observed), visibleBody);
+    assertAll(
+        () -> assertTrue(visibleBody.contains(message), visibleBody),
+        () -> assertTrue(visibleBody.contains(observed), visibleBody),
+        () -> assertTrue(visibleBody.contains(PARAMETER_MARKER), visibleBody),
+        () -> assertTrue(visibleBody.contains(DESCRIPTION_MARKER), visibleBody));
     final String maskedBody = entityRdf(reader, sensitive, format);
     assertTrue(maskedBody.contains(sensitive.getId().toString()), maskedBody);
-    assertFalse(maskedBody.contains(message) || maskedBody.contains(observed), maskedBody);
+    assertAll(
+        () -> assertFalse(maskedBody.contains(message), "Result message leaked"),
+        () -> assertFalse(maskedBody.contains(observed), "Observed value leaked"),
+        () -> assertFalse(maskedBody.contains(PARAMETER_MARKER), "Test parameter leaked"),
+        () -> assertFalse(maskedBody.contains(DESCRIPTION_MARKER), "Test description leaked"));
+  }
+
+  private TestCase regexTest(
+      final TestNamespace namespace, final Table table, final String column) {
+    return TestCaseBuilder.create(client)
+        .name(namespace.prefix(column + "_regex"))
+        .forColumn(table, column)
+        .testDefinition("columnValuesToMatchRegex")
+        .parameter("regex", PARAMETER_MARKER)
+        .description(DESCRIPTION_MARKER)
+        .create();
   }
 
   private void postTestEvidence(

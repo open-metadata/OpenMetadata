@@ -386,15 +386,19 @@ public class PIIMasker {
   }
 
   private static TestCase maskTestCase(TestCase testCase) {
+    maskTestCaseFields(testCase);
+    testCase.setName(flagMaskedName(testCase.getName()));
+    return testCase;
+  }
+
+  /** Removes sensitive content from a test case selected for masking. */
+  public static void maskTestCaseFields(final TestCase testCase) {
     testCase.setIncidentStatus(null);
     testCase.setTestCaseResult(null);
     testCase.setParameterValues(null);
     testCase.setDescription(null);
     testCase.setChangeDescription(null);
     testCase.setIncrementalChangeDescription(null);
-    testCase.setName(flagMaskedName(testCase.getName()));
-
-    return testCase;
   }
 
   /**

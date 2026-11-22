@@ -111,13 +111,12 @@ public final class RdfQualityEvidence {
       final boolean unmasked =
           link.filter(parsed -> !PIIMasker.hidesTestCaseResults(table.orElse(null), parsed))
               .isPresent();
-      final String fqn = testCase.getFullyQualifiedName();
-      testCase.setTestCaseResult(unmasked ? results.get(fqn) : null);
-      testCase.setIncidentStatus(unmasked ? open(incidents.get(fqn)) : null);
-      if (!unmasked) {
-        // Result updates can copy raw values into both change descriptions.
-        testCase.setChangeDescription(null);
-        testCase.setIncrementalChangeDescription(null);
+      if (unmasked) {
+        final String fqn = testCase.getFullyQualifiedName();
+        testCase.setTestCaseResult(results.get(fqn));
+        testCase.setIncidentStatus(open(incidents.get(fqn)));
+      } else {
+        PIIMasker.maskTestCaseFields(testCase);
       }
       link.ifPresentOrElse(
           parsed -> keepOnlyResolvedColumnLink(testCase, table, parsed),

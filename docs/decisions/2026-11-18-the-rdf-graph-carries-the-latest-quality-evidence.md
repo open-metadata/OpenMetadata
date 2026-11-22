@@ -1,7 +1,7 @@
 # The RDF graph carries the latest quality evidence of each table, column and test case
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-18 (initial)
+- **Revisions:** v1 2026-11-18 (initial) · v2 2026-11-22 (shared test case masking)
 - **Deciders:** OpenMetadata RDF maintainers
 - **Guard:** `RdfQualityProjectionTest`, `RdfQualityEvidenceTest`, `QualityWritesRefreshRdfTest`,
   `RdfEntityWritePlannerTest#aNewerTestResultReplacesTheOlderOneAndDeletingTheTestCaseRemovesIt`,
@@ -64,3 +64,10 @@ card shows a node's literal values as facts, and anything behind an edge costs a
 - A result written while RDF was off appears after a reindex or the next write of its test case.
   Existing stores hold no evidence until a reindex.
 - Revisit if the per-column measure set must grow, or if profile history becomes a graph need.
+
+## Amendment — 2026-11-22
+
+For test cases that require masking, the graph and entity RDF endpoint call the same
+`PIIMasker` helper as the test-case API. It clears the result, incident status, parameter values,
+description, and both change descriptions. RDF keeps the stored test case name for graph
+labels. A reindex removes masked fields from test cases projected before this change.

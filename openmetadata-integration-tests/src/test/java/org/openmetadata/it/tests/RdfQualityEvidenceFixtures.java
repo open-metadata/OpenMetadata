@@ -35,7 +35,6 @@ import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.DatabaseServices;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.Tables;
-import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
@@ -109,18 +108,6 @@ final class RdfQualityEvidenceFixtures {
         .getHttpClient()
         .execute(
             HttpMethod.PUT, "/v1/tables/" + table.getId() + "/tableProfile", profile, Table.class);
-  }
-
-  static TestCase columnTest(
-      final OpenMetadataClient client,
-      final TestNamespace namespace,
-      final Table table,
-      final String name) {
-    return TestCaseBuilder.create(client)
-        .name(namespace.prefix(name + "_not_null"))
-        .forColumn(table, name)
-        .testDefinition("columnValuesToBeNotNull")
-        .create();
   }
 
   static void postResult(
