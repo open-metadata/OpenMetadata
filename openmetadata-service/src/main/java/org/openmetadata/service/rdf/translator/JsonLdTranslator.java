@@ -54,7 +54,7 @@ public class JsonLdTranslator {
   // One mapper for the translator's lifetime, so its merged-context cache is
   // shared across entities.
   private final RdfPropertyMapper propertyMapper;
-  private final Function<EntityInterface<?>, String> entityTypeResolver;
+  private Function<EntityInterface<?>, String> entityTypeResolver;
   private final ConceptBindingLookup bindingLookup;
 
   /**
@@ -80,15 +80,17 @@ public class JsonLdTranslator {
       LiveTagLookup tagLookup,
       ConceptBindingLookup bindingLookup,
       ReferenceScope referenceScope) {
-    this(
-        objectMapper,
-        baseUri,
-        entity -> entity.getEntityReference().getType(),
-        tagLookup,
-        bindingLookup,
-        referenceScope);
+    this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
+    this.contextCache = new HashMap<>();
+    this.baseUri = Objects.requireNonNull(baseUri, "baseUri");
+    this.entityTypeResolver = entity -> entity.getEntityReference().getType();
+    this.bindingLookup = Objects.requireNonNull(bindingLookup, "bindingLookup");
+    loadContexts();
+    this.propertyMapper =
+        new RdfPropertyMapper(baseUri, objectMapper, contextCache, tagLookup, referenceScope);
   }
 
+  /** Tests only: resolves entity types without the entity registry. Set once, here. */
   JsonLdTranslator(
       ObjectMapper objectMapper,
       String baseUri,
@@ -96,27 +98,10 @@ public class JsonLdTranslator {
     this(
         objectMapper,
         baseUri,
-        entityTypeResolver,
         LiveTagLookup.database(),
         ConceptBindingLookup.NONE,
         ReferenceScope.LIVE);
-  }
-
-  private JsonLdTranslator(
-      ObjectMapper objectMapper,
-      String baseUri,
-      Function<EntityInterface<?>, String> entityTypeResolver,
-      LiveTagLookup tagLookup,
-      ConceptBindingLookup bindingLookup,
-      ReferenceScope referenceScope) {
-    this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
-    this.contextCache = new HashMap<>();
-    this.baseUri = Objects.requireNonNull(baseUri, "baseUri");
     this.entityTypeResolver = Objects.requireNonNull(entityTypeResolver, "entityTypeResolver");
-    this.bindingLookup = Objects.requireNonNull(bindingLookup, "bindingLookup");
-    loadContexts();
-    this.propertyMapper =
-        new RdfPropertyMapper(baseUri, objectMapper, contextCache, tagLookup, referenceScope);
   }
 
   private void loadContexts() {
