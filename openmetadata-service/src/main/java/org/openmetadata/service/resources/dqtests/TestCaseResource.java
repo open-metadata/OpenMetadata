@@ -149,8 +149,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     // The failed-rows sample DELETE authorizes DeleteTestCaseFailedRowsSample by name, and EditAll
     // does not subsume it (ADR:2026-11-22-deleting-a-failed-rows-sample-is-its-own-grant).
     // Advertising it lets policies grant it on testCase and lets the permissions API evaluate it
-    // per
-    // test case, owners included.
+    // per test case, owners included.
     return listOf(
         MetadataOperation.EDIT_STATUS, MetadataOperation.DELETE_TEST_CASE_FAILED_ROWS_SAMPLE);
   }
