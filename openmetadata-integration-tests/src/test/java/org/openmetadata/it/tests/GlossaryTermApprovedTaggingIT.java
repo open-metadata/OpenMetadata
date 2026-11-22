@@ -47,6 +47,7 @@ import org.openmetadata.schema.api.data.CreateContainer;
 import org.openmetadata.schema.api.data.CreateFile;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.api.tests.CreateTestCase;
@@ -536,6 +537,7 @@ public class GlossaryTermApprovedTaggingIT {
     Table table = client.tables().create(request);
     assertHeld(term, 2, reread(client, table));
     Double versionBefore = reread(client, table).getVersion();
+    long approvedAt = System.currentTimeMillis();
 
     setStatus(client, term, EntityStatus.APPROVED);
 
@@ -552,6 +554,24 @@ public class GlossaryTermApprovedTaggingIT {
     assertTrue(
         reread(client, table).getVersion() > versionBefore,
         "approval is an ordinary edit of the asset, so it records a version");
+    Awaitility.await("approval records a change event for the asset")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(() -> updateEventsSince(client, approvedAt).contains(table.getId().toString()));
+  }
+
+  private static List<String> updateEventsSince(OpenMetadataClient client, long timestamp) {
+    JsonNode events =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/events?entityUpdated=%s&timestamp=%d".formatted(Entity.TABLE, timestamp),
+                null,
+                JsonNode.class);
+    List<String> entityIds = new ArrayList<>();
+    events.get("data").forEach(event -> entityIds.add(event.get("entityId").asText()));
+    return entityIds;
   }
 
   /**
@@ -693,22 +713,34 @@ public class GlossaryTermApprovedTaggingIT {
     request.getColumns().get(0).setTags(List.of(label(term)));
     Table table = client.tables().create(request);
 
-    JsonNode page =
-        client
-            .getHttpClient()
-            .execute(
-                HttpMethod.GET,
-                "/v1/glossaryTerms/%s/pendingAssets".formatted(term.getId()),
-                null,
-                JsonNode.class);
-
-    List<String> assets = new ArrayList<>();
-    page.get("data").forEach(asset -> assets.add(asset.get("id").asText()));
     // Only the table: the schema and database above it are taggable but do not hold the term.
-    assertEquals(List.of(table.getId().toString()), assets, page::toString);
+    assertEquals(List.of(table.getId().toString()), pendingAssetIds(client, term));
     assertFalse(
         reread(client, table).getColumns().get(0).getTags().stream()
             .anyMatch(tag -> term.getFullyQualifiedName().equals(tag.getTagFQN())));
+  }
+
+  /**
+   * An entity whose FQN runs into a held column's, here a metric named after it, does not hide the
+   * table that holds the column from the term's pending assets.
+   */
+  @Test
+  void pendingAssetsKeepsATableWhoseColumnFqnAnotherEntityShares(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = deprecatedTerm(client, ns);
+    // The metric's name is the column's FQN, so the FQN has to fit a name.
+    CreateTable request = tableRequest(ns, shortSchema(ns), "pending_collision");
+    request.setName("t_%s".formatted(ns.uniqueShortId()));
+    request.getColumns().get(0).setTags(List.of(label(term)));
+    Table table = client.tables().create(request);
+    client
+        .metrics()
+        .create(
+            new CreateMetric()
+                .withName(table.getColumns().get(0).getFullyQualifiedName())
+                .withDescription("Metric named like a held column"));
+
+    assertTrue(pendingAssetIds(client, term).contains(table.getId().toString()));
   }
 
   /**
@@ -825,6 +857,20 @@ public class GlossaryTermApprovedTaggingIT {
           () -> "Held term %s shown in %s".formatted(term.getFullyQualifiedName(), read));
     }
     assertEquals(pendingTargets, pendingTargets(term).size());
+  }
+
+  private static List<String> pendingAssetIds(OpenMetadataClient client, GlossaryTerm term) {
+    JsonNode page =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/glossaryTerms/%s/pendingAssets".formatted(term.getId()),
+                null,
+                JsonNode.class);
+    List<String> assets = new ArrayList<>();
+    page.get("data").forEach(asset -> assets.add(asset.get("id").asText()));
+    return assets;
   }
 
   private static List<String> pendingTargets(GlossaryTerm term) {

@@ -19,7 +19,6 @@ import io.dropwizard.lifecycle.Managed;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -274,12 +273,15 @@ public final class GlossaryTermPendingLabels implements Managed {
         dao()
             .listPendingTargetHashes(
                 GLOSSARY, FullyQualifiedName.buildHash(termFqn), after == null ? "" : after, limit);
+    Set<String> pending = Set.copyOf(targets);
     Map<UUID, EntityReference> assets = new LinkedHashMap<>();
-    for (TargetHolder holder : nearestHolders(targets)) {
+    for (TargetHolder holder : targets.isEmpty() ? Set.<TargetHolder>of() : holders(targets)) {
       try {
-        assets.putIfAbsent(
-            holder.id(),
-            Entity.getEntityReferenceById(holder.entityType(), holder.id(), Include.NON_DELETED));
+        if (holdsAnyOf(holder, pending)) {
+          assets.putIfAbsent(
+              holder.id(),
+              Entity.getEntityReferenceById(holder.entityType(), holder.id(), Include.NON_DELETED));
+        }
       } catch (RuntimeException e) {
         LOG.debug("Pending target holder {} {} is gone", holder.entityType(), holder.id());
       }
@@ -288,25 +290,16 @@ public final class GlossaryTermPendingLabels implements Managed {
     return new ResultList<>(List.copyOf(assets.values()), null, next, assets.size());
   }
 
-  /**
-   * The entities that hold each target: the one it is, or the one it is a field of. The entities
-   * above that one match the target's prefixes too, but the term is not pending on them. Two entity
-   * types that share an FQN both hold it.
-   */
-  static Set<TargetHolder> nearestHolders(List<String> targetHashes) {
-    Set<TargetHolder> holders = targetHashes.isEmpty() ? Set.of() : holders(targetHashes);
-    Set<TargetHolder> nearest = new LinkedHashSet<>();
-    for (String target : targetHashes) {
-      List<TargetHolder> above =
-          holders.stream().filter(holder -> isAtOrAbove(holder.hash(), target)).toList();
-      int deepest = above.stream().mapToInt(holder -> holder.hash().length()).max().orElse(0);
-      above.stream().filter(holder -> holder.hash().length() == deepest).forEach(nearest::add);
-    }
-    return nearest;
-  }
-
-  private static boolean isAtOrAbove(String holderHash, String targetHash) {
-    return targetHash.equals(holderHash) || targetHash.startsWith(holderHash + Entity.SEPARATOR);
+  // A candidate matches a target by FQN prefix. It holds the target only when the target is the
+  // entity itself or one of its own fields: an entity above the target, or one whose FQN merely
+  // runs into a field's (a metric named like a column), does not.
+  private static boolean holdsAnyOf(TargetHolder holder, Set<String> targets) {
+    EntityRepository<?> repository = Entity.getEntityRepository(holder.entityType());
+    return targets.contains(holder.hash())
+        || (repository.hasTaggedFields()
+            && repository.ownTargetFqns(holder.id()).stream()
+                .map(FullyQualifiedName::buildHash)
+                .anyMatch(targets::contains));
   }
 
   /**

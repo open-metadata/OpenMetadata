@@ -6538,7 +6538,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                 new TaggedEntity(updated, taggedFieldContainers(updated)), labelsByTargetHash)
             > 0;
     if (added) {
-      patch(null, id, user, JsonUtils.getJsonPatch(original, updated));
+      // A background write has no response for the response filter to record a change event from.
+      PatchResponse<T> response = patch(null, id, user, JsonUtils.getJsonPatch(original, updated));
+      storeChangeEventForAsyncOperation(response.entity(), response.changeType(), false, user);
     }
     return added;
   }
@@ -6918,9 +6920,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               }
             });
       } catch (RuntimeException e) {
-        // The rollback dropped the chunk's pending rows, and the bulk creator retries a conflict
-        // with these same entities: give them their terms back so the retry holds them again.
-        restoreHeldTerms(chunk, chunkHeldTerms);
+        // The rollback dropped this chunk's pending rows and later chunks never ran, and callers
+        // retry or fall back with these same entities: give them their terms back so that write
+        // holds them again.
+        restoreHeldTerms(
+            entities.subList(start, entities.size()), heldTerms.subList(start, entities.size()));
         throw e;
       }
     }
