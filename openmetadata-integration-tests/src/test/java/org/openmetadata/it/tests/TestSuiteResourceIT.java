@@ -80,6 +80,8 @@ import org.openmetadata.service.resources.dqtests.TestSuiteResource;
 @Execution(ExecutionMode.CONCURRENT)
 public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite> {
 
+  private static final String TEST_CASE_RESULT_SUMMARY_FIELD = "testCaseResultSummary";
+
   // Disable tests that don't apply to TestSuite
   {
     supportsEntityStatus = false;
@@ -988,7 +990,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
             .filter(event -> fixture.suite().getId().equals(event.getEntityId()))
             .filter(event -> event.getChangeDescription() != null)
             .flatMap(event -> event.getChangeDescription().getFieldsUpdated().stream())
-            .filter(field -> "testCaseResultSummary".equals(field.getName()))
+            .filter(field -> TEST_CASE_RESULT_SUMMARY_FIELD.equals(field.getName()))
             .map(field -> JsonUtils.valueToTree(field.getNewValue()))
             .findFirst()
             .orElseThrow(() -> new AssertionError("No suite completion event"));
