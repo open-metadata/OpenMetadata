@@ -13500,7 +13500,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // Delete tags related to deleted columns
       deletedColumns.forEach(
           deleted -> {
-            daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName());
+            daoCollection
+                .tagUsageDAO()
+                .deleteFieldTags(
+                    deleted.getFullyQualifiedName(), addedColumnMap.containsKey(deleted.getName()));
             deleteColumnExtension(entityId, deleted.getFullyQualifiedName());
           });
 

@@ -608,6 +608,19 @@ public interface ClassificationTagDAOs {
       deleteShownTagsByTargets(List.of(targetFQN));
     }
 
+    /**
+     * Clears the labels of a field a write drops. A field re-added under the same name, as a field
+     * whose dataType changed is, is still the same target, so its pending labels stay for the
+     * term's approval and only its shown labels are written again.
+     */
+    default void deleteFieldTags(String fieldFqn, boolean readdedUnderSameName) {
+      if (readdedUnderSameName) {
+        deleteShownTagsByTarget(fieldFqn);
+      } else {
+        deleteTagsByTarget(fieldFqn);
+      }
+    }
+
     @SqlUpdate(
         "DELETE FROM tag_usage WHERE source = :source AND tagFQN LIKE :tagFQNPrefix AND targetFQNHash IN (<targetFQNHashes>)")
     void deleteTagsByPrefixAndTargets(

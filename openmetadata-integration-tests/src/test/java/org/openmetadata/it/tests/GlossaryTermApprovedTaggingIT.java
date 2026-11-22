@@ -12,12 +12,14 @@
  */
 package org.openmetadata.it.tests;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
+import java.net.URLEncoder;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -344,6 +346,52 @@ public class GlossaryTermApprovedTaggingIT {
     assertTrue(hasTerm(refetched.getDataModel().getColumns().get(0).getTags(), term));
   }
 
+  /**
+   * A column whose dataType changes is dropped and re-added under the same FQN; the term held on it
+   * stays held there.
+   */
+  @Test
+  void aColumnReaddedWithANewDataTypeKeepsItsHeldTerm(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = deprecatedTerm(client, ns);
+    CreateTable request = tableRequest(ns, schema(ns), "retyped_column");
+    request.getColumns().get(0).setTags(List.of(label(term)));
+    Table table = client.tables().create(request);
+    String columnHash =
+        FullyQualifiedName.buildHash(table.getColumns().get(0).getFullyQualifiedName());
+    assertEquals(List.of(columnHash), pendingTargets(term));
+
+    request.getColumns().get(0).withDataType(ColumnDataType.INT).setTags(List.of());
+    client.tables().createOrUpdate(request);
+
+    assertEquals(List.of(columnHash), pendingTargets(term));
+  }
+
+  /** A container moved to another parent takes the term held on it to its new FQN. */
+  @Test
+  void movingAContainerMovesItsHeldTerm(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = deprecatedTerm(client, ns);
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = client.containers().create(containerRequest(ns, "held_a", service));
+    Container parentB = client.containers().create(containerRequest(ns, "held_b", service));
+    Container child =
+        client
+            .containers()
+            .create(
+                containerRequest(ns, "held_child", service)
+                    .withParent(parentA.getEntityReference())
+                    .withTags(List.of(label(term))));
+    assertEquals(1, pendingTargets(term).size());
+
+    Container loaded = client.containers().get(child.getId().toString(), "parent,tags");
+    loaded.setParent(parentB.getEntityReference());
+    Container moved = client.containers().update(child.getId().toString(), loaded);
+
+    assertEquals(
+        List.of(FullyQualifiedName.buildHash(moved.getFullyQualifiedName())), pendingTargets(term));
+  }
+
   private static CreateContainer containerRequest(
       TestNamespace ns, String suffix, StorageService service) {
     return new CreateContainer()
@@ -560,17 +608,26 @@ public class GlossaryTermApprovedTaggingIT {
         .until(() -> updateEventsSince(client, approvedAt).contains(table.getId().toString()));
   }
 
+  // Other tests update tables concurrently and events come oldest first, so every page is read.
   private static List<String> updateEventsSince(OpenMetadataClient client, long timestamp) {
-    JsonNode events =
-        client
-            .getHttpClient()
-            .execute(
-                HttpMethod.GET,
-                "/v1/events?entityUpdated=%s&timestamp=%d".formatted(Entity.TABLE, timestamp),
-                null,
-                JsonNode.class);
     List<String> entityIds = new ArrayList<>();
-    events.get("data").forEach(event -> entityIds.add(event.get("entityId").asText()));
+    String after = null;
+    do {
+      String query = "/v1/events?entityUpdated=%s&timestamp=%d".formatted(Entity.TABLE, timestamp);
+      JsonNode events =
+          client
+              .getHttpClient()
+              .execute(
+                  HttpMethod.GET,
+                  after == null
+                      ? query
+                      : "%s&after=%s".formatted(query, URLEncoder.encode(after, UTF_8)),
+                  null,
+                  JsonNode.class);
+      events.get("data").forEach(event -> entityIds.add(event.get("entityId").asText()));
+      JsonNode next = events.path("paging").path("after");
+      after = next.isMissingNode() || next.isNull() ? null : next.asText();
+    } while (after != null);
     return entityIds;
   }
 
