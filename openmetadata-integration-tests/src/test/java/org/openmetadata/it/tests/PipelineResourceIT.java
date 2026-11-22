@@ -4,8 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.UriTestUtils.assertHttpStatusFor;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -16,29 +18,39 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.lineage.AddLineage;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
@@ -47,6 +59,8 @@ import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.PipelineMetrics;
 import org.openmetadata.schema.type.PipelineSummary;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.StatusType;
@@ -77,6 +91,8 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
 
   private static final String CERTIFICATION_GOLD = "Certification.Gold";
+  // 2100-01-01: the trend endpoints require a window, and this one covers every recorded run.
+  private static final long AGGREGATE_WINDOW_END_TS = 4_102_444_800_000L;
 
   {
     supportsLifeCycle = true;
@@ -726,6 +742,77 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
             null, null, Fields.EMPTY_FIELDS, injectionFilter, 10, null, null);
     assertEquals(0, injectionResult.getPaging().getTotal());
     assertTrue(injectionResult.getData().isEmpty());
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "/v1/pipelines/metrics",
+        "/v1/pipelines/summary",
+        "/v1/pipelines/executionTrend?startTs=0&endTs=" + AGGREGATE_WINDOW_END_TS,
+        "/v1/pipelines/runtimeTrend?startTs=0&endTs=" + AGGREGATE_WINDOW_END_TS
+      })
+  void get_pipelineAggregate_deniedViewBasic_403(String path, TestNamespace ns) {
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("aggdeny"), Entity.PIPELINE, MetadataOperation.VIEW_BASIC);
+
+    assertHttpStatusFor(denied, 403, HttpMethod.GET, path, null);
+  }
+
+  static Stream<Arguments> principalsAllowedToViewPipelines() {
+    return Stream.of(
+        principal("admin", ns -> SdkClients.adminClient()),
+        principal("ingestion-bot", ns -> SdkClients.ingestionBotClient()),
+        principal("DataConsumer role", ns -> clientWithRole(ns, "DataConsumer")),
+        principal("DataSteward role", ns -> clientWithRole(ns, "DataSteward")),
+        principal("user without roles or teams", ns -> SdkClients.user3Client()));
+  }
+
+  @ParameterizedTest
+  @MethodSource("principalsAllowedToViewPipelines")
+  void get_pipelineMetrics_allowedPrincipal_200(
+      Function<TestNamespace, OpenMetadataClient> principal, TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    createEntity(
+        new CreatePipeline()
+            .withName(ns.prefix("pipeline_metrics"))
+            .withService(service.getFullyQualifiedName()));
+
+    PipelineMetrics metrics = getPipelineMetrics(principal.apply(ns), service.getName());
+
+    assertTrue(metrics.getDataAvailable());
+    assertEquals(1, metrics.getTotalPipelines());
+    assertNull(metrics.getErrorMessage());
+  }
+
+  @Test
+  void get_pipelineMetrics_denyConditionedOnEntityTag_200(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    createEntity(
+        new CreatePipeline()
+            .withName(ns.prefix("pipeline_metrics"))
+            .withService(service.getFullyQualifiedName()));
+    OpenMetadataClient deniedOnTaggedPipelines =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("aggtag"),
+            Entity.PIPELINE,
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('PII.Sensitive')");
+
+    PipelineMetrics metrics = getPipelineMetrics(deniedOnTaggedPipelines, service.getName());
+
+    assertTrue(metrics.getDataAvailable());
+    assertEquals(1, metrics.getTotalPipelines());
+  }
+
+  @Test
+  void get_pipelineMetrics_denyUnlessOwner_403(TestNamespace ns) {
+    OpenMetadataClient deniedUnlessOwner =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("aggown"), Entity.PIPELINE, MetadataOperation.VIEW_BASIC, "!isOwner()");
+
+    assertHttpStatusFor(deniedUnlessOwner, 403, HttpMethod.GET, "/v1/pipelines/metrics", null);
   }
 
   @Test
@@ -1688,6 +1775,36 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     String response =
         client.getHttpClient().executeForString(HttpMethod.GET, path.toString(), null);
     return JsonUtils.readValue(response, new TypeReference<ResultList<PipelineSummary>>() {});
+  }
+
+  private PipelineMetrics getPipelineMetrics(OpenMetadataClient client, String serviceName) {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/pipelines/metrics?service=" + encodeQueryValue(serviceName),
+                null);
+    return JsonUtils.readValue(response, PipelineMetrics.class);
+  }
+
+  private static Arguments principal(
+      String name, Function<TestNamespace, OpenMetadataClient> client) {
+    return Arguments.of(Named.of(name, client));
+  }
+
+  private static OpenMetadataClient clientWithRole(TestNamespace ns, String roleName) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Role role = admin.roles().getByName(roleName);
+    String name = ns.shortPrefix(roleName.toLowerCase(Locale.ROOT));
+    String email = name + "@test.openmetadata.org";
+    ns.trackRoot(
+        Entity.USER,
+        admin
+            .users()
+            .create(
+                new CreateUser().withName(name).withEmail(email).withRoles(List.of(role.getId()))));
+    return SdkClients.createClient(name, email, new String[] {});
   }
 
   private ResultList<PipelineStatus> listPipelineStatuses(
