@@ -39,7 +39,6 @@ import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.ResourceLock;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
@@ -54,7 +53,6 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.context.ContextMemorySharePrincipals;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -209,30 +207,6 @@ class ContextMemoryVisibilityTest {
     assertFalse(ContextMemoryVisibility.isVisibleToUser(sharedWith(domain), BOB, false));
     assertTrue(ContextMemoryVisibility.isVisibleToUser(sharedWith(domain), "charlie", false));
     assertFalse(ContextMemoryVisibility.isVisibleToUser(sharedWith(team), "charlie", false));
-  }
-
-  @Test
-  @ResourceLock("contextMemorySharePrincipals")
-  void additionalPrincipalsCanReadSharedMemories() {
-    EntityReference target = ref(Entity.PERSONA, "analytics", "analytics");
-    ContextMemory memory = sharedWith(target);
-    assertFalse(ContextMemoryVisibility.isVisibleToUser(memory, BOB, false));
-
-    try {
-      ContextMemorySharePrincipals.set(
-          new ContextMemorySharePrincipals() {
-            @Override
-            public Set<UUID> additionalPrincipalIds(User user) {
-              return BOB.equals(user.getName()) ? Set.of(target.getId()) : Set.of();
-            }
-          });
-      assertTrue(ContextMemoryVisibility.isVisibleToUser(memory, BOB, false));
-      assertFalse(ContextMemoryVisibility.isVisibleToUser(memory, "charlie", false));
-      memory.getShareConfig().setVisibility(MemoryVisibility.PRIVATE);
-      assertFalse(ContextMemoryVisibility.isVisibleToUser(memory, BOB, false));
-    } finally {
-      ContextMemorySharePrincipals.set(null);
-    }
   }
 
   @Test

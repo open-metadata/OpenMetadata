@@ -241,6 +241,9 @@ public class VectorSearchQueryBuilder {
       StringBuilder sb, VectorSearchParameters parameters, Set<String> readableAnchorIds) {
     SubjectContext subjectContext = parameters.subjectContext();
     boolean enforceVisibility = MEMORY_VISIBILITY.isVisibilityEnforced(subjectContext);
+    User user = enforceVisibility ? subjectContext.user() : null;
+    List<String> principalIds =
+        user == null ? List.of() : ContextMemorySearchVisibility.sharedPrincipalIds(user);
     // A sibling `filter` array rather than another `must` entry: a security constraint must not
     // contribute to the relevance score, and keeping it out of `must` also keeps the
     // caller-supplied
@@ -259,8 +262,7 @@ public class VectorSearchQueryBuilder {
         .append(termClause(ContextMemorySearchVisibility.FIELD_ENTITY_TYPE, Entity.CONTEXT_MEMORY))
         .append(',');
     if (!MEMORY_VISIBILITY.isSubjectResolvable(subjectContext) || enforceVisibility) {
-      appendVisibleToUserClause(
-          sb, enforceVisibility ? subjectContext : null, true, readableAnchorIds);
+      appendVisibleToUserClause(sb, user, principalIds, true, readableAnchorIds);
       sb.append(',');
     }
     sb.append(termClause(ContextMemoryIndex.FIELD_STATUS, EntityStatus.APPROVED.value()));
@@ -273,7 +275,7 @@ public class VectorSearchQueryBuilder {
       sb.append(",{\"bool\":{\"should\":[{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"")
           .append(ContextMemorySearchVisibility.FIELD_VISIBILITY)
           .append("\"}}]}},");
-      appendVisibleToUserClause(sb, enforceVisibility ? subjectContext : null, false, Set.of());
+      appendVisibleToUserClause(sb, user, principalIds, false, Set.of());
       sb.append("]}}");
     }
     sb.append("]}}");
@@ -292,7 +294,8 @@ public class VectorSearchQueryBuilder {
    */
   private static void appendVisibleToUserClause(
       StringBuilder sb,
-      SubjectContext subjectContext,
+      User user,
+      List<String> principalIds,
       boolean allowPublic,
       Set<String> readableAnchorIds) {
     // This clause excludes unstamped memories until Search Reindex restamps them; the file wrapper
@@ -309,8 +312,7 @@ public class VectorSearchQueryBuilder {
           termClause(
               ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()));
     }
-    if (subjectContext != null) {
-      User user = subjectContext.user();
+    if (user != null) {
       sb.append(',');
       appendOwnedBy(sb, user);
       sb.append(",{\"bool\":{\"must\":[")
@@ -318,10 +320,7 @@ public class VectorSearchQueryBuilder {
               termClause(
                   ContextMemorySearchVisibility.FIELD_VISIBILITY, MemoryVisibility.SHARED.value()))
           .append(',');
-      appendFlat(
-          sb,
-          ContextMemorySearchVisibility.FIELD_SHARED_WITH_IDS,
-          ContextMemorySearchVisibility.sharedPrincipalIds(user));
+      appendFlat(sb, ContextMemorySearchVisibility.FIELD_SHARED_WITH_IDS, principalIds);
       sb.append("]}}");
       if (allowPublic && !readableAnchorIds.isEmpty()) {
         sb.append(',');

@@ -819,7 +819,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
             .withName(ns.prefix("bad-principal"))
             .withDescription("Invalid shared principal type")
             .withQuestion("Can a memory be a shared principal?")
-            .withAnswer("No - only user, team, or domain principals are allowed.")
+            .withAnswer("Only users, teams, domains, and personas can receive a share.")
             .withShareConfig(
                 new MemoryShareConfig()
                     .withVisibility(MemoryVisibility.SHARED)
@@ -831,7 +831,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     assertThrows(
         Exception.class,
         () -> createEntity(request),
-        "Sharing with a non-user/team/domain principal must be rejected");
+        "Sharing with a context memory must be rejected");
   }
 
   @Test

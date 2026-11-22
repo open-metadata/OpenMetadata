@@ -147,20 +147,32 @@ public final class ContextMemoryVisibility {
 
   static boolean isVisibleToUser(
       ContextMemory memory, String userName, boolean isAdmin, AnchorAccess anchorAccess) {
+    return isVisibleToUser(memory, userName, isAdmin, anchorAccess, principalIdsOf(userName));
+  }
+
+  private static boolean isVisibleToUser(
+      ContextMemory memory,
+      String userName,
+      boolean isAdmin,
+      AnchorAccess anchorAccess,
+      Supplier<Set<String>> principalIds) {
     return isAdmin
         || isOwnedBy(memory, userName)
-        || isVisibleThroughShareConfig(memory, userName, anchorAccess);
+        || isVisibleThroughShareConfig(memory, userName, anchorAccess, principalIds);
   }
 
   private static boolean isVisibleThroughShareConfig(
-      ContextMemory memory, String userName, AnchorAccess anchorAccess) {
+      ContextMemory memory,
+      String userName,
+      AnchorAccess anchorAccess,
+      Supplier<Set<String>> principalIds) {
     MemoryVisibility visibility =
         memory.getShareConfig() == null ? null : memory.getShareConfig().getVisibility();
     boolean visible = false;
     if (visibility == MemoryVisibility.ENTITY || visibility == MemoryVisibility.PUBLIC) {
       visible = isAnchorReadable(memory, userName, anchorAccess);
     } else if (visibility == MemoryVisibility.SHARED) {
-      visible = isInSharedWithList(memory, userName);
+      visible = isInSharedWithList(memory, principalIds);
     }
     return visible;
   }
@@ -305,8 +317,9 @@ public final class ContextMemoryVisibility {
   static List<ContextMemory> filterByVisibility(
       List<ContextMemory> memories, String userName, boolean isAdmin, AnchorAccess anchorAccess) {
     AnchorAccess cachedAccess = decidedOncePerPage(anchorAccess::canView)::test;
+    Supplier<Set<String>> principalIds = principalIdsOf(userName);
     return memories.stream()
-        .filter(m -> isVisibleToUser(m, userName, isAdmin, cachedAccess))
+        .filter(m -> isVisibleToUser(m, userName, isAdmin, cachedAccess, principalIds))
         .toList();
   }
 
@@ -501,19 +514,15 @@ public final class ContextMemoryVisibility {
         .anyMatch(o -> userName.equals(o.getName()) || userName.equals(o.getFullyQualifiedName()));
   }
 
-  private static boolean isInSharedWithList(ContextMemory memory, String userName) {
-    return memory.getShareConfig() != null
-        && isSharedWith(memory.getShareConfig().getSharedWith(), userName);
+  private static boolean isInSharedWithList(
+      ContextMemory memory, Supplier<Set<String>> principalIds) {
+    return isSharedWith(memory.getShareConfig().getSharedWith(), principalIds);
   }
 
   /**
-   * Whether {@code userName} is named by a sharing list, directly or through a team or domain they
-   * belong to. Public because Context Center shares files by the same vocabulary, and one matcher
-   * is what keeps the two from drifting apart.
-   *
-   * <p>Principals are matched by id, as search matches them. Users, teams and domains are named
-   * independently of each other, so a name does not say which of them was shared with: a user who
-   * signs up under a team's name is not a member of that team.
+   * Whether a sharing list names {@code userName}, one of their teams or domains, or a persona
+   * they hold. Context Center files use the same sharing vocabulary. Principal IDs distinguish
+   * users, teams, domains, and personas that share a name.
    */
   public static boolean isSharedWith(List<MemorySharedPrincipal> sharedWith, String userName) {
     return isSharedWith(sharedWith, () -> resolvePrincipalIdentifiers(userName));
@@ -543,9 +552,7 @@ public final class ContextMemoryVisibility {
   }
 
   /**
-   * The ids a sharing list may name to reach {@code userName}: their own, their teams' and their
-   * domains', plus any additional principals from the distribution. A user that cannot be resolved
-   * is shared nothing.
+   * Resolves the user's sharing principals. An unresolved user has no principals.
    */
   static Set<String> resolvePrincipalIdentifiers(String userName) {
     Set<String> ids = Set.of();
@@ -572,7 +579,7 @@ public final class ContextMemoryVisibility {
   private static String deniedMessageFor(MemoryVisibility visibility) {
     return switch (visibility == null ? MemoryVisibility.PRIVATE : visibility) {
       case PRIVATE -> "Memory with visibility PRIVATE is only accessible to its owner.";
-      case SHARED -> "Memory with visibility SHARED is only accessible to explicitly shared users.";
+      case SHARED -> "Memory with visibility SHARED is only accessible to users covered by its sharing list.";
       case ENTITY,
           PUBLIC -> "Memory with visibility ENTITY or PUBLIC is only accessible to users who can view its"
           + " primary entity.";

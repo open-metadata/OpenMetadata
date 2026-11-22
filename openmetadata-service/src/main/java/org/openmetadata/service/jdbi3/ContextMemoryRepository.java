@@ -39,7 +39,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.context.ContextMemorySharePrincipals;
 import org.openmetadata.service.context.center.ArchivedWithSources;
 import org.openmetadata.service.context.center.MemoryGlossaryDerivationQueue;
 import org.openmetadata.service.context.center.MemoryRelinking;
@@ -61,6 +60,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
@@ -574,7 +574,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       Set.of(Entity.CONTEXT_FILE, Entity.PAGE);
 
   private static final Set<String> ALLOWED_SHARED_PRINCIPAL_TYPES =
-      Set.of(Entity.USER, Entity.TEAM, Entity.DOMAIN);
+      Set.of(Entity.USER, Entity.TEAM, Entity.DOMAIN, Entity.PERSONA);
 
   @Override
   public void prepare(ContextMemory entity, boolean update) {
@@ -718,10 +718,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       if (sharedPrincipal.getPrincipal() == null) {
         continue;
       }
-      EntityReference principal =
-          Entity.getEntityReference(sharedPrincipal.getPrincipal(), Include.NON_DELETED);
-      if (!ALLOWED_SHARED_PRINCIPAL_TYPES.contains(principal.getType())
-          && !ContextMemorySharePrincipals.get().validateAdditionalTarget(principal)) {
+      EntityReference principal = resolveSharedPrincipal(sharedPrincipal.getPrincipal());
+      if (!ALLOWED_SHARED_PRINCIPAL_TYPES.contains(principal.getType())) {
         throw new BadRequestException(
             String.format(
                 "Invalid shared principal type '%s'. Supported types: %s",
@@ -729,6 +727,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       }
       sharedPrincipal.setPrincipal(principal);
     }
+  }
+
+  private EntityReference resolveSharedPrincipal(EntityReference principal) {
+    if (Entity.PERSONA.equals(principal.getType())) {
+      try (var ignored = FreshReadScope.enter()) {
+        return Entity.getEntityReference(principal, Include.NON_DELETED);
+      }
+    }
+    return Entity.getEntityReference(principal, Include.NON_DELETED);
   }
 
   /**

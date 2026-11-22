@@ -243,7 +243,7 @@ export interface FieldChange {
  *
  * Parent folder containing this file.
  *
- * Principal receiving access. Supported principal types are user, team, and domain.
+ * Principal receiving access. Supported principal types are user, team, domain, and persona.
  */
 export interface EntityReference {
     /**
@@ -367,7 +367,7 @@ export interface ShareConfig {
  */
 export interface SharedPrincipal {
     /**
-     * Principal receiving access. Supported principal types are user, team, and domain.
+     * Principal receiving access. Supported principal types are user, team, domain, and persona.
      */
     principal?: EntityReference;
     /**

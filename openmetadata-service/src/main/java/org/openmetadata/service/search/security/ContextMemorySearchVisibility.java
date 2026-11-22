@@ -20,21 +20,24 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.stream.Stream;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.context.ContextMemorySharePrincipals;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.queries.QueryBuilderFactory;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.FreshReadScope;
 
 /**
  * Builds a search-time filter that hides {@link
@@ -247,11 +250,14 @@ public class ContextMemorySearchVisibility {
     OMQueryBuilder filter = null;
     if (isVisibilityEnforced(subjectContext)) {
       User user = subjectContext.user();
+      OMQueryBuilder sharedWithUser = sharedWithSubjectClause(user);
       OMQueryBuilder visible =
-          statusMemoryClause(buildVisibleMemoryClause(user, readableAnchorIds), statuses);
+          statusMemoryClause(
+              buildVisibleMemoryClause(user, readableAnchorIds, sharedWithUser), statuses);
       filter =
           scopeGovernedTypes(
-              withOwnMemoriesIn(visible, user, ownerStatuses), buildVisibleFileClause(user));
+              withOwnMemoriesIn(visible, user, ownerStatuses),
+              buildVisibleFileClause(user, sharedWithUser));
     } else if (isSubjectResolvable(subjectContext)) {
       OMQueryBuilder anyVisibility = statusMemoryClause(null, statuses);
       filter =
@@ -415,7 +421,7 @@ public class ContextMemorySearchVisibility {
    * it is not restricted. Every file uploaded before sharing existed is in that state, and hiding
    * them would empty the Context Center's document search rather than protect anything.
    */
-  private OMQueryBuilder buildVisibleFileClause(User user) {
+  private OMQueryBuilder buildVisibleFileClause(User user, OMQueryBuilder sharedWithUser) {
     OMQueryBuilder visibleToUser =
         queryBuilderFactory
             .boolQuery()
@@ -424,7 +430,7 @@ public class ContextMemorySearchVisibility {
                     queryBuilderFactory.termQuery(
                         FIELD_VISIBILITY, MemoryVisibility.ENTITY.value()),
                     ownedBy(user),
-                    sharedWithSubjectClause(user)));
+                    sharedWithUser));
     return queryBuilderFactory.boolQuery().should(List.of(unstamped(), visibleToUser));
   }
 
@@ -438,10 +444,10 @@ public class ContextMemorySearchVisibility {
    * A memory is visible when it is org-wide, owned by or shared with the subject, or anchored to a
    * pinned anchor the subject may read. The last branch comes last so the others keep their place.
    */
-  private OMQueryBuilder buildVisibleMemoryClause(User user, Set<String> readableAnchorIds) {
+  private OMQueryBuilder buildVisibleMemoryClause(
+      User user, Set<String> readableAnchorIds, OMQueryBuilder sharedWithUser) {
     List<OMQueryBuilder> clauses =
-        new ArrayList<>(
-            List.of(unanchoredOrgWideClause(), ownedBy(user), sharedWithSubjectClause(user)));
+        new ArrayList<>(List.of(unanchoredOrgWideClause(), ownedBy(user), sharedWithUser));
     if (!readableAnchorIds.isEmpty()) {
       clauses.add(anchoredToClause(readableAnchorIds));
     }
@@ -488,9 +494,8 @@ public class ContextMemorySearchVisibility {
   }
 
   /**
-   * Matches a memory shared with the subject (directly or via a team/domain) — but only when its
-   * visibility is actually {@code Shared}. Gating on visibility mirrors {@link
-   * org.openmetadata.service.resources.context.ContextMemoryVisibility#isInSharedWithList}, which
+   * Matches the subject's principals when the memory has {@code Shared} visibility. Gating on
+   * visibility mirrors {@link ContextMemoryVisibility#isInSharedWithList}, which
    * is consulted only for {@code SHARED}, so a stale {@code sharedWithIds} left on a memory later
    * flipped to {@code Private} cannot leak it to those principals through search.
    */
@@ -504,9 +509,7 @@ public class ContextMemorySearchVisibility {
   }
 
   /**
-   * The principals a {@code Shared} memory may name to reach this user: the user, their teams and
-   * their domains, plus any additional principals from the distribution. Every rendering of the
-   * rule uses the same set.
+   * IDs of the user, their teams, domains, and live personas. REST and search use the same set.
    */
   public static List<String> sharedPrincipalIds(User user) {
     List<String> principalIds = new ArrayList<>();
@@ -517,9 +520,32 @@ public class ContextMemorySearchVisibility {
     for (EntityReference domain : listOrEmpty(user.getDomains())) {
       principalIds.add(domain.getId().toString());
     }
-    for (UUID id : ContextMemorySharePrincipals.get().additionalPrincipalIds(user)) {
-      principalIds.add(id.toString());
+    principalIds.addAll(personaPrincipalIds(user));
+    return List.copyOf(principalIds);
+  }
+
+  private static List<String> personaPrincipalIds(User user) {
+    if (!Entity.hasEntityRepository(Entity.USER)) {
+      return List.of();
     }
-    return principalIds;
+    try (var ignored = FreshReadScope.enter()) {
+      final User live =
+          Entity.getEntityOrNull(Entity.USER, user.getId(), "teams,personas", Include.NON_DELETED);
+      if (live == null) {
+        return List.of();
+      }
+      final UserRepository users = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      return Stream.of(
+              listOrEmpty(live.getPersonas()).stream(),
+              listOrEmpty(live.getInheritedPersonas()).stream(),
+              Stream.ofNullable(users.getExplicitDefaultPersona(live.getId())))
+          .flatMap(refs -> refs)
+          .filter(ref -> !Boolean.TRUE.equals(ref.getDeleted()))
+          .map(EntityReference::getId)
+          .filter(Objects::nonNull)
+          .distinct()
+          .map(Object::toString)
+          .toList();
+    }
   }
 }

@@ -36,7 +36,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
-import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -50,7 +49,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -75,7 +73,6 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.context.ContextMemorySharePrincipals;
 import org.openmetadata.service.context.review.ExtractedMemoryApprover;
 import org.openmetadata.service.context.review.MemoryEvidenceHolds;
 import org.openmetadata.service.exception.PreconditionFailedException;
@@ -142,7 +139,7 @@ class ContextMemoryRepositoryTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {Entity.USER, Entity.TEAM, Entity.DOMAIN})
+  @ValueSource(strings = {Entity.USER, Entity.TEAM, Entity.DOMAIN, Entity.PERSONA})
   void acceptsBuiltInShareTargets(String type) {
     EntityReference target = new EntityReference().withType(type).withId(UUID.randomUUID());
     try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
@@ -151,46 +148,6 @@ class ContextMemoryRepositoryTest {
           .thenReturn(target);
 
       assertEquals(target, prepareSharedMemory(target));
-    }
-  }
-
-  @Test
-  @ResourceLock("contextMemorySharePrincipals")
-  void aDistributionCanValidateAndApproveAnAdditionalShareTarget() {
-    EntityReference target =
-        new EntityReference().withType(Entity.PERSONA).withId(UUID.randomUUID());
-    EntityReference resolved =
-        new EntityReference()
-            .withType(Entity.PERSONA)
-            .withId(target.getId())
-            .withName("authorized");
-    EntityReference excluded =
-        new EntityReference()
-            .withType(Entity.PERSONA)
-            .withId(UUID.randomUUID())
-            .withName("excluded");
-    try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
-      entities
-          .when(() -> Entity.getEntityReference(target, Include.NON_DELETED))
-          .thenReturn(resolved);
-      entities
-          .when(() -> Entity.getEntityReference(excluded, Include.NON_DELETED))
-          .thenReturn(excluded);
-      assertThrows(BadRequestException.class, () -> prepareSharedMemory(target));
-
-      try {
-        ContextMemorySharePrincipals.set(
-            new ContextMemorySharePrincipals() {
-              @Override
-              public boolean validateAdditionalTarget(EntityReference principal) {
-                return resolved.equals(principal);
-              }
-            });
-        assertEquals(resolved, prepareSharedMemory(target));
-        assertThrows(BadRequestException.class, () -> prepareSharedMemory(excluded));
-      } finally {
-        ContextMemorySharePrincipals.set(null);
-      }
     }
   }
 
