@@ -12,6 +12,9 @@
  */
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.openmetadata.it.tests.RdfQualityEvidenceFixtures.columnTest;
 import static org.openmetadata.it.tests.RdfQualityEvidenceFixtures.enableAutoCloseIncident;
@@ -28,20 +31,28 @@ import static org.openmetadata.it.util.RdfGraphAssertions.om;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestResultValue;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.rdf.RdfUpdater;
 
 /**
@@ -115,6 +126,7 @@ public class RdfQualityEvidenceIT {
     tagSensitive(client, table, "amount");
     awaitCount(test + " " + om("hasTestResult") + " ?result", 0);
     awaitCount(test + " " + om("latestResultStatus") + " ?status", 0);
+    awaitCount(test + " " + om("incrementalChangeDescription") + " ?change", 0);
 
     client.testCases().delete(onAmount.getId().toString(), HARD_DELETE);
     awaitCount(
@@ -126,6 +138,55 @@ public class RdfQualityEvidenceIT {
             + onAmount.getId()
             + "/result/latest> ?p ?o }",
         0);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"jsonld", "turtle", "rdfxml", "ntriples"})
+  void entityRdfMasksSensitiveColumnTestEvidence(
+      final String format, final TestNamespace namespace) {
+    final Table table = table(namespace);
+    final TestCase sensitive = columnTest(client, namespace, table, "email");
+    final TestCase visible = columnTest(client, namespace, table, "status");
+    final String message = "quality-result-marker";
+    final String observed = "quality-observation-marker";
+    postTestEvidence(sensitive, message, observed);
+    postTestEvidence(visible, message, observed);
+
+    final User user = UserTestFactory.createUser(namespace, "rdf_evidence_reader");
+    final OpenMetadataClient reader =
+        SdkClients.createClient(user.getEmail(), user.getEmail(), new String[0]);
+    assertNull(
+        reader.testCases().get(sensitive.getId().toString(), "testCaseResult").getTestCaseResult());
+
+    final String visibleBody = entityRdf(reader, visible, format);
+    assertTrue(visibleBody.contains(message) && visibleBody.contains(observed), visibleBody);
+    final String maskedBody = entityRdf(reader, sensitive, format);
+    assertTrue(maskedBody.contains(sensitive.getId().toString()), maskedBody);
+    assertFalse(maskedBody.contains(message) || maskedBody.contains(observed), maskedBody);
+  }
+
+  private void postTestEvidence(
+      final TestCase testCase, final String message, final String observed) {
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis() - MINUTE)
+                .withTestCaseStatus(TestCaseStatus.Failed)
+                .withResult(message)
+                .withTestResultValue(
+                    List.of(new TestResultValue().withName("actual").withValue(observed))));
+  }
+
+  private static String entityRdf(
+      final OpenMetadataClient reader, final TestCase testCase, final String format) {
+    return reader
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET,
+            "/v1/rdf/entity/testCase/" + testCase.getId() + "?format=" + format,
+            null);
   }
 
   private static String fact(final String subject, final String predicate, final String number) {

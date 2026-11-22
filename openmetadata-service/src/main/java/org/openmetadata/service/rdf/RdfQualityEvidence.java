@@ -114,6 +114,11 @@ public final class RdfQualityEvidence {
       final String fqn = testCase.getFullyQualifiedName();
       testCase.setTestCaseResult(unmasked ? results.get(fqn) : null);
       testCase.setIncidentStatus(unmasked ? open(incidents.get(fqn)) : null);
+      if (!unmasked) {
+        // Result updates can copy raw values into both change descriptions.
+        testCase.setChangeDescription(null);
+        testCase.setIncrementalChangeDescription(null);
+      }
       link.ifPresentOrElse(
           parsed -> keepOnlyResolvedColumnLink(testCase, table, parsed),
           () -> testCase.setEntityLink(null));

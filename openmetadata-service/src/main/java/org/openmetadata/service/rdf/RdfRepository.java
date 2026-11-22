@@ -1813,11 +1813,7 @@ public class RdfRepository {
     }
 
     try {
-      // Get entity to convert to JSON-LD directly
-      EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", null);
-
-      // Convert directly to JSON-LD without going through RDF model
-      return translator.toJsonLdString(entity, true);
+      return translator.toJsonLdString(loadEntityDocument(entityType, entityId), true);
 
     } catch (EntityNotFoundException e) {
       throw e;
@@ -1833,9 +1829,7 @@ public class RdfRepository {
     }
 
     try {
-      // Get the entity and convert to RDF
-      EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", null);
-      Model rdfModel = documentTranslator.toRdf(entity);
+      Model rdfModel = documentTranslator.toRdf(loadEntityDocument(entityType, entityId));
 
       // Convert model to requested format
       java.io.StringWriter writer = new java.io.StringWriter();
@@ -1856,6 +1850,17 @@ public class RdfRepository {
       LOG.error("Failed to get entity {} as RDF", entityId, e);
       throw new RuntimeException("Failed to get entity as RDF", e);
     }
+  }
+
+  private EntityInterface<?> loadEntityDocument(final String entityType, final UUID entityId) {
+    final boolean isTestCase = Entity.TEST_CASE.equals(entityType);
+    final String fields =
+        isTestCase ? String.join(",", RdfIndexingFields.forEntityType(entityType)) : "*";
+    final EntityInterface<?> entity = Entity.getEntity(entityType, entityId, fields, Include.ALL);
+    if (isTestCase) {
+      RdfQualityEvidence.database().attach(entityType, List.of(entity));
+    }
+    return entity;
   }
 
   public String executeSparqlQuery(String query, String format) {
