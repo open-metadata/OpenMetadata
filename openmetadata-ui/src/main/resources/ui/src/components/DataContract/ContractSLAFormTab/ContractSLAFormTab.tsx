@@ -24,9 +24,10 @@ import {
   TimePickerValue,
   Typography,
 } from '@openmetadata/ui-core-components';
+import type { TFunction } from 'i18next';
 import { isEmpty } from 'lodash';
 import { ReactNode, useEffect, useMemo, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
   MAX_LATENCY_UNITS,
@@ -36,6 +37,7 @@ import {
 import {
   ContractSLA,
   DataContract,
+  RefreshFrequencyUnit,
   Timezone,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
@@ -89,6 +91,57 @@ const findColumnItem = (
 
 const toNumberString = (value?: number) =>
   value === undefined ? '' : String(value);
+
+const MAX_MINUTE_INTERVAL = 2_147_483_647;
+const NON_NEGATIVE_WHOLE_NUMBER = /^[0-9]+(?:\.0+)?$/;
+
+const getRefreshFrequencyError = (
+  values: Partial<ContractSLAFormValues>,
+  t: TFunction
+) => {
+  const interval = values.refresh_frequency_interval?.trim() ?? '';
+  const unit = values.refresh_frequency_unit?.id;
+
+  if (!interval && unit) {
+    return t('message.field-text-is-required', {
+      fieldText: t('label.interval'),
+    });
+  }
+  if (interval && !unit) {
+    return t('message.field-text-is-required', { fieldText: t('label.unit') });
+  }
+  if (
+    unit === RefreshFrequencyUnit.Minute &&
+    (!NON_NEGATIVE_WHOLE_NUMBER.test(interval) ||
+      Number(interval) > MAX_MINUTE_INTERVAL)
+  ) {
+    return t('message.integer-value-out-of-range', {
+      min: 0,
+      max: MAX_MINUTE_INTERVAL,
+    });
+  }
+
+  if (Number(interval) < 0) {
+    return t('message.entity-size-less-than', {
+      entity: t('label.interval'),
+      min: 0,
+    });
+  }
+
+  return undefined;
+};
+
+const synchronizeRefreshFields = (
+  form: UseFormReturn<ContractSLAFormValues>,
+  field?: string
+) => {
+  if (field === 'refresh_frequency_interval' && form.getValues(field) === '') {
+    form.setValue('refresh_frequency_unit', null);
+  }
+  if (field === 'refresh_frequency_unit') {
+    void form.trigger('refresh_frequency_interval');
+  }
+};
 
 const toNonNegative = (value?: string) =>
   value === undefined || value === '' || Number(value) < 0
@@ -207,6 +260,7 @@ const toContractSLA = (
 
 export const ContractSLAFormTab: React.FC<{
   onChange: (data: Partial<DataContract>) => void;
+  onRefreshValidityChange?: (isValid: boolean) => void;
   onPrev: () => void;
   initialValues?: Partial<DataContract>;
   buttonProps: {
@@ -214,7 +268,13 @@ export const ContractSLAFormTab: React.FC<{
     prevLabel?: string;
     isNextVisible?: boolean;
   };
-}> = ({ onChange, onPrev, buttonProps, initialValues }) => {
+}> = ({
+  onChange,
+  onRefreshValidityChange,
+  onPrev,
+  buttonProps,
+  initialValues,
+}) => {
   const { t } = useTranslation();
   const { data: tableData } = useGenericContext();
 
@@ -314,40 +374,53 @@ export const ContractSLAFormTab: React.FC<{
   }, [initialValues]);
 
   useEffect(() => {
-    const { unsubscribe } = form.watch((values, { type, name }) => {
-      if (type === 'change') {
-        const group = name
-          ? SLA_FIELD_GROUP[name as keyof ContractSLAFormValues]
-          : undefined;
-        if (group) {
-          touchedSLAFieldsRef.current.add(group);
-        }
-        onChange({
-          sla: toContractSLA(
-            values as ContractSLAFormValues,
-            storedSLARef.current ?? {},
-            touchedSLAFieldsRef.current
-          ),
-        });
+    const { unsubscribe } = form.watch((_, { type, name }) => {
+      if (type !== 'change') {
+        return;
       }
+
+      const group = name
+        ? SLA_FIELD_GROUP[name as keyof ContractSLAFormValues]
+        : undefined;
+      const touched = touchedSLAFieldsRef.current;
+      if (group) {
+        touched.add(group);
+      }
+
+      synchronizeRefreshFields(form, name);
+      const draft = form.getValues();
+      const error = touched.has('refreshFrequency')
+        ? getRefreshFrequencyError(draft, t)
+        : undefined;
+      onRefreshValidityChange?.(!error);
+
+      if (error) {
+        return;
+      }
+
+      onChange({
+        sla: toContractSLA(draft, storedSLARef.current ?? {}, touched),
+      });
     });
 
     return unsubscribe;
-  }, [form, onChange]);
+  }, [form, onChange, onRefreshValidityChange, t]);
 
   const numberField = (
     name: keyof ContractSLAFormValues,
     label: string,
-    testId: string
+    testId: string,
+    required = true
   ): FieldProp => ({
     id: name,
     label,
     name,
     placeholder: t('label.enter-entity', { entity: label }),
     props: { 'data-testid': testId, size: 'md' },
-    required: true,
+    required,
     rules: {
-      required: t('message.field-text-is-required', { fieldText: label }),
+      required:
+        required && t('message.field-text-is-required', { fieldText: label }),
       min: {
         value: 0,
         message: t('message.entity-size-less-than', { entity: label, min: 0 }),
@@ -359,14 +432,15 @@ export const ContractSLAFormTab: React.FC<{
   const unitField = (
     name: keyof ContractSLAFormValues,
     options: FormSelectItem[],
-    testId: string
+    testId: string,
+    required = true
   ): FieldProp => ({
     id: name,
     label: t('label.unit'),
     name,
     placeholder: t('label.select-entity', { entity: t('label.unit') }),
     props: { 'data-testid': testId, options, size: 'md' },
-    required: true,
+    required,
     type: FieldTypes.SELECT,
   });
 
@@ -403,18 +477,23 @@ export const ContractSLAFormTab: React.FC<{
           t('label.refresh-frequency'),
           t('message.refresh-frequency-contract-description'),
           renderPair(
-            getField(
-              numberField(
+            getField({
+              ...numberField(
                 'refresh_frequency_interval',
                 t('label.interval'),
-                'refresh-frequency-interval-input'
-              )
-            ),
+                'refresh-frequency-interval-input',
+                false
+              ),
+              rules: {
+                validate: () => getRefreshFrequencyError(form.getValues(), t),
+              },
+            }),
             getField(
               unitField(
                 'refresh_frequency_unit',
                 refreshUnitItems,
-                'refresh-frequency-unit-select'
+                'refresh-frequency-unit-select',
+                false
               )
             )
           )

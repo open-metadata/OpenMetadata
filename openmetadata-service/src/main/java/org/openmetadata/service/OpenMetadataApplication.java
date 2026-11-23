@@ -95,6 +95,7 @@ import org.openmetadata.schema.configuration.LimitsConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.RefreshFrequencyDeserializer;
 import org.openmetadata.schema.utils.VersionUtils;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.alerting.channel.Channels;
@@ -1024,7 +1025,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         .getObjectMapper()
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
         .setDateFormat(JsonUtils.DATE_TIME_FORMAT)
-        .registerModule(JsonUtils.lenientDateModule());
+        .registerModule(JsonUtils.lenientDateModule())
+        .registerModule(RefreshFrequencyDeserializer.module());
 
     bootstrap.addBundle(
         new SwaggerBundle<>() {

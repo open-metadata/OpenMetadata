@@ -156,6 +156,7 @@ const AddDataContract: React.FC<{
   const [mode] = useState<DataContractMode>(DataContractMode.UI);
   const [yaml, setYaml] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRefreshFrequencyValid, setIsRefreshFrequencyValid] = useState(true);
   const { data: entityData } = useGenericContext<Table>();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const entityContractTabs = useMemo(
@@ -204,6 +205,7 @@ const AddDataContract: React.FC<{
 
   useEffect(() => {
     setFormValues(filteredContract || ({} as DataContract));
+    setIsRefreshFrequencyValid(true);
   }, [filteredContract]);
 
   const [activeTab, setActiveTab] = useState(
@@ -254,6 +256,9 @@ const AddDataContract: React.FC<{
   }, [filteredContract, formValues]);
 
   const handleSave = useCallback(async () => {
+    if (!isRefreshFrequencyValid) {
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -320,6 +325,9 @@ const AddDataContract: React.FC<{
     formValues,
     entityData.id,
     entityType,
+    isRefreshFrequencyValid,
+    onSave,
+    t,
     validSemantics,
     validSecurity,
   ]);
@@ -524,6 +532,7 @@ const AddDataContract: React.FC<{
             initialValues={filteredContract}
             onChange={onFormChange}
             onPrev={onPrev}
+            onRefreshValidityChange={setIsRefreshFrequencyValid}
           />
         ),
       },
@@ -537,6 +546,7 @@ const AddDataContract: React.FC<{
     onNext,
     onPrev,
     currentTabInfo,
+    t,
   ]);
 
   const cardHeader = (
@@ -549,7 +559,7 @@ const AddDataContract: React.FC<{
           </Button>
           <Button
             data-testid="save-contract-btn"
-            isDisabled={isSaveDisabled}
+            isDisabled={isSaveDisabled || !isRefreshFrequencyValid}
             isLoading={isSubmitting}
             size="md"
             onPress={handleSave}>

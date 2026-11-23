@@ -13,9 +13,11 @@
 
 package org.openmetadata.service.datacontract.odcs;
 
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 
@@ -26,7 +28,9 @@ import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
  */
 final class ODCSFreshness {
   private static final Set<String> REFRESH_FREQUENCY_UNITS =
-      Set.of("hour", "day", "week", "month", "year");
+      Arrays.stream(RefreshFrequency.Unit.values())
+          .map(RefreshFrequency.Unit::value)
+          .collect(Collectors.toUnmodifiableSet());
 
   private ODCSFreshness() {}
 
@@ -41,7 +45,11 @@ final class ODCSFreshness {
         rule.getMustBeLessOrEqualTo() != null ? rule.getMustBeLessOrEqualTo() : rule.getMustBe();
     return Optional.ofNullable(interval)
         .filter(
-            value -> isRefreshFrequencyUnit(unit) && ODCSRuleOperators.isWhole(value) && value >= 1)
+            value ->
+                isRefreshFrequencyUnit(unit)
+                    && ODCSRuleOperators.isWhole(value)
+                    && value >= 1
+                    && value <= Integer.MAX_VALUE)
         .map(
             value ->
                 new RefreshFrequency()

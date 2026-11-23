@@ -1170,7 +1170,7 @@ export interface ContractSLA {
      */
     maxLatency?: MaximumLatency;
     /**
-     * Expected frequency of data updates (e.g. every 1 day)
+     * Expected frequency of data updates (e.g. every 15 minutes)
      */
     refreshFrequency?: RefreshFrequency;
     /**
@@ -1200,7 +1200,7 @@ export enum MaxLatencyUnit {
 }
 
 /**
- * Expected frequency of data updates (e.g. every 1 day)
+ * Expected frequency of data updates (e.g. every 15 minutes)
  */
 export interface RefreshFrequency {
     interval: number;
@@ -1211,6 +1211,7 @@ export interface RefreshFrequency {
 export enum RefreshFrequencyUnit {
     Day = "day",
     Hour = "hour",
+    Minute = "minute",
     Month = "month",
     Week = "week",
     Year = "year",

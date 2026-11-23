@@ -81,6 +81,7 @@ import {
   validateSecurityAndSLADetails,
   waitForContractExecutionWithFallback,
 } from '../../utils/dataContracts';
+import { selectDropdownOption } from '../../utils/destination';
 import {
   addOwner,
   assignGlossaryTerm,
@@ -1914,6 +1915,54 @@ test.describe('Data Contracts', () => {
     await expect(
       page.getByTestId('contract-semantics-card-1')
     ).not.toBeVisible();
+  });
+
+  test('creates, edits, and reloads a minute refresh frequency', async ({
+    page,
+  }) => {
+    const { apiContext } = await getApiContext(page);
+    const table = new TableClass();
+
+    try {
+      await table.create(apiContext);
+      await table.visitEntityPage(page);
+      await navigateToContractTab(page);
+      await clickAddContractButton(page);
+      await fillContractName(page, 'Minute freshness');
+      const editor = page.getByTestId('add-contract-card');
+      const slaTab = editor.getByRole('tab', { name: 'SLA', exact: true });
+      await slaTab.click();
+      const interval = editor.getByRole('spinbutton', { name: 'Interval' });
+      const saveButton = editor.getByTestId('save-contract-btn');
+      await interval.fill('15');
+      await selectDropdownOption({
+        page,
+        testId: 'refresh-frequency-unit-select',
+        optionName: 'Minute',
+      });
+      await saveButton.click();
+      const slaCard = page.getByTestId('contract-sla-card');
+      await expect(slaCard).toContainText(/15 minutes/i);
+
+      await clickEditContractButton(page);
+      await slaTab.click();
+      await expect(interval).toHaveValue('15');
+      await interval.fill('1.5');
+      await expect(editor.getByText(/enter a whole number/i)).toBeVisible();
+      await editor.getByRole('tab', { name: 'Contract Details' }).click();
+      await fillContractName(page, 'Updated minute freshness');
+      await expect(saveButton).toBeDisabled();
+
+      await slaTab.click();
+      await interval.fill('1');
+      await expect(saveButton).toBeEnabled();
+      await saveButton.click();
+      await expect(slaCard).toContainText(/1 minute\b/i);
+      await page.reload();
+      await expect(slaCard).toContainText(/1 minute\b/i);
+    } finally {
+      await table.delete(apiContext);
+    }
   });
 
   test('Add and update Security and SLA tabs', async ({ page }) => {

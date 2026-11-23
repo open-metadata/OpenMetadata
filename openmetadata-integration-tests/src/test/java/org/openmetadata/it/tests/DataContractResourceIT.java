@@ -30,6 +30,8 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.CustomPropertyTestSupport;
@@ -98,6 +100,7 @@ import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.SystemProfile;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
@@ -377,6 +380,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             new CreateDataContract()
                 .withName(ns.prefix("schema_contract"))
                 .withEntity(table.getDatabaseSchema())
+                .withSla(new ContractSLA().withRefreshFrequency(minuteFrequency(15)))
                 .withEntityStatus(EntityStatus.APPROVED));
 
     DataContract effective =
@@ -385,6 +389,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals(schemaContract.getName(), effective.getName());
     assertEquals(table.getId(), effective.getEntity().getId());
     assertTrue(effective.getInherited());
+    assertEquals(minuteFrequency(15), effective.getSla().getRefreshFrequency());
   }
 
   @Test
@@ -3045,6 +3050,170 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             .at("/schema/0/quality/0/customProperties/0/property")
             .asText());
     assertFalse(exported.contains("[]"), exported);
+  }
+
+  @Test
+  void testMinuteRefreshFrequencyCreateReadAndPatch(TestNamespace ns) {
+    Table table = createTestTable(ns);
+    OpenMetadataClient client = SdkClients.adminClient();
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("minute_refresh"))
+                .withEntity(table.getEntityReference())
+                .withSla(new ContractSLA().withRefreshFrequency(minuteFrequency(15))));
+
+    String contractId = contract.getId().toString();
+    ContractSLA initialSla = client.dataContracts().get(contractId, "sla").getSla();
+    assertEquals(minuteFrequency(15), initialSla.getRefreshFrequency());
+    assertNull(initialSla.getColumnName());
+
+    JsonNode patch =
+        JsonUtils.readTree(
+            Json.createPatchBuilder()
+                .replace("/sla/refreshFrequency/interval", 0)
+                .add("/sla/columnName", "id")
+                .build()
+                .toJsonArray()
+                .toString());
+    client.dataContracts().patch(contract.getId(), patch);
+    ContractSLA edit = client.dataContracts().get(contractId, "sla").getSla();
+    assertEquals(minuteFrequency(0), edit.getRefreshFrequency());
+    assertEquals("id", edit.getColumnName());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"15.5", "15.000000000000000001", "2147483648", "null"})
+  void testInvalidMinuteIntervalIsRejectedByNativeRequests(String interval, TestNamespace ns) {
+    Table table = createTestTable(ns);
+    OpenMetadataClient client = SdkClients.adminClient();
+    String name = ns.prefix("invalid_minute");
+    String request =
+        """
+        {
+          "name": "%s",
+          "entity": {"id": "%s", "type": "table"},
+          "sla": {"refreshFrequency": {"unit": "minute", "interval": %s}}
+        }
+        """
+            .formatted(name, table.getId(), interval);
+    assertInvalidMinuteRequest(
+        client, HttpMethod.POST, "/v1/dataContracts", request, "application/json");
+    String yaml =
+        """
+        name: %s
+        entity: {id: %s, type: table}
+        sla:
+          refreshFrequency:
+            interval: %s
+            unit: minute
+        """
+            .formatted(name, table.getId(), interval);
+    assertInvalidMinuteRequest(
+        client, HttpMethod.PUT, "/v1/dataContracts", yaml, "application/yaml");
+
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(name)
+                .withEntity(table.getEntityReference())
+                .withSla(new ContractSLA().withRefreshFrequency(minuteFrequency(15))));
+    String path = "/v1/dataContracts/" + contract.getId();
+    String patch =
+        """
+        [{"op": "replace", "path": "/sla/refreshFrequency/interval", "value": %s}]
+        """
+            .formatted(interval);
+    assertInvalidMinuteRequest(
+        client, HttpMethod.PATCH, path, patch, "application/json-patch+json");
+
+    assertEquals(
+        minuteFrequency(15),
+        client
+            .dataContracts()
+            .get(contract.getId().toString(), "sla")
+            .getSla()
+            .getRefreshFrequency());
+  }
+
+  private static void assertInvalidMinuteRequest(
+      OpenMetadataClient client, HttpMethod method, String path, String body, String contentType) {
+    RequestOptions options = RequestOptions.builder().header("Content-Type", contentType).build();
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> client.getHttpClient().execute(method, path, body, DataContract.class, options));
+
+    assertEquals(400, error.getStatusCode());
+    assertTrue(error.getMessage().contains("interval"), error.getMessage());
+  }
+
+  @Test
+  void testMinuteFreshnessRoundTripsThroughVersionedODCS(TestNamespace ns) throws Exception {
+    String timestamp = "updated_at";
+    List<Column> columns =
+        List.of(new Column().withName(timestamp).withDataType(ColumnDataType.TIMESTAMP));
+    Table source = createTestTable(ns, columns);
+    Table target = createTestTable(ns, columns);
+    OpenMetadataClient client = SdkClients.adminClient();
+    ContractSLA freshness =
+        new ContractSLA().withRefreshFrequency(minuteFrequency(15)).withColumnName(timestamp);
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("minute_export"))
+                .withEntity(source.getEntityReference())
+                .withSla(freshness));
+
+    for (String version : ODCSProfiles.supportedVersions()) {
+      for (boolean yaml : List.of(false, true)) {
+        String route = yaml ? "/odcs/yaml" : "/odcs";
+        String exportPath =
+            "/v1/dataContracts/" + contract.getId() + route + "?odcsVersion=" + version;
+        String document = client.getHttpClient().executeForString(HttpMethod.GET, exportPath, null);
+        JsonNode tree = new YAMLMapper().readTree(document);
+        assertEquals(List.of(), ODCSProfiles.validate(version, tree));
+        assertMinuteFreshnessProperty(version, tree.at("/slaProperties/0"), timestamp);
+
+        DataContract imported = reimportMinuteFreshness(client, target, route, document, yaml);
+        assertEquals(
+            freshness.getRefreshFrequency(), imported.getSla().getRefreshFrequency(), version);
+        assertEquals(
+            FullyQualifiedName.add(target.getFullyQualifiedName(), timestamp),
+            imported.getSla().getColumnName(),
+            version);
+      }
+    }
+  }
+
+  private static void assertMinuteFreshnessProperty(
+      String version, JsonNode property, String column) {
+    assertEquals("freshness", property.path("property").asText(), version);
+    assertTrue(property.path("value").isIntegralNumber(), version);
+    assertEquals(15, property.path("value").asInt(), version);
+    assertEquals("minute", property.path("unit").asText(), version);
+    assertEquals(
+        column, property.path(version.startsWith("v2") ? "column" : "element").asText(), version);
+  }
+
+  private static DataContract reimportMinuteFreshness(
+      OpenMetadataClient client, Table target, String route, String document, boolean yaml) {
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityId", target.getId().toString())
+            .queryParam("entityType", "table")
+            .queryParam("createTestCases", "false")
+            .queryParam("mode", "replace")
+            .header("Content-Type", yaml ? "application/yaml" : "application/json")
+            .build();
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT, "/v1/dataContracts" + route, document, DataContract.class, options);
+  }
+
+  private static RefreshFrequency minuteFrequency(int interval) {
+    return new RefreshFrequency().withInterval(interval).withUnit(RefreshFrequency.Unit.MINUTE);
   }
 
   @Test

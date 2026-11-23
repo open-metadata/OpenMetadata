@@ -14,6 +14,7 @@
 import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
+import { RefreshFrequencyUnit } from '../generated/entity/data/dataContract';
 import { ContractExecutionStatus } from '../generated/type/contractExecutionStatus';
 
 export const CONTRACT_DATE_TIME_FORMAT = 'MM/dd/yyyy, h:mma';
@@ -131,7 +132,14 @@ export const CONTRACT_EXECUTION_CHART_STATUS: Record<
 };
 
 export const MAX_LATENCY_UNITS = ['minute', 'hour', 'day'];
-export const REFRESH_FREQUENCY_UNITS = ['hour', 'day', 'week', 'month', 'year'];
+export const REFRESH_FREQUENCY_UNITS = [
+  RefreshFrequencyUnit.Minute,
+  RefreshFrequencyUnit.Hour,
+  RefreshFrequencyUnit.Day,
+  RefreshFrequencyUnit.Week,
+  RefreshFrequencyUnit.Month,
+  RefreshFrequencyUnit.Year,
+];
 export const RETENTION_UNITS = ['day', 'week', 'month', 'year'];
 
 // Latest-result button tints, taken from the core Badge palette (utility-*-50 fill,
