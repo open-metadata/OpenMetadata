@@ -150,6 +150,7 @@ const TaskTransitionFormModal: React.FC<TaskTransitionFormModalProps> = ({
         <Dialog
           showCloseButton
           data-testid="task-transition-form-modal"
+          dividers="scroll"
           title={title}
           width={768}
           onClose={handleClose}>
@@ -162,7 +163,7 @@ const TaskTransitionFormModal: React.FC<TaskTransitionFormModalProps> = ({
             />
             {isMissingRequired && (
               <Typography
-                className="tw:text-error"
+                color="danger"
                 data-testid="task-transition-form-required-hint"
                 size="text-sm">
                 {t('message.field-text-is-required', {
