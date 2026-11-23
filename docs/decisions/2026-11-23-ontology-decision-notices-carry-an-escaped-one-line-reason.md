@@ -15,8 +15,9 @@ line of its own after a dangling colon, and the 300-character cut could split a 
 
 ## Decision
 The reason in the summary is the comment's text content (jsoup body-fragment `text()`: tags dropped,
-entities decoded, whitespace collapsed to single spaces), truncated to 300 characters, then
-HTML-escaped. A comment with no text content adds no reason. Readers render the summary as rich
+entities decoded, whitespace collapsed to single spaces), HTML-escaped, then truncated to 300
+characters. The cut backs off before an entity it would split, so the escaped reason never grows
+past the limit and never ends in a stray `&l`. A comment with no text content adds no reason. Readers render the summary as rich
 text, so the escaped reason displays as the reviewer typed it, `<Customer>` included, on the same
 line as the decision.
 

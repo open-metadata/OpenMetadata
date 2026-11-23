@@ -90,4 +90,17 @@ class OntologyDecisionNoticeTest {
 
     assertEquals(true, event.getSummary().length() <= 500, event.getSummary());
   }
+
+  @Test
+  void aTruncatedReasonNeverEndsInsideAnEscapedEntity() {
+    final ActivityEvent event =
+        OntologyDecisionNotice.eventFor(
+            release("1.0.0"),
+            TaskResolutionType.Rejected,
+            REVIEWER,
+            "<p>" + "x".repeat(296) + "&lt;String&gt;</p>",
+            7L);
+
+    assertEquals("reviewer rejected v1.0.0: " + "x".repeat(296) + "…", event.getSummary());
+  }
 }

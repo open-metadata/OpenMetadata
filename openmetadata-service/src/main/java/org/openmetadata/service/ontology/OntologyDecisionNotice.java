@@ -85,10 +85,17 @@ public final class OntologyDecisionNotice {
 
   private static String reasonOf(final String comment) {
     final String text = nullOrEmpty(comment) ? "" : Jsoup.parseBodyFragment(comment).text();
-    return text.isEmpty() ? "" : ": " + Entities.escape(truncate(text));
+    return text.isEmpty() ? "" : ": " + truncate(Entities.escape(text));
   }
 
-  private static String truncate(final String comment) {
-    return comment.length() <= MAX_REASON ? comment : comment.substring(0, MAX_REASON - 1) + "…";
+  /** Cuts the escaped reason, never through an entity such as {@code &lt;}. */
+  private static String truncate(final String escaped) {
+    if (escaped.length() <= MAX_REASON) {
+      return escaped;
+    }
+    final String cut = escaped.substring(0, MAX_REASON - 1);
+    final int amp = cut.lastIndexOf('&');
+    final boolean endsInPartialEntity = amp >= 0 && cut.indexOf(';', amp) < 0;
+    return (endsInPartialEntity ? cut.substring(0, amp) : cut) + "…";
   }
 }
