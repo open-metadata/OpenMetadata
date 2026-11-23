@@ -63,7 +63,6 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
 } from '../../utils/EntityVersionUtilsPure';
-import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
   getServiceDetailsPath,
@@ -527,19 +526,13 @@ function ServiceVersionPage() {
       return (
         <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
           <PermissionPlaceholder
-            description={
-              <Transi18next
-                i18nKey="message.no-access-placeholder"
-                renderElement={<b />}
-                values={{
-                  entity: t('label.view-entity', {
-                    entity: `${getEntityName(currentVersionData)} ${t(
-                      'label.service'
-                    )}`,
-                  }),
-                }}
-              />
-            }
+            description={t('message.no-access-placeholder', {
+              entity: t('label.view-entity', {
+                entity: `${getEntityName(currentVersionData)} ${t(
+                  'label.service'
+                )}`,
+              }),
+            })}
             icon={<Lock01 />}
             title={t('label.access-denied')}
           />

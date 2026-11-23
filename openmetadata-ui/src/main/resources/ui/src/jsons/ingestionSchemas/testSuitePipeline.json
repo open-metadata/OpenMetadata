@@ -1215,6 +1215,42 @@
                                 "personalAccessTokenSecret"
                               ],
                               "additionalProperties": false
+                            },
+                            {
+                              "title": "TableauConnectedAppAuth",
+                              "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                              "properties": {
+                                "clientId": {
+                                  "title": "Client ID",
+                                  "description": "Client ID of the Tableau connected app.",
+                                  "type": "string"
+                                },
+                                "secretId": {
+                                  "title": "Secret ID",
+                                  "description": "ID of the connected app secret.",
+                                  "type": "string"
+                                },
+                                "secretValue": {
+                                  "title": "Secret Value",
+                                  "description": "Value of the connected app secret.",
+                                  "type": "string",
+                                  "format": "password"
+                                },
+                                "username": {
+                                  "title": "Username",
+                                  "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "clientId",
+                                "secretId",
+                                "secretValue",
+                                "username"
+                              ],
+                              "additionalProperties": false
                             }
                           ]
                         },
@@ -1601,46 +1637,6 @@
                             "QlikSense"
                           ],
                           "default": "QlikSense"
-                        },
-                        "qlikCertificatePath": {
-                          "description": "Qlik Authentication Certificate File Path",
-                          "title": "Qlik Certificates By File Path",
-                          "type": "object",
-                          "properties": {
-                            "clientCertificate": {
-                              "title": "Client Certificate Path",
-                              "description": "Client Certificate",
-                              "type": "string"
-                            },
-                            "clientKeyCertificate": {
-                              "title": "Client Key Certificate",
-                              "description": "Client Key Certificate.",
-                              "type": "string"
-                            },
-                            "rootCertificate": {
-                              "title": "Root Certificate",
-                              "description": "Root Certificate.",
-                              "type": "string"
-                            }
-                          },
-                          "required": [
-                            "clientCertificate",
-                            "clientKeyCertificate",
-                            "rootCertificate"
-                          ]
-                        },
-                        "qlikCertificateValues": {
-                          "description": "Qlik Authentication Certificate By Values",
-                          "title": "Qlik Certificates By Values",
-                          "type": "object",
-                          "properties": {
-                            "sslConfig": {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
-                            }
-                          },
-                          "required": [
-                            "sslConfig"
-                          ]
                         }
                       },
                       "properties": {
@@ -1667,10 +1663,46 @@
                         "certificates": {
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/11/definitions/qlikCertificateValues"
+                              "title": "Qlik Certificates By Values",
+                              "description": "Qlik Authentication Certificate By Values",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues",
+                              "properties": {
+                                "sslConfig": {
+                                  "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
+                                }
+                              },
+                              "required": [
+                                "sslConfig"
+                              ]
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/11/definitions/qlikCertificatePath"
+                              "title": "Qlik Certificates By File Path",
+                              "description": "Qlik Authentication Certificate File Path",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath",
+                              "properties": {
+                                "clientCertificate": {
+                                  "title": "Client Certificate Path",
+                                  "description": "Client Certificate",
+                                  "type": "string"
+                                },
+                                "clientKeyCertificate": {
+                                  "title": "Client Key Certificate",
+                                  "description": "Client Key Certificate.",
+                                  "type": "string"
+                                },
+                                "rootCertificate": {
+                                  "title": "Root Certificate",
+                                  "description": "Root Certificate.",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "clientCertificate",
+                                "clientKeyCertificate",
+                                "rootCertificate"
+                              ]
                             }
                           ]
                         },
@@ -1842,9 +1874,15 @@
                         "hostPort": {
                           "expose": true,
                           "title": "Host and Port",
-                          "description": "Host and Port of the MicroStrategy instance.",
+                          "description": "Host and Port of the MicroStrategy instance, without the Library path, such as `https://host:port`.",
                           "type": "string",
                           "format": "uri"
+                        },
+                        "libraryPath": {
+                          "title": "Library Path",
+                          "description": "Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrary2`.",
+                          "type": "string",
+                          "default": "MicroStrategyLibrary"
                         },
                         "projectName": {
                           "title": "Project Name",
@@ -1853,9 +1891,16 @@
                         },
                         "loginMode": {
                           "title": "Login Mode",
-                          "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
+                          "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
                           "type": "string",
                           "default": "1"
+                        },
+                        "verifySSL": {
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/verifySSL",
+                          "default": "no-ssl"
+                        },
+                        "sslConfig": {
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
                         },
                         "dashboardFilterPattern": {
                           "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -1884,9 +1929,7 @@
                       },
                       "additionalProperties": false,
                       "required": [
-                        "hostPort",
-                        "username",
-                        "password"
+                        "hostPort"
                       ]
                     },
                     {
@@ -2023,6 +2066,12 @@
                           "description": "Sigma API version.",
                           "type": "string",
                           "default": "v2"
+                        },
+                        "listAllAssets": {
+                          "title": "List All Assets",
+                          "description": "Ingest every workbook and data model in the Sigma organization. By default, Sigma's API lists only the workbooks and data models that the owner of the client credentials can access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the workbook and data model listings, and excludeExplorations=true to the workbook listing so that private custom views are not ingested. The client credentials must belong to a user with the Admin account type: Sigma documents skipPermissionCheck as available only to admins.",
+                          "type": "boolean",
+                          "default": false
                         },
                         "dashboardFilterPattern": {
                           "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -2380,6 +2429,26 @@
                           "type": "boolean",
                           "default": true
                         },
+                        "dashboardFilterPattern": {
+                          "description": "Regex to exclude or include dashboards that matches the pattern.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "title": "Default Dashboard Filter Pattern"
+                        },
+                        "chartFilterPattern": {
+                          "description": "Regex exclude or include charts that matches the pattern.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "title": "Default Chart Filter Pattern"
+                        },
+                        "dataModelFilterPattern": {
+                          "description": "Regex exclude or include data models that matches the pattern.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "title": "Default Data Model Filter Pattern"
+                        },
+                        "projectFilterPattern": {
+                          "description": "Regex to exclude or include projects that matches the pattern.",
+                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/0/properties/chartFilterPattern",
+                          "title": "Default Project Filter Pattern"
+                        },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/0/properties/supportsMetadataExtraction"
@@ -2403,79 +2472,6 @@
                             "SapS4Hana"
                           ],
                           "default": "SapS4Hana"
-                        },
-                        "sapS4HanaBasicAuthType": {
-                          "title": "Basic Auth",
-                          "description": "Username and password credentials for SAP S/4HANA.",
-                          "type": "object",
-                          "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth",
-                          "properties": {
-                            "authType": {
-                              "title": "Auth Type",
-                              "description": "Authentication type identifier.",
-                              "type": "string",
-                              "enum": [
-                                "basic"
-                              ],
-                              "default": "basic"
-                            },
-                            "username": {
-                              "title": "Username",
-                              "description": "Username to authenticate with SAP S/4HANA.",
-                              "type": "string"
-                            },
-                            "password": {
-                              "title": "Password",
-                              "description": "Password to authenticate with SAP S/4HANA.",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "username",
-                            "password"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "sapS4HanaOAuthType": {
-                          "title": "OAuth 2.0 Client Credentials",
-                          "description": "OAuth 2.0 client credentials for SAP S/4HANA Cloud.",
-                          "type": "object",
-                          "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials",
-                          "properties": {
-                            "authType": {
-                              "title": "Auth Type",
-                              "description": "Authentication type identifier.",
-                              "type": "string",
-                              "enum": [
-                                "oauth2"
-                              ],
-                              "default": "oauth2"
-                            },
-                            "clientId": {
-                              "title": "Client ID",
-                              "description": "OAuth 2.0 client ID registered in SAP.",
-                              "type": "string"
-                            },
-                            "clientSecret": {
-                              "title": "Client Secret",
-                              "description": "OAuth 2.0 client secret.",
-                              "type": "string",
-                              "format": "password"
-                            },
-                            "tokenEndpoint": {
-                              "title": "Token Endpoint",
-                              "description": "OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).",
-                              "type": "string",
-                              "format": "uri"
-                            }
-                          },
-                          "required": [
-                            "clientId",
-                            "clientSecret",
-                            "tokenEndpoint"
-                          ],
-                          "additionalProperties": false
                         }
                       },
                       "properties": {
@@ -2497,10 +2493,77 @@
                           "description": "Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for SAP S/4HANA Cloud.",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/21/definitions/sapS4HanaBasicAuthType"
+                              "title": "Basic Auth",
+                              "description": "Username and password credentials for SAP S/4HANA.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth",
+                              "properties": {
+                                "authType": {
+                                  "title": "Auth Type",
+                                  "description": "Authentication type identifier.",
+                                  "type": "string",
+                                  "enum": [
+                                    "basic"
+                                  ],
+                                  "default": "basic"
+                                },
+                                "username": {
+                                  "title": "Username",
+                                  "description": "Username to authenticate with SAP S/4HANA.",
+                                  "type": "string"
+                                },
+                                "password": {
+                                  "title": "Password",
+                                  "description": "Password to authenticate with SAP S/4HANA.",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "username",
+                                "password"
+                              ],
+                              "additionalProperties": false
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/21/definitions/sapS4HanaOAuthType"
+                              "title": "OAuth 2.0 Client Credentials",
+                              "description": "OAuth 2.0 client credentials for SAP S/4HANA Cloud.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials",
+                              "properties": {
+                                "authType": {
+                                  "title": "Auth Type",
+                                  "description": "Authentication type identifier.",
+                                  "type": "string",
+                                  "enum": [
+                                    "oauth2"
+                                  ],
+                                  "default": "oauth2"
+                                },
+                                "clientId": {
+                                  "title": "Client ID",
+                                  "description": "OAuth 2.0 client ID registered in SAP.",
+                                  "type": "string"
+                                },
+                                "clientSecret": {
+                                  "title": "Client Secret",
+                                  "description": "OAuth 2.0 client secret.",
+                                  "type": "string",
+                                  "format": "password"
+                                },
+                                "tokenEndpoint": {
+                                  "title": "Token Endpoint",
+                                  "description": "OAuth 2.0 token endpoint URL (e.g. /sap/bc/security/oauth2/token).",
+                                  "type": "string",
+                                  "format": "uri"
+                                }
+                              },
+                              "required": [
+                                "clientId",
+                                "clientSecret",
+                                "tokenEndpoint"
+                              ],
+                              "additionalProperties": false
                             }
                           ]
                         },
@@ -7196,6 +7259,13 @@
                           "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
                           "type": "string"
                         },
+                        "csvEscapeChar": {
+                          "title": "CSV Escape Character",
+                          "description": "Escape character for CSV and TSV files. Defaults to backslash. Set to an empty string for files that use doubled quotes and literal backslashes.",
+                          "type": "string",
+                          "maxLength": 1,
+                          "default": "\\"
+                        },
                         "connectionOptions": {
                           "title": "Connection Options",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/3/properties/connectionOptions"
@@ -10251,9 +10321,8 @@
                         },
                         "salesforceDomain": {
                           "title": "Salesforce Domain",
-                          "description": "Domain of Salesforce instance",
-                          "type": "string",
-                          "default": "login"
+                          "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                          "type": "string"
                         },
                         "paginationLimit": {
                           "title": "Pagination Limit",
@@ -10271,7 +10340,8 @@
                       "additionalProperties": false,
                       "required": [
                         "consumerKey",
-                        "consumerSecret"
+                        "consumerSecret",
+                        "salesforceDomain"
                       ]
                     },
                     {
@@ -10545,14 +10615,94 @@
                           "description": "Confluent Kafka Consumer Config. From https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "properties": {
+                            "sasl.password": {
+                              "title": "sasl.password",
+                              "description": "SASL password.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.client.secret": {
+                              "title": "sasl.oauthbearer.client.secret",
+                              "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.config": {
+                              "title": "sasl.oauthbearer.config",
+                              "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.assertion.private.key.passphrase": {
+                              "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                              "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.assertion.private.key.pem": {
+                              "title": "sasl.oauthbearer.assertion.private.key.pem",
+                              "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.key.password": {
+                              "title": "ssl.key.password",
+                              "description": "Passphrase of the client's private key.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.key.pem": {
+                              "title": "ssl.key.pem",
+                              "description": "Client's private key as a PEM string.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.keystore.password": {
+                              "title": "ssl.keystore.password",
+                              "description": "Password of the client keystore (PKCS#12).",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.truststore.password": {
+                              "title": "ssl.truststore.password",
+                              "description": "Password of the truststore.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "schemaRegistryConfig": {
                           "title": "Schema Registry Config",
                           "description": "Confluent Kafka Schema Registry Config. From https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "properties": {
+                            "basic.auth.user.info": {
+                              "title": "basic.auth.user.info",
+                              "description": "Schema Registry credentials in the form of username:password.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "bearer.auth.token": {
+                              "title": "bearer.auth.token",
+                              "description": "Static bearer token for the Schema Registry.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "bearer.auth.client.secret": {
+                              "title": "bearer.auth.client.secret",
+                              "description": "Client secret for the Schema Registry OAuth token request.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "schemaRegistryTopicSuffixName": {
                           "title": "Schema Registry Topic Suffix Name",
@@ -10676,14 +10826,94 @@
                           "description": "Confluent Redpanda Consumer Config",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "properties": {
+                            "sasl.password": {
+                              "title": "sasl.password",
+                              "description": "SASL password.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.client.secret": {
+                              "title": "sasl.oauthbearer.client.secret",
+                              "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.config": {
+                              "title": "sasl.oauthbearer.config",
+                              "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.assertion.private.key.passphrase": {
+                              "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                              "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "sasl.oauthbearer.assertion.private.key.pem": {
+                              "title": "sasl.oauthbearer.assertion.private.key.pem",
+                              "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.key.password": {
+                              "title": "ssl.key.password",
+                              "description": "Passphrase of the client's private key.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.key.pem": {
+                              "title": "ssl.key.pem",
+                              "description": "Client's private key as a PEM string.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.keystore.password": {
+                              "title": "ssl.keystore.password",
+                              "description": "Password of the client keystore (PKCS#12).",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "ssl.truststore.password": {
+                              "title": "ssl.truststore.password",
+                              "description": "Password of the truststore.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "schemaRegistryConfig": {
                           "title": "Schema Registry Config",
                           "description": "Confluent Redpanda Schema Registry Config.",
                           "type": "object",
                           "default": {},
-                          "additionalProperties": true
+                          "properties": {
+                            "basic.auth.user.info": {
+                              "title": "basic.auth.user.info",
+                              "description": "Schema Registry credentials in the form of username:password.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "bearer.auth.token": {
+                              "title": "bearer.auth.token",
+                              "description": "Static bearer token for the Schema Registry.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "bearer.auth.client.secret": {
+                              "title": "bearer.auth.client.secret",
+                              "description": "Client secret for the Schema Registry OAuth token request.",
+                              "type": "string",
+                              "format": "password"
+                            }
+                          },
+                          "additionalProperties": {
+                            "format": "password"
+                          }
                         },
                         "topicFilterPattern": {
                           "description": "Regex to only fetch topics that matches the pattern.",
@@ -10770,63 +11000,6 @@
                             "Nats"
                           ],
                           "default": "Nats"
-                        },
-                        "basicAuth": {
-                          "title": "Username and Password",
-                          "description": "Username and password authentication for NATS.",
-                          "type": "object",
-                          "properties": {
-                            "username": {
-                              "title": "Username",
-                              "description": "Username for NATS authentication.",
-                              "type": "string"
-                            },
-                            "password": {
-                              "title": "Password",
-                              "description": "Password for NATS authentication.",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "username",
-                            "password"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "tokenAuth": {
-                          "title": "Token",
-                          "description": "Token-based authentication for NATS.",
-                          "type": "object",
-                          "properties": {
-                            "token": {
-                              "title": "Token",
-                              "description": "Token for NATS authentication.",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "token"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "nkeyAuth": {
-                          "title": "NKey Seed",
-                          "description": "NKey seed authentication for NATS.",
-                          "type": "object",
-                          "properties": {
-                            "nkeySeed": {
-                              "title": "NKey Seed",
-                              "description": "NKey seed for NATS authentication.",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "nkeySeed"
-                          ],
-                          "additionalProperties": false
                         }
                       },
                       "properties": {
@@ -10846,13 +11019,64 @@
                           "description": "NATS authentication method. Leave empty for anonymous authentication.",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/definitions/basicAuth"
+                              "title": "Username and Password",
+                              "description": "Username and password authentication for NATS.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth",
+                              "properties": {
+                                "username": {
+                                  "title": "Username",
+                                  "description": "Username for NATS authentication.",
+                                  "type": "string"
+                                },
+                                "password": {
+                                  "title": "Password",
+                                  "description": "Password for NATS authentication.",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "username",
+                                "password"
+                              ],
+                              "additionalProperties": false
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/definitions/tokenAuth"
+                              "title": "Token",
+                              "description": "Token-based authentication for NATS.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth",
+                              "properties": {
+                                "token": {
+                                  "title": "Token",
+                                  "description": "Token for NATS authentication.",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "token"
+                              ],
+                              "additionalProperties": false
                             },
                             {
-                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/definitions/nkeyAuth"
+                              "title": "NKey Seed",
+                              "description": "NKey seed authentication for NATS.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth",
+                              "properties": {
+                                "nkeySeed": {
+                                  "title": "NKey Seed",
+                                  "description": "NKey seed for NATS authentication.",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "nkeySeed"
+                              ],
+                              "additionalProperties": false
                             }
                           ]
                         },
@@ -10949,10 +11173,10 @@
                                   "description": "GCP Project ID to parse metadata from",
                                   "oneOf": [
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
                                     },
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
                                     }
                                   ],
                                   "default": null
@@ -10981,10 +11205,10 @@
                                   "description": "GCP Project ID to parse metadata from",
                                   "oneOf": [
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
                                     },
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
                                     }
                                   ],
                                   "default": null
@@ -11046,10 +11270,10 @@
                                       "description": "Project ID",
                                       "oneOf": [
                                         {
-                                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
                                         },
                                         {
-                                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
                                         }
                                       ]
                                     },
@@ -13373,7 +13597,7 @@
                         },
                         "brokerConfig": {
                           "title": "Broker Configuration",
-                          "description": "Event broker configuration. Choose between Kafka and Kinesis.",
+                          "description": "Event broker configuration. Choose between Kafka, Kinesis and NATS.",
                           "oneOf": [
                             {
                               "title": "Kafka",
@@ -13541,6 +13765,155 @@
                               "required": [
                                 "streamName",
                                 "awsConfig"
+                              ]
+                            },
+                            {
+                              "title": "Nats",
+                              "description": "NATS JetStream configuration for OpenLineage events.",
+                              "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig",
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "natsServers": {
+                                  "title": "NATS Servers",
+                                  "description": "NATS server URLs as comma-separated values. Ex: nats://host1:4222,nats://host2:4222",
+                                  "type": "string"
+                                },
+                                "streamName": {
+                                  "title": "Stream Name",
+                                  "description": "JetStream stream holding the OpenLineage events.",
+                                  "type": "string"
+                                },
+                                "subject": {
+                                  "title": "Subject Filter",
+                                  "description": "Subject to consume from the stream. Defaults to all subjects of the stream.",
+                                  "type": "string"
+                                },
+                                "durableConsumerName": {
+                                  "title": "Durable Consumer Name",
+                                  "description": "Durable JetStream consumer name. Reusing it resumes where the previous run stopped.",
+                                  "type": "string",
+                                  "default": "openmetadata"
+                                },
+                                "consumerOffsets": {
+                                  "title": "Initial Consumer Offsets",
+                                  "description": "Where a new durable consumer starts reading.",
+                                  "default": "all",
+                                  "type": "string",
+                                  "enum": [
+                                    "all",
+                                    "new"
+                                  ],
+                                  "javaEnums": [
+                                    {
+                                      "name": "ALL"
+                                    },
+                                    {
+                                      "name": "NEW"
+                                    }
+                                  ]
+                                },
+                                "batchSize": {
+                                  "title": "Fetch Batch Size",
+                                  "description": "Number of events fetched per request.",
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "default": 100
+                                },
+                                "poolTimeout": {
+                                  "title": "Single Fetch Call Timeout",
+                                  "description": "Max allowed wait time for a single fetch, in seconds. Must be positive: the run ends once it has waited out sessionTimeout, and a zero wait would never advance that.",
+                                  "type": "number",
+                                  "exclusiveMinimum": 0,
+                                  "default": 1
+                                },
+                                "sessionTimeout": {
+                                  "title": "Broker Inactive Session Timeout",
+                                  "description": "Max allowed inactivity time before the run ends, in seconds.",
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "default": 30
+                                },
+                                "ackWait": {
+                                  "title": "Acknowledgement Wait",
+                                  "description": "How long JetStream waits for an acknowledgement before redelivering an event, in seconds.",
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "default": 60
+                                },
+                                "maxDeliver": {
+                                  "title": "Max Delivery Attempts",
+                                  "description": "How many times JetStream redelivers an event that is never acknowledged, before it gives up. Keeps an event that ingestion cannot process from being retried on every run.",
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "default": 5
+                                },
+                                "authType": {
+                                  "title": "Authentication Type",
+                                  "description": "NATS authentication method. Leave empty for anonymous authentication.",
+                                  "mask": true,
+                                  "oneOf": [
+                                    {
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/properties/authType/oneOf/0"
+                                    },
+                                    {
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/properties/authType/oneOf/1"
+                                    },
+                                    {
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/properties/authType/oneOf/2"
+                                    },
+                                    {
+                                      "title": "Credentials File",
+                                      "description": "Decentralized authentication with the contents of a NATS .creds file (user JWT and NKey seed).",
+                                      "javaType": "org.openmetadata.schema.services.connections.pipeline.openlineage.nats.CredentialsAuth",
+                                      "type": "object",
+                                      "properties": {
+                                        "credentials": {
+                                          "title": "Credentials File Contents",
+                                          "description": "Contents of the .creds file, including the user JWT and the NKey seed.",
+                                          "type": "string",
+                                          "format": "password"
+                                        }
+                                      },
+                                      "required": [
+                                        "credentials"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  ]
+                                },
+                                "tlsConfig": {
+                                  "title": "TLS Configuration",
+                                  "description": "TLS/SSL configuration for secure NATS connections.",
+                                  "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
+                                },
+                                "additionalConfig": {
+                                  "title": "Additional NATS Config",
+                                  "description": "Additional NATS client configuration options. See https://nats-io.github.io/nats.py/",
+                                  "type": "object",
+                                  "default": {},
+                                  "propertyNames": {
+                                    "not": {
+                                      "enum": [
+                                        "servers",
+                                        "user",
+                                        "password",
+                                        "token",
+                                        "nkeys_seed",
+                                        "nkeys_seed_str",
+                                        "tls",
+                                        "user_credentials",
+                                        "signature_cb",
+                                        "user_jwt_cb"
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": true
+                                }
+                              },
+                              "required": [
+                                "natsServers",
+                                "streamName"
                               ]
                             }
                           ]
@@ -14400,9 +14773,8 @@
                         },
                         "salesforceDomain": {
                           "title": "Salesforce Domain",
-                          "description": "Domain of Salesforce instance",
-                          "type": "string",
-                          "default": "login"
+                          "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                          "type": "string"
                         },
                         "data360DbServiceName": {
                           "title": "Data 360 Database Service Name",
@@ -14435,17 +14807,23 @@
                         },
                         "supportsLineageExtraction": {
                           "title": "Supports Lineage Extraction",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                          "$comment": "Lineage and run status are extracted by the metadata agent, as for every other pipeline service. Kept, defaulting to false, so stored connections still validate and the UI and AutoPilot stop offering separate Lineage and Usage agents.",
+                          "description": "Supports Lineage Extraction.",
+                          "type": "boolean",
+                          "default": false
                         },
                         "supportsUsageExtraction": {
                           "title": "Supports Operational data Extraction",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsUsageExtraction"
+                          "description": "Supports Usage Extraction.",
+                          "type": "boolean",
+                          "default": false
                         }
                       },
                       "additionalProperties": false,
                       "required": [
                         "consumerKey",
-                        "consumerSecret"
+                        "consumerSecret",
+                        "salesforceDomain"
                       ]
                     },
                     {
@@ -14549,6 +14927,9 @@
                             },
                             {
                               "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/6/properties/authType/oneOf/1"
+                            },
+                            {
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/6/properties/authType/oneOf/2"
                             }
                           ]
                         },

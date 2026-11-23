@@ -13,7 +13,6 @@
 
 import { useCallback } from 'react';
 import { Connection, Edge, MarkerType, Node } from 'reactflow';
-import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import {
   getWorkflowConditionTheme,
   WORKFLOW_EDGE_THEME,
@@ -117,68 +116,6 @@ export const useWorkflowEdgeManagement = ({
     },
     [setEdges, T]
   );
-
-  const fixEdgeLabel = useCallback(
-    (edge: Edge) => {
-      const sourceNode = nodes.find((n) => n.id === edge.source);
-      if (
-        edge.label &&
-        typeof edge.label === 'string' &&
-        edge.label.trim() !== ''
-      ) {
-        return edge;
-      }
-
-      if (
-        sourceNode?.data?.subType === NodeSubType.UserApprovalTask ||
-        sourceNode?.data?.subType === NodeSubType.CheckEntityAttributesTask ||
-        sourceNode?.data?.subType === NodeSubType.CheckChangeDescriptionTask ||
-        sourceNode?.data?.subType === NodeSubType.DataCompletenessTask
-      ) {
-        return {
-          ...edge,
-          label: 'TRUE',
-          data: {
-            ...edge.data,
-            conditions: [
-              {
-                field: 'result',
-                operator: 'equals',
-                value: 'TRUE',
-              },
-            ],
-            condition: 'TRUE',
-          },
-          style: {
-            stroke: T.positiveLabel,
-            strokeWidth: 2,
-          },
-          labelStyle: {
-            color: T.positiveLabel,
-            fontSize: '14px',
-            fontWeight: 600,
-            letterSpacing: '1px',
-            cursor: 'pointer',
-          },
-          labelBgStyle: {
-            fill: T.positiveBackground,
-            fillOpacity: 1,
-            stroke: T.labelBorder,
-            strokeWidth: 2,
-            rx: 5,
-            ry: 5,
-          },
-        };
-      }
-
-      return edge;
-    },
-    [nodes, T]
-  );
-
-  const fixMissingEdgeLabels = useCallback(() => {
-    setEdges((currentEdges) => currentEdges.map(fixEdgeLabel));
-  }, [setEdges, fixEdgeLabel]);
 
   const handleConnectionSave = useCallback(
     (connection: Connection, conditions: { value: string }[]) => {
@@ -339,7 +276,6 @@ export const useWorkflowEdgeManagement = ({
 
   return {
     fixInvalidEdgeConditions,
-    fixMissingEdgeLabels,
     handleConnectionSave,
     handleConnectionCancel,
     handleEdgeClick,

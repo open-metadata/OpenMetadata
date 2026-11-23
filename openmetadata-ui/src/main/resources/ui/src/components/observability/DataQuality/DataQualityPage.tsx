@@ -38,6 +38,7 @@ import DataQualityProvider, {
 import { getCurrentISODate } from '../../../utils/date-time/DateTimeUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../common/Loader/Loader';
 import TestCaseFormDrawer from '../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
@@ -45,9 +46,11 @@ import BundleSuiteFormDrawer from '../../DataQuality/BundleSuiteForm/BundleSuite
 import { useEntityExportModalProvider } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { ExportData } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import { OBSERVABILITY_ROUTES } from '../observability.constants';
+import {
+  OBSERVABILITY_PAGE_LAYOUT_CLASS,
+  OBSERVABILITY_ROUTES,
+} from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
-import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 
 const DataQualityDashboard = withSuspenseFallback(
   lazy(() => import('./Dashboard/DataQualityDashboard'))
@@ -287,58 +290,58 @@ const DataQualityPage = () => {
 
   return (
     <DataQualityProvider createActions={createActions} isActive={ownsTheUrl}>
-      <ObservabilityPageShell
-        header={
-          <PageLayout.PageHeader
-            actions={trailing}
-            badge={
-              <LearningIcon
-                pageId={LEARNING_PAGE_IDS.DATA_QUALITY}
-                title={t('label.data-quality')}
-              />
-            }
-            breadcrumb={
-              <HeaderBreadcrumb
-                noMargin
-                className="tw:text-xs"
-                items={[
-                  getObservabilityRootBreadcrumb(t),
-                  {
-                    label: t('label.data-quality'),
-                    ariaLabel: t('label.data-quality'),
-                  },
-                ]}
-                showHome={false}
-              />
-            }
-            footer={
-              <Tabs
-                selectedKey={activeTab}
-                onSelectionChange={(key) => handleTabChange(String(key))}>
-                <Tabs.List
-                  className="tw:mt-2 tw:gap-6 tw:before:hidden"
-                  items={items}
-                  size="sm"
-                  type="underline">
-                  {(item) => (
-                    <Tabs.Item
-                      {...item}
-                      className={({ isSelected }) =>
-                        isSelected ? 'tw:font-semibold' : 'tw:font-medium'
-                      }
-                    />
-                  )}
-                </Tabs.List>
-              </Tabs>
-            }
-            subtitle={t('message.page-sub-header-for-data-quality')}
-            title={t('label.data-quality')}
-            variant="gradient"
-          />
-        }
-        pageTitle={t('label.data-quality')}>
-        <DataQualityTabContent activeTabComponent={ActiveTabComponent} />
-      </ObservabilityPageShell>
+      <PageLayout className={OBSERVABILITY_PAGE_LAYOUT_CLASS}>
+        <DocumentTitle title={t('label.data-quality')} />
+        <PageLayout.PageHeader
+          actions={trailing}
+          badge={
+            <LearningIcon
+              pageId={LEARNING_PAGE_IDS.DATA_QUALITY}
+              title={t('label.data-quality')}
+            />
+          }
+          breadcrumb={
+            <HeaderBreadcrumb
+              noMargin
+              className="tw:text-xs"
+              items={[
+                getObservabilityRootBreadcrumb(t),
+                {
+                  label: t('label.data-quality'),
+                  ariaLabel: t('label.data-quality'),
+                },
+              ]}
+              showHome={false}
+            />
+          }
+          footer={
+            <Tabs
+              selectedKey={activeTab}
+              onSelectionChange={(key) => handleTabChange(String(key))}>
+              <Tabs.List
+                className="tw:mt-2 tw:gap-6 tw:before:hidden"
+                items={items}
+                size="sm"
+                type="underline">
+                {(item) => (
+                  <Tabs.Item
+                    {...item}
+                    className={({ isSelected }) =>
+                      isSelected ? 'tw:font-semibold' : 'tw:font-medium'
+                    }
+                  />
+                )}
+              </Tabs.List>
+            </Tabs>
+          }
+          subtitle={t('message.page-sub-header-for-data-quality')}
+          title={t('label.data-quality')}
+          variant="gradient"
+        />
+        <PageLayout.Content>
+          <DataQualityTabContent activeTabComponent={ActiveTabComponent} />
+        </PageLayout.Content>
+      </PageLayout>
 
       <BundleSuiteFormDrawer
         open={isBundleSuiteModalOpen}

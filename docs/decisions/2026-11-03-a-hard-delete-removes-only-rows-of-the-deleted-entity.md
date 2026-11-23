@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-03 (initial); v2 2026-11-04 (deleting a type leaves `tag_usage`
-  alone)
+  alone); v3 2026-11-18 (taggable types that share an FQN keep each other's rows)
 - **Deciders:** Mohit Yadav
 - **Guard:** `HardDeleteCleanupIT`, `EntityRepositoryRestoreTest`
 - **Related:** open-metadata/openmetadata-collate#8018
@@ -27,3 +27,9 @@ therefore covers only the rows the deleted entity's type can own.
 Deleting a user, team, role, policy or bot touches no FQN-keyed rows. `tag_usage` does not record
 the target's entity type, so two taggable entities of different types that share an FQN share
 their rows there; recording the type on each row is a schema change left for later.
+
+## Amendment — taggable types that share an FQN keep each other's rows
+Two taggable entities that share an FQN still share their `tag_usage` rows, but a hard delete of
+one no longer removes the other's. Before its prefix delete, the delete looks for entities it
+leaves in place; ADR:2026-11-18-a-hard-delete-keeps-the-rows-of-entities-that-share-its-fqn states
+the rule.

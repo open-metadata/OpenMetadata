@@ -20,7 +20,8 @@ import { Persona } from '../../../../../../../generated/entity/teams/persona';
  * them in the panel footer (Save / Reset) and header (Add-Widget).
  */
 export interface CustomizeEditorActions {
-  onSave: () => Promise<void> | void;
+  /** Resolves `true` once saved; a failed save has already shown its toast. */
+  onSave: () => Promise<boolean>;
   onReset: () => void;
   canSave: boolean;
   isSaving?: boolean;

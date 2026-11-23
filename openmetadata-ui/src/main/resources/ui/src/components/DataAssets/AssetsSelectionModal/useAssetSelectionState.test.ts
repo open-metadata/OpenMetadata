@@ -28,7 +28,7 @@ import {
 } from '../../../rest/glossaryAPI';
 import { getMetricByFqn } from '../../../rest/metricsAPI';
 import { addMetricTabAssets } from '../../../rest/metricTabsAPI';
-import { searchQuery } from '../../../rest/searchAPI';
+import { searchQuery, searchQueryPost } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchPureUtils';
 import { getDomainDryRunImpacts } from '../../../utils/Domain/DomainDryRunUtils';
@@ -37,6 +37,7 @@ import { useAssetSelectionState } from './useAssetSelectionState';
 
 jest.mock('../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
+  searchQueryPost: jest.fn(),
 }));
 
 jest.mock('../../../rest/domainAPI', () => ({
@@ -111,6 +112,7 @@ describe('useAssetSelectionState', () => {
       socket: mockSocket,
     });
     (searchQuery as jest.Mock).mockResolvedValue(buildSearchResponse([]));
+    (searchQueryPost as jest.Mock).mockResolvedValue(buildSearchResponse([]));
     (getGlossaryTermByFQN as jest.Mock).mockResolvedValue({
       id: 'glossary-term-id',
       fullyQualifiedName: 'glossary.term',
@@ -196,6 +198,43 @@ describe('useAssetSelectionState', () => {
         expect.objectContaining({ searchIndex: SearchIndex.DATA_ASSET })
       );
     });
+  });
+
+  it('routes the search through POST /search/query when useQueryPost is set', async () => {
+    // A metric with hundreds of linked assets embeds every id in a `must_not` `ids`
+    // filter, which overflows the GET request-line size limit. The POST-body variant
+    // carries the same filter in the body so the URL stays small.
+    (searchQueryPost as jest.Mock).mockResolvedValue(
+      buildSearchResponse([buildHit('post-1')], 1)
+    );
+
+    const { result } = renderAssetSelectionState({ useQueryPost: true });
+
+    await waitFor(() => {
+      expect(result.current.items).toHaveLength(1);
+    });
+
+    expect(searchQueryPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageNumber: 1,
+        pageSize: 25,
+        query: '',
+        includeDeleted: false,
+      })
+    );
+    // The GET path must NOT be used when the caller opts into POST.
+    expect(searchQuery).not.toHaveBeenCalled();
+  });
+
+  it('uses the GET path when useQueryPost is not set', async () => {
+    // Non-metric callers keep the existing GET behavior — explicit no-regression guard.
+    renderAssetSelectionState();
+
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenCalled();
+    });
+
+    expect(searchQueryPost).not.toHaveBeenCalled();
   });
 
   it.each([

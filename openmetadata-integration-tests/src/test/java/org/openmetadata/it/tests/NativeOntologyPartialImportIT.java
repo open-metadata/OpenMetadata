@@ -173,7 +173,7 @@ public class NativeOntologyPartialImportIT extends BaseOntologyApprovalIT {
     assertTrue(
         client
             .ontologyAxioms()
-            .list(new ListParams().addFilter("ontology", whole.getFullyQualifiedName()))
+            .list(new ListParams().addFilter("ontologyId", whole.getId().toString()))
             .getData()
             .stream()
             .anyMatch(axiom -> axiom.getSubjectIri().toString().endsWith("/Ledger")));

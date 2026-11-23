@@ -10,7 +10,7 @@ Box-shadow scale, mirroring the upstream `--shadow-*` tokens. Shadow *colors*
 | `--om-shadow-xs` | 1 | inputs, subtle cards, buttons |
 | `--om-shadow-sm` | 2 | cards |
 | `--om-shadow-md` | 3 | dropdowns, raised cards |
-| `--om-shadow-lg` | 4 | popovers, menus |
+| `--om-shadow-lg` | 4 | tooltips, sticky bars, hover states |
 | `--om-shadow-xl` | 5 | modals |
 | `--om-shadow-2xl` | 6 | large modals, dialogs |
 | `--om-shadow-3xl` | 7 | full-screen overlays |

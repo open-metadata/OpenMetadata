@@ -69,7 +69,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
     }
 
     // Rendered outside Typography: the global `.prose-typography a` rule in
-    // fonts.less would otherwise force the link to 14px.
+    // fonts.less would otherwise restyle the link Button's colour and weight.
     const isExternal = info.isExternal && info.value !== '-';
     const url = info.isExternal ? getSafeHttpUrl(info.url) : info.url;
     const to = info.linkProps ?? url ?? '';

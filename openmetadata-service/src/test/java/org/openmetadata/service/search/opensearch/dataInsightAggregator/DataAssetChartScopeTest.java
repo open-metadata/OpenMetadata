@@ -23,6 +23,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -69,11 +70,19 @@ class DataAssetChartScopeTest {
   private static final long START = TIMESTAMP - ONE_DAY;
   private static final long END = TIMESTAMP + ONE_DAY;
 
-  private static final int TABLE_COUNT = 3;
   private static final int DASHBOARD_COUNT = 2;
   private static final int GLOSSARY_TERM_COUNT = 1;
   private static final int DATA_PRODUCT_COUNT = 1;
   private static final int TEST_CASE_RESULT_COUNT = 4;
+  private static final int STAMPED_TEST_CASE_COUNT = 3;
+  private static final List<String> TABLE_FQNS =
+      List.of("svc.db.sch.orders", "svc.db.sch.users", "svc.db.sch.events");
+  private static final int TABLE_COUNT = TABLE_FQNS.size();
+  // Two tables are covered: orders by two test cases, users by one. events has
+  // none.
+  private static final List<String> TEST_CASE_ORIGINS =
+      List.of("svc.db.sch.orders", "svc.db.sch.orders", "svc.db.sch.users");
+
   private static final double EXPECTED_DATA_ASSETS = TABLE_COUNT + DASHBOARD_COUNT;
 
   private static final String ASSET_MAPPING =
@@ -81,7 +90,46 @@ class DataAssetChartScopeTest {
       {"mappings":{"properties":{
         "@timestamp":{"type":"date","format":"epoch_millis"},
         "id":{"type":"keyword","fields":{"keyword":{"type":"keyword"}}},
+        "fullyQualifiedName":{"type":"keyword","fields":{"keyword":{"type":"keyword"}}},
         "entityType":{"type":"keyword","fields":{"keyword":{"type":"keyword"}}}}}}""";
+
+  /**
+   * The live test case index. Like the real one it has no {@code @timestamp}, so non-live charts
+   * never match its documents; entityType.keyword and originEntityFQN are lowercase-normalized.
+   */
+  private static final String TEST_CASE_MAPPING =
+      """
+      {"settings":{"analysis":{"normalizer":{"lowercase_normalizer":{
+          "type":"custom","char_filter":[],"filter":["lowercase"]}}}},
+       "mappings":{"properties":{
+        "id":{"type":"text","fields":{"keyword":{"type":"keyword","ignore_above":256}}},
+        "originEntityFQN":{"type":"keyword","normalizer":"lowercase_normalizer"},
+        "entityType":{"type":"keyword","fields":{"keyword":{
+          "type":"keyword","normalizer":"lowercase_normalizer","ignore_above":256}}}}}}""";
+
+  /** A test case index that does carry a timestamp: the scope must hold even then. */
+  private static final String STAMPED_TEST_CASE_MAPPING =
+      """
+      {"settings":{"analysis":{"normalizer":{"lowercase_normalizer":{
+          "type":"custom","char_filter":[],"filter":["lowercase"]}}}},
+       "mappings":{"properties":{
+        "@timestamp":{"type":"date","format":"epoch_millis"},
+        "id":{"type":"keyword","fields":{"keyword":{"type":"keyword"}}},
+        "entityType":{"type":"keyword","fields":{"keyword":{
+          "type":"keyword","normalizer":"lowercase_normalizer","ignore_above":256}}}}}}""";
+
+  /** The live {@code all} alias, which the summary card reads in live mode. */
+  private static final String ALL_MAPPING =
+      """
+      {"settings":{"analysis":{"normalizer":{"lowercase_normalizer":{
+          "type":"custom","char_filter":[],"filter":["lowercase"]}}}},
+       "mappings":{"properties":{
+        "id":{"type":"keyword","fields":{"keyword":{"type":"keyword"}}},
+        "service":{"properties":{"name":{"type":"keyword","fields":{"keyword":{"type":"keyword"}}}}},
+        "fullyQualifiedName":{"type":"keyword","fields":{"keyword":{"type":"keyword"}}},
+        "originEntityFQN":{"type":"keyword","normalizer":"lowercase_normalizer"},
+        "entityType":{"type":"keyword","fields":{"keyword":{
+          "type":"keyword","normalizer":"lowercase_normalizer","ignore_above":256}}}}}}""";
 
   private static final String DATA_QUALITY_MAPPING =
       """
@@ -169,6 +217,32 @@ class DataAssetChartScopeTest {
     assertEquals(Set.of("table", "dashboard"), groups);
   }
 
+  @Test
+  void liveChartCountsTestCasesPerTable() throws Exception {
+    List<DataInsightCustomChartResult> perTable =
+        osClient.buildDIChart(testCasesByTable(), START, END, true).getResults();
+
+    Map<String, Double> countsByTable =
+        perTable.stream()
+            .collect(
+                Collectors.toMap(
+                    DataInsightCustomChartResult::getTerm, DataInsightCustomChartResult::getCount));
+    // originEntityFQN is lowercase-normalized, so the bucket keys are lowercase table FQNs.
+    assertEquals(Map.of("svc.db.sch.orders", 2.0, "svc.db.sch.users", 1.0), countsByTable);
+  }
+
+  @Test
+  void shareOfTablesWithoutTestsMatchesTheSeededDataset() throws Exception {
+    List<DataInsightCustomChartResult> results =
+        osClient.buildDIChart(tablesWithoutTestsShare(), START, END, true).getResults();
+    assertEquals(1, results.size(), "Tables and test cases of one service must share its bucket");
+    double share = results.getFirst().getCount();
+
+    double expected =
+        100.0 * (TABLE_FQNS.size() - Set.copyOf(TEST_CASE_ORIGINS).size()) / TABLE_FQNS.size();
+    assertEquals(expected, share, 0.01);
+  }
+
   private static double onlyCount(DataInsightCustomChartResultList result) {
     assertEquals(1, result.getResults().size(), "A summary card reports a single value");
     return result.getResults().getFirst().getCount();
@@ -191,7 +265,41 @@ class DataAssetChartScopeTest {
         new LineChart()
             .withMetrics(List.of(new LineChartMetric().withFormula("count(k='id.keyword')")))
             .withGroupBy("entityType.keyword")
-            .withExcludeGroups(DataInsightSystemChartRepository.NON_DATA_ASSET_ENTITY_TYPES));
+            .withExcludeGroups(DataInsightSystemChartRepository.NON_DATA_ASSET_BUCKET_KEYS));
+  }
+
+  private static DataInsightCustomChart testCasesByTable() {
+    return storedChart(
+        "test_cases_by_table",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula("count(k='id.keyword')")
+                        .withFilter(
+                            "{\"query\":{\"term\":{\"entityType.keyword\":\"testCase\"}}}")))
+            .withxAxisField("originEntityFQN")
+            .withSearchIndex(Entity.TEST_CASE));
+  }
+
+  /**
+   * Live charts need a categorical axis, since live documents have no {@code @timestamp} to bucket
+   * by. Tables and their test cases carry the same service, so grouping by it puts both populations
+   * in one bucket per service and the formula can compare them: the share of that service's tables
+   * with no test case.
+   */
+  private static DataInsightCustomChart tablesWithoutTestsShare() {
+    return storedChart(
+        "tables_without_tests_share",
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula(
+                            "100 - unique(k='originEntityFQN', q='entityType.keyword: testCase')"
+                                + " / unique(k='fullyQualifiedName.keyword', q='entityType.keyword: table')"
+                                + " * 100")))
+            .withxAxisField("service.name.keyword"));
   }
 
   /**
@@ -210,14 +318,25 @@ class DataAssetChartScopeTest {
     createIndex("di-data-assets-glossaryterm", ASSET_MAPPING);
     createIndex("di-data-assets-dataproduct", ASSET_MAPPING);
     createIndex("di-data-assets-testcaseresult", DATA_QUALITY_MAPPING);
+    createIndex("di-data-assets-testcasestamped", STAMPED_TEST_CASE_MAPPING);
+    createIndex("test_case_search_index", TEST_CASE_MAPPING);
+    send(
+        "POST",
+        "/_aliases",
+        "{\"actions\":[{\"add\":{\"index\":\"test_case_search_index\",\"alias\":\"testCase\"}},"
+            + "{\"add\":{\"index\":\"test_case_search_index\","
+            + "\"alias\":\"di-data-assets-testcase\"}}]}");
+    createIndex("all", ALL_MAPPING);
 
-    indexAssets("di-data-assets-table", "table", TABLE_COUNT);
+    indexTables();
     indexAssets("di-data-assets-dashboard", "dashboard", DASHBOARD_COUNT);
     indexAssets("di-data-assets-glossaryterm", "glossaryTerm", GLOSSARY_TERM_COUNT);
     indexAssets("di-data-assets-dataproduct", "dataProduct", DATA_PRODUCT_COUNT);
     indexAssets("di-data-assets-testcaseresult", null, TEST_CASE_RESULT_COUNT);
+    indexAssets("di-data-assets-testcasestamped", "testCase", STAMPED_TEST_CASE_COUNT);
+    indexTestCases();
 
-    send("POST", "/di-data-assets-*/_refresh", null);
+    send("POST", "/_refresh", null);
   }
 
   private static void createIndex(String index, String mapping) throws Exception {
@@ -232,6 +351,39 @@ class DataAssetChartScopeTest {
           String.format(
               "{\"@timestamp\":%d,\"id\":\"%s\"%s}", TIMESTAMP, UUID.randomUUID(), entityTypeField);
       send("POST", "/" + index + "/_doc", document);
+    }
+  }
+
+  private static void indexTables() throws Exception {
+    for (String fullyQualifiedName : TABLE_FQNS) {
+      String id = UUID.randomUUID().toString();
+      send(
+          "POST",
+          "/di-data-assets-table/_doc",
+          String.format(
+              "{\"@timestamp\":%d,\"id\":\"%s\",\"entityType\":\"table\","
+                  + "\"fullyQualifiedName\":\"%s\"}",
+              TIMESTAMP, id, fullyQualifiedName));
+      send(
+          "POST",
+          "/all/_doc",
+          String.format(
+              "{\"id\":\"%s\",\"service\":{\"name\":\"svc\"},\"entityType\":\"table\","
+                  + "\"fullyQualifiedName\":\"%s\"}",
+              id, fullyQualifiedName));
+    }
+  }
+
+  /** Live test case documents carry no @timestamp; they sit in testCase and in the all alias. */
+  private static void indexTestCases() throws Exception {
+    for (String originEntityFqn : TEST_CASE_ORIGINS) {
+      String document =
+          String.format(
+              "{\"id\":\"%s\",\"service\":{\"name\":\"svc\"},\"entityType\":\"testCase\","
+                  + "\"originEntityFQN\":\"%s\"}",
+              UUID.randomUUID(), originEntityFqn);
+      send("POST", "/" + Entity.TEST_CASE + "/_doc", document);
+      send("POST", "/all/_doc", document);
     }
   }
 

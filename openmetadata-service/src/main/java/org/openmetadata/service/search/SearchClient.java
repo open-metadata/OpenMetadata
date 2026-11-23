@@ -946,7 +946,21 @@ public interface SearchClient
           "tier",
           "changeDescription");
 
-  Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification", "metricGroup");
+  Set<String> FIELDS_TO_REMOVE_WHEN_NULL =
+      Set.of(
+          "tier",
+          "certification",
+          "metricGroup",
+          "primaryEntity",
+          "sourceEntity",
+          "sourceFile",
+          "embedding",
+          "textToEmbed",
+          "textToLLMContext",
+          "fingerprint",
+          "parentId",
+          "chunkIndex",
+          "chunkCount");
 
   String FIELDS_TO_REMOVE = "fieldsToRemove";
 
@@ -967,8 +981,8 @@ public interface SearchClient
    * Executes a low-level request against the search engine and returns the raw response (the body
    * may be JSON or, for {@code _cat/*}, plain text). Backs the typed {@code /v1/test-support/search}
    * endpoints so integration tests can inspect index internals (counts, aliases, {@code
-   * _cat/indices}) against a remote cluster without a direct {@code :9200} connection. Not part of
-   * the normal query path.
+   * _cat/indices}) against a remote cluster without a direct {@code :9200} connection. Also used
+   * for engine-side validation of persona rule filters before persistence.
    */
   default RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
       throws IOException {

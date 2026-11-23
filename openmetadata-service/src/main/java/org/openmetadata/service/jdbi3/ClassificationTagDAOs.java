@@ -38,6 +38,8 @@ import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.BindMap;
+import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
@@ -384,7 +386,11 @@ public interface ClassificationTagDAOs {
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
-                + "END as json "
+                + "END as json, "
+                + "CASE "
+                + "  WHEN tu.source = 1 THEN gterm.deleted "
+                + "  WHEN tu.source = 0 THEN ta.deleted "
+                + "END as entityDeleted "
                 + "FROM tag_usage tu "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
@@ -396,7 +402,11 @@ public interface ClassificationTagDAOs {
                 + "CASE "
                 + "  WHEN tu.source = 1 THEN gterm.json "
                 + "  WHEN tu.source = 0 THEN ta.json "
-                + "END as json "
+                + "END as json, "
+                + "CASE "
+                + "  WHEN tu.source = 1 THEN gterm.deleted "
+                + "  WHEN tu.source = 0 THEN ta.deleted "
+                + "END as entityDeleted "
                 + "FROM tag_usage tu "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
@@ -414,7 +424,11 @@ public interface ClassificationTagDAOs {
             + "CASE "
             + "  WHEN tu.source = 1 THEN gterm.json "
             + "  WHEN tu.source = 0 THEN ta.json "
-            + "END as json "
+            + "END as json, "
+            + "CASE "
+            + "  WHEN tu.source = 1 THEN gterm.deleted "
+            + "  WHEN tu.source = 0 THEN ta.deleted "
+            + "END as entityDeleted "
             + "FROM tag_usage tu "
             + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
             + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
@@ -575,6 +589,40 @@ public interface ClassificationTagDAOs {
                 parts = {":targetFQNHashPrefix", ".%"},
                 hash = true)
             String targetFQNHashPrefix);
+
+    /**
+     * {@link #deleteTagLabelsByTargetPrefix} except the labels at and under the kept subtrees,
+     * which belong to entities a hard delete leaves in place.
+     */
+    default void deleteTagLabelsByTargetPrefixOutside(
+        String targetFQN, List<String> keptSubtreeHashes) {
+      String targetHash = FullyQualifiedName.buildHash(targetFQN);
+      Map<String, String> bindings = new HashMap<>();
+      bindings.put("targetHash", targetHash);
+      bindings.put("underTarget", targetHash + Entity.SEPARATOR + "%");
+      deleteTagLabelsWhere(
+          "(targetFQNHash = :targetHash OR targetFQNHash LIKE :underTarget)"
+              + FqnKeyedRowCleanup.outsideKeptSubtrees(
+                  "targetFQNHash", keptSubtreeHashes, bindings),
+          bindings);
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM tag_usage WHERE <condition> ORDER BY tagFQN",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM tag_usage WHERE <condition>",
+        connectionType = POSTGRES)
+    void deleteTagLabelsWhere(
+        @Define("condition") String condition, @BindMap Map<String, String> bindings);
+
+    /**
+     * Runs the probes {@link FqnKeyedRowCleanup} builds over entity tables, each selecting FQN
+     * hashes as {@code hash}.
+     */
+    @SqlQuery("SELECT probe.hash FROM (<probes>) probe")
+    List<String> listEntityFqnHashes(
+        @Define("probes") String probes, @BindMap Map<String, String> bindings);
 
     @Deprecated(since = "Release 1.1")
     @ConnectionAwareSqlUpdate(
@@ -741,6 +789,19 @@ public interface ClassificationTagDAOs {
               source,
               label.getTagFQN(),
               r.getString("targetFQNHash"));
+          return Pair.of(r.getString("targetFQNHash"), label);
+        }
+        // MySQL stores BOOLEAN as TINYINT(1) (getObject returns Integer), Postgres as true/false
+        // (getObject returns Boolean). Handle both to avoid PSQLException on getInt(Boolean).
+        Object entityDeletedValue = r.getObject("entityDeleted");
+        boolean entityDeleted =
+            entityDeletedValue instanceof Boolean
+                ? (Boolean) entityDeletedValue
+                : entityDeletedValue instanceof Number
+                    && ((Number) entityDeletedValue).intValue() != 0;
+        if (entityDeleted) {
+          // The tag or glossary term is soft-deleted. Return the label unenriched (without the
+          // orphan warning) so normal deletes do not produce spurious broken-reference warnings.
           return Pair.of(r.getString("targetFQNHash"), label);
         }
         if (source == TagLabel.TagSource.CLASSIFICATION) {

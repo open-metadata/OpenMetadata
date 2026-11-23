@@ -50,8 +50,10 @@ import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUt
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
-import { OBSERVABILITY_ALERT_COUNT_QUERY_KEY } from '../observability.constants';
-import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
+import {
+  OBSERVABILITY_ALERT_COUNT_QUERY_KEY,
+  OBSERVABILITY_PAGE_LAYOUT_CLASS,
+} from '../observability.constants';
 import AlertAiDiagnosticTab from './AlertAiDiagnosticTab';
 import AlertAiEventCounts from './AlertAiEventCounts';
 import AlertAiForm from './AlertAiForm.component';
@@ -424,26 +426,26 @@ const AlertDetailsPage = ({
       }
 
       return (
-        <ObservabilityPageShell
-          header={
-            <PageLayout.PageHeader
-              breadcrumb={
-                <HeaderBreadcrumb
-                  noMargin
-                  className="tw:text-xs"
-                  items={breadcrumbItems}
-                  showHome={false}
-                />
-              }
-              title={alertName}
-              variant="gradient"
-            />
-          }
-          pageTitle={alertName}>
-          <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
-            {loadErrorPlaceholder}
-          </Box>
-        </ObservabilityPageShell>
+        <PageLayout className={OBSERVABILITY_PAGE_LAYOUT_CLASS}>
+          <DocumentTitle title={alertName} />
+          <PageLayout.PageHeader
+            breadcrumb={
+              <HeaderBreadcrumb
+                noMargin
+                className="tw:text-xs"
+                items={breadcrumbItems}
+                showHome={false}
+              />
+            }
+            title={alertName}
+            variant="gradient"
+          />
+          <PageLayout.Content>
+            <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
+              {loadErrorPlaceholder}
+            </Box>
+          </PageLayout.Content>
+        </PageLayout>
       );
     }
 
@@ -471,50 +473,51 @@ const AlertDetailsPage = ({
           <Loader />
         </>
       ) : (
-        <ObservabilityPageShell
-          data-testid="alert-details-ai-page"
-          header={
-            <PageLayout.PageHeader
-              actions={headerActions}
-              breadcrumb={
-                <HeaderBreadcrumb
-                  noMargin
-                  className="tw:text-xs"
-                  items={breadcrumbItems}
-                  showHome={false}
-                />
-              }
-              data-testid="alerts-observability-ai-details-header"
-              footer={headerFooter}
-              meta={headerMetadata}
-              /* The subtitle should mirror the alert identifier from the route,
-               * not the backend entity id returned in alertDetails. */
-              subtitle={
-                <Typography
-                  className="tw:truncate tw:text-secondary"
-                  data-testid="alert-details-fqn"
-                  size="text-sm"
-                  title={fqn}>
-                  {fqn}
-                </Typography>
-              }
-              title={alertName}
-              variant="gradient"
-            />
-          }
-          pageTitle={alertName}>
-          <Box direction="col" gap={4}>
-            {tab === AlertDetailTabs.CONFIGURATION && (
-              <AlertDescriptionCard
-                alertDetails={alertDetails}
-                hasEditAccess={editDescriptionPermission}
-                onDescriptionUpdate={onDescriptionUpdate}
+        <PageLayout
+          className={OBSERVABILITY_PAGE_LAYOUT_CLASS}
+          data-testid="alert-details-ai-page">
+          <DocumentTitle title={alertName} />
+          <PageLayout.PageHeader
+            actions={headerActions}
+            breadcrumb={
+              <HeaderBreadcrumb
+                noMargin
+                className="tw:text-xs"
+                items={breadcrumbItems}
+                showHome={false}
               />
-            )}
+            }
+            data-testid="alerts-observability-ai-details-header"
+            footer={headerFooter}
+            meta={headerMetadata}
+            /* The subtitle should mirror the alert identifier from the route,
+             * not the backend entity id returned in alertDetails. */
+            subtitle={
+              <Typography
+                className="tw:truncate tw:text-secondary"
+                data-testid="alert-details-fqn"
+                size="text-sm"
+                title={fqn}>
+                {fqn}
+              </Typography>
+            }
+            title={alertName}
+            variant="gradient"
+          />
+          <PageLayout.Content>
+            <Box direction="col" gap={4}>
+              {tab === AlertDetailTabs.CONFIGURATION && (
+                <AlertDescriptionCard
+                  alertDetails={alertDetails}
+                  hasEditAccess={editDescriptionPermission}
+                  onDescriptionUpdate={onDescriptionUpdate}
+                />
+              )}
 
-            {activeTabContent}
-          </Box>
-        </ObservabilityPageShell>
+              {activeTabContent}
+            </Box>
+          </PageLayout.Content>
+        </PageLayout>
       )}
 
       <DeleteModal

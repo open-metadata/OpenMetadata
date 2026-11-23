@@ -112,6 +112,7 @@ public class DatabaseBuilder {
    * Set custom extension data.
    */
   public DatabaseBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

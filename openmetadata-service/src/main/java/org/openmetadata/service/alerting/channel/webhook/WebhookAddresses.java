@@ -31,7 +31,6 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.audience.AddressDirectory;
 import org.openmetadata.service.alerting.audience.Recipient;
 import org.openmetadata.service.alerting.audience.WebhookRecipient;
@@ -51,24 +50,18 @@ public final class WebhookAddresses implements AddressDirectory {
 
   @Override
   public Recipient ofUser(User user) {
-    return ofProfile(
-        user.getName(),
-        new ProfileWebhookSecrets.Holder(Entity.USER, user.getId()),
-        user.getProfile());
+    return ofProfile(user.getName(), user.getProfile());
   }
 
   @Override
   public Recipient ofTeam(Team team) {
-    return ofProfile(
-        team.getName(),
-        new ProfileWebhookSecrets.Holder(Entity.TEAM, team.getId()),
-        team.getProfile());
+    return ofProfile(team.getName(), team.getProfile());
   }
 
-  // A profile webhook whose secrets do not open is left out, as one without an address.
-  private Recipient ofProfile(String name, ProfileWebhookSecrets.Holder holder, Profile profile) {
+  // A profile webhook whose secrets do not decrypt is left out, as one without an address.
+  private Recipient ofProfile(String name, Profile profile) {
     return WebhookRecipient.ofProfile(
-        name, ProfileWebhookSecrets.decrypted(holder, profile), onProfile);
+        name, ProfileWebhookSecrets.decrypted(name, profile), onProfile);
   }
 
   @Override

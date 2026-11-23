@@ -24,24 +24,29 @@ export const GlossaryFilled: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M13 2H7a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V5a3 3 0 0 0-3-3"
+    <rect
       fill="currentColor"
+      height={15.47}
+      rx={2.2}
+      stroke="currentColor"
+      strokeWidth={1.3}
+      width={12.6}
+      x={3.699}
+      y={2.266}
     />
     <path
-      className="tw:fill-bg-primary tw:stroke-bg-primary"
-      d="M13.174 10.489a.5.5 0 0 1-.854.353l-.88-.88a.5.5 0 0 0-.707 0l-.88.88A.5.5 0 0 1 9 10.49V3.696A.696.696 0 0 1 9.696 3h2.782a.696.696 0 0 1 .696.696z"
+      className="tw:fill-bg-primary"
+      d="m11.88 8.884 1.476 1.174a.5.5 0 0 0 .811-.391v-6.39a.5.5 0 0 0-.5-.5H9.469a.5.5 0 0 0-.5.5v6.39a.5.5 0 0 0 .811.391l1.477-1.174a.5.5 0 0 1 .622 0"
       fill="#fff"
-      stroke="#fff"
-      strokeWidth={1.2}
+      stroke="currentColor"
     />
   </svg>
 );

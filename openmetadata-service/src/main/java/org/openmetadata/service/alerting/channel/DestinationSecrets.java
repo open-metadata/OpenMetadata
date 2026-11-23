@@ -20,6 +20,7 @@ import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -30,13 +31,11 @@ import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.service.secrets.SecretOwner;
 
 /**
  * What a destination's configuration holds that must not be stored or read back in the clear: the
@@ -44,12 +43,10 @@ import org.openmetadata.service.secrets.SecretOwner;
  * message is sent, and masked in every response. A response sent back as it was read carries the
  * mask, which stands for the stored value.
  */
-@Slf4j
 public final class DestinationSecrets {
   private static final String DESTINATIONS = "destinations";
   private static final String CONFIG = "config";
   private static final String NAME = "name";
-  private static final String OWNER_KIND = "alertdestination";
   private static final List<String> CHANGE_DESCRIPTIONS =
       List.of("changeDescription", "incrementalChangeDescription");
   private static final List<String> FIELD_CHANGE_LISTS =
@@ -81,9 +78,7 @@ public final class DestinationSecrets {
               if (nullOrEmpty(destination.getId())) {
                 destination.withId(UUID.randomUUID());
               }
-              SecretOwner owner = ownerOf(destination);
-              transform(
-                  destination, (config, fields) -> ConfigSecrets.encrypt(owner, config, fields));
+              transform(destination, ConfigSecrets::encrypt);
               result.add(destination);
             });
     return result;
@@ -91,23 +86,24 @@ public final class DestinationSecrets {
 
   /**
    * A copy of the destination with its secrets decrypted: the configuration as it is used. A secret
-   * not written for this destination is refused with a 400, so nothing is sent with it.
+   * the configured keys do not decrypt is refused with a 400, so nothing is sent with it.
    */
   public static SubscriptionDestination decrypted(SubscriptionDestination destination) {
     SubscriptionDestination copy = JsonUtils.deepCopy(destination, SubscriptionDestination.class);
-    SecretOwner owner = ownerOf(copy);
-    transform(copy, (config, fields) -> ConfigSecrets.decrypt(owner, config, fields));
+    transform(copy, ConfigSecrets::decrypt);
     return copy;
   }
 
   /**
-   * Who a destination's secrets belong to: the destination itself, by its id, which the server
-   * keeps for its whole life. A destination without an id has nothing stored for it, so it gets an
-   * owner of its own that no stored secret opens for.
+   * The destination as it reads when judging what it says rather than sending it: decrypted, or as
+   * stored when a secret does not decrypt, so a value waiting to be entered again stops no edit.
    */
-  static SecretOwner ownerOf(SubscriptionDestination destination) {
-    UUID id = destination.getId() == null ? UUID.randomUUID() : destination.getId();
-    return SecretOwner.builder(OWNER_KIND).id(id).build();
+  public static SubscriptionDestination decryptedOrAsStored(SubscriptionDestination destination) {
+    try {
+      return decrypted(destination);
+    } catch (BadRequestException e) {
+      return destination;
+    }
   }
 
   /** A copy of the alert with every secret masked, in its destinations and its change history. */
@@ -180,7 +176,7 @@ public final class DestinationSecrets {
     JsonNode storedConfig = JsonUtils.valueToTree(stored.getConfig());
     JsonNode updatedConfig = JsonUtils.valueToTree(updated.getConfig());
     if (ConfigSecrets.restore(
-        ownerOf(stored), storedConfig, updatedConfig, secretFieldsOf(updated, updatedConfig))) {
+        storedConfig, updatedConfig, secretFieldsOf(updated, updatedConfig))) {
       updated.withConfig(JsonUtils.treeToValue(updatedConfig, Object.class));
     }
   }
@@ -232,9 +228,7 @@ public final class DestinationSecrets {
   /** Whether {@code sent} would deliver what {@code stored} carries somewhere it is not stored. */
   static boolean targetMoved(SubscriptionDestination stored, SubscriptionDestination sent) {
     return ConfigSecrets.targetMoved(
-        ownerOf(stored),
-        JsonUtils.valueToTree(stored.getConfig()),
-        JsonUtils.valueToTree(sent.getConfig()));
+        JsonUtils.valueToTree(stored.getConfig()), JsonUtils.valueToTree(sent.getConfig()));
   }
 
   private static void transform(

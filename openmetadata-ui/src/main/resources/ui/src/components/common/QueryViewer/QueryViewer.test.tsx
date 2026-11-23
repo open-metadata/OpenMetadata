@@ -81,6 +81,10 @@ describe('QueryViewer Component', () => {
     expect(screen.getByTestId('schema-editor').textContent).toBe(
       formattedConfig
     );
-    expect(useClipboard).toHaveBeenLastCalledWith(formattedConfig);
+    expect(useClipboard).toHaveBeenLastCalledWith(
+      formattedConfig,
+      1200,
+      undefined
+    );
   });
 });

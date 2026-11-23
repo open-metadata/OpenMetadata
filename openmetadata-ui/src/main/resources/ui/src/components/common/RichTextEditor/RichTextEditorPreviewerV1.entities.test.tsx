@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import RichTextEditorPreviewerV1 from './RichTextEditorPreviewerV1';
 
 /**
@@ -110,5 +116,114 @@ describe('RichTextEditorPreviewerV1: markdown link rendering', () => {
     const link = await screen.findByRole('link', { name: url }, RENDER_TIMEOUT);
 
     expect(link).toHaveAttribute('href', url);
+  });
+});
+
+describe('RichTextEditorPreviewerV1: formatted-description truncation', () => {
+  const LINK_URL = 'https://example.com/documentation/guide';
+
+  const FORMATTED_DESCRIPTION =
+    '# Heading one\n\n' +
+    'Some plain intro text. **Bold words** and then a link to the ' +
+    `[product documentation guide](${LINK_URL}) ` +
+    'plus trailing text that goes on for a while longer still.';
+
+  const LONG_BOLD_PARAGRAPH =
+    'This is a plain introduction paragraph with **bold words** in the middle, ' +
+    'and the text keeps going for many words until it exceeds the configured ' +
+    'preview length of two hundred characters, which is the budget we want to ' +
+    'test here fully.';
+
+  const renderCollapsed = (markdown: string, maxLength: number) =>
+    render(
+      <RichTextEditorPreviewerV1
+        enableSeeMoreVariant
+        markdown={markdown}
+        maxLength={maxLength}
+      />
+    );
+
+  it('should keep a link whose label crosses the cut as a real anchor', async () => {
+    renderCollapsed(FORMATTED_DESCRIPTION, 80);
+
+    const link = await screen.findByRole(
+      'link',
+      { name: 'product...' },
+      RENDER_TIMEOUT
+    );
+
+    expect(link).toHaveAttribute('href', LINK_URL);
+
+    const parser = screen.getByTestId('markdown-parser');
+
+    expect(parser.textContent).toContain('Heading one');
+    expect(parser.textContent).not.toContain('plus trailing text');
+    expect(parser.textContent).not.toMatch(/[[\]*<]|href=/);
+  });
+
+  it('should render a bold span crossing the cut as bold, not literal asterisks', async () => {
+    renderCollapsed(FORMATTED_DESCRIPTION, 40);
+
+    const bold = await screen.findByText(/^Bold\.\.\.$/, {}, RENDER_TIMEOUT);
+
+    expect(bold.closest('strong')).not.toBeNull();
+    expect(screen.getByTestId('markdown-parser').textContent).not.toContain(
+      '**'
+    );
+  });
+
+  it('should expand to the full link and collapse back to the trimmed preview', async () => {
+    renderCollapsed(FORMATTED_DESCRIPTION, 50);
+
+    await screen.findByText(/Some plain intro/, {}, RENDER_TIMEOUT);
+
+    expect(screen.queryByRole('link')).toBeNull();
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('read-more-button'));
+    });
+
+    expect(
+      await screen.findByRole(
+        'link',
+        { name: 'product documentation guide' },
+        RENDER_TIMEOUT
+      )
+    ).toHaveAttribute('href', LINK_URL);
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('read-less-button'));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('link')).toBeNull();
+    }, RENDER_TIMEOUT);
+
+    expect(screen.getByText(/Some plain intro/)).toBeInTheDocument();
+  });
+
+  it('should keep a mention crossing the cut whole with the ellipsis after it', async () => {
+    renderCollapsed(
+      'Intro [@Infrastructure](http://localhost:3000/settings/members/teams/Infrastructure) tail text that keeps going',
+      10
+    );
+
+    await screen.findByText('@Infrastructure', {}, RENDER_TIMEOUT);
+
+    expect(screen.getByTestId('markdown-parser').textContent).toBe(
+      'Intro @Infrastructure...'
+    );
+  });
+
+  it('should spend the preview budget on visible text, not markup', async () => {
+    renderCollapsed(LONG_BOLD_PARAGRAPH, 200);
+
+    await screen.findByText('bold words', {}, RENDER_TIMEOUT);
+
+    const visibleText = screen.getByTestId('markdown-parser').textContent ?? '';
+
+    expect(visibleText.length).toBeGreaterThan(180);
+    expect(visibleText.length).toBeLessThanOrEqual(203);
+    expect(visibleText).toMatch(/\.\.\.$/);
   });
 });

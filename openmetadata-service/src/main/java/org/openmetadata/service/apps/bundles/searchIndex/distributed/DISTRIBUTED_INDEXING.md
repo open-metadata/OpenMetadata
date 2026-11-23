@@ -182,7 +182,8 @@ Central coordination layer for job and partition management:
 
 Orchestrates job execution on a single server:
 
-- **Job Creation**: Initializes job and calculates partitions
+- **Job Creation**: Initializes job and calculates partitions, holding the lock under the job's own
+  id (renewed, along with the job's `updatedAt`) from the moment the job row exists
 - **Worker Management**: Manages partition worker threads
 - **Lock Refresh**: Keeps distributed lock alive during processing
 - **Heartbeat**: Updates partition heartbeats to prevent stale detection
@@ -203,6 +204,8 @@ Handles crash recovery during server startup:
 - **Orphan Detection**: Finds jobs without active lock holders
 - **Partition Reset**: Resets stuck PROCESSING partitions to PENDING
 - **Decision Logic**: Determines whether to recover or fail old jobs
+- **Guarded Writes**: Acts on an orphan only while holding the reindex lock, and fails it only if
+  its status and `updatedAt` are unchanged since the sweep read it
 
 ### PartitionCalculator
 
@@ -240,7 +243,8 @@ Partitions are considered stale if `lastUpdateAt < (now - PARTITION_CLAIM_TIMEOU
 
 ### Lock Transfer
 
-Atomic lock transfer when job ID changes:
+The lock is acquired under a placeholder ID and moved onto the job as soon as the job row exists,
+before partitions are built:
 
 ```sql
 UPDATE search_reindex_lock

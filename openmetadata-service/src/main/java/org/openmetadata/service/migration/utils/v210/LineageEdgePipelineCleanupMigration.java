@@ -16,13 +16,13 @@ package org.openmetadata.service.migration.utils.v210;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.List;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.lineage.LineageEdgePipeline;
 
 /**
@@ -38,39 +38,82 @@ import org.openmetadata.service.lineage.LineageEdgePipeline;
  * here.
  *
  * <p>The scan is a keyset walk over the full relationship key, so it holds one batch at a time and a
- * concurrent delete neither skips a row nor re-reads a prefix. The step is idempotent — a second run
- * finds the references already cleared — but it is guarded by {@code runOnce} so a large relationship
- * table is not rescanned on every later 2.1.0 data migration.
+ * concurrent delete neither skips a row nor re-reads a prefix. It carries its own SQL so its plan
+ * does not change with the shared relationship DAO. Each page must be a range read of the primary
+ * key, or every page re-reads the table up to the cursor and the scan grows with the square of the
+ * table. Postgres makes that range only from a row comparison, MySQL only from the expanded {@code
+ * OR} form, and the page has no other predicate
+ * (ADR:2026-11-11-a-composite-keyset-page-is-a-row-comparison-on-postgres-and-an-or-chain-on-mysql),
+ * so lineage edges are picked here. The step is idempotent, since
+ * a second run finds the references already cleared, but it is guarded by {@code runOnce} so a large
+ * relationship table is not rescanned on every later 2.1.0 data migration.
  */
 @Slf4j
 public final class LineageEdgePipelineCleanupMigration {
   public static final String STEP_NAME = "cleanupNonPipelineLineageEdges";
   private static final int BATCH_SIZE = 500;
+  private static final int UPSTREAM = Relationship.UPSTREAM.ordinal();
+
+  private static final String COLUMNS =
+      "SELECT fromId, toId, relation, relationType, json FROM entity_relationship WHERE ";
+  private static final String PAGE_ORDER =
+      " ORDER BY fromId, toId, relation, relationType LIMIT :limit";
+  private static final String POSTGRES_PAGE =
+      COLUMNS
+          + "(fromId, toId, relation, relationType) > (:fromId, :toId, :relation, :relationType)"
+          + PAGE_ORDER;
+  private static final String MYSQL_PAGE =
+      COLUMNS
+          + "(fromId > :fromId"
+          + " OR (fromId = :fromId AND toId > :toId)"
+          + " OR (fromId = :fromId AND toId = :toId AND relation > :relation)"
+          + " OR (fromId = :fromId AND toId = :toId AND relation = :relation"
+          + " AND relationType > :relationType))"
+          + PAGE_ORDER;
+  private static final String ROW_KEY =
+      " WHERE fromId = :fromId AND toId = :toId AND relation = :relation"
+          + " AND relationType = :relationType";
+  private static final String POSTGRES_REWRITE =
+      "UPDATE entity_relationship SET json = CAST(:json AS jsonb)" + ROW_KEY;
+  private static final String MYSQL_REWRITE =
+      "UPDATE entity_relationship SET json = :json" + ROW_KEY;
 
   private LineageEdgePipelineCleanupMigration() {}
 
-  public static void clearNonPipelineEdgePipelines(CollectionDAO collectionDAO) {
-    CollectionDAO.EntityRelationshipDAO relationshipDAO = collectionDAO.relationshipDAO();
+  public static void clearNonPipelineEdgePipelines(
+      final Handle handle, final ConnectionType connectionType) {
     Cursor cursor = Cursor.start();
     int cleared = 0;
-    while (true) {
-      List<CollectionDAO.EntityRelationshipObject> batch = cursor.read(relationshipDAO);
-      if (batch.isEmpty()) {
-        break;
-      }
-      cleared += clearBatch(relationshipDAO, batch);
+    List<Edge> batch = cursor.read(handle, connectionType);
+    while (!batch.isEmpty()) {
+      cleared += clearBatch(handle, connectionType, batch);
       cursor = Cursor.after(batch.getLast());
+      batch = cursor.read(handle, connectionType);
     }
     LOG.info(
         "Lineage edge pipeline cleanup: cleared {} non-pipeline pipeline reference(s)", cleared);
   }
 
+  /** The page query for the engine; package-private so a test can read its plan. */
+  static String pageSql(final ConnectionType connectionType) {
+    return switch (connectionType) {
+      case MYSQL -> MYSQL_PAGE;
+      case POSTGRES -> POSTGRES_PAGE;
+    };
+  }
+
+  private static String rewriteSql(final ConnectionType connectionType) {
+    return switch (connectionType) {
+      case MYSQL -> MYSQL_REWRITE;
+      case POSTGRES -> POSTGRES_REWRITE;
+    };
+  }
+
   private static int clearBatch(
-      CollectionDAO.EntityRelationshipDAO relationshipDAO,
-      List<CollectionDAO.EntityRelationshipObject> batch) {
+      final Handle handle, final ConnectionType connectionType, final List<Edge> batch) {
     int cleared = 0;
-    for (CollectionDAO.EntityRelationshipObject row : batch) {
-      if (clearEdgeIfNonPipeline(relationshipDAO, row)) {
+    for (Edge edge : batch) {
+      if (clearEdgeIfNonPipeline(handle, connectionType, edge)) {
         cleared++;
       }
     }
@@ -79,62 +122,78 @@ public final class LineageEdgePipelineCleanupMigration {
 
   /** Clears and rewrites the edge when its pipeline is not a pipeline or a stored procedure. */
   private static boolean clearEdgeIfNonPipeline(
-      CollectionDAO.EntityRelationshipDAO relationshipDAO,
-      CollectionDAO.EntityRelationshipObject row) {
-    if (row.getRelation() != Relationship.UPSTREAM.ordinal() || nullOrEmpty(row.getJson())) {
+      final Handle handle, final ConnectionType connectionType, final Edge edge) {
+    if (edge.relation() != UPSTREAM || nullOrEmpty(edge.json())) {
       return false;
     }
-    LineageDetails details = JsonUtils.readValue(row.getJson(), LineageDetails.class);
+    LineageDetails details = JsonUtils.readValue(edge.json(), LineageDetails.class);
     EntityReference pipeline = details.getPipeline();
     boolean isNonPipeline =
         pipeline != null && !LineageEdgePipeline.isSupportedType(pipeline.getType());
     if (isNonPipeline) {
-      logClearedReference(row, pipeline);
+      logClearedReference(edge, pipeline);
       details.setPipeline(null);
-      rewriteEdge(relationshipDAO, row, details);
+      rewriteEdge(handle, connectionType, edge, details);
     }
     return isNonPipeline;
   }
 
+  /** Rewrites the edge's details in place, keyed by its full primary key. */
   private static void rewriteEdge(
-      CollectionDAO.EntityRelationshipDAO relationshipDAO,
-      CollectionDAO.EntityRelationshipObject row,
-      LineageDetails details) {
-    relationshipDAO.insert(
-        UUID.fromString(row.getFromId()),
-        UUID.fromString(row.getToId()),
-        row.getFromEntity(),
-        row.getToEntity(),
-        Relationship.UPSTREAM.ordinal(),
-        JsonUtils.pojoToJson(details));
+      final Handle handle,
+      final ConnectionType connectionType,
+      final Edge edge,
+      final LineageDetails details) {
+    handle
+        .createUpdate(rewriteSql(connectionType))
+        .bind("json", JsonUtils.pojoToJson(details))
+        .bind("fromId", edge.fromId())
+        .bind("toId", edge.toId())
+        .bind("relation", edge.relation())
+        .bind("relationType", edge.relationType())
+        .execute();
   }
 
-  private static void logClearedReference(
-      CollectionDAO.EntityRelationshipObject row, EntityReference pipeline) {
+  private static void logClearedReference(final Edge edge, final EntityReference pipeline) {
     LOG.warn(
         "Cleared lineage edge {} -> {}: it named {} '{}' ({}) as its pipeline; rotate that entity's"
             + " credentials if it is a service",
-        row.getFromId(),
-        row.getToId(),
+        edge.fromId(),
+        edge.toId(),
         pipeline.getType(),
         pipeline.getName(),
         pipeline.getId());
   }
+
+  /** One row of the scan, keyed by the full primary key. */
+  private record Edge(String fromId, String toId, int relation, String relationType, String json) {}
 
   private record Cursor(String fromId, String toId, int relation, String relationType) {
     private static Cursor start() {
       return new Cursor("", "", -1, "");
     }
 
-    private static Cursor after(CollectionDAO.EntityRelationshipObject row) {
-      String relationType = row.getRelationType() == null ? "" : row.getRelationType();
-      return new Cursor(row.getFromId(), row.getToId(), row.getRelation(), relationType);
+    private static Cursor after(final Edge edge) {
+      return new Cursor(edge.fromId(), edge.toId(), edge.relation(), edge.relationType());
     }
 
-    private List<CollectionDAO.EntityRelationshipObject> read(
-        CollectionDAO.EntityRelationshipDAO relationshipDAO) {
-      return relationshipDAO.getAllRelationshipsAfter(
-          fromId, toId, relation, relationType, BATCH_SIZE);
+    private List<Edge> read(final Handle handle, final ConnectionType connectionType) {
+      return handle
+          .createQuery(pageSql(connectionType))
+          .bind("fromId", fromId)
+          .bind("toId", toId)
+          .bind("relation", relation)
+          .bind("relationType", relationType)
+          .bind("limit", BATCH_SIZE)
+          .map(
+              (rs, ctx) ->
+                  new Edge(
+                      rs.getString("fromId"),
+                      rs.getString("toId"),
+                      rs.getInt("relation"),
+                      rs.getString("relationType"),
+                      rs.getString("json")))
+          .list();
     }
   }
 }

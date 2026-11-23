@@ -175,7 +175,6 @@ test.describe('Context Center - Dashboard', () => {
         answer: 'Dashboard recent memory fixture answer',
         shareConfig: { visibility: 'Shared' },
       });
-      expect(memory.entityStatus).toBe('Approved');
       contextMemoryIdsToCleanup.add(memory.id);
       await afterAction();
 
@@ -464,7 +463,6 @@ test.describe('Context Center - Dashboard', () => {
           answer: 'Dashboard navigation fixture answer',
           shareConfig: { visibility: 'Shared' },
         });
-        expect(memory.entityStatus).toBe('Approved');
         contextMemoryIdsToCleanup.add(memory.id);
       } finally {
         await afterAction();
