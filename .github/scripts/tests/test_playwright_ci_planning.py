@@ -2807,9 +2807,11 @@ def test_playwright_summary_merge_group_passes_when_only_infra_issues(summary_wi
     assert "did not upload" in rendered["summaryBody"]
 
 
-def test_playwright_summary_merge_group_fails_on_real_test_failure(tmp_path):
-    # Real test failures still gate the merge_group check — this is the only
-    # signal that the tentative merge broke something on `main`.
+@pytest.mark.parametrize(
+    "event_name",
+    ["pull_request", "merge_group", "schedule", "workflow_dispatch"],
+)
+def test_playwright_summary_fails_on_real_test_failure_for_supported_events(tmp_path, event_name):
     results_dir = tmp_path / "results/playwright-results-json-chromium-01"
     results_dir.mkdir(parents=True)
     (results_dir / "results.json").write_text(
@@ -2836,7 +2838,7 @@ def test_playwright_summary_merge_group_fails_on_real_test_failure(tmp_path):
     )
     rendered, _ = _run_playwright_summary_harness(
         tmp_path,
-        event_name="merge_group",
+        event_name=event_name,
         extra_env={},
         expected_shards=["chromium-01"],
     )
