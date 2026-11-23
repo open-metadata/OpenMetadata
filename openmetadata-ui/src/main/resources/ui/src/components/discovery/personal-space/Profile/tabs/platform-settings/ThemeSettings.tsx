@@ -12,7 +12,7 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { Moon01, Sparkle } from '@openmetadata/ui-core-components/icons';
+import { Moon, Sparkle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -105,7 +105,7 @@ const ThemeSettings = (props: PlatformSettingsPageProps) => {
                 </Box>
                 {dark && (
                   <Box align="center" className="tw:gap-1.5" direction="row">
-                    <Moon01
+                    <Moon
                       aria-hidden={false}
                       aria-label={t('label.dark')}
                       className="tw:text-fg-tertiary"

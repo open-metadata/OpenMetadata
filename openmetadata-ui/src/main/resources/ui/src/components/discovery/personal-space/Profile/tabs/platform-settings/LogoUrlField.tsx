@@ -23,7 +23,7 @@ import {
 import {
   Alert,
   Browser,
-  Moon01,
+  Moon,
   Plus,
   Sparkle,
   XClose,
@@ -205,7 +205,7 @@ const PreviewCaptions = ({ hasDark }: { hasDark: boolean }) => {
       {hasDark ? (
         <>
           <Caption icon={Sparkle} label={t('label.light')} />
-          <Caption icon={Moon01} label={t('label.dark')} />
+          <Caption icon={Moon} label={t('label.dark')} />
         </>
       ) : (
         <Caption icon={Browser} label={t('label.browser-tab')} />
