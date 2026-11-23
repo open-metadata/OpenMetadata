@@ -26,6 +26,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   applyTaskFormSchemaDefaults,
   getEditableTaskPayload,
+  getResolvedTaskFormSchema,
   getTaskFormHandlerConfig,
   getTaskResolutionNewValue,
   getTaskTransitionFormSchema,
@@ -255,16 +256,40 @@ export interface TaskActionInput {
 }
 
 /**
+ * The form schema a task resolves against. A workflow-driven task gets no
+ * built-in fallback: a failed lookup rejects instead of hiding a transition's
+ * required form, and a missing schema resolves to `undefined`.
+ */
+export const resolveTaskFormSchema = (
+  task: Partial<
+    Pick<
+      Task,
+      | 'type'
+      | 'category'
+      | 'taskFormSchemaId'
+      | 'payload'
+      | 'availableTransitions'
+    >
+  >
+): Promise<TaskFormSchema | undefined> =>
+  task.type && task.category
+    ? getResolvedTaskFormSchema(task.type, task.category, {
+        taskFormSchemaId: task.taskFormSchemaId,
+        payload: task.payload,
+        allowFallback: !task.availableTransitions?.length,
+      })
+    : Promise.resolve(undefined);
+
+/**
  * What an action must collect before it can be resolved. An action that needs
  * nothing fires straight away; anything else opens the action modal (a comment
  * / root-cause modal for `requiresComment`/`requiresRootCause`, an assignee
  * picker for `requiresAssignee`, or the transition form modal for
  * `requiresForm`).
  *
- * Pass `schema` where a resolved task form schema is available (single-task
- * views) so `requiresForm` can inspect the transition's `transitionForms`;
- * without it `requiresForm` is conservatively `false` (bulk resolve falls back
- * to the per-type defaults rather than block on a schema fetch).
+ * Pass the task's `schema` (see `resolveTaskFormSchema`) so `requiresForm` can
+ * inspect the transition's `transitionForms`; without it `requiresForm` is
+ * `false`.
  */
 export const getTaskActionInput = (
   task: Task,

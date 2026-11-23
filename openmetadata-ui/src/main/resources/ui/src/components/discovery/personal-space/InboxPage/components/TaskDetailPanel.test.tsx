@@ -1423,27 +1423,28 @@ describe('TaskDetailPanel', () => {
       ).not.toBeInTheDocument();
     });
 
-    // If the schema fetch fails, a required-form transition must not fire
-    // silently with no payload (the bug this PR fixes). The actions stay
-    // blocked and a retry re-runs the fetch; once it resolves the transition
-    // is offered again.
-    it('blocks the transition and offers a retry when the form schema fetch fails', async () => {
+    // A failed schema lookup must not let a required-form transition fire
+    // with no payload; the click reports the error and a later click retries.
+    it('does not fire the transition when the form schema fetch fails', async () => {
       mockGetResolvedTaskFormSchema.mockReset();
-      mockGetResolvedTaskFormSchema.mockRejectedValueOnce(
+      mockGetResolvedTaskFormSchema.mockRejectedValue(
         new Error('schema fetch failed')
       );
 
       await act(async () => render(<TaskDetailPanel taskId="task-1" />));
-
-      expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
-      expect(screen.getByTestId('task-form-schema-retry')).toBeInTheDocument();
-
-      mockGetResolvedTaskFormSchema.mockResolvedValueOnce(FORM_SCHEMA);
       await act(async () => {
-        fireEvent.click(screen.getByTestId('task-form-schema-retry'));
+        fireEvent.click(screen.getByText('label.approve'));
       });
 
-      expect(screen.getByText('label.approve')).toBeInTheDocument();
+      expect(mockResolveTask).not.toHaveBeenCalled();
+      expect(mockShowErrorToast).toHaveBeenCalled();
+
+      mockGetResolvedTaskFormSchema.mockResolvedValue(FORM_SCHEMA);
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+
+      expect(screen.getByTestId('transition-form-modal')).toBeInTheDocument();
     });
   });
 
