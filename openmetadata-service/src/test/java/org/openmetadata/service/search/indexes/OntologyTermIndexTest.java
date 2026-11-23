@@ -2,9 +2,14 @@ package org.openmetadata.service.search.indexes;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -13,7 +18,12 @@ import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyPropertyKind;
+import org.openmetadata.schema.type.OntologyReleaseMember;
+import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.OntologyReleaseDAO;
 import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -68,6 +78,8 @@ class OntologyTermIndexTest {
 
   @Test
   void indexesThePropertyDomainAndRange() {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(
+        "ontologyproperty", Entity.ONTOLOGY_PROPERTY);
     final var term =
         new OntologyProperty()
             .withId(UUID.randomUUID())
@@ -84,15 +96,46 @@ class OntologyTermIndexTest {
     final var index =
         (OntologyTermIndex) new SearchIndexFactory().buildIndex(Entity.ONTOLOGY_PROPERTY, term);
     final var document =
-        new OntologyTermIndex(index.term(), List.of(), List.of("Order"), List.of("string"))
+        new OntologyTermIndex(index.term(), List.of(), List.of("Purchase order"), List.of("string"))
             .buildSearchIndexDoc();
+    document.putAll(propertyEmbedding(term));
     assertThat(document)
         .containsEntry("kind", "data")
         .containsEntry("domain", List.of(ORDER_IRI.toString()))
         .containsEntry("range", List.of(STRING_IRI.toString()))
-        .containsEntry("domainLabels", List.of("Order"))
+        .containsEntry("domainLabels", List.of("Purchase order"))
         .containsEntry("rangeLabels", List.of("string"))
-        .containsKey("ontology");
+        .containsKeys("ontology", "fingerprint");
+    assertThat(document.get("textToEmbed").toString())
+        .contains("Order code", "The reference number", "Purchase order", "string");
+  }
+
+  private static Map<String, Object> propertyEmbedding(OntologyProperty property) {
+    final var db = mock(CollectionDAO.class);
+    final var releases = mock(OntologyReleaseDAO.class);
+    final var releaseId = UUID.randomUUID();
+    when(db.ontologyReleaseDAO()).thenReturn(releases);
+    when(releases.listActiveMembers(
+            MemberKind.PROPERTY.value(), List.of(property.getId().toString())))
+        .thenReturn(List.of(new OntologyReleaseMember().withReleaseId(releaseId)));
+    final var order =
+        new OntologyConcept()
+            .withId(UUID.randomUUID())
+            .withName("Order")
+            .withDisplayName("Purchase order")
+            .withIri(ORDER_IRI);
+    when(releases.listConceptsByIri(
+            releaseId, List.of(ORDER_IRI.toString(), STRING_IRI.toString())))
+        .thenReturn(
+            List.of(
+                new OntologyReleaseMember()
+                    .withMemberId(order.getId())
+                    .withMemberKind(MemberKind.CONCEPT)
+                    .withPayload(JsonUtils.valueToTree(order))));
+    try (var entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(db);
+      return VectorDocBuilder.buildEmbeddingFields(property, new TestEmbeddingClient());
+    }
   }
 
   @Test
