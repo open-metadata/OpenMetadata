@@ -1,8 +1,18 @@
 package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mockStatic;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -11,14 +21,20 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.slf4j.LoggerFactory;
 
 public abstract class ScriptedDeleteRetryTestBase {
   protected static final String SCRIPT =
@@ -42,6 +58,44 @@ public abstract class ScriptedDeleteRetryTestBase {
   protected abstract void deleteByScript() throws Exception;
 
   protected abstract void deleteOnce() throws Exception;
+
+  protected abstract EntityManagementClient manager();
+
+  /**
+   * Sends one real bulk request updating {@code conflicted} with a stale sequence number and
+   * {@code rejected} with a broken script, and returns the manager's reading of its failed items.
+   */
+  protected abstract List<SearchUtils.BulkItemFailure> conflictingAndRejectedBulk(
+      String conflicted, String rejected) throws Exception;
+
+  protected enum DeletePath {
+    FIELDS,
+    FQN_PREFIX,
+    RANGE,
+    RANGE_AND_TERM
+  }
+
+  /** How the engine answers single-document writes: as sent, or with a real 409 or 400. */
+  protected enum WriteFailure {
+    NONE,
+    CONFLICT,
+    REJECTED
+  }
+
+  protected enum SingleDocumentWrite {
+    CREATE,
+    CREATE_TIME_SERIES,
+    SOFT_DELETE
+  }
+
+  protected WriteFailure writeFailure = WriteFailure.NONE;
+  protected int failingWrites = Integer.MAX_VALUE;
+  protected int writeAttempts;
+
+  protected boolean failThisWrite() {
+    writeAttempts++;
+    return writeFailure != WriteFailure.NONE && failingWrites-- > 0;
+  }
 
   @BeforeEach
   void setUp() throws Exception {
@@ -86,6 +140,24 @@ public abstract class ScriptedDeleteRetryTestBase {
     deleteByScript();
     assertOnlyOtherTestCaseRemains();
     assertEquals(List.of(1L, 0L), conflicts);
+  }
+
+  @ParameterizedTest
+  @EnumSource(DeletePath.class)
+  void everyDeleteByQueryRetriesAnUpdatedDocument(DeletePath path) throws Exception {
+    rewriteWithoutRefresh();
+    delete(path);
+    assertOnlyOtherTestCaseRemains();
+    assertEquals(List.of(1L, 0L), conflicts);
+  }
+
+  @ParameterizedTest
+  @EnumSource(DeletePath.class)
+  void persistentConflictsAreNotLoggedAsErrors(DeletePath path) throws Exception {
+    keepConflicting = true;
+    List<ILoggingEvent> logged = logsOf(() -> delete(path));
+    assertEquals(List.of(1L, 1L, 1L), conflicts);
+    assertNoErrors(logged);
   }
 
   @Test
@@ -181,8 +253,137 @@ public abstract class ScriptedDeleteRetryTestBase {
         getClass().getSimpleName(), baseline, clean, retried);
   }
 
+  @ParameterizedTest
+  @EnumSource(SingleDocumentWrite.class)
+  void aSingleDocumentWriteThatKeepsLosingIsRetriedThenSurfacesAsAConflict(
+      SingleDocumentWrite write) {
+    writeFailure = WriteFailure.CONFLICT;
+    assertTrue(SearchUtils.isVersionConflict(assertThrows(Exception.class, () -> write(write))));
+    assertEquals(4, writeAttempts);
+  }
+
+  @ParameterizedTest
+  @EnumSource(SingleDocumentWrite.class)
+  void aRejectedSingleDocumentWriteIsNeitherRetriedNorAConflict(SingleDocumentWrite write) {
+    writeFailure = WriteFailure.REJECTED;
+    assertFalse(SearchUtils.isVersionConflict(assertThrows(Exception.class, () -> write(write))));
+    assertEquals(1, writeAttempts);
+  }
+
+  @Test
+  void aConflictThatClearsIsRetriedAndWritten() throws Exception {
+    writeFailure = WriteFailure.CONFLICT;
+    failingWrites = 1;
+    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged =
+          logsOf(() -> manager().updateEntity(index, "held", Map.of(), "ctx._source.value = 3"));
+
+      assertEquals(2, writeAttempts);
+      assertEquals(
+          3, request("GET", index + "/_doc/held", "").path("_source").path("value").asInt());
+      queue.verifyNoInteractions();
+      assertTrue(logged.stream().noneMatch(e -> e.getLevel().isGreaterOrEqual(Level.WARN)));
+    }
+  }
+
+  @Test
+  void aConflictedEntityUpdateIsQueuedAndLoggedAsAWarning() throws Exception {
+    writeFailure = WriteFailure.CONFLICT;
+    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged =
+          logsOf(() -> manager().updateEntity(index, "held", Map.of(), "ctx._source.value = 3"));
+
+      assertEquals(4, writeAttempts);
+      queue.verify(() -> SearchIndexRetryQueue.enqueue(eq("held"), isNull(), any()));
+      assertNoErrors(logged);
+    }
+  }
+
+  @Test
+  void aRejectedEntityUpdateIsStillLoggedAsAnError() throws Exception {
+    writeFailure = WriteFailure.REJECTED;
+    try (MockedStatic<SearchIndexRetryQueue> ignored = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged =
+          logsOf(() -> manager().updateEntity(index, "held", Map.of(), "ctx._source.value = 3"));
+
+      assertEquals(1, writeAttempts);
+      assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
+    }
+  }
+
+  @Test
+  void aBulkUpdateThatLostARaceIsAConflictAndARejectedOneIsNot() throws Exception {
+    Map<String, Boolean> conflicts = new HashMap<>();
+    for (SearchUtils.BulkItemFailure failure : conflictingAndRejectedBulk("held", "keep")) {
+      conflicts.put(
+          failure.id(), SearchUtils.isVersionConflictType(failure.status(), failure.type()));
+    }
+    assertEquals(Map.of("held", true, "keep", false), conflicts);
+  }
+
+  private void write(SingleDocumentWrite write) throws Exception {
+    EntityManagementClient manager = manager();
+    switch (write) {
+      case CREATE -> manager.createEntity(index, "held", matchingDocument(4));
+      case CREATE_TIME_SERIES -> manager.createTimeSeriesEntity(index, "held", matchingDocument(4));
+      case SOFT_DELETE -> manager.softDeleteOrRestoreEntity(
+          index, "held", "ctx._source.deleted = true");
+    }
+  }
+
+  /**
+   * Captures what this test's thread logs through the manager and the shared search helpers; other
+   * test classes may log through the same loggers concurrently.
+   */
+  private List<ILoggingEvent> logsOf(ThrowingRunnable action) throws Exception {
+    List<Logger> logs =
+        List.of(
+            (Logger) LoggerFactory.getLogger(manager().getClass()),
+            (Logger) LoggerFactory.getLogger(SearchUtils.class));
+    String thread = Thread.currentThread().getName();
+    ListAppender<ILoggingEvent> logged = new ListAppender<>();
+    logged.start();
+    logs.forEach(log -> log.addAppender(logged));
+    try {
+      action.run();
+    } finally {
+      logs.forEach(log -> log.detachAppender(logged));
+    }
+    return logged.list.stream().filter(e -> thread.equals(e.getThreadName())).toList();
+  }
+
+  private static void assertNoErrors(List<ILoggingEvent> logged) {
+    assertTrue(
+        logged.stream().noneMatch(e -> e.getLevel().isGreaterOrEqual(Level.ERROR)),
+        () -> logged.stream().map(ILoggingEvent::getFormattedMessage).toList().toString());
+    assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.WARN));
+  }
+
+  @FunctionalInterface
+  private interface ThrowingRunnable {
+    void run() throws Exception;
+  }
+
   protected void rewriteWithoutRefresh() throws Exception {
-    request("PUT", index + "/_doc/held?refresh=false", "{\"testCaseFQN\":\"my_test\",\"value\":2}");
+    request("PUT", index + "/_doc/held?refresh=false", matchingDocument(2));
+  }
+
+  private void delete(DeletePath path) throws Exception {
+    EntityManagementClient manager = manager();
+    switch (path) {
+      case FIELDS -> manager.deleteEntityByFields(
+          List.of(index), List.of(Pair.of("testCaseFQN.keyword", "my_test")));
+      case FQN_PREFIX -> manager.deleteEntityByFQNPrefix(index, "svc.");
+      case RANGE -> manager.deleteByRangeQuery(index, "value", null, null, 50, null);
+      case RANGE_AND_TERM -> manager.deleteByRangeAndTerm(
+          index, "value", null, null, 50, null, "testCaseFQN.keyword", "my_test");
+    }
+  }
+
+  private static String matchingDocument(int value) {
+    return "{\"testCaseFQN\":\"my_test\",\"fullyQualifiedName\":\"svc.my_test\",\"value\":"
+        + value
+        + "}";
   }
 
   private void seed() throws Exception {
@@ -196,9 +397,13 @@ public abstract class ScriptedDeleteRetryTestBase {
       body.append("{\"index\":{\"_id\":\"")
           .append(id)
           .append("\"}}\n")
-          .append("{\"testCaseFQN\":\"my_test\",\"value\":1}\n");
+          .append(matchingDocument(1))
+          .append("\n");
     }
-    body.append("{\"index\":{\"_id\":\"keep\"}}\n{\"testCaseFQN\":\"another_test\"}\n");
+    body.append(
+        "{\"index\":{\"_id\":\"keep\"}}\n"
+            + "{\"testCaseFQN\":\"another_test\",\"fullyQualifiedName\":\"other.another_test\","
+            + "\"value\":100}\n");
     assertEquals(
         false,
         request("POST", index + "/_bulk?refresh=true", body.toString()).path("errors").asBoolean());

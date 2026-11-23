@@ -1457,11 +1457,11 @@ public class SearchRepository {
           entity.getFullyQualifiedName(),
           entityType,
           SearchIndexRetryQueue.failureReason("createEntityIndex", ie));
-      LOG.error(
+      logQueuedWriteFailure(
+          ie,
           "Issue creating new search document for entity [{}] and entityType [{}]",
           entityId,
-          entityType,
-          ie);
+          entityType);
     } finally {
       RequestLatencyContext.endSearchOperation(searchSample);
     }
@@ -4366,13 +4366,25 @@ public class SearchRepository {
           entityId,
           entity.getFullyQualifiedName(),
           SearchIndexRetryQueue.failureReason("softDeleteOrRestoreEntityIndex", ie));
-      LOG.error(
+      logQueuedWriteFailure(
+          ie,
           "Issue soft deleting the search document for entityID [{}] and entityType [{}]",
           entityId,
-          entityType,
-          ie);
+          entityType);
     } finally {
       RequestLatencyContext.endSearchOperation(searchSample);
+    }
+  }
+
+  // The failed write is already queued and the retry rebuilds the document, so a version conflict
+  // is a warning
+  // (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
+  private static void logQueuedWriteFailure(
+      Exception failure, String message, String entityId, String entityType) {
+    if (SearchUtils.isVersionConflict(failure)) {
+      LOG.warn(message + ": a concurrent write held it; queued for retry", entityId, entityType);
+    } else {
+      LOG.error(message, entityId, entityType, failure);
     }
   }
 

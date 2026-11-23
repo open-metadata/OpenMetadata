@@ -11,6 +11,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -40,11 +44,13 @@ import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.SSLUtil;
+import org.slf4j.LoggerFactory;
 
 class SearchUtilsTest {
 
@@ -1006,5 +1012,76 @@ class SearchUtilsTest {
     List<String> keys = new ArrayList<>();
     buckets.forEach(b -> keys.add(b.get("key").asText()));
     return keys;
+  }
+
+  @Test
+  void aReindexedItemThatLostARaceIsQueuedWithItsEntityAndLoggedAsAWarning() {
+    EntityReference table = reindexedTable();
+    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged =
+          searchUtilsLogsOf(
+              () ->
+                  SearchUtils.reportReindexFailures(
+                      List.of(table),
+                      List.of(
+                          new SearchUtils.BulkItemFailure(
+                              table.getId().toString(),
+                              409,
+                              "version_conflict_engine_exception",
+                              "version conflict"))));
+
+      queue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  table.getId().toString(),
+                  table.getFullyQualifiedName(),
+                  Entity.TABLE,
+                  "reindexEntities: version conflict"));
+      assertTrue(logged.stream().noneMatch(e -> e.getLevel().isGreaterOrEqual(Level.ERROR)));
+      assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.WARN));
+    }
+  }
+
+  @Test
+  void aRejectedReindexedItemIsAnErrorAndNotQueued() {
+    EntityReference table = reindexedTable();
+    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged =
+          searchUtilsLogsOf(
+              () ->
+                  SearchUtils.reportReindexFailures(
+                      List.of(table),
+                      List.of(
+                          new SearchUtils.BulkItemFailure(
+                              table.getId().toString(),
+                              400,
+                              "mapper_parsing_exception",
+                              "failed to parse"))));
+
+      queue.verifyNoInteractions();
+      assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
+    }
+  }
+
+  private static EntityReference reindexedTable() {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(Entity.TABLE)
+        .withFullyQualifiedName("svc.db.schema.orders");
+  }
+
+  /** Only this test's thread: other test classes may log through SearchUtils concurrently. */
+  private static List<ILoggingEvent> searchUtilsLogsOf(Runnable action) {
+    Logger log = (Logger) LoggerFactory.getLogger(SearchUtils.class);
+    String thread = Thread.currentThread().getName();
+    ListAppender<ILoggingEvent> logged = new ListAppender<>();
+    logged.start();
+    log.addAppender(logged);
+    try {
+      action.run();
+    } finally {
+      log.detachAppender(logged);
+    }
+    return logged.list.stream().filter(e -> thread.equals(e.getThreadName())).toList();
   }
 }

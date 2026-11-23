@@ -111,7 +111,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   // Cap on how long a realtime bulk write blocks the (post-commit, request-thread) caller so a
   // stalled search backend can't hold the thread indefinitely; the async result is still handled.
   private static final long BULK_AWAIT_TIMEOUT_SECONDS = 30;
-  private static final int MAX_SCRIPT_DELETE_ATTEMPTS = 3;
+  private static final int MAX_DELETE_ATTEMPTS = 3;
 
   public OpenSearchEntityManager(OpenSearchClient client) {
     this.client = client;
@@ -274,26 +274,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
     }
 
-    // Execute delete by query using the new client
-    DeleteByQueryResponse response =
-        client.deleteByQuery(
-            d ->
-                d.index(indexNames)
-                    .query(q -> q.bool(boolQueryBuilder.build()))
-                    .refresh(Refresh.True));
-
-    LOG.info(
-        "DeleteByQuery response from OS - Deleted: {}, Failures: {}",
-        response.deleted(),
-        response.failures().size());
-
-    if (!response.failures().isEmpty()) {
-      String failureDetails =
-          response.failures().stream()
-              .map(BulkByScrollFailure::toString)
-              .collect(Collectors.joining("; "));
-      LOG.error("DeleteByQuery encountered failures: {}", failureDetails);
-    }
+    deleteWithRetry(deleteRequest(indexNames, Query.of(q -> q.bool(boolQueryBuilder.build()))));
   }
 
   @Override
@@ -303,31 +284,12 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    // Build prefix query using the new OpenSearch client API
-    DeleteByQueryResponse response =
-        client.deleteByQuery(
-            d ->
-                d.index(indexName)
-                    .query(
-                        q ->
-                            q.prefix(
-                                p ->
-                                    p.field("fullyQualifiedName.keyword")
-                                        .value(fqnPrefix.toLowerCase())))
-                    .refresh(Refresh.True));
-
-    LOG.info(
-        "DeleteByQuery by FQN prefix response from OS - Deleted: {}, Failures: {}",
-        response.deleted(),
-        response.failures().size());
-
-    if (!response.failures().isEmpty()) {
-      String failureDetails =
-          response.failures().stream()
-              .map(BulkByScrollFailure::toString)
-              .collect(Collectors.joining("; "));
-      LOG.error("DeleteByQuery by FQN prefix encountered failures: {}", failureDetails);
-    }
+    Query prefixQuery =
+        Query.of(
+            q ->
+                q.prefix(
+                    p -> p.field("fullyQualifiedName.keyword").value(fqnPrefix.toLowerCase())));
+    deleteWithRetry(deleteRequest(List.of(indexName), prefixQuery));
   }
 
   @Override
@@ -338,35 +300,40 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    DeleteByQueryRequest request = buildDeleteByScriptRequest(indexName, scriptTxt, params);
-    for (int attempt = 1; attempt <= MAX_SCRIPT_DELETE_ATTEMPTS; attempt++) {
+    deleteWithRetry(buildDeleteByScriptRequest(indexName, scriptTxt, params));
+  }
+
+  private static DeleteByQueryRequest deleteRequest(List<String> indexNames, Query query) {
+    return DeleteByQueryRequest.of(
+        d -> d.index(indexNames).query(query).conflicts(Conflicts.Proceed).refresh(Refresh.True));
+  }
+
+  /**
+   * Runs a delete-by-query that proceeds past version conflicts and retries them against a
+   * refreshed index, so a document rewritten since the last refresh is still deleted
+   * (ADR:2026-11-19-a-synchronous-delete-by-query-retries-version-conflicts).
+   */
+  private void deleteWithRetry(DeleteByQueryRequest request) throws IOException {
+    for (int attempt = 1; attempt <= MAX_DELETE_ATTEMPTS; attempt++) {
       if (attempt > 1) {
         client.indices().refresh(r -> r.index(request.index()));
       }
       DeleteByQueryResponse response = client.deleteByQuery(request);
       LOG.info(
-          "DeleteByQuery by script response from OS - Attempt: {}, Deleted: {}, Version conflicts: {}, Failures: {}",
+          "DeleteByQuery response from OS on {} - Attempt: {}, Deleted: {}, Version conflicts: {}, Failures: {}",
+          request.index(),
           attempt,
           response.deleted(),
           response.versionConflicts(),
           response.failures().size());
-      if (!response.failures().isEmpty() || Boolean.TRUE.equals(response.timedOut())) {
-        LOG.error(
-            "DeleteByQuery script on {} failed: {}, timed out: {}",
-            indexName,
-            response.failures(),
-            response.timedOut());
+      if (SearchUtils.isFinalDeleteAttempt(
+          request.index(),
+          response.failures(),
+          Boolean.TRUE.equals(response.timedOut()),
+          zeroIfNull(response.versionConflicts()),
+          attempt,
+          MAX_DELETE_ATTEMPTS)) {
         break;
-      }
-      if (zeroIfNull(response.versionConflicts()) == 0) {
-        break;
-      }
-      if (attempt == MAX_SCRIPT_DELETE_ATTEMPTS) {
-        LOG.warn(
-            "DeleteByQuery script on {} left {} version conflict(s) after {} attempts",
-            indexName,
-            response.versionConflicts(),
-            attempt);
       }
     }
   }
@@ -403,25 +370,27 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    client.update(
-        u ->
-            u.index(indexName)
-                .id(docId)
-                .refresh(Refresh.True)
-                .retryOnConflict(3)
-                .script(
-                    s ->
-                        s.inline(
-                            inline ->
-                                inline
-                                    .lang(
-                                        l ->
-                                            l.builtin(
-                                                os.org.opensearch.client.opensearch._types
-                                                    .BuiltinScriptLanguage.Painless))
-                                    .source(scriptTxt)
-                                    .params(Map.of()))),
-        Map.class);
+    SearchRetryUtil.executeWithRetry(
+        () ->
+            client.update(
+                u ->
+                    u.index(indexName)
+                        .id(docId)
+                        .refresh(Refresh.True)
+                        .retryOnConflict(3)
+                        .script(
+                            s ->
+                                s.inline(
+                                    inline ->
+                                        inline
+                                            .lang(
+                                                l ->
+                                                    l.builtin(
+                                                        os.org.opensearch.client.opensearch._types
+                                                            .BuiltinScriptLanguage.Painless))
+                                            .source(scriptTxt)
+                                            .params(Map.of()))),
+                Map.class));
     LOG.info(
         "Successfully soft deleted/restored entity in OpenSearch for index: {}, docId: {}",
         indexName,
@@ -493,16 +462,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             indexName,
             docId);
       } else {
-        SearchIndexRetryQueue.enqueue(
-            docId, null, SearchIndexRetryQueue.failureReason("updateEntity", e));
-        LOG.error(
-            "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
+        SearchUtils.queueFailedUpdate("OpenSearch", indexName, docId, e);
       }
     } catch (IOException e) {
-      SearchIndexRetryQueue.enqueue(
-          docId, null, SearchIndexRetryQueue.failureReason("updateEntity", e));
-      LOG.error(
-          "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
+      SearchUtils.queueFailedUpdate("OpenSearch", indexName, docId, e);
     }
   }
 
@@ -1044,22 +1007,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                       return builder;
                     }));
 
-    // Execute delete-by-query with refresh
-    DeleteByQueryResponse response =
-        client.deleteByQuery(d -> d.index(index).query(query).refresh(Refresh.True));
-
-    LOG.info(
-        "DeleteByQuery response from OS - Deleted: {}, Failures: {}",
-        response.deleted(),
-        response.failures().size());
-
-    if (!response.failures().isEmpty()) {
-      String failureDetails =
-          response.failures().stream()
-              .map(BulkByScrollFailure::toString)
-              .collect(Collectors.joining("; "));
-      LOG.error("DeleteByQuery encountered failures: {}", failureDetails);
-    }
+    deleteWithRetry(deleteRequest(List.of(index), query));
   }
 
   @Override
@@ -1098,22 +1046,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     // Combine both queries with a bool query
     Query combinedQuery = Query.of(q -> q.bool(b -> b.must(rangeQuery).must(termQuery)));
 
-    // Execute delete-by-query with refresh
-    DeleteByQueryResponse response =
-        client.deleteByQuery(d -> d.index(index).query(combinedQuery).refresh(Refresh.True));
-
-    LOG.info(
-        "DeleteByRangeAndTerm response from OS - Deleted: {}, Failures: {}",
-        response.deleted(),
-        response.failures().size());
-
-    if (!response.failures().isEmpty()) {
-      String failureDetails =
-          response.failures().stream()
-              .map(BulkByScrollFailure::toString)
-              .collect(Collectors.joining("; "));
-      LOG.error("DeleteByRangeAndTerm encountered failures: {}", failureDetails);
-    }
+    deleteWithRetry(deleteRequest(List.of(index), combinedQuery));
   }
 
   @Override
@@ -1746,18 +1679,20 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     BulkResponse response = client.bulk(b -> b.operations(operations).refresh(Refresh.True));
 
     if (response.errors()) {
-      LOG.error(
-          "Bulk reindex encountered errors. Total: {}, Failed: {}",
-          entities.size(),
-          response.items().stream().filter(item -> item.error() != null).count());
-
-      response.items().stream()
-          .filter(item -> item.error() != null)
-          .forEach(
-              item -> LOG.error("Reindex failed for ID {}: {}", item.id(), item.error().reason()));
+      SearchUtils.reportReindexFailures(entities, bulkItemFailures(response));
     } else {
       LOG.info("Successfully reindexed {} entities in OpenSearch", entities.size());
     }
+  }
+
+  static List<SearchUtils.BulkItemFailure> bulkItemFailures(BulkResponse response) {
+    return response.items().stream()
+        .filter(item -> item.error() != null)
+        .map(
+            item ->
+                new SearchUtils.BulkItemFailure(
+                    item.id(), item.status(), item.error().type(), item.error().reason()))
+        .toList();
   }
 
   private void upsertDocument(String indexName, String docId, String doc, String operation)

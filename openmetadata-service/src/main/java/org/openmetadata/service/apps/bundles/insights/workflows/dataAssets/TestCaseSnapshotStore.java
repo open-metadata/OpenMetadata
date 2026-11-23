@@ -11,6 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -20,6 +21,7 @@ import org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils;
 import org.openmetadata.service.search.SearchClient;
 
 /** Reads coverage only from successfully captured days, including empty catalogs. */
+@Slf4j
 public final class TestCaseSnapshotStore {
   public static final String COUNT_FIELD = "testCaseCount";
   public static final String HAS_TESTS_FIELD = "hasTestCases";
@@ -27,6 +29,7 @@ public final class TestCaseSnapshotStore {
   private static final String INDEX_NOT_FOUND = "index_not_found_exception";
   private static final String ALL_SERVICES = "*";
   private static final int LOOKUP_BATCH_SIZE = 128;
+  private static final int MAX_DELETE_ATTEMPTS = 3;
   private final SearchClient client;
   private final String stream;
   private final String checkpoints;
@@ -224,12 +227,41 @@ public final class TestCaseSnapshotStore {
     }
   }
 
+  /**
+   * Proceeds past version conflicts and retries them against a refreshed index
+   * (ADR:2026-11-19-a-synchronous-delete-by-query-retries-version-conflicts).
+   */
   private void delete(String index, Map<String, Object> query) throws IOException {
+    long conflicts = deleteOnce(index, query);
+    for (int attempt = 2; attempt <= MAX_DELETE_ATTEMPTS && conflicts > 0; attempt++) {
+      request("POST", "/" + index + "/_refresh", null);
+      conflicts = deleteOnce(index, query);
+    }
+    // A surviving checkpoint would mark the day complete after its snapshots are gone.
+    if (conflicts > 0 && checkpoints.equals(index)) {
+      throw new IOException(
+          "Could not invalidate test case checkpoints in %s: %d version conflict(s) after %d attempts"
+              .formatted(index, conflicts, MAX_DELETE_ATTEMPTS));
+    }
+    if (conflicts > 0) {
+      LOG.warn(
+          "DeleteByQuery on {} left {} version conflict(s) after {} attempts",
+          index,
+          conflicts,
+          MAX_DELETE_ATTEMPTS);
+    }
+  }
+
+  private long deleteOnce(String index, Map<String, Object> query) throws IOException {
     final JsonNode result =
-        request("POST", "/" + index + "/_delete_by_query?refresh=true", Map.of("query", query));
+        request(
+            "POST",
+            "/" + index + "/_delete_by_query?refresh=true&conflicts=proceed",
+            Map.of("query", query));
     if (result.path("failures").size() > 0 || result.path("timed_out").asBoolean()) {
       throw new IOException("Could not replace test case snapshots in " + index + ": " + result);
     }
+    return result.path("version_conflicts").asLong();
   }
 
   private static Map<String, Object> dayFilter(long day, String service) {
