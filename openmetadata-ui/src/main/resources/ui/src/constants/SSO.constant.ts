@@ -19,6 +19,13 @@ import {
   getServerUrl,
 } from '../utils/SSOURLUtils';
 
+// Its title is read when the form schema is built, like the SAML titles below.
+const getEnableSelfSignupField = () => ({
+  get 'ui:title'() {
+    return i18next.t('label.enable-self-signup');
+  },
+});
+
 export const MAX_XML_SIZE = 1 * 1024 * 1024;
 
 // Default callback URL for SSO configuration
@@ -277,7 +284,7 @@ export const LDAP_UI_SCHEMA = {
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   oidcConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Hide universal settings managed in overview tab
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: getEnableSelfSignupField(),
   // Hide clientType for LDAP as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Hide jwtPrincipalClaims for LDAP - default value auto-filled to prevent lockouts
@@ -292,59 +299,127 @@ export const LDAP_UI_SCHEMA = {
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
-// SAML Configuration UI Schema
+// SAML Configuration UI Schema. Titles and help texts are getters so the language is read when
+// the form schema is built, not when this module loads (locales are loaded after startup).
 export const SAML_UI_SCHEMA = {
   samlConfiguration: {
-    'ui:title': 'SAML Configuration',
-    debugMode: { 'ui:title': 'Debug Mode' },
+    get 'ui:title'() {
+      return i18next.t('label.entity-configuration', { entity: 'SAML' });
+    },
+    debugMode: {
+      get 'ui:title'() {
+        return i18next.t('label.debug-mode');
+      },
+    },
     idp: {
-      'ui:title': 'Identity Provider (IdP)',
-      entityId: { 'ui:title': 'IdP Entity ID' },
-      ssoLoginUrl: { 'ui:title': 'IdP SSO Login URL' },
+      get 'ui:title'() {
+        return i18next.t('label.identity-provider-idp');
+      },
+      entityId: {
+        get 'ui:title'() {
+          return i18next.t('label.provider-entity-id', { provider: 'IdP' });
+        },
+      },
+      ssoLoginUrl: {
+        get 'ui:title'() {
+          return i18next.t('label.idp-sso-login-url');
+        },
+      },
       authorityUrl: {
         'ui:widget': 'hidden',
         'ui:hideError': true,
       },
       idpX509Certificate: {
-        'ui:title': 'IdP X.509 Certificate',
+        get 'ui:title'() {
+          return i18next.t('label.provider-x509-certificate', {
+            provider: 'IdP',
+          });
+        },
         'ui:widget': 'textarea',
       },
-      nameId: { 'ui:title': 'Name ID Format' },
+      nameId: {
+        get 'ui:title'() {
+          return i18next.t('label.name-id-format');
+        },
+      },
     },
     sp: {
-      'ui:title': 'Service Provider (SP)',
+      get 'ui:title'() {
+        return i18next.t('label.service-provider-sp');
+      },
       entityId: {
-        'ui:title': 'SP Entity ID',
-        'ui:help':
-          'Defaults to the application URL. You can change it to match the Identifier (Entity ID) configured in your SAML Identity Provider.',
+        get 'ui:title'() {
+          return i18next.t('label.provider-entity-id', { provider: 'SP' });
+        },
+        get 'ui:help'() {
+          return i18next.t('message.saml-sp-entity-id-help');
+        },
       },
       acs: {
-        'ui:title': 'Assertion Consumer Service URL',
-        'ui:help':
-          'Defaults to the application callback URL. Set your public callback URL here and use the same ACS URL (or Reply URL) in your SAML Identity Provider.',
+        get 'ui:title'() {
+          return i18next.t('label.assertion-consumer-service-url');
+        },
+        get 'ui:help'() {
+          return i18next.t('message.saml-acs-url-help');
+        },
       },
       callback: { 'ui:widget': 'hidden', 'ui:hideError': true },
       spX509Certificate: {
-        'ui:title': 'SP X.509 Certificate',
+        get 'ui:title'() {
+          return i18next.t('label.provider-x509-certificate', {
+            provider: 'SP',
+          });
+        },
         'ui:widget': 'textarea',
       },
-      spPrivateKey: { 'ui:title': 'SP Private Key', 'ui:widget': 'textarea' },
+      spPrivateKey: {
+        get 'ui:title'() {
+          return i18next.t('label.sp-private-key');
+        },
+        'ui:widget': 'textarea',
+      },
     },
     security: {
-      'ui:title': 'Security Configuration',
-      strictMode: { 'ui:title': 'Strict Mode' },
+      get 'ui:title'() {
+        return i18next.t('label.entity-configuration', {
+          entity: i18next.t('label.security'),
+        });
+      },
+      strictMode: {
+        get 'ui:title'() {
+          return i18next.t('label.strict-mode');
+        },
+      },
       tokenValidity: {
-        'ui:title': 'Token Validity (seconds)',
+        get 'ui:title'() {
+          return i18next.t('label.token-validity-seconds');
+        },
         'ui:options': { inputType: 'number' },
       },
-      wantAssertionsSigned: { 'ui:title': 'Want Assertions Signed' },
-      wantMessagesSigned: { 'ui:title': 'Want Messages Signed' },
-      sendSignedAuthRequest: { 'ui:title': 'Send Signed Auth Request' },
+      wantAssertionsSigned: {
+        get 'ui:title'() {
+          return i18next.t('label.want-assertions-signed');
+        },
+      },
+      wantMessagesSigned: {
+        get 'ui:title'() {
+          return i18next.t('label.want-messages-signed');
+        },
+      },
+      sendSignedAuthRequest: {
+        get 'ui:title'() {
+          return i18next.t('label.send-signed-auth-request');
+        },
+      },
       // Hide unwanted security fields
       validateXml: { 'ui:widget': 'hidden', 'ui:hideError': true },
       sendEncryptedNameId: { 'ui:widget': 'hidden', 'ui:hideError': true },
       signSpMetadata: { 'ui:widget': 'hidden', 'ui:hideError': true },
-      wantAssertionEncrypted: { 'ui:title': 'Require Encrypted Assertions' },
+      wantAssertionEncrypted: {
+        get 'ui:title'() {
+          return i18next.t('label.require-encrypted-assertions');
+        },
+      },
       keyStoreFilePath: { 'ui:widget': 'hidden', 'ui:hideError': true },
       keyStoreAlias: { 'ui:widget': 'hidden', 'ui:hideError': true },
       keyStorePassword: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -360,7 +435,7 @@ export const SAML_UI_SCHEMA = {
   jwtPrincipalClaimsMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Hide jwtTeamClaimMapping for SAML - not used in SAML flow
   jwtTeamClaimMapping: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: getEnableSelfSignupField(),
   // Hide clientType for SAML as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
   // Hide root level authority and callbackUrl for SAML - will be managed via IDP/SP sections
@@ -440,7 +515,7 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: getEnableSelfSignupField(),
   // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
@@ -477,7 +552,7 @@ export const AZURE_OAUTH_UI_SCHEMA = {
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: getEnableSelfSignupField(),
   // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
@@ -514,7 +589,7 @@ export const OKTA_OAUTH_UI_SCHEMA = {
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
   },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: getEnableSelfSignupField(),
   // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
@@ -566,7 +641,7 @@ export const GOOGLE_OAUTH_UI_SCHEMA = {
   // Hide publicKeyUrls - auto-populated from OIDC discovery document for confidential clients
   publicKeyUrls: { 'ui:widget': 'hidden', 'ui:hideError': true },
   tokenValidationAlgorithm: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: getEnableSelfSignupField(),
 };
 
 // Common field titles
@@ -601,7 +676,7 @@ export const COMMON_FIELD_TITLES = {
     'ui:placeholder':
       'Enter mappings (e.g. username:preferred_username, email:email). Both username and email are required.',
   },
-  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+  enableSelfSignup: getEnableSelfSignupField(),
   enableAutoRedirect: { 'ui:title': 'Enable Auto Redirect' },
   clientType: {
     'ui:title': 'Client Type',
@@ -784,7 +859,7 @@ export const getSSOUISchema = (
   // For existing SSO configurations, hide it (managed in overview tab)
   const enableSelfSignupSchema = hasExistingConfig
     ? { 'ui:widget': 'hidden', 'ui:hideError': true }
-    : { 'ui:title': 'Enable Self Signup' };
+    : getEnableSelfSignupField();
 
   const commonSchema = {
     authenticationConfiguration: {
