@@ -581,18 +581,32 @@ const cleanupSamlIdp = (
   }
 };
 
+const SAML_ACS_PATH = '/api/v1/saml/acs';
+
+/**
+ * An earlier form version saved the ACS URL as the browser callback. The ACS
+ * servlet only accepts POST, so such a callback must not be kept.
+ */
+const isSamlAcsCallback = (callback: string, acs: string): boolean =>
+  callback === acs || callback.split(/[?#]/)[0].endsWith(SAML_ACS_PATH);
+
 const resolveSamlBrowserCallback = (
   acs: string,
   configuredCallback: string | undefined
 ): string | undefined => {
+  const usableCallback =
+    configuredCallback && !isSamlAcsCallback(configuredCallback, acs)
+      ? configuredCallback
+      : undefined;
+
   try {
     const url = new URL(acs);
 
     return url.pathname.endsWith('/callback')
       ? acs
-      : configuredCallback || `${url.origin}/callback`;
+      : usableCallback || `${url.origin}/callback`;
   } catch {
-    return configuredCallback;
+    return usableCallback;
   }
 };
 
