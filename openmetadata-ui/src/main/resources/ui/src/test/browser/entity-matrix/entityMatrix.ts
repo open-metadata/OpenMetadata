@@ -65,8 +65,8 @@ import { Persona, servePersona } from '../fixtures/personas';
 import { serveSearch } from '../fixtures/search';
 import {
   ALL_COLUMNS,
-  makeTable,
   ColumnLike,
+  makeTable,
   serveColumns,
   TABLE_FQN,
 } from '../fixtures/table';
