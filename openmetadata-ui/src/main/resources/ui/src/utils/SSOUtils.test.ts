@@ -878,6 +878,42 @@ describe('SSOUtils', () => {
       );
     });
 
+    it('keeps a custom authorizer and fills the defaults only when missing', () => {
+      const custom = getDefaultsForProvider(
+        AuthProvider.Okta,
+        ClientType.Public
+      );
+      custom.authorizerConfiguration.className = 'com.example.CustomAuthorizer';
+      custom.authorizerConfiguration.containerRequestFilter =
+        'com.example.CustomJwtFilter';
+      const missing = getDefaultsForProvider(
+        AuthProvider.Okta,
+        ClientType.Public
+      );
+      delete (missing.authorizerConfiguration as Record<string, unknown>)
+        .className;
+      delete (missing.authorizerConfiguration as Record<string, unknown>)
+        .containerRequestFilter;
+
+      const kept = cleanupProviderSpecificFields(
+        custom,
+        AuthProvider.Okta
+      )?.authorizerConfiguration;
+      const filled = cleanupProviderSpecificFields(
+        missing,
+        AuthProvider.Okta
+      )?.authorizerConfiguration;
+
+      expect(kept?.className).toBe('com.example.CustomAuthorizer');
+      expect(kept?.containerRequestFilter).toBe('com.example.CustomJwtFilter');
+      expect(filled?.className).toBe(
+        'org.openmetadata.service.security.DefaultAuthorizer'
+      );
+      expect(filled?.containerRequestFilter).toBe(
+        'org.openmetadata.service.security.JwtFilter'
+      );
+    });
+
     it('leaves the data it cleans unchanged', () => {
       const data = getDefaultsForProvider(AuthProvider.Saml, ClientType.Public);
       const sp = data.authenticationConfiguration.samlConfiguration?.sp;

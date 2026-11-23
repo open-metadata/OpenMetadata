@@ -758,7 +758,7 @@ export const COMMON_AUTH_FIELDS_TO_REMOVE = [
   'forceSecureSessionCookie',
 ];
 
-// Hardcoded authorizer values
+// Authorizer values for a configuration that has none
 export const DEFAULT_AUTHORIZER_CLASS_NAME =
   'org.openmetadata.service.security.DefaultAuthorizer';
 export const DEFAULT_CONTAINER_REQUEST_FILTER =

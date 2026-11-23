@@ -514,8 +514,9 @@ const cleanupAuthorizerConfig = (
 
   authorizerConfig.enforcePrincipalDomain ??= false;
   authorizerConfig.enableSecureSocketConnection ??= false;
-  authorizerConfig.className = DEFAULT_AUTHORIZER_CLASS_NAME;
-  authorizerConfig.containerRequestFilter = DEFAULT_CONTAINER_REQUEST_FILTER;
+  // A deployment may run its own authorizer; the defaults only fill a gap.
+  authorizerConfig.className ??= DEFAULT_AUTHORIZER_CLASS_NAME;
+  authorizerConfig.containerRequestFilter ??= DEFAULT_CONTAINER_REQUEST_FILTER;
 };
 
 /**
