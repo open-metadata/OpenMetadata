@@ -725,9 +725,14 @@ class TestGlueUnparseableColumnType:
             PartitionKeys=[GlueColumn(Name=n, Type=t) for n, t in partition_keys],
         )
         source.context.get().__dict__["table_data"] = table
-        with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
-            mock_fqn.build = mock_fqn_build
-            return next(source.yield_table((table.Name, TableType.External))).right
+        # Step.run attaches this handler in a real run, so status.warnings is the run summary's count.
+        source._activate_handler()
+        try:
+            with patch("metadata.ingestion.source.database.glue.metadata.fqn") as mock_fqn:
+                mock_fqn.build = mock_fqn_build
+                return next(source.yield_table((table.Name, TableType.External))).right
+        finally:
+            source._deactivate_handler()
 
     def test_bad_column_degrades_and_the_rest_of_the_table_is_ingested(self, glue_source):
         request = self._request(
@@ -746,7 +751,9 @@ class TestGlueUnparseableColumnType:
         ]
         assert glue_source.status.failures == []
         assert len(glue_source.status.warnings) == 1
-        assert "bad_struct" in glue_source.status.warnings[0]["dynamo_export"]
+        [reason] = glue_source.status.warnings[0].values()
+        assert "Table [dynamo_export]" in reason
+        assert "Column [bad_struct]" in reason
 
     def test_bad_partition_key_degrades(self, glue_source):
         request = self._request(glue_source, [("id", "string")], partition_keys=[("bad_key", self.BAD_STRUCT)])
@@ -769,9 +776,10 @@ class TestGlueUnparseableColumnType:
         assert len(glue_source.status.warnings) == 1
 
     def test_a_valid_struct_still_parses(self, glue_source):
-        column = glue_source._get_column_object(
-            GlueColumn(Name="parent", Type="struct<first:string,last:string,emails:array<string>,other:string>")
+        request = self._request(
+            glue_source, [("parent", "struct<first:string,last:string,emails:array<string>,other:string>")]
         )
+        column = request.columns[0]
 
         assert column.dataType is DataType.STRUCT
         assert [child.name.root for child in column.children] == ["first", "last", "emails", "other"]

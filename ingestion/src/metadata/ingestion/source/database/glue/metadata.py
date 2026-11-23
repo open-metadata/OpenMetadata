@@ -449,7 +449,6 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
             reason = f"Column [{column.Name}] has a type that could not be parsed, ingesting it as UNKNOWN: {exc}"
             logger.debug(traceback.format_exc())
             logger.warning("Table [%s]: %s", table_name, reason)
-            self.status.warning(table_name, reason)
             parsed_string = {"dataTypeDisplay": str(column.Type), "dataType": "UNKNOWN"}
         parsed_string["name"] = truncate_column_name(column.Name)
         parsed_string["displayName"] = column.Name
