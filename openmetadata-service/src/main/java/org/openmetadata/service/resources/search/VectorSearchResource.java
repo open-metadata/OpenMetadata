@@ -16,9 +16,14 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.search.SearchUtils;
@@ -28,6 +33,7 @@ import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchRequest;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
@@ -98,6 +104,9 @@ public class VectorSearchResource {
               request.threshold,
               SearchUtils.searchPreferenceFor(subjectContext),
               subjectContext);
+      if (!subjectContext.isAdmin()) {
+        response.hits = viewableHits(securityContext, response.hits);
+      }
       return Response.ok(response).build();
     } catch (Exception e) {
       LOG.error("Vector search failed: {}", e.getMessage(), e);
@@ -157,6 +166,49 @@ public class VectorSearchResource {
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
           .entity("{\"error\":\"An internal error occurred\"}")
           .build();
+    }
+  }
+
+  /**
+   * The hits whose entity the caller may view: a hit carries the indexed text of its entity, so it
+   * is decided as a read of that entity, in one batch per entity type, the way the MCP semantic
+   * search decides them (ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads).
+   */
+  private List<Map<String, Object>> viewableHits(
+      SecurityContext securityContext, List<Map<String, Object>> hits) {
+    if (hits == null || hits.isEmpty()) {
+      return hits;
+    }
+    List<EntityReference> entities = new ArrayList<>();
+    for (Map<String, Object> hit : hits) {
+      EntityReference entity = entityOf(hit);
+      if (entity != null) {
+        entities.add(entity);
+      }
+    }
+    Set<UUID> viewable =
+        new ViewPermissionFilter(authorizer).viewableIds(securityContext, entities);
+    return hits.stream()
+        .filter(
+            hit -> {
+              EntityReference entity = entityOf(hit);
+              return entity != null && viewable.contains(entity.getId());
+            })
+        .toList();
+  }
+
+  private static EntityReference entityOf(Map<String, Object> hit) {
+    Object type = hit.get("entityType");
+    Object parentId = hit.get("parentId");
+    if (type == null || parentId == null) {
+      return null;
+    }
+    try {
+      return new EntityReference()
+          .withType(type.toString())
+          .withId(UUID.fromString(parentId.toString()));
+    } catch (IllegalArgumentException e) {
+      return null;
     }
   }
 }

@@ -333,6 +333,22 @@ describe('NotificationAlertDetail', () => {
     });
   });
 
+  it('lets the owner picker select several users but no team', async () => {
+    await act(async () => {
+      render(
+        <NotificationAlertDetail fqn="test-alert" onNavigate={mockOnNavigate} />
+      );
+    });
+
+    await waitFor(() => {
+      expect(UserTeamSelectableList).toHaveBeenCalled();
+    });
+
+    expect(
+      (UserTeamSelectableList as jest.Mock).mock.calls[0][0].multiple
+    ).toEqual({ user: true, team: false });
+  });
+
   it('should keep existing owners when adding a new owner', async () => {
     (compare as jest.Mock).mockImplementation(
       jest.requireActual('fast-json-patch').compare
@@ -376,7 +392,10 @@ describe('NotificationAlertDetail', () => {
     fireEvent.click(screen.getByTestId('delete-alert-popover-confirm'));
 
     await waitFor(() =>
-      expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' })
+      expect(mockOnNavigate).toHaveBeenCalledWith(
+        { type: 'list' },
+        { replace: true }
+      )
     );
 
     expect(deleteEntity).toHaveBeenCalledWith(

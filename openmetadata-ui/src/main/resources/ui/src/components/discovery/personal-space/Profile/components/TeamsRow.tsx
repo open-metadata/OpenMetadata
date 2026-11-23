@@ -151,6 +151,7 @@ const TeamsRow: React.FC<TeamsRowProps> = ({
           aria-label={t('label.team-plural')}
           data-testid="teams-multiselect"
           items={options}
+          maxVisibleItems={3}
           placeholder={t('label.select-entity', {
             entity: t('label.team-plural'),
           })}

@@ -20,6 +20,19 @@ import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import AddObservabilityPage from './AddObservabilityPage';
 
+// The global mock returns the bare key; echo the no-access entity so the
+// tests can tell the create and edit permission messages apart.
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  useTranslation: () => ({
+    t: (key: string, options?: { entity?: string }) =>
+      key === 'message.no-access-placeholder'
+        ? `${key} ${options?.entity}`
+        : key,
+    i18n: { language: 'en-US', dir: () => 'ltr' },
+  }),
+}));
+
 const MOCK_DATA = [
   {
     id: '971a21b3-eeaf-4765-bda7-4e2cdb9788de',

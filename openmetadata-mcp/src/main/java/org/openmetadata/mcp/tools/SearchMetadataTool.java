@@ -1,6 +1,9 @@
 package org.openmetadata.mcp.tools;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
+import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -13,10 +16,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +35,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.mask.TestCaseSearchMasker;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
@@ -43,13 +49,30 @@ public class SearchMetadataTool implements McpTool {
   private static final Set<String> REFERENCE_LIST_FIELDS = Set.of("owners", "domains");
   private static final Set<String> TAG_FIELDS = Set.of("tier", "tags");
   private static final String CERTIFICATION_FIELD = "certification";
+  private static final String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
+  private static final String FROM_ENTITY_KEY = "fromEntity";
+  private static final String PIPELINE_KEY = "pipeline";
+  private static final String PIPELINE_ENTITY_TYPE_KEY = "pipelineEntityType";
+  private static final String FQN_KEY = "fullyQualifiedName";
+  private static final String TYPE_KEY = "type";
+  private static final Map<String, UnaryOperator<Object>> SINGLE_FIELD_SLIMMERS =
+      Map.of(
+          CERTIFICATION_FIELD,
+          value -> McpResponseTrim.slimCertification(value, System.currentTimeMillis()),
+          UPSTREAM_LINEAGE_FIELD,
+          SearchMetadataTool::slimLineageEdges);
   private static final Set<String> BULK_FIELDS =
-      Set.of("columns", "columnNames", "charts", "tasks");
+      Set.of("columns", "columnNames", "charts", "tasks", UPSTREAM_LINEAGE_FIELD);
   private static final int MAX_BULK_ITEMS = 60;
   private static final String METRIC_EXPRESSION_FIELD = "metricExpression";
   private static final String DESCRIPTION_TRUNCATED_KEY = "descriptionTruncated";
   private static final String TEST_CASE_ENTITY = "testCase";
   private static final String NEVER_RUN_KEY = "neverRun";
+
+  /** AI governance types the dataAsset alias leaves out; the default search adds them back. */
+  private static final List<String> AI_GOVERNANCE_TYPES =
+      List.of(Entity.LLM_MODEL, Entity.MCP_SERVER, Entity.AI_APPLICATION);
+
   private final PersonaSearchScope.Provider personaSearchScopeProvider;
 
   public SearchMetadataTool() {
@@ -189,6 +212,9 @@ public class SearchMetadataTool implements McpTool {
     }
 
     size = Math.min(size, 50);
+    requireWithinResultWindow(from);
+    // The engine refuses from + size past its result window, so the last page is shortened.
+    size = Math.min(size, MAX_RESULT_HITS - from);
 
     boolean includeDeleted = false;
     if (params.containsKey("includeDeleted")) {
@@ -275,6 +301,9 @@ public class SearchMetadataTool implements McpTool {
     // deleted
     // filter, ranked scoring, and the search preference.
     String effectiveQueryFilter = nullOrEmpty(queryFilter) ? exclusionFilter : queryFilter;
+    if (GLOBAL_SEARCH_ALIAS.equals(index)) {
+      effectiveQueryFilter = withDefaultScope(effectiveQueryFilter);
+    }
     Optional<PersonaSearchScope> personaScope = personaSearchScope(securityContext, params);
     if (personaScope.isPresent()) {
       effectiveQueryFilter = personaScope.orElseThrow().applyTo(effectiveQueryFilter);
@@ -287,10 +316,16 @@ public class SearchMetadataTool implements McpTool {
             .withSize(size)
             .withFrom(from)
             .withFetchSource(true)
-            .withDeleted(includeDeleted);
+            .withDeleted(includeDeleted)
+            // Callers count with totalFound; without this the engine stops counting at 10,000.
+            // ADR:2026-11-05-search-metadata-counts-exactly-and-pages-within-the-result-window
+            .withTrackTotalHits(true);
 
     SubjectContext subjectContext = getSubjectContext(securityContext);
     Response response = Entity.getSearchRepository().search(searchRequest, subjectContext);
+    response =
+        TestCaseSearchMasker.maskSearch(
+            response, authorizer, securityContext, Entity.getSearchRepository(), searchRequest);
 
     Map<String, Object> searchResponse;
     if (response.getEntity() instanceof String responseStr) {
@@ -400,18 +435,8 @@ public class SearchMetadataTool implements McpTool {
 
     List<Object> hits = safeGetList(topHits.get("hits"));
     List<Map<String, Object>> cleanedResults = new ArrayList<>();
-    int totalResults = 0;
+    int totalResults = totalHitCount(topHits);
     if (hits != null && !hits.isEmpty()) {
-
-      if (topHits.get("total") instanceof Map) {
-        Map<String, Object> totalObj = safeGetMap(topHits.get("total"));
-        if (totalObj != null && totalObj.get("value") instanceof Number) {
-          totalResults = ((Number) totalObj.get("value")).intValue();
-        }
-      } else if (topHits.get("total") instanceof Number) {
-        totalResults = ((Number) topHits.get("total")).intValue();
-      }
-
       boolean scoresVary = scoresDiscriminate(hits);
       for (Object hitObj : hits) {
         Map<String, Object> hit = safeGetMap(hitObj);
@@ -477,6 +502,28 @@ public class SearchMetadataTool implements McpTool {
     return result;
   }
 
+  /** Read even when the page is empty, so a size-0 count reports the real total and not 0. */
+  private static int totalHitCount(Map<String, Object> topHits) {
+    Object total = topHits.get("total");
+    Object value = total instanceof Map<?, ?> totalObject ? totalObject.get("value") : total;
+    return value instanceof Number number ? number.intValue() : 0;
+  }
+
+  /**
+   * Past the engine's result window a request fails, or comes back empty and reads as no matches.
+   * Naming the limit tells the caller to narrow the query instead of paging on.
+   * ADR:2026-11-05-search-metadata-counts-exactly-and-pages-within-the-result-window
+   */
+  private static void requireWithinResultWindow(int from) {
+    if (from >= MAX_RESULT_HITS) {
+      throw new IllegalArgumentException(
+          String.format(
+              "'from' must be below %d: search pages through the first %d matches only. Narrow"
+                  + " the query (a service, schema, tag or queryFilter) to reach the rest.",
+              MAX_RESULT_HITS, MAX_RESULT_HITS));
+    }
+  }
+
   /**
    * Sets the unified paging markers. {@code total} is the real ES hit count; {@code nextCursor}
    * advances by the count actually returned this page (after any budget trim) so the next call never
@@ -487,11 +534,18 @@ public class SearchMetadataTool implements McpTool {
       Map<String, Object> result, int from, long totalResults) {
     result.put(McpResponseTrim.TOTAL_KEY, totalResults);
     int returned = result.get("returnedCount") instanceof Number number ? number.intValue() : 0;
-    if (Boolean.TRUE.equals(result.get(McpResponseTrim.HAS_MORE_KEY)) && returned > 0) {
+    // totalFound is exact, but the engine cannot page past its result window: no cursor there,
+    // and the message already asks to narrow the query.
+    boolean withinWindow = (long) from + returned < MAX_RESULT_HITS;
+    if (Boolean.TRUE.equals(result.get(McpResponseTrim.HAS_MORE_KEY))
+        && returned > 0
+        && withinWindow) {
       result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
     } else if (returned == 0) {
       result.remove(McpResponseTrim.HAS_MORE_KEY);
       result.remove(McpResponseTrim.MESSAGE_KEY);
+    } else {
+      result.remove(McpResponseTrim.HAS_MORE_KEY);
     }
   }
 
@@ -550,7 +604,7 @@ public class SearchMetadataTool implements McpTool {
     // whole nested label, with expiry as epoch millis, on every hit.
     for (String field : requestedFields) {
       if (source.containsKey(field)) {
-        result.put(field, capBulkField(field, slimField(field, source.get(field)), result));
+        result.put(field, slimField(field, capBulkField(field, source.get(field), result)));
       }
     }
 
@@ -781,10 +835,50 @@ public class SearchMetadataTool implements McpTool {
       result = McpResponseTrim.slimRefs(value);
     } else if (TAG_FIELDS.contains(field)) {
       result = McpResponseTrim.slimTag(value);
-    } else if (CERTIFICATION_FIELD.equals(field)) {
-      result = McpResponseTrim.slimCertification(value, System.currentTimeMillis());
+    } else {
+      result = SINGLE_FIELD_SLIMMERS.getOrDefault(field, UnaryOperator.identity()).apply(value);
     }
     return result;
+  }
+
+  /**
+   * A requested upstreamLineage keeps each edge's source asset, and its pipeline when there is one,
+   * as FQN and type. {@code fromEntity.fullyQualifiedName} stays where a queryFilter finds it.
+   * Column mappings and SQL were most of each edge; get_entity_lineage returns them, and pages every
+   * edge. ADR:2026-11-06-search-metadata-returns-requested-lineage-as-edge-ends
+   */
+  private static Object slimLineageEdges(Object value) {
+    Object result = value;
+    if (value instanceof List<?> edges) {
+      result = edges.stream().map(SearchMetadataTool::slimLineageEdge).toList();
+    }
+    return result;
+  }
+
+  private static Object slimLineageEdge(Object edge) {
+    Object result = edge;
+    if (edge instanceof Map<?, ?> fields) {
+      Map<String, Object> slim = new LinkedHashMap<>();
+      if (fields.get(FROM_ENTITY_KEY) instanceof Map<?, ?> from) {
+        slim.put(FROM_ENTITY_KEY, edgeEnd(from.get(FQN_KEY), from.get(TYPE_KEY)));
+      }
+      // The pipeline is indexed as its whole entity, which has no type; the edge carries it.
+      if (fields.get(PIPELINE_KEY) instanceof Map<?, ?> pipeline) {
+        slim.put(
+            PIPELINE_KEY, edgeEnd(pipeline.get(FQN_KEY), fields.get(PIPELINE_ENTITY_TYPE_KEY)));
+      }
+      result = slim;
+    }
+    return result;
+  }
+
+  private static Map<String, Object> edgeEnd(Object fullyQualifiedName, Object type) {
+    Map<String, Object> end = new LinkedHashMap<>();
+    end.put(FQN_KEY, fullyQualifiedName);
+    if (type != null) {
+      end.put(TYPE_KEY, type);
+    }
+    return end;
   }
 
   public static Map<String, Object> cleanSearchResponseObject(Map<String, Object> object) {
@@ -807,17 +901,43 @@ public class SearchMetadataTool implements McpTool {
    * instead of a hand-maintained switch. A registered entity type resolves to its own single-type
    * index, so results are correctly scoped (fixing #27796, where unlisted types fell back to the
    * broad dataAsset alias and leaked other types). Null, unregistered, wildcard, or comma-separated
-   * input is not a registry key and falls back to dataAsset, preserving the prior graceful default
-   * rather than erroring or widening the search.
+   * input is not a registry key and falls back to the default scope ({@link #withDefaultScope}),
+   * preserving the prior graceful default rather than erroring or widening the search.
    */
   @VisibleForTesting
   static String resolveIndex(String entityType) {
-    String index = "dataAsset";
+    String index = GLOBAL_SEARCH_ALIAS;
     if (!nullOrEmpty(entityType)
         && Entity.getSearchRepository().getIndexMapping(entityType) != null) {
       index = entityType;
     }
     return index;
+  }
+
+  /**
+   * Narrows a search of the {@code all} alias to the default scope: the dataAsset types plus the AI
+   * governance types. The dataAsset alias stays unchanged because Explore reads it. The search goes
+   * through {@code all} and not an index list because ranking is picked by index name: only {@code
+   * all} and {@code dataAsset} get the data asset ranking, and a list falls back to generic ranking.
+   * ADR:2026-11-05-search-metadata-default-scope-includes-ai-governance-assets
+   */
+  @VisibleForTesting
+  static String withDefaultScope(String filter) {
+    List<String> types =
+        new ArrayList<>(
+            Entity.getSearchRepository().getEntityTypesForIndex(DATA_ASSET_SEARCH_ALIAS));
+    types.addAll(AI_GOVERNANCE_TYPES);
+    ObjectNode root =
+        nullOrEmpty(filter)
+            ? JsonUtils.getObjectMapper().createObjectNode()
+            : (ObjectNode) JsonUtils.readTree(filter);
+    ArrayNode clauses = JsonUtils.getObjectMapper().createArrayNode();
+    if (root.has(QUERY_KEY)) {
+      clauses.add(root.get(QUERY_KEY));
+    }
+    clauses.addObject().putObject("terms").set("entityType", JsonUtils.valueToTree(types));
+    root.putObject(QUERY_KEY).putObject("bool").set("filter", clauses);
+    return JsonUtils.pojoToJson(root);
   }
 
   /**

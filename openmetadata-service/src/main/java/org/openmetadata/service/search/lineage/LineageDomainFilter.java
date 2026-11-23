@@ -122,7 +122,8 @@ public final class LineageDomainFilter {
     return domainRefs;
   }
 
-  private static Set<String> reachableFromRoot(
+  /** The visible nodes reachable from {@code rootFqn} through visible nodes only. */
+  static Set<String> reachableFromRoot(
       SearchLineageResult result, Set<String> visible, String rootFqn) {
     Set<String> reachable = new HashSet<>();
     if (visible.contains(rootFqn)) {
@@ -148,10 +149,22 @@ public final class LineageDomainFilter {
     edges.addAll(edgesOf(result.getUpstreamEdges()));
     edges.addAll(edgesOf(result.getDownstreamEdges()));
     for (EsLineageData edge : edges) {
-      linkVisibleEndpoints(
-          adjacency, visible, edgeFqn(edge.getFromEntity()), edgeFqn(edge.getToEntity()));
+      String from = edgeFqn(edge.getFromEntity());
+      String to = edgeFqn(edge.getToEntity());
+      linkVisibleEndpoints(adjacency, visible, from, to);
+      // A pipeline shown as an edge is no end of it, yet its own lineage reaches assets only
+      // through the edges it carries, so it links to both ends.
+      String pipeline = pipelineFqn(edge.getPipeline());
+      linkVisibleEndpoints(adjacency, visible, pipeline, from);
+      linkVisibleEndpoints(adjacency, visible, pipeline, to);
     }
     return adjacency;
+  }
+
+  private static String pipelineFqn(Object pipeline) {
+    return pipeline instanceof Map<?, ?> ref && ref.get(FQN_FIELD) != null
+        ? ref.get(FQN_FIELD).toString()
+        : null;
   }
 
   private static Collection<EsLineageData> edgesOf(Map<String, EsLineageData> edges) {
@@ -166,7 +179,8 @@ public final class LineageDomainFilter {
     }
   }
 
-  private static void retainEdges(SearchLineageResult result, Set<String> keep) {
+  /** Keeps only the edges whose two ends are both in {@code keep}. */
+  static void retainEdges(SearchLineageResult result, Set<String> keep) {
     edgesOf(result.getUpstreamEdges()).removeIf(edge -> !edgeKept(edge, keep));
     edgesOf(result.getDownstreamEdges()).removeIf(edge -> !edgeKept(edge, keep));
   }

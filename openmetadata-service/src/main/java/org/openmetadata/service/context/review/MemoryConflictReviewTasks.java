@@ -30,7 +30,9 @@ import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.DisputedMemory;
@@ -47,6 +49,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
@@ -79,6 +82,8 @@ public final class MemoryConflictReviewTasks {
       "Closed because the memory left its conflict review outside this task (now %s)";
   static final String DELETED_IN_REVIEW = "Closed because the memory was deleted during its review";
   private static final String OWNERS = "owners";
+  private static final String OWNERS_AND_SOURCE =
+      OWNERS + "," + ContextMemoryRepository.FIELD_SOURCE_ENTITY;
   private static final int MAX_OPEN_REVIEWS = 10;
   private static final Striped<Lock> OPENING = Striped.lock(64);
 
@@ -289,16 +294,55 @@ public final class MemoryConflictReviewTasks {
         .withUpdatedAt(now);
   }
 
-  /** Whoever owns either side of the conflict can decide it. */
+  /**
+   * Whoever owns either side of the conflict can decide it, and for a memory extracted from a
+   * document or article, whoever owns that source when the review opens: the memory itself stays
+   * owned by its writer, because owning it would keep it readable after the source changes hands
+   * (ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values).
+   */
   static List<EntityReference> assignees(ContextMemory reviewed, List<ContextMemory> disputed) {
+    return assignees(reviewed, disputed, MemoryConflictReviewTasks::currentSourceOwners);
+  }
+
+  static List<EntityReference> assignees(
+      ContextMemory reviewed,
+      List<ContextMemory> disputed,
+      Function<ContextMemory, List<EntityReference>> sourceOwners) {
     Map<UUID, EntityReference> owners = new LinkedHashMap<>();
     List<ContextMemory> involved = new ArrayList<>(List.of(reviewed));
     involved.addAll(disputed);
     involved.forEach(
-        memory ->
-            listOrEmpty(memory.getOwners())
-                .forEach(owner -> owners.putIfAbsent(owner.getId(), owner)));
+        memory -> {
+          listOrEmpty(memory.getOwners())
+              .forEach(owner -> owners.putIfAbsent(owner.getId(), owner));
+          sourceOwners.apply(memory).forEach(owner -> owners.putIfAbsent(owner.getId(), owner));
+        });
     return new ArrayList<>(owners.values());
+  }
+
+  static List<EntityReference> currentSourceOwners(ContextMemory memory) {
+    boolean extracted =
+        memory.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
+            || memory.getSourceType() == ContextMemorySourceType.PAGE_EXTRACTION;
+    EntityReference sourceRef = extracted ? sourceOf(memory) : null;
+    EntityInterface source =
+        sourceRef == null ? null : Entity.getEntityOrNull(sourceRef, OWNERS, Include.NON_DELETED);
+    return source == null ? List.of() : listOrEmpty(source.getOwners());
+  }
+
+  /** A memory read without its source names none; read it again with the source. */
+  private static EntityReference sourceOf(ContextMemory memory) {
+    EntityReference source = memory.getSourceEntity();
+    if (source == null && memory.getId() != null) {
+      ContextMemory withSource =
+          Entity.getEntityOrNull(
+              Entity.CONTEXT_MEMORY,
+              memory.getId(),
+              ContextMemoryRepository.FIELD_SOURCE_ENTITY,
+              Include.NON_DELETED);
+      source = withSource == null ? null : withSource.getSourceEntity();
+    }
+    return source;
   }
 
   private static List<ContextMemory> disputedMemories(ContextMemory reviewed) {
@@ -338,7 +382,8 @@ public final class MemoryConflictReviewTasks {
     try {
       memory =
           Optional.of(
-              Entity.getEntity(Entity.CONTEXT_MEMORY, memoryId, OWNERS, Include.NON_DELETED));
+              Entity.getEntity(
+                  Entity.CONTEXT_MEMORY, memoryId, OWNERS_AND_SOURCE, Include.NON_DELETED));
     } catch (EntityNotFoundException deleted) {
       LOG.debug("[MemoryConflictReview] memory {} no longer exists", memoryId, deleted);
     }

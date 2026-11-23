@@ -17,6 +17,8 @@ import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
+import org.flowable.bpmn.model.TerminateEventDefinition;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
@@ -59,11 +61,17 @@ public class MainWorkflow {
     }
 
     // Add Nodes
+    // Pre-1.7.1 definitions the v1.7.1 backfill skipped still have config = null; node builders
+    // dereference it, so default to the same config the backfill writes (storeStageStatus=false).
+    WorkflowConfiguration effectiveConfig =
+        workflowDefinition.getConfig() != null
+            ? workflowDefinition.getConfig()
+            : new WorkflowConfiguration();
     for (WorkflowNodeDefinitionInterface nodeDefinitionObj : workflowDefinition.getNodes()) {
       NodeInterface node =
           NodeFactory.createNode(
               nodeDefinitionObj,
-              workflowDefinition.getConfig(),
+              effectiveConfig,
               workflowDefinition.getFullyQualifiedName(),
               workflowDefinition.getEdges(),
               batchPlan.modeFor(nodeDefinitionObj.getName()),
@@ -89,6 +97,10 @@ public class MainWorkflow {
 
   private void configureRuntimeExceptionFlow(Process process) {
     EndEvent errorEndEvent = new EndEvent(ERROR_END_EVENT_ID);
+    // Ends the run's other branches, which would otherwise wait at a parallel join forever. Not
+    // terminateAll: that would also end the trigger and the batch's other runs.
+    // ADR:2026-10-22-a-workflow-run-never-ends-with-a-branch-waiting-at-a-join
+    errorEndEvent.getEndEvent().addEventDefinition(new TerminateEventDefinition());
     process.addFlowElement(errorEndEvent.getEndEvent());
     for (BoundaryEvent event : runtimeExceptionBoundaryEvents) {
       process.addFlowElement(new SequenceFlow(event.getId(), errorEndEvent.getEndEvent().getId()));

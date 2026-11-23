@@ -32,8 +32,13 @@ final class MetricMigrationSqlFixture {
   private MetricMigrationSqlFixture() {}
 
   static MigrationScripts readMigrationScripts(ConnectionType connectionType) throws Exception {
+    return readMigrationScripts(connectionType, "2.1.0");
+  }
+
+  static MigrationScripts readMigrationScripts(ConnectionType connectionType, String version)
+      throws Exception {
     String dialect = connectionType == ConnectionType.MYSQL ? "mysql" : "postgres";
-    Path migrationDirectory = migrationDirectory().resolve(dialect);
+    Path migrationDirectory = migrationDirectory(version).resolve(dialect);
     return new MigrationScripts(
         parseSql(migrationDirectory.resolve("schemaChanges.sql"), connectionType),
         parseSql(migrationDirectory.resolve("postDataMigrationSQLScript.sql"), connectionType));
@@ -60,9 +65,9 @@ final class MetricMigrationSqlFixture {
         : new PostgreSQLParser(configuration, parsingContext);
   }
 
-  private static Path migrationDirectory() {
-    Path moduleRelative = Path.of("..", "bootstrap", "sql", "migrations", "native", "2.1.0");
-    Path rootRelative = Path.of("bootstrap", "sql", "migrations", "native", "2.1.0");
+  private static Path migrationDirectory(String version) {
+    Path moduleRelative = Path.of("..", "bootstrap", "sql", "migrations", "native", version);
+    Path rootRelative = Path.of("bootstrap", "sql", "migrations", "native", version);
     return Files.exists(moduleRelative) ? moduleRelative : rootRelative;
   }
 

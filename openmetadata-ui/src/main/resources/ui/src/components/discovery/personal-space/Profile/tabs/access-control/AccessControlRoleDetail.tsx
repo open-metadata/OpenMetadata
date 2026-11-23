@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import {
   Autocomplete,
@@ -26,14 +27,17 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
   Edit01 as Edit,
+  Policy as PolicyIcon,
+  Teams,
   Trash01 as Delete,
+  User01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, {
   FC,
+  ReactNode,
   useCallback,
   useEffect,
   useMemo,
@@ -52,7 +56,6 @@ import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { useAuth } from '../../../../../../hooks/authHooks';
-import { useClipboard } from '../../../../../../hooks/useClipBoard';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
   getPolicies,
@@ -72,6 +75,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import CopyButton from '../../../../../common/CopyButton/CopyButton';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
@@ -157,11 +161,10 @@ const renderEntityCell = (
         })}
         onConfirm={() => onRemove(item)}>
         <ButtonUtility
-          color="tertiary"
           data-testid={`remove-${getEntityName(item)}`}
           icon={Delete}
           isDisabled={!canEditAll || isLoadingOnSave}
-          size="xs"
+          size="lg"
           tooltip={translate('label.remove')}
           tooltipPlacement="left"
         />
@@ -178,6 +181,7 @@ interface EntityTableProps {
   ariaLabel: string;
   canEditAll: boolean;
   columns: DetailColumn[];
+  emptyIcon: ReactNode;
   emptyTitle: string;
   isLoadingOnSave: boolean;
   items: EntityReference[] | undefined;
@@ -191,6 +195,7 @@ const EntityTable: FC<EntityTableProps> = ({
   ariaLabel,
   canEditAll,
   columns,
+  emptyIcon,
   emptyTitle,
   isLoadingOnSave,
   items,
@@ -223,9 +228,9 @@ const EntityTable: FC<EntityTableProps> = ({
       renderEmptyState={() => (
         <Box
           align="center"
-          className="tw:min-h-32 tw:relative"
+          className="tw:relative tw:min-h-60"
           justify="center">
-          <NoDataPlaceholder title={emptyTitle} />
+          <NoDataPlaceholder icon={emptyIcon} title={emptyTitle} />
         </Box>
       )}>
       {(item) => (
@@ -292,10 +297,8 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
       </Typography>
       {canEdit && !isEditing && (
         <ButtonUtility
-          color="tertiary"
           data-testid="edit-description-btn"
           icon={Edit}
-          size="xs"
           tooltip={String(
             t('label.edit-entity', { entity: t('label.description') })
           )}
@@ -392,7 +395,10 @@ const RenameHeaderInput: FC<RenameHeaderInputProps> = ({
 
 interface AccessControlRoleDetailProps {
   fqn: string;
-  onNavigate: (view: AccessControlView) => void;
+  onNavigate: (
+    view: AccessControlView,
+    options?: SettingsNavigateOptions
+  ) => void;
   onRename?: (newDisplayName: string) => void;
   onSetHeaderActions?: (actions: React.ReactNode) => void;
   onSetHeaderTitleInput?: (titleInput: React.ReactNode) => void;
@@ -408,7 +414,6 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   onSetHeaderTitleSuffix,
 }) => {
   const { t } = useTranslation();
-  const { onCopyToClipBoard, hasCopied } = useClipboard(window.location.href);
   const { isAdminUser } = useAuth();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { contains } = useFilter({ sensitivity: 'base' });
@@ -494,7 +499,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   }, [role, renameValue, t, fetchRole, onRename]);
 
   const handleAfterDeleteRole = useCallback(
-    () => onNavigate({ type: 'roles' }),
+    () => onNavigate({ type: 'roles' }, { replace: true }),
     [onNavigate]
   );
 
@@ -521,11 +526,10 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     const titleSuffixNode: React.ReactNode = isRenameOpen ? undefined : (
       <Box align="center" direction="row" gap={1}>
         <ButtonUtility
-          color="tertiary"
           data-testid="rename-role-btn"
           icon={Edit}
           isDisabled={!canEditAll}
-          size="xs"
+          size="lg"
           tooltip={String(
             canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -535,18 +539,11 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
             setIsRenameOpen(true);
           }}
         />
-        <ButtonUtility
-          color="tertiary"
-          data-testid="copy-link-btn"
-          icon={Copy01}
-          size="xs"
-          tooltip={String(
-            hasCopied
-              ? t('message.link-copy-to-clipboard')
-              : t('label.copy-item', { item: t('label.url-uppercase') })
-          )}
+        <CopyButton
+          testId="copy-link-btn"
+          tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
           tooltipPlacement="right"
-          onPress={() => onCopyToClipBoard()}
+          value={window.location.href}
         />
       </Box>
     );
@@ -560,11 +557,10 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         entityName={getEntityName(role)}
         entityType={EntityType.ROLE}>
         <ButtonUtility
-          color="tertiary"
           data-testid="delete-role-btn"
           icon={Delete}
           isDisabled={!canDelete}
-          size="xs"
+          size="lg"
           tooltip={String(
             canDelete ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -586,8 +582,6 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     handleSaveRename,
     handleAfterDeleteRole,
     t,
-    hasCopied,
-    onCopyToClipBoard,
     onSetHeaderActions,
     onSetHeaderTitleInput,
     onSetHeaderTitleSuffix,
@@ -890,6 +884,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
           ariaLabel={t('label.policy-plural')}
           canEditAll={canEditAll}
           columns={columns}
+          emptyIcon={<PolicyIcon />}
           emptyTitle={t('label.no-entity-found', {
             entity: t('label.policy-plural'),
           })}
@@ -934,6 +929,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         ariaLabel={t('label.team-plural')}
         canEditAll={Boolean(isAdminUser)}
         columns={columns}
+        emptyIcon={<Teams />}
         emptyTitle={t('label.no-entity-found', {
           entity: t('label.team-plural'),
         })}
@@ -956,6 +952,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
         ariaLabel={t('label.user-plural')}
         canEditAll={Boolean(isAdminUser)}
         columns={columns}
+        emptyIcon={<User01 />}
         emptyTitle={t('label.no-entity-found', {
           entity: t('label.user-plural'),
         })}

@@ -14,7 +14,6 @@
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
@@ -29,6 +28,7 @@ import {
   getDomainChildrenPaginated,
   searchDomains,
 } from '../../../rest/domainAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import DomainTreeView from './DomainTreeView';
 
 // Holds the latest callbacks passed to the Tree mock so tests can invoke them.
@@ -179,7 +179,7 @@ const defaultProps = {
 };
 
 const renderComponent = (props: Partial<typeof defaultProps> = {}) =>
-  render(
+  renderWithQueryClient(
     <MemoryRouter>
       <DomainTreeView {...defaultProps} {...props} />
     </MemoryRouter>

@@ -43,7 +43,12 @@ import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import jakarta.json.Json;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -118,6 +123,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.OntologyRelationshipRow;
 import org.openmetadata.service.jdbi3.OntologyDAO.OntologyLineageRow;
@@ -137,7 +143,10 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -150,6 +159,8 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
+  // The type of a validation row for an asset search has no document for.
+  private static final String NO_SEARCH_DOCUMENT_TYPE = "unknown";
   private static final String ES_MISSING_DATA =
       "Entity Details is unavailable in Elastic Search. Please reindex to get more Information.";
   private static final String UPDATE_FIELDS =
@@ -246,7 +257,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         .getDistinctTagTargetCount(TagSource.GLOSSARY.ordinal(), fullyQualifiedName);
   }
 
-  public Map<String, Integer> getAllGlossaryTermsWithAssetsCount(String parent) {
+  /**
+   * Each term's asset count, leaving out assets {@code caller}'s search access policies deny.
+   */
+  public Map<String, Integer> getAllGlossaryTermsWithAssetsCount(
+      String parent, SubjectContext caller) {
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search unavailable for glossary term asset counts");
       return new HashMap<>();
@@ -268,7 +283,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     Map<String, Integer> glossaryTermAssetCounts = new HashMap<>();
 
     for (String fqn : fqns) {
-      InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm(fqn, 0, 0);
+      InheritedFieldQuery query = InheritedFieldQuery.forGlossaryTerm(fqn, 0, 0).forCaller(caller);
 
       Integer count =
           inheritedFieldEntitySearch.getCountForField(
@@ -855,12 +870,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void applyInverse(TermRelation relation) {
-    String inverseName = relationshipTypeResolver.inverseName(relation.getRelationType());
-    if (inverseName != null) {
-      RelationshipType inverse = relationshipTypeResolver.require(inverseName);
-      relation.setRelationType(inverseName);
-      relation.setRelationshipType(inverse.getEntityReference());
-    }
+    relationshipTypeResolver
+        .inverseOf(relationshipTypeResolver.require(relation.getRelationType()))
+        .ifPresent(
+            inverse -> {
+              relation.setRelationType(inverse.getName());
+              relation.setRelationshipType(inverse.getEntityReference());
+            });
   }
 
   private void populateTermRelations(
@@ -924,6 +940,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validate glossary
     Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
     entity.setGlossary(glossary.getEntityReference());
+    requireParentInGlossary(entity, parentTerm, update);
     validateHierarchy(entity);
     // Validate related terms
     populateTermRelations(
@@ -935,6 +952,58 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     IntakeFormValidator.validate(entity, Entity.GLOSSARY_TERM);
+  }
+
+  /**
+   * A term's fully qualified name is built from its parent, so the parent must be in the term's
+   * glossary. Checked when a term is created or a write sets its parent or glossary; a term already
+   * stored under a parent from another glossary stays editable.
+   */
+  private void requireParentInGlossary(GlossaryTerm term, GlossaryTerm parentTerm, boolean update) {
+    boolean otherGlossary =
+        parentTerm != null && !parentTerm.getGlossary().getId().equals(term.getGlossary().getId());
+    if (otherGlossary && (!update || placementChanges(term, parentTerm))) {
+      throw new IllegalArgumentException(
+          "Parent term %s is in glossary %s, not in the term's glossary %s"
+              .formatted(
+                  parentTerm.getFullyQualifiedName(),
+                  parentTerm.getGlossary().getFullyQualifiedName(),
+                  term.getGlossary().getFullyQualifiedName()));
+    }
+  }
+
+  // Whether the write gives the stored term a different parent or glossary; a term with no stored
+  // row is being created.
+  private static boolean placementChanges(GlossaryTerm term, GlossaryTerm parentTerm) {
+    GlossaryTerm stored = storedTerm(term, parentTerm);
+    return stored == null
+        || !Objects.equals(refId(stored.getParent()), refId(term.getParent()))
+        || !Objects.equals(refId(stored.getGlossary()), refId(term.getGlossary()));
+  }
+
+  // A PUT is prepared with a fresh id, so the stored term is also looked up by the name the write
+  // files it under.
+  private static GlossaryTerm storedTerm(GlossaryTerm term, GlossaryTerm parentTerm) {
+    GlossaryTerm stored =
+        term.getId() == null
+            ? null
+            : Entity.getEntityOrNull(GLOSSARY_TERM, term.getId(), "parent", Include.ALL);
+    if (stored == null) {
+      GlossaryTerm named =
+          Entity.findEntityByNameOrNull(
+              GLOSSARY_TERM,
+              FullyQualifiedName.add(parentTerm.getFullyQualifiedName(), term.getName()),
+              Include.ALL);
+      stored =
+          named == null
+              ? null
+              : Entity.getEntityOrNull(GLOSSARY_TERM, named.getId(), "parent", Include.ALL);
+    }
+    return stored;
+  }
+
+  private static UUID refId(EntityReference ref) {
+    return ref == null ? null : ref.getId();
   }
 
   /**
@@ -1406,13 +1475,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private String computeCanonicalRelationType(UUID fromId, UUID toId, String relationType) {
-    if (fromId.compareTo(toId) > 0) {
-      String inverse = getInverseRelationType(relationType);
-      if (inverse != null) {
-        return inverse;
-      }
-    }
-    return relationType;
+    String inverse = relationshipTypeResolver.requireInverseName(relationType);
+    return fromId.compareTo(toId) > 0 && inverse != null ? inverse : relationType;
   }
 
   private int getRelationCount(UUID termId, String relationType, Map<String, Integer> cache) {
@@ -1830,7 +1894,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           success.add(
               new BulkResponse()
                   .withRequest(
-                      new EntityReference().withFullyQualifiedName(fqnHash).withType("unknown"))
+                      new EntityReference()
+                          .withFullyQualifiedName(fqnHash)
+                          .withType(NO_SEARCH_DOCUMENT_TYPE))
                   .withMessage(ES_MISSING_DATA));
         }
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -1841,7 +1907,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           failures.add(
               new BulkResponse()
                   .withRequest(
-                      new EntityReference().withFullyQualifiedName(fqnHash).withType("unknown"))
+                      new EntityReference()
+                          .withFullyQualifiedName(fqnHash)
+                          .withType(NO_SEARCH_DOCUMENT_TYPE))
                   .withMessage(String.format("%s %s", ex.getMessage(), ES_MISSING_DATA)));
         }
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
@@ -1857,6 +1925,125 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             result.getNumberOfRowsPassed(), result.getNumberOfRowsProcessed()));
 
     return result;
+  }
+
+  /**
+   * Keeps the result rows about assets the caller may view; the counts and status still cover every
+   * asset, so the caller learns the outcome without the details of assets they cannot open.
+   */
+  public BulkOperationResult viewableRowsOnly(
+      SecurityContext securityContext,
+      ViewPermissionFilter viewFilter,
+      BulkOperationResult result) {
+    return DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()
+        ? result
+        : withRowsKept(result, viewableAmong(securityContext, viewFilter, rowsOf(result)));
+  }
+
+  private static List<BulkResponse> rowsOf(BulkOperationResult result) {
+    List<BulkResponse> rows = new ArrayList<>(listOrEmpty(result.getSuccessRequest()));
+    rows.addAll(listOrEmpty(result.getFailedRequest()));
+    return rows;
+  }
+
+  /** Which of {@code rows} the caller may view, their assets checked in one batch. */
+  private static Predicate<BulkResponse> viewableAmong(
+      SecurityContext securityContext, ViewPermissionFilter viewFilter, List<BulkResponse> rows) {
+    Map<String, EntityReference> tables = tablesOfColumns(rows);
+    List<EntityReference> targets =
+        rows.stream().map(row -> viewTarget(row, tables)).filter(Objects::nonNull).toList();
+    Set<UUID> viewable = viewFilter.viewableIds(securityContext, targets);
+    return row ->
+        namesNoAsset(row)
+            || Optional.ofNullable(viewTarget(row, tables))
+                .map(target -> viewable.contains(target.getId()))
+                .orElse(false);
+  }
+
+  private static BulkOperationResult withRowsKept(
+      BulkOperationResult result, Predicate<BulkResponse> isViewable) {
+    return result
+        .withSuccessRequest(rowsKept(result.getSuccessRequest(), isViewable))
+        .withFailedRequest(rowsKept(result.getFailedRequest(), isViewable));
+  }
+
+  private static List<BulkResponse> rowsKept(
+      List<BulkResponse> rows, Predicate<BulkResponse> isViewable) {
+    return listOrEmpty(rows).stream()
+        .filter(isViewable)
+        .map(GlossaryTermRepository::withoutAssetDetails)
+        .toList();
+  }
+
+  /** A row for an asset search has no document for keeps only the generic message. */
+  private static BulkResponse withoutAssetDetails(BulkResponse row) {
+    return isNoSearchDocument(row)
+        ? new BulkResponse()
+            .withRequest(row.getRequest())
+            .withStatus(row.getStatus())
+            .withHasSideEffects(row.getHasSideEffects())
+            .withMessage(ES_MISSING_DATA)
+        : row;
+  }
+
+  /** The entity whose view permission decides a row: the asset, or a column's table. */
+  private static EntityReference viewTarget(BulkResponse row, Map<String, EntityReference> tables) {
+    EntityReference asset = assetOf(row);
+    if (asset == null || !Entity.TABLE_COLUMN.equals(asset.getType())) {
+      return asset;
+    }
+    return tables.get(tableFqnOf(asset.getFullyQualifiedName()));
+  }
+
+  /** The tables of the column rows, loaded in one batch and keyed by table FQN. */
+  private static Map<String, EntityReference> tablesOfColumns(List<BulkResponse> rows) {
+    List<String> tableFqns = tableFqnsOfColumns(rows);
+    return tableFqns.isEmpty() ? Map.of() : tablesByFqn(tableFqns);
+  }
+
+  private static List<String> tableFqnsOfColumns(List<BulkResponse> rows) {
+    return rows.stream()
+        .map(GlossaryTermRepository::assetOf)
+        .filter(asset -> asset != null && Entity.TABLE_COLUMN.equals(asset.getType()))
+        .map(asset -> tableFqnOf(asset.getFullyQualifiedName()))
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
+  }
+
+  private static Map<String, EntityReference> tablesByFqn(List<String> tableFqns) {
+    return Entity.getEntityRepository(Entity.TABLE).findByNames(tableFqns, Include.ALL).stream()
+        .collect(
+            Collectors.toMap(
+                EntityInterface::getFullyQualifiedName,
+                EntityInterface::getEntityReference,
+                (first, second) -> first));
+  }
+
+  private static String tableFqnOf(String columnFqn) {
+    try {
+      return columnFqn == null ? null : FullyQualifiedName.getTableFQN(columnFqn);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  /**
+   * A row that names no asset stays (e.g. "Nothing to Validate.", or an asset search has no
+   * document for, which carries only an FQN hash).
+   */
+  private static boolean namesNoAsset(BulkResponse row) {
+    return row.getRequest() == null || isNoSearchDocument(row);
+  }
+
+  private static boolean isNoSearchDocument(BulkResponse row) {
+    return row.getRequest() instanceof EntityReference ref
+        && ref.getId() == null
+        && NO_SEARCH_DOCUMENT_TYPE.equals(ref.getType());
+  }
+
+  private static EntityReference assetOf(BulkResponse row) {
+    return row.getRequest() instanceof EntityReference ref && ref.getId() != null ? ref : null;
   }
 
   protected Map<String, EntityReference> getGlossaryUsageFromES(
@@ -3062,30 +3249,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             "id,name,fullyQualifiedName,parent,glossary,tags,reviewers,entityStatus",
             Include.ALL);
     GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
-
-    EntityReference parent = moveRequest.getParent();
-    if (parent.getType().equalsIgnoreCase("glossary")) {
-      // Move to root of the glossary
-      Glossary glossary =
-          Entity.getEntity(GLOSSARY, parent.getId(), "id,name,fullyQualifiedName", Include.ALL);
-      updated.setParent(null);
-      updated.setGlossary(glossary.getEntityReference());
-    } else if (parent.getType().equalsIgnoreCase("glossaryTerm")) {
-      // Can be of same glossary or a different glossary
-      GlossaryTerm parentTerm =
-          Entity.getEntity(
-              GLOSSARY_TERM, parent.getId(), "id,name,fullyQualifiedName,glossary", Include.ALL);
-      updated.setParent(parentTerm.getEntityReference());
-      Glossary glossary =
-          Entity.getEntity(
-              GLOSSARY,
-              parentTerm.getGlossary().getId(),
-              "id,name,fullyQualifiedName",
-              Include.ALL);
-      updated.setGlossary(glossary.getEntityReference());
-    } else {
-      throw new IllegalArgumentException("Invalid parent type: " + parent.getType());
-    }
+    placeUnder(updated, moveRequest.getParent());
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
     GlossaryTermUpdater updater = new GlossaryTermUpdater(original, updated, Operation.PUT);
@@ -3111,6 +3275,80 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
     }
     return updated;
+  }
+
+  /**
+   * A move as the PATCH it amounts to: the {@code parent} and {@code glossary} the term takes, the
+   * same edit dragging the term in the terms table sends. Authorizing and admitting the move as
+   * that PATCH keeps the two ways of moving a term under the same policies and approval workflows.
+   */
+  public MovePlan planMove(UUID id, MoveGlossaryTermRequest moveRequest) {
+    GlossaryTerm original = get(null, id, getPatchFields(), ALL, false);
+    GlossaryTerm moved = JsonUtils.deepCopy(original, GlossaryTerm.class);
+    placeUnder(moved, moveRequest.getParent());
+    return new MovePlan(original, movePatch(original, moved));
+  }
+
+  // Whole-field operations on parent and glossary, the shape dragging a term sends, so the
+  // operations a policy checks are those of the fields that move.
+  private static JsonPatch movePatch(GlossaryTerm original, GlossaryTerm moved) {
+    JsonArrayBuilder ops = Json.createArrayBuilder().add(addOp("/glossary", moved.getGlossary()));
+    if (moved.getParent() != null) {
+      ops.add(addOp("/parent", moved.getParent()));
+    } else if (original.getParent() != null) {
+      ops.add(Json.createObjectBuilder().add("op", "remove").add("path", "/parent"));
+    }
+    return Json.createPatch(ops.build());
+  }
+
+  private static JsonObjectBuilder addOp(String path, EntityReference value) {
+    return Json.createObjectBuilder()
+        .add("op", "add")
+        .add("path", path)
+        .add("value", JsonUtils.getJsonStructure(value));
+  }
+
+  /**
+   * Submits the planned move as a change request when an approval workflow holds it, judged and
+   * staged exactly as the equivalent PATCH. Returns the change request's id; empty when nothing
+   * holds the move, which is then applied by {@link #moveGlossaryTerm}.
+   */
+  public Optional<UUID> submitHeldMove(MovePlan plan, ChangeActor actor) {
+    Optional<UUID> changeRequestId = Optional.empty();
+    if (ApprovalGate.mayHold(GLOSSARY_TERM, actor.userName())
+        && previewPatch(plan.original(), plan.patch(), actor).isPresent()) {
+      changeRequestId =
+          Optional.ofNullable(patch(plan.original(), plan.patch(), actor).pendingChangeRequestId());
+    }
+    return changeRequestId;
+  }
+
+  /** A move of {@code original} expressed as the JSON patch that makes it. */
+  public record MovePlan(GlossaryTerm original, JsonPatch patch) {}
+
+  // Sets the parent and glossary a term takes when it moves under {@code parent}: the root of a
+  // glossary, or a term of the same or another glossary.
+  private static void placeUnder(GlossaryTerm term, EntityReference parent) {
+    if (parent.getType().equalsIgnoreCase(GLOSSARY)) {
+      Glossary glossary =
+          Entity.getEntity(GLOSSARY, parent.getId(), "id,name,fullyQualifiedName", Include.ALL);
+      term.setParent(null);
+      term.setGlossary(glossary.getEntityReference());
+    } else if (parent.getType().equalsIgnoreCase(GLOSSARY_TERM)) {
+      GlossaryTerm parentTerm =
+          Entity.getEntity(
+              GLOSSARY_TERM, parent.getId(), "id,name,fullyQualifiedName,glossary", Include.ALL);
+      Glossary glossary =
+          Entity.getEntity(
+              GLOSSARY,
+              parentTerm.getGlossary().getId(),
+              "id,name,fullyQualifiedName",
+              Include.ALL);
+      term.setParent(parentTerm.getEntityReference());
+      term.setGlossary(glossary.getEntityReference());
+    } else {
+      throw new IllegalArgumentException("Invalid parent type: %s".formatted(parent.getType()));
+    }
   }
 
   @Override
@@ -3181,7 +3419,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     Glossary glossary =
         glossaryRepository.get(null, glossaryTerm.getGlossary().getId(), Fields.EMPTY_FIELDS);
 
-    List<GlossaryTerm> terms = listAllForCSV(fields, glossaryTerm.getFullyQualifiedName());
+    List<GlossaryTerm> terms = listAllForCSV(fields, glossaryTerm.getFullyQualifiedName(), user);
 
     terms.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new GlossaryRepository.GlossaryCsv(glossary, user).exportCsv(terms, callback);

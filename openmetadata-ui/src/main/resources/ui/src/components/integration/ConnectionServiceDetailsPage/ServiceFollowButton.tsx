@@ -90,9 +90,7 @@ export const ServiceFollowButton = ({
 
   return (
     <StatItem
-      iconNode={
-        <FollowStarIcon className="tw:size-[29px]" selected={isFollowing} />
-      }
+      iconNode={<FollowStarIcon selected={isFollowing} />}
       loading={isUpdating}
       srLabel={followLabel}
       testId="entity-follow-button"

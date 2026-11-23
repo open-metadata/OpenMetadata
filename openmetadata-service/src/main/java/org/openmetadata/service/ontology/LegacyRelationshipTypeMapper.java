@@ -37,7 +37,6 @@ import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.type.RelationshipPaletteKey;
 import org.openmetadata.schema.type.RelationshipTypeCategory;
 import org.openmetadata.schema.type.SemanticReference;
-import org.openmetadata.service.Entity;
 
 /** Converts the pre-2.0 settings contract into governed relationship-type entities. */
 public final class LegacyRelationshipTypeMapper {
@@ -239,12 +238,6 @@ public final class LegacyRelationshipTypeMapper {
   }
 
   private static EntityReference reference(final RelationshipType relationshipType) {
-    return new EntityReference()
-        .withId(relationshipType.getId())
-        .withType(Entity.RELATIONSHIP_TYPE)
-        .withName(relationshipType.getName())
-        .withFullyQualifiedName(relationshipType.getFullyQualifiedName())
-        .withDisplayName(relationshipType.getDisplayName())
-        .withDescription(relationshipType.getDescription());
+    return RelationshipTypeReferenceNames.referenceTo(relationshipType);
   }
 }

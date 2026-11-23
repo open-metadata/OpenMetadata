@@ -16,7 +16,7 @@ from confluent_kafka import KafkaError
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -668,6 +668,52 @@ class OpenLineageUnitTest(unittest.TestCase):
                         fromColumns=[f"database.schema.source.{fqn_segment}"],
                     )
                     for fqn_segment in fqn_segment_by_name.values()
+                ],
+            }
+        }
+        self.assertEqual(result, expected)
+
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_by_name_cached")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn")
+    @patch("metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._build_ol_name_to_fqn_map")
+    def test_get_column_lineage_drops_unmatched_field_of_sharded_table(
+        self, mock_build_map, mock_get_table_fqn, mock_get_by_name_cached
+    ):
+        """A sharded table has no column to fall back to, so a field it does not store is
+        dropped instead of becoming an invented "<table>.<field>" FQN."""
+        sharded_source = self._mock_table_with_columns("database.schema.source", {"id": "id"})
+        sharded_source.tableType = TableType.Sharded
+        target = self._mock_table_with_columns("database.schema.target", {"id": "id", "extra": "extra"})
+        mock_get_table_fqn.side_effect = lambda table_details, namespace=None: f"database.schema.{table_details.name}"
+        mock_build_map.return_value = {"bigquery://host/db.schema.source": "database.schema.source"}
+        mock_get_by_name_cached.side_effect = lambda entity_class, fqn_str, **kwargs: (
+            target if fqn_str == "database.schema.target" else sharded_source
+        )
+
+        outputs = [
+            {
+                "name": "db.schema.target",
+                "namespace": "bigquery://host",
+                "facets": {
+                    "columnLineage": {
+                        "fields": {
+                            column_name: {
+                                "inputFields": [
+                                    {"field": column_name, "namespace": "bigquery://host", "name": "db.schema.source"}
+                                ]
+                            }
+                            for column_name in ("id", "extra")
+                        }
+                    }
+                },
+            }
+        ]
+        result = self.open_lineage_source._get_column_lineage([], outputs)
+
+        expected = {
+            "database.schema.target": {
+                "database.schema.source": [
+                    ColumnLineage(toColumn="database.schema.target.id", fromColumns=["database.schema.source.id"]),
                 ],
             }
         }
@@ -2075,7 +2121,15 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "redshift_prod.warehouse.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
+        with (
+            patch("metadata.utils.fqn.build", side_effect=mock_fqn_build),
+            patch.object(source, "metadata") as metadata,
+        ):
+            metadata.get_by_name.side_effect = lambda entity, fqn, **kwargs: (
+                Table(id=uuid4(), name=fqn.rsplit(".", 1)[-1], fullyQualifiedName=fqn, columns=[])
+                if entity == Table
+                else None
+            )
             # MySQL namespace -> scheme resolves to mysql_prod only
             mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"
@@ -2130,7 +2184,15 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "mysql_cluster_b.db.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
+        with (
+            patch("metadata.utils.fqn.build", side_effect=mock_fqn_build),
+            patch.object(source, "metadata") as metadata,
+        ):
+            metadata.get_by_name.side_effect = lambda entity, fqn, **kwargs: (
+                Table(id=uuid4(), name=fqn.rsplit(".", 1)[-1], fullyQualifiedName=fqn, columns=[])
+                if entity == Table
+                else None
+            )
             # cluster-a namespace -> mapping resolves to mysql_cluster_a
             result_a = source._get_table_fqn(table, namespace="mysql://cluster-a:3306/db")
             assert result_a == "mysql_cluster_a.db.analytics.user_stat"
@@ -2175,7 +2237,15 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "custom_lakehouse.lake.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
+        with (
+            patch("metadata.utils.fqn.build", side_effect=mock_fqn_build),
+            patch.object(source, "metadata") as metadata,
+        ):
+            metadata.get_by_name.side_effect = lambda entity, fqn, **kwargs: (
+                Table(id=uuid4(), name=fqn.rsplit(".", 1)[-1], fullyQualifiedName=fqn, columns=[])
+                if entity == Table
+                else None
+            )
             # mysql:// namespace -> scheme matches Mysql -> resolves to mysql_prod only
             mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"

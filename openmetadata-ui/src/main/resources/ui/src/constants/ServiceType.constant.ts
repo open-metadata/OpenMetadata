@@ -287,6 +287,7 @@ export const OPTIONAL_SCOPE_PROPERTIES = new Set([
 ]);
 
 export const INGESTION_BOOLEAN_CONFIG_FIELDS = [
+  'shardedTables',
   'includeTables',
   'includeViews',
   'includeTags',

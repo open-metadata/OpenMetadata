@@ -12,10 +12,13 @@
  */
 
 import { Button, Input, PageLayout } from '@openmetadata/ui-core-components';
-import { Plus, Search } from '@openmetadata/ui-core-components/icons';
+import {
+  Plus,
+  Search,
+  UploadCloud01,
+} from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getContextCenterHeaderPresentation } from '../../../utils/ContextCenterPureUtils';
@@ -59,7 +62,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
       {onUploadFile && (
         <Button
           color="primary"
-          iconLeading={UploadIcon}
+          iconLeading={UploadCloud01}
           size="sm"
           onClick={onUploadFile}>
           {t('label.upload-file')}
@@ -80,6 +83,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
     <div className="tw:flex tw:items-center tw:gap-3">
       {onSearch && (
         <Input
+          autoComplete="off"
           data-testid="search-input"
           icon={Search}
           inputClassName="tw:w-75"

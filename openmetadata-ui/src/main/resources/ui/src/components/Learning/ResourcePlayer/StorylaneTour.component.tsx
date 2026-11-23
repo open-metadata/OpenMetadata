@@ -12,23 +12,33 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LearningResource } from '../../../rest/learningResourceAPI';
 import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import Loader from '../../common/Loader/Loader';
 import './storylane-tour.less';
 
 interface StorylaneTourProps {
-  resource: LearningResource;
+  url: string;
+  title: string;
+  /** Fill the caller's space instead of the player's 16:9 box. */
+  fill?: boolean;
+  /** Layout only: placement and size in the caller. */
+  className?: string;
 }
 
-export const StorylaneTour: React.FC<StorylaneTourProps> = ({ resource }) => {
+export const StorylaneTour: React.FC<StorylaneTourProps> = ({
+  url,
+  title,
+  fill = false,
+  className,
+}) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   // Same rule as VideoPlayer: the frame allows scripts and same-origin, so only
   // an http(s) URL may become its src.
-  const tourUrl = getSafeHttpUrl(resource.source.url);
+  const tourUrl = getSafeHttpUrl(url);
 
   const handleLoad = useCallback(() => {
     setIsLoading(false);
@@ -45,7 +55,12 @@ export const StorylaneTour: React.FC<StorylaneTourProps> = ({ resource }) => {
   }
 
   return (
-    <div className="storylane-tour-wrapper">
+    <div
+      className={classNames(
+        'storylane-tour-wrapper',
+        { 'storylane-tour-wrapper--fill': fill },
+        className
+      )}>
       <div className="storylane-tour-container">
         {isLoading && (
           <div className="storylane-tour-loading">
@@ -58,7 +73,7 @@ export const StorylaneTour: React.FC<StorylaneTourProps> = ({ resource }) => {
           frameBorder="0"
           sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-forms"
           src={tourUrl}
-          title={resource.displayName || resource.name}
+          title={title}
           onLoad={handleLoad}
         />
       </div>

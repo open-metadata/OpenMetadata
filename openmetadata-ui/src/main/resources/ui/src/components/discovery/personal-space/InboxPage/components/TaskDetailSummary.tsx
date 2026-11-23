@@ -31,10 +31,10 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import AgentBadge from '../../../../../components/common/AgentBadge/AgentBadge';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../../../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
+import { convertMarkdownFormatToHtmlString } from '../../../../../utils/BlockEditorPureUtils';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getFrontEndFormat } from '../../../../../utils/FeedUtilsPure';
 import { ActivityChange, formatInboxDate } from '../inbox.utils';
@@ -122,7 +122,12 @@ const RowValue: React.FC<{ value: TaskDetailRowValue; label: string }> = ({
       return <UsersValue label={label} value={value} />;
 
     case 'agent':
-      return <AgentBadge name={value.name} />;
+      return (
+        <Box align="center" gap={1}>
+          <ProfilePicture isAgent displayName={value.name} name="" width="20" />
+          <Typography size="text-sm">{value.name}</Typography>
+        </Box>
+      );
 
     // The full tag FQN, as a reviewer searches for it: "PII.Sensitive".
     case 'tags':
@@ -140,6 +145,17 @@ const RowValue: React.FC<{ value: TaskDetailRowValue; label: string }> = ({
         <Button color="link-color" href={value.to} size="sm">
           {value.label}
         </Button>
+      );
+
+    case 'richText':
+      return (
+        <RichTextEditorPreviewerV1
+          className="tw:break-words tw:text-sm"
+          enableSeeMoreVariant={false}
+          markdown={convertMarkdownFormatToHtmlString(
+            getFrontEndFormat(value.text)
+          )}
+        />
       );
 
     default:
@@ -170,7 +186,11 @@ const TaskDetailSummary: React.FC<TaskDetailSummaryProps> = ({
             const Icon = ROW_ICON[row.icon];
 
             return (
-              <Box align="center" gap={2} key={row.key}>
+              <Box
+                align="center"
+                data-testid={`task-detail-row-${row.key}`}
+                gap={2}
+                key={row.key}>
                 <Icon
                   className="tw:shrink-0 tw:text-quaternary"
                   height={16}

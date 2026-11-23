@@ -547,24 +547,27 @@ WHERE json->>'name' = 'DataConsumerPolicy'
   AND NOT (json->'rules') @> jsonb_build_array(jsonb_build_object('name', 'DataConsumerPolicy-CreateContextMemory-Rule'))
   AND (json->'rules') @> jsonb_build_array(jsonb_build_object('effect', 'allow', 'operations', jsonb_build_array('EditDescription')));
 
--- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
--- the result polls, the credentials) that can reach different servers, so its state lives here
--- rather than in one server's memory. pending_state holds the candidate configuration with its
--- secrets, Fernet-encrypted, and is cleared when the test completes; rows expire minutes later.
-CREATE TABLE IF NOT EXISTS sso_test_login_session (
-    test_session_id VARCHAR(64) NOT NULL PRIMARY KEY,
-    admin_principal VARCHAR(256) NOT NULL,
-    protocol VARCHAR(16) NOT NULL,
-    status VARCHAR(16) NOT NULL,
-    pending_state TEXT,
-    result TEXT,
-    credentials_submitted_at BIGINT,
-    expires_at BIGINT NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_admin
-    ON sso_test_login_session (admin_principal, credentials_submitted_at);
-CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_expires
-    ON sso_test_login_session (expires_at);
+-- DomainOnlyAccessPolicy: deny changes to policies, roles, bots and apps, and to teams and users that
+-- are in no domain.
+UPDATE policy_entity
+SET json = jsonb_set(json, '{rules}', (json->'rules') || '[
+    {"name": "DomainAccessDenyAdministrationRule",
+     "description": "Deny changing policies, roles, bots and apps, which control access, whatever their domain",
+     "effect": "deny", "resources": ["app", "bot", "policy", "role"],
+     "operations": ["Create", "Delete", "Deploy", "EditAll"]}
+  ]'::jsonb)
+WHERE name = 'DomainOnlyAccessPolicy'
+  AND NOT (json->'rules' @> '[{"name": "DomainAccessDenyAdministrationRule"}]'::jsonb);
+
+UPDATE policy_entity
+SET json = jsonb_set(json, '{rules}', (json->'rules') || '[
+    {"name": "DomainAccessDenyTeamAndUserRule",
+     "description": "Deny changing teams and users that are in no domain, and bot users",
+     "effect": "deny", "resources": ["team", "user"],
+     "operations": ["Create", "Delete", "EditAll"], "condition": "noDomain() || isBotUser()"}
+  ]'::jsonb)
+WHERE name = 'DomainOnlyAccessPolicy'
+  AND NOT (json->'rules' @> '[{"name": "DomainAccessDenyTeamAndUserRule"}]'::jsonb);
 
 -- Settings that exist both in openmetadata.yaml/environment and in this table (security, email,
 -- base URL, SCIM, MCP, app configuration) remember the deployment values they were last
@@ -815,7 +818,6 @@ CREATE TABLE IF NOT EXISTS ontology_release_member (
   PRIMARY KEY (releaseId, memberKind, memberId)
 );
 
-
 CREATE TABLE IF NOT EXISTS ontology_release_event (
   id VARCHAR(36) NOT NULL,
   ontologyId VARCHAR(36) NOT NULL,
@@ -900,3 +902,20 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
   PRIMARY KEY (conceptId, assetId)
 );
 CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_concept_binding (assetId);
+
+-- MCP SSO sign-in waits for the user to approve the client on a consent page, and the pending
+-- approval lives on the pending request row. The consent feature ships in 2.1.0, so its columns are
+-- added here, where every database upgrading to 2.1 runs them. 2.0.7 shipped without them, and a
+-- database that has run a later 2.0.x never reads the 2.0.7 folder again.
+-- ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
+ALTER TABLE mcp_pending_auth_requests
+    ADD COLUMN IF NOT EXISTS consent_token_hash VARCHAR(64),
+    ADD COLUMN IF NOT EXISTS consent_user_name VARCHAR(256);
+
+-- A Context Center file's sharing as a column, so a listing counts the files everyone may see
+-- without reading each file
+-- (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+-- STORED rewrites context_file once.
+ALTER TABLE context_file ADD COLUMN IF NOT EXISTS visibility VARCHAR(16)
+    GENERATED ALWAYS AS (json -> 'shareConfig' ->> 'visibility') STORED;
+CREATE INDEX IF NOT EXISTS idx_context_file_visibility ON context_file (visibility);

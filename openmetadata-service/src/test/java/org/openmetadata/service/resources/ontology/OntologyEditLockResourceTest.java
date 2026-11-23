@@ -21,13 +21,11 @@ import org.openmetadata.service.Entity;
 
 class OntologyEditLockResourceTest {
   @Test
-  void glossaryLeasesUseTheGlossaryEditorPermission() {
+  void glossaryLeasesRequireEditAll() {
     assertEquals(
-        MetadataOperation.EDIT_GLOSSARY_TERMS,
-        OntologyEditLockResource.editOperation(Entity.GLOSSARY));
+        MetadataOperation.EDIT_ALL, OntologyEditLockResource.editOperation(Entity.GLOSSARY));
     assertEquals(
-        MetadataOperation.EDIT_GLOSSARY_TERMS,
-        OntologyEditLockResource.editOperation(Entity.GLOSSARY_TERM));
+        MetadataOperation.EDIT_ALL, OntologyEditLockResource.editOperation(Entity.GLOSSARY_TERM));
   }
 
   @Test

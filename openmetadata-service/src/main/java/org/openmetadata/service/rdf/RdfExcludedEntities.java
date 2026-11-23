@@ -26,14 +26,20 @@ import org.openmetadata.service.Entity;
  * knowledge graph; its rows additionally fail to deserialize during the RDF read pass, so each one
  * was dropped from the graph with an error on every reindex. Excluding it up front keeps the graph
  * free of dangling references and stops the reindex from logging a failure for every aiChart row.
+ *
+ * <p>{@code businessProcess} is a Collate entity whose draft state and staged step links are
+ * visible only to its editors, and whose {@code uses} links stand for reads and writes alike, so
+ * projecting them as {@code prov:used} would both expose drafts and state a false provenance.
  */
 public final class RdfExcludedEntities {
   private static final String AI_CHART = "aiChart";
+  private static final String BUSINESS_PROCESS = "businessProcess";
 
   // Native ontology meaning is published only through the active release's dedicated graph.
   public static final Set<String> EXCLUDED_ENTITY_TYPES =
       Set.of(
           AI_CHART,
+          BUSINESS_PROCESS,
           Entity.ONTOLOGY,
           Entity.ONTOLOGY_CONCEPT,
           Entity.ONTOLOGY_PROPERTY,

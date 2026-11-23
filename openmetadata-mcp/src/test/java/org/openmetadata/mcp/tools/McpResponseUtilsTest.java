@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
@@ -25,6 +26,7 @@ import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.MetricGroup;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -43,6 +45,7 @@ import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.TestSuiteConnection;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -187,6 +190,24 @@ class McpResponseUtilsTest {
   }
 
   @Test
+  void dropsMetricGroupMembers() {
+    MetricGroup group =
+        new MetricGroup()
+            .withName("revenue")
+            .withMetrics(
+                List.of(
+                    new EntityReference()
+                        .withId(UUID.randomUUID())
+                        .withType("metric")
+                        .withName("hidden_margin")));
+
+    MetricGroup masked = (MetricGroup) McpResponseUtils.maskSecrets(group);
+
+    assertNull(masked.getMetrics());
+    assertNotNull(group.getMetrics(), MUST_NOT_MUTATE);
+  }
+
+  @Test
   void readsDropUserAuthenticationMechanism() {
     User bot =
         new User()
@@ -249,8 +270,11 @@ class McpResponseUtilsTest {
         PasswordEntityMasker.PASSWORD_MASK,
         masked.at("/destinations/0/config/authType/secretKey").asText());
     assertEquals(
-        "https://hooks.example.com", masked.at("/destinations/0/config/endpoint").asText());
+        PasswordEntityMasker.PASSWORD_MASK,
+        masked.at("/destinations/0/config/endpoint").asText(),
+        "an incoming-webhook URL is a credential");
     assertTrue(JsonUtils.pojoToJson(alert).contains(STORED_SECRET), MUST_NOT_MUTATE);
+    assertTrue(JsonUtils.pojoToJson(alert).contains("https://hooks.example.com"), MUST_NOT_MUTATE);
   }
 
   @Test

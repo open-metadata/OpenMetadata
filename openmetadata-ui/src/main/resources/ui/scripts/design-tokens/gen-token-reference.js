@@ -131,7 +131,7 @@ const GROUPS = [
   {
     key: /^--om-/,
     title: 'Legacy LESS aliases',
-    note: 'Existing LESS palette names retain their light fallbacks; app.less supplies dark-mode overrides. Prefer semantic tokens for new work.',
+    note: 'Existing LESS palette names retain their light fallbacks; tokens.css supplies dark-mode overrides. Prefer semantic tokens for new work.',
   },
 ];
 

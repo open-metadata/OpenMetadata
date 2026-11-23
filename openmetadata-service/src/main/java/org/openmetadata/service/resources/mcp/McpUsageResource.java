@@ -45,8 +45,8 @@ import java.util.function.Consumer;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
-import org.openmetadata.service.apps.AbstractNativeApplication;
-import org.openmetadata.service.apps.ApplicationContext;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.resources.Collection;
@@ -440,10 +440,10 @@ public class McpUsageResource {
     }
   }
 
+  /** From the repository, as the recorder does: Disable leaves the app out of ApplicationContext. */
   private App resolveMcpApp() {
-    AbstractNativeApplication app =
-        ApplicationContext.getInstance().getAppIfExists(McpAppConstants.MCP_APP_NAME);
-    return app != null ? app.getApp() : null;
+    return Entity.findEntityByNameOrNull(
+        Entity.APPLICATION, McpAppConstants.MCP_APP_NAME, Include.ALL);
   }
 
   static long resolveStart(Long startTs) {

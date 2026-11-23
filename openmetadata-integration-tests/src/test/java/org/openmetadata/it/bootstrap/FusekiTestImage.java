@@ -31,14 +31,21 @@ import org.testcontainers.utility.DockerImageName;
  */
 public final class FusekiTestImage {
   /**
-   * Built from open-metadata/jena release/6.2.0 at c75b095d. The tag is the workflow's immutable
+   * Built from open-metadata/jena release/6.2.0 at 91a23ac4. The tag is the workflow's immutable
    * {@code <version>-<commit>} tag; its index digest is
-   * sha256:a763a77a393a63e13609fb1185d28edfc2b334319a38dd0b3db5332c6f9ed42b.
+   * sha256:f1ea04940de6665b111c10a673d5aec0543034b7d65216391bab38a96b666aa2.
    */
-  public static final String DEFAULT_IMAGE = "openmetadata/fuseki:6.2.0-c75b095";
+  public static final String DEFAULT_IMAGE = "openmetadata/fuseki:6.2.0-91a23ac";
 
   public static final String IMAGE_PROPERTY = "rdfContainerImage";
   public static final int PORT = 3030;
+
+  /**
+   * Fuseki's liveness endpoint as Fuseki itself reaches it from inside its container. A SERVICE
+   * clause aimed here is one Fuseki can always execute, so a test sees a request Fuseki would make.
+   */
+  public static final String SELF_PING_URL = "http://localhost:" + PORT + "/$/ping";
+
   public static final String ADMIN_USER = "admin";
   public static final String ADMIN_PASSWORD = "test-admin";
 

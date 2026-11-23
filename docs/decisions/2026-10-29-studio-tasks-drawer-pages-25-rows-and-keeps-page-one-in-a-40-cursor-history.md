@@ -1,9 +1,9 @@
 # The Studio Tasks drawer reads 25 rows a page and keeps page 1 in a 40-cursor Previous history
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-29 (initial)
+- **Revisions:** v1 2026-10-29 (initial) · v2 2026-11-15 (UI guards moved to Collate)
 - **Deciders:** Harsha
-- **Guard:** `OntologyTasksDrawer.test.tsx` ('returns to page 1 with Previous after paging past the kept cursor history', 'replaces after-only queue pages and resets the cursor when changing tabs')
+- **Guard:** `OntologyTasksDrawer.test.tsx` *(openmetadata-collate)* ('returns to page 1 with Previous after paging past the kept cursor history', 'replaces after-only queue pages and resets the cursor when changing tabs')
 - **Related:** ADR:2026-10-26-approve-and-publish-chains-two-writes-for-an-editall-final-reviewer, PR #36188
 
 ## Context
@@ -37,3 +37,7 @@ refuses a page larger than 100. A `before` cursor on the events list would let b
 back from the server and drop the client history, and would be the reason to revisit this record.
 Using the queue's `before` alone would split the two lists' paging rules and also needs a new
 record.
+
+## Amendment
+
+v2 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

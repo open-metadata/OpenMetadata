@@ -26,6 +26,23 @@ GREENPLUM_GET_TABLE_NAMES = """
         and n.nspname = :schema
 """
 
+GREENPLUM_DISTRIBUTION_KEYS = """
+    SELECT a.attname
+    FROM (
+        SELECT p.localoid, p.distkey, generate_subscripts(p.distkey, 1) AS key_position
+        FROM pg_catalog.gp_distribution_policy p
+        JOIN pg_catalog.pg_class c ON c.oid = p.localoid
+        JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+        WHERE n.nspname = :schema_name AND c.relname = :table_name
+          AND p.policytype = 'p'
+    ) distribution
+    JOIN pg_catalog.pg_attribute a
+      ON a.attrelid = distribution.localoid
+     AND a.attnum = distribution.distkey[distribution.key_position]
+    WHERE a.attnum > 0 AND NOT a.attisdropped
+    ORDER BY distribution.key_position
+"""
+
 GREENPLUM_PARTITION_DETAILS = textwrap.dedent(
     """
     select

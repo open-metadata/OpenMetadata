@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isDev } from './EnvironmentUtils';
 import { getAuthorityUrl, getCallbackUrl, getServerUrl } from './SSOURLUtils';
 
 // Mock EnvironmentUtils
@@ -54,5 +55,53 @@ describe('Environment-based URL functions', () => {
 
       expect(result).toBe('https://production.example.com/api/v1/auth/login');
     });
+  });
+});
+
+describe('development SSO URLs', () => {
+  const originalTarget = process.env.DEV_SERVER_TARGET;
+  const originalSsoUrl = process.env.SSO_SERVER_URL;
+
+  beforeEach(() => {
+    jest.mocked(isDev).mockReturnValue(true);
+    delete process.env.SSO_SERVER_URL;
+  });
+
+  afterEach(() => {
+    jest.mocked(isDev).mockReturnValue(false);
+    if (originalSsoUrl === undefined) {
+      delete process.env.SSO_SERVER_URL;
+    } else {
+      process.env.SSO_SERVER_URL = originalSsoUrl;
+    }
+    if (originalTarget === undefined) {
+      delete process.env.DEV_SERVER_TARGET;
+    } else {
+      process.env.DEV_SERVER_TARGET = originalTarget;
+    }
+  });
+
+  it('uses the configured API target for every SSO URL', () => {
+    process.env.DEV_SERVER_TARGET = 'http://localhost:8587/';
+
+    expect(getServerUrl()).toBe('http://localhost:8587');
+    expect(getCallbackUrl()).toBe('http://localhost:8587/callback');
+    expect(getAuthorityUrl()).toBe('http://localhost:8587/api/v1/auth/login');
+  });
+
+  it('allows the registered SSO origin to differ from the API target', () => {
+    process.env.DEV_SERVER_TARGET = 'http://localhost:8587/';
+    process.env.SSO_SERVER_URL = 'http://localhost:3002/';
+
+    expect(getServerUrl()).toBe('http://localhost:3002');
+    expect(getCallbackUrl()).toBe('http://localhost:3002/callback');
+    expect(getAuthorityUrl()).toBe('http://localhost:3002/api/v1/auth/login');
+  });
+
+  it('defaults to the standard backend port', () => {
+    delete process.env.DEV_SERVER_TARGET;
+
+    expect(getServerUrl()).toBe('http://localhost:8585');
+    expect(getCallbackUrl()).toBe('http://localhost:8585/callback');
   });
 });

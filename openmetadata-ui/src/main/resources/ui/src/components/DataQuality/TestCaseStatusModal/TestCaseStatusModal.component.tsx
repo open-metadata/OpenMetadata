@@ -239,7 +239,9 @@ export const TestCaseStatusModal = ({
       }
 
       await transitionIncident(taskId, resolveRequest);
-      const refreshed = await getListTestCaseIncidentByStateId(taskId);
+      const refreshed = await getListTestCaseIncidentByStateId(taskId, {
+        limit: 1,
+      });
       const latest = refreshed?.data?.[0];
       if (latest) {
         onSubmit(latest);
@@ -374,6 +376,7 @@ export const TestCaseStatusModal = ({
                 <Box className="tw:gap-1.5" direction="col">
                   <Label isRequired>{t('label.comment')}</Label>
                   <RichTextEditor
+                    aria-label={t('label.comment')}
                     data-testid="description"
                     initialValue={
                       data?.testCaseResolutionStatusDetails
@@ -382,6 +385,7 @@ export const TestCaseStatusModal = ({
                     placeHolder={t('message.write-your-text', {
                       text: t('label.comment'),
                     })}
+                    variant="comment"
                     onTextChange={field.onChange}
                   />
                   {fieldState.error && (

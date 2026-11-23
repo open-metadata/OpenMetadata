@@ -276,7 +276,9 @@ describe('Incident Manager Page Header component', () => {
       />
     );
 
-    expect(getListTestCaseIncidentByStateId).toHaveBeenCalledWith(INCIDENT_ID);
+    expect(getListTestCaseIncidentByStateId).toHaveBeenCalledWith(INCIDENT_ID, {
+      limit: 1,
+    });
   });
 
   it('should trigger onOwnerUpdate', async () => {

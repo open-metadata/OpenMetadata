@@ -57,6 +57,7 @@ import org.openmetadata.service.rdf.rebuild.RdfDatasetManager;
 import org.openmetadata.service.rdf.rebuild.RdfLiveWritePause;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
 import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
+import org.openmetadata.service.rdf.rebuild.ReleaseGraphs;
 import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 
@@ -65,6 +66,10 @@ import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 @EnabledIfSystemProperty(named = "enableRdf", matches = "true")
 @Execution(ExecutionMode.SAME_THREAD)
 public class RdfMaintenanceRecoveryIT {
+  private static final ReleaseGraphs NO_RELEASES =
+      release -> {
+        throw new IllegalStateException("No ontology release is journaled here");
+      };
   private static final String LEGACY_WRITER_LOCK =
       "SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE SKIP LOCKED";
   private static final String UPDATE = "INSERT DATA { <urn:s> <urn:p> <urn:o> }";
@@ -112,7 +117,8 @@ public class RdfMaintenanceRecoveryIT {
               new RdfRebuildStore(database.jdbi(), clock, RdfRebuildStore.DEFAULT_LIMITS),
               clock,
               dataset -> raw,
-              Duration.ofSeconds(1));
+              Duration.ofSeconds(1),
+              NO_RELEASES);
       final RdfLiveWritePause pause = new RdfLiveWritePause(database.lockDao(), manager, "new");
       queue.enqueue(UPDATE);
       final CompletableFuture<CompactionResult> maintenance =

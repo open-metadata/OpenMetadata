@@ -22,6 +22,11 @@ const mockGetFollowingActivityFeed = jest.fn();
 const mockGetMentionsActivityFeed = jest.fn();
 const mockGetUserActivity = jest.fn();
 const mockListConversations = jest.fn();
+const mockListTasks = jest.fn().mockResolvedValue({ data: [] });
+
+jest.mock('rest/tasksAPI', () => ({
+  listTasks: (...args: unknown[]) => mockListTasks(...args),
+}));
 let mockCurrentUser: { id?: string } | undefined;
 
 jest.mock('rest/activityAPI', () => ({
@@ -42,6 +47,7 @@ jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
 
+import { getTaskCommentMentions } from '../../../../utils/tasks/TaskMentions.utils';
 import { ActivityFilter, getDefaultInboxDateRange } from './inbox.utils';
 import {
   fetchInboxActivity,
@@ -74,6 +80,7 @@ const createWrapper = () => {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockListTasks.mockReset().mockResolvedValue({ data: [] });
   mockCurrentUser = { id: 'u1' };
   [
     mockGetActivityEvents,
@@ -86,6 +93,83 @@ beforeEach(() => {
 });
 
 describe('fetchInboxActivity', () => {
+  it('keeps the time covered by cached task mentions when switching feeds', async () => {
+    const client = new QueryClient();
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(1000);
+    mockListTasks.mockResolvedValue({ data: [] });
+    try {
+      const first = await fetchInboxActivity(
+        ActivityFilter.Mentions,
+        'u1',
+        100,
+        undefined,
+        false,
+        'alice',
+        client
+      );
+      clock.mockReturnValue(2000);
+      const cached = await fetchInboxActivity(
+        ActivityFilter.All,
+        'u1',
+        100,
+        undefined,
+        false,
+        'alice',
+        client
+      );
+
+      expect(first.taskMentionsReadAt).toBe(1000);
+      expect(cached.taskMentionsReadAt).toBe(1000);
+      expect(mockListTasks).toHaveBeenCalledTimes(1);
+    } finally {
+      clock.mockRestore();
+      client.clear();
+    }
+  });
+
+  it('caps task mentions and cuts the merged feed to their complete span', async () => {
+    mockGetActivityEvents.mockResolvedValue({
+      data: [
+        { id: 'old', timestamp: 100 },
+        { id: 'recent', timestamp: 300 },
+      ],
+    });
+    mockListConversations.mockResolvedValue({ data: [] });
+    mockListTasks
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'task',
+            updatedAt: 400,
+            comments: Array.from({ length: 110 }, (_, index) => ({
+              id: String(index),
+              createdAt: 200 + index,
+              message: '<#E::user::alice>',
+            })),
+          },
+          { id: 'older', updatedAt: 50 },
+        ],
+        paging: { after: 'history' },
+      })
+      .mockResolvedValue({ data: [] });
+    const result = await fetchInboxActivity(
+      ActivityFilter.All,
+      'u1',
+      0,
+      undefined,
+      false,
+      'alice'
+    );
+
+    expect(result.taskMentions).toHaveLength(100);
+    expect(result.isCapped).toBe(true);
+    expect(result.cutAt).toBe(210);
+    expect(result.activities.map(({ id }) => id)).toEqual(['recent']);
+    expect(mockListTasks).toHaveBeenCalledTimes(1);
+
+    mockListTasks.mockResolvedValue({ data: [] });
+  });
+
   // "All" is everything the viewer may see: every event, every conversation.
   it('fetches every activity event and conversation for All', async () => {
     const { activities, threads } = await fetchInboxActivity(
@@ -157,6 +241,131 @@ describe('fetchInboxActivity', () => {
         userId: 'u1',
       })
     );
+  });
+
+  it.each([ActivityFilter.All, ActivityFilter.Mentions])(
+    'includes a recent task mention from an older task in %s',
+    async (filter) => {
+      const matchingComment = {
+        id: 'comment-1',
+        author: { id: 'author', type: 'user', name: 'resolver' },
+        createdAt: 200,
+        message: 'Please check <#E::user::"john.doe"|[@John](/users/john.doe)>',
+      };
+      mockListTasks
+        .mockResolvedValueOnce({
+          data: [{ id: 'newer-task', comments: [] }],
+          paging: { after: 'older-tasks' },
+        })
+        .mockResolvedValueOnce({
+          data: [
+            {
+              id: 'closed-incident',
+              status: 'Completed',
+              createdAt: 10,
+              comments: [
+                matchingComment,
+                { ...matchingComment, id: 'older', createdAt: 50 },
+                {
+                  ...matchingComment,
+                  id: 'other',
+                  message: '<#E::user::jane>',
+                },
+              ],
+            },
+          ],
+        });
+
+      const result = await fetchInboxActivity(
+        filter,
+        'u1',
+        100,
+        300,
+        false,
+        'john.doe'
+      );
+
+      expect(mockListTasks).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          after: 'older-tasks',
+          mentionedUser: 'john.doe',
+          fields: 'about,comments',
+          updatedSince: 100,
+          sortBy: 'updatedAt',
+        })
+      );
+      expect(result.taskMentions).toEqual([
+        expect.objectContaining({
+          task: expect.objectContaining({ id: 'closed-incident' }),
+          comment: matchingComment,
+        }),
+      ]);
+    }
+  );
+
+  it.each([undefined, 1, 100])(
+    'finds mentions after permission-filtered empty pages with maxResults %s',
+    async (maxResults) => {
+      const comment = {
+        id: 'visible-mention',
+        createdAt: 200,
+        message: '<#E::user::alice>',
+      };
+      mockListTasks
+        .mockResolvedValueOnce({ data: [], paging: { after: 'second-page' } })
+        .mockResolvedValueOnce({ data: [], paging: { after: 'third-page' } })
+        .mockResolvedValueOnce({
+          data: [{ id: 'visible-task', updatedAt: 200, comments: [comment] }],
+          paging: { after: 'last-page' },
+        })
+        .mockResolvedValueOnce({ data: [] });
+
+      const mentions = await getTaskCommentMentions('alice', { maxResults });
+
+      expect(mentions).toEqual([
+        {
+          task: expect.objectContaining({ id: 'visible-task' }),
+          comment,
+        },
+      ]);
+      expect(mockListTasks).toHaveBeenCalledTimes(4);
+      expect(mockListTasks).toHaveBeenLastCalledWith(
+        expect.objectContaining({ after: 'last-page' })
+      );
+    }
+  );
+
+  it('stops reading task pages once they cannot contain newer mentions', async () => {
+    const mention = '<#E::user::alice>';
+    mockListTasks
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'updated-task',
+            updatedAt: 400,
+            comments: [{ id: 'old', createdAt: 150, message: mention }],
+          },
+        ],
+        paging: { after: 'second-page' },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'recent-mention',
+            updatedAt: 350,
+            comments: [{ id: 'recent', createdAt: 350, message: mention }],
+          },
+          { id: 'older-task', updatedAt: 300 },
+        ],
+        paging: { after: 'irrelevant-history' },
+      })
+      .mockResolvedValueOnce({ data: [] });
+
+    const mentions = await getTaskCommentMentions('alice', { maxResults: 1 });
+
+    expect(mentions.map(({ comment }) => comment.id)).toEqual(['recent']);
+    expect(mockListTasks).toHaveBeenCalledTimes(2);
   });
 
   // Regression: these were fetched with Promise.all, so a rejected conversation
@@ -281,6 +490,84 @@ describe('fetchInboxActivity', () => {
 
     expect(result.activities).toHaveLength(150);
     expect(result.isCapped).toBe(false);
+  });
+
+  // Past a capped list's oldest item the other list would stand alone, as if
+  // the capped one had nothing there.
+  it('cuts the conversations at the oldest event of a capped activity list', async () => {
+    mockGetActivityEvents.mockResolvedValue({
+      data: Array.from({ length: 200 }, (_, i) => ({ id: i, timestamp: 400 })),
+    });
+    mockListConversations.mockResolvedValue({
+      data: [
+        { id: 'newer', updatedAt: 450 },
+        { id: 'older', updatedAt: 300 },
+      ],
+    });
+
+    const result = await fetchInboxActivity(ActivityFilter.All, 'u1');
+
+    expect(result.activities).toHaveLength(200);
+    expect(result.threads.map(({ id }) => id)).toEqual(['newer']);
+    expect(result.isCapped).toBe(true);
+    expect(result.cutAt).toBe(400);
+  });
+
+  // A mention event keeps its own time, so an old event mentioned today would
+  // fall before any cut taken from the conversations.
+  it('leaves Mentions whole when its conversations are capped', async () => {
+    mockGetMentionsActivityFeed.mockResolvedValue({
+      data: [{ id: 'mentioned-today', timestamp: 100 }],
+    });
+    mockListConversations.mockResolvedValue({
+      data: Array.from({ length: 100 }, (_, i) => ({
+        id: `t${i}`,
+        updatedAt: 400,
+      })),
+    });
+
+    const result = await fetchInboxActivity(ActivityFilter.Mentions, 'u1');
+
+    expect(result.activities.map(({ id }) => id)).toEqual(['mentioned-today']);
+    expect(result.isCapped).toBe(true);
+    // Incomplete from where the conversations stop, not from the old event.
+    expect(result.cutAt).toBe(400);
+  });
+
+  // Mention events carry their own time, so where a capped list of them stops
+  // can't be placed in the feed.
+  it('places no cut when only the Mentions events are capped', async () => {
+    mockGetMentionsActivityFeed.mockResolvedValue({
+      data: Array.from({ length: 200 }, (_, i) => ({ id: i, timestamp: 100 })),
+    });
+    mockListConversations.mockResolvedValue({ data: [] });
+
+    const result = await fetchInboxActivity(ActivityFilter.Mentions, 'u1');
+
+    expect(result.isCapped).toBe(true);
+    expect(result.cutAt).toBeUndefined();
+  });
+
+  it('cuts the events at the oldest conversation of a capped conversation list', async () => {
+    mockGetActivityEvents.mockResolvedValue({
+      data: [
+        { id: 'newer', timestamp: 450 },
+        { id: 'older', timestamp: 300 },
+      ],
+    });
+    mockListConversations.mockResolvedValue({
+      data: Array.from({ length: 100 }, (_, i) => ({
+        id: `t${i}`,
+        updatedAt: 400,
+      })),
+    });
+
+    const result = await fetchInboxActivity(ActivityFilter.All, 'u1');
+
+    expect(result.activities.map(({ id }) => id)).toEqual(['newer']);
+    expect(result.threads).toHaveLength(100);
+    expect(result.isCapped).toBe(true);
+    expect(result.cutAt).toBe(400);
   });
 
   it('returns empty lists when the user id is not resolved yet', async () => {

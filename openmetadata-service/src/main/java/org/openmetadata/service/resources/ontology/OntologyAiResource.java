@@ -148,8 +148,7 @@ public final class OntologyAiResource {
       @Valid final OntologyDomainDraftRequest request) {
     final OntologyAiService ontologyAiService = service();
     ontologyAiService.requireAvailable();
-    authorizeGlossary(
-        securityContext, request.getGlossary(), MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizeGlossary(securityContext, request.getGlossary(), MetadataOperation.EDIT_ALL);
     return ontologyAiService.generateDomainDraft(request);
   }
 
@@ -159,7 +158,8 @@ public final class OntologyAiResource {
       final MetadataOperation operation) {
     final GlossaryRepository repository = glossaryRepository();
     final Glossary glossary =
-        repository.getByName(null, fullyQualifiedName, repository.getFields(""));
+        repository.getByName(
+            null, fullyQualifiedName, ResourceContext.authorizationFields(repository));
     authorizer.authorize(
         securityContext,
         new OperationContext(Entity.GLOSSARY, operation),

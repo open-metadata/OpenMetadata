@@ -28,12 +28,12 @@ import {
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+} from '../../../utils/AlertsClassBase.interface';
 import AlertEditModal from './AlertEditModal.component';
 
 const mockUseAlertFormData = jest.fn();
 
-jest.mock('../../../pages/AddObservabilityPage/hooks/useAlertFormData', () => ({
+jest.mock('../../../hooks/observability/alerts/useAlertFormData', () => ({
   useAlertFormData: (params: unknown) => mockUseAlertFormData(params),
 }));
 
@@ -273,6 +273,23 @@ describe('AlertEditModal', () => {
     expect(screen.getByTestId('form-display-name')).toHaveTextContent('');
     expect(mockUseAlertFormData).toHaveBeenLastCalledWith(
       expect.objectContaining({ sources: [] })
+    );
+  });
+
+  it('renders the shared drawer header with the title and the alerts description', () => {
+    render(<AlertEditModal isOpen onClose={jest.fn()} onSaved={jest.fn()} />);
+
+    const header = screen.getByRole('banner');
+
+    expect(header).toContainElement(screen.getByTestId('form-heading'));
+    expect(screen.getByTestId('form-heading')).toHaveTextContent(
+      'label.edit-entity'
+    );
+    expect(header).toContainElement(
+      screen.getByText('message.alerts-description')
+    );
+    expect(header).toContainElement(
+      screen.getByRole('switch', { name: 'label.show-hint' })
     );
   });
 

@@ -15,6 +15,9 @@ package org.openmetadata.service.apps.bundles.rdf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,6 +30,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.junit.jupiter.api.Test;
@@ -35,10 +40,13 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.apps.bundles.rdf.RdfBatchProcessor.BatchProcessingResult;
 import org.openmetadata.service.apps.bundles.rdf.RdfReindexer.EntityPages;
 import org.openmetadata.service.apps.bundles.rdf.RdfReindexer.KeysetCursor;
+import org.openmetadata.service.rdf.RdfQualityEvidence;
+import org.openmetadata.service.rdf.RdfQualityEvidenceSource;
 
 /** The reindex reader driven over in-memory entity pages and a writer that acks asynchronously. */
 class RdfReindexerTest {
@@ -142,6 +150,40 @@ class RdfReindexerTest {
   }
 
   @Test
+  void everyPageIsWrittenWithTheQualityEvidenceLoadedOntoItsEntities() throws Exception {
+    final InMemoryPages table = pages(rows("t", 5));
+    table.storedDataOnly.add("t1");
+    final List<Integer> evidencePages = Collections.synchronizedList(new ArrayList<>());
+    final RdfQualityEvidenceSource source = mock(RdfQualityEvidenceSource.class);
+    when(source.latestTableProfiles(anyList()))
+        .thenAnswer(
+            call -> {
+              final List<String> fqns = call.getArgument(0);
+              evidencePages.add(fqns.size());
+              return fqns.stream()
+                  .collect(
+                      Collectors.toMap(
+                          Function.identity(), fqn -> new TableProfile().withRowCount(42.0)));
+            });
+    final EntityPages withEvidence =
+        RdfReindexer.withQualityEvidence("table", table, new RdfQualityEvidence(source));
+
+    reindexer(Map.of("table", withEvidence)).index(List.of("table"));
+
+    assertEquals(rows("t", 5), writer.written("table"));
+    assertEquals(
+        rows("t", 5),
+        writer.writes.get("table").stream()
+            .map(Table.class::cast)
+            .filter(
+                entity -> entity.getProfile() != null && entity.getProfile().getRowCount() == 42.0)
+            .map(Table::getName)
+            .sorted()
+            .toList());
+    assertEquals(List.of(3, 2), evidencePages.stream().sorted(Collections.reverseOrder()).toList());
+  }
+
+  @Test
   void cursorWalksBackPastRowsThatDoNotDeserialize() {
     final KeysetCursor cursor =
         RdfReindexer.cursorAfterLastReadable(
@@ -177,7 +219,7 @@ class RdfReindexerTest {
   }
 
   private static Table entity(final String row) {
-    return new Table().withId(UUID.randomUUID()).withName(row);
+    return new Table().withId(UUID.randomUUID()).withName(row).withFullyQualifiedName(row);
   }
 
   /** Rows sorted by name; each row's name is its keyset position. */
@@ -236,7 +278,7 @@ class RdfReindexerTest {
 
   /** Acknowledges each batch a little later, the way the sink's writer thread does. */
   private static final class RecordingWriter implements RdfReindexer.BatchWriter {
-    private final Map<String, List<String>> writes = new ConcurrentHashMap<>();
+    private final Map<String, List<EntityInterface<?>>> writes = new ConcurrentHashMap<>();
     private final AtomicInteger acked = new AtomicInteger();
     private String rejectContaining;
 
@@ -252,7 +294,7 @@ class RdfReindexerTest {
             writes
                 .computeIfAbsent(
                     entityType, type -> Collections.synchronizedList(new ArrayList<>()))
-                .addAll(names);
+                .addAll(entities);
             acked.addAndGet(names.size());
             return new BatchProcessingResult(names.size(), 0);
           },
@@ -260,7 +302,10 @@ class RdfReindexerTest {
     }
 
     private List<String> written(final String entityType) {
-      return writes.getOrDefault(entityType, List.of()).stream().sorted().toList();
+      return writes.getOrDefault(entityType, List.of()).stream()
+          .map(EntityInterface::getName)
+          .sorted()
+          .toList();
     }
   }
 

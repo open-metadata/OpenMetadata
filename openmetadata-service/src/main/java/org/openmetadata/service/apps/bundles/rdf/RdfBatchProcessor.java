@@ -39,6 +39,7 @@ import org.openmetadata.service.rdf.RdfRelationshipScope;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfRepository.LineageEdgeData;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
+import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 
 @Slf4j
 public class RdfBatchProcessor {
@@ -308,9 +309,9 @@ public class RdfBatchProcessor {
       List<EntityInterface<?>> indexedEntities,
       Exception cause) {
     BisectResult result;
-    if (isCircuitBreakerOpen(cause)) {
+    if (isCircuitBreakerOpen(cause) || RdfStorageMaintenanceException.find(cause).isPresent()) {
       LOG.warn(
-          "Bulk write of {} {} entities failed and the RDF circuit breaker is open; "
+          "Bulk write of {} {} entities failed and every smaller batch would fail the same way; "
               + "not bisecting further. Reason: {}",
           entities.size(),
           entityType,

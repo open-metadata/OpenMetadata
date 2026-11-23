@@ -150,6 +150,7 @@ const AddAttributeModal: FC<Props> = ({
             aria-label={t('label.search-entity', {
               entity: type,
             })}
+            autoComplete="off"
             icon={Search}
             inputDataTestId="search-input"
             placeholder={t('label.search-entity', {

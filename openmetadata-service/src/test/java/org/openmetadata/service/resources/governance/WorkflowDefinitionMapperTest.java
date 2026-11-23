@@ -20,6 +20,17 @@ import org.openmetadata.service.rules.RuleEngine;
 
 class WorkflowDefinitionMapperTest {
   @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void preservesOwnerAutoAssignment(boolean enabled) {
+    CreateWorkflowDefinition request =
+        new CreateWorkflowDefinition()
+            .withName("incident")
+            .withConfig(new WorkflowConfiguration().withAutoAssignOwners(enabled));
+    var saved = new WorkflowDefinitionMapper().createToEntity(request, "admin");
+    assertEquals(enabled, saved.getConfig().getAutoAssignOwners());
+  }
+
+  @ParameterizedTest
   @ValueSource(strings = {"dataProduct", "domain", "glossaryTerm", "metric"})
   void carriesTypedLifecycleMetadataIntoTheSavedWorkflow(String entityType) {
     final LifecycleConfiguration lifecycle =
@@ -53,6 +64,7 @@ class WorkflowDefinitionMapperTest {
         new WorkflowDefinitionMapper()
             .createToEntity(new CreateWorkflowDefinition().withName("legacy"), "admin");
     assertNull(saved.getConfig().getLifecycle());
+    assertTrue(saved.getConfig().getAutoAssignOwners());
   }
 
   @Test

@@ -1054,7 +1054,11 @@ export const deleteCreatedProperty = async (
   const dialog = page.getByRole('dialog', { name: 'Delete Property' });
 
   await waitForOverlayToOpen(dialog);
-  await expect(dialog.getByTestId('body-text')).toContainText(propertyName);
+  // The dialog names the property by its display name, which
+  // editCreatedProperty sets to the upper-cased name.
+  await expect(dialog.getByTestId('body-text')).toContainText(propertyName, {
+    ignoreCase: true,
+  });
 
   const saves = recordCustomPropertySaves(page);
 
@@ -1196,7 +1200,7 @@ const validateCustomPropertyPanelRow = async (
   const summary = row.getByTestId('property-value');
   const expected = getExpectedRowSummary(propertyType, value);
 
-  await expect(summary).not.toHaveText('Not set');
+  await expect(summary).not.toHaveText('No value yet');
   if (expected) {
     await expect(summary).toContainText(expected);
   }
@@ -1323,7 +1327,7 @@ export const updateCustomPropertyInRightPanel = async (data: {
       entityFQN
     );
     await waitForAllLoadersToDisappear(page);
-    await navigateToEntityPanelTab(page, 'custom property');
+    await navigateToEntityPanelTab(page, 'custom properties');
     await waitForAllLoadersToDisappear(page);
   }
 

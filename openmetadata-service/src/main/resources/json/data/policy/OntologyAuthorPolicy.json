@@ -1,0 +1,25 @@
+{
+  "name": "OntologyAuthorPolicy",
+  "displayName": "Ontology Author Policy",
+  "fullyQualifiedName": "OntologyAuthorPolicy",
+  "description": "Policy for authoring ontologies: create, edit and delete ontologies, concepts, properties, axioms and change sets, read releases, and request a release review.",
+  "enabled": true,
+  "allowDelete": false,
+  "provider": "system",
+  "rules": [
+    {
+      "name": "OntologyAuthorPolicy-AuthorRule",
+      "description": "Allow authors to create, edit, delete and view the content of an ontology.",
+      "resources": ["ontology", "ontologyConcept", "ontologyProperty", "ontologyAxiom", "ontologyChangeSet"],
+      "operations": ["Create", "Delete", "ViewAll", "EditAll"],
+      "effect": "allow"
+    },
+    {
+      "name": "OntologyAuthorPolicy-ReleaseRule",
+      "description": "Allow authors to read releases and to request a review of one.",
+      "resources": ["ontologyRelease"],
+      "operations": ["ViewAll", "CreateTask"],
+      "effect": "allow"
+    }
+  ]
+}
