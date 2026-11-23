@@ -57,7 +57,7 @@ public interface OntologyAiCompletionGateway {
       UUID sourceTermId,
       UUID targetTermId,
       UUID relationshipTypeId,
-      double confidence,
+      Double confidence,
       String rationale) {}
 
   record MappingCandidate(
@@ -67,11 +67,16 @@ public interface OntologyAiCompletionGateway {
       String schemeIri,
       String source,
       String targetLabel,
-      double confidence,
+      Double confidence,
       String rationale) {}
 
   record SparqlCandidate(String query, String explanation) {}
 
   record DomainConceptCandidate(
-      String name, String displayName, String description, String parentName) {}
+      String name,
+      String displayName,
+      String description,
+      String parentName,
+      Double confidence,
+      String rationale) {}
 }

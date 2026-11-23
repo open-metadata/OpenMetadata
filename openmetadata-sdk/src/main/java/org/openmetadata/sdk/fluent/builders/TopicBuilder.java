@@ -51,6 +51,7 @@ public class TopicBuilder {
    * Set custom extension data.
    */
   public TopicBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

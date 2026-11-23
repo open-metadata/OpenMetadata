@@ -118,7 +118,7 @@ export const SettingsNavigationPage = ({ onSave, persona }: Props) => {
             <ButtonUtility
               aria-label={t('label.move')}
               // Ahead of the icon so the hidden handle never sits between icon and label.
-              className="tw:invisible tw:group-hover/nav-row:visible tw:group-focus-within/nav-row:visible"
+              className="tw:opacity-0 tw:group-hover/nav-row:opacity-100 tw:focus-visible:opacity-100"
               color="tertiary"
               icon={DotsGrid}
               size="xs"

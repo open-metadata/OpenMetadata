@@ -79,12 +79,13 @@ describe('Test Error placeholder ingestion Component', () => {
     );
 
     expect(getByTestId(container, 'no-search-results')).toBeInTheDocument();
-    expect(
-      screen.getByText('message.no-data-available-entity').parentElement
-    ).toHaveClass('tw:text-sm', 'tw:font-semibold');
-    expect(
-      screen.getByText('message.add-data-asset-domain').parentElement
-    ).toHaveClass('tw:text-xs');
+    expect(screen.getByText('message.no-data-available-entity')).toHaveClass(
+      'tw:text-sm',
+      'tw:font-semibold'
+    );
+    expect(screen.getByText('message.add-data-asset-domain')).toHaveClass(
+      'tw:text-xs'
+    );
     expect(screen.getByText('message.refer-to-our-doc')).toBeInTheDocument();
   });
 

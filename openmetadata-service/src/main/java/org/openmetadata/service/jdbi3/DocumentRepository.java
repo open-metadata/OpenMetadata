@@ -115,6 +115,12 @@ public class DocumentRepository extends EntityRepository<Document> {
   }
 
   @Override
+  protected void restorePatchAttributes(Document original, Document updated) {
+    super.restorePatchAttributes(original, updated);
+    updated.setEntityType(original.getEntityType());
+  }
+
+  @Override
   public void prepare(Document document, boolean update) {
     // validations are not implemented for Document
   }

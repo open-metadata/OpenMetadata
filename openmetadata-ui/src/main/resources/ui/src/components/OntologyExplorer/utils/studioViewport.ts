@@ -92,6 +92,22 @@ export function nodeViewportRect(
   );
 }
 
+/**
+ * G6 keeps the viewport centre when the canvas resizes, which shifts every node by
+ * half the change. This moves them back so the top-left corner stays put.
+ */
+export function anchorViewportToTopLeft(
+  graph: Graph,
+  before: ViewportSize,
+  after: ViewportSize
+): void {
+  const dx = (before.width - after.width) / 2;
+  const dy = (before.height - after.height) / 2;
+  if (dx || dy) {
+    void graph.translateBy([dx, dy], { duration: 0 });
+  }
+}
+
 export function graphFitsViewport(graph: Graph, size: ViewportSize): boolean {
   const rect = nodeViewportRect(graph);
 
@@ -121,6 +137,22 @@ export async function revealHiddenNode(
       await graph.focusElement(nodeId, { duration: 0 });
     }
   }
+}
+
+/**
+ * After a panel narrows the canvas: a graph that was wholly visible is fitted again so
+ * no node ends up under the panel; otherwise only a selection the panel now hides is
+ * brought back, and the rest of the view stays where the user left it.
+ */
+export function settleAfterCanvasResize(
+  graph: Graph,
+  container: HTMLElement,
+  wasWhole: boolean,
+  focusNodeId?: string | null
+): Promise<void> {
+  return wasWhole && !graphFitsViewport(graph, containerViewportSize(container))
+    ? fitViewWithMinZoom(graph)
+    : revealHiddenNode(graph, container, focusNodeId);
 }
 
 /**

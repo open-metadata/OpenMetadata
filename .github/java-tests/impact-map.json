@@ -302,6 +302,7 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/CoreRelationship*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Deadlock*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Deletion*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/FqnKeyedRow*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Filter.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/HikariCP*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/MemoryCount*",
@@ -621,8 +622,7 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/secrets/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/fernet/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/**/*Secret*",
-        "openmetadata-service/src/main/java/org/openmetadata/service/util/AwsCredentials*",
-        "openmetadata-service/src/main/java/org/openmetadata/service/util/AzureTokenProvider*"
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/AwsCredentials*"
       ],
       "tests": [
         "*Secret*IT",

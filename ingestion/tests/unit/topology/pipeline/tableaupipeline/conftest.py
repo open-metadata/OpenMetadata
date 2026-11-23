@@ -63,6 +63,7 @@ class FakeTableauPipelineClient:
         self.field_lineage_requests: list[str] = []
 
     extract_refresh_listing_complete = True
+    flow_listing_complete = True
 
     def get_pipelines(self, keep=lambda _: True) -> Iterable[TableauPipelineDetails]:
         yield FLOW_SALES

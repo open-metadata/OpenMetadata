@@ -24,7 +24,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
   Eye,
   EyeOff,
   Key01,
@@ -57,6 +56,8 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import CopyButton from '../../../../common/CopyButton/CopyButton';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 const AI_PROFILE_TOKEN_NAME = 'ai-profile-token';
 
@@ -110,50 +111,53 @@ const AccessTokenEmptyState = ({
     data-testid="access-token-row"
     size="lg"
     variant="muted">
-    <Card.Content className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-3 tw:text-center">
-      <FeaturedIcon color="brand" icon={Key01} size="lg" theme="light" />
-      <Typography className="tw:text-primary" weight="semibold">
-        {t('message.no-access-token-title')}
-      </Typography>
-      <Typography
-        className="tw:max-w-md tw:text-tertiary"
-        size="text-sm"
-        weight="regular">
-        {t('message.no-access-token-subtitle')}
-      </Typography>
-      <Box align="center" className="tw:mt-3" direction="row" gap={3}>
-        <Box align="center" direction="row" gap={2}>
-          <Typography
-            className="tw:whitespace-nowrap tw:text-tertiary"
-            size="text-sm"
-            weight="regular">
-            {`${t('label.expires-in')}:`}
-          </Typography>
-          <Select
-            aria-label={t('label.token-expiration')}
-            className="tw:min-w-28"
-            data-testid="token-expiry-select"
-            items={expiryOptions}
-            selectedKey={expiry}
-            size="sm"
-            onSelectionChange={(key: Key | null) =>
-              key && setExpiry(key as JWTTokenExpiry)
-            }>
-            {(item) => <Select.Item id={item.id}>{item.label}</Select.Item>}
-          </Select>
-        </Box>
-        <Button
-          color="primary"
-          data-testid="generate-token"
-          iconLeading={Plus}
-          isDisabled={isLimitReached}
-          isLoading={isLoading}
-          size="sm"
-          onClick={handleGenerate}>
-          {t('label.generate-token')}
-        </Button>
-      </Box>
-      {isLimitReached && <TokenLimitHint t={t} />}
+    <Card.Content>
+      <div className="tw:relative tw:min-h-64">
+        <NoDataPlaceholder
+          description={t('message.no-access-token-subtitle')}
+          footer={
+            <Box align="center" direction="col" gap={3}>
+              <Box align="center" direction="row" gap={3}>
+                <Box align="center" direction="row" gap={2}>
+                  <Typography
+                    className="tw:whitespace-nowrap tw:text-tertiary"
+                    size="text-sm"
+                    weight="regular">
+                    {`${t('label.expires-in')}:`}
+                  </Typography>
+                  <Select
+                    aria-label={t('label.token-expiration')}
+                    className="tw:min-w-28"
+                    data-testid="token-expiry-select"
+                    items={expiryOptions}
+                    selectedKey={expiry}
+                    size="sm"
+                    onSelectionChange={(key: Key | null) =>
+                      key && setExpiry(key as JWTTokenExpiry)
+                    }>
+                    {(item) => (
+                      <Select.Item id={item.id}>{item.label}</Select.Item>
+                    )}
+                  </Select>
+                </Box>
+                <Button
+                  color="primary"
+                  data-testid="generate-token"
+                  iconLeading={Plus}
+                  isDisabled={isLimitReached}
+                  isLoading={isLoading}
+                  size="sm"
+                  onClick={handleGenerate}>
+                  {t('label.generate-token')}
+                </Button>
+              </Box>
+              {isLimitReached && <TokenLimitHint t={t} />}
+            </Box>
+          }
+          icon={<Key01 />}
+          title={t('message.no-access-token-title')}
+        />
+      </div>
     </Card.Content>
   </Card>
 );
@@ -167,7 +171,6 @@ const AccessTokenDetails = ({
   reveal,
   setReveal,
   canReveal,
-  handleCopy,
   isLoading,
   isLimitReached,
   handleRegenerate,
@@ -181,7 +184,6 @@ const AccessTokenDetails = ({
   reveal: boolean;
   setReveal: Dispatch<SetStateAction<boolean>>;
   canReveal: boolean;
-  handleCopy: () => void;
   isLoading: boolean;
   isLimitReached: boolean;
   handleRegenerate: () => void;
@@ -239,15 +241,12 @@ const AccessTokenDetails = ({
             tooltip={t('label.show')}
             onClick={() => setReveal(!reveal)}
           />
-          <Button
-            color="secondary"
-            data-testid="copy-token"
-            iconLeading={Copy01}
-            isDisabled={!canReveal}
-            size="sm"
-            onClick={handleCopy}>
-            {t('label.copy')}
-          </Button>
+          <CopyButton
+            isDisabled={!canReveal || !token?.jwtToken}
+            label={t('label.copy')}
+            testId="copy-token"
+            value={token?.jwtToken ?? ''}
+          />
         </Box>
       </Box>
 
@@ -417,23 +416,6 @@ const AccessTokenRow: React.FC = () => {
     }
   };
 
-  const handleCopy = async () => {
-    if (!token?.jwtToken) {
-      return;
-    }
-    if (!navigator.clipboard?.writeText) {
-      showErrorToast(t('message.clipboard-not-available') as string);
-
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(token.jwtToken);
-      showSuccessToast(t('label.copied'));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   if (isFetching) {
     return <AccessTokenLoadingSkeleton />;
   }
@@ -466,7 +448,6 @@ const AccessTokenRow: React.FC = () => {
     <AccessTokenDetails
       canReveal={canReveal}
       expiryDate={expiryDate}
-      handleCopy={handleCopy}
       handleRegenerate={handleRegenerate}
       handleRevoke={handleRevoke}
       isLimitReached={isLimitReached}

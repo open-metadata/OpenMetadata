@@ -60,6 +60,7 @@ class SystemTemplateParityTest {
           "system-notification-logical-test-case-added",
           "system-notification-post-created",
           "system-notification-task-closed",
+          "system-notification-task-entity-created",
           "system-notification-task-entity-updated",
           "system-notification-task-resolved",
           "system-notification-thread-created",

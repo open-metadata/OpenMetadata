@@ -109,6 +109,12 @@ public class MetricGroupRepository extends EntityRepository<MetricGroup> {
     fieldFetchers.put(FIELD_METRIC_COUNT, this::fetchAndSetMetricCounts);
   }
 
+  /** A metric group's FQN is its bare name, so "sales.kpis" nests under the FQN "sales". */
+  @Override
+  protected boolean nestsUnderUnrelatedFqns() {
+    return true;
+  }
+
   @Override
   public void setFullyQualifiedName(MetricGroup metricGroup) {
     metricGroup.setFullyQualifiedName(metricGroup.getName());

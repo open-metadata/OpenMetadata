@@ -14,7 +14,6 @@ package org.openmetadata.service.events.lifecycle.handlers;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -65,10 +64,9 @@ import org.openmetadata.service.tasks.IncidentWorkflowStages;
  *   <li><b>Driven by the mirrored projection, not by the trigger</b>. The mirrored view of a
  *       task is its status plus, in the {@code assigned} stage, its assignee. Every task
  *       lifecycle event runs the handler, and a record is appended only when that projection
- *       differs from the latest one already stored for the {@code stateId}. Comment adds and
- *       watcher changes therefore write nothing, while a re-assignment does — even though it
- *       leaves {@code workflowStageId} on {@code assigned}, because the workflow models it as
- *       a self-loop.
+ *       differs from the latest one already stored for the {@code stateId}. Reassignment in the
+ *       {@code assigned} stage therefore appends a record. The {@code resolved} record captures
+ *       the assignee at resolution and subsequent task edits leave that snapshot intact.
  *   <li><b>Best-effort</b>. A TCRS write failure must never roll back a task update. All
  *       work is wrapped in try/catch and errors are logged at WARN level.
  * </ul>
@@ -207,9 +205,8 @@ public final class IncidentTcrsSyncHandler {
   }
 
   /**
-   * The assignee carried by a mirrored record, or null for the statuses that don't carry one.
-   * Comparing the id rather than the whole details object avoids false mismatches on the
-   * incidental fields a stored {@link EntityReference} picks up when it is read back.
+   * Only the assigned stage tracks reassignment; resolved details are a frozen snapshot.
+   * Compare IDs because names and other hydrated reference fields can change independently.
    */
   private static UUID mirroredAssigneeId(TestCaseResolutionStatusTypes type, Object details) {
     if (type != TestCaseResolutionStatusTypes.Assigned || details == null) {
@@ -224,25 +221,25 @@ public final class IncidentTcrsSyncHandler {
   private static Object buildDetailsForStage(TestCaseResolutionStatusTypes type, Task task) {
     return switch (type) {
       case Assigned -> {
-        List<EntityReference> assignees = task.getAssignees();
-        if (!nullOrEmpty(assignees)) {
-          yield new Assigned().withAssignee(assignees.get(0));
-        }
-        yield null;
+        EntityReference assignee = firstAssignee(task);
+        yield assignee == null ? null : new Assigned().withAssignee(assignee);
       }
       case Resolved -> buildResolvedDetails(task);
       default -> null;
     };
   }
 
+  private static EntityReference firstAssignee(Task task) {
+    return nullOrEmpty(task.getAssignees()) ? null : task.getAssignees().getFirst();
+  }
+
   @SuppressWarnings("unchecked")
   private static Resolved buildResolvedDetails(Task task) {
+    Resolved resolved = new Resolved().withAssignee(firstAssignee(task));
     TaskResolution resolution = task.getResolution();
     if (resolution == null) {
-      return new Resolved();
+      return resolved;
     }
-
-    Resolved resolved = new Resolved();
 
     if (resolution.getResolvedBy() != null) {
       resolved.withResolvedBy(resolution.getResolvedBy());

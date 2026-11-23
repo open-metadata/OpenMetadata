@@ -14,8 +14,8 @@ package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -24,6 +24,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -38,6 +39,7 @@ import org.apache.jena.update.UpdateAction;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Named;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -48,11 +50,15 @@ import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 class RdfGlossaryTermRelationTest {
+  private static final String API_FORWARD = "apiForward";
+  private static final String API_INVERSE = "apiInverse";
+  private static final String DANGLING = "danglingInverse";
   private static final String BASE = "https://open-metadata.org/";
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String RELATION_TYPES = "/json/data/ontology/relationshipTypes.json";
@@ -134,6 +140,14 @@ class RdfGlossaryTermRelationTest {
     assertTrue(graph.isEmpty());
   }
 
+  @Test
+  void removesAnEdgeWhoseTypeNamesAnInverseThatDoesNotExist() {
+    repository.addGlossaryTermRelation(from, to, DANGLING);
+    assertEquals(1, graph.size());
+    replay(new RdfLiveWrite.GlossaryRelationChange(from, to, DANGLING, true));
+    assertTrue(graph.isEmpty());
+  }
+
   private RdfLiveWrite removal(final RelationshipType type, final boolean removeFromTarget) {
     return removeFromTarget
         ? new RdfLiveWrite.GlossaryRelationChange(to, from, inverseName(type), true)
@@ -149,20 +163,31 @@ class RdfGlossaryTermRelationTest {
   }
 
   private static String inverseName(final RelationshipType type) {
-    return type.getInverse() == null ? type.getName() : type.getInverse().getName();
+    final EntityReference inverse = type.getInverse();
+    return inverse == null
+        ? type.getName()
+        : Objects.requireNonNullElse(inverse.getName(), inverse.getFullyQualifiedName());
   }
 
   private static Supplier<RelationshipTypeResolver> resolver() throws IOException {
-    final List<RelationshipType> definitions = relationshipTypes();
+    final List<RelationshipType> definitions = new ArrayList<>(relationshipTypes());
+    definitions.add(apiType(DANGLING, "urn:custom:dangling", "neverCreated"));
     final CollectionDAO.RelationshipTypeDAO types = mock(CollectionDAO.RelationshipTypeDAO.class);
     when(types.listActive()).thenReturn(definitions.stream().map(JsonUtils::pojoToJson).toList());
-    when(types.findEntityByName(anyString(), eq(Include.NON_DELETED)))
+    when(types.findEntityByName(anyString(), any(Include.class)))
         .thenAnswer(
             call ->
                 definitions.stream()
                     .filter(type -> type.getName().equals(call.getArgument(0)))
                     .findFirst()
-                    .orElseThrow());
+                    .orElseThrow(() -> new EntityNotFoundException(call.getArgument(0))));
+    when(types.findEntityById(any(UUID.class), any(Include.class)))
+        .thenAnswer(
+            call ->
+                definitions.stream()
+                    .filter(type -> call.getArgument(0).equals(type.getId()))
+                    .findFirst()
+                    .orElseThrow(() -> new EntityNotFoundException("missing")));
     final RelationshipTypeResolver resolver = new RelationshipTypeResolver(types);
     return () -> resolver;
   }
@@ -188,6 +213,8 @@ class RdfGlossaryTermRelationTest {
       types.add(customType("customForward", "urn:custom:forward", "customInverse"));
       types.add(customType("customInverse", "urn:custom:inverse", "customForward"));
       types.add(customType("noInverse", "urn:custom:without-inverse", null));
+      types.add(apiType(API_FORWARD, "urn:custom:api-forward", API_INVERSE));
+      types.add(apiType(API_INVERSE, "urn:custom:api-inverse", API_FORWARD));
       return types;
     }
   }
@@ -198,5 +225,24 @@ class RdfGlossaryTermRelationTest {
         .withName(name)
         .withRdfPredicate(URI.create(predicate))
         .withInverse(inverse == null ? null : new EntityReference().withName(inverse));
+  }
+
+  /** A pair as the REST API stored it before #38113: the inverse names its type by id and FQN. */
+  private static RelationshipType apiType(
+      final String name, final String predicate, final String inverse) {
+    return new RelationshipType()
+        .withId(apiId(name))
+        .withName(name)
+        .withFullyQualifiedName(name)
+        .withRdfPredicate(URI.create(predicate))
+        .withInverse(
+            new EntityReference()
+                .withId(apiId(inverse))
+                .withType("relationshipType")
+                .withFullyQualifiedName(inverse));
+  }
+
+  private static UUID apiId(final String name) {
+    return UUID.nameUUIDFromBytes(name.getBytes(StandardCharsets.UTF_8));
   }
 }

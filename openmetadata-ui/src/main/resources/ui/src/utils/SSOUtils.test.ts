@@ -14,6 +14,7 @@
 import { ErrorSchema } from '@rjsf/utils';
 import { ClientType } from '../generated/configuration/securityConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
+import authenticationSchema from '../jsons/configuration/authenticationConfiguration.json';
 import {
   applySamlConfiguration,
   cleanupProviderSpecificFields,
@@ -675,6 +676,76 @@ describe('SSOUtils', () => {
       expect(spConfig?.spX509Certificate).toBe('SP_CERT\nLINE2');
       expect(spConfig?.spPrivateKey).toBe('PRIVATE\nKEY');
     });
+
+    it('should preserve edited SAML SP values through cleanup and reload', () => {
+      const data = getDefaultsForProvider(AuthProvider.Saml, ClientType.Public);
+      const sp = data.authenticationConfiguration.samlConfiguration?.sp;
+
+      expect(sp).toBeDefined();
+
+      if (!sp) {
+        throw new Error('Missing SAML SP defaults');
+      }
+      sp.entityId = 'urn:collate:custom-sp';
+      const customAcs = 'https://public.example.com/callback';
+      sp.acs = customAcs;
+
+      const result = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+      if (!result) {
+        throw new Error('Missing cleaned configuration');
+      }
+      const authConfig = result.authenticationConfiguration;
+
+      expect(authConfig.samlConfiguration?.sp?.entityId).toBe(
+        'urn:collate:custom-sp'
+      );
+      expect(authConfig.samlConfiguration?.sp?.acs).toBe(customAcs);
+      expect(authConfig.samlConfiguration?.sp?.callback).toBe(customAcs);
+      expect(authConfig.callbackUrl).toBe(customAcs);
+
+      populateSamlSpCallback(authConfig);
+
+      expect(authConfig.samlConfiguration?.sp?.acs).toBe(customAcs);
+      expect(authConfig.samlConfiguration?.sp?.entityId).toBe(sp.entityId);
+    });
+
+    it.each([
+      [
+        'https://ui.example.com/callback',
+        '',
+        'https://ui.example.com/callback',
+      ],
+      [
+        '',
+        'https://ui.example.com/callback',
+        'https://ui.example.com/callback',
+      ],
+      ['', '', 'https://saml.example.com/callback'],
+    ])(
+      'keeps the browser callback separate from a legacy ACS (%s, %s)',
+      (rootCallback, spCallback, expectedCallback) => {
+        const data = getDefaultsForProvider(
+          AuthProvider.Saml,
+          ClientType.Public
+        );
+        const auth = data.authenticationConfiguration;
+        const sp = auth.samlConfiguration?.sp;
+
+        if (!sp) {
+          throw new Error('Missing SAML SP defaults');
+        }
+        auth.callbackUrl = rootCallback;
+        sp.callback = spCallback;
+        sp.acs = 'https://saml.example.com/api/v1/saml/acs';
+
+        const result = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+        const cleaned = result?.authenticationConfiguration;
+
+        expect(cleaned?.samlConfiguration?.sp?.acs).toBe(sp.acs);
+        expect(cleaned?.samlConfiguration?.sp?.callback).toBe(expectedCallback);
+        expect(cleaned?.callbackUrl).toBe(expectedCallback);
+      }
+    );
 
     it('should handle LDAP trustStore cleanup by format', () => {
       const data: FormData = {
@@ -3023,6 +3094,22 @@ describe('parseSamlMetadataXml', () => {
   </IDPSSODescriptor>
 </EntityDescriptor>`;
 
+  it('imports all IdP signing certificates and excludes certificates from other roles', () => {
+    const metadata = `<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://idp.example">
+      <RoleDescriptor><KeyDescriptor use="signing"><KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><X509Data><X509Certificate>WRONG_ROLE</X509Certificate></X509Data></KeyInfo></KeyDescriptor></RoleDescriptor>
+      <IDPSSODescriptor>
+        <KeyDescriptor use="signing"><KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><X509Data><X509Certificate>OLD</X509Certificate><X509Certificate>NEW</X509Certificate><X509Certificate>NEW</X509Certificate></X509Data></KeyInfo></KeyDescriptor>
+        <KeyDescriptor><KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><X509Data><X509Certificate>DUAL_USE</X509Certificate><X509Certificate>NEW</X509Certificate></X509Data></KeyInfo></KeyDescriptor>
+        <KeyDescriptor use="encryption"><KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><X509Data><X509Certificate>ENCRYPTION_ONLY</X509Certificate></X509Data></KeyInfo></KeyDescriptor>
+        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idp.example/sso"/>
+      </IDPSSODescriptor>
+    </EntityDescriptor>`;
+
+    expect(parseSamlMetadataXml(metadata).idpX509Certificate).toBe(
+      '-----BEGIN CERTIFICATE-----\nOLD\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nNEW\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nDUAL_USE\n-----END CERTIFICATE-----'
+    );
+  });
+
   it('should parse Azure AD metadata correctly', () => {
     const result = parseSamlMetadataXml(AZURE_AD_METADATA);
 
@@ -3385,4 +3472,24 @@ BBBBBBBBBBBBBBBBBBBBBBBBBBBB</X509Certificate>
       'no SingleSignOnService'
     );
   });
+});
+
+describe('principal claim mapping schema', () => {
+  const pattern = new RegExp(
+    authenticationSchema.properties.jwtPrincipalClaimsMapping.items.pattern
+  );
+
+  it.each([
+    'email:email',
+    'username:preferred_username',
+    'email:urn:oid:0.9.2342.19200300.100.1.3',
+    'email:http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+  ])('accepts supported claim mapping %s', (mapping) =>
+    expect(pattern.test(mapping)).toBe(true)
+  );
+
+  it.each(['email:', 'role:email', 'email:has space'])(
+    'rejects invalid mapping %s',
+    (mapping) => expect(pattern.test(mapping)).toBe(false)
+  );
 });
