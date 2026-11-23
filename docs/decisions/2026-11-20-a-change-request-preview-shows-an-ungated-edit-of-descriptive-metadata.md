@@ -32,7 +32,8 @@ sending it, gated or not, and the change-request diff already draws those ops.
    products, columns, certification, glossary synonyms, related terms and parent, and the metric
    fields). An ungated edit that touches any other field gets no ops, as before, and so does one
    whose preparation changes a field outside that set: the ops of an ungated preview are only ever
-   on descriptive fields. A glossary term that is not Approved is refused, as the save refuses it.
+   on descriptive fields. A glossary term that is not Approved is previewed as an add; the save
+   holds it as pending until the term is approved (#38239).
 3. A gated edit takes its ops from its staged change only; they are never planned twice.
    `requiresApproval` and `workflowDefinitionId` keep their meaning.
 
