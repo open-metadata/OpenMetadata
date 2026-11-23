@@ -32,6 +32,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -1610,6 +1611,7 @@ public class OpenSearchVectorService implements VectorIndexService {
   @Override
   @SuppressWarnings("unchecked")
   public VectorSearchResponse search(VectorSearchParameters parameters) {
+    final var scoped = scopeDefaultSearch(parameters);
     String query = parameters.query();
     int size = parameters.size();
     int from = parameters.from();
@@ -1633,9 +1635,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.build(
-                queryVector,
-                parameters.withPagination(overFetchSize, rawOffset),
-                readableAnchorIds);
+                queryVector, scoped.withPagination(overFetchSize, rawOffset), readableAnchorIds);
         String endpoint =
             SearchUtils.appendPreferenceParam(
                 "/" + aliasName + "/_search", parameters.preference());
@@ -1678,6 +1678,22 @@ public class OpenSearchVectorService implements VectorIndexService {
       LOG.error("Vector search failed: {}", e.getMessage(), e);
       throw new RuntimeException("Vector search failed", e);
     }
+  }
+
+  private static VectorSearchParameters scopeDefaultSearch(VectorSearchParameters parameters) {
+    final var filters =
+        parameters.filters() == null ? Map.<String, List<String>>of() : parameters.filters();
+    final var types = filters.get("entityType");
+    if (types != null && !types.isEmpty()) {
+      return parameters;
+    }
+    final var scoped = new HashMap<>(filters);
+    scoped.put(
+        "entityType",
+        AvailableEntityTypes.LIST.stream()
+            .filter(type -> !OntologyTermSearch.isTerm(type))
+            .toList());
+    return parameters.withFilters(scoped);
   }
 
   private static int collectSearchHits(

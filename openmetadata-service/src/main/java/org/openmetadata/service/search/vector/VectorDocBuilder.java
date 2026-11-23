@@ -39,6 +39,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
@@ -766,6 +767,9 @@ public class VectorDocBuilder {
   }
 
   static String buildBodyText(EntityInterface<?> entity, String entityType) {
+    if (OntologyTermSearch.isTerm(entityType)) {
+      return OntologyTermSearch.embeddingBody(entity, VectorDocBuilder::removeHtml);
+    }
     if (entityType != null) {
       BodyTextExtractor customExtractor = BODY_TEXT_EXTRACTORS.get(entityType);
       if (customExtractor != null) {
@@ -946,6 +950,9 @@ public class VectorDocBuilder {
   }
 
   static String buildSemanticBodyText(EntityInterface<?> entity, String entityType) {
+    if (OntologyTermSearch.isTerm(entityType)) {
+      return buildBodyText(entity, entityType);
+    }
     if (entityType != null) {
       BodyTextExtractor customExtractor = BODY_TEXT_EXTRACTORS.get(entityType);
       if (customExtractor != null) {

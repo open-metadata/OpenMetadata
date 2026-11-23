@@ -794,6 +794,8 @@ public final class SearchUtils {
       case "search_entity_search_index", Entity.SEARCH_INDEX -> Entity.SEARCH_INDEX;
       case "tag_search_index", Entity.TAG -> Entity.TAG;
       case "glossary_term_search_index", Entity.GLOSSARY_TERM -> Entity.GLOSSARY_TERM;
+      case "ontology_concept_search_index", Entity.ONTOLOGY_CONCEPT -> Entity.ONTOLOGY_CONCEPT;
+      case "ontology_property_search_index", Entity.ONTOLOGY_PROPERTY -> Entity.ONTOLOGY_PROPERTY;
       case SearchClient.RELATIONSHIP_TYPE_SEARCH_INDEX, Entity.RELATIONSHIP_TYPE -> Entity
           .RELATIONSHIP_TYPE;
       case "glossary_search_index", Entity.GLOSSARY -> Entity.GLOSSARY;

@@ -53,11 +53,13 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -515,9 +517,27 @@ public class OpenSearchBulkSink implements BulkSink {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       String docId = entity.getId().toString();
+      final SearchIndex index;
+      if (OntologyTermSearch.isTerm(entityType)) {
+        final var active = OntologyTermSearch.activeIndex(entity.getEntityReference());
+        if (active == null) {
+          final BulkOperation deletion =
+              BulkOperation.of(op -> op.delete(delete -> delete.index(indexName).id(docId)));
+          if (tracker != null) {
+            tracker.incrementPendingSink();
+            tracker.recordProcess(StatsResult.SUCCESS);
+          }
+          bulkProcessor.add(deletion, docId, entityType, tracker, BULK_OPERATION_METADATA_OVERHEAD);
+          processSuccess.incrementAndGet();
+          return;
+        }
+        index = active;
+        entity = active.term();
+      } else {
+        index = Entity.buildSearchIndex(entityType, entity);
+      }
       DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
-      Map<String, Object> searchIndexDoc =
-          new HashMap<>(Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx));
+      Map<String, Object> searchIndexDoc = new HashMap<>(index.buildSearchIndexDoc(ctx));
       Long relationshipRevision = relationshipRevisions.get(entity.getId());
       SearchRepository.applyRelationshipRevision(entity, searchIndexDoc, relationshipRevision);
       String json = JsonUtils.pojoToJson(searchIndexDoc);

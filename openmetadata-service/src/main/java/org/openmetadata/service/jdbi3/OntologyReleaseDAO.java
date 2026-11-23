@@ -95,6 +95,20 @@ public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
   List<OntologyReleaseMember> listActiveMembers(
       @Bind("memberKind") String memberKind, @BindList("memberIds") List<String> memberIds);
 
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT * FROM ontology_release_member WHERE releaseId = :releaseId AND memberKind = 'CONCEPT' "
+              + "AND JSON_UNQUOTE(JSON_EXTRACT(payload, '$.iri')) COLLATE utf8mb4_bin IN (<iris>)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT * FROM ontology_release_member WHERE releaseId = :releaseId AND memberKind = 'CONCEPT' "
+              + "AND payload::jsonb ->> 'iri' IN (<iris>)",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(MemberMapper.class)
+  List<OntologyReleaseMember> listConceptsByIri(
+      @BindUUID("releaseId") UUID releaseId, @BindList("iris") List<String> iris);
+
   /** Versions of the non-deleted working definitions that {@code ownerColumn} ties to an ontology. */
   @ConnectionAwareSqlQuery(
       value =

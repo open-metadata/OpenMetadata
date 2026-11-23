@@ -168,7 +168,7 @@ public final class OntologyConceptBindingService {
         concept,
         (lockedConcept, locked, current) ->
             replace(access, lockedConcept, locked, current, request));
-    notifyChanged(request.getAsset().getAssetType(), request.getAsset().getAssetId());
+    notifyChanged(concept, request.getAsset().getAssetType(), request.getAsset().getAssetId());
     return firstPage(access, concept);
   }
 
@@ -176,7 +176,12 @@ public final class OntologyConceptBindingService {
    * Cleanup under the lock only removes rows of assets already deleted, whose projection is gone
    * with every edge into it, so only the written asset needs projecting again.
    */
-  private void notifyChanged(final OntologyBindingAssetType type, final UUID assetId) {
+  private void notifyChanged(
+      final OntologyConcept concept, final OntologyBindingAssetType type, final UUID assetId) {
+    final var search = Entity.getSearchRepository();
+    if (search != null) {
+      search.refreshOntologyTerm(concept.getEntityReference());
+    }
     bindingsChanged.accept(new EntityReference().withType(type.value()).withId(assetId));
   }
 
@@ -202,7 +207,7 @@ public final class OntologyConceptBindingService {
           locked.remove(lockedConcept.getId(), assetId);
           return next;
         });
-    notifyChanged(type, assetId);
+    notifyChanged(concept, type, assetId);
     return firstPage(access, concept);
   }
 

@@ -23,7 +23,9 @@ import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.MeteredElasticsearchTransport;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -158,7 +160,7 @@ public class ElasticSearchVectorService implements VectorIndexService {
       // can push from+size past index.max_result_window and 400 the request. Clamp unconditionally.
       overFetchSize = Math.min(overFetchSize, k);
 
-      String indexName = getIndexAlias();
+      String indexName = vectorSearchTarget(parameters);
       Set<String> readableAnchorIds = readableAnchors.apply(parameters);
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
@@ -280,6 +282,18 @@ public class ElasticSearchVectorService implements VectorIndexService {
       LOG.error("Generic request failed: {} {}", method, endpoint, e);
       throw new RuntimeException("Elasticsearch generic request failed", e);
     }
+  }
+
+  private String vectorSearchTarget(VectorSearchParameters parameters) {
+    final var types = parameters.filters() == null ? null : parameters.filters().get("entityType");
+    if (types == null || types.stream().noneMatch(OntologyTermSearch::isTerm)) {
+      return getIndexAlias();
+    }
+    final var ontologyAlias =
+        Entity.getSearchRepository().getIndexOrAliasName(OntologyTermSearch.ALIAS);
+    return types.stream().allMatch(OntologyTermSearch::isTerm)
+        ? ontologyAlias
+        : getIndexAlias() + "," + ontologyAlias;
   }
 
   /**
