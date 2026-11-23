@@ -79,6 +79,14 @@ updates:
         versions: [">=4.10.0"]
       - dependency-name: "@types/antlr4"
         versions: [">=4.10.0"]
+      # openmetadata-ui-core-components builds with react-aria external, so the UI's copy
+      # is what core runs against, while core's own lockfile and tests stay on 1.16.
+      # 1.22 breaks core (Dialog's TextContext rejects HintText's errorMessage slot, and
+      # Switch was restructured), so react-aria minors move with core, not alone here.
+      - dependency-name: "react-aria-components"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "react-aria"
+        update-types: ["version-update:semver-minor"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
