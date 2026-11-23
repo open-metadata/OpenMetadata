@@ -175,26 +175,31 @@ public class VectorSearchQueryBuilder {
       VectorSearchParameters parameters,
       int numCandidatesMultiplier,
       Set<String> readableAnchorIds) {
-    int k = Math.min(parameters.k(), ES_MAX_KNN_NUM_CANDIDATES);
-    long candidates = (long) k * numCandidatesMultiplier;
-    int numCandidates = (int) Math.max(100, Math.min(candidates, (long) ES_MAX_KNN_NUM_CANDIDATES));
-    StringBuilder sb =
-        new StringBuilder(512)
-            .append("{\"knn\":{\"field\":\"embedding\",\"query_vector\":")
-            .append(Arrays.toString(vector))
-            .append(",\"k\":")
-            .append(k)
-            .append(",\"num_candidates\":")
-            .append(numCandidates);
-    if (parameters.threshold() > 0.0) {
-      sb.append(",\"similarity\":").append(2 * parameters.threshold() - 1);
-    }
+    StringBuilder sb = new StringBuilder(512);
+    appendNativeKnnHead(sb, vector, parameters, numCandidatesMultiplier);
     sb.append(",\"filter\":{\"bool\":{\"must\":[");
     appendFilterMustClauses(sb, parameters.filters(), parameters.queryFilter());
     sb.append("]");
     appendMemoryVisibilityFilter(sb, parameters, readableAnchorIds);
     sb.append("}}}}");
     return readObject(sb.toString()).toString();
+  }
+
+  /** The field, vector, {@code k}, candidates and, above a 0 threshold, the raw-cosine similarity. */
+  private static void appendNativeKnnHead(
+      StringBuilder sb, float[] vector, VectorSearchParameters parameters, int multiplier) {
+    int k = Math.min(parameters.k(), ES_MAX_KNN_NUM_CANDIDATES);
+    long candidates = (long) k * multiplier;
+    int numCandidates = (int) Math.max(100, Math.min(candidates, (long) ES_MAX_KNN_NUM_CANDIDATES));
+    sb.append("{\"knn\":{\"field\":\"embedding\",\"query_vector\":")
+        .append(Arrays.toString(vector))
+        .append(",\"k\":")
+        .append(k)
+        .append(",\"num_candidates\":")
+        .append(numCandidates);
+    if (parameters.threshold() > 0.0) {
+      sb.append(",\"similarity\":").append(2 * parameters.threshold() - 1);
+    }
   }
 
   private static ObjectNode readObject(String json) {

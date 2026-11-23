@@ -41,6 +41,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.lineage.MissingLineageEntityException;
@@ -642,50 +643,46 @@ public class EsUtils {
 
   static void addDenseVectorSettings(JsonNode rootNode, boolean creatingIndex) {
     JsonNode properties = rootNode.path("mappings").path("properties");
-    if (properties.isMissingNode() || !properties.has("fingerprint")) {
-      return;
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    boolean vectorIndex = !properties.isMissingNode() && properties.has("fingerprint");
+    boolean embeddingsOn =
+        searchRepository != null
+            && searchRepository.isVectorEmbeddingEnabled()
+            && searchRepository.getEmbeddingClient() != null;
+    if (vectorIndex && embeddingsOn) {
+      addEmbeddingField(rootNode, searchRepository, creatingIndex);
     }
+  }
 
-    org.openmetadata.service.search.SearchRepository searchRepository =
-        org.openmetadata.service.Entity.getSearchRepository();
-    if (searchRepository == null
-        || !searchRepository.isVectorEmbeddingEnabled()
-        || searchRepository.getEmbeddingClient() == null) {
-      return;
-    }
-
+  private static void addEmbeddingField(
+      JsonNode rootNode, SearchRepository searchRepository, boolean creatingIndex) {
+    JsonNode properties = rootNode.path("mappings").path("properties");
     int dimension = searchRepository.getEmbeddingClient().getDimension();
-
-    // dense_vector.dims is immutable on an existing ES index. If the client now reports
-    // a different dimension than what the index was built with, silently rewriting dims
-    // would either be rejected by ES (putMapping) or produce a mapping that disagrees
-    // with stored vectors. Hard-fail so the operator runs an explicit reindex.
-    // Check both _meta.embedding_dimension and properties.embedding.dims — either may
-    // be present on an existing index/template.
+    // dense_vector.dims is immutable on an existing ES index. If the client now reports a
+    // different dimension than the index was built with, hard-fail so the operator runs an
+    // explicit reindex. Either _meta.embedding_dimension or properties.embedding.dims may be
+    // present on an existing index or template.
     JsonNode existingMeta = rootNode.path("mappings").path("_meta");
-    if (!existingMeta.isMissingNode() && existingMeta.has("embedding_dimension")) {
+    if (existingMeta.has("embedding_dimension")) {
       assertDimensionMatches(existingMeta.get("embedding_dimension").asInt(), dimension);
     }
     JsonNode existingEmbedding = properties.path("embedding");
-    if (!existingEmbedding.isMissingNode() && existingEmbedding.has("dims")) {
+    if (existingEmbedding.has("dims")) {
       assertDimensionMatches(existingEmbedding.get("dims").asInt(), dimension);
     }
-
     ((ObjectNode) properties)
         .set("embedding", embeddingField(existingEmbedding, dimension, creatingIndex));
+    upsertEmbeddingMeta(rootNode.path("mappings"), searchRepository, dimension);
+  }
 
-    JsonNode mappings = rootNode.path("mappings");
-    if (!mappings.isMissingNode() && mappings.isObject()) {
-      // Preserve any existing _meta fields; only upsert embedding_model / embedding_dimension.
-      com.fasterxml.jackson.databind.node.ObjectNode mappingsNode =
-          (com.fasterxml.jackson.databind.node.ObjectNode) mappings;
-      JsonNode existingMetaNode = mappingsNode.get("_meta");
-      com.fasterxml.jackson.databind.node.ObjectNode metaNode;
-      if (existingMetaNode instanceof com.fasterxml.jackson.databind.node.ObjectNode existing) {
-        metaNode = existing;
-      } else {
-        metaNode = mappingsNode.putObject("_meta");
-      }
+  /** Preserves any existing {@code _meta} fields; only upserts the embedding model and dimension. */
+  private static void upsertEmbeddingMeta(
+      JsonNode mappings, SearchRepository searchRepository, int dimension) {
+    if (mappings instanceof ObjectNode mappingsNode) {
+      ObjectNode metaNode =
+          mappingsNode.get("_meta") instanceof ObjectNode existing
+              ? existing
+              : mappingsNode.putObject("_meta");
       metaNode
           .put("embedding_model", searchRepository.getEmbeddingClient().getModelId())
           .put("embedding_dimension", dimension);

@@ -766,7 +766,7 @@ class EsUtilsTest {
   void aNewEmbeddingField_getsThePinnedHnswOptions() {
     withEmbeddingClient(
         () -> {
-          var options =
+          JsonNode options =
               embeddingOf(EsUtils.enrichIndexMappingForElasticsearch(VECTOR_MAPPING))
                   .path("index_options");
           assertEquals("hnsw", options.path("type").asText());
@@ -795,7 +795,7 @@ class EsUtilsTest {
   void aMappingUpdate_sendsNoIndexOptions() {
     withEmbeddingClient(
         () -> {
-          var embedding =
+          JsonNode embedding =
               embeddingOf(EsUtils.enrichIndexMappingForElasticsearchUpdate(VECTOR_MAPPING));
           assertEquals("dense_vector", embedding.path("type").asText());
           assertFalse(embedding.has("index_options"));
