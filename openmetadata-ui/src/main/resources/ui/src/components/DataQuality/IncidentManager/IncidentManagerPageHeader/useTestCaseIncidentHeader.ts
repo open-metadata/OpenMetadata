@@ -124,7 +124,7 @@ export const useTestCaseIncidentHeader = ({
   const {
     testCase: testCaseData,
     testCasePermission,
-    setTestCase,
+    mergeTestCase,
   } = useTestCaseStore();
 
   const isDeleted = Boolean(testCaseData?.deleted);
@@ -376,7 +376,7 @@ export const useTestCaseIncidentHeader = ({
     if (patch.length && testCaseData.id) {
       try {
         const updated = await updateTestCaseById(testCaseData.id, patch);
-        setTestCase(updated);
+        mergeTestCase(updated);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }

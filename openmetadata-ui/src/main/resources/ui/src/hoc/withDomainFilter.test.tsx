@@ -443,6 +443,75 @@ describe('withDomainFilter', () => {
       ]);
     });
 
+    it('should scope a POST search body, keeping its own filter', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/metric/m1/assets'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const ownFilter = { ids: { values: ['a', 'b'] } };
+      const config = {
+        ...createMockConfig('post', '/search/query'),
+        data: {
+          index: SearchIndex.ALL,
+          queryFilter: JSON.stringify({ query: ownFilter }),
+        },
+      } as InternalAxiosRequestConfig;
+      const result = withDomainFilter(config);
+      const filter = JSON.parse(result.data.queryFilter);
+
+      expect(result.data.index).toBe(SearchIndex.ALL);
+      expect(filter.query.bool.must).toEqual([
+        ownFilter,
+        {
+          bool: {
+            should: [
+              { term: { 'domains.fullyQualifiedName': 'engineering' } },
+              { prefix: { 'domains.fullyQualifiedName': 'engineering.' } },
+            ],
+          },
+        },
+      ]);
+    });
+
+    it('should scope a POST search body replayed as a string after a token refresh', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/metric/m1/assets'
+      );
+      mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+      const ownFilter = { ids: { values: ['a'] } };
+      const config = {
+        ...createMockConfig('post', '/search/query'),
+        data: JSON.stringify({
+          index: SearchIndex.ALL,
+          from: 20,
+          queryFilter: JSON.stringify({ query: ownFilter }),
+        }),
+      } as InternalAxiosRequestConfig;
+      const result = withDomainFilter(config);
+
+      expect(result.data).toMatchObject({ index: SearchIndex.ALL, from: 20 });
+      expect(JSON.parse(result.data.queryFilter).query.bool.must[0]).toEqual(
+        ownFilter
+      );
+    });
+
+    it('should leave a POST search body unscoped when no domain is picked', () => {
+      (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
+        '/metric/m1/assets'
+      );
+      mockGetState.mockReturnValue({ activeDomain: DEFAULT_DOMAIN_VALUE });
+
+      const data = { index: SearchIndex.ALL, queryFilter: '{"query":{}}' };
+      const config = {
+        ...createMockConfig('post', '/search/query'),
+        data,
+      } as InternalAxiosRequestConfig;
+
+      expect(withDomainFilter(config).data).toBe(data);
+    });
+
     it('should preserve existing query_filter and add should filter', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValueOnce(
         '/api/search'

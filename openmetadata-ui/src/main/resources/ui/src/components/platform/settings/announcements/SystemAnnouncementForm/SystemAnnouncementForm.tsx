@@ -332,7 +332,7 @@ const SystemAnnouncementForm = ({
         gap={3}
         justify="end">
         <Button
-          color="secondary"
+          color="tertiary"
           data-testid="announcement-cancel"
           onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}

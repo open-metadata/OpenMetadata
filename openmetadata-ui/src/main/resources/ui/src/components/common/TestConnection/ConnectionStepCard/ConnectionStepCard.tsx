@@ -16,7 +16,6 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
-  ButtonUtility,
   Divider,
   Tooltip,
   Typography,
@@ -25,7 +24,6 @@ import {
   AlertCircle,
   CheckCircle02,
   ChevronRight,
-  Copy01,
   InfoCircle,
   XCircle,
 } from '@openmetadata/ui-core-components/icons';
@@ -34,8 +32,8 @@ import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { TestConnectionStepResult } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
-import { useClipboard } from '../../../../hooks/useClipBoard';
 import { requiredField } from '../../../../utils/EntityDisplayPureUtils';
+import CopyButton from '../../CopyButton/CopyButton';
 import './connection-step-card.less';
 
 interface ConnectionStepCardProp {
@@ -159,8 +157,6 @@ const ConnectionStepCard = ({
     testConnectionStepResult?.errorLog ??
     t('label.no-entity', { entity: t('label.log-plural') });
 
-  const { onCopyToClipBoard } = useClipboard(logs ?? '');
-
   return (
     <div
       className={classNames('connection-step-card', {
@@ -221,12 +217,10 @@ const ConnectionStepCard = ({
                     />
                     {t('label.show-log-plural')}
                   </AccordionHeader>
-                  <ButtonUtility
-                    data-testid="query-entity-copy-button"
-                    icon={Copy01}
-                    size="lg"
+                  <CopyButton
+                    testId="query-entity-copy-button"
                     tooltip={t('message.copy-to-clipboard')}
-                    onClick={() => onCopyToClipBoard()}
+                    value={logs ?? ''}
                   />
                 </Box>
                 <AccordionPanel className="tw:border-t-0 tw:pt-1 tw:pr-4 tw:pb-0 tw:pl-6">

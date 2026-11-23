@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.TreeSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -35,11 +34,12 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.EntityFqnHolders;
+import org.openmetadata.service.migration.utils.EntityFqnHolders.Holder;
 import org.openmetadata.service.migration.utils.IdBatches;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -59,7 +59,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * file can, the rows under it may be that entity's, and nothing proves which are the file's: a
  * version of the file saved after the edit lists every tag under the stored FQN, and one row can be
  * the tag of both. The file's FQN is still repaired, its rows are left where they are, and the
- * file, both FQNs and the other entities are logged for repair by hand.
+ * file, both FQNs and the other entities are logged for repair by hand. A table a later migration
+ * creates, as one of a server built on this one, holds no entity yet, so it does not stop the move.
  *
  * <p>A file's stored JSON carries its extracted text, up to 200,000 characters, so the scan reads
  * only each file's name, FQN and nameHash, and a rewrite loads one file at a time.
@@ -110,13 +111,18 @@ public final class ContextFileFqnRepair {
               found.addAll(misnamed(handle, connectionType, dao, ids));
               return found;
             });
+    if (pending.isEmpty()) {
+      return 0;
+    }
+    final EntityFqnHolders holders =
+        EntityFqnHolders.in(handle, EntityFqnHolders.registeredTables());
     int repaired = 0;
     int repairedInPass;
     do {
       List<Misnamed> held = new ArrayList<>();
       repairedInPass = 0;
       for (Misnamed file : pending) {
-        Outcome outcome = repair(handle, file);
+        Outcome outcome = repair(handle, holders, file);
         if (outcome == Outcome.REPAIRED) {
           repairedInPass++;
         } else if (outcome == Outcome.HELD_BY_ANOTHER_FILE) {
@@ -217,12 +223,14 @@ public final class ContextFileFqnRepair {
                 Folder::getId, Folder::getFullyQualifiedName, (first, second) -> first));
   }
 
-  private static Outcome repair(final Handle handle, final Misnamed misnamed) {
+  private static Outcome repair(
+      final Handle handle, final EntityFqnHolders holders, final Misnamed misnamed) {
     try {
       if (otherHolder(handle, misnamed).isPresent()) {
         return Outcome.HELD_BY_ANOTHER_FILE;
       }
-      List<String> sharing = movesTags(misnamed) ? entitiesSharing(handle, misnamed) : List.of();
+      final List<Holder> sharing =
+          movesTags(misnamed) ? entitiesSharing(holders, misnamed) : List.of();
       Optional<ContextFile> repaired =
           handle.inTransaction(
               transaction ->
@@ -235,6 +243,9 @@ public final class ContextFileFqnRepair {
       }
       EntityRepository.invalidateCacheForEntity(CONTEXT_FILE, misnamed.id(), misnamed.storedFqn());
       EntityRepository.invalidateCacheForEntity(CONTEXT_FILE, misnamed.id(), misnamed.derivedFqn());
+      // A lookup of the derived FQN before the repair left a not-found marker that the entity
+      // cache helper above does not clear.
+      CacheBundle.invalidateEntity(CONTEXT_FILE, misnamed.id(), misnamed.derivedFqn());
       reindex(repaired.get());
       if (!sharing.isEmpty()) {
         LOG.warn(
@@ -302,41 +313,14 @@ public final class ContextFileFqnRepair {
   }
 
   /**
-   * Every other entity, live or soft-deleted, whose FQN is the file's stored FQN, as type and id.
-   * Every registered entity table is looked up by its name hash, so no type is left out. A type
-   * that cannot be looked up is listed too, so its rows are never taken from it. The table and
-   * column names come from the registered DAOs, never from input, since SQL cannot bind them.
+   * Every other entity, live or soft-deleted, whose FQN is the file's stored FQN. A type whose table
+   * exists but cannot be searched is listed too, so its rows are never taken from it.
    */
-  private static List<String> entitiesSharing(final Handle handle, final Misnamed misnamed) {
-    String storedHash = FullyQualifiedName.buildHash(misnamed.storedFqn());
-    List<String> sharing = new ArrayList<>();
-    for (String entityType : new TreeSet<>(Entity.getEntityList())) {
-      EntityDAO<?> entityDao;
-      try {
-        entityDao = Entity.getEntityRepository(entityType).getDao();
-      } catch (EntityNotFoundException e) {
-        // A time series type, whose records have no FQN of their own.
-        continue;
-      }
-      try {
-        handle
-            .createQuery(
-                "SELECT id FROM "
-                    + entityDao.getTableName()
-                    + " WHERE "
-                    + entityDao.getNameHashColumn()
-                    + " = :nameHash")
-            .bind("nameHash", storedHash)
-            .mapTo(String.class)
-            .list()
-            .stream()
-            .filter(id -> !CONTEXT_FILE.equals(entityType) || !id.equals(misnamed.id().toString()))
-            .forEach(id -> sharing.add(entityType + " " + id));
-      } catch (Exception e) {
-        sharing.add(entityType + " (not looked up: " + e.getMessage() + ")");
-      }
-    }
-    return sharing;
+  private static List<Holder> entitiesSharing(
+      final EntityFqnHolders holders, final Misnamed misnamed) {
+    return holders.holding(misnamed.storedFqn()).stream()
+        .filter(holder -> !holder.is(CONTEXT_FILE, misnamed.id().toString()))
+        .toList();
   }
 
   /** A tag under both FQNs keeps its row under the derived one, so the move breaks no key. */

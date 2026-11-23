@@ -243,7 +243,8 @@ const ProfilePage: React.FC = () => {
   ];
   // Panels hand plain navigation here; the guard is applied once, for all.
   const headerBreadcrumbAction = guardBreadcrumbAction(
-    headerOverride?.onBreadcrumbAction
+    headerOverride?.onBreadcrumbAction,
+    headerOverride?.inEditorBreadcrumbIds
   );
 
   // Extracted so the nested loading/not-found branching lives in its own function

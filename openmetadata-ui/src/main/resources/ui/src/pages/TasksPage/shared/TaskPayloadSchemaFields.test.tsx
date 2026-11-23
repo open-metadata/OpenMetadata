@@ -24,7 +24,8 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { act, ReactNode } from 'react';
 import {
   LabelType,
@@ -122,6 +123,44 @@ const CONFIDENTIAL_TAG: TagLabel = {
 };
 
 describe('TaskPayloadSchemaFields', () => {
+  it('edits a rich-text resolution comment without dropping its content', async () => {
+    const onChange = jest.fn();
+    const createRange = document.createRange;
+    const rangeSpy = jest
+      .spyOn(document, 'createRange')
+      .mockImplementation(() => {
+        const range = createRange();
+        range.getBoundingClientRect = () => new DOMRect();
+
+        return range;
+      });
+    document.elementFromPoint = jest.fn(() => null);
+    document.elementsFromPoint = jest.fn(() => []);
+    try {
+      render(
+        <TaskPayloadSchemaFields
+          payload={{ comment: '' }}
+          schema={{
+            type: 'object',
+            properties: { comment: { type: 'string', title: 'Comment' } },
+          }}
+          uiSchema={{ comment: { 'ui:widget': 'richtext' } }}
+          onChange={onChange}
+        />
+      );
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .type(screen.getByRole('textbox', { name: 'Comment' }), 'Resolved');
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith({
+          comment: '<p>Resolved</p>',
+        })
+      );
+    } finally {
+      rangeSpy.mockRestore();
+    }
+  });
+
   it('associates required schema fields with their accessible labels', () => {
     render(
       <TaskPayloadSchemaFields
@@ -339,6 +378,57 @@ describe('TaskPayloadSchemaFields', () => {
     expect(screen.getByText('Reviewed and approved')).toBeInTheDocument();
     expect(screen.getByText(PERSONAL_TAG.tagFQN)).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  describe('tagSelector on a string field (TagSuggestion seed)', () => {
+    const TAG_SUGGESTION_SCHEMA: JsonSchemaObject = {
+      type: 'object',
+      properties: {
+        suggestedValue: { title: 'Suggested Tags (JSON)', type: 'string' },
+      },
+    };
+    const TAG_SUGGESTION_UI_SCHEMA: JsonSchemaObject = {
+      suggestedValue: { 'ui:widget': 'tagSelector' },
+    };
+
+    it('reads the JSON string as tags', () => {
+      render(
+        <TaskPayloadSchemaFields
+          mode="read"
+          payload={{ suggestedValue: JSON.stringify([PERSONAL_TAG]) }}
+          schema={TAG_SUGGESTION_SCHEMA}
+          uiSchema={TAG_SUGGESTION_UI_SCHEMA}
+        />
+      );
+
+      expect(screen.getByText(PERSONAL_TAG.tagFQN)).toBeInTheDocument();
+    });
+
+    it('writes edited tags back as a JSON string', () => {
+      const onChange = jest.fn();
+
+      render(
+        <TaskPayloadSchemaFields
+          payload={{ suggestedValue: JSON.stringify([PERSONAL_TAG]) }}
+          schema={TAG_SUGGESTION_SCHEMA}
+          uiSchema={TAG_SUGGESTION_UI_SCHEMA}
+          onChange={onChange}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('tag-selector'));
+
+      expect(onChange).toHaveBeenCalledWith({
+        suggestedValue: JSON.stringify([
+          {
+            labelType: LabelType.Manual,
+            source: TagSource.Classification,
+            state: State.Confirmed,
+            tagFQN: 'Tier.Tier1',
+          },
+        ]),
+      });
+    });
   });
 
   describe('ClampedText in read mode', () => {

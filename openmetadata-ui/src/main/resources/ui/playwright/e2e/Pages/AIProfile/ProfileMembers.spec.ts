@@ -550,8 +550,10 @@ test.describe('AI Profile Members - Users pagination', () => {
     await expect(usersList.getByText(/^Page 1 of/)).toBeVisible();
     const sizePicker = usersList.getByTestId('rows-per-page-dropdown');
     // Paging before the page-size reload lands would step from the old
-    // size's cursors; a size already at 15 starts no reload.
-    if ((await sizePicker.textContent())?.trim() !== '15') {
+    // size's cursors; a size already at 15 starts no reload. Read the
+    // trigger, not the Select root, whose text also carries hidden content.
+    const currentSize = await sizePicker.getByRole('button').textContent();
+    if (currentSize?.trim() !== '15') {
       const reloaded = page.waitForResponse((response) => {
         const url = new URL(response.url());
 

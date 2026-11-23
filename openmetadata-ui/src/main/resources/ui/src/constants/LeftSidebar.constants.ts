@@ -30,7 +30,7 @@ import {
   Grid01,
   Home02,
   IncidentManager02,
-  Lightbulb01,
+  Insights,
   LogOut01,
   Marketplace,
   Memories,
@@ -142,7 +142,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
       PLACEHOLDER_ROUTE_TAB,
       DataInsightTabs.DATA_ASSETS
     ),
-    icon: Lightbulb01,
+    icon: Insights,
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },
   {
