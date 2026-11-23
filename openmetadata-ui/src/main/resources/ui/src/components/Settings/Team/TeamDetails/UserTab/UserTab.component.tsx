@@ -259,10 +259,19 @@ export const UserTab = ({
   };
 
   useEffect(() => {
-    const { cursorType, cursorValue, currentPage } = pagingCursor ?? {};
+    const {
+      cursorType,
+      cursorValue,
+      currentPage: cursorPage,
+    } = pagingCursor ?? {};
+
+    // A search reset updates local paging before the router transition commits.
+    if (Number(cursorPage ?? currentPage) !== currentPage) {
+      return;
+    }
 
     if (searchText) {
-      searchUsers(searchText, Number(currentPage));
+      searchUsers(searchText, currentPage);
     } else if (cursorType && cursorValue) {
       getCurrentTeamUsers(currentTeam.name, {
         [cursorType]: cursorValue,
@@ -270,7 +279,7 @@ export const UserTab = ({
     } else {
       getCurrentTeamUsers(currentTeam.name);
     }
-  }, [currentTeam, pageSize, pagingCursor, searchText]);
+  }, [currentTeam, pageSize, pagingCursor, searchText, currentPage]);
 
   const columns: ColumnsType<User> = useMemo(() => {
     const tabColumns: ColumnsType<User> = [

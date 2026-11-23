@@ -56,9 +56,15 @@ jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () => {
   return jest
     .fn()
     .mockImplementation(({ onSearch }: { onSearch?: (t: string) => void }) => (
-      <button data-testid="user-searchbar" onClick={() => onSearch?.('ali')}>
-        Searchbar
-      </button>
+      <>
+        <button data-testid="user-searchbar" onClick={() => onSearch?.('ali')}>
+          Searchbar
+        </button>
+        <input
+          aria-label="Search users"
+          onChange={(event) => onSearch?.(event.target.value)}
+        />
+      </>
     ));
 });
 jest.mock('../../../../../rest/searchAPI', () => ({
@@ -280,6 +286,10 @@ describe('UserTab', () => {
   describe('Search paging', () => {
     afterEach(() => {
       globalThis.history.replaceState({}, '', '/');
+      (getUsers as jest.Mock).mockResolvedValue({
+        data: [{ id: 'test', name: 'testing' }],
+        paging: { total: 10 },
+      });
       jest
         .requireMock('../../../../../rest/searchAPI')
         .searchQuery.mockResolvedValue({
@@ -325,16 +335,111 @@ describe('UserTab', () => {
       expect(getUsers).not.toHaveBeenCalled();
     });
 
-    it('keeps the newest search results when an older page resolves last', async () => {
+    it('starts a search on page 1 without requesting the previous page', async () => {
       globalThis.history.replaceState(
         {},
         '',
         '/?currentPage=2&cursorType=after&cursorValue=team-cursor'
       );
       const { searchQuery } = jest.requireMock('../../../../../rest/searchAPI');
+      searchQuery.mockResolvedValue({
+        hits: {
+          hits: [{ _source: { id: 'u1', name: 'fresh-user' } }],
+          total: { value: 50 },
+        },
+      });
+
+      render(
+        <BrowserRouter>
+          <UserTab {...props} />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByText('testing')).toBeInTheDocument();
+
+      (getUsers as jest.Mock).mockClear();
+      searchQuery.mockClear();
+
+      fireEvent.click(screen.getByTestId('user-searchbar'));
+
+      expect(await screen.findByText('fresh-user')).toBeInTheDocument();
+      expect(
+        searchQuery.mock.calls.map(
+          ([request]: [{ pageNumber: number }]) => request.pageNumber
+        )
+      ).toEqual([1]);
+      expect(getUsers).not.toHaveBeenCalled();
+
+      const params = new URLSearchParams(globalThis.location.search);
+
+      expect(params.get('currentPage') ?? '1').toBe('1');
+      expect(params.has('cursorValue')).toBe(false);
+    });
+
+    it('clears a search on a later page with one request for the first team page', async () => {
+      const { searchQuery } = jest.requireMock('../../../../../rest/searchAPI');
+      searchQuery.mockResolvedValue({
+        hits: {
+          hits: [{ _source: { id: 'u1', name: 'search-user' } }],
+          total: { value: 50 },
+        },
+      });
+
+      render(
+        <BrowserRouter>
+          <UserTab {...props} />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByText('testing')).toBeInTheDocument();
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'Search users' }), {
+        target: { value: 'ali' },
+      });
+
+      expect(await screen.findByText('search-user')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('next-page'));
+      await waitFor(() =>
+        expect(
+          new URLSearchParams(globalThis.location.search).get('currentPage')
+        ).toBe('2')
+      );
+      await waitFor(() =>
+        expect(searchQuery).toHaveBeenLastCalledWith(
+          expect.objectContaining({ pageNumber: 2 })
+        )
+      );
+
+      (getUsers as jest.Mock).mockClear().mockResolvedValue({
+        data: [{ id: 'u2', name: 'restored-user' }],
+        paging: { total: 10 },
+      });
+      searchQuery.mockClear();
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'Search users' }), {
+        target: { value: '' },
+      });
+
+      expect(await screen.findByText('restored-user')).toBeInTheDocument();
+      expect(getUsers).toHaveBeenCalledTimes(1);
+      expect(getUsers).toHaveBeenCalledWith({
+        fields: 'roles',
+        limit: 15,
+        team: props.currentTeam.name,
+      });
+      expect(searchQuery).not.toHaveBeenCalled();
+      expect(
+        new URLSearchParams(globalThis.location.search).get('currentPage') ??
+          '1'
+      ).toBe('1');
+    });
+
+    it('keeps the newest search results when an older search resolves last', async () => {
+      const { searchQuery } = jest.requireMock('../../../../../rest/searchAPI');
       let resolveStalePage: (value: unknown) => void = jest.fn();
-      searchQuery.mockImplementation(({ pageNumber }: { pageNumber: number }) =>
-        pageNumber === 1
+      searchQuery.mockImplementation(({ query }: { query: string }) =>
+        query === 'fresh'
           ? Promise.resolve({
               hits: {
                 hits: [{ _source: { id: 'u1', name: 'fresh-user' } }],
@@ -353,6 +458,14 @@ describe('UserTab', () => {
       );
 
       fireEvent.click(await screen.findByTestId('user-searchbar'));
+      await waitFor(() =>
+        expect(searchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({ query: 'ali', pageNumber: 1 })
+        )
+      );
+      fireEvent.change(screen.getByRole('textbox', { name: 'Search users' }), {
+        target: { value: 'fresh' },
+      });
 
       expect(await screen.findByText('fresh-user')).toBeInTheDocument();
 
