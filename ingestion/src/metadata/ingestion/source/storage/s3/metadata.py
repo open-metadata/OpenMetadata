@@ -17,7 +17,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from datetime import datetime, timedelta
 from enum import Enum
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from pydantic import ValidationError
 
@@ -89,6 +89,11 @@ WILD_CARD = "*"
 class S3Metric(Enum):
     NUMBER_OF_OBJECTS = "NumberOfObjects"
     BUCKET_SIZE_BYTES = "BucketSizeBytes"
+
+
+def _is_aws_endpoint(endpoint_url: str) -> bool:
+    hostname = urlparse(endpoint_url).hostname or ""
+    return hostname.endswith(".amazonaws.com")
 
 
 class S3Source(StorageServiceSource):
@@ -814,18 +819,16 @@ class S3Source(StorageServiceSource):
         return self.service_connection.awsConfig.awsRegion
 
     def _get_bucket_source_url(self, bucket_name: str) -> str | None:
-        return self._get_console_url(bucket_name=bucket_name, prefix=None)
+        return self._get_object_source_url(bucket_name=bucket_name)
 
-    def _get_object_source_url(self, bucket_name: str, prefix: str) -> str | None:
-        return self._get_console_url(bucket_name=bucket_name, prefix=prefix)
-
-    def _get_console_url(self, bucket_name: str, prefix: str | None) -> str | None:
+    def _get_object_source_url(self, bucket_name: str, prefix: str | None = None) -> str | None:
         """
         Link to the bucket (or prefix) in the storage provider's web console.
 
         S3-compatible services get `{consoleEndpointURL}/{bucket}/{prefix}/`. When such a
-        service is configured through `endPointURL` without a console URL there is no
-        console to link to, so no URL is generated rather than a dead AWS console link.
+        service is configured through a non-AWS `endPointURL` without a console URL there
+        is no console to link to, so no URL is generated rather than a dead AWS console
+        link. Alternate AWS endpoints (PrivateLink, FIPS) still get the AWS console.
         """
         try:
             console_endpoint_url = self.service_connection.consoleEndpointURL
@@ -837,7 +840,8 @@ class S3Source(StorageServiceSource):
                     return f"{base_url}/{bucket_name}/{encoded_prefix}/"
                 return f"{base_url}/{bucket_name}/"
 
-            if self.service_connection.awsConfig.endPointURL:
+            endpoint_url = self.service_connection.awsConfig.endPointURL
+            if endpoint_url and not _is_aws_endpoint(str(endpoint_url)):
                 return None
 
             region = self.get_aws_bucket_region(bucket_name=bucket_name)

@@ -688,7 +688,6 @@ class TestSourceUrls:
         source = _make_s3_source()
         source._get_bucket_source_url = S3Source._get_bucket_source_url.__get__(source)
         source._get_object_source_url = S3Source._get_object_source_url.__get__(source)
-        source._get_console_url = S3Source._get_console_url.__get__(source)
         source.get_aws_bucket_region = Mock(return_value="eu-west-1")
         source.service_connection.awsConfig.endPointURL = endpoint_url
         source.service_connection.consoleEndpointURL = console_url
@@ -737,6 +736,14 @@ class TestSourceUrls:
         assert source._get_bucket_source_url("my-bucket") is None
         assert source._get_object_source_url("my-bucket", "data/events") is None
         source.get_aws_bucket_region.assert_not_called()
+
+    def test_alternate_aws_endpoint_keeps_aws_console_url(self):
+        source = self._bind(endpoint_url="https://bucket.vpce-0a1b2c3d-x.s3.eu-west-1.vpce.amazonaws.com")
+
+        assert (
+            source._get_bucket_source_url("my-bucket")
+            == "https://s3.console.aws.amazon.com/s3/buckets/my-bucket?region=eu-west-1&tab=objects"
+        )
 
 
 class TestLoadMetadataFile:
