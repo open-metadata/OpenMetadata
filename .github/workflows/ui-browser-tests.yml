@@ -37,9 +37,12 @@ env:
   # Test files per runner when only some run (130 files over 5 runners).
   FILES_PER_SHARD: 26
   # What a change must touch for the merge queue to run the suite
-  # (merge_group has no `paths` filter).
+  # (merge_group has no `paths` filter). Core components are included: a
+  # core-only pull request runs core's own tests, and the queue's full run
+  # catches a core change that breaks the app before it reaches main.
   UI_PATHS: >-
     openmetadata-ui/src/main/resources/ui/
+    openmetadata-ui-core-components/src/main/resources/ui/
     .github/workflows/ui-browser-tests.yml
     .github/actions/ui-browser-setup/
 
@@ -282,10 +285,17 @@ jobs:
   browser-tests-report:
     name: browser tests + coverage
     needs: [select, browser-tests]
-    if: always() && needs.select.outputs.mode != 'none' && needs.select.result == 'success'
+    # Runs (and fails) when select fails: a skipped required check would pass
+    # with no tests run.
+    if: always() && (needs.select.result != 'success' || needs.select.outputs.mode != 'none')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      - name: Fail if test selection failed
+        if: needs.select.result != 'success'
+        run: |
+          echo "::error::Browser-test selection failed, so no tests ran."
+          exit 1
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
@@ -308,7 +318,7 @@ jobs:
             --reporter=default --reporter=junit \
             --outputFile.junit=src/test/browser/junit.xml
       - name: Write the report
-        if: always() && github.event_name == 'pull_request'
+        if: always() && needs.select.result == 'success' && github.event_name == 'pull_request'
         working-directory: ${{ env.UI_DIR }}
         run: |
           node scripts/browser-tests-report.mjs --base HEAD^1 --selection selection.json \
@@ -318,7 +328,7 @@ jobs:
       # Pull-request jobs are read-only, so the comment is posted by
       # ui-browser-tests-comment.yml from this artifact once the run ends.
       - name: Save the report for the comment
-        if: always() && github.event_name == 'pull_request'
+        if: always() && needs.select.result == 'success' && github.event_name == 'pull_request'
         env:
           PR: ${{ github.event.pull_request.number }}
         run: |
@@ -326,7 +336,7 @@ jobs:
           cp "$RUNNER_TEMP/comment.md" "$RUNNER_TEMP/browser-tests-comment/comment.md"
           echo "$PR" > "$RUNNER_TEMP/browser-tests-comment/pr-number"
       - uses: actions/upload-artifact@v7
-        if: always() && github.event_name == 'pull_request'
+        if: always() && needs.select.result == 'success' && github.event_name == 'pull_request'
         with:
           name: browser-tests-comment
           path: ${{ runner.temp }}/browser-tests-comment/

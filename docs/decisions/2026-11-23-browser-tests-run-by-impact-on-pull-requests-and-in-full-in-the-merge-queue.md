@@ -22,16 +22,18 @@ into one cycle, so almost every file reaches almost every test.
   loaded it.
 - Everything runs when the map is missing, or a change touches test setup, the Vite/Vitest config,
   dependencies, global styles (`src/styles/`) or the selection script.
-- Core components are treated like a library: a change there runs core's own tests and build, not the
-  browser tests.
-- The merge queue runs every test file whenever the queued change touches the UI, so a selection miss
-  cannot reach main.
+- Core components are treated like a library on pull requests: a change there runs core's own tests and
+  build, not the browser tests.
+- The merge queue runs every test file whenever the queued change touches the UI or core components, so a
+  selection miss, or a core change that breaks the app, cannot reach main.
+- If selection itself fails, the reporting check fails rather than being skipped, since a skipped required
+  check would pass with no tests run.
 - Shards: at most 5 runners, 26 test files per runner when only some run (the full suite of about 130
   files fits 5 runners in roughly 10 minutes).
 
 ## Consequences
 UI pull requests run a fraction of the suite, and changes no browser test executes run none (the PR comment
-lists that code). A miss is caught in the merge queue rather than on the pull request. A core-component
-regression the app depends on is caught only by a core test for that behaviour or a later full run.
+lists that code). A miss, including a core change that breaks the app, is caught in the merge queue rather
+than on the pull request.
 Revisit if merge-queue failures from selection misses become common, or if the import cycle is broken
 (then the static graph could select on its own).

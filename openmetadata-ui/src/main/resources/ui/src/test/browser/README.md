@@ -70,9 +70,10 @@ The policy is ADR:2026-11-23-browser-tests-run-by-impact-on-pull-requests-and-in
 The static import graph alone cannot do this here: lazy imports tie about
 1,000 modules into one import cycle.
 
-**Core components are treated like a library.** A change to
+**Core components are treated like a library on pull requests.** A change to
 `openmetadata-ui-core-components` runs core's own tests and build (the
 `core components` job), not the browser tests: core guards its components with
-its own tests, and this suite tests the app. A core change that alters behaviour
+its own tests, and this suite tests the app. The merge queue still runs every
+browser test for a core change, so one that breaks the app cannot reach main. A core change that alters behaviour
 the app depends on needs a core test for that behaviour. A change touching both
 core and this UI selects browser tests for the UI part only.
