@@ -370,7 +370,7 @@ public class OpenSearchBulkSink implements BulkSink {
         int written = entities.size();
         processSuccess.addAndGet(written);
         totalSubmitted.addAndGet(written);
-        updateStats(written, 0);
+        totalSuccess.addAndGet(written);
         if (tracker != null) {
           tracker.recordProcessBatch(written, 0, 0);
           tracker.recordSinkBatch(written, 0);
