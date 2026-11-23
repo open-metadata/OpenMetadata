@@ -498,9 +498,16 @@ class MicrostrategySource(DashboardServiceSource):
         objects = {available_object.id: available_object for available_object in dataset.availableObjects or []}
         keys = Counter(normalized(available_object.name or "") for available_object in objects.values())
         ambiguous = {key for key, count in keys.items() if count > 1}
+        # Every object claims the SQL name it is projected under, before any metric is matched: a
+        # metric's column alias can name another metric's projection.
         owners: dict[str, set[str]] = defaultdict(set)
         for available_object in objects.values():
-            owners[normalized(available_object.name or "")].add(available_object.id)
+            if available_object.type == "metric" and not data_import:
+                claim = self._metric_sql_name(project_id, available_object)
+            else:
+                claim = available_object.name
+            if claim and (key := normalized(claim)):
+                owners[key].add(available_object.id)
         names = Counter((available_object.name or "").casefold() for available_object in objects.values())
         repeated = {name for name, count in names.items() if count > 1}
         lineage = []
@@ -568,27 +575,28 @@ class MicrostrategySource(DashboardServiceSource):
     ) -> set[str]:
         """
         The warehouse columns of this table a schema metric reads. The SQL names a metric's
-        projection after it (``Revenue Rank`` is ``REVENUERANK``) unless the alias is a
-        generated one (``WJXBFS1``); a metric the SQL does not name is followed through its
-        definition: to the projections of the metrics it is built from, and to the columns of the
-        facts it aggregates. An alias is a metric's only when no other object of the dataset has
-        that name: ``% Revenue`` is not given ``Revenue``'s ``REVENUE``, whether or not it is in the
-        dataset itself.
+        projection after its column alias when one is set, else after its name (``Revenue Rank`` is
+        ``REVENUERANK``), unless the alias is a generated one (``WJXBFS1``); a metric the SQL does
+        not name is followed through its definition: to the projections of the metrics it is built
+        from, and to the columns of the facts it aggregates. A projection is a metric's only when no
+        other object of the dataset claims that name: ``% Revenue`` is not given ``Revenue``'s
+        ``REVENUE``, whether or not it is in the dataset itself.
         """
 
-        def named(object_id: str, name: str) -> bool:
-            key = normalized(name)
+        def owns(object_id: str, sql_name: str) -> bool:
+            key = normalized(sql_name)
             return bool(key) and key in alias_reads and owners.get(key, {object_id}) == {object_id}
 
-        if named(metric.id, metric.name or ""):
-            return {column for table, column in alias_reads[normalized(metric.name)] & reads}
-        parts = self.client.get_metric_parts(project_id, metric.id, known=named)
+        sql_name = self._metric_sql_name(project_id, metric)
+        if sql_name and owns(metric.id, sql_name):
+            return {column for table, column in alias_reads[normalized(sql_name)] & reads}
+        parts = self.client.get_metric_parts(project_id, metric.id, known=owns)
         if not parts:
             return set()
         columns = {
             column
             for object_id, name in parts.metrics
-            if named(object_id, name)
+            if owns(object_id, name)
             for table, column in alias_reads[normalized(name)] & reads
         }
         for fact in parts.facts:
@@ -600,6 +608,17 @@ class MicrostrategySource(DashboardServiceSource):
                 if fact_column == column and same_table(table, fact_table)
             )
         return columns
+
+    def _metric_sql_name(self, project_id: str, metric: MstrAvailableObject) -> str | None:
+        """
+        The name the SQL gives a schema metric's projection, from its definition. Without modeling
+        privileges no column alias can be read, so the metric's name stands in for it; a metric that
+        cannot be read otherwise, such as one derived in a dossier, is projected under no name.
+        """
+        sql_name = self.client.get_metric_sql_name(project_id, metric.id, metric.name or "")
+        if sql_name is None and self.client.modeling_denied:
+            return metric.name
+        return sql_name
 
     def _data_model_columns(self, dataset: MstrDataset, datamodel_entity: DashboardDataModel) -> dict[str, str]:
         """
