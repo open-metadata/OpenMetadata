@@ -1620,7 +1620,9 @@ public class SystemRepository {
             FieldPaths.AUTH_PROVIDER, "Provider is required");
       }
 
-      if (nullOrEmpty(authConfig.getProviderName())) {
+      // openmetadata.yaml defines providerName for custom OIDC only and leaves it empty otherwise.
+      if (authConfig.getProvider() == AuthProvider.CUSTOM_OIDC
+          && nullOrEmpty(authConfig.getProviderName())) {
         return ValidationErrorBuilder.createFieldError(
             "authenticationConfiguration.providerName", "Provider name is required");
       }

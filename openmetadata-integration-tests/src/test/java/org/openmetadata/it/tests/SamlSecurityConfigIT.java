@@ -70,6 +70,7 @@ public class SamlSecurityConfigIT {
   private static final String SECURITY_VALIDATE_PATH = "/v1/system/security/validate";
   private static final String IDP_CERT_FIELD =
       "authenticationConfiguration.samlConfiguration.idp.idpX509Certificate";
+  private static final String PROVIDER_NAME_FIELD = "authenticationConfiguration.providerName";
 
   /** Okta's Entity ID is always this shape, so its host is always the literal {@code www.okta.com}. */
   private static final String OKTA_ENTITY_ID = "http://www.okta.com/exk1a2b3c4d5";
@@ -217,6 +218,21 @@ public class SamlSecurityConfigIT {
 
     assertEquals("failed", response.get("status").asText(), "Validation response: " + response);
     assertNotNull(fieldError(response, IDP_CERT_FIELD));
+  }
+
+  /**
+   * openmetadata.yaml sets providerName for custom OIDC only, so a SAML configuration seeded from
+   * the deployment stores it empty. The validation every PATCH runs must not refuse it for that.
+   */
+  @Test
+  void validateSecurityConfig_acceptsAnEmptyProviderNameForSaml() throws Exception {
+    SecurityConfiguration config = samlConfig(OKTA_ENTITY_ID, OKTA_SSO_URL, OKTA_ORG_CERT);
+    config.getAuthenticationConfiguration().setProviderName("");
+
+    JsonNode response = validate(config);
+
+    assertNoErrorOnField(response, PROVIDER_NAME_FIELD);
+    assertEquals("success", response.get("status").asText(), "Validation response: " + response);
   }
 
   /**
