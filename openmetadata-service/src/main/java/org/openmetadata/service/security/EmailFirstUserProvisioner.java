@@ -158,7 +158,7 @@ public class EmailFirstUserProvisioner {
 
   /** Read-only identity binding policy, also used by Test Login before it reports success. */
   public static boolean hasConflictingSubject(User user, String subject) {
-    String bound = user.getIdentityProviderSubject();
+    final String bound = user.getIdentityProviderSubject();
     return subject != null
         && !subject.isBlank()
         && bound != null
