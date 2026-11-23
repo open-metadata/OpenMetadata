@@ -76,6 +76,43 @@ const OKTA_CONFIG = {
   },
 } as unknown as SecurityConfiguration;
 
+const SAML_ACS = 'https://om.example.com/api/v1/saml/acs';
+
+// Saved by an earlier form version that wrote the ACS URL into both browser callback fields.
+const SAML_CONFIG_WITH_ACS_CALLBACK = {
+  authenticationConfiguration: {
+    provider: AuthProvider.Saml,
+    providerName: 'SAML',
+    clientType: 'public',
+    authority: 'https://om.example.com/api/v1/saml/login',
+    callbackUrl: SAML_ACS,
+    publicKeyUrls: ['https://om.example.com/api/v1/system/config/jwks'],
+    jwtPrincipalClaims: ['email'],
+    enableSelfSignup: true,
+    samlConfiguration: {
+      debugMode: false,
+      idp: {
+        entityId: 'https://idp.example.com/metadata',
+        ssoLoginUrl: 'https://idp.example.com/sso',
+        idpX509Certificate: 'IDP_CERT',
+        authorityUrl: 'https://om.example.com/api/v1/saml/login',
+      },
+      sp: {
+        entityId: 'https://om.example.com/api/v1/saml/metadata',
+        acs: SAML_ACS,
+        callback: SAML_ACS,
+      },
+      security: {
+        strictMode: false,
+        wantAssertionsSigned: false,
+        wantMessagesSigned: false,
+        sendSignedAuthRequest: false,
+      },
+    },
+  },
+  authorizerConfiguration: OKTA_CONFIG.authorizerConfiguration,
+} as unknown as SecurityConfiguration;
+
 const editClientId = (
   result: { current: ReturnType<typeof useSsoConfiguration> },
   clientId: string
@@ -161,6 +198,33 @@ describe('useSsoConfiguration', () => {
       'message.configuration-save-success'
     );
     expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('saves the repaired browser callback of a SAML configuration saved with the ACS URL', async () => {
+    const { result } = renderHook(() =>
+      useSsoConfiguration({
+        securityConfig: SAML_CONFIG_WITH_ACS_CALLBACK,
+        forceEditMode: true,
+      })
+    );
+    await waitFor(() => expect(result.current.hasExistingConfig).toBe(true));
+
+    await act(() => result.current.handleSave());
+
+    expect(patchSecurityConfiguration).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        {
+          op: 'replace',
+          path: '/authenticationConfiguration/callbackUrl',
+          value: 'https://om.example.com/callback',
+        },
+        {
+          op: 'replace',
+          path: '/authenticationConfiguration/samlConfiguration/sp/callback',
+          value: 'https://om.example.com/callback',
+        },
+      ])
+    );
   });
 
   it('discards edits back to the saved configuration', async () => {

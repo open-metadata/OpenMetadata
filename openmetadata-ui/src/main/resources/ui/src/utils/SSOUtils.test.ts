@@ -778,6 +778,27 @@ describe('SSOUtils', () => {
       }
     );
 
+    it('leaves the data it cleans unchanged', () => {
+      const data = getDefaultsForProvider(AuthProvider.Saml, ClientType.Public);
+      const sp = data.authenticationConfiguration.samlConfiguration?.sp;
+
+      if (!sp) {
+        throw new Error('Missing SAML SP defaults');
+      }
+      data.authenticationConfiguration.callbackUrl =
+        'https://saml.example.com/api/v1/saml/acs';
+      sp.callback = 'https://saml.example.com/api/v1/saml/acs';
+      sp.acs = 'https://saml.example.com/api/v1/saml/acs';
+      const before = JSON.stringify(data);
+
+      const cleaned = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+
+      expect(JSON.stringify(data)).toBe(before);
+      expect(cleaned?.authenticationConfiguration.callbackUrl).toBe(
+        'https://saml.example.com/callback'
+      );
+    });
+
     it('should handle LDAP trustStore cleanup by format', () => {
       const data: FormData = {
         authenticationConfiguration: {
