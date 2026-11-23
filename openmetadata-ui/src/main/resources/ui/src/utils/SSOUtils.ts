@@ -25,7 +25,7 @@ import SamlIcon from '../assets/svg/ic-saml.svg';
 
 import { ErrorSchema } from '@rjsf/utils';
 import { AxiosError } from 'axios';
-import { isNil } from 'lodash';
+import { cloneDeep, isNil } from 'lodash';
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
@@ -695,7 +695,9 @@ export const cleanupProviderSpecificFields = (
     return undefined;
   }
 
-  const cleanedData = { ...data };
+  // A deep copy: callers compare the result with the data they passed in, so
+  // cleaning must never change that data.
+  const cleanedData = cloneDeep(data);
 
   if (cleanedData.authenticationConfiguration) {
     cleanupAuthenticationConfig(
