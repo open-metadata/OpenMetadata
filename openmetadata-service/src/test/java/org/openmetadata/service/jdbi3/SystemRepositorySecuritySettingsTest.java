@@ -88,6 +88,8 @@ class SystemRepositorySecuritySettingsTest {
   private static final String OTHER_IDP_CERTIFICATE = resource("/saml/other-idp.crt");
   private static final String EXPIRED_IDP_CERTIFICATE = resource("/saml/expired-idp.crt");
   private static final String CERTIFICATE_FIELD = "samlConfiguration.idp.idpX509Certificate";
+  private static final String PEM_BEGIN = "-----BEGIN CERTIFICATE-----";
+  private static final String PEM_END = "-----END CERTIFICATE-----";
 
   private final Map<String, String> rows = new ConcurrentHashMap<>();
   private MockedStatic<Entity> entityMock;
@@ -387,6 +389,32 @@ class SystemRepositorySecuritySettingsTest {
     }
   }
 
+  /**
+   * The layouts the server cannot read at startup, which the 2.0.10 migration rewrites in stored
+   * rows, are refused when they come in as a new certificate.
+   */
+  @Test
+  void everyWritePathRefusesANewCertificateInALayoutTheServerCannotRead() {
+    for (Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
+        writePaths().entrySet()) {
+      for (String oldLayout :
+          List.of(singleLine(OTHER_IDP_CERTIFICATE), spacesForLineBreaks(OTHER_IDP_CERTIFICATE))) {
+        storeSaml(IDP_CERTIFICATE);
+        String before = rows.get(AUTH);
+
+        BadRequestException refused =
+            assertThrows(
+                BadRequestException.class,
+                () -> path.getValue().apply(saml(oldLayout)),
+                path.getKey());
+
+        assertEquals(400, refused.getResponse().getStatus(), path.getKey());
+        assertTrue(refused.getMessage().contains(CERTIFICATE_FIELD), path.getKey());
+        assertEquals(before, rows.get(AUTH), path.getKey());
+      }
+    }
+  }
+
   @Test
   void everyWritePathAcceptsTheStoredExpiredCertificateUnchanged() {
     for (Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
@@ -487,6 +515,17 @@ class SystemRepositorySecuritySettingsTest {
                         .withEntityId("http://localhost:8585/api/v1/saml/metadata")
                         .withAcs("http://localhost:8585/api/v1/saml/acs")
                         .withCallback("http://localhost:8585/saml/callback")));
+  }
+
+  /** The PEM markers and body on one line, as the old save check accepted. */
+  private static String singleLine(String pem) {
+    String body = pem.replace(PEM_BEGIN, "").replace(PEM_END, "").replaceAll("\\s+", "");
+    return PEM_BEGIN + body + PEM_END;
+  }
+
+  /** Spaces where the line breaks belong, as a value pasted into a single-line field becomes. */
+  private static String spacesForLineBreaks(String pem) {
+    return pem.strip().replace("\n", " ");
   }
 
   private static String resource(String path) {

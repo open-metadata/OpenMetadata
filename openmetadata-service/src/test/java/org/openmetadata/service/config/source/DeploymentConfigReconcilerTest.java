@@ -101,6 +101,9 @@ class DeploymentConfigReconcilerTest {
   private static final String EXPIRED_PEM = resource("/saml/expired-idp.crt").strip();
   private static final String IDP_SINGLE_LINE =
       BEGIN + IDP_PEM.replace(BEGIN, "").replace(END, "").replaceAll("\\s+", "") + END;
+  private static final String OTHER_IDP_SINGLE_LINE =
+      BEGIN + OTHER_IDP_PEM.replace(BEGIN, "").replace(END, "").replaceAll("\\s+", "") + END;
+  private static final String OTHER_IDP_SPACED = OTHER_IDP_PEM.replace("\n", " ");
   private static final String NOT_A_CERTIFICATE = BEGIN + "\nnot-a-certificate\n" + END;
   private static final String CERTIFICATE_POINTER = "/samlConfiguration/idp/idpX509Certificate";
 
@@ -365,6 +368,38 @@ class DeploymentConfigReconcilerTest {
             .startsWith("authenticationConfiguration cannot be applied from the deployment"));
     assertTrue(stopped.getMessage().contains("samlConfiguration.idp.idpX509Certificate"));
     assertEquals(IDP_PEM, stored().at(CERTIFICATE_POINTER).asText());
+  }
+
+  /** A changed variable in a layout the server cannot read at startup stops an ENV start. */
+  @Test
+  void envModeStopsTheStartOnAChangedCertificateInAnOldLayout() {
+    for (String oldLayout : List.of(OTHER_IDP_SINGLE_LINE, OTHER_IDP_SPACED)) {
+      storeSaml(IDP_PEM, IDP_PEM, ConfigSourceMode.ENV);
+
+      IllegalStateException stopped =
+          assertThrows(
+              IllegalStateException.class,
+              () -> reconcileSaml(ConfigSourceMode.ENV, saml(oldLayout, true)));
+
+      assertTrue(
+          stopped
+              .getMessage()
+              .startsWith("authenticationConfiguration cannot be applied from the deployment"));
+      assertTrue(stopped.getMessage().contains("samlConfiguration.idp.idpX509Certificate"));
+      assertEquals(IDP_PEM, stored().at(CERTIFICATE_POINTER).asText());
+    }
+  }
+
+  @Test
+  void autoKeepsTheStoredCertificateWhenTheVariableChangesToAnOldLayout() {
+    for (String oldLayout : List.of(OTHER_IDP_SINGLE_LINE, OTHER_IDP_SPACED)) {
+      storeSaml(IDP_PEM, IDP_PEM, ConfigSourceMode.AUTO);
+
+      reconcileSaml(ConfigSourceMode.AUTO, saml(oldLayout, true));
+
+      assertEquals(IDP_PEM, stored().at(CERTIFICATE_POINTER).asText());
+      assertEquals(IDP_PEM, snapshot().values().at(CERTIFICATE_POINTER).asText());
+    }
   }
 
   @Test

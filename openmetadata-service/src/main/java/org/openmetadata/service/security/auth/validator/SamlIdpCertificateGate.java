@@ -50,6 +50,8 @@ public final class SamlIdpCertificateGate {
     final Optional<String> certificate = activeIdpCertificate(candidate);
     final boolean changed =
         certificate.isPresent() && !certificate.equals(activeIdpCertificate(stored));
+    // validateIdpCertificate reads the certificate with the strict parser the server uses at
+    // startup; loosening it would let through certificates the server cannot read.
     final FieldError error =
         changed
             ? new SamlValidator().validateIdpCertificate(candidate.getSamlConfiguration())

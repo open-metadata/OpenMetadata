@@ -67,6 +67,16 @@ class SsoSamlIdpCertificateIT {
   private static final String EXPIRED = resource("/saml/expired-idp.crt");
   private static final String NOT_A_CERTIFICATE =
       "-----BEGIN CERTIFICATE-----\nnot-a-certificate\n-----END CERTIFICATE-----";
+  private static final String PEM_BEGIN = "-----BEGIN CERTIFICATE-----";
+  private static final String PEM_END = "-----END CERTIFICATE-----";
+
+  /** The layouts the server cannot read at startup: one line, or spaces for line breaks. */
+  private static final String OTHER_VALID_SINGLE_LINE =
+      PEM_BEGIN
+          + OTHER_VALID.replace(PEM_BEGIN, "").replace(PEM_END, "").replaceAll("\\s+", "")
+          + PEM_END;
+
+  private static final String OTHER_VALID_SPACED = OTHER_VALID.strip().replace("\n", " ");
 
   private static SecurityConfigSwap securityConfig;
 
@@ -85,11 +95,14 @@ class SsoSamlIdpCertificateIT {
   }
 
   @Test
-  @DisplayName("A PUT with an unusable IdP certificate is refused with a 400 and writes nothing")
+  @DisplayName(
+      "A PUT with an unusable or old-layout IdP certificate is refused with a 400 and writes"
+          + " nothing")
   void putRefusesAnUnusableCertificateAndWritesNothing() {
     JsonNode stored = SecurityConfigSwap.storedConfig();
 
-    for (String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
+    for (String unusable :
+        new String[] {NOT_A_CERTIFICATE, EXPIRED, OTHER_VALID_SINGLE_LINE, OTHER_VALID_SPACED}) {
       Answer answer =
           SecurityConfigSwap.attemptPut(
               withIdpCertificate(securityConfig.baselineCopy(), unusable));
@@ -164,11 +177,14 @@ class SsoSamlIdpCertificateIT {
   }
 
   @Test
-  @DisplayName("A PATCH with an unusable IdP certificate is refused with a 400 and writes nothing")
+  @DisplayName(
+      "A PATCH with an unusable or old-layout IdP certificate is refused with a 400 and writes"
+          + " nothing")
   void patchRefusesAnUnusableCertificateAndWritesNothing() {
     JsonNode stored = SecurityConfigSwap.storedConfig();
 
-    for (String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
+    for (String unusable :
+        new String[] {NOT_A_CERTIFICATE, EXPIRED, OTHER_VALID_SINGLE_LINE, OTHER_VALID_SPACED}) {
       Answer answer = SecurityConfigSwap.attemptPatch(replaceCertificate(unusable));
 
       assertEquals(400, answer.status(), answer.body());
