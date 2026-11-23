@@ -757,8 +757,21 @@ describe('getBrowsePathAncestorKeys', () => {
     ] as unknown as ExploreTreeNode[];
 
     expect(
-      getBrowsePathAncestorKeys(roots, [field('serviceType', 'superset')])
+      getBrowsePathAncestorKeys(roots, [field('serviceType', 'superset')], {
+        rootCountsMatchPath: true,
+      })
     ).toEqual(['dashboard_root']);
+  });
+
+  it('ignores category roots while their counts belong to an earlier path', () => {
+    const roots = [
+      { key: 'db_root', totalCount: 9, data: { isRoot: true } },
+      { key: 'dashboard_root', totalCount: 4, data: { isRoot: true } },
+    ] as unknown as ExploreTreeNode[];
+
+    expect(
+      getBrowsePathAncestorKeys(roots, [field('serviceType', 'superset')])
+    ).toEqual([]);
   });
 
   it('returns only the loaded levels of a deeper path', () => {

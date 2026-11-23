@@ -357,6 +357,10 @@ const ExploreTree = ({
   // Path ancestors already auto-expanded, so a node the user collapses is not
   // re-opened by a later load. Cleared with requestedKeysRef on rebuild.
   const autoExpandedKeysRef = useRef<Set<string>>(new Set());
+  // The browsePath the root counts were last refreshed for. Until a count fetch
+  // for the current path commits, root counts are stale and must not decide
+  // which categories auto-expand.
+  const rootCountsBrowsePathRef = useRef<unknown>(undefined);
   // Latest selection for the browse-path sync effect to read without taking a
   // dependency on it — that would re-run the effect on every click and fight
   // the highlight the click handler just set. Mirrored during render (not in an
@@ -658,6 +662,7 @@ const ExploreTree = ({
         return;
       }
 
+      rootCountsBrowsePathRef.current = parsedSearch.browsePath;
       presenceBucketsRef.current = {
         key: presenceCacheKey,
         buckets: presenceBuckets,
@@ -784,7 +789,11 @@ const ExploreTree = ({
     // level, which lands here again until the browsed node is revealed.
     const keysToExpand = getBrowsePathAncestorKeys(
       treeData,
-      parseBrowsePathFields(parsedSearch.browsePath)
+      parseBrowsePathFields(parsedSearch.browsePath),
+      {
+        rootCountsMatchPath:
+          rootCountsBrowsePathRef.current === parsedSearch.browsePath,
+      }
     ).filter((key) => !autoExpandedKeysRef.current.has(key));
     if (isEmpty(keysToExpand)) {
       return;
