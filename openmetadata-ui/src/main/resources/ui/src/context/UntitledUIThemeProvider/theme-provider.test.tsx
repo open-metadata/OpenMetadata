@@ -13,7 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { createPortal } from 'react-dom';
-import { ThemeProvider, useTheme } from './theme-provider';
+import { ThemeProvider, useResolvedTheme, useTheme } from './theme-provider';
 import { BrandColors } from './theme-provider.interface';
 
 let mockIsAiMode = true;
@@ -413,5 +413,44 @@ describe('ThemeProvider', () => {
     expect(
       document.documentElement.style.getPropertyValue('--tw-color-brand-600')
     ).toBe('');
+  });
+});
+
+describe('useResolvedTheme', () => {
+  const ResolvedThemeProbe = () => (
+    <span data-testid="resolved-theme">{useResolvedTheme()}</span>
+  );
+
+  afterEach(() => {
+    document.documentElement.classList.remove('dark-mode');
+    localStorage.removeItem('ui-theme');
+    mockIsAiMode = true;
+  });
+
+  it('follows the boot script root class on pre-auth pages without a provider', () => {
+    const { unmount } = render(<ResolvedThemeProbe />);
+
+    expect(screen.getByTestId('resolved-theme')).toHaveTextContent('light');
+
+    unmount();
+    document.documentElement.classList.add('dark-mode');
+    render(<ResolvedThemeProbe />);
+
+    expect(screen.getByTestId('resolved-theme')).toHaveTextContent('dark');
+  });
+
+  it('uses the provider theme when one is mounted', () => {
+    localStorage.setItem('ui-theme', 'dark');
+    mockIsAiMode = false;
+    document.documentElement.classList.add('dark-mode');
+
+    render(
+      <ThemeProvider>
+        <ResolvedThemeProbe />
+      </ThemeProvider>
+    );
+
+    // Classic mode is light-only, whatever the stored preference.
+    expect(screen.getByTestId('resolved-theme')).toHaveTextContent('light');
   });
 });
