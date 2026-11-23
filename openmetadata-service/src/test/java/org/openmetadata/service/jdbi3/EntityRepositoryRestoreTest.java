@@ -591,7 +591,8 @@ class EntityRepositoryRestoreTest {
     ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
-      entityMock.when(Entity::getEntityRepositories).thenReturn(List.of(repo));
+      // The FQN-keyed row cleanup walks the JVM-wide repository registry other tests populate.
+      entityMock.when(Entity::getEntityRepositories).thenReturn(List.of());
       repo.bulkHardDeleteSubtree(List.of(a, b), "user");
     }
 
@@ -654,7 +655,8 @@ class EntityRepositoryRestoreTest {
     ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
-      entityMock.when(Entity::getEntityRepositories).thenReturn(List.of(repo));
+      // The FQN-keyed row cleanup walks the JVM-wide repository registry other tests populate.
+      entityMock.when(Entity::getEntityRepositories).thenReturn(List.of());
       repo.bulkHardDeleteSubtree(ids, "user");
     }
 
@@ -709,7 +711,8 @@ class EntityRepositoryRestoreTest {
     ConversationRepository conversationRepository = mock(ConversationRepository.class);
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entityMock.when(Entity::getConversationRepository).thenReturn(conversationRepository);
-      entityMock.when(Entity::getEntityRepositories).thenReturn(List.of(repo));
+      // The FQN-keyed row cleanup walks the JVM-wide repository registry other tests populate.
+      entityMock.when(Entity::getEntityRepositories).thenReturn(List.of());
       repo.bulkHardDeleteSubtree(List.of(a, b), "user");
     }
 
