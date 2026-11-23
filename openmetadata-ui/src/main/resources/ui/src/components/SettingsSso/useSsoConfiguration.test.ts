@@ -21,6 +21,7 @@ import {
   SecurityConfiguration,
   validateSecurityConfiguration,
 } from '../../rest/securityConfigAPI';
+import i18next from '../../utils/i18next/LocalUtil';
 import { showSuccessToast } from '../../utils/ToastUtils';
 import { FormData } from './SSOConfigurationForm/SSOConfigurationForm.interface';
 import { useSsoConfiguration } from './useSsoConfiguration';
@@ -301,10 +302,79 @@ describe('useSsoConfiguration', () => {
       'ui:title': 'label.require-encrypted-assertions',
     });
     expect(securityUiSchema().wantMessagesSigned).toEqual({
-      'ui:title': 'Want Messages Signed',
+      'ui:title': 'label.want-messages-signed',
     });
     expect(securityUiSchema().wantAssertionsSigned).toEqual({
-      'ui:title': 'Want Assertions Signed',
+      'ui:title': 'label.want-assertions-signed',
     });
+  });
+
+  it('titles every SAML field in the language active when the form is built', async () => {
+    const translate = i18next.t as unknown as jest.Mock;
+    const defaultTranslate = translate.getMockImplementation();
+    translate.mockImplementation(
+      (key: string, options?: Record<string, string>) =>
+        options ? `${key} ${JSON.stringify(options)}` : key
+    );
+
+    try {
+      const { result } = renderHook(() =>
+        useSsoConfiguration({ selectedProvider: AuthProvider.Saml })
+      );
+      await waitFor(() => expect(result.current.internalData).toBeDefined());
+      const authUiSchema = get(
+        result.current.uiSchema,
+        'authenticationConfiguration'
+      );
+      const samlUiSchema = authUiSchema.samlConfiguration;
+
+      expect(authUiSchema.enableSelfSignup['ui:title']).toBe(
+        'label.enable-self-signup'
+      );
+      expect(samlUiSchema['ui:title']).toBe(
+        'label.entity-configuration {"entity":"SAML"}'
+      );
+      expect(samlUiSchema.debugMode['ui:title']).toBe('label.debug-mode');
+      expect(samlUiSchema.idp['ui:title']).toBe('label.identity-provider-idp');
+      expect(samlUiSchema.idp.entityId['ui:title']).toBe(
+        'label.provider-entity-id {"provider":"IdP"}'
+      );
+      expect(samlUiSchema.idp.ssoLoginUrl['ui:title']).toBe(
+        'label.idp-sso-login-url'
+      );
+      expect(samlUiSchema.idp.idpX509Certificate['ui:title']).toBe(
+        'label.provider-x509-certificate {"provider":"IdP"}'
+      );
+      expect(samlUiSchema.idp.nameId['ui:title']).toBe('label.name-id-format');
+      expect(samlUiSchema.sp['ui:title']).toBe('label.service-provider-sp');
+      expect(samlUiSchema.sp.entityId).toEqual({
+        'ui:title': 'label.provider-entity-id {"provider":"SP"}',
+        'ui:help': 'message.saml-sp-entity-id-help',
+      });
+      expect(samlUiSchema.sp.acs).toEqual({
+        'ui:title': 'label.assertion-consumer-service-url',
+        'ui:help': 'message.saml-acs-url-help',
+      });
+      expect(samlUiSchema.sp.spX509Certificate['ui:title']).toBe(
+        'label.provider-x509-certificate {"provider":"SP"}'
+      );
+      expect(samlUiSchema.sp.spPrivateKey['ui:title']).toBe(
+        'label.sp-private-key'
+      );
+      expect(samlUiSchema.security['ui:title']).toBe(
+        'label.entity-configuration {"entity":"label.security"}'
+      );
+      expect(samlUiSchema.security.strictMode['ui:title']).toBe(
+        'label.strict-mode'
+      );
+      expect(samlUiSchema.security.tokenValidity['ui:title']).toBe(
+        'label.token-validity-seconds'
+      );
+      expect(samlUiSchema.security.sendSignedAuthRequest['ui:title']).toBe(
+        'label.send-signed-auth-request'
+      );
+    } finally {
+      translate.mockImplementation(defaultTranslate);
+    }
   });
 });
