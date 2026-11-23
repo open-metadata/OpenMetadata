@@ -7,6 +7,9 @@ inputs:
   profile:
     description: Locked Python environment profile to install
     default: test
+  prepare-models:
+    description: Prepare classification models locally instead of downloading the shared artifact
+    default: 'false'
 runs:
   using: composite
   steps:
@@ -24,8 +27,13 @@ runs:
     - name: Install ANTLR
       run: sudo make install_antlr_cli
       shell: bash
+    - name: Prepare classification models
+      if: inputs.profile == 'test-classification' && inputs.prepare-models == 'true'
+      uses: ./.github/actions/prepare-classification-models
+      with:
+        upload-artifact: 'false'
     - name: Download classification model archives
-      if: inputs.profile == 'test-classification'
+      if: inputs.profile == 'test-classification' && inputs.prepare-models != 'true'
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
       with:
         name: classification-models

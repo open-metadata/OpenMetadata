@@ -1,0 +1,42 @@
+name: Check Python
+description: Run formatting, lint, and optional type checks with locked tools.
+inputs:
+  python-version:
+    description: Python interpreter for the checks.
+    required: true
+  check-types:
+    description: Run type checks in addition to formatting and lint.
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/prepare-python-environment
+      if: inputs.check-types == 'true'
+      with:
+        python-version: ${{ inputs.python-version }}
+        profile: types
+    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      if: inputs.check-types != 'true'
+      with:
+        python-version: ${{ inputs.python-version }}
+    - uses: ./.github/actions/setup-uv
+      if: inputs.check-types != 'true'
+    - name: Check formatting and lint
+      run: make py_format_check
+      shell: bash
+    - name: Check types
+      if: inputs.check-types == 'true'
+      env:
+        PYTHON_VERSIONS: ${{ inputs.python-version }}
+      run: |
+        set -o pipefail
+        make static-checks 2>&1 | tee ingestion/static-checks-run.log
+      shell: bash
+    - name: Upload static check log
+      if: ${{ always() && inputs.check-types == 'true' }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: py-static-checks
+        path: ingestion/static-checks-run.log
+        if-no-files-found: warn
+        retention-days: 14

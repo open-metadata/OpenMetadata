@@ -24,6 +24,11 @@ on:
         type: boolean
         required: false
         default: false
+      prepare-models:
+        description: Prepare classification models on this runner instead of consuming the shared artifact
+        type: boolean
+        required: false
+        default: false
       run-meta-tests:
         description: Run CI helper and offline E2E framework tests in the selected nightly lane
         type: boolean
@@ -49,6 +54,7 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
           profile: test-classification
+          prepare-models: ${{ inputs.prepare-models }}
       - name: Test CI helpers
         if: ${{ inputs.run-meta-tests }}
         env:

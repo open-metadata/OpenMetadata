@@ -16,7 +16,6 @@ python:
   - .github/workflows/ci-*.yml
   - .github/workflows/reusable-py-unit.yml
   - .github/workflows/reusable-py-integration.yml
-  - .github/workflows/reusable-py-types.yml
   - .github/python-ci/**
   - .github/workflows/reusable-build-backend.yml
   - .github/actions/python-*/**

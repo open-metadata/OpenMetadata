@@ -110,32 +110,46 @@ def test_connectors_reject_invalid_configuration(defaults, selected):
     assert not result.stdout
 
 
-def gate(needs, expected):
-    return run(
-        sys.executable,
-        PLANNER,
-        "verify",
-        env={**os.environ, "NEEDS_JSON": json.dumps(needs), "EXPECTED_RESULTS": json.dumps(expected)},
-    )
+@pytest.fixture(params=["ci-pr.yml", "ci-merge-queue.yml", "ci-nightly.yml"])
+def gate(request):
+    script = workflow(request.param)["jobs"]["py-tests-status"]["steps"][0]["run"]
+
+    def invoke(needs, expected):
+        return run(
+            "bash",
+            "-eo",
+            "pipefail",
+            "-c",
+            script,
+            env={**os.environ, "NEEDS_JSON": json.dumps(needs), "EXPECTED_RESULTS": json.dumps(expected)},
+        )
+
+    return invoke
 
 
 @pytest.mark.parametrize("wanted", ["success", "skipped"])
-def test_gate_accepts_declared_results(wanted):
-    result = gate({"some-job": {"result": wanted}}, {"some-job": wanted})
+def test_gate_accepts_declared_results(gate, wanted):
+    result = gate(
+        {"plan": {"result": "success"}, "some-job": {"result": wanted}},
+        {"plan": "success", "some-job": wanted},
+    )
     assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.parametrize("actual", ["failure", "cancelled", "skipped", None])
-def test_gate_rejects_unsuccessful_required_work(actual):
-    needs = {"some-job": {"result": actual}} if actual else {}
-    assert gate(needs, {"some-job": "success"}).returncode != 0
+def test_gate_rejects_unsuccessful_required_work(gate, actual):
+    needs = {"plan": {"result": "success"}}
+    if actual:
+        needs["some-job"] = {"result": actual}
+    assert gate(needs, {"plan": "success", "some-job": "success"}).returncode != 0
 
 
-def test_gate_rejects_unexpected_results_and_dependencies():
+def test_gate_rejects_unexpected_results_and_dependencies(gate):
     assert gate({"a": {"result": "success"}}, {"a": "skipped"}).returncode != 0
     assert gate({"a": {"result": "success"}}, {"a": "failure"}).returncode != 0
     assert gate({"a": {"result": "success"}}, {}).returncode != 0
     assert gate({}, {}).returncode != 0
+    assert gate({"a": {"result": "success"}, "omitted-job": {"result": "failure"}}, {"a": "success"}).returncode != 0
 
 
 def test_nightly_artifact_names_are_unique_across_invocations():

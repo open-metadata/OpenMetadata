@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""Read Python CI inputs and verify the job results declared by the caller."""
+"""Read Python CI interpreter and connector selections."""
 
 import argparse
 import json
@@ -48,18 +48,6 @@ def connectors(defaults: str, selected: str) -> dict:
     return {"connectors": chosen}
 
 
-def verify(needs: dict, expected: dict) -> None:
-    """Require exactly the job results declared by the caller."""
-    if not expected or set(needs) != set(expected):
-        raise ValueError("Expected results must cover every dependency exactly")
-    for job, wanted in expected.items():
-        if wanted not in ("success", "skipped"):
-            raise ValueError(f"Invalid expected result for {job}: {wanted}")
-        result = needs[job].get("result")
-        if result != wanted:
-            raise ValueError(f"Expected {job}={wanted}, received {result}")
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -68,12 +56,8 @@ def main() -> None:
     interpreters.add_argument("--output", type=Path)
     selection = commands.add_parser("connectors")
     selection.add_argument("--output", type=Path)
-    commands.add_parser("verify")
     args = parser.parse_args()
     try:
-        if args.command == "verify":
-            verify(json.loads(os.environ["NEEDS_JSON"]), json.loads(os.environ["EXPECTED_RESULTS"]))
-            return
         selected = (
             versions(args.project)
             if args.command == "versions"

@@ -42,7 +42,12 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
           fetch-depth: 1
-          filter: blob:none
+          sparse-checkout: |
+            .github/python-ci/paths.yml
+            ingestion/pyproject.toml
+            scripts/python_ci.py
+            scripts/prepare_classification_models.py
+          sparse-checkout-cone-mode: false
       - name: Read Python versions
         id: versions
         run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
@@ -70,22 +75,15 @@ jobs:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
           fetch-depth: 1
-      - name: Run formatting and lint
-        uses: ./.github/actions/python-lint
+      - name: Run Python checks
+        uses: ./.github/actions/python-checks
         with:
-          python-version: ${{ needs.plan.outputs.python-highest }}
-
-  python-types:
-    name: Python type checks
-    needs: plan
-    uses: ./.github/workflows/reusable-py-types.yml
-    with:
-      ref: ${{ needs.plan.outputs.ref }}
-      python-version: ${{ needs.plan.outputs.python-lowest }}
+          python-version: ${{ needs.plan.outputs.python-lowest }}
+          check-types: 'true'
 
   classification-models:
     needs: plan
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -145,20 +143,15 @@ jobs:
     needs:
       - plan
       - py-checkstyle
-      - python-types
       - classification-models
       - backend
       - python-unit
       - python-integration
       - python-cli-e2e
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
+    timeout-minutes: 2
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-          fetch-depth: 1
       - name: Verify selected Python workloads
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
@@ -166,14 +159,21 @@ jobs:
             {
               "plan": "success",
               "py-checkstyle": "success",
-              "python-types": "success",
               "classification-models": "success",
               "backend": "success",
               "python-unit": "success",
               "python-integration": "success",
               "python-cli-e2e": "success"
             }
-        run: python3 scripts/python_ci.py verify
+        run: |
+          jq -e -n --argjson needs "$NEEDS_JSON" --argjson expected "$EXPECTED_RESULTS" '
+            $expected | length > 0 and
+            (keys == ($needs | keys)) and
+            all(to_entries[]; . as $job |
+              ($job.value == "success" or $job.value == "skipped") and
+              $needs[$job.key].result == $job.value)
+          '
+        shell: bash
 
   sonar-cloud-coverage-upload:
     needs:
@@ -246,7 +246,6 @@ jobs:
     needs:
       - plan
       - py-checkstyle
-      - python-types
       - classification-models
       - backend
       - python-unit
@@ -268,5 +267,5 @@ jobs:
           payload: |
             {
               "channel": "C03EYBDDX17",
-              "text": "<!subteam^S0AH093PEQL> Python CI nightly failed on `${{ github.ref_name }}`.\nSelection: ${{ needs.plan.result }}; lint: ${{ needs.py-checkstyle.result }}; types: ${{ needs.python-types.result }}; models: ${{ needs.classification-models.result }}; backend: ${{ needs.backend.result }}; units: ${{ needs.python-unit.result }}; integrations: ${{ needs.python-integration.result }}; CLI E2E: ${{ needs.python-cli-e2e.result }}; Sonar: ${{ needs.sonar-cloud-coverage-upload.result }}.\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "<!subteam^S0AH093PEQL> Python CI nightly failed on `${{ github.ref_name }}`.\nSelection: ${{ needs.plan.result }}; checks: ${{ needs.py-checkstyle.result }}; models: ${{ needs.classification-models.result }}; backend: ${{ needs.backend.result }}; units: ${{ needs.python-unit.result }}; integrations: ${{ needs.python-integration.result }}; CLI E2E: ${{ needs.python-cli-e2e.result }}; Sonar: ${{ needs.sonar-cloud-coverage-upload.result }}.\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
