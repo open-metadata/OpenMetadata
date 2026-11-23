@@ -3173,6 +3173,7 @@
     "requested-by": "Requested By",
     "requested-on": "Requested on",
     "requests": "Requests",
+    "require-encrypted-assertions": "Require Encrypted Assertions",
     "required": "Required",
     "required-field": "Required Field",
     "required-field-plural": "Required Fields",
