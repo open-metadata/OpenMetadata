@@ -1350,6 +1350,87 @@ describe('SSOConfigurationForm', () => {
     });
   });
 
+  describe('Save a SAML configuration saved with the ACS URL as its callback', () => {
+    it('should send the repaired browser callback in the PATCH', async () => {
+      const acs = 'https://om.example.com/api/v1/saml/acs';
+      // Saved by an earlier form version that wrote the ACS URL into both browser callback fields.
+      const savedWithAcsCallback = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Saml,
+          providerName: 'SAML',
+          clientType: ClientType.Public,
+          authority: 'https://om.example.com/api/v1/saml/login',
+          callbackUrl: acs,
+          publicKeyUrls: ['https://om.example.com/api/v1/system/config/jwks'],
+          jwtPrincipalClaims: ['email'],
+          enableSelfSignup: true,
+          samlConfiguration: {
+            debugMode: false,
+            idp: {
+              entityId: 'https://idp.example.com/metadata',
+              ssoLoginUrl: 'https://idp.example.com/sso',
+              idpX509Certificate: 'IDP_CERT',
+              authorityUrl: 'https://om.example.com/api/v1/saml/login',
+            },
+            sp: {
+              entityId: 'https://om.example.com/api/v1/saml/metadata',
+              acs,
+              callback: acs,
+            },
+            security: {
+              strictMode: false,
+              wantAssertionsSigned: false,
+              wantMessagesSigned: false,
+              sendSignedAuthRequest: false,
+            },
+          },
+        } as AuthenticationConfiguration,
+        authorizerConfiguration: {
+          adminPrincipals: ['admin'],
+          className: 'org.openmetadata.service.security.DefaultAuthorizer',
+          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          enableSecureSocketConnection: false,
+          enforcePrincipalDomain: false,
+          principalDomain: '',
+        } as AuthorizerConfiguration,
+      } as SecurityConfiguration;
+
+      mockGetSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse(savedWithAcsCallback)
+      );
+      mockPatchSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({} as SecurityConfiguration)
+      );
+
+      renderComponent({ forceEditMode: true });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('save-sso-configuration')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('save-sso-configuration'));
+
+      await waitFor(() => {
+        expect(mockPatchSecurityConfiguration).toHaveBeenCalledWith(
+          expect.arrayContaining([
+            {
+              op: 'replace',
+              path: '/authenticationConfiguration/callbackUrl',
+              value: 'https://om.example.com/callback',
+            },
+            {
+              op: 'replace',
+              path: '/authenticationConfiguration/samlConfiguration/sp/callback',
+              value: 'https://om.example.com/callback',
+            },
+          ])
+        );
+      });
+    });
+  });
+
   describe('Handle Save and Exit Modal', () => {
     beforeEach(() => {
       mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
