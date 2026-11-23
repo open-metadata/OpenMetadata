@@ -376,6 +376,7 @@ export const TestCaseStatusModal = ({
                 <Box className="tw:gap-1.5" direction="col">
                   <Label isRequired>{t('label.comment')}</Label>
                   <RichTextEditor
+                    aria-label={t('label.comment')}
                     data-testid="description"
                     initialValue={
                       data?.testCaseResolutionStatusDetails
@@ -384,6 +385,7 @@ export const TestCaseStatusModal = ({
                     placeHolder={t('message.write-your-text', {
                       text: t('label.comment'),
                     })}
+                    variant="comment"
                     onTextChange={field.onChange}
                   />
                   {fieldState.error && (

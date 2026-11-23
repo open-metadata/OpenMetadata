@@ -1,6 +1,6 @@
 # SAML security settings mean what the settings form shows
 
-- **Status:** Accepted
+- **Status:** Partially superseded by ADR:2026-11-19-saml-encryption-policy-and-rollover-certificates (encryption visibility and enforcement); signing rules remain accepted
 - **Revisions:** v1 2026-11-10 (initial)
 - **Deciders:** Mohit Yadav
 - **Guard:** `useSsoConfiguration.test.ts` ("offers the SAML signing switches only while Strict Mode

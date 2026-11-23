@@ -22,6 +22,11 @@ import {
 jest.mock('../../../../../rest/axiosClient', () => ({ get: jest.fn() }));
 runQueryNotificationsSynchronously();
 
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQueryClient: () => ({ invalidateQueries: jest.fn() }),
+}));
+
 const mockGetTaskById = jest.fn();
 const mockResolveTask = jest.fn();
 const mockAddComment = jest.fn();
@@ -185,13 +190,27 @@ jest.mock('utils/EntityNameUtils', () => ({
 }));
 
 const mockGetContributions = jest.fn().mockReturnValue([]);
+// The provider holds one ExtensionPointRegistry instance for the app lifecycle
+// and mutates it in place when plugins register, so the registry's identity
+// never changes. Mirror that with a single stable object so a memo keyed on
+// the registry cannot accidentally recompute per render and hide the
+// stale-lookup bug — the bug only shows when the singleton's identity is fixed
+// across renders, as it is in production.
+const stableExtensionRegistry = { getContributions: mockGetContributions };
+// The provider hands out a new `getContributions` wrapper each time plugins
+// register (its `contributionsVersion` bump); tests reassign this object to
+// simulate that bump — the new `getContributions` arrow gets a fresh identity,
+// exactly as the real wrapper does after registration.
+let mockApplicationsProvider = {
+  extensionRegistry: stableExtensionRegistry,
+  getContributions: (id: string) => mockGetContributions(id),
+  contributionsReady: true,
+};
 
 jest.mock(
   'components/Settings/Applications/ApplicationsProvider/ApplicationsProvider',
   () => ({
-    useApplicationsProvider: () => ({
-      extensionRegistry: { getContributions: mockGetContributions },
-    }),
+    useApplicationsProvider: () => mockApplicationsProvider,
   })
 );
 
@@ -542,6 +561,11 @@ const DAR_TASK = { ...TASK, type: 'DataAccessRequest' };
 beforeEach(() => {
   jest.clearAllMocks();
   mockGetContributions.mockReturnValue([]);
+  mockApplicationsProvider = {
+    extensionRegistry: stableExtensionRegistry,
+    getContributions: (id: string) => mockGetContributions(id),
+    contributionsReady: true,
+  };
   mockCurrentUser = { name: 'bob' };
   mockGetTaskById.mockResolvedValue({ data: TASK });
   mockGetEntityPermission.mockResolvedValue({ ResolveTask: true });
@@ -1676,6 +1700,51 @@ describe('TaskDetailPanel', () => {
       expect(
         screen.queryByTestId('task-detail-summary')
       ).not.toBeInTheDocument();
+    });
+
+    // A deep link can resolve its task before the provider's contribution
+    // effect registers a plugin — the registry is a mutable singleton, so its
+    // identity never changes when the contribution lands. The provider surfaces
+    // a `getContributions` wrapper whose identity changes once
+    // `contributionsVersion` bumps; the contribution memo must depend on that
+    // wrapper so a contribution that lands after the task is in view still
+    // renders. Regression for the stale `[extensionRegistry, task]` memo, which
+    // computed against an empty registry on the first render and never
+    // recomputed for that task.
+    it('renders a contribution registered after the task loaded', async () => {
+      const lateContribution = contribution({
+        describe: () => ({ rows: [{ key: 'pluginRow' }] }),
+        stats: () => <div data-testid="plugin-stat-tiles" />,
+      });
+
+      // Plugins have not registered yet — the deep link beats the provider's
+      // contribution effect, so the panel first sees an empty registry.
+      let renderUtils!: ReturnType<typeof render>;
+      await act(async () => {
+        renderUtils = render(<TaskDetailPanel taskId="task-1" />);
+      });
+
+      expect(screen.queryByTestId('plugin-stat-tiles')).not.toBeInTheDocument();
+
+      // Plugins register: the provider bumps `contributionsVersion`, handing
+      // out a new `getContributions` wrapper identity (now returning the
+      // contribution). The task in view is unchanged — only the wrapper's
+      // identity change can prompt the memo to re-evaluate.
+      mockGetContributions.mockReturnValue([lateContribution]);
+      mockApplicationsProvider = {
+        extensionRegistry: stableExtensionRegistry,
+        getContributions: (id: string) => mockGetContributions(id),
+        contributionsReady: true,
+      };
+
+      await act(async () => {
+        renderUtils.rerender(<TaskDetailPanel taskId="task-1" />);
+      });
+
+      expect(screen.getByTestId('plugin-stat-tiles')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('task-detail-summary').getAttribute('data-rows')
+      ).toMatch(/^pluginRow/);
     });
   });
 

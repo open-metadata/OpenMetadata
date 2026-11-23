@@ -3173,6 +3173,7 @@
     "requested-by": "מבוקש על ידי",
     "requested-on": "התבקש בתאריך",
     "requests": "בקשות",
+    "require-encrypted-assertions": "דרישת הצהרות SAML מוצפנות",
     "required": "נדרש",
     "required-field": "שדה חובה",
     "required-field-plural": "שדות חובה",

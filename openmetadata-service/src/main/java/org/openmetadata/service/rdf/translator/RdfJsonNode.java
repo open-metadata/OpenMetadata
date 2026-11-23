@@ -16,7 +16,12 @@ package org.openmetadata.service.rdf.translator;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Instant;
 import java.util.Optional;
+import org.apache.jena.datatypes.xsd.XSDDatatype;
+import org.apache.jena.rdf.model.Literal;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ResourceFactory;
 
 /** Shape-aware access to optional fields in entity JSON trees. */
 final class RdfJsonNode {
@@ -41,5 +46,19 @@ final class RdfJsonNode {
 
   static Optional<JsonNode> array(JsonNode value) {
     return Optional.ofNullable(value).filter(node -> !nullOrEmpty(node)).filter(JsonNode::isArray);
+  }
+
+  static Literal number(final JsonNode value, final Model model) {
+    if (!value.isIntegralNumber()) {
+      return model.createTypedLiteral(value.asDouble());
+    }
+    return value.canConvertToLong()
+        ? model.createTypedLiteral(value.asLong())
+        : model.createTypedLiteral(value.bigIntegerValue());
+  }
+
+  static Literal epochDateTime(final JsonNode epochMillis) {
+    return ResourceFactory.createTypedLiteral(
+        Instant.ofEpochMilli(epochMillis.asLong()).toString(), XSDDatatype.XSDdateTime);
   }
 }
