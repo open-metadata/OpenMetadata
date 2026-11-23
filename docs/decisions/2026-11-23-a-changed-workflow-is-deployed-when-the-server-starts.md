@@ -41,4 +41,6 @@ The comparison relies on the BPMN built from a stored definition being the same 
 builder writes collections into the BPMN in a fixed order, from a `List` or a `LinkedHashMap`:
 `Set.of` and `Map.of` iterate in an order that changes from one JVM to the next, so a builder that
 iterates one, or that writes a random or time-based value, would deploy its workflows on every
-start.
+start. A save through the API deploys the definition as it was sent, and the database may return
+the keys of a map in it, such as a trigger filter for several entity types, in another order; such
+a workflow is deployed once more on the next start, and is left alone after that.
