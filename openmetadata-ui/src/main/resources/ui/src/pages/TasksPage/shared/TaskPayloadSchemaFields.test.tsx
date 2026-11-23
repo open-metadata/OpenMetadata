@@ -24,7 +24,8 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { act, ReactNode } from 'react';
 import {
   LabelType,
@@ -122,6 +123,44 @@ const CONFIDENTIAL_TAG: TagLabel = {
 };
 
 describe('TaskPayloadSchemaFields', () => {
+  it('edits a rich-text resolution comment without dropping its content', async () => {
+    const onChange = jest.fn();
+    const createRange = document.createRange;
+    const rangeSpy = jest
+      .spyOn(document, 'createRange')
+      .mockImplementation(() => {
+        const range = createRange();
+        range.getBoundingClientRect = () => new DOMRect();
+
+        return range;
+      });
+    document.elementFromPoint = jest.fn(() => null);
+    document.elementsFromPoint = jest.fn(() => []);
+    try {
+      render(
+        <TaskPayloadSchemaFields
+          payload={{ comment: '' }}
+          schema={{
+            type: 'object',
+            properties: { comment: { type: 'string', title: 'Comment' } },
+          }}
+          uiSchema={{ comment: { 'ui:widget': 'richtext' } }}
+          onChange={onChange}
+        />
+      );
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .type(screen.getByRole('textbox', { name: 'Comment' }), 'Resolved');
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith({
+          comment: '<p>Resolved</p>',
+        })
+      );
+    } finally {
+      rangeSpy.mockRestore();
+    }
+  });
+
   it('associates required schema fields with their accessible labels', () => {
     render(
       <TaskPayloadSchemaFields
