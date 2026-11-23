@@ -3,9 +3,10 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-20 (initial); v2 2026-11-23 (an unwritable chunk index keeps the entity
   embedding; the chunk generation goes live with the entity indexes, and only a missed delete
-  blocks it)
+  blocks it; the header's count bounds every stored chunk id)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `VectorChunkIndexIT` (each scenario on a real cluster of each engine),
+  `ChunkSetBoundTest` (trims and deletes after a write that stopped part way),
   `ElasticSearchVectorServiceTest` (the Elasticsearch dialect and the promotion rule),
   `EmbeddingEnricherTest` (the reindex embedding step and its retry), `DefaultRecreateHandlerTest`
   (what an entity index tells the chunk generation), `StoredEmbeddingReuseIT` (both engines);
@@ -93,6 +94,16 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   carries the header the next update compares against, so it is written in its own request
   after every other chunk and delete succeeded. A failed write leaves the old header, and the
   entity's next update writes the chunks again.
+- **The header's `chunkCount` bounds every chunk id stored for the entity.** Trims and deletes
+  go by id up to that count, so they reach writes no refresh has made searchable yet. A write
+  that adds ids past the count first writes chunk 0 with the new count and no fingerprint. A
+  write that then stops part way leaves a header that covers every id it wrote and that no
+  update reads as current. Only a write that grows the set pays that extra request.
+- **A delete removes every chunk of the entity**, in the live index and in a staged generation:
+  by id up to the header's count, then by a query on `parentId` for anything a header that was
+  missing or behind did not cover, and chunk 0 last, so a delete that stops part way keeps the
+  count for its retry. That query costs one delete-by-query per entity delete; writes never run
+  one unless chunks are stored without a header.
 - **Hybrid search stays OpenSearch-only.** The RRF search pipeline lives in
   `OpenSearchVectorService`, and `SearchRepository` creates and checks it only on OpenSearch.
 
