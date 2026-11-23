@@ -32,7 +32,9 @@ import {
   Skeleton,
   SkeletonParagraph,
 } from '@openmetadata/ui-core-components';
+import { File06 as Articles } from '@openmetadata/ui-core-components/icons';
 
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import contextCenterClassBase from '../../utils/ContextCenterClassBase';
 import i18n from '../../utils/i18next/LocalUtil';
 import { getKnowledgePageName } from '../../utils/KnowledgePagePureUtils';
@@ -80,6 +82,7 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
       if (reqId !== activeVersionReqId.current) {
         return;
       }
+      setSelectedData(undefined);
       showErrorToast(error as AxiosError);
     } finally {
       if (reqId === activeVersionReqId.current) {
@@ -196,17 +199,19 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
     return <div className="version-data">{versionDataSkeleton}</div>;
   }
 
+  const versionDataContent = selectedData ? (
+    <KnowledgePageVersion knowledgePage={selectedData} />
+  ) : (
+    <NoDataPlaceholder
+      icon={<Articles />}
+      title={t('label.no-entity', { entity: t('label.version') })}
+    />
+  );
+
   return (
     <>
       <div className="version-data">
-        {isVersionDataLoading
-          ? versionDataSkeleton
-          : selectedData && (
-              <KnowledgePageVersion
-                knowledgePage={selectedData}
-                loading={isVersionDataLoading}
-              />
-            )}
+        {isVersionDataLoading ? versionDataSkeleton : versionDataContent}
       </div>
       {getVersionTimeLineElement()}
     </>

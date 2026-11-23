@@ -89,8 +89,17 @@ jest.mock('../../utils/KnowledgePagePureUtils', () => ({
   getKnowledgePageName: jest.fn(() => 'PageName'),
 }));
 
+const mockShowErrorToast = jest.fn();
+
 jest.mock('../../utils/ToastUtils', () => ({
-  showErrorToast: jest.fn(),
+  showErrorToast: jest.fn((...args: unknown[]) => mockShowErrorToast(...args)),
+}));
+
+jest.mock('../../components/common/EmptyPlaceholder/NoDataPlaceholder', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="no-version-data" />),
 }));
 
 const PAGE_V1_BASE = {
@@ -384,6 +393,38 @@ describe('KnowledgePageVersionPage', () => {
     expect(
       screen.queryByTestId('page-version-content')
     ).not.toBeInTheDocument();
+    expect(screen.getByTestId('no-version-data')).toBeInTheDocument();
+    expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the no-data placeholder instead of the previous version when the version-data fetch fails after a version switch', async () => {
+    let rerender: (ui: React.ReactElement) => void;
+    await act(async () => {
+      const utils = renderPage();
+      rerender = utils.rerender;
+      await flushPromises();
+    });
+
+    expect(screen.getByTestId('page-version-content').textContent).toBe(
+      'Version 1 Title'
+    );
+
+    mockGetKnowledgePageVersionData.mockRejectedValueOnce(
+      new Error('version not found')
+    );
+    mockParams = { fqn: 'articleFqn', version: '0.2' };
+
+    await act(async () => {
+      rerender(<KnowledgePageVersionPage onPageChange={mockOnPageChange} />);
+      await flushPromises();
+    });
+
+    expect(
+      screen.queryByTestId('page-version-content')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('no-version-data')).toBeInTheDocument();
+    expect(screen.getByTestId('EntityVersionTimeLine')).toBeInTheDocument();
+    expect(mockShowErrorToast).toHaveBeenCalledTimes(1);
   });
 
   it('ignores a stale version-data response when the user switches versions before the first request resolves', async () => {
