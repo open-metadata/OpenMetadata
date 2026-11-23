@@ -202,10 +202,12 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
   const versionDataContent = selectedData ? (
     <KnowledgePageVersion knowledgePage={selectedData} />
   ) : (
-    <NoDataPlaceholder
-      icon={<Articles />}
-      title={t('label.no-entity', { entity: t('label.version') })}
-    />
+    <Box className="tw:relative tw:min-h-60">
+      <NoDataPlaceholder
+        icon={<Articles />}
+        title={t('label.no-entity', { entity: t('label.version') })}
+      />
+    </Box>
   );
 
   return (
