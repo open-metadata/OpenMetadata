@@ -67,6 +67,14 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # The antlr4 runtime must match the ANTLR CLI that generates src/generated/antlr,
+      # pinned with the Python runtime by ANTLR_VERSION in the root Makefile. 4.10+
+      # cannot load 4.9-generated parsers and drops the antlr4/src/antlr4/tree path.
+      - dependency-name: "antlr4"
+        versions: [">=4.10.0"]
+      - dependency-name: "@types/antlr4"
+        versions: [">=4.10.0"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
