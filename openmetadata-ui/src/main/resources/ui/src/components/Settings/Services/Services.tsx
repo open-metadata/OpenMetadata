@@ -545,12 +545,21 @@ const Services = ({ serviceName }: ServicesProps) => {
   );
 
   useEffect(() => {
-    const { cursorType, cursorValue, currentPage } = pagingCursor ?? {};
+    const {
+      cursorType,
+      cursorValue,
+      currentPage: cursorPage,
+    } = pagingCursor ?? {};
+
+    // A filter reset can update local paging before the URL catches up.
+    if (Number(cursorPage ?? currentPage) !== currentPage) {
+      return;
+    }
 
     if (cursorType && cursorValue) {
       getServiceDetails({
         limit: pageSize,
-        currentPage: Number(currentPage),
+        currentPage,
         queryFilter: serviceQueryFilter,
         [cursorType as 'before' | 'after']: cursorValue,
       });
@@ -559,7 +568,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     }
     getServiceDetails({
       limit: pageSize,
-      currentPage: Number(currentPage),
+      currentPage,
       queryFilter: serviceQueryFilter,
     });
   }, [
@@ -569,6 +578,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     searchTerm,
     serviceQueryFilter,
     deleted,
+    currentPage,
     pagingCursor,
   ]);
 
