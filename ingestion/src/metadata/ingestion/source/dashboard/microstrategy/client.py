@@ -129,10 +129,22 @@ def _token_references(tokens: Any) -> Iterable[tuple[str, str, str]]:
             yield target.get("subType") or "", target["objectId"], target.get("name") or ""
 
 
+class MetricDefinition(NamedTuple):
+    """
+    A schema metric as the modeling API defines it: the column alias set on it, which the SQL
+    generator names its projection after in place of the metric's name, and the (subtype, id, name)
+    of each object its expression references.
+    """
+
+    column_alias: str | None
+    references: tuple[tuple[str, str, str], ...]
+
+
 class MetricParts(NamedTuple):
     """
     What a schema metric is built from, through every metric it references: the ids of the facts
-    it aggregates, and the (id, name) of the metrics it references.
+    it aggregates, and the (id, SQL name) of the metrics it references. A metric's SQL name is its
+    column alias when one is set, else its name.
     """
 
     facts: frozenset[str]
@@ -173,7 +185,7 @@ class MicroStrategyClient:
         self._dataset_subtypes: OrderedDict[str, int | None] = OrderedDict()
         self._form_columns: OrderedDict[str, dict[str, frozenset[tuple[str, str]]] | None] = OrderedDict()
         self._failures_reported: set[str] = set()
-        self._metric_references: OrderedDict[str, tuple[tuple[str, str, str], ...] | None] = OrderedDict()
+        self._metric_definitions: OrderedDict[str, MetricDefinition | None] = OrderedDict()
         self._fact_columns: OrderedDict[str, frozenset[tuple[str, str]] | None] = OrderedDict()
         self._physical_tables: OrderedDict[str, str | None] = OrderedDict()
         # Reading schema objects needs modeling privileges; their absence is reported once.
@@ -516,36 +528,55 @@ class MicroStrategyClient:
     ) -> MetricParts | None:
         """
         The facts and metrics a schema metric is built from, followed through every metric it
-        references, except those ``known`` already tells the columns of (by id and name). None when the
-        metric cannot be read: a metric derived in a dossier has no schema definition, and reading
-        one needs modeling privileges.
+        references, except those ``known`` already tells the columns of (by id and SQL name). A
+        referenced metric that cannot be read is left out. None when the metric itself cannot be
+        read: a metric derived in a dossier has no schema definition, and reading one needs modeling
+        privileges.
         """
-        if self._references(project_id, metric_id) is None:
+        if self._definition(project_id, metric_id) is None:
             return None
         facts: set[str] = set()
         metrics: set[tuple[str, str]] = set()
         seen, pending = {metric_id}, [metric_id]
         while pending:
-            for sub_type, object_id, name in self._references(project_id, pending.pop()) or ():
+            definition = self._definition(project_id, pending.pop())
+            for sub_type, object_id, name in definition.references if definition else ():
                 if sub_type == "fact":
                     facts.add(object_id)
                 elif sub_type == "metric" and object_id not in seen and len(seen) < MAX_METRIC_PARTS:
                     seen.add(object_id)
-                    metrics.add((object_id, name))
-                    if not known(object_id, name):
+                    sql_name = self.get_metric_sql_name(project_id, object_id, name)
+                    if sql_name is None:
+                        continue
+                    metrics.add((object_id, sql_name))
+                    if not known(object_id, sql_name):
                         pending.append(object_id)
         return MetricParts(facts=frozenset(facts), metrics=frozenset(metrics))
 
-    def _references(self, project_id: str, metric_id: str) -> tuple[tuple[str, str, str], ...] | None:
-        """(subtype, id, name) of each object a metric's expression references, read once per metric"""
+    def get_metric_sql_name(self, project_id: str, metric_id: str, name: str) -> str | None:
+        """
+        The name the SQL generator gives a schema metric's projection: the column alias set on the
+        metric, else its name. None when the metric cannot be read.
+        """
+        definition = self._definition(project_id, metric_id)
+        if definition is None:
+            return None
+        return definition.column_alias or name
 
-        def fetch() -> tuple[tuple[str, str, str], ...] | None:
+    def _definition(self, project_id: str, metric_id: str) -> MetricDefinition | None:
+        """A schema metric's column alias and references, read once per metric"""
+
+        def fetch() -> MetricDefinition | None:
             metric = self._read_schema_object(project_id, "metric", metric_id, expression_as="tokens")
             if metric is None:
                 return None
-            return tuple(_token_references((metric.get("expression") or {}).get("tokens")))
+            alias = metric.get("columnNameAlias")
+            return MetricDefinition(
+                column_alias=alias if isinstance(alias, str) and alias.strip() else None,
+                references=tuple(_token_references((metric.get("expression") or {}).get("tokens"))),
+            )
 
-        return cached(self._metric_references, metric_id, fetch, f"metric {metric_id}")
+        return cached(self._metric_definitions, metric_id, fetch, f"metric {metric_id}")
 
     def get_fact_columns(self, project_id: str, fact_id: str) -> frozenset[tuple[str, str]] | None:
         """The (physical table, column) pairs a fact's expressions read, lowercased"""

@@ -1013,7 +1013,11 @@ MODEL_ATTRIBUTES = {
     "A_PRODUCT": [(ID_FORM, "product_id", ["T_OI", "T_P"]), (NAME_FORM, "product_name", ["T_P"])],
     "A_STATUS": [(ID_FORM, "status", ["T_O"])],
 }
-MODEL_FACTS = {"F_QTY": ("quantity", ["T_OI"])}
+MODEL_FACTS = {
+    "F_QTY": ("quantity", ["T_OI"]),
+    "F_UNIT": ("unit_price", ["T_OI"]),
+    "F_REV": ("revenue", ["T_OI"]),
+}
 # Each metric's expression references these (subtype, id, name).
 MODEL_METRICS = {
     "M_QTY": [("fact", "F_QTY", "Quantity")],
@@ -1027,7 +1031,17 @@ MODEL_METRICS = {
     "M_SHARE": [("metric", "M_PCT_QTY", "% Margin")],
     "M_REV_SHARE": [("metric", "M_PCT_REV", "% Revenue")],
     "M_PCT_REV": [("fact", "F_QTY", "Quantity")],
+    "M_RANK": [("fact", "F_QTY", "Quantity")],
+    "M_REV": [("fact", "F_REV", "Revenue")],
+    "M_MARGIN": [("fact", "F_REV", "Revenue")],
+    "M_REV_C": [("fact", "F_UNIT", "Unit Price")],
+    "M_NET_C": [("fact", "F_QTY", "Quantity")],
+    "M_REV_N": [("fact", "F_UNIT", "Unit Price")],
+    "M_PART_C": [("fact", "F_QTY", "Quantity")],
+    "M_SHARE_C": [("metric", "M_PART_C", "Part")],
 }
+# The column alias set on a metric, which the SQL names its projection after in place of its name.
+MODEL_METRIC_ALIASES = {"M_REV_C": "NETAMOUNT", "M_NET_C": "REVENUE", "M_PART_C": "PARTQTY"}
 
 
 def _report_route(server: FakeMicroStrategy, report_id: str, source: str | None) -> None:
@@ -1090,7 +1104,10 @@ def _model_routes(server: FakeMicroStrategy, cube_subtypes: dict[str, int]) -> N
             }
             for sub_type, object_id, name in references
         ]
-        server.overrides[f"/model/metrics/{metric}"] = lambda tokens=tokens: (200, {"expression": {"tokens": tokens}})
+        body = {"expression": {"tokens": tokens}}
+        if metric in MODEL_METRIC_ALIASES:
+            body["columnNameAlias"] = MODEL_METRIC_ALIASES[metric]
+        server.overrides[f"/model/metrics/{metric}"] = lambda body=body: (200, body)
 
 
 def _dataset(cube_id: str, objects: list[dict]) -> MstrDataset:
@@ -1355,7 +1372,8 @@ class TestColumnLineage:
         )
 
         assert _pairs(lineage) == [(["revenue"], f"{SCHEMA_CUBE}.Revenue Rank")]
-        assert server.requests_to("/model/") == []
+        # Its definition is read for its column alias, and none is set, so no fact is read.
+        assert server.requests_to("/model/facts/") == []
 
     def test_a_metric_the_sql_does_not_name_maps_through_what_it_is_built_from(self, server, client):
         # Average Price is Total Unit Price / Total Quantity: the SQL names the first, and the
@@ -1427,13 +1445,13 @@ class TestColumnLineage:
 
     def test_a_referenced_metric_whose_name_another_object_shares_is_followed_to_its_definition(self, server, client):
         # Margin Share is built from % Margin, whose name Margin shares: the MARGIN projection may be
-        # Margin's, so % Margin is followed to its fact instead.
+        # Margin's, so both are followed to their facts instead.
         _model_routes(server, {SCHEMA_CUBE: 776})
         source = _source(client)
         dataset = _dataset(
             SCHEMA_CUBE,
             [
-                {"id": "M_VAR", "name": "Margin", "type": "metric"},
+                {"id": "M_MARGIN", "name": "Margin", "type": "metric"},
                 {"id": "M_PCT_QTY", "name": "% Margin", "type": "metric"},
                 {"id": "M_SHARE", "name": "Margin Share", "type": "metric"},
             ],
@@ -1455,6 +1473,7 @@ class TestColumnLineage:
         assert _pairs(lineage) == [
             (["quantity"], f"{SCHEMA_CUBE}.% Margin"),
             (["quantity"], f"{SCHEMA_CUBE}.Margin Share"),
+            (["revenue"], f"{SCHEMA_CUBE}.Margin"),
         ]
 
     def test_a_referenced_metric_outside_the_dataset_takes_no_alias_a_dataset_object_owns(self, server, client):
@@ -1487,6 +1506,69 @@ class TestColumnLineage:
             (["quantity"], f"{SCHEMA_CUBE}.Revenue Share"),
             (["revenue"], f"{SCHEMA_CUBE}.Revenue"),
         ]
+
+    def test_a_metric_maps_to_the_projection_its_column_alias_names_not_its_name(self, server, client):
+        # Revenue is aliased NETAMOUNT and Net Amount is aliased REVENUE: each name matches the
+        # other metric's projection, and only the column aliases tell them apart.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_REV_C", "name": "Revenue", "type": "metric"},
+                {"id": "M_NET_C", "name": "Net Amount", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.unit_price) NETAMOUNT, sum(a11.quantity) REVENUE from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "unit_price"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [
+            (["quantity"], f"{SCHEMA_CUBE}.Net Amount"),
+            (["unit_price"], f"{SCHEMA_CUBE}.Revenue"),
+        ]
+
+    def test_a_referenced_metric_maps_to_the_projection_its_column_alias_names(self, server, client):
+        # Share is built from Part, which the dataset does not hold and whose column alias is PARTQTY.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_REV_N", "name": "Revenue", "type": "metric"},
+                {"id": "M_SHARE_C", "name": "Share", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.unit_price) REVENUE, sum(a11.quantity) PARTQTY from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "unit_price"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [
+            (["quantity"], f"{SCHEMA_CUBE}.Share"),
+            (["unit_price"], f"{SCHEMA_CUBE}.Revenue"),
+        ]
+        # Both are matched on their projections, so no fact is read.
+        assert server.requests_to("/model/facts/") == []
 
     def test_a_metric_without_a_schema_definition_is_warned_about_once(self, server, client, caplog):
         _model_routes(server, {SCHEMA_CUBE: 776})
