@@ -28,10 +28,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.schema.EntityInterface;
@@ -48,23 +48,20 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObj
 import org.openmetadata.service.rdf.reasoning.ReasoningFreshness;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
+@Isolated
 class RdfUpdaterTest {
   private final List<RdfLiveWrite> submitted = new ArrayList<>();
-  private Object originalQueue;
-  private Field queueField;
+  private AutoCloseable capturedQueue;
 
   @BeforeEach
-  void setUp() throws ReflectiveOperationException {
-    queueField = RdfUpdater.class.getDeclaredField("writeQueue");
-    queueField.setAccessible(true);
-    originalQueue = queueField.get(null);
-    queueField.set(null, (Consumer<List<RdfLiveWrite>>) submitted::addAll);
+  void setUp() {
+    capturedQueue = RdfUpdater.captureWrites(submitted::addAll);
   }
 
   @AfterEach
-  void tearDown() throws ReflectiveOperationException {
+  void tearDown() throws Exception {
     PostCommitActionQueue.clear();
-    queueField.set(null, originalQueue);
+    capturedQueue.close();
   }
 
   @Test
@@ -152,6 +149,27 @@ class RdfUpdaterTest {
     assertEquals(
         List.of(first.getId(), second.getId()),
         submitted.stream().map(write -> ((RdfLiveWrite.EntityUpdate) write).entityId()).toList());
+  }
+
+  @Test
+  void assetsWhoseBindingsChangedAreReprojectedFromTheDatabaseAfterTheCommit() {
+    final UUID table = UUID.randomUUID();
+    final UUID topic = UUID.randomUUID();
+    PostCommitActionQueue.begin();
+    RdfUpdater.refreshEntities(
+        List.of(
+            new EntityReference().withType(Entity.TABLE).withId(table),
+            new EntityReference().withType(Entity.ONTOLOGY_CONCEPT).withId(UUID.randomUUID()),
+            new EntityReference().withType(Entity.TOPIC).withId(topic)));
+    assertTrue(submitted.isEmpty());
+
+    PostCommitActionQueue.run(PostCommitActionQueue.drain());
+
+    assertEquals(
+        List.of(
+            new RdfLiveWrite.EntityUpdate(Entity.TABLE, table),
+            new RdfLiveWrite.EntityUpdate(Entity.TOPIC, topic)),
+        submitted);
   }
 
   @Test
@@ -317,11 +335,12 @@ class RdfUpdaterTest {
   }
 
   @Test
-  void disabledUpdaterDoesNotCaptureWrites() throws ReflectiveOperationException {
-    queueField.set(null, null);
-    RdfUpdater.updateEntity(new Table().withId(UUID.randomUUID()).withName("table"));
-    RdfUpdater.addGlossaryTermRelation(UUID.randomUUID(), UUID.randomUUID(), "relatedTo");
-    assertFalse(RdfUpdater.isEnabled());
-    assertTrue(submitted.isEmpty());
+  void disabledUpdaterDoesNotCaptureWrites() throws Exception {
+    try (final var ignored = RdfUpdater.captureWrites(null)) {
+      RdfUpdater.updateEntity(new Table().withId(UUID.randomUUID()).withName("table"));
+      RdfUpdater.addGlossaryTermRelation(UUID.randomUUID(), UUID.randomUUID(), "relatedTo");
+      assertFalse(RdfUpdater.isEnabled());
+      assertTrue(submitted.isEmpty());
+    }
   }
 }

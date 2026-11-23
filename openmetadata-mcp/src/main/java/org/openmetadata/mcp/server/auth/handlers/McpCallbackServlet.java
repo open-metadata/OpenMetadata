@@ -35,6 +35,7 @@ import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.OidcIdentityResolver.ResolvedOidcIdentity;
+import org.openmetadata.service.security.SignInFailure;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.util.UserUtil;
 import org.pac4j.oidc.client.OidcClient;
@@ -303,6 +304,13 @@ public class McpCallbackServlet extends HttpServlet {
       BufferedServletResponseWrapper callbackResponse =
           new BufferedServletResponseWrapper(response);
       ssoHandler.handleCallback(request, callbackResponse);
+
+      if (request.getAttribute(AuthenticationCodeFlowHandler.SIGN_IN_FAILURE_ATTRIBUTE)
+          == SignInFailure.ACCOUNT_NOT_ALLOWED) {
+        LOG.warn("MCP sign-in refused: the account may not use this server");
+        UserSSOOAuthProvider.writeAccessDenied(response, UserSSOOAuthProvider.ACCOUNT_NOT_ALLOWED);
+        return;
+      }
 
       if (callbackResponse.getStatusCode() >= HttpServletResponse.SC_BAD_REQUEST) {
         String errorBody = callbackResponse.getCapturedBody();

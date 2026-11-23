@@ -49,7 +49,7 @@ interface PersonalSpaceState {
   // When the user last looked at the Inbox activity list. Feeds have no
   // server-side read state, so "unread" is derived from this mark.
   inboxActivitySeenTs: number | null;
-  markInboxActivitySeen: () => void;
+  markInboxActivitySeen: (through?: number) => void;
 }
 
 export const usePersonalSpaceStore = create<PersonalSpaceState>()(
@@ -68,7 +68,13 @@ export const usePersonalSpaceStore = create<PersonalSpaceState>()(
       inboxDateRange: null,
       setInboxDateRange: (range) => set({ inboxDateRange: range }),
       inboxActivitySeenTs: null,
-      markInboxActivitySeen: () => set({ inboxActivitySeenTs: Date.now() }),
+      markInboxActivitySeen: (through = Date.now()) =>
+        set((state) => ({
+          inboxActivitySeenTs: Math.max(
+            state.inboxActivitySeenTs ?? 0,
+            through
+          ),
+        })),
     }),
     {
       name: 'ai-personal-space-store',
