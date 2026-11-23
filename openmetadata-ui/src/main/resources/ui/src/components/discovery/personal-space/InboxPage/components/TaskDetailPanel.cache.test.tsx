@@ -193,6 +193,7 @@ jest.mock(
   () => ({
     useApplicationsProvider: () => ({
       extensionRegistry: { getContributions: mockGetContributions },
+      getContributions: mockGetContributions,
     }),
   })
 );
