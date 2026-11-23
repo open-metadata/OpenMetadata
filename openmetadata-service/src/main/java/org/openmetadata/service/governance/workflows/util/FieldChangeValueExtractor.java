@@ -2,52 +2,21 @@ package org.openmetadata.service.governance.workflows.util;
 
 import java.util.List;
 import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 
-@Slf4j
 public class FieldChangeValueExtractor {
 
-  /**
-   * Extracts a value from the {@link FieldChange} that the governance rule patterns can match
-   * against.
-   *
-   * <p>The new value is tried first because rules are meant to match what the field is being
-   * changed <em>to</em>. The new value, however, may be a schema-valid but "sparse" {@code
-   * EntityReference} (carrying only {@code id} + {@code type}, the {@code EntityReference} schema's
-   * only required fields) or a list of such references, recorded verbatim from a PATCH/PUT body.
-   * Such a value carries no {@code fullyQualifiedName}/{@code tagFQN}, so {@link
-   * #extractFqnFromValue} returns {@code null} for it. When that happens we fall back to the old
-   * value, which is normally a fully-populated reference loaded from the store, rather than
-   * returning {@code null} and silently skipping the rule. Skipping would bypass change-request /
-   * approval gates for the very changes the rule is meant to gate, so we prefer over-triggering an
-   * approval gate over silently ignoring the change.
-   */
   public static String extractFieldValueForMatching(FieldChange fieldChange) {
-    Object newValue = fieldChange.getNewValue();
-    Object oldValue = fieldChange.getOldValue();
-
-    if (newValue != null) {
-      String extracted = extractSafely(newValue);
-      if (extracted != null) {
-        return extracted;
-      }
+    Object valueToCheck = fieldChange.getNewValue();
+    if (valueToCheck == null && fieldChange.getOldValue() != null) {
+      valueToCheck = fieldChange.getOldValue();
     }
-
-    if (oldValue != null) {
-      if (newValue != null) {
-        LOG.debug(
-            "New value for field change yielded no matchable value; falling back to old value");
-      }
-      return extractSafely(oldValue);
+    if (valueToCheck == null) {
+      return null;
     }
-    return null;
-  }
-
-  private static String extractSafely(Object value) {
     try {
-      return extractFqnFromValue(value);
+      return extractFqnFromValue(valueToCheck);
     } catch (Exception e) {
       return null;
     }

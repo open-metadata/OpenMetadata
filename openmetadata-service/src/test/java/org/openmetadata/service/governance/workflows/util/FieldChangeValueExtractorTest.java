@@ -23,14 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.FieldChange;
 
 /**
- * Unit tests for {@link FieldChangeValueExtractor}.
- *
- * <p>The headline behavior under test is the old-value fallback: when a field's new value parses
- * but carries no matchable identifier (e.g. a schema-valid but "sparse" {@code EntityReference}
- * with only {@code id} + {@code type}), the extractor must fall back to the old value (typically a
- * fully-populated reference loaded from the store) instead of returning {@code null}. Without this
- * fallback, governance rules keyed on such fields are silently bypassed for API/SDK clients that
- * send sparse references (e.g. {@code defaultPersona}).
+ * Unit tests for {@link FieldChangeValueExtractor}: rules match the new value of a field change,
+ * and only a removed value (no new value) falls back to the old one.
  */
 class FieldChangeValueExtractorTest {
 
@@ -98,69 +92,8 @@ class FieldChangeValueExtractorTest {
   }
 
   // ---------------------------------------------------------------------------
-  // extractFieldValueForMatching — the bug: sparse new value with populated
-  // old value must fall back to the old value
+  // extractFieldValueForMatching — sparse new value: no matchable identifier
   // ---------------------------------------------------------------------------
-
-  @Test
-  void extractFieldValueForMatching_sparseNewValuePopulatedOldValue_fallsBackToOldFqn() {
-    // The new value is a schema-valid sparse EntityReference (id + type only, no FQN) exactly as a
-    // PATCH/SDK client sends it; the old value is the fully-populated reference loaded from the
-    // store. Before the fix this returned null (sparse ref has no FQN -> null, no fallback) which
-    // silently skipped governance rules keyed on defaultPersona.
-    String personaId = UUID.randomUUID().toString();
-    String sparseNew =
-        "{\"id\":\"%s\",\"type\":\"persona\",\"name\":\"DataScience\"}".formatted(personaId);
-    String populatedOld =
-        "{\"id\":\"%s\",\"type\":\"persona\",\"fullyQualifiedName\":\"Engineering\"}"
-            .formatted(personaId);
-    FieldChange fc =
-        new FieldChange()
-            .withName("defaultPersona")
-            .withNewValue(sparseNew)
-            .withOldValue(populatedOld);
-    assertEquals("Engineering", FieldChangeValueExtractor.extractFieldValueForMatching(fc));
-  }
-
-  @Test
-  void extractFieldValueForMatching_sparseMapNewValuePopulatedMapOld_fallsBackToOldFqn() {
-    // Same as above but with Map values (as if the JSON had already been parsed).
-    String personaId = UUID.randomUUID().toString();
-    Map<String, Object> sparseNew =
-        Map.of("id", personaId, "type", "persona", "name", "DataScience");
-    Map<String, Object> populatedOld =
-        Map.of("id", personaId, "type", "persona", "fullyQualifiedName", "Engineering");
-    FieldChange fc =
-        new FieldChange()
-            .withName("defaultPersona")
-            .withNewValue(sparseNew)
-            .withOldValue(populatedOld);
-    assertEquals("Engineering", FieldChangeValueExtractor.extractFieldValueForMatching(fc));
-  }
-
-  @Test
-  void extractFieldValueForMatching_sparseListNewValuePopulatedListOld_fallsBackToOldFqns() {
-    String reviewerId = UUID.randomUUID().toString();
-    String sparseNew =
-        "[{\"id\":\"%s\",\"type\":\"user\",\"name\":\"john\"}]".formatted(reviewerId);
-    String populatedOld = "[{\"fullyQualifiedName\":\"jane\"}]";
-    FieldChange fc =
-        new FieldChange().withName("reviewers").withNewValue(sparseNew).withOldValue(populatedOld);
-    assertEquals("jane", FieldChangeValueExtractor.extractFieldValueForMatching(fc));
-  }
-
-  @Test
-  void extractFieldValueForMatching_emptyListNewValuePopulatedListOld_fallsBackToOldFqns() {
-    // A cleared list (new = []) against a populated old list: the new value yields no matchable
-    // identifier, so the extractor falls back to the old value. This keeps a governance rule that
-    // gates, e.g., tag removal from being silently bypassed when the list is cleared.
-    FieldChange fc =
-        new FieldChange()
-            .withName("reviewers")
-            .withNewValue("[]")
-            .withOldValue("[{\"fullyQualifiedName\":\"jane\"}]");
-    assertEquals("jane", FieldChangeValueExtractor.extractFieldValueForMatching(fc));
-  }
 
   @Test
   void extractFieldValueForMatching_bothSparse_returnsNull() {
@@ -187,16 +120,6 @@ class FieldChangeValueExtractorTest {
             .formatted(userId);
     FieldChange fc = new FieldChange().withName("reviewers").withNewValue(newValue);
     assertEquals("jane", FieldChangeValueExtractor.extractFieldValueForMatching(fc));
-  }
-
-  @Test
-  void extractFieldValueForMatching_allSparseListNewValuePopulatedListOld_fallsBackToOldFqns() {
-    String userId = UUID.randomUUID().toString();
-    String newValue = "[{\"id\":\"%s\",\"type\":\"user\",\"name\":\"john\"}]".formatted(userId);
-    String oldValue = "[{\"fullyQualifiedName\":\"jane\"},{\"fullyQualifiedName\":\"aaron\"}]";
-    FieldChange fc =
-        new FieldChange().withName("reviewers").withNewValue(newValue).withOldValue(oldValue);
-    assertEquals("jane,aaron", FieldChangeValueExtractor.extractFieldValueForMatching(fc));
   }
 
   @Test

@@ -187,14 +187,7 @@ public class CheckChangeDescriptionTaskImpl implements JavaDelegate {
   private boolean matchesAnyPattern(FieldChange change, List<String> patterns) {
     String fieldValue = extractFieldValue(change);
     if (fieldValue == null) {
-      // Neither the new nor the old value carried a matchable identifier (fullyQualifiedName /
-      // tagFQN). A governance rule keyed on this field therefore cannot be evaluated and is
-      // skipped rather than silently treated as a match; surface it louder than debug so
-      // misconfigured rules or unsupported value shapes are not invisible.
-      LOG.warn(
-          "Could not extract a matchable value for field '{}' (neither new nor old value carried "
-              + "a fullyQualifiedName/tagFQN); skipping pattern match",
-          change.getName());
+      LOG.debug("Could not extract value for field '{}', skipping pattern match", change.getName());
       return false;
     }
 
