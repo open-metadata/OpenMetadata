@@ -4247,12 +4247,10 @@
   dependencies:
     tslib "^2.4.0"
 
-"@types/antlr4@4.12.0":
-  version "4.12.0"
-  resolved "https://registry.yarnpkg.com/@types/antlr4/-/antlr4-4.12.0.tgz#eb916b56ec0b5f0d6def5c97bb5490042e48e093"
-  integrity sha512-MIPvj98qT7JFXhV8FaQKa9P+eHgEVDwnM/LQb6VJMAcBQUx7TBUCNJr4Zh0YjV47l+0At1KEpPKzmua55jjcog==
-  dependencies:
-    antlr4 "*"
+"@types/antlr4@4.7.2":
+  version "4.7.2"
+  resolved "https://registry.yarnpkg.com/@types/antlr4/-/antlr4-4.7.2.tgz#8cfbbcea13d45c42e9a326aa0e55df816cdd07f5"
+  integrity sha512-v6NASzZa4pUgO2QJJqGHTRRBfZDTOk2savuugSfCLatRTd2q+UtW0I7ub9mjzERhm7aWqGxBi886HnJkLYiIEA==
 
 "@types/aria-query@^5.0.1":
   version "5.0.4"
@@ -5230,10 +5228,10 @@ ansi-to-html@^0.7.2:
   dependencies:
     entities "^2.2.0"
 
-antlr4@*, antlr4@4.13.2:
-  version "4.13.2"
-  resolved "https://registry.yarnpkg.com/antlr4/-/antlr4-4.13.2.tgz#0d084ad0e32620482a9c3a0e2470c02e72e4006d"
-  integrity sha512-QiVbZhyy4xAZ17UPEuG3YTOt8ZaoeOR1CvEAqrEsDBsOqINslaB147i9xqljZqoyf5S+EUlGStaj+t22LT9MOg==
+antlr4@4.9.2:
+  version "4.9.2"
+  resolved "https://registry.yarnpkg.com/antlr4/-/antlr4-4.9.2.tgz#abbc53d275954b1b6f4d8b3468b4a2cb258121fc"
+  integrity sha512-UjMSlenUORL+a+6g4RNZxRh5LcFWybRi2g0ASDBpgXBY6nlavg0BRVAVEQF0dz8jH6SyX3lV7uP5y/krJzc+Hw==
 
 anymatch@^3.0.3:
   version "3.1.3"
