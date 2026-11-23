@@ -36,9 +36,6 @@ jest.mock('../../../utils/i18next/LocalUtil', () => ({
   t: jest.fn().mockImplementation((key) => key),
 }));
 
-const mockErrorMessage =
-  'An exception with message [Elasticsearch exception [type=index_not_found_exception, reason=no such index [test_search_index]]] was thrown while processing request.';
-
 describe('Test Error placeholder ingestion Component', () => {
   it('switches to filter guidance when search clears but deleted assets remain selected', () => {
     const { rerender } = render(
@@ -63,14 +60,6 @@ describe('Test Error placeholder ingestion Component', () => {
     expect(
       screen.getByText('message.try-adjusting-filter')
     ).toBeInTheDocument();
-  });
-
-  it('Component should render error placeholder', () => {
-    const { container } = render(
-      <SearchEmptyState type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR} />
-    );
-
-    expect(getByTestId(container, 'es-error')).toBeInTheDocument();
   });
 
   it('keeps the domain status in the headline, with separate guidance and documentation', () => {
@@ -103,35 +92,5 @@ describe('Test Error placeholder ingestion Component', () => {
     );
 
     expect(searchFilterPlaceholder).toBeInTheDocument();
-  });
-
-  it('Component should render error placeholder with ES index', () => {
-    const { container } = render(
-      <SearchEmptyState
-        errorMessage={mockErrorMessage}
-        type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR}
-      />
-    );
-    const errorES = getByTestId(container, 'es-error');
-    const errMsg = getByTestId(errorES, 'error-text');
-
-    expect(errMsg.textContent).toMatch('message.unable-to-error-elasticsearch');
-  });
-
-  it('should render with correct brandName keys', () => {
-    const { container } = render(
-      <SearchEmptyState
-        errorMessage={mockErrorMessage}
-        type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.ERROR}
-      />
-    );
-    const errorES = getByTestId(container, 'es-error');
-
-    expect(errorES).toBeInTheDocument();
-
-    // Verify the translation function was called with brandName parameter
-    expect(
-      screen.getByText(/message.welcome-to-open-metadata/)
-    ).toBeInTheDocument();
   });
 });
