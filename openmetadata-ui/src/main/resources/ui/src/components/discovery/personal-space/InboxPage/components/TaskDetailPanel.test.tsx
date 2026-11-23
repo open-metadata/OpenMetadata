@@ -1344,6 +1344,26 @@ describe('TaskDetailPanel', () => {
       expect(screen.getByTestId('transition-form-modal')).toBeInTheDocument();
     });
 
+    it('opens the form modal, not the comment modal, when the transition also requires a comment', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: {
+          ...FORM_TASK,
+          availableTransitions: [
+            { ...FORM_TASK.availableTransitions[0], requiresComment: true },
+          ],
+        },
+      });
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+
+      expect(screen.getByTestId('transition-form-modal')).toBeInTheDocument();
+      expect(screen.queryByTestId('comment-modal')).not.toBeInTheDocument();
+      expect(mockResolveTask).not.toHaveBeenCalled();
+    });
+
     it('sends the form payload through the resolve body when the form is confirmed', async () => {
       const onResolved = jest.fn();
       await act(async () =>

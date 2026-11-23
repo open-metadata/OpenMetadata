@@ -415,7 +415,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const [commentAction, setCommentAction] = useState<TaskResolveAction>();
   // A transition whose form declares required fields (a custom task `approve`
   // needing `targetField`/`proposedText`); resolving it opens the form modal
-  // instead of firing. The comment modal still handles `requiresComment`.
+  // instead of firing, even when it also requires a comment.
   const [formAction, setFormAction] = useState<TaskResolveAction>();
   const [formSchema, setFormSchema] = useState<TaskFormSchema>();
 
@@ -756,12 +756,12 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       if (loadingTransitionId) {
         return;
       }
-      if (action.requiresComment) {
-        setCommentAction(action);
-
-        return;
-      }
-      if (task && action.transition) {
+      // An incident's root-cause modal collects its form's required reason.
+      if (
+        task &&
+        action.transition &&
+        !getTaskActionInput(task, action).requiresRootCause
+      ) {
         // Lock the actions before the lookup so a second click can't race it.
         setLoadingTransitionId(action.id);
         try {
@@ -769,18 +769,25 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           // lookup rather than fire a transition whose form it has not seen.
           const schema = await resolveTaskFormSchema(task);
           setFormSchema(schema);
+          // The form wins over the comment-only modal, which would drop its
+          // required fields; a `comment` field in it still reaches the server.
           if (getTaskActionInput(task, action, schema).requiresForm) {
             setFormAction(action);
-            setLoadingTransitionId(undefined);
 
             return;
           }
         } catch (error) {
           showErrorToast(error as AxiosError);
-          setLoadingTransitionId(undefined);
 
           return;
+        } finally {
+          setLoadingTransitionId(undefined);
         }
+      }
+      if (action.requiresComment) {
+        setCommentAction(action);
+
+        return;
       }
       runTransition(action);
     },
