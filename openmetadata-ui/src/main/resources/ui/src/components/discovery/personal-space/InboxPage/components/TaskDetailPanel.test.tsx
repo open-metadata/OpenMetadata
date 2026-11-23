@@ -1423,6 +1423,42 @@ describe('TaskDetailPanel', () => {
       ).not.toBeInTheDocument();
     });
 
+    it('fires one transition when clicked again while the form schema loads', async () => {
+      mockGetTaskById.mockResolvedValue({
+        data: {
+          ...TASK,
+          type: 'DataAccessRequest',
+          category: 'DataAccess',
+          availableTransitions: [
+            {
+              id: 'approve',
+              label: 'label.approve',
+              resolutionType: 'Approved',
+            },
+          ],
+        },
+      });
+      await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+      let resolveSchema: () => void = () => undefined;
+      mockGetResolvedTaskFormSchema.mockReturnValue(
+        new Promise((resolve) => {
+          resolveSchema = () => resolve(undefined);
+        })
+      );
+      mockGetTaskTransitionFormSchema.mockReturnValue(undefined);
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('label.approve'));
+      });
+      await act(async () => resolveSchema());
+
+      expect(mockResolveTask).toHaveBeenCalledTimes(1);
+    });
+
     // A failed schema lookup must not let a required-form transition fire
     // with no payload; the click reports the error and a later click retries.
     it('does not fire the transition when the form schema fetch fails', async () => {
