@@ -257,9 +257,6 @@ const Services = ({ serviceName }: ServicesProps) => {
           { cursorType, cursorValue: paging[cursorType] },
           pageSize
         );
-        getServiceDetails({
-          [cursorType]: paging[cursorType],
-        });
       }
     },
     [getServiceDetails, serviceQueryFilter, paging, pageSize]

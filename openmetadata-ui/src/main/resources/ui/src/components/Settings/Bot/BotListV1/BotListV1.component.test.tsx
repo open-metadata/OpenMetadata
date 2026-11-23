@@ -228,4 +228,35 @@ describe('BotListV1', () => {
 
     expect(await screen.findByTestId('bot-link-testbots')).toBeInTheDocument();
   });
+
+  it('fetches the next page exactly once when Next is clicked', async () => {
+    mockGetBots.mockResolvedValueOnce({
+      data: MOCK_BOTS,
+      paging: { total: 20, after: 'cursor-2' },
+    } as unknown as Awaited<ReturnType<typeof getBots>>);
+
+    render(<BotListV1 {...mockProps} />, { wrapper: MemoryRouter });
+
+    const nextButton = await screen.findByTestId('next');
+    await waitFor(() => expect(nextButton).toBeEnabled());
+
+    await act(async () => {
+      fireEvent.click(nextButton);
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('page-indicator')).toHaveTextContent(
+        /label\.page 2 /
+      )
+    );
+
+    const nextPageCalls = mockGetBots.mock.calls.filter(
+      ([params]) => params?.after === 'cursor-2'
+    );
+
+    expect(nextPageCalls).toHaveLength(1);
+    expect(nextPageCalls[0][0]).toEqual(
+      expect.objectContaining({ include: 'non-deleted' })
+    );
+  });
 });

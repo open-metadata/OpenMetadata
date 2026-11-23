@@ -225,9 +225,6 @@ export const UserTab = ({
       handlePageChange(currentPage);
       searchUsers(searchText, currentPage);
     } else if (cursorType) {
-      getCurrentTeamUsers(currentTeam.name, {
-        [cursorType]: paging[cursorType],
-      });
       handlePageChange(
         currentPage,
         { cursorType, cursorValue: paging[cursorType] },
