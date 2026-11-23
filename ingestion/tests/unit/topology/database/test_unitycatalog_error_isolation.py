@@ -24,10 +24,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from databricks.sdk.service.catalog import (
-    CatalogInfo,
     ColumnInfo,
     ColumnTypeName,
-    SchemaInfo,
     TableInfo,
 )
 from databricks.sdk.service.catalog import TableType as DatabricksTableType
@@ -144,9 +142,7 @@ class TestListingErrorIsolation:
         assert "429 Too Many Requests" in uc_source.status.failures[0].error
 
     def test_catalog_listing_includes_browse_only_catalogs(self, uc_source):
-        uc_source.client.api_client.do.return_value = {
-            "catalogs": [{"name": "metadata_only", "browse_only": True}]
-        }
+        uc_source.client.api_client.do.return_value = {"catalogs": [{"name": "metadata_only", "browse_only": True}]}
         assert list(uc_source.get_database_names_raw()) == ["metadata_only"]
         assert uc_source.client.api_client.do.call_args.kwargs["query"]["include_browse"] == "true"
 

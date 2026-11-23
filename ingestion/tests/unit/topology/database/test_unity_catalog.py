@@ -39,11 +39,9 @@ from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
     ColumnName,
-    ConstraintType,
     DataType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
-    TableConstraint,
     TablePartition,
     TableType,
 )
@@ -592,9 +590,7 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
     @patch.object(UnitycatalogSource, "sql_connection", create=True)
     # Both listing and constraint fetch use raw REST requests with BROWSE.
     @patch("databricks.sdk.core.ApiClient.do")
-    def test_get_tables_with_constraints(
-        self, mock_api_do, mock_sql_connection, mock_process_table
-    ):
+    def test_get_tables_with_constraints(self, mock_api_do, mock_sql_connection, mock_process_table):
         mock_tables_with_constraints = [
             SimpleNamespace(
                 table_catalog="demo",
@@ -645,9 +641,7 @@ class unitycatalogUnitTest(TestCase):  # noqa: N801
 
     @patch("databricks.sdk.core.ApiClient.do")
     def test_get_database_names_raw(self, mock_api_do):
-        mock_api_do.return_value = {
-            "catalogs": [{"name": entry.name} for entry in MOCK_CATALOG_INFO]
-        }
+        mock_api_do.return_value = {"catalogs": [{"name": entry.name} for entry in MOCK_CATALOG_INFO]}
         assert ["demo", "main", "postgres_catalog", "system"] == list(self.unitycatalog_source.get_database_names_raw())  # noqa: SIM300
         assert mock_api_do.call_args.kwargs["query"]["include_browse"] == "true"
 

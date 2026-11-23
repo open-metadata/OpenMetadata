@@ -231,9 +231,7 @@ def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable, schema_
             get_browse_item(connection, "schemas", f"{table_obj.catalog_name}.{schema_name}")
         ).name
     else:
-        for row in iter_browse_items(
-            connection, "schemas", "schemas", catalog_name=table_obj.catalog_name
-        ):
+        for row in iter_browse_items(connection, "schemas", "schemas", catalog_name=table_obj.catalog_name):
             schema = SchemaInfo.from_dict(row)
             if schema.name:
                 table_obj.schema_name = schema.name
@@ -246,8 +244,7 @@ def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable) -> None:
     """
     catalog_name, schema_name = _require_resolved_catalog_and_schema(table_obj)
     for row in iter_browse_items(
-        connection, "tables", "tables",
-        catalog_name=catalog_name, schema_name=schema_name, max_results=1
+        connection, "tables", "tables", catalog_name=catalog_name, schema_name=schema_name, max_results=1
     ):
         table = TableInfo.from_dict(row)
         table_obj.name = table.name
@@ -265,7 +262,9 @@ def get_views(connection: WorkspaceClient, table_obj: DatabricksTable) -> None:
     """
     catalog_name, schema_name = _require_resolved_catalog_and_schema(table_obj)
     listed_tables = iter_browse_items(
-        connection, "tables", "tables",
+        connection,
+        "tables",
+        "tables",
         catalog_name=catalog_name,
         schema_name=schema_name,
         max_results=VIEW_LISTING_SCAN_LIMIT,

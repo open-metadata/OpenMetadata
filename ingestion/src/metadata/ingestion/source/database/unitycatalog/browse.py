@@ -10,32 +10,25 @@
 #  limitations under the License.
 """BROWSE-aware Unity Catalog metadata reads without upgrading databricks-sdk."""
 
-from collections.abc import Iterable
+from collections.abc import Iterator
 from typing import Any
 from urllib.parse import quote
 
 
-def iter_browse_items(
-    client: Any, resource: str, collection: str, **filters: Any
-) -> Iterable[dict[str, Any]]:
+def iter_browse_items(client: Any, resource: str, collection: str, **filters: Any) -> Iterator[dict[str, Any]]:
     """The pinned SDK predates include_browse; preserve API pagination directly."""
     query: dict[str, Any] = {"include_browse": "true", "max_results": 0, **filters}
     seen_tokens: set[str] = set()
     while True:
-        response = client.api_client.do(
-            "GET", f"/api/2.1/unity-catalog/{resource}", query=query
-        )
+        response = client.api_client.do("GET", f"/api/2.1/unity-catalog/{resource}", query=query)
         if not isinstance(response, dict):
             raise TypeError(f"expected a JSON object, got {type(response).__name__}")
-        for item in response.get(collection) or []:
-            yield item
+        yield from response.get(collection) or []
         page_token = response.get("next_page_token")
         if not page_token:
             return
         if page_token in seen_tokens:
-            raise RuntimeError(
-                f"Unity Catalog reissued page token [{page_token}] for {resource}"
-            )
+            raise RuntimeError(f"Unity Catalog reissued page token [{page_token}] for {resource}")
         seen_tokens.add(page_token)
         query["page_token"] = page_token
 

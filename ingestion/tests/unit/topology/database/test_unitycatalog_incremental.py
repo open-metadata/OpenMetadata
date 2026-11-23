@@ -218,7 +218,8 @@ class TestUnityCatalogIncrementalSource:
         assert result == [("chg", TableType.Regular)]
         assert source.context.get_global().deleted_tables == ["svc.cat.schema1.dropped"]
         source.client.api_client.do.assert_called_once_with(
-            "GET", "/api/2.1/unity-catalog/tables/cat.schema1.chg",
+            "GET",
+            "/api/2.1/unity-catalog/tables/cat.schema1.chg",
             query={"include_browse": "true"},
         )
         # securable_kind survives the hand-rolled get; TableInfo.from_dict would drop it.
@@ -263,9 +264,7 @@ class TestUnityCatalogIncrementalSource:
     def test_get_database_schema_names_does_not_cache_filtered_schema(self):
         source = self._make_source()
         source.context.get.return_value = SimpleNamespace(database="cat", database_service="svc")
-        source.client.api_client.do.return_value = {
-            "schemas": [{"name": "schema1"}]
-        }
+        source.client.api_client.do.return_value = {"schemas": [{"name": "schema1"}]}
         source.config.sourceConfig.config.useFqnForFiltering = False
         source._schema_cache = {}
 

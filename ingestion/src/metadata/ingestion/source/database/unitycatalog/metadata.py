@@ -230,10 +230,9 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             )
 
     def get_database_names_raw(self) -> Iterable[str]:
-        catalog_listing = lambda: (
-            CatalogInfo.from_dict(row)
-            for row in iter_browse_items(self.client, "catalogs", "catalogs")
-        )
+        def catalog_listing() -> Iterable[CatalogInfo]:
+            return (CatalogInfo.from_dict(row) for row in iter_browse_items(self.client, "catalogs", "catalogs"))
+
         for catalog in self._iterate_listing(catalog_listing, "catalogs"):
             catalog_name = catalog.name
             if not catalog_name:
@@ -396,12 +395,13 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         return schema names
         """
         catalog_name = self.context.get().database
-        schema_listing = lambda: (
-            SchemaInfo.from_dict(row)
-            for row in iter_browse_items(
-                self.client, "schemas", "schemas", catalog_name=catalog_name
+
+        def schema_listing() -> Iterable[SchemaInfo]:
+            return (
+                SchemaInfo.from_dict(row)
+                for row in iter_browse_items(self.client, "schemas", "schemas", catalog_name=catalog_name)
             )
-        )
+
         for schema in self._iterate_listing(schema_listing, f"schemas in catalog [{catalog_name}]"):
             try:
                 schema_name = schema.name

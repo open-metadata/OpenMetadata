@@ -266,7 +266,8 @@ class TestMetadataSteps:
         evidence = checks.check_databases()
 
         client.api_client.do.assert_called_once_with(
-            "GET", "/api/2.1/unity-catalog/catalogs/my_catalog",
+            "GET",
+            "/api/2.1/unity-catalog/catalogs/my_catalog",
             query={"include_browse": "true"},
         )
         assert evidence.command == "catalogs.get('my_catalog')"
@@ -280,7 +281,8 @@ class TestMetadataSteps:
         evidence = checks.check_schemas()
 
         client.api_client.do.assert_called_once_with(
-            "GET", "/api/2.1/unity-catalog/schemas/my_catalog.my_schema",
+            "GET",
+            "/api/2.1/unity-catalog/schemas/my_catalog.my_schema",
             query={"include_browse": "true"},
         )
         assert evidence.command == "schemas.get('my_schema')"

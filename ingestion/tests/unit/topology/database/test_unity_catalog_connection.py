@@ -149,7 +149,8 @@ class TestGetCatalogs:
         get_catalogs(client, table_obj, catalog_name="configured_catalog")
 
         client.api_client.do.assert_called_once_with(
-            "GET", "/api/2.1/unity-catalog/catalogs/configured_catalog",
+            "GET",
+            "/api/2.1/unity-catalog/catalogs/configured_catalog",
             query={"include_browse": "true"},
         )
         assert table_obj.catalog_name == "configured_catalog"
@@ -173,7 +174,8 @@ class TestGetSchemas:
         get_schemas(client, table_obj)
 
         client.api_client.do.assert_called_once_with(
-            "GET", "/api/2.1/unity-catalog/schemas",
+            "GET",
+            "/api/2.1/unity-catalog/schemas",
             query={"include_browse": "true", "max_results": 0, "catalog_name": "main"},
         )
         assert table_obj.schema_name == "bronze"
@@ -187,7 +189,8 @@ class TestGetSchemas:
         get_schemas(client, table_obj, schema_name="configured_schema")
 
         client.api_client.do.assert_called_once_with(
-            "GET", "/api/2.1/unity-catalog/schemas/main.configured_schema",
+            "GET",
+            "/api/2.1/unity-catalog/schemas/main.configured_schema",
             query={"include_browse": "true"},
         )
         assert table_obj.schema_name == "configured_schema"
@@ -208,10 +211,13 @@ class TestGetTables:
         get_tables(client, table_obj)
 
         client.api_client.do.assert_called_once_with(
-            "GET", "/api/2.1/unity-catalog/tables",
+            "GET",
+            "/api/2.1/unity-catalog/tables",
             query={
-                "include_browse": "true", "max_results": 1,
-                "catalog_name": "main", "schema_name": "bronze",
+                "include_browse": "true",
+                "max_results": 1,
+                "catalog_name": "main",
+                "schema_name": "bronze",
             },
         )
         assert table_obj.name == "orders"
@@ -248,7 +254,8 @@ class TestGetViews:
         get_views(client, table_obj)
 
         client.api_client.do.assert_called_once_with(
-            "GET", "/api/2.1/unity-catalog/tables",
+            "GET",
+            "/api/2.1/unity-catalog/tables",
             query={
                 "include_browse": "true",
                 "max_results": VIEW_LISTING_SCAN_LIMIT,

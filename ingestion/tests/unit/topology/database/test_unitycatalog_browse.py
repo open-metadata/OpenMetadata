@@ -27,14 +27,12 @@ def test_browse_list_collects_paginated_tables_without_select_grants():
         {"tables": [{"name": "second"}]},
     ]
 
-    assert list(iter_browse_items(
-        client, "tables", "tables", catalog_name="c", schema_name="s"
-    )) == [{"name": "first"}, {"name": "second"}]
+    assert list(iter_browse_items(client, "tables", "tables", catalog_name="c", schema_name="s")) == [
+        {"name": "first"},
+        {"name": "second"},
+    ]
     assert client.api_client.do.call_count == 2
-    assert all(
-        call.kwargs["query"]["include_browse"] == "true"
-        for call in client.api_client.do.call_args_list
-    )
+    assert all(call.kwargs["query"]["include_browse"] == "true" for call in client.api_client.do.call_args_list)
     assert client.api_client.do.call_args_list[-1].kwargs["query"]["page_token"] == "page2"
 
 
@@ -43,7 +41,8 @@ def test_browse_get_uses_metadata_visibility_and_encodes_path():
     client.api_client.do.return_value = {"name": "my table"}
     assert get_browse_item(client, "tables", "c.s.my table") == {"name": "my table"}
     client.api_client.do.assert_called_once_with(
-        "GET", "/api/2.1/unity-catalog/tables/c.s.my%20table",
+        "GET",
+        "/api/2.1/unity-catalog/tables/c.s.my%20table",
         query={"include_browse": "true"},
     )
 
