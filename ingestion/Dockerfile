@@ -14,7 +14,12 @@ FROM ${BASE_IMAGE}
 # gRPC ships a separate CA bundle that can lag behind OS distrust updates.
 ENV GRPC_DEFAULT_SSL_ROOTS_FILE_PATH=/etc/ssl/certs/ca-certificates.crt
 USER root
-RUN apt-get -qq update \
+# The Airflow base adds MariaDB's apt repo from archive.mariadb.org, which now redirects to
+# mirror.mariadb.org. Some mirrors it picks redirect https to http, which apt refuses, so
+# `apt-get update` fails depending on the mirror. dlm.mariadb.com serves the same signed repo.
+RUN find /etc/apt/sources.list.d -type f -exec sed -i -E \
+      's#https://archive\.mariadb\.org/mariadb-([0-9.]+)/repo/debian/?#https://dlm.mariadb.com/repo/mariadb-server/\1/repo/debian#' {} + \
+  && apt-get -qq update \
   && apt-get -qq install -y --no-install-recommends ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 COPY ingestion/airflow-constraints-3.3.2.txt /opt/openmetadata/python-tls/airflow-constraints.txt
