@@ -139,7 +139,7 @@
     "classnames": "^2.3.1",
     "cookie-storage": "^6.1.0",
     "cron-parser": "^5.10.5",
-    "cronstrue": "^2.53.0",
+    "cronstrue": "^3.43.0",
     "crypto-random-string-with-promisify-polyfill": "^5.0.0",
     "diff": "^8.0.3",
     "dompurify": "^3.4.17",
