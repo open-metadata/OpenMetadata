@@ -113,7 +113,10 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       try {
         workflows.add(JsonUtils.readValue(json, WorkflowDefinition.class));
       } catch (JsonParsingException e) {
-        LOG.error("Skipping a stored workflow definition this server cannot read", e);
+        LOG.error(
+            "Skipping workflow '{}': this server cannot read its stored definition",
+            JsonUtils.readTree(json).path("fullyQualifiedName").asText(),
+            e);
       }
     }
     return List.copyOf(workflows);
