@@ -24,6 +24,7 @@ import { PersonaClass } from '../../support/persona/PersonaClass';
 import { selectOption } from '../../utils/advancedSearch';
 import {
   getDefaultAdminAPIContext,
+  selectOptionWithRetry,
   toastNotification,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -467,8 +468,10 @@ test.describe.serial('Persona AI Context', () => {
     await entityTypePopup.getByText('Data Product', { exact: true }).click();
     await expect(adminPage.getByText(/every asset it contains/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Article', { exact: true }).click();
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Article', { exact: true })
+    );
 
     await expect(adminPage.getByText(/Generic content/)).toBeVisible();
     await expect(
@@ -495,8 +498,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/18 entities matched/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Metric', { exact: true }).click();
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Metric', { exact: true })
+    );
     for (const section of [
       'Definition',
       'Formula / expression',
@@ -511,8 +516,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/27 entities matched/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Glossary Term', { exact: true }).click();
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Glossary Term', { exact: true })
+    );
     for (const section of [
       'Definition',
       'Synonyms',
@@ -526,8 +533,10 @@ test.describe.serial('Persona AI Context', () => {
     }
     await expect(adminPage.getByText(/143 entities matched/)).toBeVisible();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Table', { exact: true }).click();
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Table', { exact: true })
+    );
     for (const section of [
       'Description',
       'Schema',
@@ -557,8 +566,10 @@ test.describe.serial('Persona AI Context', () => {
     );
     await adminPage.getByTestId('delete-condition-button').last().click();
 
-    await entitySelect.click();
-    await entityTypePopup.getByText('Article', { exact: true }).click();
+    await selectOptionWithRetry(
+      entitySelect.getByRole('button'),
+      entityTypePopup.getByText('Article', { exact: true })
+    );
     await adminPage.getByTestId('context-rule-max-assets').fill('25');
 
     const createRuleRequest = adminPage.waitForRequest(
@@ -1507,11 +1518,11 @@ test.describe.serial('Persona AI Context', () => {
     await expect(exploreLink).toHaveAttribute('href', /\/explore\/tables/);
 
     // Switch to Glossary Term — href must change to the glossaries tab.
-    await adminPage.getByTestId('context-rule-entity-type').click();
-    await adminPage
-      .getByRole('listbox')
-      .getByText('Glossary Term', { exact: true })
-      .click();
+    // The core select can detach its option mid-click; retry through the expanded trigger.
+    await selectOptionWithRetry(
+      adminPage.getByTestId('context-rule-entity-type').getByRole('button'),
+      adminPage.getByRole('listbox').getByText('Glossary Term', { exact: true })
+    );
     await expect(exploreLink).toHaveAttribute('href', /\/explore\/glossaries/);
 
     await adminPage.keyboard.press('Escape');

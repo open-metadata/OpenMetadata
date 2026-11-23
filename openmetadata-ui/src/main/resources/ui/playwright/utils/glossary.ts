@@ -45,6 +45,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
+import { waitForStableBox } from './dragDrop';
 import {
   addMultiOwner,
   getEntityDisplayName,
@@ -1140,6 +1141,17 @@ export const dragAndDropTerm = async (
     dropTarget === 'Terms'
       ? page.locator('th:has-text("Terms")').first()
       : page.locator('tr').filter({ hasText: dropTarget }).first();
+
+  // The glossary page keeps rendering after its loaders clear: the description
+  // block above the table hydrates last and pushes every row down by about a row
+  // height. `dragTo` resolves both rows, computes their boxes, and then presses
+  // at those coordinates — so a drag that starts during that reflow presses on
+  // whatever has since moved into the old position, no dragstart fires, and the
+  // confirmation modal never opens. `force: true` skips the actionability
+  // stability check that would otherwise have waited, and is still needed for
+  // the row hover overlays, so hold both rows still before pressing.
+  await waitForStableBox(dragLocator);
+  await waitForStableBox(dropLocator);
 
   await dragLocator.dragTo(dropLocator, {
     force: true, // eslint-disable-line playwright/no-force-option -- drag-and-drop requires force due to row hover overlays
