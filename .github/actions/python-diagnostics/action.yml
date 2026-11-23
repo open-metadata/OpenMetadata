@@ -1,17 +1,12 @@
-name: Collect diagnostics and clean up
-description: Collect runner diagnostics and stop the test stack
+name: Collect Python diagnostics
+description: Save runner and service diagnostics for failed or cancelled Python jobs.
 inputs:
   artifact-name:
-    description: artifact-name
+    description: Name of the uploaded diagnostics artifact.
     required: true
 runs:
   using: composite
   steps:
-    - name: Report disk headroom
-      if: ${{ always() }}
-      continue-on-error: true
-      run: python3 .github/scripts/python_ci_disk_usage.py report
-      shell: bash
     - name: Collect runner and service diagnostics
       continue-on-error: true
       run: bash .github/scripts/python_ci_diagnostics.sh
@@ -27,11 +22,3 @@ runs:
         retention-days: 14
         compression-level: 1
       if: ${{ always() && (job.status == 'failure' || job.status == 'cancelled') }}
-    - name: Clean Up
-      continue-on-error: true
-      run: |
-        cd ./docker/development
-        docker compose down --remove-orphans || true
-        sudo rm -rf "${PWD}/docker-volume"
-      if: ${{ always() }}
-      shell: bash

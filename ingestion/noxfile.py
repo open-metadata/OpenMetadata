@@ -229,9 +229,7 @@ def lint(session):
             "python_tools.py",
         )
     )
-    sources.extend(
-        str(ROOT / ".github/scripts" / name) for name in ("tests/test_python_ci.py", "python_ci_disk_usage.py")
-    )
+    sources.extend(str(ROOT / ".github/scripts" / name) for name in ("tests/test_python_ci.py",))
     session.run(
         str(python.parent / "ruff"),
         "check",

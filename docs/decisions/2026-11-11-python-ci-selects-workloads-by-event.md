@@ -54,8 +54,9 @@ and ingestion builds within its run. Reusable connector callers can retain per-r
 
 The standard Python integration and legacy connector paths skip post-start profile resynchronization;
 Nox still prepares the selected profile before tests. Custom startup callers retain resynchronization
-by default. Integration and connector runners sample filesystem headroom to support later reductions
-in disk cleanup. Test results retain JUnit and outcome metadata; raw test logs are uploaded for
+by default. Failure diagnostics are collected before the hosted runner is discarded, without
+explicit Docker teardown or local data deletion. Test results retain JUnit and outcome metadata;
+raw test logs are uploaded for
 unsuccessful tests, and coverage text is rendered once centrally in CI.
 
 The nightly runs at 01:00 UTC. Manual dispatch runs the selected entrypoint's workloads,
@@ -78,7 +79,7 @@ run once per selected interpreter, independently of the integration database mat
 checks run once on the minimum interpreter.
 
 `reusable-py-cli-e2e-tests.yml` contains only connector E2E jobs. Preserve the 17 legacy connector lanes,
-their test environment, cloud authentication, diagnostics, cleanup and Snowflake concurrency with
+their test environment, cloud authentication, diagnostics and Snowflake concurrency with
 V2. The default connector list lives in `ci-nightly.yml`; manual nightly runs may override it with
 a JSON array. The V2 workflow remains independent, and connector migration is a separate change.
 

@@ -28,7 +28,6 @@ python:
   - scripts/python_ci.py
   - scripts/python_tools.py
   - .github/scripts/python_ci_diagnostics.sh
-  - .github/scripts/python_ci_disk_usage.py
   - .github/scripts/python_ci_ingestion_image.sh
   - .github/scripts/classify_test_outcome.py
   - .github/scripts/tests/test_python_ci.py

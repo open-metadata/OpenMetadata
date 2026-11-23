@@ -45,15 +45,6 @@ jobs:
       cancel-in-progress: false
     environment: test
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ inputs.ref }}
-          persist-credentials: false
-          fetch-depth: 1
-      - name: Sample disk headroom
-        continue-on-error: true
-        run: python3 .github/scripts/python_ci_disk_usage.py start
-        shell: bash
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
         with:
@@ -64,6 +55,11 @@ jobs:
           large-packages: false
           swap-storage: true
           docker-images: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
       - name: configure aws credentials
         if: contains(fromJSON('["quicksight", "datalake_s3", "athena"]'), matrix.e2e-test)
         uses: aws-actions/configure-aws-credentials@4a1596c86fd706dc0521e32f0121ad1a6d1adb74
@@ -194,8 +190,8 @@ jobs:
           exit-code-file: ingestion/cli-e2e-test-exit-code.txt
           test-profile: python-cli-e2e
           artifact-name: tests-${{ inputs.python-version }}-${{ matrix.e2e-test }}
-      - name: Diagnostics and cleanup
-        if: ${{ always() }}
+      - name: Collect failure diagnostics
+        if: ${{ failure() || cancelled() }}
         uses: ./.github/actions/python-diagnostics
         with:
           artifact-name: py-cli-e2e-diagnostics-${{ inputs.python-version }}-${{ matrix.e2e-test }}

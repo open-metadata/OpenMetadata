@@ -9,7 +9,6 @@ docker info > "$diagnostics/docker-info.txt" 2>&1 || true
 docker system df > "$diagnostics/docker-disk-usage.txt" 2>&1 || true
 docker ps --all --no-trunc > "$diagnostics/docker-containers.txt" 2>&1 || true
 if [ -d docker/development ]; then
-  (cd docker/development && docker compose ps --all) > "$diagnostics/docker-compose-ps.txt" 2>&1 || true
   (cd docker/development && docker compose logs --no-color --tail 2000) > "$diagnostics/docker-compose.log" 2>&1 || true
 fi
 coredumpctl --no-pager list > "$diagnostics/coredumps.txt" 2>&1 || true
