@@ -13,22 +13,11 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install Ubuntu dependencies
-      if: inputs.profile != 'style'
-      run: |
-        sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        libevent-dev python3-dev libkrb5-dev tdsodbc && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
-      shell: bash
-    - name: Setup Python ${{ inputs.python-version }}
-      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+    - uses: ./.github/actions/setup-python
       with:
         python-version: ${{ inputs.python-version }}
-    - name: Install uv
-      uses: ./.github/actions/setup-uv
-    - name: Install ANTLR
+    - uses: ./.github/actions/prepare-python-build
       if: inputs.profile != 'style'
-      run: sudo make install_antlr_cli
-      shell: bash
     - name: Prepare classification models
       if: inputs.profile == 'test-classification' && inputs.prepare-models == 'true'
       uses: ./.github/actions/prepare-classification-models

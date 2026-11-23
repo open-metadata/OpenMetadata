@@ -10,6 +10,7 @@ python:
   - .github/workflows/py-cli-e2e-tests-v2.yml
   - .github/workflows/reusable-py-cli-e2e-tests.yml
   - .github/actions/prepare-python-environment/**
+  - .github/actions/prepare-python-build/**
   - .github/actions/setup-openmetadata-test-environment/action.yml
   - openmetadata-spec/**
   - openmetadata-service/src/main/java/org/openmetadata/service/resources/**
@@ -25,6 +26,7 @@ python:
   - .github/actions/python-*/**
   - .github/actions/report-test-results/**
   - .github/actions/setup-uv/**
+  - .github/actions/setup-python/**
   - scripts/python_ci.py
   - scripts/python_tools.py
   - .github/scripts/python_ci_diagnostics.sh

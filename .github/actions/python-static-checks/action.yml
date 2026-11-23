@@ -10,14 +10,16 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: ./.github/actions/prepare-python-environment
+    - uses: ./.github/actions/setup-python
       with:
         python-version: ${{ inputs.python-version }}
-        profile: ${{ inputs.check-types == 'true' && 'types' || 'style' }}
     - name: Check formatting and lint
       run: make py_format_check
       shell: bash
+    - uses: ./.github/actions/prepare-python-build
+      if: inputs.check-types == 'true'
     - name: Check types
+      id: types
       if: inputs.check-types == 'true'
       env:
         PYTHON_VERSIONS: ${{ inputs.python-version }}
@@ -26,7 +28,8 @@ runs:
         make static-checks 2>&1 | tee ingestion/static-checks-run.log
       shell: bash
     - name: Upload static check log
-      if: ${{ always() && inputs.check-types == 'true' }}
+      if: ${{ !cancelled() && steps.types.outcome == 'failure' && hashFiles('ingestion/static-checks-run.log') != '' }}
+      continue-on-error: true
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
         name: py-static-checks

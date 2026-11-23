@@ -36,7 +36,11 @@ Formatting, lint and type checks share one job on the lowest supported Python, w
 steps and isolated tool environments. Both modes share Python and pinned uv setup. Formatting/lint
 uses the style profile; native libraries, ANTLR, generated models and application dependencies are
 prepared only for type checks. Airflow API changes alone select formatting/lint without ingestion
-type checks. Ruff targets Python 3.10 independently of its host interpreter.
+type checks. Ruff runs before type prerequisites are installed, so formatting/lint failures stop
+the job before application preparation. Nox prepares each selected tool profile when its check
+runs; CI does not preinstall it. Static-check logs are uploaded only for a failed type-check step
+with an available log, and upload failures do not alter the check result. Ruff targets Python 3.10
+independently of its host interpreter.
 
 `ci-pr.yml`, `ci-merge-queue.yml` and `ci-nightly.yml` own their respective triggers, workload
 selection, Python matrices, dependencies, permissions and required `py-tests-status` check.
