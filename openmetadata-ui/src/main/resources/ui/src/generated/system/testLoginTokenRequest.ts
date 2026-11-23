@@ -522,9 +522,9 @@ export interface Idp {
     entityId: string;
     /**
      * IdP signing certificate(s): a PEM certificate or concatenated PEM bundle; a single base64
-     * DER certificate is also accepted. At least one currently valid certificate is required
-     * for configuration validation. Expired keys are excluded when settings are built; future
-     * rollover keys are retained.
+     * DER certificate is also accepted. Saving requires at least one currently valid
+     * certificate. At runtime every configured certificate is trusted, including expired and
+     * future rollover ones, so remove a retired key explicitly.
      */
     idpX509Certificate?: string;
     /**
