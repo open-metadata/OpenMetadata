@@ -80,6 +80,8 @@
     <!-- fabric8 6.14 is the first 6.x line that serializes with Jackson 2.19+; older clients NPE
          in MapSerializer on any-getter fields. Keep it in step with jackson.version. -->
     <fabric8.version>6.14.0</fabric8.version>
+    <tools-jackson.version>3.3.0</tools-jackson.version>
+    <plexus-utils.version>4.0.3</plexus-utils.version>
     <!-- Single source for the AWS SDK v2 BOM version, consumed by the root BOM
          import below and by openmetadata-service's BOM import. -->
     <awssdk.version>2.59.5</awssdk.version>
@@ -930,7 +932,7 @@
       <dependency>
         <groupId>tools.jackson</groupId>
         <artifactId>jackson-bom</artifactId>
-        <version>3.3.0</version>
+        <version>${tools-jackson.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
