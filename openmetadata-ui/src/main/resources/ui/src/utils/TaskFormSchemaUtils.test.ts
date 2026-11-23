@@ -993,6 +993,28 @@ describe('Suggestion form schema resolution', () => {
       );
     });
 
+    it('does not hand a strict lookup result to a caller that allows the fallback', async () => {
+      stubByUrl([{ match: isListUrl, data: { data: [] } }]);
+
+      const strict = await getResolvedTaskFormSchema(
+        TaskEntityType.DescriptionUpdate,
+        TaskCategory.MetadataUpdate,
+        { allowFallback: false }
+      );
+      const withFallback = await getResolvedTaskFormSchema(
+        TaskEntityType.DescriptionUpdate,
+        TaskCategory.MetadataUpdate
+      );
+
+      expect(strict).toBeUndefined();
+      expect(withFallback).toEqual(
+        getDefaultTaskFormSchema(
+          TaskEntityType.DescriptionUpdate,
+          TaskCategory.MetadataUpdate
+        )
+      );
+    });
+
     it('serves a second identical call from the cache without a new fetch', async () => {
       stubByUrl([{ match: isByNameUrl, data: tagSuggestionSchema }]);
 

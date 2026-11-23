@@ -124,8 +124,8 @@ export const getResolvedTaskFormSchema = async (
   // rendering tag suggestions with the description widget/label.
   const cacheKey = `${taskType}::${taskCategory}::${
     resolution?.taskFormSchemaId ?? ''
-  }::${normalizeSuggestionKey(resolution?.payload)}::${
-    resolution?.allowFallback ? '1' : '0'
+  }::${normalizeSuggestionKey(resolution?.payload)}${
+    resolution?.allowFallback === false ? '::strict' : ''
   }`;
   const existing = taskFormSchemaCache.get(cacheKey);
 

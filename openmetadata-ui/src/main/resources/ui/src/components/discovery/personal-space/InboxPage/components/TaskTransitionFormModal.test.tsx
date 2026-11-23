@@ -14,6 +14,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import {
+  Task,
   TaskAvailableTransition,
   TaskStatus,
 } from '../../../../../generated/entity/tasks/task';
@@ -160,7 +161,7 @@ const TASK = {
   category: 'Custom',
   status: TaskStatus.Open,
   payload: { targetField: 'description' },
-} as never;
+} as unknown as Task;
 
 describe('TaskTransitionFormModal', () => {
   it('renders the form seeded from the task payload', () => {
