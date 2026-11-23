@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -55,6 +56,7 @@ import org.openmetadata.schema.type.TaskReviewVote;
 import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -279,13 +281,12 @@ public class TaskChangeEventIT {
     ChangeEvent resolution = awaitUpdatedEvents(incident.getId(), resolvedAt, 1).getFirst();
     assertStatusChange(resolution, TaskEntityStatus.InProgress, TaskEntityStatus.Completed);
 
-    long reopenedAt = System.currentTimeMillis();
-    createIncidentStatus(testCase, TestCaseResolutionStatusTypes.Ack);
-    List<ChangeEvent> reopenAndAck = awaitUpdatedEvents(incident.getId(), reopenedAt, 2);
-    ChangeEvent reopen = eventWithNewStatus(reopenAndAck, TaskEntityStatus.Open);
-    assertStatusChange(reopen, TaskEntityStatus.Completed, TaskEntityStatus.Open);
-    assertTrue(names(reopen.getChangeDescription().getFieldsDeleted()).contains(RESOLUTION));
-    assertNotNull(eventWithNewStatus(reopenAndAck, TaskEntityStatus.InProgress));
+    // ADR:2026-11-17-resolved-incidents-are-final: a legacy status write cannot reopen it.
+    assertThrows(
+        InvalidRequestException.class,
+        () -> createIncidentStatus(testCase, TestCaseResolutionStatusTypes.Ack));
+    assertEquals(
+        TaskEntityStatus.Completed, client().tasks().get(incident.getId().toString()).getStatus());
   }
 
   @Test
@@ -315,6 +316,9 @@ public class TaskChangeEventIT {
     ChangeEvent event = awaitUpdatedEvents(incident.getId(), closedAt, 1).getFirst();
     assertStatusChange(event, TaskEntityStatus.Open, TaskEntityStatus.Completed);
     assertEquals("governance-bot", event.getUserName());
+    Task resolved = client().tasks().get(incident.getId().toString(), "comments,resolution");
+    assertTrue(resolved.getComments() == null || resolved.getComments().isEmpty());
+    assertEquals("AutoResolved", resolved.getResolution().getComment());
   }
 
   // ---------------------------------------------------------------- change events
@@ -368,19 +372,6 @@ public class TaskChangeEventIT {
             .orElseThrow(() -> new AssertionError("no status change in " + event));
     assertEquals(from.value(), String.valueOf(status.getOldValue()));
     assertEquals(to.value(), String.valueOf(status.getNewValue()));
-  }
-
-  private static ChangeEvent eventWithNewStatus(List<ChangeEvent> events, TaskEntityStatus to) {
-    return events.stream()
-        .filter(
-            event ->
-                event.getChangeDescription().getFieldsUpdated().stream()
-                    .anyMatch(
-                        change ->
-                            STATUS.equals(change.getName())
-                                && to.value().equals(String.valueOf(change.getNewValue()))))
-        .findFirst()
-        .orElseThrow(() -> new AssertionError("no event moving the task to " + to));
   }
 
   private static List<String> names(List<FieldChange> changes) {

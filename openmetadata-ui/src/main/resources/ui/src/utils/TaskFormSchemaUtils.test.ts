@@ -585,7 +585,7 @@ describe('TaskFormSchemaUtils', () => {
     });
     expect(uiSchema).toMatchObject({
       comment: {
-        'ui:widget': 'textarea',
+        'ui:widget': 'richtext',
       },
     });
   });

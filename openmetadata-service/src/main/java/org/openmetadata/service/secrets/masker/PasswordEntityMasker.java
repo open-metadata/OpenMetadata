@@ -295,7 +295,7 @@ public class PasswordEntityMasker extends EntityMasker {
   }
 
   private void walkCollection(Collection<?> collection, String key, PasswordFieldVisitor visitor) {
-    List<String> elementKeys = ReflectionUtil.getCollectionElementKeys(collection);
+    List<String> elementKeys = ReflectionUtil.getCollectionElementIdentities(collection);
     int index = 0;
     for (Object element : collection) {
       if (isTraversable(element)) {
