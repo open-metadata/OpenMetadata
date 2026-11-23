@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-22T03:10:10Z",
+  "generatedAt": "2026-11-23T03:12:00Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "43617762853",
-      "sourceSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "recordedAt": "2026-11-14T17:29:13Z"
-    },
     {
       "runId": "43668471513",
       "sourceSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
@@ -53,6 +48,11 @@
       "runId": "44976793294",
       "sourceSha": "78e4716b17be950e79e3634c49f0b52323d6732a",
       "recordedAt": "2026-11-22T03:10:10Z"
+    },
+    {
+      "runId": "45101283550",
+      "sourceSha": "5af6f6ab7a271eba9f48322be42db574b9bbf8bd",
+      "recordedAt": "2026-11-23T03:12:00Z"
     }
   ],
   "entries": {
@@ -88,7 +88,6 @@
     },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a a bot writing the field supersedes the held edit": {
       "observations": [
-        "43617762853",
         "44224347886"
       ],
       "project": "GlobalSettings",
@@ -122,7 +121,6 @@
     },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a only the reviewers see every held edit; a requester sees their own": {
       "observations": [
-        "43617762853",
         "43793180722"
       ],
       "project": "GlobalSettings",
@@ -180,32 +178,35 @@
         "44445461359",
         "44661891093",
         "44856696294",
-        "44976793294"
+        "44976793294",
+        "45101283550"
       ],
       "project": "Ingestion",
       "file": "Features/DataQuality/AddTestCaseNewFlow.spec.ts",
       "title": "Add TestCase New Flow \u203a Add Column Test Case",
-      "lastSeenSha": "78e4716b17be950e79e3634c49f0b52323d6732a",
+      "lastSeenSha": "5af6f6ab7a271eba9f48322be42db574b9bbf8bd",
       "hardFailure": false
     },
     "Ingestion :: Features/DataQuality/DataQuality.spec.ts :: Data Quality \u203a shows every section for a scheduled failed test case run": {
       "observations": [
-        "44976793294"
+        "44976793294",
+        "45101283550"
       ],
       "project": "Ingestion",
       "file": "Features/DataQuality/DataQuality.spec.ts",
       "title": "Data Quality \u203a shows every section for a scheduled failed test case run",
-      "lastSeenSha": "78e4716b17be950e79e3634c49f0b52323d6732a",
+      "lastSeenSha": "5af6f6ab7a271eba9f48322be42db574b9bbf8bd",
       "hardFailure": true
     },
     "Ingestion :: Features/IncidentManager.spec.ts :: Incident Manager \u203a Complete Incident lifecycle with table owner": {
       "observations": [
-        "44976793294"
+        "44976793294",
+        "45101283550"
       ],
       "project": "Ingestion",
       "file": "Features/IncidentManager.spec.ts",
       "title": "Incident Manager \u203a Complete Incident lifecycle with table owner",
-      "lastSeenSha": "78e4716b17be950e79e3634c49f0b52323d6732a",
+      "lastSeenSha": "5af6f6ab7a271eba9f48322be42db574b9bbf8bd",
       "hardFailure": true
     },
     "Ingestion :: Flow/ServiceForm.spec.ts :: Service form functionality \u203a Superset \u203a Verify SSL cert upload with long filename and UI overflow handling": {
@@ -254,32 +255,35 @@
     "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a a test case incident resolves through the reason dialog": {
       "observations": [
         "44661891093",
-        "44976793294"
+        "44976793294",
+        "45101283550"
       ],
       "project": "chromium",
       "file": "Features/AIMode/InboxTaskMatrix.spec.ts",
       "title": "Inbox task matrix \u203a a test case incident resolves through the reason dialog",
-      "lastSeenSha": "78e4716b17be950e79e3634c49f0b52323d6732a",
+      "lastSeenSha": "5af6f6ab7a271eba9f48322be42db574b9bbf8bd",
       "hardFailure": true
     },
     "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a an incident is acknowledged, then resolved with a reason": {
       "observations": [
-        "44976793294"
+        "44976793294",
+        "45101283550"
       ],
       "project": "chromium",
       "file": "Features/AIMode/InboxTaskMatrix.spec.ts",
       "title": "Inbox task matrix \u203a an incident is acknowledged, then resolved with a reason",
-      "lastSeenSha": "78e4716b17be950e79e3634c49f0b52323d6732a",
+      "lastSeenSha": "5af6f6ab7a271eba9f48322be42db574b9bbf8bd",
       "hardFailure": true
     },
     "chromium :: Features/AIMode/InboxTasks.spec.ts :: Inbox \u2014 Triage \u203a rejecting a task asks for a comment and lowers the sidebar count": {
       "observations": [
-        "44976793294"
+        "44976793294",
+        "45101283550"
       ],
       "project": "chromium",
       "file": "Features/AIMode/InboxTasks.spec.ts",
       "title": "Inbox \u2014 Triage \u203a rejecting a task asks for a comment and lowers the sidebar count",
-      "lastSeenSha": "78e4716b17be950e79e3634c49f0b52323d6732a",
+      "lastSeenSha": "5af6f6ab7a271eba9f48322be42db574b9bbf8bd",
       "hardFailure": true
     },
     "chromium :: Features/AIMode/IncidentGroups.spec.ts :: AI mode Incident Manager \u2014 changing grouped incidents \u203a leaves assigned incidents as they are when acknowledging": {
@@ -413,36 +417,6 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "chromium :: Features/OntologyAuthoringSafety.spec.ts :: Native ontology authoring safeguards \u203a preserves drafts, selects class IRIs, and exposes publication review in ai dark mode": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyAuthoringSafety.spec.ts",
-      "title": "Native ontology authoring safeguards \u203a preserves drafts, selects class IRIs, and exposes publication review in ai dark mode",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyAuthoringSafety.spec.ts :: Native ontology authoring safeguards \u203a preserves drafts, selects class IRIs, and exposes publication review in ai light mode": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyAuthoringSafety.spec.ts",
-      "title": "Native ontology authoring safeguards \u203a preserves drafts, selects class IRIs, and exposes publication review in ai light mode",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyAuthoringSafety.spec.ts :: Native ontology authoring safeguards \u203a preserves drafts, selects class IRIs, and exposes publication review in classic light mode": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyAuthoringSafety.spec.ts",
-      "title": "Native ontology authoring safeguards \u203a preserves drafts, selects class IRIs, and exposes publication review in classic light mode",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
     "chromium :: Features/OntologyExplorer.spec.ts :: Ontology Explorer \u203a switches between the model graph and the data layer": {
       "observations": [
         "44004103039"
@@ -453,75 +427,14 @@
       "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
       "hardFailure": true
     },
-    "chromium :: Features/OntologyNativeAuthoring.spec.ts :: Native class authoring \u203a a SKOS concept refuses parents, and switching to OWL class lets the class be created": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyNativeAuthoring.spec.ts",
-      "title": "Native class authoring \u203a a SKOS concept refuses parents, and switching to OWL class lets the class be created",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": false
-    },
     "chromium :: Features/OntologyNativeDataMode.spec.ts :: Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API": {
       "observations": [
-        "43617762853",
         "43668471513"
       ],
       "project": "chromium",
       "file": "Features/OntologyNativeDataMode.spec.ts",
       "title": "Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API",
       "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
-      "hardFailure": false
-    },
-    "chromium :: Features/OntologyNativeStudio.spec.ts :: Native Ontology Studio \u203a authors a native model through the shared View, Edit, and Query shell": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyNativeStudio.spec.ts",
-      "title": "Native Ontology Studio \u203a authors a native model through the shared View, Edit, and Query shell",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyNativeStudio.spec.ts :: Ontology Studio create dialog and picker actions \u203a classic mode \u203a creates with a custom ID, IRI, namespace and layer L1": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyNativeStudio.spec.ts",
-      "title": "Ontology Studio create dialog and picker actions \u203a classic mode \u203a creates with a custom ID, IRI, namespace and layer L1",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a fills history rows and compares two releases in ai mode": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyReview.spec.ts",
-      "title": "Release history and compare (G8) \u203a fills history rows and compares two releases in ai mode",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a fills history rows and compares two releases in classic mode": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyReview.spec.ts",
-      "title": "Release history and compare (G8) \u203a fills history rows and compares two releases in classic mode",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": false
-    },
-    "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a reads Published without review on a directly published release row and detail": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyReview.spec.ts",
-      "title": "Release history and compare (G8) \u203a reads Published without review on a directly published release row and detail",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
       "hardFailure": false
     },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases": {
@@ -534,36 +447,6 @@
       "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
       "hardFailure": false
     },
-    "chromium :: Features/OntologyReviewTasks.spec.ts :: Ontology review Tasks drawer \u203a requires a rejection reason and preserves it in the decided task and thread": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyReviewTasks.spec.ts",
-      "title": "Ontology review Tasks drawer \u203a requires a rejection reason and preserves it in the decided task and thread",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyStudioFlows.spec.ts :: Ontology Studio flows \u203a flow 7: a rejection shows its reason to the author, who edits and asks again, and withdraws the second request, in ai mode": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyStudioFlows.spec.ts",
-      "title": "Ontology Studio flows \u203a flow 7: a rejection shows its reason to the author, who edits and asks again, and withdraws the second request, in ai mode",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyStudioFlows.spec.ts :: Ontology Studio flows \u203a flow 7: a rejection shows its reason to the author, who edits and asks again, and withdraws the second request, in classic mode": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyStudioFlows.spec.ts",
-      "title": "Ontology Studio flows \u203a flow 7: a rejection shows its reason to the author, who edits and asks again, and withdraws the second request, in classic mode",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
     "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed": {
       "observations": [
         "43668471513",
@@ -574,16 +457,6 @@
       "title": "Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed",
       "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
       "hardFailure": false
-    },
-    "chromium :: Features/ProfileSsoSettings.spec.ts :: Profile SSO Settings \u203a LDAP role mappings and reassigned roles are saved with the configuration": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Features/ProfileSsoSettings.spec.ts",
-      "title": "Profile SSO Settings \u203a LDAP role mappings and reassigned roles are saved with the configuration",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
     },
     "chromium :: Features/ProfileSsoSettings.spec.ts :: Profile SSO Settings \u203a Test Login opens as a sub page and Back keeps the edited values": {
       "observations": [
@@ -643,16 +516,6 @@
       "file": "Pages/CustomProperties.spec.ts",
       "title": "Add update and delete custom properties for dashboard \u203a Create custom property and configure search for Dashboard",
       "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
-      "hardFailure": false
-    },
-    "chromium :: Pages/ExplorePageRightPanel.spec.ts :: Right Panel Test Suite \u203a Explore page right panel tests \u203a Overview panel - Deleted entity verification \u203a Should verify deleted glossary term not visible in selection for topic": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "chromium",
-      "file": "Pages/ExplorePageRightPanel.spec.ts",
-      "title": "Right Panel Test Suite \u203a Explore page right panel tests \u203a Overview panel - Deleted entity verification \u203a Should verify deleted glossary term not visible in selection for topic",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
       "hardFailure": false
     },
     "chromium :: Pages/InputOutputPorts.spec.ts :: Input Output Ports \u203a Section 2: Adding Ports \u203a Add different entity types as ports": {
@@ -845,16 +708,6 @@
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
       "hardFailure": true
     },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-custom-properties": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-spreadsheet-custom-properties",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-queries": {
       "observations": [
         "44004103039"
@@ -877,16 +730,6 @@
       "title": "Entity tabs light \u203a tab-table-schema-definition",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": false
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-custom-properties": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "Entity tabs light \u203a tab-topic-custom-properties",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-export-dialog": {
       "observations": [
@@ -950,7 +793,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-publish-releases": {
       "observations": [
-        "43617762853",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -1309,16 +1151,6 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices MicroStrategy configuration form": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a dashboardServices MicroStrategy configuration form",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices QlikSense configuration form": {
       "observations": [
         "44445461359"
@@ -1337,16 +1169,6 @@
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms dark \u203a dashboardServices QuickSight configuration form",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Sigma configuration form": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms dark \u203a dashboardServices Sigma configuration form",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Tableau configuration form": {
@@ -1489,16 +1311,6 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices MicroStrategy configuration form": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a dashboardServices MicroStrategy configuration form",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices QlikSense configuration form": {
       "observations": [
         "44445461359"
@@ -1517,16 +1329,6 @@
       "file": "VisualRegression/connectorForms.spec.ts",
       "title": "Connection forms light \u203a dashboardServices QuickSight configuration form",
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
-      "hardFailure": true
-    },
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Sigma configuration form": {
-      "observations": [
-        "43617762853"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/connectorForms.spec.ts",
-      "title": "Connection forms light \u203a dashboardServices Sigma configuration form",
-      "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Tableau configuration form": {
@@ -1661,7 +1463,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-long-results": {
       "observations": [
-        "43617762853",
         "43668471513"
       ],
       "project": "visual-regression",
@@ -1732,7 +1533,6 @@
     },
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions dark \u203a glossary-late-activity-count": {
       "observations": [
-        "43617762853",
         "43793180722"
       ],
       "project": "visual-regression",
@@ -1743,7 +1543,6 @@
     },
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count": {
       "observations": [
-        "43617762853",
         "43793180722",
         "44445461359"
       ],
@@ -1897,7 +1696,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: glossary matches baseline": {
       "observations": [
-        "43617762853",
         "44224347886"
       ],
       "project": "visual-regression",
@@ -1979,35 +1777,32 @@
     }
   },
   "stableIds": [
-    "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a a bot writing the field supersedes the held edit",
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a accepting one of two competing edits supersedes the other",
-    "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a only the reviewers see every held edit; a requester sees their own",
     "Ingestion :: Features/DataQuality/AddTestCaseNewFlow.spec.ts :: Add TestCase New Flow \u203a Add Column Test Case",
+    "Ingestion :: Features/DataQuality/DataQuality.spec.ts :: Data Quality \u203a shows every section for a scheduled failed test case run",
+    "Ingestion :: Features/IncidentManager.spec.ts :: Incident Manager \u203a Complete Incident lifecycle with table owner",
     "Knowledge Graph :: Features/KnowledgeGraph.spec.ts :: Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it",
     "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a a test case incident resolves through the reason dialog",
+    "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a an incident is acknowledged, then resolved with a reason",
+    "chromium :: Features/AIMode/InboxTasks.spec.ts :: Inbox \u2014 Triage \u203a rejecting a task asks for a comment and lowers the sidebar count",
     "chromium :: Features/McpAdministration.spec.ts :: admin controls MCP access and revokes registered clients",
-    "chromium :: Features/OntologyNativeDataMode.spec.ts :: Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API",
     "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-schema-definition",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-publish-releases",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-long-results",
-    "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions dark \u203a glossary-late-activity-count",
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets dark",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets light",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: glossary matches baseline",
     "visual-regression :: VisualRegression/staticPages.spec.ts :: teams matches baseline"
   ],
   "hardFailureStableIds": [
+    "Ingestion :: Features/DataQuality/DataQuality.spec.ts :: Data Quality \u203a shows every section for a scheduled failed test case run",
+    "Ingestion :: Features/IncidentManager.spec.ts :: Incident Manager \u203a Complete Incident lifecycle with table owner",
     "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a a test case incident resolves through the reason dialog",
+    "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a an incident is acknowledged, then resolved with a reason",
+    "chromium :: Features/AIMode/InboxTasks.spec.ts :: Inbox \u2014 Triage \u203a rejecting a task asks for a comment and lowers the sidebar count",
     "chromium :: Features/McpAdministration.spec.ts :: admin controls MCP access and revokes registered clients",
-    "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-publish-releases",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-long-results",
-    "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions dark \u203a glossary-late-activity-count",
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets dark",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets light",
-    "visual-regression :: VisualRegression/staticPages.spec.ts :: glossary matches baseline",
     "visual-regression :: VisualRegression/staticPages.spec.ts :: teams matches baseline"
   ]
 }
