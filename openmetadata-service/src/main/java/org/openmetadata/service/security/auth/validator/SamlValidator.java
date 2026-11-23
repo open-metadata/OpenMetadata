@@ -231,9 +231,9 @@ public class SamlValidator {
    * The check a save of the configuration runs on the IdP certificate, without calling the identity
    * provider. Returns null when the certificate passes or is not set.
    */
-  public FieldError validateIdpCertificate(SamlSSOClientConfig samlConfig) {
+  public FieldError validateIdpCertificate(final SamlSSOClientConfig samlConfig) {
     FieldError error = null;
-    String certificate = samlConfig.getIdp().getIdpX509Certificate();
+    final String certificate = samlConfig.getIdp().getIdpX509Certificate();
     if (!nullOrEmpty(certificate)) {
       try {
         validateX509Certificate(certificate, "IdP X509 certificate", samlConfig);
@@ -249,7 +249,7 @@ public class SamlValidator {
 
   private FieldError validateCertificates(SamlSSOClientConfig samlConfig) {
     try {
-      FieldError idpCertificateError = validateIdpCertificate(samlConfig);
+      final FieldError idpCertificateError = validateIdpCertificate(samlConfig);
       if (idpCertificateError != null) {
         return idpCertificateError;
       }

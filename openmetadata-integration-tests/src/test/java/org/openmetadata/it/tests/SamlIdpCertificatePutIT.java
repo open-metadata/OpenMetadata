@@ -56,6 +56,10 @@ class SamlIdpCertificatePutIT {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String SECURITY_CONFIG_PATH = "/v1/system/security/config";
   private static final String CERTIFICATE_FIELD = "samlConfiguration.idp.idpX509Certificate";
+
+  /** The certificate's own name, which every refusal of a PATCH names, whatever its path prefix. */
+  private static final String CERTIFICATE_NAME = "idpX509Certificate";
+
   private static final String VALID = resource("/saml/mock-idp.crt");
   private static final String OTHER_VALID = resource("/saml/other-idp.crt");
   private static final String EXPIRED = resource("/saml/expired-idp.crt");
@@ -80,10 +84,10 @@ class SamlIdpCertificatePutIT {
 
   @Test
   void putRefusesAnUnusableCertificateAndWritesNothing() {
-    JsonNode stored = storedAuthentication();
+    final JsonNode stored = storedAuthentication();
 
-    for (String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
-      InvalidRequestException refused =
+    for (final String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
+      final InvalidRequestException refused =
           assertThrows(InvalidRequestException.class, () -> put(withIdpCertificate(unusable)));
 
       assertTrue(refused.getMessage().contains(CERTIFICATE_FIELD), refused.getMessage());
@@ -108,10 +112,10 @@ class SamlIdpCertificatePutIT {
    */
   @Test
   void putDoesNotRecheckTheStoredExpiredCertificate() throws Exception {
-    String expired = withIdpCertificate(EXPIRED);
+    final String expired = withIdpCertificate(EXPIRED);
     storeWithoutChecks(expired);
     try {
-      String answer = attempt(expired);
+      final String answer = attempt(expired);
 
       assertFalse(answer.contains(CERTIFICATE_FIELD), answer);
     } finally {
@@ -121,12 +125,12 @@ class SamlIdpCertificatePutIT {
 
   @Test
   void patchRefusesAnUnusableCertificateAndWritesNothing() {
-    JsonNode stored = storedAuthentication();
+    final JsonNode stored = storedAuthentication();
 
-    for (String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
-      String answer = attempt(() -> patch(replaceCertificate(unusable)));
+    for (final String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
+      final String answer = attempt(() -> patch(replaceCertificate(unusable)));
 
-      assertTrue(answer.contains("idpX509Certificate"), answer);
+      assertTrue(answer.contains(CERTIFICATE_NAME), answer);
       assertEquals(stored, storedAuthentication(), "a refused PATCH stores nothing");
     }
   }
@@ -142,14 +146,14 @@ class SamlIdpCertificatePutIT {
     }
   }
 
-  private static String replaceCertificate(String idpCertificate) {
+  private static String replaceCertificate(final String idpCertificate) {
     return "[{\"op\":\"replace\",\"path\":\"/authenticationConfiguration/samlConfiguration/idp/"
         + "idpX509Certificate\",\"value\":"
         + JsonUtils.pojoToJson(idpCertificate)
         + "}]";
   }
 
-  private static String patch(String jsonPatch) throws Exception {
+  private static String patch(final String jsonPatch) throws Exception {
     return SdkClients.adminClient()
         .getHttpClient()
         .executeForString(
@@ -164,7 +168,7 @@ class SamlIdpCertificatePutIT {
     String send() throws Exception;
   }
 
-  private static String attempt(Request request) {
+  private static String attempt(final Request request) {
     String answer;
     try {
       answer = String.valueOf(request.send());
@@ -176,23 +180,23 @@ class SamlIdpCertificatePutIT {
     return answer;
   }
 
-  private static String withIdpCertificate(String idpCertificate) {
+  private static String withIdpCertificate(final String idpCertificate) {
     try {
-      ObjectNode config = (ObjectNode) MAPPER.readTree(original);
-      ObjectNode authentication = (ObjectNode) config.get("authenticationConfiguration");
+      final ObjectNode config = (ObjectNode) MAPPER.readTree(original);
+      final ObjectNode authentication = (ObjectNode) config.get("authenticationConfiguration");
       authentication.put("provider", "saml");
       authentication.put("providerName", "SAML");
       authentication.put("clientType", "public");
-      ObjectNode saml = authentication.putObject("samlConfiguration");
-      ObjectNode idp = saml.putObject("idp");
+      final ObjectNode saml = authentication.putObject("samlConfiguration");
+      final ObjectNode idp = saml.putObject("idp");
       idp.put("entityId", "https://idp.saml-certificate-it.invalid");
       idp.put("ssoLoginUrl", "https://idp.saml-certificate-it.invalid/sso");
       idp.put("idpX509Certificate", idpCertificate);
-      ObjectNode sp = saml.putObject("sp");
+      final ObjectNode sp = saml.putObject("sp");
       sp.put("entityId", "openmetadata-saml-certificate-it");
       sp.put("acs", "http://localhost:8585/api/v1/saml/acs");
       sp.put("callback", "http://localhost:8585/saml/callback");
-      ObjectNode security = saml.putObject("security");
+      final ObjectNode security = saml.putObject("security");
       security.put("strictMode", false);
       security.put("wantMessagesSigned", false);
       security.put("wantAssertionsSigned", false);
@@ -204,7 +208,7 @@ class SamlIdpCertificatePutIT {
   }
 
   /** What the server answered to a PUT, success or not. */
-  private static String attempt(String body) {
+  private static String attempt(final String body) {
     return attempt(() -> put(body));
   }
 
@@ -212,8 +216,9 @@ class SamlIdpCertificatePutIT {
    * Stands for a certificate that was valid when it was saved and has expired since: the row is
    * written as time would leave it, past the settings write step that refuses a new expired one.
    */
-  private static void storeWithoutChecks(String securityConfig) {
-    JsonNode authentication = JsonUtils.readTree(securityConfig).get("authenticationConfiguration");
+  private static void storeWithoutChecks(final String securityConfig) {
+    final JsonNode authentication =
+        JsonUtils.readTree(securityConfig).get("authenticationConfiguration");
     Entity.getCollectionDAO()
         .systemDAO()
         .insertSettings(AUTHENTICATION_CONFIGURATION.value(), JsonUtils.pojoToJson(authentication));
@@ -221,7 +226,7 @@ class SamlIdpCertificatePutIT {
   }
 
   private static JsonNode storedAuthentication() {
-    Settings stored =
+    final Settings stored =
         Entity.getSystemRepository().getConfigWithKey(AUTHENTICATION_CONFIGURATION.value());
     return JsonUtils.valueToTree(stored.getConfigValue());
   }
@@ -237,14 +242,14 @@ class SamlIdpCertificatePutIT {
             HttpMethod.GET, SECURITY_CONFIG_PATH, null, RequestOptions.builder().build());
   }
 
-  private static String put(String body) throws Exception {
+  private static String put(final String body) throws Exception {
     return SdkClients.adminClient()
         .getHttpClient()
         .executeForString(
             HttpMethod.PUT, SECURITY_CONFIG_PATH, body, RequestOptions.builder().build());
   }
 
-  private static String resource(String path) {
+  private static String resource(final String path) {
     try (InputStream stream = SamlIdpCertificatePutIT.class.getResourceAsStream(path)) {
       return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
     } catch (IOException e) {

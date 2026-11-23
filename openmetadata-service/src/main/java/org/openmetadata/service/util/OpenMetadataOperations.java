@@ -834,8 +834,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
    * a save would refuse, stops it before the authorizer is written.
    */
   static void storeSecurityConfiguration(
-      SystemRepository repository, SecurityConfiguration securityConfig) {
-    AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+      final SystemRepository repository, final SecurityConfiguration securityConfig) {
+    final AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
     if (authConfig != null) {
       repository.createOrUpdate(
           new Settings()

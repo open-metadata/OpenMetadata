@@ -74,8 +74,8 @@ class SystemRepositoryIdpCertificateTest {
     entityMock = mockStatic(Entity.class);
     migrationMock = mockStatic(MigrationValidationClient.class);
     settingsCacheMock = mockStatic(SettingsCache.class);
-    CollectionDAO collectionDAO = mock(CollectionDAO.class);
-    SystemDAO dao = inMemoryDao();
+    final CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    final SystemDAO dao = inMemoryDao();
     when(collectionDAO.systemDAO()).thenReturn(dao);
     entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
     migrationMock
@@ -93,37 +93,42 @@ class SystemRepositoryIdpCertificateTest {
 
   /** Every way that writes the authentication configuration, and the JSON it leaves stored. */
   private Map<String, Function<AuthenticationConfiguration, String>> writePaths() {
-    Map<String, Function<AuthenticationConfiguration, String>> paths = new LinkedHashMap<>();
-    paths.put(
-        "createOrUpdate (security PUT, update-security-config)",
-        config -> written(() -> repository.createOrUpdate(settings(config))));
-    paths.put(
-        "updateSetting (seeding, migrations)",
-        config -> written(() -> repository.updateSetting(settings(config))));
-    paths.put(
-        "patchSetting (settings PATCH)",
-        config ->
-            written(
-                () ->
-                    repository.patchSetting(
-                        AUTH,
-                        Json.createPatchBuilder()
-                            .replace(
-                                "/samlConfiguration/idp/idpX509Certificate",
-                                config.getSamlConfiguration().getIdp().getIdpX509Certificate())
-                            .build())));
+    final Map<String, Function<AuthenticationConfiguration, String>> paths = new LinkedHashMap<>();
+    paths.put("createOrUpdate (security PUT, update-security-config)", this::createOrUpdate);
+    paths.put("updateSetting (seeding, migrations)", this::updateSetting);
+    paths.put("patchSetting (settings PATCH)", this::patchSetting);
     return paths;
+  }
+
+  private String createOrUpdate(final AuthenticationConfiguration config) {
+    return written(() -> repository.createOrUpdate(settings(config)));
+  }
+
+  private String updateSetting(final AuthenticationConfiguration config) {
+    return written(() -> repository.updateSetting(settings(config)));
+  }
+
+  /** A settings PATCH that replaces the IdP certificate alone. */
+  private String patchSetting(final AuthenticationConfiguration config) {
+    final String certificate = config.getSamlConfiguration().getIdp().getIdpX509Certificate();
+    return written(
+        () ->
+            repository.patchSetting(
+                AUTH,
+                Json.createPatchBuilder()
+                    .replace("/samlConfiguration/idp/idpX509Certificate", certificate)
+                    .build()));
   }
 
   @Test
   void everyWritePathRefusesANewUnusableCertificateAndKeepsTheStoredValue() {
-    for (Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
+    for (final Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
         writePaths().entrySet()) {
-      for (String unusable : List.of(NOT_A_CERTIFICATE, EXPIRED)) {
+      for (final String unusable : List.of(NOT_A_CERTIFICATE, EXPIRED)) {
         store(VALID);
-        String before = rows.get(AUTH);
+        final String before = rows.get(AUTH);
 
-        BadRequestException refused =
+        final BadRequestException refused =
             assertThrows(
                 BadRequestException.class,
                 () -> path.getValue().apply(saml(unusable)),
@@ -137,7 +142,7 @@ class SystemRepositoryIdpCertificateTest {
 
   @Test
   void everyWritePathAcceptsTheStoredExpiredCertificateUnchanged() {
-    for (Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
+    for (final Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
         writePaths().entrySet()) {
       store(EXPIRED);
 
@@ -147,7 +152,7 @@ class SystemRepositoryIdpCertificateTest {
 
   @Test
   void everyWritePathStoresAUsableNewCertificate() {
-    for (Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
+    for (final Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
         writePaths().entrySet()) {
       store(VALID);
 
@@ -159,7 +164,7 @@ class SystemRepositoryIdpCertificateTest {
   /** The first start seeds an empty database through createNewSetting: nothing is stored yet. */
   @Test
   void theFirstStartSeedChecksTheCertificate() {
-    BadRequestException refused =
+    final BadRequestException refused =
         assertThrows(
             BadRequestException.class, () -> repository.createNewSetting(settings(saml(EXPIRED))));
 
@@ -170,25 +175,25 @@ class SystemRepositoryIdpCertificateTest {
     assertEquals(VALID, certificateIn(rows.get(AUTH)));
   }
 
-  private String written(Runnable write) {
+  private String written(final Runnable write) {
     write.run();
     return rows.get(AUTH);
   }
 
-  private void store(String idpCertificate) {
+  private void store(final String idpCertificate) {
     rows.clear();
     rows.put(AUTH, JsonUtils.pojoToJson(saml(idpCertificate)));
   }
 
-  private static String certificateIn(String storedJson) {
+  private static String certificateIn(final String storedJson) {
     return JsonUtils.readTree(storedJson).at("/samlConfiguration/idp/idpX509Certificate").asText();
   }
 
-  private static Settings settings(AuthenticationConfiguration config) {
+  private static Settings settings(final AuthenticationConfiguration config) {
     return new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(config);
   }
 
-  private static AuthenticationConfiguration saml(String idpCertificate) {
+  private static AuthenticationConfiguration saml(final String idpCertificate) {
     return new AuthenticationConfiguration()
         .withProvider(AuthProvider.SAML)
         .withSamlConfiguration(
@@ -200,12 +205,12 @@ class SystemRepositoryIdpCertificateTest {
   }
 
   private SystemDAO inMemoryDao() {
-    SystemDAO dao = mock(SystemDAO.class);
+    final SystemDAO dao = mock(SystemDAO.class);
     when(dao.getConfigJsonWithKey(anyString())).thenAnswer(i -> rows.get(i.<String>getArgument(0)));
     when(dao.getConfigWithKey(anyString()))
         .thenAnswer(
             i -> {
-              String json = rows.get(i.<String>getArgument(0));
+              final String json = rows.get(i.<String>getArgument(0));
               return json == null
                   ? null
                   : CollectionDAO.SettingsRowMapper.getSettings(AUTHENTICATION_CONFIGURATION, json);
@@ -219,7 +224,7 @@ class SystemRepositoryIdpCertificateTest {
     return dao;
   }
 
-  private static String resource(String path) {
+  private static String resource(final String path) {
     try (InputStream stream = SystemRepositoryIdpCertificateTest.class.getResourceAsStream(path)) {
       return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
     } catch (IOException e) {

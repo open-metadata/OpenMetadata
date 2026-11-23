@@ -455,9 +455,9 @@ public class SystemRepository {
     updateSetting(setting, storedValueOf(setting.getConfigType()));
   }
 
-  private void updateSetting(Settings setting, JsonNode stored) {
+  private void updateSetting(final Settings setting, final JsonNode stored) {
     try {
-      String updatedJson = prepareSettingForUpdate(setting, stored);
+      final String updatedJson = prepareSettingForUpdate(setting, stored);
       dao.insertSettings(setting.getConfigType().toString(), updatedJson);
       settingUpdated(setting.getConfigType());
     } catch (BadRequestException | WebApplicationException ex) {
@@ -473,7 +473,7 @@ public class SystemRepository {
 
   private void updateSettingIfCurrent(Settings setting, String expectedJson) {
     try {
-      String updatedJson = prepareSettingForUpdate(setting, valueOf(expectedJson));
+      final String updatedJson = prepareSettingForUpdate(setting, valueOf(expectedJson));
       int updated =
           dao.updateSettingsIfCurrent(
               setting.getConfigType().toString(), expectedJson, updatedJson);
@@ -500,7 +500,7 @@ public class SystemRepository {
    * type that compare with what is stored get {@code stored}, the value this write replaces, or null
    * when there is none. ADR:2026-11-20-the-stored-saml-idp-certificate-is-standard-pem
    */
-  private String prepareSettingForUpdate(Settings setting, JsonNode stored) {
+  private String prepareSettingForUpdate(final Settings setting, final JsonNode stored) {
     if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
       SmtpSettings emailConfig =
           JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
@@ -553,17 +553,17 @@ public class SystemRepository {
   }
 
   /** The stored value of a setting; null when it is not stored. */
-  private JsonNode storedValueOf(SettingsType type) {
+  private JsonNode storedValueOf(final SettingsType type) {
     return valueOf(dao.getConfigJsonWithKey(type.value()));
   }
 
-  private static JsonNode storedValueOf(Settings stored) {
+  private static JsonNode storedValueOf(final Settings stored) {
     return stored == null || stored.getConfigValue() == null
         ? null
         : JsonUtils.valueToTree(stored.getConfigValue());
   }
 
-  private static JsonNode valueOf(String storedJson) {
+  private static JsonNode valueOf(final String storedJson) {
     return storedJson == null ? null : JsonUtils.readTree(storedJson);
   }
 
