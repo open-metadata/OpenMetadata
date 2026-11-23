@@ -551,6 +551,34 @@ test.describe(
       );
     });
 
+    test('reloading a dashboard service browse link expands the Dashboards branch', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const serviceName = dashboard.serviceResponseData.name;
+
+      await expandTreeNode(page, 'Dashboards');
+      await expandTreeNode(page, 'superset');
+      await selectTreeNode(page, serviceName);
+
+      const reloadRes = page.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await page.reload();
+      await reloadRes;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(rootTreeNode(page, 'Dashboards')).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
+      await expect(rootTreeNode(page, serviceName)).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
     test('selecting the Tables leaf highlights the leaf, not its parent schema', async ({
       page,
     }) => {

@@ -816,6 +816,8 @@ export const findTreeNodeKeyByBrowsePath = (
  * Keys of the loaded nodes that sit above the browsed node on the active
  * browse path. A tree rebuild (chip removal) or a deep link re-keys every
  * level below the roots, so the tree expands these to reveal the path again.
+ * Category roots carry no filterField; under a browse path their totalCount is
+ * scoped to it, so the roots holding the path are the ones with matches.
  */
 export const getBrowsePathAncestorKeys = (
   treeNodes: ExploreTreeNode[],
@@ -829,12 +831,13 @@ export const getBrowsePathAncestorKeys = (
   const visit = (nodes: ExploreTreeNode[]) => {
     nodes.forEach((node) => {
       const filterField = node.data?.filterField;
-      if (
+      const isMatchingRoot = node.data?.isRoot && (node.totalCount ?? 0) > 0;
+      const isPathAncestor =
         filterField &&
         filterField.length < browseFields.length &&
         getBrowsePathSignature(filterField) ===
-          getBrowsePathSignature(browseFields.slice(0, filterField.length))
-      ) {
+          getBrowsePathSignature(browseFields.slice(0, filterField.length));
+      if (isMatchingRoot || isPathAncestor) {
         keys.push(node.key);
       }
       if (node.children) {

@@ -39,6 +39,12 @@ import {
   truncateBrowsePath,
 } from './ExplorePureUtils';
 
+const field = (key: string, value: string): ExploreQuickFilterField => ({
+  key,
+  label: key,
+  value: [{ key: value, label: value }],
+});
+
 const DATABASE_KEY = 'database_root';
 const DASHBOARD_KEY = 'dashboard_root';
 const PIPELINE_KEY = 'pipeline_root';
@@ -698,11 +704,6 @@ describe('findTreeNodeKeyByBrowsePath', () => {
 });
 
 describe('getBrowsePathAncestorKeys', () => {
-  const field = (key: string, value: string): ExploreQuickFilterField => ({
-    key,
-    label: key,
-    value: [{ key: value, label: value }],
-  });
   const serviceType = field('serviceType', 'postgres');
   const service = field('service.displayName.keyword', 'mns_db');
   const database = field('database.displayName', 'postgres');
@@ -746,6 +747,18 @@ describe('getBrowsePathAncestorKeys', () => {
     expect(
       getBrowsePathAncestorKeys(nodes, [serviceType, service, database])
     ).toEqual(['svc_type', 'svc']);
+  });
+
+  it('includes only the category roots that hold matches for the path', () => {
+    const roots = [
+      { key: 'db_root', totalCount: 0, data: { isRoot: true } },
+      { key: 'dashboard_root', totalCount: 4, data: { isRoot: true } },
+      { key: 'pipeline_root', data: { isRoot: true } },
+    ] as unknown as ExploreTreeNode[];
+
+    expect(
+      getBrowsePathAncestorKeys(roots, [field('serviceType', 'superset')])
+    ).toEqual(['dashboard_root']);
   });
 
   it('returns only the loaded levels of a deeper path', () => {
@@ -966,11 +979,6 @@ describe('findActiveSearchIndex', () => {
 });
 
 describe('isSelectionWithinBrowsePath', () => {
-  const field = (key: string, value: string): ExploreQuickFilterField => ({
-    key,
-    label: key,
-    value: [{ key: value, label: value }],
-  });
   const serviceType = field('serviceType', 'BigQuery');
   const service = field('service.name.keyword', 'bigquery');
   const database = field('database.displayName.keyword', 'modified-leaf');
