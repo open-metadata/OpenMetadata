@@ -46,7 +46,7 @@ class OntologyDecisionNoticeTest {
   }
 
   @Test
-  void aRichTextReasonReadsAsPlainText() {
+  void aRichTextReasonReadsOnOneLineWithItsLiteralTextKept() {
     final ActivityEvent event =
         OntologyDecisionNotice.eventFor(
             release(null),
@@ -56,7 +56,7 @@ class OntologyDecisionNoticeTest {
             7L);
 
     assertEquals(
-        "reviewer rejected release #3: Add a label to Customer. Keep <b>both</b> & more.",
+        "reviewer rejected release #3: Add a label to Customer. Keep &lt;b&gt;both&lt;/b&gt; &amp; more.",
         event.getSummary());
   }
 

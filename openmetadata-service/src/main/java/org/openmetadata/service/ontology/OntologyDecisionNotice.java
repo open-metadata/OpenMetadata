@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
+import org.jsoup.nodes.Entities;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.ActivityEventType;
@@ -84,7 +85,7 @@ public final class OntologyDecisionNotice {
 
   private static String reasonOf(final String comment) {
     final String text = nullOrEmpty(comment) ? "" : Jsoup.parseBodyFragment(comment).text();
-    return text.isEmpty() ? "" : ": " + truncate(text);
+    return text.isEmpty() ? "" : ": " + Entities.escape(truncate(text));
   }
 
   private static String truncate(final String comment) {
