@@ -202,11 +202,9 @@ jobs:
           # Sonar uses history for blame and new-code analysis.
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        uses: ./.github/actions/setup-python
         with:
           python-version: ${{ needs.plan.outputs.python-highest }}
-      - name: Install uv
-        uses: ./.github/actions/setup-uv
       - name: Prepare Python tools
         run: make python_tools
         shell: bash
