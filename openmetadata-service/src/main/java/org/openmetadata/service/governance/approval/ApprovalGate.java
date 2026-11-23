@@ -18,12 +18,14 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.isBotChange;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -188,7 +190,40 @@ public final class ApprovalGate {
   public static List<MutationOp> previewOps(
       EntityInterface original, EntityInterface updated, Edit edit) {
     Edited edited = edited(Entity.getEntityTypeFromObject(updated), original, updated, edit);
-    return MutationPlanner.plan(edited.base(), edited.proposed(), edited.changed(), Set.of());
+    return MutationPlanner.plan(
+        withoutDerivedTags(edited.base()),
+        withoutDerivedTags(edited.proposed()),
+        edited.changed(),
+        Set.of());
+  }
+
+  /**
+   * The entity without its DERIVED tag labels, the ones it inherits or a glossary term implies. A
+   * save ignores them, and preparing a patch drops them, so planning with them would report a removal
+   * the save never makes.
+   */
+  private static JsonNode withoutDerivedTags(JsonNode entity) {
+    JsonNode copy = entity.deepCopy();
+    dropDerivedTags(copy);
+    return copy;
+  }
+
+  private static void dropDerivedTags(JsonNode node) {
+    if (node == null || !node.isObject()) {
+      return;
+    }
+    if (node.get("tags") instanceof ArrayNode tags) {
+      for (Iterator<JsonNode> it = tags.elements(); it.hasNext(); ) {
+        if (TagLabel.LabelType.DERIVED.value().equals(it.next().path("labelType").asText())) {
+          it.remove();
+        }
+      }
+    }
+    for (String nested : List.of("columns", "children")) {
+      if (node.get(nested) instanceof ArrayNode items) {
+        items.forEach(ApprovalGate::dropDerivedTags);
+      }
+    }
   }
 
   private static Optional<StagedChange> evaluate(

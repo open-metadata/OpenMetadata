@@ -33,6 +33,10 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.DatabaseTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -44,7 +48,11 @@ import org.openmetadata.schema.entity.ai.McpConnectionConfig;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.ai.McpServerType;
 import org.openmetadata.schema.entity.ai.McpTransportType;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.McpService;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
@@ -249,6 +257,44 @@ class ChangeRequestResourceIT {
 
     assertEquals(descriptionOf(glossary.getId()), previewed);
     assertFalse(previewed.contains("target="));
+  }
+
+  @Test
+  void aDescriptionPreviewDoesNotReportATagTheTableInherits(TestNamespace ns) throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+    DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    var tagged =
+        sendAsAdmin(
+            "PATCH",
+            "/v1/databases/" + database.getId(),
+            "application/json-patch+json",
+            """
+            [{"op":"add","path":"/tags","value":[{"tagFQN":"PII.NonSensitive",
+              "source":"Classification","labelType":"Manual","state":"Confirmed"}]}]
+            """);
+    assertEquals(200, tagged.statusCode());
+    var read =
+        sendAsAdmin("GET", "/v1/tables/" + table.getId() + "?fields=tags", "application/json", "");
+    assertTrue(
+        read.body().contains("\"tagFQN\":\"PII.NonSensitive\"")
+            && read.body().contains("\"labelType\":\"Derived\""),
+        "the table must inherit the database tag for this test to mean anything: " + read.body());
+
+    var preview =
+        sendAsAdmin(
+            "POST",
+            "/v1/changeRequests/preview/table/" + table.getId(),
+            "application/json-patch+json",
+            "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"previewed\"}]");
+
+    assertEquals(200, preview.statusCode());
+    List<String> fields = new java.util.ArrayList<>();
+    JsonUtils.readTree(preview.body())
+        .path("ops")
+        .forEach(op -> fields.add(op.path("field").asText()));
+    assertEquals(List.of("description"), fields, preview.body());
   }
 
   @Test
