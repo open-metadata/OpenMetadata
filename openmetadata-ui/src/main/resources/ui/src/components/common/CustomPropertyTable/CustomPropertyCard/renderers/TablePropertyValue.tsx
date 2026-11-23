@@ -37,13 +37,10 @@ const getColumns = (config: unknown): string[] =>
 const getRows = (value: unknown): TableRow[] =>
   (value as { rows?: TableRow[] } | undefined)?.rows ?? [];
 
-// A column is a third of the container (`cqw`) capped at 12rem, so narrow
-// hosts show at most three and wider tables scroll instead of squeezing.
-const VIEW_COLUMN_CLASS =
-  'tw:w-[min(calc(100cqw/3),12rem)] tw:min-w-[min(calc(100cqw/3),12rem)] tw:max-w-[min(calc(100cqw/3),12rem)] tw:break-words';
-// 2.5rem is the pinned delete-action column (`tw:w-10`).
-const EDIT_COLUMN_CLASS =
-  'tw:w-[min(calc((100cqw-2.5rem)/3),12rem)] tw:min-w-[min(calc((100cqw-2.5rem)/3),12rem)] tw:max-w-[min(calc((100cqw-2.5rem)/3),12rem)] tw:break-words';
+// Table cells treat width as a minimum, so min-w and max-w pin each column to
+// a third of the host (at most 12rem); break-words keeps long values inside it.
+const COLUMN_CLASS =
+  'tw:min-w-[min(calc(100cqw/3),12rem)] tw:max-w-[min(calc(100cqw/3),12rem)] tw:break-words';
 const EDGE_SHADOW_CLASS =
   'tw:pointer-events-none tw:absolute tw:inset-y-0 tw:w-7 tw:from-black/10 tw:to-transparent tw:dark:from-black/40';
 
@@ -101,7 +98,7 @@ const TablePropertyView = ({ property, value }: PropertyViewProps) => {
         <Table.Header>
           {columns.map((column, index) => (
             <Table.Head
-              className={VIEW_COLUMN_CLASS}
+              className={COLUMN_CLASS}
               id={column}
               isRowHeader={index === 0}
               key={column}
@@ -115,7 +112,7 @@ const TablePropertyView = ({ property, value }: PropertyViewProps) => {
             // eslint-disable-next-line react/no-array-index-key
             <Table.Row id={`row-${rowIndex}`} key={rowIndex}>
               {columns.map((column) => (
-                <Table.Cell className={VIEW_COLUMN_CLASS} key={column}>
+                <Table.Cell className={COLUMN_CLASS} key={column}>
                   {row[column]}
                 </Table.Cell>
               ))}
@@ -182,7 +179,7 @@ const TablePropertyEdit = ({
               <tr>
                 {columns.map((column) => (
                   <th
-                    className={`${EDIT_COLUMN_CLASS} tw:px-2 tw:py-2 tw:text-left tw:text-xs tw:font-semibold tw:text-tertiary`}
+                    className={`${COLUMN_CLASS} tw:px-2 tw:py-2 tw:text-left tw:text-xs tw:font-semibold tw:text-tertiary`}
                     key={column}
                     scope="col">
                     {column}
@@ -203,7 +200,7 @@ const TablePropertyEdit = ({
                   key={row.key}>
                   {columns.map((column) => (
                     <td
-                      className={`${EDIT_COLUMN_CLASS} tw:px-2 tw:py-1.5`}
+                      className={`${COLUMN_CLASS} tw:px-2 tw:py-1.5`}
                       key={column}>
                       <Input
                         aria-label={`${column} ${rowIndex + 1}`}
