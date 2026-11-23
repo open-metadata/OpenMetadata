@@ -32,6 +32,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -317,6 +318,116 @@ class ChangeRequestResourceIT {
     assertFalse(body.path("requiresApproval").asBoolean());
     assertEquals(0, body.path("ops").size());
     assertEquals(PUBLISHED, descriptionOf(glossary.getId()));
+  }
+
+  @Test
+  void anUngatedPreviewIsRefusedToACallerWhoCannotMakeTheEdit(TestNamespace ns) throws Exception {
+    Glossary glossary = gatedGlossary(ns);
+    String email = SharedEntities.get().USER3.getEmail();
+    String consumer = JwtAuthProvider.tokenFor(email, email, new String[] {}, 600);
+    String patch = "[{\"op\":\"add\",\"path\":\"/displayName\",\"value\":\"previewed\"}]";
+
+    var save =
+        sendWithToken(
+            consumer,
+            "PATCH",
+            "/v1/glossaries/" + glossary.getId(),
+            "application/json-patch+json",
+            patch);
+    var preview =
+        sendWithToken(
+            consumer,
+            "POST",
+            "/v1/changeRequests/preview/glossary/" + glossary.getId(),
+            "application/json-patch+json",
+            patch);
+
+    assertEquals(403, save.statusCode(), "the caller must lack the edit for this test to mean it");
+    assertEquals(403, preview.statusCode(), preview.body());
+  }
+
+  @Test
+  void ungatedTagOwnerAndColumnEditsArePreviewedAsThePatchSavesThem(TestNamespace ns)
+      throws Exception {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+    DatabaseSchema schema = DatabaseSchemaTestFactory.create(ns, database.getFullyQualifiedName());
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    String owner = SharedEntities.get().USER1.getId().toString();
+
+    JsonNode tags =
+        previewThenSave(
+            table,
+            "[{\"op\":\"add\",\"path\":\"/tags\",\"value\":[{\"tagFQN\":\"PII.Sensitive\","
+                + "\"source\":\"Classification\",\"labelType\":\"Manual\",\"state\":\"Confirmed\"}]}]");
+    assertEquals(
+        identities(savedTable(table).path("tags"), "tagFQN"),
+        previewedIdentities(tags, "tagFQN"),
+        tags.toString());
+
+    JsonNode owners =
+        previewThenSave(
+            table,
+            "[{\"op\":\"add\",\"path\":\"/owners\",\"value\":[{\"id\":\""
+                + owner
+                + "\",\"type\":\"user\"}]}]");
+    assertEquals(
+        identities(savedTable(table).path("owners"), "id"),
+        previewedIdentities(owners, "id"),
+        owners.toString());
+
+    JsonNode column =
+        previewThenSave(
+            table, "[{\"op\":\"add\",\"path\":\"/columns/0/description\",\"value\":\"the key\"}]");
+    assertEquals(
+        savedTable(table).path("columns").get(0).path("description").asText(),
+        previewedValue(column).get(0).path("description").asText(),
+        column.toString());
+  }
+
+  /** Previews {@code patch} on the table, saves it, and returns the preview. */
+  private static JsonNode previewThenSave(Table table, String patch) throws Exception {
+    var preview =
+        sendAsAdmin(
+            "POST",
+            "/v1/changeRequests/preview/table/" + table.getId(),
+            "application/json-patch+json",
+            patch);
+    assertEquals(200, preview.statusCode(), preview.body());
+    JsonNode body = JsonUtils.readTree(preview.body());
+    assertEquals(1, body.path("ops").size(), preview.body());
+    var saved =
+        sendAsAdmin("PATCH", "/v1/tables/" + table.getId(), "application/json-patch+json", patch);
+    assertEquals(200, saved.statusCode(), saved.body());
+    return body;
+  }
+
+  private static JsonNode previewedValue(JsonNode preview) {
+    return JsonUtils.readTree(preview.path("ops").get(0).path("value").asText());
+  }
+
+  private static JsonNode savedTable(Table table) throws Exception {
+    return JsonUtils.readTree(
+        sendAsAdmin(
+                "GET",
+                "/v1/tables/" + table.getId() + "?fields=tags,owners,columns",
+                "application/json",
+                "")
+            .body());
+  }
+
+  /** The list a preview's op leaves: the keys it adds, or the elements it sets. */
+  private static Set<String> previewedIdentities(JsonNode preview, String identity) {
+    JsonNode op = preview.path("ops").get(0);
+    return "add".equals(op.path("op").asText())
+        ? Set.of(op.path("key").asText())
+        : identities(previewedValue(preview), identity);
+  }
+
+  private static Set<String> identities(JsonNode list, String identity) {
+    Set<String> values = new java.util.TreeSet<>();
+    list.forEach(element -> values.add(element.path(identity).asText()));
+    return values;
   }
 
   @Test

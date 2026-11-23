@@ -774,4 +774,16 @@ class ChangeRequestServiceTest {
     ChangeRequestService.cancelForDeletedEntities(List.of());
     verify(requests, never()).listByEntitiesAndStatuses(any(), any());
   }
+
+  @Test
+  void anUngatedPreviewReturnsOpsOnlyForDescriptiveFields() {
+    MutationOp description = new MutationOp().withField("description");
+    MutationOp connection = new MutationOp().withField("connection");
+
+    assertEquals(List.of(description), ChangeRequestService.descriptiveOnly(List.of(description)));
+    assertEquals(
+        List.of(),
+        ChangeRequestService.descriptiveOnly(List.of(description, connection)),
+        "a field the patch did not name but preparation changed leaves the preview without ops");
+  }
 }

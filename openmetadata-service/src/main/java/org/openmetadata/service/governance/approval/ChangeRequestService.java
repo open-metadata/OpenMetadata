@@ -224,8 +224,18 @@ public final class ChangeRequestService {
                 .orElseGet(
                     () ->
                         DESCRIPTIVE_FIELDS.containsAll(JsonUtils.extractPatchedFields(patch))
-                            ? repository.previewPatchOps(entityId, user, patch)
+                            ? descriptiveOnly(repository.previewPatchOps(entityId, user, patch))
                             : List.of()));
+  }
+
+  /**
+   * The ops of an ungated preview, or none when preparing the patch changed a field outside {@link
+   * #DESCRIPTIVE_FIELDS}: an ungated preview returns ops only for descriptive fields.
+   */
+  static List<MutationOp> descriptiveOnly(List<MutationOp> ops) {
+    return ops.stream().allMatch(op -> DESCRIPTIVE_FIELDS.contains(op.getField()))
+        ? ops
+        : List.of();
   }
 
   /**

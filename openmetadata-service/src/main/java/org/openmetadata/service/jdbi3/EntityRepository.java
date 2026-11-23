@@ -5360,6 +5360,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updated.setDescription(
           org.openmetadata.service.util.DescriptionSanitizer.sanitize(updated.getDescription()));
     }
+    // The save refuses a glossary term that is not Approved; the preview refuses it the same way.
+    checkNewlyAppliedGlossaryTermsApproved(original, updated);
     return ApprovalGate.previewOps(
         original, updated, Edit.patch(JsonUtils.extractPatchedFields(patch)));
   }
