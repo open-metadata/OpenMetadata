@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-23 (initial)
 - **Deciders:** Rohit0301
-- **Guard:** `TypeResourceIT.test_tableCustomPropertyStoresValueWithTenColumns`, `TablePropertyValue.test.tsx`
+- **Guard:** `TypeResourceIT.test_tableCustomPropertyStoresValueWithTenColumns` (schemas + backend), `CustomPropertyRow.test.tsx` (full-width host); the three-visible-column layout itself is reviewer-checked (jsdom has no layout)
 - **Related:** #38473
 
 ## Context
@@ -19,7 +19,7 @@ create form. The cap kept tables readable on asset pages, but customers need mor
   its container (`100cqw/3`), so at most three columns are visible and the rest scroll horizontally,
   whatever the host width (230px schema cell to 960px modal).
 - A container-query host needs a definite width: a host that sizes to its content collapses it to
-  zero, so wide values render in a full-width slot (`CustomPropertyRow`).
+  zero, so wide values render in a full-width slot (`CustomPropertyRow`, `ColumnCustomPropertyCell`).
 
 ## Consequences
 Existing deployments pick up the relaxed `table-cp` schema when field types are re-seeded at

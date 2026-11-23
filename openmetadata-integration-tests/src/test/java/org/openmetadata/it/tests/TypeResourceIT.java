@@ -313,8 +313,11 @@ public class TypeResourceIT {
         tableCustomProperty(
             client, ns.prefix("emptyTableProp"), new TableConfig().withColumns(Set.of()));
 
-    assertThrows(
-        Exception.class, () -> addCustomProperty(client, TABLE_ENTITY_TYPE.getId(), property));
+    InvalidRequestException error =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> addCustomProperty(client, TABLE_ENTITY_TYPE.getId(), property));
+    assertTrue(error.getMessage().contains("must have at least 1 column(s)"), error.getMessage());
   }
 
   private static CustomProperty tableCustomProperty(
