@@ -65,13 +65,18 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   its live index (it received no documents, or its swap failed) keeps the live chunks for the
   whole catalog, so a type never loses its chunks while its old entities are still served. An
   empty generation never replaces a live index that holds chunks, and a count that cannot be read
-  keeps the live index.
+  keeps the live index. A run whose embedding pre-flight call fails stages no generation, so the
+  live chunks stay: an entity edited while the provider was out keeps its old chunks live, and its
+  entity document has no embedding until a provider call works again, on the retry at the end of
+  its partition or on a later run.
 - **A missed chunk write never blocks promotion.** When the run cannot write an entity's chunks
   (the provider fails, its circuit is open, the cluster rejects the bulk, or a live edit's mirror
-  fails), the entity keeps its document embedding and the miss is recorded on that node. When a
-  partition of the entity's type finishes, the node retries it once, skipping the retry while the
-  provider's circuit is open. The entity then counts as one vector success, or one vector
-  failure if its chunks are still missing. Each node logs one summary warning per run, and the
+  fails), the entity keeps its document embedding and the miss is recorded on that node. An entity
+  the run embeds afresh has no embedding yet, so the provider failing it records the same miss and
+  the entity is indexed without one. When a partition of the entity's type finishes, the node
+  retries it once, writing both the entity document's embedding and the chunks when both were
+  missed, and skipping the retry while the provider's circuit is open. The entity then counts as
+  one vector success, or one vector failure if its chunks are still missing. Each node logs one summary warning per run, and the
   detail per entity at debug. An entity left without chunks gets them on its next edit or
   reindex, through the fingerprint-guarded backfill. A missed mirror is not retried; it heals the
   same way.
