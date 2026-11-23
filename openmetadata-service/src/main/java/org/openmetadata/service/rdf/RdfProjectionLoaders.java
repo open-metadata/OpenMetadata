@@ -12,6 +12,7 @@
  */
 package org.openmetadata.service.rdf;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,6 +20,7 @@ import java.util.function.BiFunction;
 import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
@@ -37,6 +39,8 @@ import org.openmetadata.service.util.LikeEscape;
 record RdfProjectionLoaders(
     BiFunction<String, UUID, EntityInterface<?>> entityLoader,
     LineageDetailsLoader lineageDetailsLoader,
+    RelationshipExists relationshipExists,
+    GlossaryTermRelationRows glossaryTermRelationRows,
     Supplier<OntologyActiveGraph> ontologyGraphs,
     RdfEntityLiveness liveness,
     BoundAssets boundAssets,
@@ -52,6 +56,18 @@ record RdfProjectionLoaders(
   interface LineageDetailsLoader {
     /** Returns the stored lineage edge, or empty when the edge no longer exists. */
     Optional<StoredLineageEdge> load(UUID fromId, UUID toId);
+  }
+
+  /** Whether a non-lineage relationship row still exists in SQL. */
+  @FunctionalInterface
+  interface RelationshipExists {
+    boolean exists(EntityRelationship relationship);
+  }
+
+  /** Current glossary-term {@code RELATED_TO} rows between two terms in either direction. */
+  @FunctionalInterface
+  interface GlossaryTermRelationRows {
+    List<EntityRelationshipObject> load(UUID fromTermId, UUID toTermId);
   }
 
   /** The assets bound to the concepts of one ontology, in asset id order. */
@@ -70,6 +86,8 @@ record RdfProjectionLoaders(
     return new RdfProjectionLoaders(
         withQualityEvidence(RdfProjectionLoaders::loadEntity, RdfQualityEvidence.database()),
         RdfProjectionLoaders::loadLineageDetails,
+        RdfProjectionLoaders::relationshipExists,
+        RdfProjectionLoaders::loadGlossaryTermRelationRows,
         () -> new OntologyActiveGraph(Entity.getCollectionDAO()),
         RdfEntityLiveness.database(),
         RdfProjectionLoaders::loadBoundAssets,
@@ -129,6 +147,93 @@ record RdfProjectionLoaders(
             .relationshipDAO()
             .getRecord(fromId, toId, Relationship.UPSTREAM.ordinal());
     return Optional.ofNullable(edge).map(RdfProjectionLoaders::storedLineageEdge);
+  }
+
+  private static boolean relationshipExists(final EntityRelationship relationship) {
+    if (relationship == null
+        || relationship.getFromId() == null
+        || relationship.getToId() == null
+        || relationship.getFromEntity() == null
+        || relationship.getToEntity() == null
+        || relationship.getRelationshipType() == null) {
+      return false;
+    }
+    return Entity.getCollectionDAO()
+        .relationshipDAO()
+        .exists(
+            relationship.getFromId(),
+            relationship.getFromEntity(),
+            relationship.getToId(),
+            relationship.getToEntity(),
+            relationship.getRelationshipType().ordinal());
+  }
+
+  private static List<EntityRelationshipObject> loadGlossaryTermRelationRows(
+      final UUID fromTermId, final UUID toTermId) {
+    if (fromTermId == null || toTermId == null) {
+      return List.of();
+    }
+    return Entity.getCollectionDAO()
+        .relationshipDAO()
+        .findBetween(fromTermId, toTermId, Entity.GLOSSARY_TERM, Relationship.RELATED_TO.ordinal());
+  }
+
+  /**
+   * Matches a directed glossary term relation against current SQL rows in either storage direction.
+   * {@code GlossaryTermRepository} stores each pair canonically with {@code fromId < toId} (using
+   * the inverse type when authored from the larger UUID); checking both directions also matches
+   * legacy non-canonical rows.
+   */
+  static boolean hasGlossaryTermRelation(
+      final List<EntityRelationshipObject> rows,
+      final UUID fromTermId,
+      final UUID toTermId,
+      final String relationTypeName,
+      final String inverseRelationTypeName) {
+    if (rows == null
+        || rows.isEmpty()
+        || fromTermId == null
+        || toTermId == null
+        || relationTypeName == null) {
+      return false;
+    }
+    final String from = fromTermId.toString();
+    final String to = toTermId.toString();
+    final String reverseMatch =
+        inverseRelationTypeName != null ? inverseRelationTypeName : relationTypeName;
+    for (final EntityRelationshipObject row : rows) {
+      final String storedType = storedRelationType(row);
+      if (from.equalsIgnoreCase(row.getFromId())
+          && to.equalsIgnoreCase(row.getToId())
+          && relationTypeName.equalsIgnoreCase(storedType)) {
+        return true;
+      }
+      if (!from.equalsIgnoreCase(to)
+          && to.equalsIgnoreCase(row.getFromId())
+          && from.equalsIgnoreCase(row.getToId())
+          && reverseMatch.equalsIgnoreCase(storedType)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static String storedRelationType(final EntityRelationshipObject row) {
+    if (row.getRelationType() != null && !row.getRelationType().isBlank()) {
+      return row.getRelationType();
+    }
+    if (row.getJson() != null && !row.getJson().isBlank()) {
+      try {
+        final JsonNode node = JsonUtils.readTree(row.getJson());
+        final String fromJson = node.path("relationType").asText(null);
+        if (fromJson != null && !fromJson.isBlank()) {
+          return fromJson;
+        }
+      } catch (RuntimeException ignored) {
+        // Legacy or malformed JSON falls back to the default glossary relation type.
+      }
+    }
+    return "relatedTo";
   }
 
   private static StoredLineageEdge storedLineageEdge(final EntityRelationshipObject edge) {
