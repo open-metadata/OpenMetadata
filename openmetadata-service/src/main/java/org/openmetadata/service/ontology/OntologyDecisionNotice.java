@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.ActivityEventType;
@@ -35,7 +36,7 @@ public final class OntologyDecisionNotice {
     final String version = describe(release);
     final String who =
         reviewer.getDisplayName() == null ? reviewer.getName() : reviewer.getDisplayName();
-    final String reason = nullOrEmpty(comment) ? "" : ": " + truncate(comment);
+    final String reason = reasonOf(comment);
     return new ActivityEvent()
         .withId(UUID.randomUUID())
         .withEventType(ActivityEventType.ENTITY_UPDATED)
@@ -79,6 +80,11 @@ public final class OntologyDecisionNotice {
           release.getId(),
           failure);
     }
+  }
+
+  private static String reasonOf(final String comment) {
+    final String text = nullOrEmpty(comment) ? "" : Jsoup.parseBodyFragment(comment).text();
+    return text.isEmpty() ? "" : ": " + truncate(text);
   }
 
   private static String truncate(final String comment) {
