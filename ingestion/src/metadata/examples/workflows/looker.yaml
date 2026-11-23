@@ -7,6 +7,8 @@ source:
       clientId: clientId
       clientSecret: clientSecret
       hostPort: http://hostPort
+      # Uncomment to skip direct Explore-to-Chart lineage on subsequent ingestion runs.
+      # includeChartLineage: false
   sourceConfig:
     config:
       type: DashboardMetadata

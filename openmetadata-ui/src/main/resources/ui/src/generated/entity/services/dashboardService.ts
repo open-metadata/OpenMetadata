@@ -333,6 +333,11 @@ export interface Connection {
      */
     hostPort?: string;
     /**
+     * Create direct lineage from Looker Explores to charts on future ingestion runs. Disable
+     * this option to keep Explore and chart lineage connected through the dashboard.
+     */
+    includeChartLineage?: boolean;
+    /**
      * Regex to exclude or include projects that matches the pattern.
      */
     projectFilterPattern?: FilterPattern;

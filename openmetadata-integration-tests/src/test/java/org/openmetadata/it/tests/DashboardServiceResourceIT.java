@@ -22,6 +22,7 @@ import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 
@@ -190,21 +191,49 @@ public class DashboardServiceResourceIT
 
   @Test
   void post_dashboardServiceWithLookerConnection_200_OK(TestNamespace ns) {
-    LookerConnection conn =
-        new LookerConnection()
-            .withHostPort(URI.create("http://localhost:9999"))
-            .withClientId("test_client");
+    var config =
+        JsonUtils.getObjectMapper()
+            .createObjectNode()
+            .put("type", "Looker")
+            .put("hostPort", "http://localhost:9999")
+            .put("clientId", "test_client");
 
     CreateDashboardService request =
         new CreateDashboardService()
             .withName(ns.prefix("looker_service"))
             .withServiceType(DashboardServiceType.Looker)
-            .withConnection(new DashboardConnection().withConfig(conn))
+            .withConnection(new DashboardConnection().withConfig(config))
             .withDescription("Test Looker service");
 
     DashboardService service = createEntity(request);
     assertNotNull(service);
     assertEquals(DashboardServiceType.Looker, service.getServiceType());
+    assertTrue(readLookerConnection(service.getId()).getIncludeChartLineage());
+  }
+
+  @Test
+  void test_lookerChartLineageSettingSurvivesConnectionEdits(TestNamespace ns) {
+    LookerConnection connection =
+        new LookerConnection()
+            .withHostPort(URI.create("http://localhost:9999"))
+            .withClientId("test_client")
+            .withIncludeChartLineage(false);
+    DashboardService service =
+        createEntity(
+            new CreateDashboardService()
+                .withName(ns.prefix("looker_chart_lineage"))
+                .withServiceType(DashboardServiceType.Looker)
+                .withConnection(new DashboardConnection().withConfig(connection)));
+    assertFalse(readLookerConnection(service.getId()).getIncludeChartLineage());
+
+    service.getConnection().setConfig(connection.withIncludeChartLineage(true));
+    patchEntity(service.getId().toString(), service);
+    assertTrue(readLookerConnection(service.getId()).getIncludeChartLineage());
+  }
+
+  private LookerConnection readLookerConnection(UUID id) {
+    DashboardService saved = SdkClients.ingestionBotClient().dashboardServices().get(id.toString());
+    return JsonUtils.convertValue(saved.getConnection().getConfig(), LookerConnection.class);
   }
 
   @Test

@@ -93,6 +93,12 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "title": "Default Data Model Filter Pattern"
     },
+    "includeChartLineage": {
+      "title": "Include Explore-to-Chart Lineage",
+      "description": "Create direct lineage from Looker Explores to charts on future ingestion runs. Disable this option to keep Explore and chart lineage connected through the dashboard.",
+      "type": "boolean",
+      "default": true
+    },
     "projectFilterPattern": {
       "description": "Regex to exclude or include projects that matches the pattern.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
