@@ -199,11 +199,23 @@ def test_nightly_artifact_names_are_unique_across_invocations():
 
 @pytest.mark.parametrize(
     "step_outcome, exit_code, classification",
-    [("skipped", None, "setup_failure"), ("failure", 124, "hung_test")],
+    [
+        ("skipped", None, "setup_failure"),
+        ("failure", 124, "hung_test"),
+        ("failure", 1, "hung_test"),
+        ("success", 0, "passed"),
+        ("success", 0, "missing_results"),
+    ],
 )
-def test_reporting_records_setup_failure_and_raw_exit_code(tmp_path, step_outcome, exit_code, classification):
+def test_reporting_records_outcomes_and_keeps_only_failure_logs(tmp_path, step_outcome, exit_code, classification):
     project = tmp_path / "ingestion"
     project.mkdir()
+    log = project / "unit-test-run.log"
+    log.write_text("test process timed out\n" if classification == "hung_test" else "test output\n")
+    if classification == "passed":
+        reports = project / "junit"
+        reports.mkdir()
+        (reports / "test-results-unit.xml").write_text('<testsuite><testcase name="selected"/></testsuite>')
     exit_file = project / "test-exit-code.txt"
     if exit_code is not None:
         exit_file.write_text(f"{exit_code}\n")
@@ -229,11 +241,12 @@ def test_reporting_records_setup_failure_and_raw_exit_code(tmp_path, step_outcom
             "GITHUB_STEP_SUMMARY": str(summary),
         },
     )
-    assert result.returncode == 0, result.stderr
+    assert result.returncode == int(classification == "missing_results"), result.stderr
     data = json.loads((project / "ci-diagnostics/outcome.json").read_text())
     assert data["classification"] == classification
     assert data["exitCode"] == exit_code
     assert data["context"]["lane"] == "sample-lane"
+    assert len(data["diagnostics"]) == int(step_outcome != "success")
     assert classification in summary.read_text()
 
 

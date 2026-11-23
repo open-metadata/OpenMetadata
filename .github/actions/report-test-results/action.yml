@@ -28,10 +28,14 @@ runs:
         if [[ -s "$EXIT_CODE_FILE" ]]; then
           read -r test_exit_code < "$EXIT_CODE_FILE"
         fi
+        diagnostic_glob=""
+        if [[ "$TEST_STEP_OUTCOME" != 'success' ]]; then
+          diagnostic_glob='ingestion/*-test-run.log'
+        fi
         python3 .github/scripts/classify_test_outcome.py \
           --step-outcome "$TEST_STEP_OUTCOME" --exit-code "$test_exit_code" \
           --report-glob 'ingestion/junit/test-results-*.xml' \
-          --diagnostic-glob 'ingestion/*-test-run.log' \
+          --diagnostic-glob "$diagnostic_glob" \
           --output ingestion/ci-diagnostics/outcome.json
       shell: bash
     - name: Upload test results
