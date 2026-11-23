@@ -216,7 +216,7 @@ const incidentResolutionSchema: TaskFormSchema = {
       mode: 'payload',
     },
     rootCause: { 'ui:widget': 'textarea' },
-    resolution: { 'ui:widget': 'textarea' },
+    resolution: { 'ui:widget': 'richtext' },
   },
 };
 

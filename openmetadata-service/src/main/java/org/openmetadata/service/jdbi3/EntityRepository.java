@@ -6538,8 +6538,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                 new TaggedEntity(updated, taggedFieldContainers(updated)), labelsByTargetHash)
             > 0;
     if (added) {
+      // The patch names columns by position, so it applies only to the version it was built from: a
+      // newer one is refused and the asset stays pending for the next attempt.
+      PatchResponse<T> response =
+          patch(
+              null,
+              id,
+              user,
+              JsonUtils.getJsonPatch(original, updated),
+              null,
+              EntityETag.generateWeakETag(original),
+              null);
       // A background write has no response for the response filter to record a change event from.
-      PatchResponse<T> response = patch(null, id, user, JsonUtils.getJsonPatch(original, updated));
       storeChangeEventForAsyncOperation(response.entity(), response.changeType(), false, user);
     }
     return added;
@@ -15504,8 +15514,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * Returns true when a connector-supplied entity is provably unchanged from what is stored, so
    * the bulk update path can skip field hydration and per-field diffing. Requires a non-empty
    * sourceHash on both the incoming entity and the stored original that match, an existing
-   * non-deleted original, and that the FQN appears only once in the batch (duplicate FQNs need
-   * the full updater path so each occurrence diffs against a fresh snapshot).
+   * non-deleted original, that the FQN appears only once in the batch (duplicate FQNs need the
+   * full updater path so each occurrence diffs against a fresh snapshot), and that the original
+   * still holds what the hash covered (see {@link #hasLostSourceFields}).
    */
   private boolean isSourceHashUnchanged(
       T entity, Map<String, T> hydratedOriginalByFqn, Map<String, Integer> updateFrequencyByFqn) {
@@ -15521,7 +15532,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (original == null || Boolean.TRUE.equals(original.getDeleted())) {
       return false;
     }
-    return incomingHash.equals(original.getSourceHash());
+    return incomingHash.equals(original.getSourceHash()) && !hasLostSourceFields(original, entity);
+  }
+
+  /**
+   * Whether the stored row lacks a field the incoming entity carries although their sourceHash
+   * matches. A write outside the updater can drop such a field and keep the hash, and skipping on
+   * the hash would then keep the field missing for good.
+   */
+  protected boolean hasLostSourceFields(T stored, T incoming) {
+    return false;
   }
 
   private void bulkUpdateEntities(

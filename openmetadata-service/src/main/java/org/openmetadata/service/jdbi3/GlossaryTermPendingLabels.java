@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static java.util.stream.Collectors.joining;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
+import static org.openmetadata.service.util.AsyncService.DatabaseOperation.BULK_ASSET_OPERATION;
 
 import io.dropwizard.lifecycle.Managed;
 import java.util.HashMap;
@@ -66,12 +67,14 @@ public final class GlossaryTermPendingLabels implements Managed {
   /** Sweeps for pending labels of Approved terms once the server is up. */
   @Override
   public void start() {
-    AsyncService.getInstance().getExecutorService().submit(GlossaryTermPendingLabels::sweep);
+    AsyncService.getInstance()
+        .executeDatabaseTask(
+            BULK_ASSET_OPERATION, "glossaryTermPendingSweep", GlossaryTermPendingLabels::sweep);
   }
 
   @Override
   public void stop() {
-    // The sweep runs once on the shared executor, which the server stops.
+    // The sweep runs once on the shared database executor, which the server stops.
   }
 
   /** Shows the term's pending labels in the background, retrying batches that fail. */
@@ -134,9 +137,13 @@ public final class GlossaryTermPendingLabels implements Managed {
     }
   }
 
+  // The delay waits on the shared executor; the job itself edits assets, so it takes one of the
+  // bounded database permits and cannot drain the connection pool when many terms are approved.
   private static void schedule(String termFqn, int attempt, long delaySeconds) {
     CompletableFuture.runAsync(
-        () -> apply(termFqn, attempt),
+        () ->
+            AsyncService.getInstance()
+                .executeDatabaseTask(BULK_ASSET_OPERATION, termFqn, () -> apply(termFqn, attempt)),
         CompletableFuture.delayedExecutor(
             delaySeconds, TimeUnit.SECONDS, AsyncService.getInstance().getExecutorService()));
   }
