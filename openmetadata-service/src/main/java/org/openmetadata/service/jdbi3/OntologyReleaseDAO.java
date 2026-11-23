@@ -81,6 +81,20 @@ public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
       @Bind("memberKind") String memberKind,
       @BindList("memberIds") List<String> memberIds);
 
+  /**
+   * The members among {@code memberIds} of the active release of a live ontology: the definitions
+   * its serving graph describes (ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release).
+   */
+  @SqlQuery(
+      "SELECT m.* FROM ontology_release_member m "
+          + "JOIN ontology_state s ON s.activeReleaseId = m.releaseId "
+          + "JOIN ontology_entity o ON o.id = s.ontologyId "
+          + "WHERE m.memberKind = :memberKind AND m.memberId IN (<memberIds>) "
+          + "AND (o.deleted IS NULL OR o.deleted = FALSE)")
+  @RegisterRowMapper(MemberMapper.class)
+  List<OntologyReleaseMember> listActiveMembers(
+      @Bind("memberKind") String memberKind, @BindList("memberIds") List<String> memberIds);
+
   /** Versions of the non-deleted working definitions that {@code ownerColumn} ties to an ontology. */
   @ConnectionAwareSqlQuery(
       value =

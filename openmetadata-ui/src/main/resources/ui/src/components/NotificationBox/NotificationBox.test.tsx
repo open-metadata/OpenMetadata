@@ -11,19 +11,28 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { NOTIFICATION_READ_TIMER } from '../../constants/constants';
 import { NotificationTabsKey } from '../../enums/notification.enum';
+import {
+  Task,
+  TaskCategory,
+  TaskStatus,
+  TaskType,
+} from '../../generated/entity/tasks/task';
 import { listConversations } from '../../rest/conversationsAPI';
 import { listMyAssignedTasks } from '../../rest/tasksAPI';
 import NotificationBox from './NotificationBox.component';
+import { TaskMentionCard } from './TaskMentionCard';
 
-const mockTask = [
+const mockTask: Task[] = [
   {
     id: '33873393-bd68-46e9-bccc-7701c1c41ad6',
     taskId: 'TASK-00001',
-    type: 'GlossaryApproval',
-    category: 'Approval',
-    status: 'Open',
+    name: 'approve-test-term',
+    type: TaskType.GlossaryApproval,
+    category: TaskCategory.Approval,
+    status: TaskStatus.Open,
     description: 'Approval required for testTerm',
     about: {
       id: '6206a003-281c-4984-9728-4e949a4e4023',
@@ -56,9 +65,7 @@ const mockProps = {
 
 jest.mock('../../rest/tasksAPI', () => ({
   ...jest.requireActual('../../rest/tasksAPI'),
-  listMyAssignedTasks: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve({ data: mockTask })),
+  listMyAssignedTasks: jest.fn(),
 }));
 
 jest.mock('../../rest/conversationsAPI', () => ({
@@ -82,11 +89,57 @@ jest.mock('./NotificationFeedCard.component', () => {
   return jest.fn().mockReturnValue(<p>NotificationFeedCard</p>);
 });
 
+jest.mock('../common/ProfilePicture/ProfilePicture', () => () => null);
+
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast()),
 }));
 
 describe('Test NotificationBox Component', () => {
+  it('links a test case incident mention to that incident on the Issues tab', () => {
+    const task = {
+      ...mockTask[0],
+      type: TaskType.TestCaseResolution,
+      about: {
+        id: 'test-case',
+        type: 'testCase',
+        fullyQualifiedName: 'db.schema.table.case/1',
+      },
+    };
+
+    render(
+      <MemoryRouter>
+        <TaskMentionCard
+          mention={{
+            task,
+            comment: {
+              id: 'comment-id',
+              author: task.createdBy,
+              createdAt: 1,
+              message: 'Resolved',
+            },
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('task-mention-notification')).toHaveAttribute(
+      'href',
+      `/test-case/db.schema.table.case%2F1/issues?taskId=${task.id}`
+    );
+  });
+
+  beforeEach(() => {
+    jest.mocked(listMyAssignedTasks).mockResolvedValue({
+      data: mockTask,
+      paging: { total: mockTask.length },
+    });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('should render NotificationBox', async () => {
     await act(async () => {
       render(<NotificationBox {...mockProps} />);
@@ -144,6 +197,31 @@ describe('Test NotificationBox Component', () => {
     expect(listConversations).toHaveBeenCalledWith(
       expect.objectContaining({ filterType: 'MENTIONS', limit: 10 })
     );
+  });
+
+  it('keeps assigned tasks visible when an earlier Mentions request finishes', async () => {
+    type ConversationPage = Awaited<ReturnType<typeof listConversations>>;
+    let finishMentions!: (value: ConversationPage) => void;
+    jest.mocked(listConversations).mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishMentions = resolve;
+      })
+    );
+    await act(async () => {
+      render(<NotificationBox {...mockProps} />);
+    });
+
+    expect(await screen.findByText('NotificationFeedCard')).toBeInTheDocument();
+
+    const tabs = await screen.findAllByRole('tab');
+    await act(async () => fireEvent.click(tabs[1]));
+    await act(async () => fireEvent.click(tabs[0]));
+
+    expect(await screen.findByText('NotificationFeedCard')).toBeInTheDocument();
+
+    await act(async () => finishMentions({ data: [], paging: { total: 0 } }));
+
+    expect(screen.getByText('NotificationFeedCard')).toBeInTheDocument();
   });
 
   it('should render no data in case of no notification', async () => {
