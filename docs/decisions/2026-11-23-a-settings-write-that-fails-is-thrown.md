@@ -8,6 +8,9 @@
 
 ## Context
 `SystemRepository.createOrUpdate` answered a write it could not store with a 500 `Response`.
+`updateSetting` wraps the failure in `CustomExceptionMessage`, which extends the SDK's
+`WebServiceException`, a `RuntimeException` and not a `WebApplicationException`, so the clauses that
+rethrow a refusal miss it and the catch-all answered 500.
 Most callers are not REST endpoints: the `update-security-config` and other administration
 commands, startup code, and Collate's administration jobs and Slack and Teams installs. They ignored
 the response and reported the setting as stored. An authorizer without
