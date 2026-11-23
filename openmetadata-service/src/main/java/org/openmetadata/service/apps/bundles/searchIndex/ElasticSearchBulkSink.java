@@ -1129,8 +1129,8 @@ public class ElasticSearchBulkSink implements BulkSink {
   }
 
   @Override
-  public void retryMissedChunks(String entityType) {
-    embeddingEnricher.retryMissedChunks(entityType);
+  public void retryMissedChunks(StageStatsTracker partition) {
+    embeddingEnricher.retryMissedChunks(partition);
   }
 
   public static class CustomBulkProcessor {

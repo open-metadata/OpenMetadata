@@ -6,11 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
@@ -244,24 +242,24 @@ final class EmbeddingEnricher {
   }
 
   /**
-   * Retries once what was missed for {@code entityType} on this node and counts each entity: a
-   * success when its embedding and chunks are now written, a failure when they are still missing.
+   * Retries once what the partition tracked by {@code partition} missed, once its writes are
+   * flushed, and counts each entity: a success when its embedding and chunks are now written, a
+   * failure when they are still missing. Other partitions of the same type sharing this sink keep
+   * their misses, because their entity documents may not be written yet.
    */
-  void retryMissedChunks(String entityType) {
+  void retryMissedChunks(StageStatsTracker partition) {
     VectorIndexService vectorService = searchRepository.getVectorIndexService();
     if (vectorService != null) {
-      Set<StageStatsTracker> trackers = new HashSet<>();
-      for (MissedChunks.Retried retried : missedChunks.retry(entityType, vectorService)) {
-        StageStatsTracker tracker = retried.miss().tracker();
+      List<MissedChunks.Retried> retried = missedChunks.retry(partition, vectorService);
+      for (MissedChunks.Retried entity : retried) {
         count(
-            retried.written() ? succeeded : failed,
-            tracker,
-            retried.written() ? StatsResult.SUCCESS : StatsResult.FAILED);
-        if (tracker != null) {
-          trackers.add(tracker);
-        }
+            entity.written() ? succeeded : failed,
+            partition,
+            entity.written() ? StatsResult.SUCCESS : StatsResult.FAILED);
       }
-      trackers.forEach(StageStatsTracker::flush);
+      if (partition != null && !retried.isEmpty()) {
+        partition.flush();
+      }
     }
   }
 

@@ -795,9 +795,14 @@ class PartitionWorkerTest {
     assertEquals(
         PartitionStatus.PROCESSING,
         progressCaptor.getAllValues().get(progressCaptor.getAllValues().size() - 1).getStatus());
-    InOrder missedChunksFirst = inOrder(bulkSink, coordinator);
-    missedChunksFirst.verify(bulkSink).retryMissedChunks("table");
-    missedChunksFirst.verify(coordinator).completePartition(partition.getId(), 2L, 0L, 0L);
+    ArgumentCaptor<StageStatsTracker> retried = ArgumentCaptor.forClass(StageStatsTracker.class);
+    InOrder flushedThenRetriedThenCompleted = inOrder(bulkSink, coordinator);
+    flushedThenRetriedThenCompleted.verify(bulkSink, atLeastOnce()).flushAndAwait(30);
+    flushedThenRetriedThenCompleted.verify(bulkSink).retryMissedChunks(retried.capture());
+    flushedThenRetriedThenCompleted
+        .verify(coordinator)
+        .completePartition(partition.getId(), 2L, 0L, 0L);
+    assertEquals("table", retried.getValue().getEntityType(), "the partition's own tracker");
   }
 
   @Test

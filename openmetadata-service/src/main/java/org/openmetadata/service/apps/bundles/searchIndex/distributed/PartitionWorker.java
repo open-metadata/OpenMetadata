@@ -339,7 +339,7 @@ public class PartitionWorker {
     long waitStart = System.currentTimeMillis();
     waitForSinkOperations(statsTracker);
     LOG.debug("waitForSinkOperations took {}ms", System.currentTimeMillis() - waitStart);
-    searchIndexSink.retryMissedChunks(entityType);
+    searchIndexSink.retryMissedChunks(statsTracker);
 
     // Adjust partition counts to include stage-level failures and warnings.
     // BatchResult.successCount counts entities READ, not entities successfully PROCESSED.

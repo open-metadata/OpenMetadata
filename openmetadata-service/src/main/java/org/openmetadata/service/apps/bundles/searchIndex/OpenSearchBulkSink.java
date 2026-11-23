@@ -1155,8 +1155,8 @@ public class OpenSearchBulkSink implements BulkSink {
   }
 
   @Override
-  public void retryMissedChunks(String entityType) {
-    embeddingEnricher.retryMissedChunks(entityType);
+  public void retryMissedChunks(StageStatsTracker partition) {
+    embeddingEnricher.retryMissedChunks(partition);
   }
 
   @Override

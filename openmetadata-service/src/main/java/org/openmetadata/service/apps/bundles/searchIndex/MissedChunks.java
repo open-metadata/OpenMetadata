@@ -18,8 +18,8 @@ import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 /**
  * The entities whose chunk documents this node's reindex sink could not write during one run,
- * including those it could not embed at all. Each is retried once when a partition of its type
- * finishes, and only then counted, so a recovered entity is one vector success and an entity that
+ * including those it could not embed at all. Each is retried once when the partition that missed
+ * it finishes, after that partition's writes are flushed, and only then counted, so a recovered entity is one vector success and an entity that
  * still misses is one vector failure. A miss never blocks the chunk generation; an entity left
  * without chunks gets them on its next edit or reindex.
  * ADR:2026-11-20-elasticsearch-and-opensearch-share-one-vector-index-service
@@ -50,6 +50,7 @@ final class MissedChunks {
   private final AtomicLong missed = new AtomicLong();
   private final AtomicLong missedEmbeddings = new AtomicLong();
   private final AtomicLong recovered = new AtomicLong();
+  private final AtomicLong unrecovered = new AtomicLong();
 
   void addChunks(EntityInterface<?> entity, StageStatsTracker tracker, EmbeddingTargets targets) {
     add(new Miss(entity.getEntityReference(), tracker, targets, Missing.CHUNKS));
@@ -71,35 +72,35 @@ final class MissedChunks {
   }
 
   /**
-   * Retries the pending misses of {@code entityType} once, one at a time so the provider's own
-   * concurrency limit holds. While the provider's circuit is open nothing is retried and every
-   * miss stays a failure.
+   * Retries the pending misses of the partition tracked by {@code partition} once, one at a time so
+   * the provider's own concurrency limit holds. While the provider's circuit is open nothing is
+   * retried and every miss stays a failure.
    */
-  List<Retried> retry(String entityType, VectorIndexService vectorService) {
-    List<Miss> misses = drain(entityType);
+  List<Retried> retry(StageStatsTracker partition, VectorIndexService vectorService) {
+    List<Miss> misses = drain(partition);
     boolean providerAvailable = providerAvailable(vectorService);
     List<Retried> retried = new ArrayList<>(misses.size());
     for (Miss miss : misses) {
       boolean written = providerAvailable && retryOnce(miss, vectorService);
-      if (written) {
-        recovered.incrementAndGet();
-      }
+      (written ? recovered : unrecovered).incrementAndGet();
       retried.add(new Retried(miss, written));
     }
     return retried;
   }
 
-  private List<Miss> drain(String entityType) {
+  // A partition's tracker is its own, so this takes only the misses whose documents that
+  // partition has already flushed.
+  private List<Miss> drain(StageStatsTracker partition) {
     List<Miss> drained = new ArrayList<>();
     pending
         .entrySet()
         .removeIf(
             entry -> {
-              boolean ofType = entry.getValue().entity().getType().equalsIgnoreCase(entityType);
-              if (ofType) {
+              boolean ofPartition = entry.getValue().tracker() == partition;
+              if (ofPartition) {
                 drained.add(entry.getValue());
               }
-              return ofType;
+              return ofPartition;
             });
     return drained;
   }
@@ -154,15 +155,14 @@ final class MissedChunks {
   void logSummary() {
     long missedCount = missed.get();
     if (missedCount > 0) {
-      long recoveredCount = recovered.get();
       LOG.warn(
           "Search Indexing missed the chunk documents of {} entities on this node, {} of them "
-              + "with their entity embedding too; the retry recovered {}. The other {} count as "
-              + "vector failures and get their embeddings on their next edit or the next reindex",
+              + "with their entity embedding too; the retry recovered {}. {} count as vector "
+              + "failures and get their embeddings on their next edit or the next reindex",
           missedCount,
           missedEmbeddings.get(),
-          recoveredCount,
-          missedCount - recoveredCount);
+          recovered.get(),
+          unrecovered.get());
     }
   }
 }

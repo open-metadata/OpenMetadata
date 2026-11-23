@@ -204,7 +204,7 @@ class EmbeddingEnricherTest {
     assertEquals(JsonUtils.readTree(ENTITY_JSON), JsonUtils.readTree(enriched));
     verify(vectorService, never()).writeEntityChunks(any(), any(), any());
     assertVectorStats(0, 0);
-    enricher.retryMissedChunks(Entity.TABLE);
+    enricher.retryMissedChunks(tracker);
 
     Map<String, Object> written = entityEmbeddingWrittenTo(STAGED_INDEX);
     assertEquals(VectorDocBuilder.computeFingerprintForEntity(table), written.get("fingerprint"));
@@ -223,7 +223,7 @@ class EmbeddingEnricherTest {
     theRetryReadsTheTable();
 
     enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, liveRun());
-    enricher.retryMissedChunks(Entity.TABLE);
+    enricher.retryMissedChunks(tracker);
 
     entityEmbeddingWrittenTo(INDEX);
     assertEquals(1, chunksWrittenTo(null).size());
@@ -236,8 +236,8 @@ class EmbeddingEnricherTest {
     theRetryReadsTheTable();
 
     enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
-    enricher.retryMissedChunks(Entity.TABLE);
-    enricher.retryMissedChunks(Entity.TABLE);
+    enricher.retryMissedChunks(tracker);
+    enricher.retryMissedChunks(tracker);
 
     assertEquals(2, embeddings.calls.get(), "one first attempt and one retry");
     verify(vectorService, never()).writeEntityEmbedding(any(), any(), any());
@@ -253,7 +253,7 @@ class EmbeddingEnricherTest {
     theRetryReadsTheTable();
 
     enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
-    enricher.retryMissedChunks(Entity.TABLE);
+    enricher.retryMissedChunks(tracker);
 
     entityEmbeddingWrittenTo(STAGED_INDEX);
     assertVectorStats(0, 1);
@@ -266,7 +266,7 @@ class EmbeddingEnricherTest {
 
     String enriched = enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
     assertVectorStats(0, 0);
-    enricher.retryMissedChunks(Entity.TABLE);
+    enricher.retryMissedChunks(tracker);
 
     assertEquals(ENTITY_JSON, enriched);
     assertEquals(0, embeddings.calls.get(), "no provider call while the circuit is open");
@@ -292,7 +292,7 @@ class EmbeddingEnricherTest {
     enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
     enricher.enrich(other, ENTITY_JSON, Map.of(), tracker, recreateRun());
     assertTrue(atLeast(log, Level.WARN).isEmpty(), "no warning per entity");
-    enricher.retryMissedChunks(Entity.TABLE);
+    enricher.retryMissedChunks(tracker);
     enricher.logMissedChunksSummary();
 
     List<ILoggingEvent> warnings = atLeast(log, Level.WARN);
@@ -320,8 +320,8 @@ class EmbeddingEnricherTest {
         tracker,
         recreateRun());
     assertVectorStats(0, 0);
-    enricher.retryMissedChunks(Entity.TABLE);
-    enricher.retryMissedChunks(Entity.TABLE);
+    enricher.retryMissedChunks(tracker);
+    enricher.retryMissedChunks(tracker);
 
     verify(vectorService, times(2)).backfillEntityChunks(table, STAGED_CHUNKS);
     assertVectorStats(1, 0);
@@ -336,7 +336,7 @@ class EmbeddingEnricherTest {
     theRetryReadsTheTable();
 
     enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
-    enricher.retryMissedChunks(Entity.TABLE);
+    enricher.retryMissedChunks(tracker);
 
     verify(vectorService).backfillEntityChunks(table, STAGED_CHUNKS);
     assertVectorStats(0, 1);
@@ -355,7 +355,7 @@ class EmbeddingEnricherTest {
         tracker,
         recreateRun());
     embeddings.available = false;
-    enricher.retryMissedChunks(Entity.TABLE);
+    enricher.retryMissedChunks(tracker);
 
     verify(vectorService, times(1)).backfillEntityChunks(table, STAGED_CHUNKS);
     assertEquals(0, embeddings.calls.get(), "no provider call while the circuit is open");
@@ -363,20 +363,24 @@ class EmbeddingEnricherTest {
   }
 
   @Test
-  void aRetryLeavesTheMissesOfOtherEntityTypesPending() {
-    when(vectorService.backfillEntityChunks(table, STAGED_CHUNKS)).thenReturn(false);
+  void aRetryLeavesTheMissesOfAnotherPartitionOfTheSameTypePending() {
+    StageStatsTracker otherPartition = mock(StageStatsTracker.class);
+    embeddings.failuresLeft = 1;
     theRetryReadsTheTable();
 
-    enricher.enrich(
-        table,
-        ENTITY_JSON,
-        Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")),
-        tracker,
-        recreateRun());
-    enricher.retryMissedChunks(Entity.GLOSSARY_TERM);
+    enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
+    enricher.retryMissedChunks(otherPartition);
 
-    verify(vectorService, times(1)).backfillEntityChunks(table, STAGED_CHUNKS);
+    assertEquals(
+        1, embeddings.calls.get(), "the other partition's document may not be written yet");
+    verify(vectorService, never()).writeEntityEmbedding(any(), any(), any());
+    verifyNoInteractions(otherPartition);
     assertVectorStats(0, 0);
+
+    enricher.retryMissedChunks(tracker);
+
+    entityEmbeddingWrittenTo(STAGED_INDEX);
+    assertVectorStats(1, 0);
   }
 
   private void theRetryReadsTheTable() {
