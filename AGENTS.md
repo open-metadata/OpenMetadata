@@ -119,6 +119,8 @@ prose and code blocks.
 | `frontend-react.md` | UI `*.{ts,tsx}` — components, hooks, state, types, and the CI lint code-rules |
 | `frontend-styling.md` | UI `*.{ts,tsx,less,css}` — `tw:` prefix, design tokens, ring→border, token-audit |
 | `component-library.md` | UI `*.{ts,tsx}` — prefer `ui-core-components`, do not add Ant Design for new work |
+| `single-source.md` | UI `*.{ts,tsx}` — search core + this repo before creating any component; one component per concept; no `FooV2`/variant forks; grep Collate before deleting exports |
+| `page-structure.md` | UI `src/pages/**` — sanctioned layouts (core `PageLayout` default; `PageLayoutV1` legacy-only; `ResizablePanels` for splits) + `PageLayout.Header`/`.PageHeader` + ui-core `Tabs` |
 | `frontend-performance.md` | UI `*.{ts,tsx}` — waterfalls, barrel imports, re-renders, bundle discipline |
 | `frontend-permissions.md` | UI `*.{ts,tsx}` — `useEntityPermissions` and derived flags; never read a permission key directly |
 | `frontend-a11y.md` | UI `*.{ts,tsx}` — semantics over `div`+`role`, keyboard, focus, contrast, targets |
@@ -126,7 +128,7 @@ prose and code blocks.
 | `frontend-playwright.md` | UI `playwright/**` — E2E test constraints |
 | `python-ingestion.md` | `ingestion/src/**/*.py` — pytest style, connector-specific-file rule, `model_str()` |
 | `schema-first.md` | `openmetadata-spec/.../schema/**` and any `generated/**` — regen, never hand-edit generated |
-| `migrations.md` | `bootstrap/sql/**` — append-only, native path, MySQL+Postgres, idempotent |
+| `migrations.md` | `bootstrap/sql/**`, `service/migration/**` — append-only, native path, MySQL+Postgres, idempotent, steps carry their own logic |
 
 ### Repo coding conventions (read before writing non-trivial code)
 

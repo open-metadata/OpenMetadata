@@ -482,7 +482,14 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       return undefined;
     }
 
-    getResolvedTaskFormSchema(taskType, taskCategory)
+    getResolvedTaskFormSchema(taskType, taskCategory, {
+      // Suggestion tasks share one taskType+taskCategory binding across two
+      // seeded schemas; pass the stamped id (and payload for fallback
+      // disambiguation) so a tag-suggestion legacy task does not render the
+      // DescriptionSuggestion form. See TaskFormSchemaUtils.
+      taskFormSchemaId: task?.taskFormSchemaId,
+      payload: task?.payload,
+    })
       .then((schema) => active && setFormSchema(schema))
       // Without a schema the per-type defaults still produce a correct body.
       .catch(() => active && setFormSchema(undefined));
@@ -490,7 +497,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     return () => {
       active = false;
     };
-  }, [isLegacyTask, taskType, taskCategory]);
+  }, [
+    isLegacyTask,
+    taskType,
+    taskCategory,
+    task?.taskFormSchemaId,
+    task?.payload,
+  ]);
 
   // A plugin can refine how a task type it owns renders — its summary rows, its
   // stat tiles — without owning the pane. The first matching contribution wins.

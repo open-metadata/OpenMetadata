@@ -293,7 +293,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self._policy_tag_cache = {}
         self._taxonomy_cache = {}
         self._taxonomy_to_tags = {}
-        self._table_ddl_cache = {}
+        # Each schema worker thread ingests one dataset at a time and reads each table's DDL
+        # once, so it holds only its current dataset's DDLs: memory is threads x one dataset,
+        # and concurrent datasets never share (or clear) each other's entries.
+        self._ddl_local = threading.local()
         self._policy_tag_client = None
         self._policy_tag_prefetch_key: tuple[str, ...] | None = None
         self._policy_tag_lock = threading.Lock()
@@ -878,10 +881,24 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         """Pre-fetch all table DDLs at schema level using INFORMATION_SCHEMA"""
         if not self.source_config.includeDDL:
             return
+        self._load_table_ddls(self.context.get().database, schema_name)  # pyright: ignore[reportAttributeAccessIssue]
 
-        self._table_ddl_cache.clear()
+    def _load_table_ddls(self, database: str, schema_name: str) -> dict[str, str]:
+        """Fetch the dataset's DDLs and make them this thread's current dataset."""
+        ddls = self._fetch_table_ddls(database, schema_name)
+        self._ddl_local.dataset_key = f"{database}.{schema_name}"
+        self._ddl_local.ddls = ddls
+        return ddls
 
-        database = self.context.get().database
+    def _get_table_ddls(self, schema_name: str) -> dict[str, str]:
+        """Return the dataset's DDLs, fetching them if this thread holds another dataset."""
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        if getattr(self._ddl_local, "dataset_key", None) == f"{database}.{schema_name}":
+            return self._ddl_local.ddls
+        return self._load_table_ddls(database, schema_name)
+
+    def _fetch_table_ddls(self, database: str, schema_name: str) -> dict[str, str]:
+        """Fetch every table's DDL in the dataset; an empty dict when the query fails."""
 
         try:
             dataset_obj = self.get_dataset_obj(schema_name)
@@ -909,11 +926,11 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             )
         )
 
+        ddls: dict[str, str] = {}
         try:
             with self.engine.connect() as conn:
                 results = conn.execute(text(query)).all()
-            for row in results:
-                self._table_ddl_cache[row.table_name] = row.ddl
+            ddls = {row.table_name: row.ddl for row in results}
         except Exception as exc:
             logger.warning(
                 "Error pre-fetching table DDLs for '%s.%s': %s",
@@ -922,6 +939,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 exc,
             )
             logger.debug(traceback.format_exc())
+        return ddls
 
     def _register_tag(
         self,
@@ -1329,7 +1347,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     )
                     values = self._sharded_table_metadata(query, table_name)
                     return values["ddl"] if values else None
-                return self._table_ddl_cache.get(table_name)
+                return self._get_table_ddls(schema_name).get(table_name)
         except NotImplementedError:
             logger.warning(f"Schema definition not implemented for {schema_name}.{table_name}")
         except Exception as exc:

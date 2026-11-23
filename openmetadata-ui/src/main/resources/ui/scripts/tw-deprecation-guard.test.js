@@ -180,4 +180,107 @@ check('allows migrating existing style references and ignores comments', () => {
   }
 });
 
+// --- style-debt checks (added lines in UI src) ---------------------------
+
+const UI_SRC = 'openmetadata-ui/src/main/resources/ui/src';
+
+function writeSrc(dir, rel, content) {
+  const file = path.join(dir, UI_SRC, rel);
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, content);
+  return file;
+}
+
+for (const staged of [true, false]) {
+  check(
+    `style debt on added lines fails (palette family, variant chain, hex, inline style) [${staged ? 'staged' : 'branch'}]`,
+    () => {
+      const { dir, git } = makeTmpRepo();
+      try {
+        writeSrc(dir, 'Foo.tsx', 'export const a = 1;\n');
+        git('add', '-A');
+        git('commit', '-q', '-m', 'base');
+        const baseSha = git('rev-parse', 'HEAD').trim();
+        writeSrc(
+          dir,
+          'Foo.tsx',
+          [
+            'export const a = 1;',
+            'const brand = "tw:bg-brand-500";',
+            'const chain = "tw:[&_button]:bg-blue-50";',
+            'const hex = { color: "#FF0000" };',
+            'const rgba = { color: "#1234" };',
+            'const el = <div style={{ margin: 8 }} />;',
+            'const trailing = "tw:bg-blue-50!";',
+            'const darkOnly = "tw:dark:bg-blue-500";',
+            '// matches brand #3E7BC2 — documentation, not a rendered colour',
+            '',
+          ].join('\n')
+        );
+        git('add', '-A');
+        if (!staged) git('commit', '-q', '-m', 'add style debt');
+        const result = runGuard(dir, staged ? [] : [baseSha]);
+        assert.strictEqual(result.code, 1);
+        assert.ok(result.out.includes('[raw-palette]'), result.out);
+        assert.ok(result.out.includes('tw:bg-brand-500') || result.out.includes('Foo.tsx:2'), result.out);
+        assert.ok(result.out.includes('Foo.tsx:3'), result.out); // variant chain
+        assert.ok(result.out.includes('[hex-colour]'), result.out);
+        assert.ok(result.out.includes('Foo.tsx:5'), result.out); // 4-digit #RGBA shorthand
+        assert.ok(result.out.includes('[inline-style]'), result.out);
+        assert.ok(result.out.includes('Foo.tsx:7'), result.out); // trailing ! still fails
+        assert.ok(!result.out.includes('Foo.tsx:8'), result.out); // dark: override allowed
+        assert.ok(!result.out.includes('Foo.tsx:9'), result.out); // hex in comment allowed
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    }
+  );
+}
+
+check('style debt: allow token with a reason passes; bare token does not', () => {
+  const { dir, git } = makeTmpRepo();
+  try {
+    writeSrc(dir, 'Bar.tsx', 'export const a = 1;\n');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'base');
+    writeSrc(
+      dir,
+      'Bar.tsx',
+      [
+        'export const a = 1;',
+        'const ok = "tw:bg-error-600"; // style-guard-allow: chart lib needs the literal tone',
+        'const bad = "tw:bg-error-600"; // style-guard-allow',
+        '',
+      ].join('\n')
+    );
+    git('add', '-A');
+    const result = runGuard(dir, []);
+    assert.strictEqual(result.code, 1);
+    assert.ok(result.out.includes('Bar.tsx:3'), result.out); // bare token still fails
+    assert.ok(!result.out.includes('Bar.tsx:2'), result.out); // reasoned token exempt
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check('style debt: unchanged lines, test files and semantic tokens are ignored', () => {
+  const { dir, git } = makeTmpRepo();
+  try {
+    writeSrc(dir, 'Baz.tsx', 'const old = "tw:bg-gray-100";\n');
+    writeSrc(dir, 'Baz.test.tsx', 'const t = "tw:bg-gray-100";\n');
+    git('add', '-A');
+    git('commit', '-q', '-m', 'base');
+    writeSrc(
+      dir,
+      'Baz.tsx',
+      'const old = "tw:bg-gray-100";\nconst fine = "tw:bg-utility-gray-50 tw:text-secondary";\n'
+    );
+    writeSrc(dir, 'Baz.test.tsx', 'const t = "tw:bg-gray-100";\nconst t2 = "tw:bg-brand-500";\n');
+    git('add', '-A');
+    assert.strictEqual(runGuard(dir, []).code, 0);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 process.stdout.write(`\n${pass} check(s) passed.\n`);

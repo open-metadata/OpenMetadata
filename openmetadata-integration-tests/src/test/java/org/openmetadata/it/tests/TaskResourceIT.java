@@ -2458,6 +2458,63 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testListPagesRecentTaskUpdates(TestNamespace ns) throws Exception {
+    final Domain domain = createDomain(ns, "task-update-order-domain");
+    final Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    final Task stale = createTaskWithDisplayName(ns, "stale", table, "Stale task");
+    final Task first = createTaskWithDisplayName(ns, "first", table, "Recent task first");
+    final Task second = createTaskWithDisplayName(ns, "second", table, "Recent task second");
+    for (Task task : List.of(stale, first, second)) {
+      awaitTaskReadyForWorkflowResolution(task.getId());
+    }
+    final long updatedSince =
+        SdkClients.adminClient().tasks().get(stale.getId().toString()).getUpdatedAt() + 1;
+    Task secondUpdated =
+        SdkClients.adminClient().tasks().addComment(second.getId().toString(), "Recent comment");
+    Task firstUpdated =
+        SdkClients.adminClient()
+            .tasks()
+            .addComment(first.getId().toString(), "New comment on older task");
+    List<UUID> expected =
+        List.of(firstUpdated, secondUpdated).stream()
+            .sorted(
+                Comparator.comparing(Task::getUpdatedAt)
+                    .thenComparing(task -> task.getId().toString())
+                    .reversed())
+            .map(Task::getId)
+            .toList();
+
+    for (String query : List.of("", "Recent task")) {
+      RequestOptions.Builder options =
+          RequestOptions.builder()
+              .queryParam("aboutEntity", table.getFullyQualifiedName())
+              .queryParam("sortBy", "updatedAt")
+              .queryParam("updatedSince", Long.toString(updatedSince))
+              .queryParam("limit", "1");
+      if (!query.isEmpty()) {
+        options.queryParam("q", query);
+      }
+      RequestOptions baseOptions = options.build();
+      JsonNode latest = taskListPage("/v1/tasks", baseOptions);
+      assertEquals(List.of(expected.getFirst()), pageIds(latest));
+      assertEquals(2, latest.path("paging").path("total").asInt());
+      JsonNode next =
+          taskListPage(
+              "/v1/tasks",
+              options.queryParam("after", latest.path("paging").path("after").asText()).build());
+      assertEquals(List.of(expected.getLast()), pageIds(next));
+      JsonNode back =
+          taskListPage(
+              "/v1/tasks",
+              RequestOptions.builder()
+                  .queryParams(baseOptions.getQueryParams())
+                  .queryParam("before", next.path("paging").path("before").asText())
+                  .build());
+      assertEquals(pageIds(latest), pageIds(back));
+    }
+  }
+
+  @Test
   void testListSearchPagesNewestFirstBothWays(TestNamespace ns) throws Exception {
     final Domain domain = createDomain(ns, "list-search-order-domain");
     final Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());

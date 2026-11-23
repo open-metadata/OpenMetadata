@@ -94,7 +94,7 @@ const AccessControlRulesTable: FC<AccessControlRulesTableProps> = ({
       { id: 'effect', label: t('label.effect'), className: 'tw:w-24' },
       { id: 'condition', label: t('label.condition') },
       { id: 'description', label: t('label.description') },
-      { id: 'actions', label: t('label.action-plural'), className: 'tw:w-20' },
+      { id: 'actions', label: t('label.action-plural'), className: 'tw:w-28' },
     ],
     [t]
   );

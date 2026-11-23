@@ -444,6 +444,28 @@ def test_validate_access_token_with_datetime_expiry(sse_client, mock_client_conf
     assert mock_client_config.expires_in == future_time.timestamp() - 120
 
 
+def test_validate_access_token_with_naive_utc_expiry(sse_client, mock_client_config, local_tz):
+    """A naive UTC expiry (as google-auth's ``credentials.expiry`` returns it)
+    must be interpreted as UTC, not as the host's local time.
+
+    The ``local_tz`` fixture forces ``America/New_York`` so the
+    5h skew the bug introduces on hosts west of UTC is observable on any
+    POSIX CI runner — including UTC ones, where the buggy and fixed
+    arithmetic happen to be numerically equal.
+    """
+    # As returned by google.auth._helpers.utcnow(): naive, but wall-clock UTC.
+    naive_utc = datetime(2030, 1, 1, 15, 0)
+    expected_expires_in = naive_utc.replace(tzinfo=timezone.utc).timestamp() - 120
+    mock_client_config.access_token = None
+    mock_client_config.auth_token = Mock(return_value=("new_token", naive_utc))
+
+    local_tz("America/New_York")
+    sse_client._validate_access_token()
+
+    assert mock_client_config.access_token == "new_token"
+    assert mock_client_config.expires_in == expected_expires_in
+
+
 def test_validate_access_token_with_no_token_mode(sse_client, mock_client_config):
     """Test token validation with 'no_token' mode"""
     mock_client_config.access_token = None
