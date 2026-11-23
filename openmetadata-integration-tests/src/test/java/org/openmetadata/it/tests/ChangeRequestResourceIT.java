@@ -228,6 +228,30 @@ class ChangeRequestResourceIT {
   }
 
   @Test
+  void anUngatedDescriptionIsPreviewedAsThePatchSavesIt(TestNamespace ns) throws Exception {
+    Glossary glossary = gatedGlossary(ns);
+    String patch =
+        "[{\"op\":\"replace\",\"path\":\"/description\","
+            + "\"value\":\"<a href=\\\"https://example.com\\\" target=\\\"_blank\\\">link</a>\"}]";
+
+    var preview =
+        sendAsAdmin(
+            "POST",
+            "/v1/changeRequests/preview/glossary/" + glossary.getId(),
+            "application/json-patch+json",
+            patch);
+    assertEquals(200, preview.statusCode());
+    String previewed =
+        JsonUtils.readTree(
+                JsonUtils.readTree(preview.body()).path("ops").get(0).path("value").asText())
+            .asText();
+    patch(glossary.getId(), patch);
+
+    assertEquals(descriptionOf(glossary.getId()), previewed);
+    assertFalse(previewed.contains("target="));
+  }
+
+  @Test
   void anUngatedEditBeyondDescriptiveMetadataIsPreviewedWithoutOps(TestNamespace ns)
       throws Exception {
     Glossary glossary = gatedGlossary(ns);

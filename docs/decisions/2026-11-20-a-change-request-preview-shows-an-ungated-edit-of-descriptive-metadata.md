@@ -6,6 +6,7 @@
 - **Guard:** `ChangeRequestServiceTest` (`publishedEditRequiresNoApprovalAndStillReportsItsOps`,
   `anUngatedEditToAnythingButDescriptiveMetadataGetsNoOps`, `heldEditDoesNotComputeItsOpsTwice`),
   `ChangeRequestResourceIT` (`anUngatedDescriptionEditIsPreviewedWithItsOpsAndNothingIsSaved`,
+  `anUngatedDescriptionIsPreviewedAsThePatchSavesIt`,
   `anUngatedEditBeyondDescriptiveMetadataIsPreviewedWithoutOps`)
 - **Related:** open-metadata/ai-platform#1870,
   ADR:ai-platform/2026-11-20-a-chat-write-is-applied-from-the-diff-the-user-approved
@@ -19,7 +20,8 @@ sending it, gated or not, and the change-request diff already draws those ops.
 ## Decision
 
 1. A preview returns the ops of an edit no workflow holds, planned by `MutationPlanner` from the
-   same prepared entity a gated preview uses. Nothing is stored.
+   same prepared entity a gated preview uses. A changed description is cleaned first, as saving it
+   cleans it, so the preview shows the text the PATCH saves. Nothing is stored.
 2. It does so only when every patched field is in `ChangeRequestService.DESCRIPTIVE_FIELDS`: the
    metadata a person reviews as a diff (description, display name, tags, owners, domains, data
    products, columns, certification, glossary synonyms, related terms and parent, and the metric
