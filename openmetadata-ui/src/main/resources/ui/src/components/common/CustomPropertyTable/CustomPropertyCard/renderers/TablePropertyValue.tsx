@@ -41,7 +41,8 @@ const getRows = (value: unknown): TableRow[] =>
 const VIEW_COLUMN_CLASS =
   'tw:min-w-[calc(100cqw/3)] tw:max-w-[calc(100cqw/3)] tw:break-words';
 // 2.5rem is the delete-action column (`tw:w-10`).
-const EDIT_COLUMN_CLASS = 'tw:min-w-[calc((100cqw-2.5rem)/3)]';
+const EDIT_COLUMN_CLASS =
+  'tw:min-w-[calc((100cqw-2.5rem)/3)] tw:max-w-[calc((100cqw-2.5rem)/3)] tw:break-words';
 
 const TablePropertyView = ({ property, value }: PropertyViewProps) => {
   const columns = getColumns(property.customPropertyConfig?.config);
@@ -49,7 +50,7 @@ const TablePropertyView = ({ property, value }: PropertyViewProps) => {
 
   return (
     <div
-      className="tw:@container tw:rounded-lg tw:border tw:border-secondary"
+      className="tw:@container tw:w-full tw:rounded-lg tw:border tw:border-secondary"
       data-testid="table-type-property-value">
       <Table
         aria-label={property.displayName || property.name}
@@ -133,7 +134,7 @@ const TablePropertyEdit = ({
   return (
     <form noValidate id={formId} onSubmit={handleSubmit}>
       <Box direction="col" gap={3}>
-        <div className="tw:@container tw:overflow-x-auto tw:rounded-lg tw:border tw:border-secondary">
+        <div className="tw:@container tw:w-full tw:overflow-x-auto tw:rounded-lg tw:border tw:border-secondary">
           <table className="tw:w-max tw:min-w-full tw:text-sm">
             <thead className="tw:bg-secondary">
               <tr>
