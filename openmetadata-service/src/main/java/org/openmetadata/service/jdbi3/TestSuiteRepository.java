@@ -22,6 +22,7 @@ import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonObjectBuilder;
+import jakarta.json.JsonPatch;
 import jakarta.json.JsonReader;
 import jakarta.json.JsonValue;
 import jakarta.ws.rs.core.Response;
@@ -800,8 +801,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   }
 
   @Override
-  public void restorePatchAttributes(TestSuite original, TestSuite updated) {
-    super.restorePatchAttributes(original, updated);
+  protected void validatePatch(TestSuite original, TestSuite updated, JsonPatch patch) {
+    super.validatePatch(original, updated, patch);
     updated
         .withBasic(original.getBasic())
         .withBasicEntityReference(original.getBasicEntityReference());

@@ -31,6 +31,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
@@ -54,6 +56,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 
@@ -205,6 +208,29 @@ class DataContractPipelineTokenRefreshTest {
           () -> dataContractRepository.deployAndTriggerDQValidation(dataContract));
     }
 
+    assertEquals(List.of(), triggeredTokens);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void validateRequiresConsistentSuiteConfig(boolean pinsCredentials) {
+    when(pipelineServiceClient.pinsCredentialsAtDeployTime()).thenReturn(pinsCredentials);
+    final IngestionPipeline pipeline = testSuitePipeline(true);
+    pipeline.setSourceConfig(
+        new SourceConfig()
+            .withConfig(
+                new TestSuitePipeline()
+                    .withEntityFullyQualifiedName("warehouse.db.schema.orders")));
+    final TestSuite testSuite = testSuiteWith(pipeline);
+    final DataContract contract = dataContractFor(testSuite);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<SecretsManagerFactory> factory = mockStatic(SecretsManagerFactory.class)) {
+      stubStaticLookups(entity, factory, testSuite, pipeline);
+      assertThrows(
+          BadRequestException.class,
+          () -> dataContractRepository.deployAndTriggerDQValidation(contract));
+    }
+    assertEquals(List.of(), deployedTokens);
     assertEquals(List.of(), triggeredTokens);
   }
 

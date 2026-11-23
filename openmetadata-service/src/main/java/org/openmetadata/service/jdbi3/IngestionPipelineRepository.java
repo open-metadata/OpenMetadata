@@ -20,6 +20,7 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.sse.Sse;
@@ -615,12 +616,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   @Override
-  public void restorePatchAttributes(
-      final IngestionPipeline original, final IngestionPipeline updated) {
-    super.restorePatchAttributes(original, updated);
+  protected void validatePatch(
+      IngestionPipeline original, IngestionPipeline updated, JsonPatch patch) {
+    super.validatePatch(original, updated, patch);
     updated.setService(original.getService());
-    validateTestSuiteConfig(
-        updated, getCachedParentOrLoad(updated.getService(), "", Include.NON_DELETED));
   }
 
   @Override

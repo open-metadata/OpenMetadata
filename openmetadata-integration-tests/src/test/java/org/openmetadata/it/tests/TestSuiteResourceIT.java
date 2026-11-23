@@ -64,6 +64,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -1743,19 +1744,27 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {false, true})
-  void suitePatchKeepsTableAssociation(boolean basic, TestNamespace ns) {
+  @ValueSource(strings = {"basic", "logical", "clear"})
+  void suitePatchKeepsTableAssociation(String mode, TestNamespace ns) {
+    final boolean basic = !mode.equals("logical");
     final Table table = createTableForBasicTestSuite(ns, "suite_attributes");
     final Table replacement = createTableForBasicTestSuite(ns, "suite_replacement");
     final TestSuite suite =
         basic ? createBasicTestSuiteForTable(table) : createEntity(createMinimalRequest(ns));
     final var patch = JsonUtils.getObjectMapper().createArrayNode();
-    patch.addObject().put("op", "replace").put("path", "/basic").put("value", !basic);
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/basic")
+        .put("value", mode.equals("clear") ? null : !basic);
     patch
         .addObject()
         .put("op", "add")
         .put("path", "/basicEntityReference")
-        .set("value", JsonUtils.getObjectMapper().valueToTree(replacement.getEntityReference()));
+        .set(
+            "value",
+            JsonUtils.getObjectMapper()
+                .valueToTree(mode.equals("clear") ? null : replacement.getEntityReference()));
     patch.addObject().put("op", "add").put("path", "/description").put("value", "Updated suite");
     SdkClients.adminClient()
         .getHttpClient()
@@ -1806,24 +1815,6 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
         suite.getBasicEntityReference().getFullyQualifiedName(),
         JsonUtils.convertValue(stored.getSourceConfig().getConfig(), TestSuitePipeline.class)
             .getEntityFullyQualifiedName());
-  }
-
-  @Test
-  void suitePutKeepsTableAssociation(TestNamespace ns) {
-    final Table table = createTableForBasicTestSuite(ns, "suite_put");
-    final TestSuite suite = createBasicTestSuiteForTable(table);
-    final CreateTestSuite request =
-        new CreateTestSuite()
-            .withName(suite.getFullyQualifiedName())
-            .withDescription("Updated suite");
-    SdkClients.adminClient()
-        .getHttpClient()
-        .execute(HttpMethod.PUT, getResourcePath(), request, TestSuite.class);
-
-    final TestSuite stored = getEntity(suite.getId().toString());
-    assertEquals(suite.getBasic(), stored.getBasic());
-    assertEquals(suite.getBasicEntityReference(), stored.getBasicEntityReference());
-    assertEquals("Updated suite", stored.getDescription());
   }
 
   private CreateIngestionPipeline suitePipelineRequest(TestNamespace ns, TestSuite suite) {
