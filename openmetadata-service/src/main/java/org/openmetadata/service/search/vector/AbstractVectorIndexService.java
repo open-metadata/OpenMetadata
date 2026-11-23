@@ -62,6 +62,8 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
               .build());
   private static final int OVER_FETCH_MULTIPLIER = 2;
   private static final long UNKNOWN_COUNT = -1L;
+  private static final String FINGERPRINT_FIELD = "fingerprint";
+  private static final String PARENT_ID_FIELD = "parentId";
   private static final String CHUNK_HEADER_FIELDS =
       "fingerprint,chunkCount,docVersion,"
           + String.join(
@@ -390,8 +392,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private boolean deleteChunksFrom(String indexName, String parentId) {
     boolean deleted;
     try {
-      ChunkHeader header = getChunkHeader(indexName, parentId);
-      replaceChunks(indexName, parentId, List.of(), previousCount(header));
+      removeChunkSet(indexName, parentId, previousCount(getChunkHeader(indexName, parentId)));
       deleted = true;
     } catch (Exception e) {
       LOG.debug("Failed to delete chunks for {} from {}: {}", parentId, indexName, e.getMessage());
@@ -1545,17 +1546,19 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   /**
-   * One bulk request that overwrites chunk ids {@code 0..N-1} and deletes the trailing stale ids
-   * {@code N..previousCount-1} left behind by a shrinking body. Deletes are by id, so they do not
-   * depend on search visibility of prior writes.
+   * Overwrites chunk ids {@code 0..N-1} and deletes the trailing stale ids {@code
+   * N..previousCount-1} left behind by a shrinking body. Deletes are by id, so they do not depend
+   * on search visibility of prior writes. An empty set removes the parent's chunks.
    */
   private void replaceChunks(
       String indexName, String parentId, List<Map<String, Object>> chunkDocs, int previousCount)
       throws IOException {
-    if (previousCount == 0) {
-      cleanOrphanChunks(indexName, parentId);
-    }
-    if (!chunkDocs.isEmpty() || previousCount != 0) {
+    if (chunkDocs.isEmpty()) {
+      removeChunkSet(indexName, parentId, previousCount);
+    } else {
+      if (previousCount == 0) {
+        cleanOrphanChunks(indexName, parentId);
+      }
       writeChunkBulk(indexName, parentId, chunkDocs, previousCount);
     }
   }
@@ -1564,10 +1567,17 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * Chunk 0 carries the header the next update compares against, and a bulk request is not atomic.
    * So the other chunks and the trailing deletes go first, and chunk 0 follows only when they all
    * succeeded: a rejected chunk leaves the old header, and the next update writes the set again.
+   *
+   * <p>The header's {@code chunkCount} is also the bound every trim and delete trusts: no chunk id
+   * at or past it may be stored. A write that adds ids past the bound first raises it, see {@link
+   * #reserveChunkIds}.
    */
   private void writeChunkBulk(
       String indexName, String parentId, List<Map<String, Object>> chunkDocs, int previousCount)
       throws IOException {
+    if (chunkDocs.size() > Math.max(previousCount, 1)) {
+      reserveChunkIds(indexName, parentId, chunkDocs.getFirst());
+    }
     StringBuilder bodyChunks = new StringBuilder();
     for (int i = 1; i < chunkDocs.size(); i++) {
       appendChunkIndex(bodyChunks, indexName, parentId, i, chunkDocs.get(i));
@@ -1578,6 +1588,65 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       StringBuilder header = new StringBuilder();
       appendChunkIndex(header, indexName, parentId, 0, chunkDocs.getFirst());
       sendChunkBulk(indexName, parentId, header);
+    }
+  }
+
+  /**
+   * Writes chunk 0 with the new {@code chunkCount} and no fingerprint before the ids past the old
+   * bound. A write that then stops part way leaves a header that covers every id it wrote, so a
+   * later trim or delete reaches them, and that no update reads as current, so the next one writes
+   * the set again.
+   */
+  private void reserveChunkIds(String indexName, String parentId, Map<String, Object> header)
+      throws IOException {
+    Map<String, Object> pending = new LinkedHashMap<>(header);
+    pending.remove(FINGERPRINT_FIELD);
+    StringBuilder bulk = new StringBuilder();
+    appendChunkIndex(bulk, indexName, parentId, 0, pending);
+    sendChunkBulk(indexName, parentId, bulk);
+  }
+
+  /**
+   * Deletes every chunk of a parent. By id up to the header's bound first, which reaches writes the
+   * index has not refreshed yet, then by query for anything a header that was missing or behind
+   * did not cover. Chunk 0 goes last, so a delete that stops part way keeps the header and its
+   * bound for the retry.
+   */
+  private void removeChunkSet(String indexName, String parentId, int previousCount) {
+    StringBuilder trailing = new StringBuilder();
+    appendChunkDeletes(trailing, indexName, parentId, 1, previousCount);
+    sendChunkBulk(indexName, parentId, trailing);
+    deleteTrailingChunksByQuery(indexName, parentId);
+    StringBuilder header = new StringBuilder();
+    appendChunkDeletes(header, indexName, parentId, 0, 1);
+    sendChunkBulk(indexName, parentId, header);
+  }
+
+  /** Deletes the parent's chunks other than chunk 0 that a refreshed search can see. */
+  private void deleteTrailingChunksByQuery(String indexName, String parentId) {
+    ObjectNode bool = MAPPER.createObjectNode();
+    bool.putArray("filter").addObject().putObject("term").put(PARENT_ID_FIELD, parentId);
+    bool.putArray("must_not").addObject().putObject("ids").putArray("values").add(parentId + "_0");
+    ObjectNode body = MAPPER.createObjectNode();
+    body.putObject("query").set("bool", bool);
+    String response =
+        executeGenericRequest(
+            "POST", "/" + indexName + "/_delete_by_query?conflicts=proceed", body.toString());
+    failOnDeleteByQueryFailures(indexName, parentId, response);
+  }
+
+  private void failOnDeleteByQueryFailures(String indexName, String parentId, String response) {
+    JsonNode failures;
+    try {
+      failures = MAPPER.readTree(response).path("failures");
+    } catch (IOException e) {
+      throw new IllegalStateException(
+          "Chunk delete for " + parentId + " in " + indexName + " returned an unparseable response",
+          e);
+    }
+    if (!failures.isEmpty()) {
+      throw new IllegalStateException(
+          "Chunk delete for " + parentId + " in " + indexName + " had failures: " + failures);
     }
   }
 
@@ -1657,24 +1726,19 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private static final List<String> BULK_ACTIONS = List.of("index", "delete", "create");
 
   /**
-   * Belt-and-braces for a missing or corrupt chunk-0 header (e.g. a partial bulk failure).
-   * {@code previousCount == 0} is overwhelmingly the brand-new-entity case on the write and
-   * reindex-backfill hot paths, so the guard is the cheapest primitive available — a real-time
-   * by-id existence probe of chunk 1 that never touches the search layer. Only when a trailing
-   * chunk survived without its header do we pay a delete-by-query heal. (A failure that drops
-   * both chunk 0 and chunk 1 while later chunks survive would evade the probe; the next
-   * successful full write overwrites those ids anyway.)
+   * Belt-and-braces for a chunk set stored without its chunk-0 header, which only a write from
+   * before {@link #reserveChunkIds} can leave. {@code previousCount == 0} is overwhelmingly the
+   * brand-new-entity case on the write and reindex-backfill hot paths, so the guard is the cheapest
+   * primitive available — a real-time by-id existence probe of chunk 1 that never touches the
+   * search layer. Only when a trailing chunk survived without its header do we pay a
+   * delete-by-query heal. (A set missing both chunk 0 and chunk 1 evades the probe; a delete of the
+   * parent still removes it.)
    */
   private void cleanOrphanChunks(String indexName, String parentId) {
     try {
       if (chunkDocExists(indexName, parentId + "_1")) {
         LOG.warn("Healing orphan chunk docs for parent {} with missing chunk-0 header", parentId);
-        String body =
-            "{\"query\":{\"term\":{\"parentId\":\""
-                + VectorSearchQueryBuilder.escape(parentId)
-                + "\"}}}";
-        executeGenericRequest(
-            "POST", "/" + indexName + "/_delete_by_query?conflicts=proceed", body);
+        deleteTrailingChunksByQuery(indexName, parentId);
       }
     } catch (Exception e) {
       LOG.debug("Orphan chunk cleanup skipped for {}: {}", parentId, e.getMessage());

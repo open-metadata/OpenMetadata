@@ -598,15 +598,24 @@ class ElasticSearchVectorServiceTest {
     assertTrue(
         VectorDocBuilder.fromEntity(table, mockEmbeddingClient).size() > 1,
         "the entity spans several chunks");
-    answerByEndpointSuffix(
-        Map.of(
-            "/_alias",
-            response(404, "{\"status\":404}"),
-            "/_bulk",
-            response(
-                200,
-                "{\"errors\":true,\"items\":[{\"index\":{\"status\":429,\"error\":"
-                    + "{\"type\":\"es_rejected_execution_exception\"}}}]}")));
+    Response ok = response(200, "{\"errors\":false,\"items\":[]}");
+    Response noAlias = response(404, "{\"status\":404}");
+    Response rejected =
+        response(
+            200,
+            "{\"errors\":true,\"items\":[{\"index\":{\"status\":429,\"error\":"
+                + "{\"type\":\"es_rejected_execution_exception\"}}}]}");
+    when(mockRestClient.performRequest(any(Request.class)))
+        .thenAnswer(
+            invocation -> {
+              Request request = invocation.getArgument(0);
+              Response answer = request.getEndpoint().endsWith("/_alias") ? noAlias : ok;
+              if ("/_bulk".equals(request.getEndpoint())
+                  && bodyText(request).contains("\"_id\":\"" + parentId + "_1\"")) {
+                answer = rejected;
+              }
+              return answer;
+            });
 
     vectorService.updateEntityEmbeddings(table, "table_search_index");
 
@@ -618,11 +627,15 @@ class ElasticSearchVectorServiceTest {
         bulks.add(bodyText(request));
       }
     }
-    assertEquals(1, bulks.size(), "the rejected bulk stops the write");
-    assertTrue(bulks.getFirst().contains("\"_id\":\"" + parentId + "_1\""), bulks::toString);
+    assertEquals(2, bulks.size(), "the reservation, then the rejected bulk that stops the write");
+    assertTrue(bulks.getFirst().contains("\"_id\":\"" + parentId + "_0\""), bulks::toString);
     assertFalse(
-        bulks.getFirst().contains("\"_id\":\"" + parentId + "_0\""),
-        "chunk 0 is not written beside the rejected chunk");
+        bulks.getFirst().contains("\"fingerprint\""),
+        "the reservation raises the count without marking the set current");
+    assertTrue(bulks.get(1).contains("\"_id\":\"" + parentId + "_1\""), bulks::toString);
+    assertFalse(
+        bulks.get(1).contains("\"_id\":\"" + parentId + "_0\""),
+        "the header is not written beside the rejected chunk");
   }
 
   @Test

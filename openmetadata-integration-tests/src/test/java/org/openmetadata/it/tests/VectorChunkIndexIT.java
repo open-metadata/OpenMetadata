@@ -11,6 +11,8 @@ import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +21,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.hc.core5.http.HttpHost;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -137,6 +140,11 @@ class VectorChunkIndexIT {
     void aFailedDeleteKeepsTheLiveChunks() {
       assertAFailedDeleteKeepsTheLiveChunks(service);
     }
+
+    @Test
+    void aGrowthWhoseHeaderFailedLeavesNoChunkBehind() {
+      assertAGrowthWhoseHeaderFailedLeavesNoChunkBehind(service);
+    }
   }
 
   @Nested
@@ -192,6 +200,11 @@ class VectorChunkIndexIT {
     @Test
     void aFailedDeleteKeepsTheLiveChunks() {
       assertAFailedDeleteKeepsTheLiveChunks(service);
+    }
+
+    @Test
+    void aGrowthWhoseHeaderFailedLeavesNoChunkBehind() {
+      assertAGrowthWhoseHeaderFailedLeavesNoChunkBehind(service);
     }
   }
 
@@ -339,6 +352,90 @@ class VectorChunkIndexIT {
       service.deleteEntityChunks(id(refunds));
       refresh(service, service.getChunkIndexName());
     }
+  }
+
+  /**
+   * An entity grows from one chunk to three and the write of its header fails, so chunks 1 and 2
+   * are stored past the count the old header recorded. A shrink back to one chunk keeps only chunk
+   * 0, and a delete of the entity leaves none, in the live index and in a staged generation. Stored
+   * ids are read in real time, so no refresh hides a chunk left behind.
+   */
+  private static void assertAGrowthWhoseHeaderFailedLeavesNoChunkBehind(
+      AbstractVectorIndexService service) {
+    Table orders = table("orders", "Orders placed online");
+    String live = service.getChunkIndexName();
+    String staged = null;
+    try {
+      staged = service.beginStagedChunkRecreate();
+      assertNotNull(staged, "A reachable embedding provider stages a generation");
+      for (String target : Arrays.asList(null, staged)) {
+        String index = target == null ? live : target;
+        growWithTheHeaderFailing(service, orders, target, index);
+        writeChunks(service, orders.withDescription("Orders placed online"), target);
+        assertEquals(Set.of(id(orders) + "_0"), storedChunkIds(service, index, orders));
+        growWithTheHeaderFailing(service, orders, target, index);
+      }
+
+      service.deleteEntityChunks(id(orders));
+
+      assertEquals(Set.of(), storedChunkIds(service, live, orders));
+      assertEquals(Set.of(), storedChunkIds(service, staged, orders));
+    } finally {
+      if (staged != null) {
+        service.clearStagedChunkState(staged);
+      }
+      // Refreshed first, so the delete's query also reaches what a failed assertion left behind.
+      refresh(service, live);
+      service.deleteEntityChunks(id(orders));
+      refresh(service, live);
+    }
+  }
+
+  private static void growWithTheHeaderFailing(
+      AbstractVectorIndexService service, Table table, String target, String index) {
+    writeChunks(service, table.withDescription("Orders placed online"), target);
+    List<Map<String, Object>> threeChunks =
+        VectorDocBuilder.fromEntity(
+            table.withDescription("word ".repeat(940)), service.getEmbeddingClient());
+    assertEquals(3, threeChunks.size(), "The description spans three chunks");
+    List<Map<String, Object>> brokenHeader = new ArrayList<>(threeChunks);
+    brokenHeader.set(0, withUnindexableFingerprint(threeChunks.getFirst()));
+
+    assertFalse(
+        service.writeEntityChunks(id(table), brokenHeader, target), "The header write fails");
+    assertEquals(
+        Set.of(id(table) + "_0", id(table) + "_1", id(table) + "_2"),
+        storedChunkIds(service, index, table),
+        "Chunks 1 and 2 are stored past the old count");
+  }
+
+  // A keyword field holding an object fails that bulk item on both engines. The reservation that
+  // precedes the other chunks carries no fingerprint, so only the final header fails.
+  private static Map<String, Object> withUnindexableFingerprint(Map<String, Object> chunk) {
+    Map<String, Object> broken = new HashMap<>(chunk);
+    broken.put("fingerprint", Map.of("not", "a keyword"));
+    return broken;
+  }
+
+  // A multi-get is real time, so it sees writes no refresh has made searchable yet.
+  private static Set<String> storedChunkIds(
+      AbstractVectorIndexService service, String index, Table table) {
+    List<String> ids = IntStream.range(0, 5).mapToObj(i -> id(table) + "_" + i).toList();
+    JsonNode docs =
+        JsonUtils.readTree(
+                service.executeGenericRequest(
+                    "POST",
+                    "/" + index + "/_mget?_source=false",
+                    JsonUtils.pojoToJson(Map.of("ids", ids))))
+            .path("docs");
+    Set<String> stored = new HashSet<>();
+    docs.forEach(
+        doc -> {
+          if (doc.path("found").asBoolean(false)) {
+            stored.add(doc.path("_id").asText());
+          }
+        });
+    return stored;
   }
 
   private static void writeBlock(AbstractVectorIndexService service, String index, boolean on) {
