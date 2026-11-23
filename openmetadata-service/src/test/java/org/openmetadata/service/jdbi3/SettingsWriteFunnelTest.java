@@ -56,6 +56,9 @@ class SettingsWriteFunnelTest {
       Set.of(
           "SystemRepository.storeSecurityConfiguration",
           "SystemRepository.updateSecurityConfigurationIfCurrent",
+          // Puts back the rows a refused security save replaced, as they were read: they passed
+          // the write step when they were stored.
+          "SystemRepository.restoreSecurityConfigurationIfCurrent",
           "SystemRepository.updateSetting",
           "SystemRepository.updateSettingIfCurrent",
           // Glossary term relation settings: validated and normalized by their own utility.

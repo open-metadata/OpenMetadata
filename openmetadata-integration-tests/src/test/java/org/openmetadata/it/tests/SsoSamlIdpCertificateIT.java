@@ -23,10 +23,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
@@ -128,6 +131,38 @@ class SsoSamlIdpCertificateIT {
     }
   }
 
+  /**
+   * A save the server cannot apply is undone by putting back the rows it replaced. They go back as
+   * they were read: checked again against the refused save, the expired certificate would be
+   * refused and the refused save left stored.
+   */
+  @Test
+  @DisplayName("A refused save over a stored expired IdP certificate puts the rows back unchanged")
+  void aRefusedSaveOverAStoredExpiredCertificatePutsTheRowsBack(@TempDir Path directory)
+      throws IOException {
+    storeWithoutChecks(withIdpCertificate(securityConfig.baselineCopy(), EXPIRED));
+    String storedRow = storedAuthenticationRow();
+    Path notAKeyStore = Files.writeString(directory.resolve("saml-sp.jks"), "not a keystore");
+    SecurityConfiguration cannotBeApplied = securityConfig.baselineCopy();
+    cannotBeApplied
+        .getAuthenticationConfiguration()
+        .getSamlConfiguration()
+        .getSecurity()
+        .withSendSignedAuthRequest(true)
+        .withKeyStoreFilePath(notAKeyStore.toString())
+        .withKeyStoreAlias("sp")
+        .withKeyStorePassword("keystore-password");
+    try {
+      Answer answer = SecurityConfigSwap.attemptPut(cannotBeApplied);
+
+      assertEquals(400, answer.status(), answer.body());
+      assertTrue(answer.body().contains("could not be applied"), answer.body());
+      assertEquals(storedRow, storedAuthenticationRow());
+    } finally {
+      securityConfig.restoreBaseline();
+    }
+  }
+
   @Test
   @DisplayName("A PATCH with an unusable IdP certificate is refused with a 400 and writes nothing")
   void patchRefusesAnUnusableCertificateAndWritesNothing() {
@@ -223,6 +258,12 @@ class SsoSamlIdpCertificateIT {
                     SettingsType.AUTHENTICATION_CONFIGURATION,
                     JsonUtils.valueToTree(config.getAuthenticationConfiguration()))));
     SettingsCache.invalidateSettings(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+  }
+
+  private static String storedAuthenticationRow() {
+    return Entity.getCollectionDAO()
+        .systemDAO()
+        .getConfigJsonWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
   }
 
   private static String resource(String path) {
