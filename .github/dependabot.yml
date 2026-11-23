@@ -91,6 +91,10 @@ updates:
       # exports map no longer allows that path.
       - dependency-name: "echarts-for-react"
         update-types: ["version-update:semver-minor"]
+      # Core's own copy of react-hook-form reads the form the UI's copy creates, so a
+      # version split between the two drops field validation in core form fields.
+      - dependency-name: "react-hook-form"
+        update-types: ["version-update:semver-minor"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
