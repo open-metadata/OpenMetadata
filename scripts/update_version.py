@@ -3,7 +3,6 @@ import copy
 import logging
 import re
 import subprocess
-import sys
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
@@ -121,6 +120,7 @@ def update_ri_version(args):
 def update_pyproject_version(args):
     """Updates pyproject version."""
     from packaging.version import Version
+    from python_tools import ensure_uv
 
     path = Path(args.file_path)
     text = path.read_text(encoding="utf-8")
@@ -129,7 +129,7 @@ def update_pyproject_version(args):
     updated = project_version(text, version)
     lock = path.with_name("uv.lock")
     changes = {path: updated}
-    uv = Path(sys.executable).with_name("uv")
+    uv = ensure_uv()
     if lock.is_file():
         changes[lock] = local_lock_versions(
             lock.read_text(encoding="utf-8"), {metadata["name"]: (metadata["version"], version)}

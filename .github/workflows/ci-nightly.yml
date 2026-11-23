@@ -64,6 +64,12 @@ jobs:
     with:
       ref: ${{ needs.plan.outputs.ref }}
 
+  ingestion-image:
+    needs: plan
+    uses: ./.github/workflows/reusable-build-ingestion.yml
+    with:
+      ref: ${{ needs.plan.outputs.ref }}
+
   py-checkstyle:
     name: py-checkstyle
     needs: plan
@@ -128,6 +134,7 @@ jobs:
       - plan
       - classification-models
       - backend
+      - ingestion-image
     permissions:
       contents: read
       id-token: write
@@ -137,6 +144,7 @@ jobs:
       python-version: ${{ needs.plan.outputs.python-highest }}
       ref: ${{ needs.plan.outputs.ref }}
       connectors: ${{ needs.plan.outputs.connectors }}
+      use-ingestion-image: true
 
   py-tests-status:
     name: py-tests-status
@@ -145,6 +153,7 @@ jobs:
       - py-checkstyle
       - classification-models
       - backend
+      - ingestion-image
       - python-unit
       - python-integration
       - python-cli-e2e
@@ -161,6 +170,7 @@ jobs:
               "py-checkstyle": "success",
               "classification-models": "success",
               "backend": "success",
+              "ingestion-image": "success",
               "python-unit": "success",
               "python-integration": "success",
               "python-cli-e2e": "success"
@@ -248,6 +258,7 @@ jobs:
       - py-checkstyle
       - classification-models
       - backend
+      - ingestion-image
       - python-unit
       - python-integration
       - python-cli-e2e

@@ -127,25 +127,24 @@ def test_ci_suite_collects_coverage_only_when_selected(nox_repo: Path, monkeypat
         assert data.lines("src/metadata/sample.py") == [1, 2, 3]
 
 
-@pytest.mark.parametrize("profile", ["dev", "test", "types"])
+@pytest.mark.parametrize("profile", ["dev", "test", "types", "style"])
 def test_ci_python_action_installs_the_locked_selection(nox_repo: Path, monkeypatch, profile: str) -> None:
     action = yaml.safe_load((REPO_ROOT / ".github/actions/prepare-python-environment/action.yml").read_text())
     install = next(step["run"] for step in action["runs"]["steps"] if step.get("name") == "Install Python dependencies")
-    environment = nox_repo / ("ingestion/.nox/types" if profile == "types" else "env")
+    environment = nox_repo / (f"ingestion/.nox/{profile}" if profile in ("types", "style") else "env")
     monkeypatch.setenv("PYTHON_PROFILE", profile)
     lock = (nox_repo / "ingestion/uv.lock").read_bytes()
 
     assert_success(run("bash", "-eo", "pipefail", "-c", install, cwd=nox_repo))
 
-    assert_success(
-        run(
-            str(environment / "bin/python"),
-            "-I",
-            "-c",
-            "from metadata.sample import classify; assert classify(1) == 'positive'",
-            cwd=nox_repo,
-        )
+    application = run(
+        str(environment / "bin/python"),
+        "-I",
+        "-c",
+        "from metadata.sample import classify; assert classify(1) == 'positive'",
+        cwd=nox_repo,
     )
+    assert (application.returncode == 0) == (profile != "style"), application.stdout + application.stderr
     probe = run(str(environment / "bin/python"), "-I", "-c", "import pytest, coverage", cwd=nox_repo)
     assert (probe.returncode == 0) == (profile == "test"), probe.stdout + probe.stderr
     assert (nox_repo / "ingestion/uv.lock").read_bytes() == lock

@@ -10,6 +10,8 @@
 #  limitations under the License.
 """Check package version updates preserve locked dependency metadata."""
 
+import os
+import runpy
 import shutil
 import subprocess
 import sys
@@ -26,14 +28,16 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 @pytest.fixture
-def checkout(tmp_path: Path) -> Path:
+def checkout(tmp_path: Path, monkeypatch) -> Path:
+    uv = str(runpy.run_path(str(ROOT / "scripts/python_tools.py"))["ensure_uv"]())
+    monkeypatch.setenv("OM_UV_EXECUTABLE", uv)
     ingestion = tmp_path / "ingestion"
     ingestion.mkdir()
     (ingestion / "pyproject.toml").write_text(
         '[build-system]\nrequires=["setuptools>=83"]\nbuild-backend="setuptools.build_meta"\n'
         '[project]\nname="openmetadata-ingestion"\nversion = "2.0.0.0.dev0"\n'
         'requires-python=">=3.10"\ndynamic=["dependencies"]\n'
-        '[dependency-groups]\nnox=["uv==0.13.4", "nox", "tomli; python_version < \'3.11\'"]\n'
+        '[dependency-groups]\nnox=["nox", "tomli; python_version < \'3.11\'"]\n'
         '[tool.uv]\nrequired-version="==0.13.4"\ndefault-groups=[]\n'
         '[[tool.uv.dependency-metadata]]\nname="sqlalchemy-ibmi"\nversion = "0.9.3"\n'
         'requires-dist=["pyodbc>=4.0", "sqlalchemy>=2.0,<2.1"]\n',
@@ -43,7 +47,7 @@ def checkout(tmp_path: Path) -> Path:
         'from setuptools import setup\nsetup(install_requires=["packaging==26.3"])\n', encoding="utf-8"
     )
     subprocess.run(
-        [str(Path(sys.executable).with_name("uv")), "lock", "--project", str(ingestion)],
+        [uv, "lock", "--project", str(ingestion)],
         check=True,
         capture_output=True,
         text=True,
@@ -56,6 +60,7 @@ def checkout(tmp_path: Path) -> Path:
     scripts = tmp_path / "scripts"
     scripts.mkdir()
     shutil.copy2(ROOT / "scripts/update_version.py", scripts / "update_version.py")
+    shutil.copy2(ROOT / "scripts/python_tools.py", scripts / "python_tools.py")
     shutil.copy2(ROOT / "Makefile", tmp_path / "Makefile")
     shutil.copy2(ROOT / "ingestion/Makefile", ingestion / "Makefile")
     return tmp_path
@@ -112,7 +117,8 @@ def test_version_update_preserves_metadata_and_third_party_records(checkout):
     assert snapshot(checkout) == after
 
 
-def test_public_make_updates_sdk_and_apis(checkout):
+def test_public_make_updates_sdk_and_apis(checkout, monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
     result = subprocess.run(
         ["make", "update_pyproject_version", "RELEASE_VERSION=2.0.1234"],
         cwd=checkout,
@@ -125,6 +131,27 @@ def test_public_make_updates_sdk_and_apis(checkout):
     assert read_toml(checkout / "ingestion/pyproject.toml")["project"]["version"] == "2.0.1234.0"
     assert read_toml(checkout / "openmetadata-airflow-apis/pyproject.toml")["project"]["version"] == "2.0.1234.0"
     assert not (checkout / "env").exists()
+    assert not (checkout / "ingestion/.nox/bootstrap/bin/uv").exists()
+
+
+def test_release_stops_after_an_update_failure(checkout, monkeypatch):
+    commands = checkout / "commands"
+    commands.mkdir()
+    maven = commands / "mvn"
+    maven.write_text("#!/bin/sh\nexit 1\n")
+    maven.chmod(0o755)
+    monkeypatch.setenv("PATH", str(commands) + os.pathsep + os.environ["PATH"])
+    before = snapshot(checkout)
+    result = subprocess.run(
+        ["make", "update_all", "RELEASE_VERSION=2.0.1234"],
+        cwd=checkout,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    assert result.returncode != 0
+    assert snapshot(checkout) == before
 
 
 @pytest.mark.parametrize("broken", ["invalid-version", "changed-dependency"])

@@ -25,6 +25,10 @@ on:
         description: Git commit SHA to test; must match the shared backend distribution
         type: string
         required: true
+      use-ingestion-image:
+        description: Load the shared ingestion image instead of building it per connector
+        type: boolean
+        default: false
 permissions:
   id-token: write
   contents: read
@@ -41,6 +45,15 @@ jobs:
       cancel-in-progress: false
     environment: test
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Sample disk headroom
+        continue-on-error: true
+        run: python3 .github/scripts/python_ci_disk_usage.py start
+        shell: bash
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
         with:
@@ -51,11 +64,6 @@ jobs:
           large-packages: false
           swap-storage: true
           docker-images: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ inputs.ref }}
-          persist-credentials: false
-          fetch-depth: 1
       - name: configure aws credentials
         if: contains(fromJSON('["quicksight", "datalake_s3", "athena"]'), matrix.e2e-test)
         uses: aws-actions/configure-aws-credentials@4a1596c86fd706dc0521e32f0121ad1a6d1adb74
@@ -68,11 +76,22 @@ jobs:
         with:
           name: openmetadata-backend-distribution
           path: openmetadata-dist/target
+      - name: Download ingestion image
+        if: inputs.use-ingestion-image
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: python-ci-ingestion-image
+          path: ${{ runner.temp }}
+      - name: Load ingestion image
+        if: inputs.use-ingestion-image
+        run: bash .github/scripts/python_ci_ingestion_image.sh load "$RUNNER_TEMP/python-ci-ingestion.tar.zst"
+        shell: bash
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: ${{ inputs.python-version }}
           profile: test-classification
+          resync-python: 'false'
           args: -m no-ui -s true
       - name: Reclaim unused disk for Exasol
         if: matrix.e2e-test == 'exasol'

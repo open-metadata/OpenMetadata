@@ -1,5 +1,5 @@
 name: Report test results
-description: Classify test outcomes and upload reports and logs, including when setup fails.
+description: Classify test outcomes and upload reports, with logs for unsuccessful test runs.
 inputs:
   step-outcome:
     description: Outcome of the test execution step
@@ -43,7 +43,7 @@ runs:
         path: |
           ingestion/junit/
           ingestion/ci-diagnostics/outcome.json
-          ingestion/*-test-run.log
+          ${{ inputs.step-outcome != 'success' && 'ingestion/*-test-run.log' || '' }}
           ingestion/*-test-exit-code.txt
         if-no-files-found: warn
         retention-days: 14

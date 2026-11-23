@@ -8,6 +8,9 @@ inputs:
   profile:
     description: Locked host Python profile (dev, test, or test-classification)
     default: test
+  resync-python:
+    description: Restore the Python profile after startup scripts that may change host dependencies
+    default: "true"
   args:
     description: Arguments passed to the server startup script
     required: false
@@ -111,7 +114,7 @@ runs:
       shell: bash
 
     - name: Synchronize test dependencies after server setup
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.profile != 'dev' }}
+      if: ${{ inputs.resync-python == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.profile != 'dev' }}
       env:
         PYTHON_PROFILE: ${{ inputs.profile }}
       run: make install PYTHON_PROFILE="$PYTHON_PROFILE"

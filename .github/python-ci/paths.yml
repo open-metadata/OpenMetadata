@@ -21,12 +21,15 @@ python:
   - .github/workflows/reusable-py-integration.yml
   - .github/python-ci/**
   - .github/workflows/reusable-build-backend.yml
+  - .github/workflows/reusable-build-ingestion.yml
   - .github/actions/python-*/**
   - .github/actions/report-test-results/**
   - .github/actions/setup-uv/**
   - scripts/python_ci.py
   - scripts/python_tools.py
   - .github/scripts/python_ci_diagnostics.sh
+  - .github/scripts/python_ci_disk_usage.py
+  - .github/scripts/python_ci_ingestion_image.sh
   - .github/scripts/classify_test_outcome.py
   - .github/scripts/tests/test_python_ci.py
   - Makefile

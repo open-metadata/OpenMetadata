@@ -229,7 +229,9 @@ def lint(session):
             "python_tools.py",
         )
     )
-    sources.extend(str(ROOT / ".github/scripts" / name) for name in ("tests/test_python_ci.py",))
+    sources.extend(
+        str(ROOT / ".github/scripts" / name) for name in ("tests/test_python_ci.py", "python_ci_disk_usage.py")
+    )
     session.run(
         str(python.parent / "ruff"),
         "check",
@@ -430,7 +432,8 @@ def cli_e2e(session):
         "cli-e2e",
         coverage_environment,
     )
-    for command in ("combine", "report"):
+    commands = ["combine"] if os.environ.get("GITHUB_ACTIONS") == "true" else ["combine", "report"]
+    for command in commands:
         subprocess.run(
             [str(python), "-m", "coverage", command, f"--data-file=.coverage.{connector}", "--rcfile=pyproject.toml"],
             cwd=INGESTION_ROOT,

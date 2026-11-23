@@ -54,6 +54,15 @@ jobs:
           - name: shard-3
             nox-args: --ignore=tests/integration/automations --ignore=tests/integration/data_quality --ignore=tests/integration/mysql --ignore=tests/integration/postgres --ignore=tests/integration/powerbi --ignore=tests/integration/sas --ignore=tests/integration/superset --ignore=tests/integration/alationsink --ignore=tests/integration/auto_classification --ignore=tests/integration/datalake --ignore=tests/integration/profiler --ignore=tests/integration/sources --ignore=tests/integration/sql_server --ignore=tests/integration/ssrs
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Sample disk headroom
+        continue-on-error: true
+        run: python3 .github/scripts/python_ci_disk_usage.py start
+        shell: bash
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
         with:
@@ -64,11 +73,6 @@ jobs:
           large-packages: false
           swap-storage: true
           docker-images: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          ref: ${{ inputs.ref }}
-          persist-credentials: false
-          fetch-depth: 1
       - name: Use runner data disk for Docker
         if: matrix.shard.needs-disk
         run: bash .github/scripts/configure_docker_storage.sh
@@ -82,6 +86,7 @@ jobs:
         with:
           python-version: ${{ inputs.python-version }}
           profile: test-classification
+          resync-python: 'false'
           args: ${{ matrix.database.compose-args }}
       - name: Reclaim unused disk for the Exasol shard
         if: matrix.shard.needs-disk

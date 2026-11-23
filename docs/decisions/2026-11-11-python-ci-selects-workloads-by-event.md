@@ -33,9 +33,10 @@ For relevant changes, select these workloads:
 | Nightly | Full supported matrix | Full supported matrix | Highest supported Python |
 
 Formatting, lint and type checks share one job on the lowest supported Python, with separate
-steps and isolated tool environments. Both formatting/lint-only and type-checking runs share the
-same environment preparation. Airflow API changes alone select formatting/lint without ingestion
-type checks.
+steps and isolated tool environments. Both modes share Python and pinned uv setup. Formatting/lint
+uses the style profile; native libraries, ANTLR, generated models and application dependencies are
+prepared only for type checks. Airflow API changes alone select formatting/lint without ingestion
+type checks. Ruff targets Python 3.10 independently of its host interpreter.
 
 `ci-pr.yml`, `ci-merge-queue.yml` and `ci-nightly.yml` own their respective triggers, workload
 selection, Python matrices, dependencies, permissions and required `py-tests-status` check.
@@ -44,6 +45,17 @@ the supplied Python version and source revision; they do not choose event policy
 backend construction uses a complete reusable job. Aggregate jobs run on `ubuntu-slim`, verify
 the selected results without checking out the repository, and retain the existing required
 check names. Other jobs run on `ubuntu-latest`.
+
+Nightly connector tests share one ingestion image built at the tested revision, in parallel with
+backend and classification preparation. Consumers verify its revision and dependency selection
+before using the existing image preload path. The manual v2 connector workflow shares both backend
+and ingestion builds within its run. Reusable connector callers can retain per-runner builds.
+
+The standard Python integration and legacy connector paths skip post-start profile resynchronization;
+Nox still prepares the selected profile before tests. Custom startup callers retain resynchronization
+by default. Integration and connector runners sample filesystem headroom to support later reductions
+in disk cleanup. Test results retain JUnit and outcome metadata; raw test logs are uploaded for
+unsuccessful tests, and coverage text is rendered once centrally in CI.
 
 The nightly runs at 01:00 UTC. Manual dispatch runs the selected entrypoint's workloads,
 bypassing path filtering without simulating a merge-group commit. CI helper and offline E2E

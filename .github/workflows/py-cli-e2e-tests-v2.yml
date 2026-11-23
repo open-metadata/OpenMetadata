@@ -33,6 +33,16 @@ permissions:
   contents: read
 
 jobs:
+  backend:
+    uses: ./.github/workflows/reusable-build-backend.yml
+    with:
+      ref: ${{ github.sha }}
+
+  ingestion-image:
+    uses: ./.github/workflows/reusable-build-ingestion.yml
+    with:
+      ref: ${{ github.sha }}
+
   prepare-spacy-model:
     permissions:
       contents: read
@@ -47,7 +57,7 @@ jobs:
       - uses: ./.github/actions/prepare-classification-models
 
   py-cli-e2e-tests-v2:
-    needs: prepare-spacy-model
+    needs: [prepare-spacy-model, backend, ingestion-image]
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -85,12 +95,31 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Download backend distribution
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: openmetadata-backend-distribution
+          path: openmetadata-dist/target
+      - name: Download ingestion image
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: python-ci-ingestion-image
+          path: ${{ runner.temp }}
+      - name: Load ingestion image
+        run: bash .github/scripts/python_ci_ingestion_image.sh load "$RUNNER_TEMP/python-ci-ingestion.tar.zst"
+        shell: bash
 
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: '3.10'
           profile: test-classification
+          args: -m no-ui -s true
 
       - name: Run CLI E2E v2 tests
         id: e2e-v2-test

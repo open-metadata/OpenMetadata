@@ -309,12 +309,12 @@ build-ingestion-slim-local:  ## Builds the SLIM ingestion DEV docker operator wi
 #Upgrade release automation scripts below
 .PHONY: update_all
 update_all:  ## To update all the release related files run make update_all RELEASE_VERSION=2.2.2
-	@echo "The release version is: $(RELEASE_VERSION)" ; \
-	$(MAKE) update_maven ; \
-	$(MAKE) update_openapi_version ; \
-	$(MAKE) update_pyproject_version ; \
-	$(MAKE) update_dockerfile_version ; \
-	$(MAKE) update_dockerfile_ri_version ; \
+	@echo "The release version is: $(RELEASE_VERSION)"
+	$(MAKE) update_maven
+	$(MAKE) update_openapi_version
+	$(MAKE) update_pyproject_version
+	$(MAKE) update_dockerfile_version
+	$(MAKE) update_dockerfile_ri_version
 #remove comment and use the below section when want to use this sub module "update_all" independently to update github actions
 #make update_all RELEASE_VERSION=2.2.2
 

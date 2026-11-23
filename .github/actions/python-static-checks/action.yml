@@ -13,7 +13,7 @@ runs:
     - uses: ./.github/actions/prepare-python-environment
       with:
         python-version: ${{ inputs.python-version }}
-        profile: types
+        profile: ${{ inputs.check-types == 'true' && 'types' || 'style' }}
     - name: Check formatting and lint
       run: make py_format_check
       shell: bash

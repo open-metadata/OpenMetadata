@@ -7,6 +7,11 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Report disk headroom
+      if: ${{ always() }}
+      continue-on-error: true
+      run: python3 .github/scripts/python_ci_disk_usage.py report
+      shell: bash
     - name: Collect runner and service diagnostics
       continue-on-error: true
       run: bash .github/scripts/python_ci_diagnostics.sh
