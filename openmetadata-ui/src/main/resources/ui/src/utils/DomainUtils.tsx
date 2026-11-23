@@ -32,6 +32,7 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DOMAIN_TYPE_DATA } from '../constants/Domain.constants';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
 import { AssetsOfEntity } from '../enums/Assets.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
@@ -352,8 +353,7 @@ export const getDomainDetailTabs = ({
                       handleClosePanel={() => setPreviewAsset(undefined)}
                     />
                   ),
-                  minWidth: 400,
-                  flex: 0.33,
+                  ...COMMON_RESIZABLE_PANEL_CONFIG.ENTITY_SUMMARY_PANEL,
                   className:
                     'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
                 }}

@@ -48,13 +48,6 @@ public class ClassificationBuilder {
   }
 
   /**
-   * Set custom extension data.
-   */
-  public ClassificationBuilder extension(Object extension) {
-    return this;
-  }
-
-  /**
    * Build the CreateClassification request without executing it.
    */
   public CreateClassification build() {

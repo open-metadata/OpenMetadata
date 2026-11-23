@@ -12,6 +12,7 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
@@ -91,7 +92,10 @@ import {
 import { getTaskTitleParts } from '../taskTitle.utils';
 import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useIsScrolled } from '../useIsScrolled';
-import { useTaskAboutEntity } from '../useTaskAboutEntity';
+import {
+  TASK_ABOUT_ENTITY_QUERY_KEY,
+  useTaskAboutEntity,
+} from '../useTaskAboutEntity';
 import TaskActionCommentModal from './TaskActionCommentModal';
 import TaskActivityTimeline from './TaskActivityTimeline';
 import TaskAssetCard from './TaskAssetCard';
@@ -367,12 +371,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   onLoaded,
 }) => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { isScrolled: isBodyScrolled, onScroll: onBodyScroll } =
     useIsScrolled();
   const { getEntityPermission } = usePermissionProvider();
   const currentUserId = useApplicationStore().currentUser?.id;
   const currentUserIds = useCurrentUserIds();
-  const { extensionRegistry } = useApplicationsProvider();
+  const { getContributions } = useApplicationsProvider();
   const ReviewPanel = ontologyExplorerClassBase.getReviewPanel();
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
@@ -482,7 +487,14 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       return undefined;
     }
 
-    getResolvedTaskFormSchema(taskType, taskCategory)
+    getResolvedTaskFormSchema(taskType, taskCategory, {
+      // Suggestion tasks share one taskType+taskCategory binding across two
+      // seeded schemas; pass the stamped id (and payload for fallback
+      // disambiguation) so a tag-suggestion legacy task does not render the
+      // DescriptionSuggestion form. See TaskFormSchemaUtils.
+      taskFormSchemaId: task?.taskFormSchemaId,
+      payload: task?.payload,
+    })
       .then((schema) => active && setFormSchema(schema))
       // Without a schema the per-type defaults still produce a correct body.
       .catch(() => active && setFormSchema(undefined));
@@ -490,20 +502,30 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     return () => {
       active = false;
     };
-  }, [isLegacyTask, taskType, taskCategory]);
+  }, [
+    isLegacyTask,
+    taskType,
+    taskCategory,
+    task?.taskFormSchemaId,
+    task?.payload,
+  ]);
 
   // A plugin can refine how a task type it owns renders — its summary rows, its
   // stat tiles — without owning the pane. The first matching contribution wins.
+  // Depend on the provider's `getContributions` wrapper, not `extensionRegistry`
+  // directly: the registry is a mutable singleton, so its identity never changes
+  // when a plugin contributes after this task loaded — a memo keyed only on it
+  // would pin a deep-linked task to the empty registry it first saw and never
+  // recompute. The wrapper's identity updates once `contributionsVersion` bumps
+  // (right after registration), so a late-arriving contribution still applies.
   const contribution = useMemo(
     () =>
       task
-        ? extensionRegistry
-            .getContributions<InboxTaskPanelContribution>(
-              EXTENSION_POINTS.INBOX_TASK_PANELS
-            )
-            .find((panel) => panel.condition(task))
+        ? getContributions<InboxTaskPanelContribution>(
+            EXTENSION_POINTS.INBOX_TASK_PANELS
+          ).find((panel) => panel.condition(task))
         : undefined,
-    [extensionRegistry, task]
+    [getContributions, task]
   );
 
   const descriptor = useMemo(
@@ -695,6 +717,9 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         };
         consumedTransitionIdsRef.current.add(action.id);
         setTask(resolved);
+        void queryClient.invalidateQueries({
+          queryKey: [TASK_ABOUT_ENTITY_QUERY_KEY],
+        });
         setCommentAction(undefined);
         if (extras?.isAssigneeChange) {
           onTaskUpdated?.(resolved);
@@ -718,7 +743,15 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         setLoadingTransitionId(undefined);
       }
     },
-    [task, formSchema, onResolved, onTaskUpdated, syncTransitionsAfter, t]
+    [
+      task,
+      formSchema,
+      onResolved,
+      onTaskUpdated,
+      queryClient,
+      syncTransitionsAfter,
+      t,
+    ]
   );
 
   const handleTransition = useCallback(

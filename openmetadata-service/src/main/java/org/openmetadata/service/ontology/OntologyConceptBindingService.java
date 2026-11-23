@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -21,6 +22,7 @@ import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyAssetBinding;
@@ -39,6 +41,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
@@ -59,6 +62,7 @@ public final class OntologyConceptBindingService {
   private final OntologyConceptBindingStore store;
   private final Authorizer authorizer;
   private final Function<String, EntityRepository<?>> repositories;
+  private final Consumer<EntityReference> bindingsChanged;
 
   public record Access(UriInfo uriInfo, SecurityContext securityContext) {}
 
@@ -66,9 +70,22 @@ public final class OntologyConceptBindingService {
       final OntologyConceptBindingStore store,
       final Authorizer authorizer,
       final Function<String, EntityRepository<?>> repositories) {
+    this(store, authorizer, repositories, asset -> RdfUpdater.refreshEntities(List.of(asset)));
+  }
+
+  /**
+   * @param bindingsChanged told of each asset whose bindings a committed write may have changed;
+   *     the serving graph projects bindings as part of the bound asset
+   */
+  public OntologyConceptBindingService(
+      final OntologyConceptBindingStore store,
+      final Authorizer authorizer,
+      final Function<String, EntityRepository<?>> repositories,
+      final Consumer<EntityReference> bindingsChanged) {
     this.store = store;
     this.authorizer = authorizer;
     this.repositories = repositories;
+    this.bindingsChanged = bindingsChanged;
   }
 
   public OntologyConceptBindingsResponse get(
@@ -151,7 +168,16 @@ public final class OntologyConceptBindingService {
         concept,
         (lockedConcept, locked, current) ->
             replace(access, lockedConcept, locked, current, request));
+    notifyChanged(request.getAsset().getAssetType(), request.getAsset().getAssetId());
     return firstPage(access, concept);
+  }
+
+  /**
+   * Cleanup under the lock only removes rows of assets already deleted, whose projection is gone
+   * with every edge into it, so only the written asset needs projecting again.
+   */
+  private void notifyChanged(final OntologyBindingAssetType type, final UUID assetId) {
+    bindingsChanged.accept(new EntityReference().withType(type.value()).withId(assetId));
   }
 
   public OntologyConceptBindingsResponse remove(
@@ -176,6 +202,7 @@ public final class OntologyConceptBindingService {
           locked.remove(lockedConcept.getId(), assetId);
           return next;
         });
+    notifyChanged(type, assetId);
     return firstPage(access, concept);
   }
 

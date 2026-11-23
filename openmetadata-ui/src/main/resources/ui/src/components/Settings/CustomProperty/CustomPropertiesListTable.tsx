@@ -23,6 +23,7 @@ import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
@@ -59,7 +60,7 @@ const CustomPropertyConfigCell: FC<CustomPropertyConfigCellProps> = ({
         className="tw:text-fg-quaternary"
         data-testid="no-config"
         size="text-sm">
-        —
+        {NO_DATA_PLACEHOLDER}
       </Typography>
     );
   }

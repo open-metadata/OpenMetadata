@@ -21,6 +21,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.ByteArrayOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -38,6 +40,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
 import org.openmetadata.service.security.OidcIdentityResolver;
+import org.openmetadata.service.security.SignInFailure;
 import org.openmetadata.service.util.UserUtil;
 import org.pac4j.oidc.credentials.OidcCredentials;
 
@@ -272,6 +275,40 @@ class McpCallbackServletTest {
 
     verify(ssoHandler).handleCallback(eq(request), any());
     verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    verify(provider, never()).handleSSOCallbackWithDbState(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void doGet_accountNotAllowed_showsAccessDeniedNotAnInternalError() throws Exception {
+    UserSSOOAuthProvider provider = mock(UserSSOOAuthProvider.class);
+    McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    when(pendingRepo.findByPac4jState("pac4j-state-abc")).thenReturn(samplePendingRequest());
+    AuthenticationCodeFlowHandler ssoHandler =
+        mock(AuthenticationCodeFlowHandler.class, RETURNS_DEEP_STUBS);
+    // The login step answers a refusal with a 500, as it does for every failed MCP sign-in.
+    doAnswer(
+            call -> {
+              call.<HttpServletResponse>getArgument(1)
+                  .setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+              return null;
+            })
+        .when(ssoHandler)
+        .handleCallback(any(), any());
+    McpCallbackServlet servlet = makeServletWithHandler(provider, pendingRepo, ssoHandler);
+    HttpServletRequest request = mockCallbackRequest("pac4j-state-abc", null, null);
+    when(request.getSession(true)).thenReturn(mock(HttpSession.class));
+    when(request.getAttribute(AuthenticationCodeFlowHandler.SIGN_IN_FAILURE_ATTRIBUTE))
+        .thenReturn(SignInFailure.ACCOUNT_NOT_ALLOWED);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    StringWriter page = new StringWriter();
+    when(response.getWriter()).thenReturn(new PrintWriter(page));
+
+    servlet.doGet(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+    assertThat(page.toString())
+        .contains("Access Denied")
+        .contains(UserSSOOAuthProvider.ACCOUNT_NOT_ALLOWED);
     verify(provider, never()).handleSSOCallbackWithDbState(any(), any(), any(), any(), any());
   }
 

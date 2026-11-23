@@ -52,10 +52,16 @@ export interface Data360PipelineConnection {
      * that holds it, used to resolve the upstream entity of a Data Stream. Example:
      * {"S3_Connector": "my-s3-service"}
      */
-    serviceMapping?:             string;
+    serviceMapping?: string;
+    /**
+     * Supports Lineage Extraction.
+     */
     supportsLineageExtraction?:  boolean;
     supportsMetadataExtraction?: boolean;
-    supportsUsageExtraction?:    boolean;
+    /**
+     * Supports Usage Extraction.
+     */
+    supportsUsageExtraction?: boolean;
     /**
      * Service Type
      */

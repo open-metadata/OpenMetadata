@@ -43,6 +43,37 @@ describe('Badge theme roles', () => {
   });
 });
 
+describe('Badge solid variant', () => {
+  it('replaces the translucent tint and outline with an opaque fill', () => {
+    render(
+      <Badge color="error" data-testid="badge" variant="solid">
+        10
+      </Badge>
+    );
+
+    const badge = screen.getByTestId('badge');
+
+    expect(badge).toHaveClass('tw:bg-error-solid', 'tw:text-primary_on-brand');
+    expect(badge).not.toHaveClass('tw:bg-utility-error-50', 'tw:outline-1');
+  });
+
+  it('uses the theme-aware utility step for a color without a semantic solid role', () => {
+    render(
+      <Badge color="indigo" data-testid="badge" variant="solid">
+        10
+      </Badge>
+    );
+
+    const badge = screen.getByTestId('badge');
+
+    expect(badge).toHaveClass(
+      'tw:bg-utility-indigo-600',
+      'tw:text-primary_on-brand'
+    );
+    expect(badge).not.toHaveClass('tw:bg-utility-indigo-50');
+  });
+});
+
 describe('Badge tooltip', () => {
   it('does not render a tooltip trigger when no tooltip is passed', () => {
     render(<Badge data-testid="badge">Active</Badge>);

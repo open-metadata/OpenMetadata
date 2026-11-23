@@ -10,7 +10,10 @@ import static org.mockito.Mockito.mock;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.search.IndexMapping;
 
 /**
  * {@code getEntityAttributeFields} decides which entity attributes reach a type's Data Insights
@@ -78,5 +81,31 @@ class DataInsightsSearchInterfaceTest {
     return JsonUtils.readOrConvertValue(
         String.format("{\"mappingFields\": %s}", mappingFields),
         DataInsightsSearchConfiguration.class);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"llmModel", "mcpServer", "aiApplication"})
+  void aiSnapshotMappingsKeepTheAnalyticsTierShapeInEveryLanguage(String entityType) {
+    var mappings =
+        JsonUtils.readTree(SEARCH_INTERFACE.readResource("/elasticsearch/indexMapping.json"));
+    IndexMapping mapping = JsonUtils.convertValue(mappings.get(entityType), IndexMapping.class);
+    for (String engine : List.of("elasticsearch", "opensearch")) {
+      String template =
+          SEARCH_INTERFACE.readResource("/dataInsights/" + engine + "/indexMappingsTemplate.json");
+      for (String language : List.of("en", "jp", "ru", "zh", "ko")) {
+        var properties =
+            JsonUtils.readTree(
+                    SEARCH_INTERFACE.buildMapping(entityType, mapping, language, template))
+                .path("template")
+                .path("mappings")
+                .path("properties");
+        assertEquals("text", properties.path("tier").path("type").asText());
+        assertEquals(
+            "keyword",
+            properties.path("tier").path("fields").path("keyword").path("type").asText());
+        assertTrue(
+            properties.has("id") && properties.has("@timestamp") && properties.has("owners"));
+      }
+    }
   }
 }

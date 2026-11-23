@@ -816,7 +816,7 @@ export const performE2EExportImportFlow = async (
     });
 
     const cellDetails = page.locator('.rdg-cell-details');
-    await expect(cellDetails.nth(0)).toContainText('Entity created');
+    await expect(cellDetails.nth(0)).toContainText('Entity updated');
     await expect(cellDetails.nth(1)).toContainText('Entity created');
     await expect(cellDetails.nth(2)).toContainText(
       '#FIELD_REQUIRED: Field 1 is required'
@@ -903,8 +903,8 @@ export const performE2EExportImportFlow = async (
     });
 
     const cellDetails = page.locator('.rdg-cell-details');
-    await expect(cellDetails.nth(0)).toContainText('Entity created');
-    await expect(cellDetails.nth(1)).toContainText('Entity created');
+    await expect(cellDetails.nth(0)).toContainText('Entity updated');
+    await expect(cellDetails.nth(1)).toContainText('Entity updated');
 
     // Click Update button
     const bulkEditUpdateResponse = page.waitForResponse(

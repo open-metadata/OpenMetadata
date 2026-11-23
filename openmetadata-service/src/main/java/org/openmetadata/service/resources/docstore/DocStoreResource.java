@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.docstore;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
+import static org.openmetadata.service.util.email.DefaultTemplateProvider.ENTITY_TYPE_EMAIL_TEMPLATE;
 
 import io.dropwizard.jersey.PATCH;
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
@@ -45,6 +46,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
@@ -91,7 +93,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
 
   public DocStoreResource(Authorizer authorizer, Limits limits) {
     super(Entity.DOCUMENT, authorizer, limits);
-    this.mapper = new DocStoreMapper(authorizer);
+    this.mapper = new DocStoreMapper();
   }
 
   public static class DocumentList extends ResultList<Document> {
@@ -318,6 +320,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
     PrivateDocumentType.requirePublic(cd.getEntityType());
+    requireAdminForEmailTemplates(securityContext, cd.getEntityType());
     Document doc = mapper.createToEntity(cd, securityContext.getUserPrincipal().getName());
     return create(uriInfo, securityContext, doc);
   }
@@ -342,6 +345,8 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Context SecurityContext securityContext,
       @Valid CreateDocument cd) {
     PrivateDocumentType.requirePublic(cd.getEntityType());
+    requireAdminForEmailTemplates(
+        securityContext, cd.getEntityType(), storedEntityType(cd.getFullyQualifiedName()));
     Document doc = mapper.createToEntity(cd, securityContext.getUserPrincipal().getName());
     return createOrUpdate(uriInfo, securityContext, doc);
   }
@@ -401,7 +406,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    requirePublicDocument(id);
+    requireAdminForEmailTemplates(securityContext, requirePublicDocument(id).getEntityType());
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
@@ -431,7 +436,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
-    requirePublicDocument(fqn);
+    requireAdminForEmailTemplates(securityContext, requirePublicDocument(fqn).getEntityType());
     return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
@@ -451,7 +456,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    requirePublicDocument(id);
+    requireAdminForEmailTemplates(securityContext, requirePublicDocument(id).getEntityType());
     return delete(uriInfo, securityContext, id, false, true);
   }
 
@@ -471,7 +476,7 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Parameter(description = "Id of the Document", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    requirePublicDocument(id);
+    requireAdminForEmailTemplates(securityContext, requirePublicDocument(id).getEntityType());
     return deleteByIdAsync(uriInfo, securityContext, id, false, true);
   }
 
@@ -493,16 +498,33 @@ public class DocStoreResource extends EntityResource<Document, DocumentRepositor
       @Parameter(description = "Name of the Document", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    requirePublicDocument(name);
+    requireAdminForEmailTemplates(securityContext, requirePublicDocument(name).getEntityType());
     return deleteByName(uriInfo, securityContext, name, false, true);
   }
 
-  private void requirePublicDocument(UUID id) {
-    PrivateDocumentType.requirePublic(repository.find(id, Include.ALL));
+  private Document requirePublicDocument(UUID id) {
+    Document document = repository.find(id, Include.ALL);
+    PrivateDocumentType.requirePublic(document);
+    return document;
   }
 
-  private void requirePublicDocument(String fullyQualifiedName) {
-    PrivateDocumentType.requirePublic(repository.findByName(fullyQualifiedName, Include.ALL));
+  private Document requirePublicDocument(String fullyQualifiedName) {
+    Document document = repository.findByName(fullyQualifiedName, Include.ALL);
+    PrivateDocumentType.requirePublic(document);
+    return document;
+  }
+
+  private String storedEntityType(String fullyQualifiedName) {
+    Document stored = repository.findByNameOrNull(fullyQualifiedName, Include.ALL);
+    return stored == null ? null : stored.getEntityType();
+  }
+
+  /** Email templates are rendered into outgoing emails, so only admins manage them. */
+  private void requireAdminForEmailTemplates(
+      SecurityContext securityContext, String... entityTypes) {
+    if (Arrays.asList(entityTypes).contains(ENTITY_TYPE_EMAIL_TEMPLATE)) {
+      authorizer.authorizeAdmin(securityContext);
+    }
   }
 
   @POST
