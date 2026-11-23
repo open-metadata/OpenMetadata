@@ -187,14 +187,8 @@ public final class ApprovalGate {
   /** The ops an edit would make, whether or not a workflow gates it; nothing is stored. */
   public static List<MutationOp> previewOps(
       EntityInterface original, EntityInterface updated, Edit edit) {
-    String entityType = Entity.getEntityTypeFromObject(updated);
-    keepStoredStatusWhenOmitted(original, updated);
-    EntityInterface published =
-        edit.kind() == Edit.Kind.PUT ? publishedByPut(original, updated, edit) : updated;
-    JsonNode base = JsonUtils.valueToTree(original);
-    JsonNode proposed = JsonUtils.valueToTree(published);
-    return MutationPlanner.plan(
-        base, proposed, changedFields(entityType, original, base, proposed, edit), Set.of());
+    Edited edited = edited(Entity.getEntityTypeFromObject(updated), original, updated, edit);
+    return MutationPlanner.plan(edited.base(), edited.proposed(), edited.changed(), Set.of());
   }
 
   private static Optional<StagedChange> evaluate(
@@ -349,18 +343,24 @@ public final class ApprovalGate {
       String user,
       String impersonatedBy,
       Edit edit) {
+    return stage(
+        rules, entityType, edited(entityType, original, updated, edit), user, impersonatedBy);
+  }
+
+  /** The edit as both a gated and an ungated preview plan it. */
+  private static Edited edited(
+      String entityType, EntityInterface original, EntityInterface updated, Edit edit) {
     keepStoredStatusWhenOmitted(original, updated);
     EntityInterface published =
         edit.kind() == Edit.Kind.PUT ? publishedByPut(original, updated, edit) : updated;
     JsonNode base = JsonUtils.valueToTree(original);
     JsonNode proposed = JsonUtils.valueToTree(published);
-    Set<String> changed = changedFields(entityType, original, base, proposed, edit);
-    return stage(
-        rules,
-        entityType,
-        new Edited(original, published, base, proposed, changed),
-        user,
-        impersonatedBy);
+    return new Edited(
+        original,
+        published,
+        base,
+        proposed,
+        changedFields(entityType, original, base, proposed, edit));
   }
 
   private static Optional<StagedChange> stage(
