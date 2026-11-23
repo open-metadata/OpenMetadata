@@ -296,6 +296,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(
+              description =
+                  "Filter by tasks last updated on or after this timestamp (epoch millis)")
+          @QueryParam("updatedSince")
+          Long updatedSince,
+      @Parameter(
+              description = "Timestamp to sort by: createdAt or updatedAt (defaults to createdAt)")
+          @QueryParam("sortBy")
+          String sortBy,
+      @Parameter(
               description = TASK_SORT_ORDER_DESCRIPTION,
               schema =
                   @Schema(
@@ -315,6 +324,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       filter.addQueryParam("taskStatus", status.value());
     }
     applyTaskTimeRange(filter, startTs, endTs);
+    if (updatedSince != null) {
+      filter.addQueryParam("taskUpdatedSince", updatedSince.toString());
+    }
     if (category != null) {
       filter.addQueryParam("category", category.value());
     }
@@ -360,7 +372,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     applyTaskSearch(filter, q);
 
-    TaskListOrder.fromParam(sortOrder).applyTo(filter);
+    TaskListOrder.fromParam(sortOrder).applyTo(filter, sortBy);
     return withoutUnreadableValues(
         securityContext,
         aboutVisibility.retainViewable(
