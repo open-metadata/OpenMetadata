@@ -21,12 +21,14 @@ import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.exceptions.XMLException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.ExpiryTimer;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -88,13 +90,33 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   /** Runs on every start, after seed data, so the deployed workflows follow this server's code. */
   public void deployChangedWorkflows() {
-    final List<String> deployed =
-        WorkflowHandler.getInstance()
-            .deployChanged(listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter()));
+    final List<String> deployed = WorkflowHandler.getInstance().deployChanged(listReadable());
     LOG.info(
         "Deployed {} workflow(s) that changed since their last deployment: {}",
         deployed.size(),
         deployed);
+  }
+
+  /**
+   * The stored, non-deleted workflows this server can read. A definition it cannot read, such as
+   * one with a node type from another version, is logged and left out, so it does not stop the
+   * others.
+   */
+  public List<WorkflowDefinition> listReadable() {
+    return readable(
+        getDao().listAfter(new ListFilter(Include.NON_DELETED), Integer.MAX_VALUE, "", ""));
+  }
+
+  static List<WorkflowDefinition> readable(List<String> storedDefinitions) {
+    final List<WorkflowDefinition> workflows = new ArrayList<>();
+    for (final String json : storedDefinitions) {
+      try {
+        workflows.add(JsonUtils.readValue(json, WorkflowDefinition.class));
+      } catch (JsonParsingException e) {
+        LOG.error("Skipping a stored workflow definition this server cannot read", e);
+      }
+    }
+    return List.copyOf(workflows);
   }
 
   @Override
