@@ -132,11 +132,11 @@ def _token_references(tokens: Any) -> Iterable[tuple[str, str, str]]:
 class MetricParts(NamedTuple):
     """
     What a schema metric is built from, through every metric it references: the ids of the facts
-    it aggregates, and the names of the metrics it references.
+    it aggregates, and the (id, name) of the metrics it references.
     """
 
     facts: frozenset[str]
-    metrics: frozenset[str]
+    metrics: frozenset[tuple[str, str]]
 
 
 class MicroStrategyApiError(Exception):
@@ -512,18 +512,18 @@ class MicroStrategyClient:
                     yield from ((physical, column) for column in columns)
 
     def get_metric_parts(
-        self, project_id: str, metric_id: str, known: Callable[[str], bool] = lambda _: False
+        self, project_id: str, metric_id: str, known: Callable[[str, str], bool] = lambda _id, _name: False
     ) -> MetricParts | None:
         """
         The facts and metrics a schema metric is built from, followed through every metric it
-        references, except those ``known`` already tells the columns of (by name). None when the
+        references, except those ``known`` already tells the columns of (by id and name). None when the
         metric cannot be read: a metric derived in a dossier has no schema definition, and reading
         one needs modeling privileges.
         """
         if self._references(project_id, metric_id) is None:
             return None
         facts: set[str] = set()
-        names: set[str] = set()
+        metrics: set[tuple[str, str]] = set()
         seen, pending = {metric_id}, [metric_id]
         while pending:
             for sub_type, object_id, name in self._references(project_id, pending.pop()) or ():
@@ -531,10 +531,10 @@ class MicroStrategyClient:
                     facts.add(object_id)
                 elif sub_type == "metric" and object_id not in seen and len(seen) < MAX_METRIC_PARTS:
                     seen.add(object_id)
-                    names.add(name)
-                    if not known(name):
+                    metrics.add((object_id, name))
+                    if not known(object_id, name):
                         pending.append(object_id)
-        return MetricParts(facts=frozenset(facts), metrics=frozenset(names))
+        return MetricParts(facts=frozenset(facts), metrics=frozenset(metrics))
 
     def _references(self, project_id: str, metric_id: str) -> tuple[tuple[str, str, str], ...] | None:
         """(subtype, id, name) of each object a metric's expression references, read once per metric"""
