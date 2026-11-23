@@ -1073,6 +1073,46 @@ describe('EntityExportModalProvider component', () => {
     expect(screen.queryByTestId('export-entity-modal')).not.toBeInTheDocument();
   });
 
+  it('closes an unconfirmed schema export when navigating to bulk edit', async () => {
+    (useLocation as jest.Mock).mockReturnValue({ pathname: '/mock-path' });
+    const onExport = jest.fn().mockResolvedValue(mockExportJob);
+    const SchemaExportConsumer = () => {
+      const { showModal } = useEntityExportModalProvider();
+
+      return (
+        <button
+          onClick={() =>
+            showModal({
+              name: 'service.database.schema',
+              onExport,
+              exportTypes: [ExportTypes.CSV],
+              csvScopes: [
+                { id: 'all', label: 'All', params: { recursive: true } },
+              ],
+            })
+          }>
+          Schema export
+        </button>
+      );
+    };
+    const renderProvider = () => (
+      <EntityExportModalProvider>
+        <SchemaExportConsumer />
+      </EntityExportModalProvider>
+    );
+    const { rerender } = render(renderProvider());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Schema export' }));
+
+    expect(await screen.findByTestId('export-entity-modal')).toBeVisible();
+
+    (useLocation as jest.Mock).mockReturnValue({ pathname: '/bulk/edit' });
+    rerender(renderProvider());
+
+    expect(screen.queryByTestId('export-entity-modal')).not.toBeInTheDocument();
+    expect(onExport).not.toHaveBeenCalled();
+  });
+
   it('should run a CSV-only export into the tray without opening the modal', async () => {
     (useLocation as jest.Mock).mockReturnValue({
       pathname: '/mock-path',

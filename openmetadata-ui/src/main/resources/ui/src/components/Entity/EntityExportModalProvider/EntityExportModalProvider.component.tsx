@@ -799,7 +799,7 @@ export const EntityExportModalProvider = ({
 
   useEffect(() => {
     if (exportData) {
-      if (isBulkEdit) {
+      if (isBulkEdit && !exportData.csvScopes) {
         handleExport({
           fileName: 'bulk-edit',
           exportType: ExportTypes.CSV,
