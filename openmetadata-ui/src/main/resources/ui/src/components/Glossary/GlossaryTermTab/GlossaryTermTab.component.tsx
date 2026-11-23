@@ -99,12 +99,8 @@ import {
   searchGlossaryTermsPaginated,
 } from '../../../rest/glossaryAPI';
 import {
-  listTasks,
   resolveTask as resolveTaskAPI,
   Task,
-  TaskCategory,
-  TaskEntityStatus,
-  TaskEntityType,
   TaskResolutionType,
 } from '../../../rest/tasksAPI';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
@@ -123,6 +119,7 @@ import {
   collectAiDraftIds,
   getProposalSource,
   getRequestAuthor,
+  listOpenApprovalTasks,
 } from '../../../utils/GlossaryReview/GlossaryReview.utils';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
@@ -963,21 +960,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       // aboutEntity uses server-side prefix matching (FQN LIKE 'glossary.%'), so
       // only tasks for terms under this glossary are returned — no client-side
       // prefix filter needed and the limit is now glossary-scoped, not platform-wide.
-      const baseParams = {
-        status: TaskEntityStatus.Open,
-        category: TaskCategory.Approval,
-        type: TaskEntityType.RequestApproval,
+      const tasks = await listOpenApprovalTasks({
         aboutEntity: fqn,
-        limit: PAGE_SIZE_LARGE,
         fields: 'about,assignees,createdBy',
-      };
-      const tasks: Task[] = [];
-      let after: string | undefined;
-      do {
-        const { data, paging } = await listTasks({ ...baseParams, after });
-        tasks.push(...data);
-        after = paging?.after;
-      } while (after);
+      });
       lastFetchedTaskFqnRef.current = fqn;
 
       // Glossary approvals are now workflow-managed RequestApproval tasks created
