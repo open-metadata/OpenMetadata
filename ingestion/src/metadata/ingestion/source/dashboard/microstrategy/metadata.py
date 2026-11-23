@@ -11,9 +11,10 @@
 """MicroStrategy source module"""
 
 import traceback
-from collections import Counter, OrderedDict
-from collections.abc import Iterable
+from collections import Counter, OrderedDict, defaultdict
+from collections.abc import Iterable, Mapping
 from functools import partial
+from types import MappingProxyType
 from typing import Any, cast
 
 from metadata.entity_resolution.table_search import get_table_fqn_from_query_name
@@ -497,12 +498,15 @@ class MicrostrategySource(DashboardServiceSource):
         objects = {available_object.id: available_object for available_object in dataset.availableObjects or []}
         keys = Counter(normalized(available_object.name or "") for available_object in objects.values())
         ambiguous = {key for key, count in keys.items() if count > 1}
+        owners: dict[str, set[str]] = defaultdict(set)
+        for available_object in objects.values():
+            owners[normalized(available_object.name or "")].add(available_object.id)
         names = Counter((available_object.name or "").casefold() for available_object in objects.values())
         repeated = {name for name, count in names.items() if count > 1}
         lineage = []
         for available_object in objects.values():
             for target, columns in self._object_columns(
-                project_id, available_object, data_import, reads, targets, ambiguous, repeated, alias_reads
+                project_id, available_object, data_import, reads, targets, ambiguous, repeated, alias_reads, owners
             ):
                 from_columns = sorted({fqn for column in columns if (fqn := get_column_fqn(table_entity, column))})
                 if from_columns:
@@ -524,6 +528,7 @@ class MicrostrategySource(DashboardServiceSource):
         ambiguous: set[str],
         repeated: set[str],
         alias_reads: AliasReads = NO_ALIASES,
+        owners: Mapping[str, set[str]] = MappingProxyType({}),
     ) -> Iterable[tuple[str, set[str]]]:
         """
         (data model column FQN, warehouse columns of this table it reads) for one dataset object.
@@ -547,7 +552,7 @@ class MicrostrategySource(DashboardServiceSource):
                 if form_column == column and same_table(table, form_table)
             }
         elif available_object.type == "metric":
-            columns = self._metric_columns(project_id, available_object, reads, ambiguous, alias_reads)
+            columns = self._metric_columns(project_id, available_object, reads, alias_reads, owners)
         else:
             columns = set()
         if columns:
@@ -558,28 +563,33 @@ class MicrostrategySource(DashboardServiceSource):
         project_id: str,
         metric: MstrAvailableObject,
         reads: set[SourceColumn],
-        ambiguous: set[str],
         alias_reads: AliasReads,
+        owners: Mapping[str, set[str]],
     ) -> set[str]:
         """
         The warehouse columns of this table a schema metric reads. The SQL names a metric's
         projection after it (``Revenue Rank`` is ``REVENUERANK``) unless the alias is a
         generated one (``WJXBFS1``); a metric the SQL does not name is followed through its
         definition: to the projections of the metrics it is built from, and to the columns of the
-        facts it aggregates. A name another object of the dataset shares matches no alias.
+        facts it aggregates. An alias is a metric's only when no other object of the dataset has
+        that name: ``% Revenue`` is not given ``Revenue``'s ``REVENUE``, whether or not it is in the
+        dataset itself.
         """
 
-        def named(name: str) -> bool:
+        def named(object_id: str, name: str) -> bool:
             key = normalized(name)
-            return bool(key) and key not in ambiguous and key in alias_reads
+            return bool(key) and key in alias_reads and owners.get(key, {object_id}) == {object_id}
 
-        if named(metric.name or ""):
+        if named(metric.id, metric.name or ""):
             return {column for table, column in alias_reads[normalized(metric.name)] & reads}
         parts = self.client.get_metric_parts(project_id, metric.id, known=named)
         if not parts:
             return set()
         columns = {
-            column for name in parts.metrics if named(name) for table, column in alias_reads[normalized(name)] & reads
+            column
+            for object_id, name in parts.metrics
+            if named(object_id, name)
+            for table, column in alias_reads[normalized(name)] & reads
         }
         for fact in parts.facts:
             fact_columns = self.client.get_fact_columns(project_id, fact) or frozenset()

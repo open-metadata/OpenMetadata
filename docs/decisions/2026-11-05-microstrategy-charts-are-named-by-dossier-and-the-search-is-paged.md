@@ -172,8 +172,10 @@ warehouse columns a metric reads; neither maps generated `WJXBFSn` aliases by po
 - **The alias the SQL gives it.** A server set to derive metric aliases from names writes `Revenue
   Rank` as `REVENUERANK`. The metric is linked to the warehouse columns the projections of that
   alias read, in every SELECT of every pass; a projection over a derived table reads none. Names are
-  compared normalized (`normalized`), and a name that another object of the dataset shares matches
-  no alias. This needs no modeling privilege.
+  compared normalized (`normalized`), and an alias is a metric's only when no other object of the
+  dataset, by id, has that normalized name. This holds for the metrics a definition references too,
+  whether or not the dataset holds them: `% Revenue` never takes `Revenue`'s `REVENUE`. This needs no
+  modeling privilege.
 - **Its definition, otherwise.** `GET /model/metrics/{id}?showExpressionAs=tokens` (Architect
   privileges) resolves every object the metric's expression names. Tokens, not the tree: a metric
   built in Workstation wraps `Sum(Quantity)` in an embedded aggregation that no endpoint serves, and
