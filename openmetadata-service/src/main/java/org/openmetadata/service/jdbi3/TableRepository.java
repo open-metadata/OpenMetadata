@@ -1850,16 +1850,6 @@ public class TableRepository extends EntityRepository<Table> {
     deleteResidualExecutableTestSuite(table, deletedBy);
   }
 
-  /**
-   * The profiler purge runs here rather than in {@link #entitySpecificCleanup}, which executes
-   * inside the delete transaction: a table with a long profiling history can own millions of
-   * profiler rows, and draining them inline holds every row lock for the life of the request. Two
-   * ordering properties keep that safe, and they cover different failures. Running after the delete
-   * has committed means a rolled-back delete can never purge a live table's history, since those
-   * rows legitimately predate the attempt. Bounding the purge to profiles recorded at or before the
-   * delete means it cannot touch a successor table created at the same FQN, whose profiles are all
-   * recorded later -- see {@link TimeSeriesDAOs.ProfilerDataTimeSeriesDAO#deleteTableProfilerData}.
-   */
   @Override
   protected void postUpdate(Table original, Table updated) {
     super.postUpdate(original, updated);
@@ -1886,6 +1876,16 @@ public class TableRepository extends EntityRepository<Table> {
         () -> OntologyTermSearch.bindingsChanged(table.getEntityReference()));
   }
 
+  /**
+   * The profiler purge runs here rather than in {@link #entitySpecificCleanup}, which executes
+   * inside the delete transaction: a table with a long profiling history can own millions of
+   * profiler rows, and draining them inline holds every row lock for the life of the request. Two
+   * ordering properties keep that safe, and they cover different failures. Running after the delete
+   * has committed means a rolled-back delete can never purge a live table's history, since those
+   * rows legitimately predate the attempt. Bounding the purge to profiles recorded at or before the
+   * delete means it cannot touch a successor table created at the same FQN, whose profiles are all
+   * recorded later -- see {@link TimeSeriesDAOs.ProfilerDataTimeSeriesDAO#deleteTableProfilerData}.
+   */
   @Override
   protected void postDelete(Table table, boolean hardDelete) {
     super.postDelete(table, hardDelete);

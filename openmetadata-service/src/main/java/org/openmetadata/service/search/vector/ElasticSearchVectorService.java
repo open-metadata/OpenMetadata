@@ -344,7 +344,14 @@ public class ElasticSearchVectorService implements VectorIndexService {
       }
 
       Map<String, Object> embeddingFields = generateEmbeddingFields(entity, ontologyBody);
-      partialUpdateEntity(entityIndexName, entityId, embeddingFields);
+      if (ontologyBody == null) {
+        partialUpdateEntity(entityIndexName, entityId, embeddingFields);
+      } else {
+        OntologyTermSearch.writeCurrentEmbedding(
+            entity.getEntityReference(),
+            currentFingerprint,
+            () -> partialUpdateEntity(entityIndexName, entityId, embeddingFields));
+      }
     } catch (Exception e) {
       LOG.error("Failed to update embedding for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
@@ -438,6 +445,7 @@ public class ElasticSearchVectorService implements VectorIndexService {
    * @param currentFingerprintById each entity's current fingerprint, computed only when a stored
    *     one exists
    */
+  @Override
   public Map<String, JsonNode> getExistingEmbeddingsBatch(
       String indexName, Map<String, Supplier<String>> currentFingerprintById) {
     if (currentFingerprintById == null || currentFingerprintById.isEmpty()) {

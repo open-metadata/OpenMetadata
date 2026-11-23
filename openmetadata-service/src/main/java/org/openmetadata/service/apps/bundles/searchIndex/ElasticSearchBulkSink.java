@@ -61,7 +61,6 @@ import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
-import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
@@ -72,6 +71,7 @@ import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 
 /**
@@ -354,6 +354,18 @@ public class ElasticSearchBulkSink implements BulkSink {
                 TARGET_INDEX_KEY, indexMapping.getIndexName(searchRepository.getClusterAlias()));
 
     try {
+      if (searchRepository.writeSpecializedIndexBatch(
+          entityType, entities, indexName, reindexContext)) {
+        int written = entities.size();
+        processSuccess.addAndGet(written);
+        totalSubmitted.addAndGet(written);
+        updateStats(written, 0);
+        if (tracker != null) {
+          tracker.recordProcessBatch(written, 0, 0);
+          tracker.recordSinkBatch(written, 0);
+        }
+        return;
+      }
       long processStartNanos = System.nanoTime();
       // Check if these are time series entities
       if (!entities.isEmpty() && entities.get(0) instanceof EntityTimeSeriesInterface) {
@@ -388,20 +400,8 @@ public class ElasticSearchBulkSink implements BulkSink {
         if (embeddingsEnabled) {
           Map<String, Supplier<String>> currentById = new HashMap<>(entityInterfaces.size());
           for (EntityInterface<?> e : entityInterfaces) {
-            final var ctx = docBuildContexts.get(e.getId());
-            if (OntologyTermSearch.isTerm(entityType) && ctx != null) {
-              final var active = ctx.activeOntologyTerm();
-              if (active != null) {
-                currentById.put(
-                    e.getId().toString(),
-                    () ->
-                        VectorDocBuilder.computeFingerprintForEntity(
-                            active.term(), active.embeddingBody()));
-              }
-            } else {
-              currentById.put(
-                  e.getId().toString(), () -> VectorDocBuilder.computeFingerprintForEntity(e));
-            }
+            currentById.put(
+                e.getId().toString(), () -> VectorDocBuilder.computeFingerprintForEntity(e));
           }
           existingEmbeddingsById =
               fetchExistingEmbeddings(entityInterfaces, currentById, indexName, reindexContext);
@@ -491,32 +491,8 @@ public class ElasticSearchBulkSink implements BulkSink {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       String docId = entity.getId().toString();
-      final SearchIndex index;
+      final SearchIndex index = Entity.buildSearchIndex(entityType, entity);
       final DocBuildContext ctx = docBuildContexts.get(entity.getId());
-      final String ontologyBody;
-      if (OntologyTermSearch.isTerm(entityType)) {
-        final var active =
-            ctx == null
-                ? OntologyTermSearch.activeIndex(entity.getEntityReference())
-                : ctx.activeOntologyTerm();
-        if (active == null) {
-          final BulkOperation deletion =
-              BulkOperation.of(op -> op.delete(delete -> delete.index(indexName).id(docId)));
-          if (tracker != null) {
-            tracker.incrementPendingSink();
-            tracker.recordProcess(StatsResult.SUCCESS);
-          }
-          bulkProcessor.add(deletion, docId, entityType, tracker, BULK_OPERATION_METADATA_OVERHEAD);
-          processSuccess.incrementAndGet();
-          return;
-        }
-        index = active;
-        entity = active.term();
-        ontologyBody = active.embeddingBody();
-      } else {
-        index = Entity.buildSearchIndex(entityType, entity);
-        ontologyBody = null;
-      }
       Map<String, Object> searchIndexDoc =
           new HashMap<>(index.buildSearchIndexDoc(ctx == null ? DocBuildContext.empty() : ctx));
       Long relationshipRevision = relationshipRevisions.get(entity.getId());
@@ -524,7 +500,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {
-        json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker, ontologyBody);
+        json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker);
       }
 
       long rawDocSize = (long) json.getBytes(StandardCharsets.UTF_8).length;
@@ -1179,8 +1155,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       EntityInterface<?> entity,
       String json,
       Map<String, JsonNode> existingEmbeddingsById,
-      StageStatsTracker tracker,
-      String ontologyBody) {
+      StageStatsTracker tracker) {
     try {
       // Per-instance gate, mirroring VectorEmbeddingHandler: the entity-type check above cannot
       // see that an individual ContextMemory is Private/Shared, and the vector query path carries
@@ -1204,13 +1179,12 @@ public class ElasticSearchBulkSink implements BulkSink {
               ? vectorService.getEmbeddingClient().getDimension()
               : -1;
       JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
-      if (canReuseCachedEmbedding(cached, expectedDimension)) {
+      if (VectorIndexService.canReuseCachedEmbedding(cached, expectedDimension)) {
         // Splice the cached embedding so the full index op carries the vector instead of stripping
         // it; the service-layer pre-filter only admits entries with the current fingerprint.
         doc.setAll((ObjectNode) cached);
       } else {
-        Map<String, Object> embeddingFields =
-            vectorService.generateEmbeddingFields(entity, ontologyBody);
+        Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
         doc.setAll((ObjectNode) OBJECT_MAPPER.valueToTree(embeddingFields));
       }
       vectorSuccess.incrementAndGet();
@@ -1251,21 +1225,6 @@ public class ElasticSearchBulkSink implements BulkSink {
       LOG.warn("Failed to fetch existing embeddings (canonical index={})", indexName, e);
       return Collections.emptyMap();
     }
-  }
-
-  private static boolean canReuseCachedEmbedding(JsonNode cached, int expectedDimension) {
-    if (cached == null || !cached.isObject()) {
-      return false;
-    }
-    JsonNode embedding = cached.path("embedding");
-    if (!embedding.isArray() || embedding.isEmpty()) {
-      return false;
-    }
-    if (expectedDimension > 0 && embedding.size() != expectedDimension) {
-      return false;
-    }
-    JsonNode fingerprint = cached.path("fingerprint");
-    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
   }
 
   @Override

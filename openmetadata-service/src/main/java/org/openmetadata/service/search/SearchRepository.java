@@ -171,7 +171,6 @@ import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
-import org.openmetadata.service.search.indexes.OntologyTermIndex;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
@@ -194,7 +193,6 @@ import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
-import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -2359,38 +2357,51 @@ public class SearchRepository {
   }
 
   private void writeOntologyTerms(List<EntityReference> references) throws IOException {
-    if (references.isEmpty()) {
-      return;
-    }
-    final Map<UUID, OntologyTermIndex> indexes = new HashMap<>();
-    try (var ignored = FreshReadScope.enter()) {
-      references.stream()
-          .collect(Collectors.groupingBy(EntityReference::getType))
-          .forEach(
-              (type, group) -> {
-                final var ids = group.stream().map(EntityReference::getId).toList();
-                for (var page : Lists.partition(ids, 250)) {
-                  indexes.putAll(
-                      OntologyTermSearch.activeIndexes(
-                          type, OntologyTermSearch.loadWorkingTerms(type, page)));
-                }
-              });
-    }
-    OntologyTermBulkWrite.write(
-        searchClient,
-        references,
-        indexes,
-        ref -> {
-          final var mapping = getIndexMapping(ref.getType());
-          return getWriteFanoutTargets(mapping.getIndexName(clusterAlias));
-        });
+    final var indexed =
+        OntologyTermBulkWrite.refresh(
+            searchClient,
+            clusterAlias,
+            references,
+            ref -> getWriteFanoutTargets(getIndexMapping(ref.getType()).getIndexName(clusterAlias)),
+            null,
+            null);
     if (vectorEmbeddingHandler != null) {
-      references.forEach(
+      indexed.forEach(
           ref ->
               EntityLifecycleEventDispatcher.getInstance()
                   .enqueueOntologyEmbedding(
                       ref, () -> vectorEmbeddingHandler.refreshOntologyEmbedding(ref)));
     }
+  }
+
+  public boolean writeSpecializedIndexBatch(
+      String entityType, List<?> entities, String target, ReindexContext context)
+      throws IOException {
+    if (!OntologyTermSearch.isTerm(entityType)) {
+      return false;
+    }
+    final var references =
+        entities.stream()
+            .map(entity -> ((EntityInterface<?>) entity).getEntityReference())
+            .toList();
+    final String source =
+        context == null ? target : context.getOriginalIndex(entityType).orElse(target);
+    final var indexed =
+        OntologyTermBulkWrite.refresh(
+            searchClient,
+            clusterAlias,
+            references,
+            ref -> List.of(target),
+            vectorIndexService,
+            source);
+    if (vectorEmbeddingHandler != null) {
+      indexed.forEach(ref -> vectorEmbeddingHandler.refreshOntologyEmbedding(ref, List.of(target)));
+    }
+    return true;
+  }
+
+  void sweepOntologyChunks(String entityType) throws IOException {
+    OntologyChunkIndex.sweep(searchClient, clusterAlias, entityType);
   }
 
   public void updateEntity(EntityReference entityReference) {

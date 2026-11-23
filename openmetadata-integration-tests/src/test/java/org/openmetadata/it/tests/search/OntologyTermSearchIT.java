@@ -3,6 +3,8 @@ package org.openmetadata.it.tests.search;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
@@ -11,6 +13,10 @@ import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +24,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.search.ReindexHelpers;
+import org.openmetadata.it.search.SearchClient;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -48,6 +55,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.OntologyChunkIndex;
+import org.openmetadata.service.search.OntologyTermSearch;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 
 @ExtendWith(TestNamespaceExtension.class)
 @ResourceLock("SEARCH_INDEX_APP")
@@ -72,6 +83,8 @@ class OntologyTermSearchIT {
                 assertThat(find(ALIAS, purchase, order)).isNotNull();
                 assertThat(find(ALIAS, "tracking", property).path("domainLabels").get(0).asText())
                     .isEqualTo("Order");
+                assertThat(find(ALIAS, "Order", property)).isNotNull();
+                assertThat(find("ontologyProperty", "string", property)).isNotNull();
                 assertThat(find("all", purchase, order)).isNull();
               });
 
@@ -299,6 +312,136 @@ class OntologyTermSearchIT {
     }
   }
 
+  @Test
+  void releaseRefreshWaitsForAnInFlightWriteAndRejectsAnOldEmbedding(TestNamespace ns)
+      throws Exception {
+    assumeFalse(OssTestServer.isExternalMode());
+    final var ontology = createOntology(ns);
+    try (var workers = Executors.newFixedThreadPool(2)) {
+      final var order = createOrder(ontology, RankingSupport.uniqueTerm(ns));
+      activate(ontology);
+      final var reference = order.getEntityReference();
+      final var original = OntologyTermSearch.activeIndex(reference);
+      final var oldFingerprint =
+          VectorDocBuilder.computeFingerprintForEntity(original.term(), original.embeddingBody());
+      patch("/v1/ontologyConcepts/" + order.getId(), "add", "/displayName", "Purchase");
+      final var next = capture(ontology);
+
+      final var locked = new CountDownLatch(1);
+      final var finishWrite = new CountDownLatch(1);
+      final var olderWrite =
+          workers.submit(
+              () -> {
+                OntologyTermSearch.writeCurrentEmbedding(
+                    reference,
+                    oldFingerprint,
+                    () -> {
+                      locked.countDown();
+                      assertThat(finishWrite.await(30, TimeUnit.SECONDS)).isTrue();
+                    });
+                return null;
+              });
+      try {
+        assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
+        final var activation = workers.submit(() -> activate(ontology, next));
+        await()
+            .atMost(Duration.ofSeconds(10))
+            .untilAsserted(
+                () ->
+                    assertThat(
+                            SdkClients.adminClient()
+                                .ontologies()
+                                .state(ontology.getId())
+                                .getActiveReleaseId())
+                        .isEqualTo(next));
+        assertThatThrownBy(() -> activation.get(1, TimeUnit.SECONDS))
+            .isInstanceOf(TimeoutException.class);
+        assertThat(find(ALIAS, "Order", order).path("displayName").asText()).isEqualTo("Order");
+        finishWrite.countDown();
+        olderWrite.get(10, TimeUnit.SECONDS);
+        activation.get(10, TimeUnit.SECONDS);
+      } finally {
+        finishWrite.countDown();
+      }
+
+      assertThat(find(ALIAS, "Purchase", order).path("displayName").asText()).isEqualTo("Purchase");
+      OntologyTermSearch.writeCurrentEmbedding(
+          reference,
+          oldFingerprint,
+          () -> {
+            throw new AssertionError("Stale embedding was applied");
+          });
+    } finally {
+      deleteOntology(ontology);
+    }
+  }
+
+  @Test
+  void reindexSweepsStaleInactiveAndMissingOntologyChunks(TestNamespace ns) {
+    assumeFalse(OssTestServer.isExternalMode());
+    assumeTrue(
+        Entity.getSearchRepository().getSearchClient()
+            instanceof org.openmetadata.service.search.opensearch.OpenSearchClient);
+    final var client = new SearchClient(OssTestServer.defaultHandle());
+    final var index = OntologyChunkIndex.name();
+    final var ontology = createOntology(ns);
+    final var missing = UUID.randomUUID();
+    final boolean createIndex = !client.indexExists(index);
+    try {
+      final var active = createConcept(ontology, "Indexed");
+      activate(ontology);
+      final var draft = createConcept(ontology, "Unpublished");
+      if (createIndex) {
+        client.put(
+            "/" + index,
+            """
+            {"mappings":{"properties":{
+              "parentId":{"type":"keyword"},
+              "entityType":{"type":"keyword"},
+              "fingerprint":{"type":"keyword"}
+            }}}
+            """);
+      }
+      final var published = OntologyTermSearch.activeIndex(active.getEntityReference());
+      final var fingerprint =
+          VectorDocBuilder.computeFingerprintForEntity(published.term(), published.embeddingBody());
+      seedChunk(client, index, active.getId(), 0, fingerprint);
+      seedChunk(client, index, active.getId(), 1, "old-release");
+      seedChunk(client, index, draft.getId(), 0, "unpublished");
+      seedChunk(client, index, missing, 0, "missing");
+
+      reindexTerms();
+
+      assertThat(chunkCount(client, index, active.getId())).isEqualTo(1);
+      assertThat(chunkCount(client, index, draft.getId())).isZero();
+      assertThat(chunkCount(client, index, missing)).isZero();
+    } finally {
+      if (createIndex) {
+        client.delete("/" + index);
+      } else {
+        client.delete("/" + index + "/_doc/" + missing + "_0?refresh=true");
+      }
+      deleteOntology(ontology);
+    }
+  }
+
+  private static void seedChunk(
+      SearchClient client, String index, UUID id, int chunk, String fingerprint) {
+    client.put(
+        "/" + index + "/_doc/" + id + "_" + chunk + "?refresh=true",
+        JsonUtils.pojoToJson(
+            Map.of("entityType", "ontologyConcept", "parentId", id, "fingerprint", fingerprint)));
+  }
+
+  private static long chunkCount(SearchClient client, String index, UUID parent) {
+    return client
+        .count(
+            index,
+            JsonUtils.pojoToJson(Map.of("query", Map.of("term", Map.of("parentId", parent)))))
+        .path("count")
+        .asLong();
+  }
+
   private static OntologyConcept createConcept(Ontology ontology, String name) {
     return SdkClients.adminClient()
         .ontologyConcepts()
@@ -344,16 +487,16 @@ class OntologyTermSearchIT {
     final long triggeredAt = System.currentTimeMillis();
     ReindexHelpers.triggerSearchIndexWithConfigWhenIdle(
         server, Map.of("entities", List.of("ontologyConcept", "ontologyProperty")), timeout);
-    ReindexHelpers.waitForRunStartedSince(
-        server, ReindexHelpers.SEARCH_INDEX_APP, triggeredAt, timeout);
     await()
         .atMost(timeout)
-        .untilAsserted(
+        .until(
             () ->
-                assertThat(
-                        ReindexHelpers.isSuccess(
-                            ReindexHelpers.fetchLatestRun(server, ReindexHelpers.SEARCH_INDEX_APP)))
-                    .isTrue());
+                ReindexHelpers.freshRunIsTerminal(
+                    server, ReindexHelpers.SEARCH_INDEX_APP, triggeredAt));
+    final var run = ReindexHelpers.fetchLatestRun(server, ReindexHelpers.SEARCH_INDEX_APP);
+    assertThat(ReindexHelpers.isSuccess(run))
+        .as("Search reindex finished with status %s", ReindexHelpers.statusOf(run))
+        .isTrue();
   }
 
   private static Ontology createOntology(TestNamespace ns) {

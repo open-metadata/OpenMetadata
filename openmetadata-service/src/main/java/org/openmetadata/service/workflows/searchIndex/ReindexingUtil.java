@@ -50,7 +50,6 @@ import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestSuiteRepository;
-import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -78,16 +77,6 @@ public class ReindexingUtil {
       Map<String, Object> contextData,
       String entityType,
       List<? extends EntityInterface<?>> entities) {
-    if (OntologyTermSearch.isTerm(entityType)) {
-      final var active = OntologyTermSearch.activeIndexes(entityType, entities);
-      final Map<UUID, DocBuildContext> terms = new HashMap<>();
-      entities.forEach(
-          entity ->
-              terms.put(
-                  entity.getId(), DocBuildContext.forOntologyTerm(active.get(entity.getId()))));
-      contextData.put(BulkSink.DOC_BUILD_CONTEXT_KEY, terms);
-      return;
-    }
     Map<UUID, List<EsLineageData>> prefetchedLineage = null;
     Map<UUID, Optional<Style>> prefetchedServiceStyles = null;
     Map<UUID, Long> prefetchedRelationshipRevisions = null;

@@ -2,6 +2,7 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.service.search.SearchUtils.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataQualityIndex;
+import static org.openmetadata.service.search.SearchUtils.isOntologyIndex;
 import static org.openmetadata.service.search.SearchUtils.isServiceIndex;
 import static org.openmetadata.service.search.SearchUtils.isTimeSeriesIndex;
 import static org.openmetadata.service.search.SearchUtils.mapEntityTypesToIndexNames;
@@ -84,7 +85,7 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
       return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size);
     }
 
-    if (isDataAssetIndex(indexName)) {
+    if (isDataAssetIndex(indexName) || isOntologyIndex(indexName)) {
       return buildDataAssetSearchBuilderV2(
           indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
@@ -183,10 +184,8 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     final var repository = Entity.getSearchRepository();
     final String index =
         repository == null ? indexName : repository.getIndexNameWithoutAlias(indexName);
-    final String mapped = mapEntityTypesToIndexNames(index);
-    final boolean ontology =
-        OntologyTermSearch.ALIAS.equals(mapped) || OntologyTermSearch.isTerm(mapped);
-    final String assetType = ontology ? mapped : mapEntityTypesToIndexNames(indexName);
+    final boolean ontology = isOntologyIndex(index);
+    final String assetType = mapEntityTypesToIndexNames(ontology ? index : indexName);
     return searchSettings.getAssetTypeConfigurations().stream()
         .filter(config -> config.getAssetType().equals(assetType))
         .findFirst()
@@ -208,7 +207,8 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
               .withBoost(2.0)
               .withMatchType(FieldBoost.MatchType.STANDARD));
     }
-    return config.withSearchFields(fields);
+    // Derive the default ranking stages from the ontology fields.
+    return config.withSearchFields(fields).withRanking(null);
   }
 
   /**

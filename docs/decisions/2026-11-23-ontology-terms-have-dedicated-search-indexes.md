@@ -24,13 +24,17 @@ responses resolve table and column FQNs from the live binding store. Other consu
 resolve bindings through the authorized ontology bindings API.
 
 Write term documents synchronously and submit embedding work to the ordered lifecycle queue.
-Activation refreshes the union of the previous and current release members in a single bulk
-write. Ontology owner changes refresh active members. Binding edits and table or column identity
-changes refresh the affected concepts. Reindex batches release membership, binding rows, and table
-reads, and shares resolved property labels with the embedding builder.
+Activation refreshes the union of the previous and current release members in bounded batches.
+Live writes and reindex hold the same term row locks from the active-state read through the search
+write. Embedding calls run outside the locks, and their results are written only while the
+published fingerprint still matches. Ontology owner changes refresh active members. Binding edits
+and table or column identity changes refresh the affected concepts. The shared writer batches release membership, binding rows,
+and table reads, and shares resolved property labels with the embedding builder.
 
 Embed the label, synonyms, description, and property domain and range labels. OpenSearch stores
 chunks in `ontology_embeddings_chunks`, and Elasticsearch serves vectors from the term indexes.
+Term writes delete chunks for inactive terms and chunks with a superseded fingerprint. A
+successful ontology reindex also sweeps chunks whose parents are absent from the catalog.
 The data-asset chunk generation tracks the entity types that write to it, including for saved
 reindex configurations with explicit entity lists.
 

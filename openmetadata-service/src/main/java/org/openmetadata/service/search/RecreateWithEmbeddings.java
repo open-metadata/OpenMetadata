@@ -1,5 +1,7 @@
 package org.openmetadata.service.search;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -111,6 +113,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
       superFailure = e;
     }
     markChunkTypeOutcomeAndRethrow(context, reindexSuccess, superFailure);
+    sweepOntologyChunksAfterPromotion(context, promoted, reindexSuccess);
     return promoted;
   }
 
@@ -125,6 +128,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
       superFailure = e;
     }
     markChunkTypeOutcomeAndRethrow(context, reindexSuccess, superFailure);
+    sweepOntologyChunksAfterPromotion(context, promoted, reindexSuccess);
 
     if (reindexSuccess && Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
       LOG.info(
@@ -132,6 +136,17 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
           context.getEntityType());
     }
     return promoted;
+  }
+
+  private void sweepOntologyChunksAfterPromotion(
+      EntityReindexContext context, boolean promoted, boolean success) {
+    if (promoted && success && OntologyTermSearch.isTerm(context.getEntityType())) {
+      try {
+        Entity.getSearchRepository().sweepOntologyChunks(context.getEntityType());
+      } catch (IOException failure) {
+        throw new UncheckedIOException(failure);
+      }
+    }
   }
 
   /**

@@ -32,6 +32,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.OntologyChunkIndex;
 import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
@@ -260,7 +261,6 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   private static final String CHUNK_INDEX_BASE = "data_asset_embeddings_chunks";
-  private static final String ONTOLOGY_CHUNK_INDEX_BASE = "ontology_embeddings_chunks";
   private volatile boolean ontologyChunkIndexEnsured;
   private volatile boolean chunkIndexEnsured = false;
 
@@ -274,7 +274,7 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   private String getOntologyChunkIndexName() {
-    return getChunkIndexName(ONTOLOGY_CHUNK_INDEX_BASE);
+    return OntologyChunkIndex.name();
   }
 
   private String getChunkIndexName(String base) {
@@ -303,14 +303,8 @@ public class OpenSearchVectorService implements VectorIndexService {
    * consult generation discovery and can never land in a crashed run's orphan.
    */
   public void backfillEntityChunks(EntityInterface<?> entity, String stagedChunkTarget) {
-    backfillEntityChunks(entity, stagedChunkTarget, null);
-  }
-
-  public void backfillEntityChunks(
-      EntityInterface<?> entity, String stagedChunkTarget, String ontologyBody) {
-    final var type = entity.getEntityReference().getType();
-    if (stagedChunkTarget == null || OntologyTermSearch.isTerm(type)) {
-      updateEntityEmbeddingChunks(entity, chunkTargetForWrite(type), ontologyBody);
+    if (stagedChunkTarget == null) {
+      updateEntityEmbeddingChunks(entity);
     } else {
       backfillChunksToStagedGeneration(entity, stagedChunkTarget);
     }
@@ -384,14 +378,17 @@ public class OpenSearchVectorService implements VectorIndexService {
                 ? rebuildChunksReusingEmbeddings(
                     entity, chunkIndexName, parentId, header, ontologyBody)
                 : VectorDocBuilder.fromEntity(entity, embeddingClient, ontologyBody);
-        if (refresh != ChunkRefresh.NONE) {
-          replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
-          if (!OntologyTermSearch.isTerm(type)) {
+        if (ontologyBody == null) {
+          if (refresh != ChunkRefresh.NONE) {
+            replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
             mirrorToStagedGeneration(parentId, chunkDocs);
           }
-        }
-        if (entityDocStale && !chunkDocs.isEmpty()) {
-          partialUpdateEntity(entityIndexName, parentId, legacyEmbeddingFields(chunkDocs.get(0)));
+          if (entityDocStale && !chunkDocs.isEmpty()) {
+            partialUpdateEntity(entityIndexName, parentId, legacyEmbeddingFields(chunkDocs.get(0)));
+          }
+        } else {
+          writeCurrentOntologyEmbeddings(
+              entity, currentFingerprint, entityIndexName, chunkIndexName, chunkDocs);
         }
       }
     } catch (EmbeddingUnavailableException unavailable) {
@@ -399,6 +396,28 @@ public class OpenSearchVectorService implements VectorIndexService {
     } catch (Exception e) {
       LOG.error("Failed to update embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
+  }
+
+  private void writeCurrentOntologyEmbeddings(
+      EntityInterface<?> entity,
+      String fingerprint,
+      String entityIndexName,
+      String chunkIndexName,
+      List<Map<String, Object>> chunkDocs)
+      throws IOException {
+    OntologyTermSearch.writeCurrentEmbedding(
+        entity.getEntityReference(),
+        fingerprint,
+        () -> {
+          String id = entity.getId().toString();
+          ChunkHeader header = getChunkHeader(chunkIndexName, id);
+          if (chunkRefresh(entity, fingerprint, header) != ChunkRefresh.NONE) {
+            replaceChunks(chunkIndexName, id, chunkDocs, previousCount(header));
+          }
+          if (!chunkDocs.isEmpty()) {
+            partialUpdateEntity(entityIndexName, id, legacyEmbeddingFields(chunkDocs.getFirst()));
+          }
+        });
   }
 
   /**
@@ -451,15 +470,6 @@ public class OpenSearchVectorService implements VectorIndexService {
       }
     }
     return fields;
-  }
-
-  @Override
-  public void deleteEntityChunks(String entityType, String parentId) {
-    if (OntologyTermSearch.isTerm(entityType)) {
-      deleteChunksFrom(getOntologyChunkIndexName(), parentId);
-    } else {
-      deleteEntityChunks(parentId);
-    }
   }
 
   @Override
@@ -1942,6 +1952,7 @@ public class OpenSearchVectorService implements VectorIndexService {
    * @param currentFingerprintById each entity's current fingerprint, computed only when a stored
    *     one exists
    */
+  @Override
   public Map<String, JsonNode> getExistingEmbeddingsBatch(
       String indexName, Map<String, Supplier<String>> currentFingerprintById) {
     if (currentFingerprintById == null || currentFingerprintById.isEmpty()) {

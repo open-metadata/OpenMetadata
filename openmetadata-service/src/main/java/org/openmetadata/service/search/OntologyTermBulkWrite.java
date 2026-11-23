@@ -1,19 +1,25 @@
 package org.openmetadata.service.search;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.collect.Lists;
 import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.json.JsonData;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.OntologyTermIndex;
-import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import os.org.opensearch.client.opensearch._types.BuiltinScriptLanguage;
 import os.org.opensearch.client.opensearch._types.Script;
 
@@ -42,18 +48,61 @@ final class OntologyTermBulkWrite {
 
   private OntologyTermBulkWrite() {}
 
-  static void write(
+  static List<EntityReference> refresh(
+      SearchClient client,
+      String clusterAlias,
+      List<EntityReference> references,
+      Function<EntityReference, List<String>> targets,
+      VectorIndexService vectorService,
+      String embeddingSource)
+      throws IOException {
+    final List<EntityReference> indexed = new ArrayList<>();
+    for (var batch : Lists.partition(references, OntologyTermSearch.PAGE_SIZE)) {
+      OntologyTermSearch.withLockedIndexes(
+          batch,
+          active -> {
+            final var embeddings = cachedEmbeddings(vectorService, embeddingSource, active);
+            write(client, batch, active, targets, embeddings);
+            OntologyChunkIndex.reconcile(client, clusterAlias, batch, active);
+            batch.stream().filter(ref -> active.containsKey(ref.getId())).forEach(indexed::add);
+            return null;
+          });
+    }
+    return indexed;
+  }
+
+  private static Map<String, JsonNode> cachedEmbeddings(
+      VectorIndexService vectorService, String source, Map<UUID, OntologyTermIndex> active) {
+    if (vectorService == null || source == null || active.isEmpty()) {
+      return Map.of();
+    }
+    final Map<String, Supplier<String>> fingerprints = new HashMap<>();
+    active.forEach(
+        (id, index) ->
+            fingerprints.put(id.toString(), () -> OntologyTermSearch.embeddingFingerprint(index)));
+    final var client = vectorService.getEmbeddingClient();
+    final int dimension = client == null ? -1 : client.getDimension();
+    final var cached = vectorService.getExistingEmbeddingsBatch(source, fingerprints);
+    return cached.entrySet().stream()
+        .filter(entry -> VectorIndexService.canReuseCachedEmbedding(entry.getValue(), dimension))
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+  }
+
+  private static void write(
       SearchClient client,
       List<EntityReference> references,
       Map<UUID, OntologyTermIndex> active,
-      Function<EntityReference, List<String>> targets)
+      Function<EntityReference, List<String>> targets,
+      Map<String, JsonNode> embeddings)
       throws IOException {
     final var writes = new ArrayList<Write>();
     for (var reference : references) {
       final var index = active.get(reference.getId());
-      final var params = index == null ? Map.<String, Object>of() : replacementParams(index);
+      final String id = reference.getId().toString();
+      final var params =
+          index == null ? Map.<String, Object>of() : replacementParams(index, embeddings.get(id));
       for (var target : targets.apply(reference)) {
-        writes.add(new Write(target, reference.getId().toString(), params));
+        writes.add(new Write(target, id, params));
       }
     }
     if (client instanceof ElasticSearchClient) {
@@ -63,12 +112,17 @@ final class OntologyTermBulkWrite {
     }
   }
 
-  private static Map<String, Object> replacementParams(OntologyTermIndex index) {
+  private static Map<String, Object> replacementParams(
+      OntologyTermIndex index, JsonNode embedding) {
+    final var document = new HashMap<>(index.buildSearchIndexDoc());
+    if (embedding != null) {
+      document.putAll(
+          JsonUtils.convertValue(embedding, new TypeReference<Map<String, Object>>() {}));
+    }
     return Map.of(
-        "document", index.buildSearchIndexDoc(),
+        "document", document,
         "embeddingFields", EMBEDDING_FIELDS,
-        "expectedFingerprint",
-            VectorDocBuilder.computeFingerprintForEntity(index.term(), index.embeddingBody()));
+        "expectedFingerprint", OntologyTermSearch.embeddingFingerprint(index));
   }
 
   private static void writeElastic(SearchClient client, List<Write> writes) throws IOException {

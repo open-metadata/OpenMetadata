@@ -13,12 +13,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.commons.lang3.function.FailableFunction;
+import org.apache.commons.lang3.function.FailableRunnable;
+import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.OntologyEntityInterface;
 import org.openmetadata.schema.entity.data.OntologyConcept;
@@ -31,6 +35,7 @@ import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingPosition;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
@@ -38,11 +43,12 @@ import org.openmetadata.service.ontology.OntologyBindingRules;
 import org.openmetadata.service.ontology.OntologyReleaseReader;
 import org.openmetadata.service.search.indexes.OntologyTermIndex;
 import org.openmetadata.service.search.security.PrivateSearchFields;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.util.FreshReadScope;
 
 public final class OntologyTermSearch {
   public static final String ALIAS = "ontologyTerms";
-  private static final int PAGE_SIZE = 250;
+  static final int PAGE_SIZE = 250;
 
   private OntologyTermSearch() {}
 
@@ -58,6 +64,57 @@ public final class OntologyTermSearch {
               loadWorkingTerms(reference.getType(), List.of(reference.getId())))
           .get(reference.getId());
     }
+  }
+
+  static <T, E extends Exception> T withLockedIndexes(
+      List<EntityReference> references, FailableFunction<Map<UUID, OntologyTermIndex>, T, E> write)
+      throws E {
+    final var idsByType =
+        references.stream()
+            .collect(
+                Collectors.groupingBy(
+                    EntityReference::getType,
+                    TreeMap::new,
+                    Collectors.mapping(EntityReference::getId, Collectors.toList())));
+    return Entity.getCollectionDAO()
+        .inTransaction(
+            TransactionIsolationLevel.READ_COMMITTED,
+            dao -> {
+              // Keep the row locks through the search write. A waiting refresh must read after
+              // acquiring them, or it could publish a snapshot the previous writer superseded.
+              idsByType.forEach((type, ids) -> lockTerms(dao, type, ids));
+              try (var fresh = FreshReadScope.enter()) {
+                final Map<UUID, OntologyTermIndex> active = new HashMap<>();
+                idsByType.forEach(
+                    (type, ids) -> active.putAll(activeIndexes(type, loadWorkingTerms(type, ids))));
+                return write.apply(active);
+              }
+            });
+  }
+
+  private static void lockTerms(CollectionDAO dao, String type, List<UUID> ids) {
+    final var terms =
+        Entity.ONTOLOGY_CONCEPT.equalsIgnoreCase(type)
+            ? dao.ontologyConceptDAO()
+            : dao.ontologyPropertyDAO();
+    terms.lockIdsForUpdate(terms.getTableName(), ids.stream().map(UUID::toString).toList());
+  }
+
+  public static <E extends Exception> void writeCurrentEmbedding(
+      EntityReference ref, String fingerprint, FailableRunnable<E> write) throws E {
+    withLockedIndexes(
+        List.of(ref),
+        active -> {
+          final var index = active.get(ref.getId());
+          if (index != null && fingerprint.equals(embeddingFingerprint(index))) {
+            write.run();
+          }
+          return null;
+        });
+  }
+
+  static String embeddingFingerprint(OntologyTermIndex index) {
+    return VectorDocBuilder.computeFingerprintForEntity(index.term(), index.embeddingBody());
   }
 
   static List<? extends EntityInterface<?>> loadWorkingTerms(String type, List<UUID> ids) {

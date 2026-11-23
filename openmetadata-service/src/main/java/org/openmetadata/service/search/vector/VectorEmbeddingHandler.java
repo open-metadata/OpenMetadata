@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.vector;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -141,14 +142,18 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
   }
 
   public void refreshOntologyEmbedding(EntityReference reference) {
+    final var index = resolveEntityIndexName(reference.getType());
+    if (index != null) {
+      refreshOntologyEmbedding(
+          reference, Entity.getSearchRepository().getWriteFanoutTargets(index));
+    }
+  }
+
+  public void refreshOntologyEmbedding(EntityReference reference, List<String> targets) {
     final var active = OntologyTermSearch.activeIndex(reference);
-    if (active == null) {
-      vectorService.deleteEntityChunks(reference.getType(), reference.getId().toString());
-    } else {
-      final var index = resolveEntityIndexName(reference.getType());
-      if (index != null) {
-        vectorService.updateEntityEmbeddings(active.term(), index, active.embeddingBody());
-      }
+    if (active != null) {
+      final var body = active.embeddingBody();
+      targets.forEach(target -> vectorService.updateEntityEmbeddings(active.term(), target, body));
     }
   }
 
