@@ -85,6 +85,8 @@ abstract class McpSignInTestBase extends McpTestBase {
 
     Grant rotated = refresh(profile, server, clientId, grant.refreshToken());
     assertThat(rotated.refreshToken()).isNotEqualTo(grant.refreshToken());
+    // A refresh has to leave the client able to work, and the later 401 has to be the revocation.
+    assertCallsToolsAs(profile, rotated.accessToken(), user);
     assertThat(tokenRequest(profile, server, refreshForm(clientId, grant.refreshToken())))
         .extracting(HttpResponse::statusCode)
         .isEqualTo(400);
@@ -125,10 +127,14 @@ abstract class McpSignInTestBase extends McpTestBase {
     return server;
   }
 
+  // Runs for a class its @BeforeAll skipped too, where no application holds a DAO to look up.
   @AfterAll
   static void deleteRegisteredClients() {
-    REGISTERED_CLIENTS.forEach(Entity.getCollectionDAO().oauthClientDAO()::deleteWithGrants);
-    REGISTERED_CLIENTS.clear();
+    if (!REGISTERED_CLIENTS.isEmpty()) {
+      final var clients = Entity.getCollectionDAO().oauthClientDAO();
+      REGISTERED_CLIENTS.forEach(clients::deleteWithGrants);
+      REGISTERED_CLIENTS.clear();
+    }
   }
 
   protected String register(McpClientProfile profile, JsonNode server) throws Exception {
