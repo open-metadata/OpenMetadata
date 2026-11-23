@@ -69,9 +69,9 @@ const SidebarBrand: React.FC<SidebarBrandProps> = ({ variant = 'panel' }) => {
         <BrandImage
           className={classNames('tw:w-auto tw:max-w-full tw:object-contain', {
             'tw:h-7': isRail,
-            'tw:h-8': !isRail,
+            'tw:h-10': !isRail,
           })}
-          height={isRail ? 28 : 32}
+          height={isRail ? 28 : 40}
           isMonoGram={isRail}
           width="auto"
         />
