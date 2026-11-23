@@ -887,6 +887,7 @@ export default [
       'jest/consistent-test-it': ['error', { fn: 'it', withinDescribe: 'it' }],
       'jest/no-disabled-tests': 'error',
       'jest-formatting/padding-around-all': 'error',
+      // A committed `.only` silently shrinks a suite to one test.
       'jest/no-focused-tests': 'error',
       'jest/valid-expect-in-promise': 'error',
       'jest/valid-describe-callback': 'error',

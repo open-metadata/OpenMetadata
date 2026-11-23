@@ -102,6 +102,7 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
+import ontologyExplorerClassBase from '../../../../utils/OntologyExplorerClassBase';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import {
   getClassificationTagPath,
@@ -112,6 +113,7 @@ import { getErrorText } from '../../../../utils/StringUtils';
 import {
   GLOSSARY_TASK_ACTION_LIST,
   INCIDENT_TASK_ACTION_LIST,
+  isTagsTaskType,
   TASK_ACTION_COMMON_ITEM,
   TASK_ACTION_LIST,
 } from '../../../../utils/TaskActionUtils';
@@ -144,6 +146,7 @@ import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import {
   getTaskResolveBody,
   getTaskStatusIconClassName,
+  isAwaitingReviewPanel,
   isOntologyReviewTask,
 } from '../../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -160,7 +163,7 @@ import {
   isApproveTransition,
   isRejectTransition,
 } from '../../../discovery/personal-space/InboxPage/taskList.utils';
-import OntologyReviewPanel from '../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
+import { rankByIncidentStage } from '../../../discovery/personal-space/InboxPage/taskResolve.utils';
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
 import { getLifecycleMove } from '../LifecycleApprovalCard/LifecycleApprovalCard.utils';
@@ -333,9 +336,10 @@ interface TaskTypeFlags {
 
 const deriveTaskTypeFlags = (
   taskHandlerType: string,
-  taskEntityType: TaskEntityType
+  task: TaskTabProps['task']
 ): TaskTypeFlags => {
-  const isTaskTags = taskHandlerType === 'tagUpdate';
+  const taskEntityType = task.type;
+  const isTaskTags = taskHandlerType === 'tagUpdate' || isTagsTaskType(task);
   const isTaskApprovalRequest = taskHandlerType === 'approval';
   const isTaskRecognizerFeedbackApproval =
     taskHandlerType === 'feedbackApproval';
@@ -427,8 +431,8 @@ export const TaskTabNew = ({
     },
     [task.id]
   );
-  const reviewReady =
-    !isOntologyReviewTask(task) || readyReviewTask === task.id;
+  const ReviewPanel = ontologyExplorerClassBase.getReviewPanel();
+  const reviewReady = !isAwaitingReviewPanel(task, readyReviewTask);
   const isWorkflowDrivenTask =
     isOntologyReviewTask(task) || Boolean(task.availableTransitions?.length);
   // A voter keeps the stage's other transitions (e.g. reassign); the server
@@ -445,15 +449,24 @@ export const TaskTabNew = ({
         : task.availableTransitions,
     [hasVoted, task.availableTransitions]
   );
+  const defaultTransition = useMemo(
+    () =>
+      (rankByIncidentStage(
+        availableTransitions ?? [],
+        (transition) => transition.targetStageId,
+        task.workflowStageId
+      ) ?? availableTransitions)?.[0],
+    [availableTransitions, task.workflowStageId]
+  );
   const [selectedTransitionId, setSelectedTransitionId] = useState<
     string | undefined
-  >(availableTransitions?.[0]?.id);
+  >(defaultTransition?.id);
   const selectedTransition = useMemo(
     () =>
       availableTransitions?.find(
         (transition) => transition.id === selectedTransitionId
-      ) ?? availableTransitions?.[0],
-    [selectedTransitionId, availableTransitions]
+      ) ?? defaultTransition,
+    [selectedTransitionId, availableTransitions, defaultTransition]
   );
   const activeTaskFormSchema = useMemo(() => {
     if (!taskFormSchema || !isWorkflowDrivenTask) {
@@ -475,7 +488,7 @@ export const TaskTabNew = ({
     isTaskRecognizerFeedbackApproval,
     isApprovalWorkflowTask,
     isTaskTestCaseResult,
-  } = deriveTaskTypeFlags(taskHandler.type, task.type);
+  } = deriveTaskTypeFlags(taskHandler.type, task);
   const proposedChanges = useMemo(
     () => (isTaskApprovalRequest ? extractProposedChanges(task.payload) : null),
     [isTaskApprovalRequest, task.payload]
@@ -1499,13 +1512,24 @@ export const TaskTabNew = ({
   }, [initialAssignees, assigneeOptions]);
 
   useEffect(() => {
+    let active = true;
     setTaskFormSchema(getDefaultTaskFormSchema(task.type, task.category));
-    getResolvedTaskFormSchema(task.type, task.category).then(setTaskFormSchema);
-  }, [task.category, task.type]);
+    getResolvedTaskFormSchema(task.type, task.category, {
+      // Prefer the schema the backend stamped on the task, falling back to
+      // payload-based disambiguation for Suggestion variants (description vs
+      // tag share one taskType+taskCategory binding). See TaskFormSchemaUtils.
+      taskFormSchemaId: task.taskFormSchemaId,
+      payload: task.payload,
+    }).then((schema) => active && setTaskFormSchema(schema));
+
+    return () => {
+      active = false;
+    };
+  }, [task.category, task.type, task.taskFormSchemaId, task.payload]);
 
   useEffect(() => {
-    setSelectedTransitionId(availableTransitions?.[0]?.id);
-  }, [availableTransitions, task.id]);
+    setSelectedTransitionId(defaultTransition?.id);
+  }, [defaultTransition, task.id]);
 
   useEffect(() => {
     setEditablePayload(initialFormValue.payload);
@@ -1902,10 +1926,8 @@ export const TaskTabNew = ({
   };
 
   const renderFeedbackOrTaskPayload = () => {
-    if (isOntologyReviewTask(task)) {
-      return (
-        <OntologyReviewPanel task={task} onReadyChange={handleReviewReady} />
-      );
+    if (isOntologyReviewTask(task) && ReviewPanel) {
+      return <ReviewPanel task={task} onReadyChange={handleReviewReady} />;
     }
 
     if (isTaskRecognizerFeedbackApproval) {

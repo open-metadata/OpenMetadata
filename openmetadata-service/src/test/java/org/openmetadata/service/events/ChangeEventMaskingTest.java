@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.collate.generated.CollateEntityWithASecret;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -89,6 +91,28 @@ class ChangeEventMaskingTest {
         storedEntity(ChangeEventMasking.masked(event)).path("openMetadataServerConnection");
     assertFalse(connection.has("securityConfig"));
     assertEquals("http://localhost:8585/api", connection.path("hostPort").asText());
+  }
+
+  // Collate's entities live outside org.openmetadata.schema and are stored through the same DAO.
+  @Test
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  void aMaskedFieldLeavesAnEventAboutACollateEntity() {
+    ((Map) EntityInterface.ENTITY_TYPE_TO_CLASS_MAP)
+        .putIfAbsent("collateentitywithasecret", CollateEntityWithASecret.class);
+    final Map<String, Object> entity = Map.of("name", "plugin", "secret", Map.of("token", "t"));
+    final ChangeEvent event =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(EventType.ENTITY_UPDATED)
+            .withEntityType("collateEntityWithASecret");
+
+    for (final Object held : List.of(entity, JsonUtils.pojoToJson(entity))) {
+      final JsonNode stored =
+          storedEntity(ChangeEventMasking.masked(JsonUtils.pojoToJson(event.withEntity(held))));
+
+      assertFalse(stored.has("secret"));
+      assertEquals("plugin", stored.path("name").asText());
+    }
   }
 
   @Test

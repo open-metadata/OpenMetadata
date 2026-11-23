@@ -17,8 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.macasaet.fernet.Key;
+import com.macasaet.fernet.Token;
 import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -60,7 +63,7 @@ class DestinationValidationTest {
 
   @Test
   void aStoredValueThatDoesNotOpenStopsNoEdit() {
-    EventSubscription stored = alertWith(signedWith(Fernet.getInstance().encrypt("old key")));
+    EventSubscription stored = alertWith(signedWith(encryptedWithAnotherKey("old key")));
     EventSubscription renamed = copyOf(stored).withDisplayName("Renamed");
 
     assertDoesNotThrow(() -> DestinationValidation.ofWhatChanged(stored, renamed));
@@ -68,7 +71,7 @@ class DestinationValidationTest {
 
   @Test
   void aStoredValueThatDoesNotOpenCanBeEnteredAgain() {
-    SubscriptionDestination holdingIt = signedWith(Fernet.getInstance().encrypt("old key"));
+    SubscriptionDestination holdingIt = signedWith(encryptedWithAnotherKey("old key"));
     EventSubscription stored = alertWith(holdingIt);
     SubscriptionDestination entered = signedWith("new key").withId(holdingIt.getId());
     EventSubscription updated =
@@ -79,7 +82,7 @@ class DestinationValidationTest {
 
   @Test
   void aChangedDestinationStillHoldingAValueThatDoesNotOpenIsRefused() {
-    EventSubscription stored = alertWith(signedWith(Fernet.getInstance().encrypt("old key")));
+    EventSubscription stored = alertWith(signedWith(encryptedWithAnotherKey("old key")));
     EventSubscription changed = copyOf(stored);
     changed.getDestinations().getFirst().withTimeout(99);
 
@@ -231,6 +234,12 @@ class DestinationValidationTest {
     EventSubscription renamed = copyOf(stored).withDisplayName("Renamed");
 
     assertDoesNotThrow(() -> DestinationValidation.ofWhatChanged(stored, renamed));
+  }
+
+  // Ciphertext written with a key the server does not have: it does not decrypt.
+  private static String encryptedWithAnotherKey(String secret) {
+    return Fernet.FERNET_PREFIX
+        + Token.generate(new SecureRandom(), Key.generateKey(), secret).serialise();
   }
 
   private static EventSubscription alertWith(SubscriptionDestination... destinations) {

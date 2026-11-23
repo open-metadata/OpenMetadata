@@ -125,7 +125,8 @@ test.describe(
 
         await clientId.fill('changed-client-id');
         await page.getByTestId('cancel-sso-configuration').click();
-        await page.getByTestId('sso-unsaved-changes-discard').click();
+        await expect(page.getByTestId('unsaved-changes-popover')).toBeVisible();
+        await page.getByTestId('unsaved-changes-popover-confirm').click();
 
         await expect(clientId).toHaveValue('okta-client-id');
         expect(writes.puts).toHaveLength(0);
@@ -160,22 +161,12 @@ test.describe(
         await expect(header.getByTestId('show-hint-toggle')).toBeHidden();
       });
 
-      await test.step('Back returns to the form with the edit kept', async () => {
-        await page.getByTestId('sso-test-login-back').click();
-
-        await expect(page.getByTestId('sso-test-login-page')).toBeHidden();
-        await expect(clientId).toHaveValue('edited-client-id');
-        await expect(header.getByTestId('sso-tab-configure')).toBeVisible();
-      });
-
-      await test.step('the provider crumb also leaves the sub page', async () => {
-        await page.getByTestId('test-login-sso-configuration').click();
-        await expect(page.getByTestId('sso-test-login-page')).toBeVisible();
-
+      await test.step('the provider crumb returns to the form with the edit kept', async () => {
         await breadcrumb.getByRole('link', { name: 'Okta' }).click();
 
         await expect(page.getByTestId('sso-test-login-page')).toBeHidden();
         await expect(clientId).toHaveValue('edited-client-id');
+        await expect(header.getByTestId('sso-tab-configure')).toBeVisible();
       });
     });
 

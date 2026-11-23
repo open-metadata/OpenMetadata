@@ -322,6 +322,33 @@ class CompanyContextToolTest {
     assertFalse(result.containsKey("answer"));
   }
 
+  @Test
+  void readingAPillDoesNotRevealItsUnreadableSourceFile() throws Exception {
+    EntityReference source =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.CONTEXT_FILE)
+            .withFullyQualifiedName("private-handbook");
+    ContextMemory memory =
+        sharedWith(
+                memory(
+                    "pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED),
+                "bob")
+            .withSourceFile(source);
+    stubMemory("pill-fqn", memory);
+    CatalogSecurityContext securityContext = securityContextFor("bob");
+
+    Map<String, Object> result =
+        withSubject(
+            securityContext,
+            "bob",
+            () -> tool.execute(mock(Authorizer.class), securityContext, Map.of("fqn", "pill-fqn")));
+
+    assertEquals("Q", result.get("question"));
+    assertFalse(result.toString().contains("private-handbook"));
+    assertEquals("private-handbook", memory.getSourceFile().getFullyQualifiedName());
+  }
+
   /**
    * Shared means shared with someone: the pill's own shareConfig names the principals, and the
    * search half of this tool already filters on them. Reading by name must answer the same

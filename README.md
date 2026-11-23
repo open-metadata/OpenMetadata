@@ -323,6 +323,8 @@ These standards make OpenMetadata a foundation for interoperable semantic metada
 
 ## Quickstart
 
+For MySQL deployments, read the [supported version and 8.0 upgrade steps](docs/mysql-deployment.md) before upgrading an existing database volume.
+
 1. **Try OpenMetadata**: [OpenMetadata Sandbox](https://sandbox.open-metadata.org)
 2. **Install OpenMetadata**: [Quickstart Guide](https://docs.open-metadata.org/latest/quick-start)
 3. **Ingest Metadata** from a warehouse, BI tool, pipeline system, data quality tool, lineage source, contract source, or memory-producing workflow.

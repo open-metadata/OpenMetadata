@@ -61,6 +61,7 @@ jest.mock('constants/Task.constant', () => ({
 jest.mock('rest/tasksAPI', () => ({
   TaskEntityStatus: jest.requireActual('generated/entity/tasks/task')
     .TaskStatus,
+  TaskEntityType: jest.requireActual('generated/entity/tasks/task').TaskType,
   getTask: (...args: unknown[]) => mockGetTaskById(...args),
   resolveTask: (...args: unknown[]) => mockResolveTask(...args),
   addTaskComment: (...a: unknown[]) => mockAddComment(...a),
@@ -184,13 +185,27 @@ jest.mock('utils/EntityNameUtils', () => ({
 }));
 
 const mockGetContributions = jest.fn().mockReturnValue([]);
+// The provider holds one ExtensionPointRegistry instance for the app lifecycle
+// and mutates it in place when plugins register, so the registry's identity
+// never changes. Mirror that with a single stable object so a memo keyed on
+// the registry cannot accidentally recompute per render and hide the
+// stale-lookup bug — the bug only shows when the singleton's identity is fixed
+// across renders, as it is in production.
+const stableExtensionRegistry = { getContributions: mockGetContributions };
+// The provider hands out a new `getContributions` wrapper each time plugins
+// register (its `contributionsVersion` bump); tests reassign this object to
+// simulate that bump — the new `getContributions` arrow gets a fresh identity,
+// exactly as the real wrapper does after registration.
+let mockApplicationsProvider = {
+  extensionRegistry: stableExtensionRegistry,
+  getContributions: (id: string) => mockGetContributions(id),
+  contributionsReady: true,
+};
 
 jest.mock(
   'components/Settings/Applications/ApplicationsProvider/ApplicationsProvider',
   () => ({
-    useApplicationsProvider: () => ({
-      extensionRegistry: { getContributions: mockGetContributions },
-    }),
+    useApplicationsProvider: () => mockApplicationsProvider,
   })
 );
 
@@ -541,6 +556,11 @@ const DAR_TASK = { ...TASK, type: 'DataAccessRequest' };
 beforeEach(() => {
   jest.clearAllMocks();
   mockGetContributions.mockReturnValue([]);
+  mockApplicationsProvider = {
+    extensionRegistry: stableExtensionRegistry,
+    getContributions: (id: string) => mockGetContributions(id),
+    contributionsReady: true,
+  };
   mockCurrentUser = { name: 'bob' };
   mockGetTaskById.mockResolvedValue({ data: TASK });
   mockGetEntityPermission.mockResolvedValue({ ResolveTask: true });
@@ -615,6 +635,33 @@ describe('TaskDetailPanel', () => {
     expect(
       screen.getAllByText('Approval required for sales_table').length
     ).toBeGreaterThan(0);
+  });
+
+  // Not the list row it falls back on: the server's task carries the status
+  // the list needs to file a linked task under its tab.
+  it('reports the full task once it loads', async () => {
+    const onLoaded = jest.fn();
+    const listRow = { ...TASK, status: 'Open' } as unknown as ComponentProps<
+      typeof TaskDetailPanel
+    >['fallbackTask'];
+    mockGetTaskById.mockResolvedValue({
+      data: { ...TASK, status: 'Rejected' },
+    });
+
+    await act(async () =>
+      render(
+        <TaskDetailPanel
+          fallbackTask={listRow}
+          taskId="task-1"
+          onLoaded={onLoaded}
+        />
+      )
+    );
+
+    expect(onLoaded).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Rejected' })
+    );
+    expect(onLoaded).not.toHaveBeenCalledWith(listRow);
   });
 
   it('fetches the task with the full field set', async () => {
@@ -1649,6 +1696,51 @@ describe('TaskDetailPanel', () => {
         screen.queryByTestId('task-detail-summary')
       ).not.toBeInTheDocument();
     });
+
+    // A deep link can resolve its task before the provider's contribution
+    // effect registers a plugin — the registry is a mutable singleton, so its
+    // identity never changes when the contribution lands. The provider surfaces
+    // a `getContributions` wrapper whose identity changes once
+    // `contributionsVersion` bumps; the contribution memo must depend on that
+    // wrapper so a contribution that lands after the task is in view still
+    // renders. Regression for the stale `[extensionRegistry, task]` memo, which
+    // computed against an empty registry on the first render and never
+    // recomputed for that task.
+    it('renders a contribution registered after the task loaded', async () => {
+      const lateContribution = contribution({
+        describe: () => ({ rows: [{ key: 'pluginRow' }] }),
+        stats: () => <div data-testid="plugin-stat-tiles" />,
+      });
+
+      // Plugins have not registered yet — the deep link beats the provider's
+      // contribution effect, so the panel first sees an empty registry.
+      let renderUtils!: ReturnType<typeof render>;
+      await act(async () => {
+        renderUtils = render(<TaskDetailPanel taskId="task-1" />);
+      });
+
+      expect(screen.queryByTestId('plugin-stat-tiles')).not.toBeInTheDocument();
+
+      // Plugins register: the provider bumps `contributionsVersion`, handing
+      // out a new `getContributions` wrapper identity (now returning the
+      // contribution). The task in view is unchanged — only the wrapper's
+      // identity change can prompt the memo to re-evaluate.
+      mockGetContributions.mockReturnValue([lateContribution]);
+      mockApplicationsProvider = {
+        extensionRegistry: stableExtensionRegistry,
+        getContributions: (id: string) => mockGetContributions(id),
+        contributionsReady: true,
+      };
+
+      await act(async () => {
+        renderUtils.rerender(<TaskDetailPanel taskId="task-1" />);
+      });
+
+      expect(screen.getByTestId('plugin-stat-tiles')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('task-detail-summary').getAttribute('data-rows')
+      ).toMatch(/^pluginRow/);
+    });
   });
 
   describe('legacy (non-workflow) tasks', () => {
@@ -1687,6 +1779,75 @@ describe('TaskDetailPanel', () => {
       await act(async () => pending.resolve?.({ data: LEGACY_APPROVAL_TASK }));
 
       expect(screen.getByTestId('task-approve')).toBeInTheDocument();
+    });
+
+    // The list row has no assignees, payload or ontologyReview: rendering the body
+    // from it flashed "Unassigned", a one-event timeline and, for an ontology
+    // review, a "could not be loaded" error before the full task replaced them.
+    it('renders only the header from the list row until the full task loads', async () => {
+      const pending: { resolve?: (value: { data: unknown }) => void } = {};
+      mockGetTaskById.mockReturnValue(
+        new Promise((resolve) => {
+          pending.resolve = resolve;
+        })
+      );
+
+      await act(async () =>
+        render(
+          <TaskDetailPanel
+            fallbackTask={{ ...LEGACY_APPROVAL_TASK, assignees: [] } as never}
+            taskId="task-1"
+          />
+        )
+      );
+
+      expect(screen.getByTestId('task-detail-panel')).toBeInTheDocument();
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-detail-summary')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-activity-timeline')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('label.unassigned')).not.toBeInTheDocument();
+
+      await act(async () => pending.resolve?.({ data: LEGACY_APPROVAL_TASK }));
+
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(screen.getByTestId('task-detail-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('task-activity-timeline')).toBeInTheDocument();
+    });
+
+    // The placeholder already explains a failed first load; a toast would say it twice.
+    it('shows why the task failed to load in place of the body, once, with a retry', async () => {
+      mockGetTaskById.mockRejectedValueOnce({ response: { status: 500 } });
+
+      await act(async () =>
+        render(
+          <TaskDetailPanel
+            fallbackTask={LEGACY_APPROVAL_TASK as never}
+            taskId="task-1"
+          />
+        )
+      );
+
+      expect(screen.getByTestId('task-detail-panel')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.something-went-wrong')
+      ).toBeInTheDocument();
+      expect(mockShowErrorToast).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-activity-timeline')
+      ).not.toBeInTheDocument();
+
+      mockGetTaskById.mockResolvedValueOnce({ data: LEGACY_APPROVAL_TASK });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+      });
+
+      expect(screen.getByTestId('task-detail-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('task-activity-timeline')).toBeInTheDocument();
     });
 
     // Only the first load gates the actions; a reload after a comment must not
@@ -1802,7 +1963,14 @@ describe('TaskDetailPanel', () => {
 
       expect(mockGetResolvedTaskFormSchema).toHaveBeenCalledWith(
         'RequestApproval',
-        'Approval'
+        'Approval',
+        expect.objectContaining({
+          // The legacy approval mock carries no stamped schema id; the panel
+          // forwards `task?.taskFormSchemaId` (undefined here) and the raw
+          // payload so Suggestion variants would disambiguate by suggestionType.
+          taskFormSchemaId: undefined,
+          payload: LEGACY_APPROVAL_TASK.payload,
+        })
       );
     });
 

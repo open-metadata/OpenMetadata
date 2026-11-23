@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -25,6 +27,8 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.GlossaryTermTestFactory;
+import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
@@ -42,6 +46,8 @@ import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.data.Table;
@@ -212,6 +218,46 @@ public class SearchAccessRulesIT {
           schema,
           both,
           Set.of(readablePlain));
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /**
+   * Tag and glossary term asset counts are searches over the same assets as their asset listings,
+   * so they count only the assets the caller's search access policies let them see.
+   */
+  @Test
+  void tagAndGlossaryTermAssetCountsLeaveOutAssetsTheCallerMayNotView(TestNamespace ns)
+      throws Exception {
+    assumeTheServerTrustsHarnessSignedTokens();
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      String secret = secretTag(ns, "counts");
+      String counted = secretTag(ns, "counted");
+      Glossary glossary = GlossaryTestFactory.createSimple(ns);
+      GlossaryTerm term = GlossaryTermTestFactory.createSimple(ns, glossary);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+      createTaggedTable(admin, schema, p + "_open", List.of(tag(counted), termLabel(term)));
+      createTaggedTable(
+          admin, schema, p + "_hidden", List.of(tag(counted), termLabel(term), tag(secret)));
+      OpenMetadataClient restricted =
+          deniedUser(admin, p, Entity.TABLE, "matchAnyTag('" + secret + "')", cleanup);
+      enableAccessControl(admin, cleanup);
+      String tagCounts = "/v1/tags/assets/counts";
+      String termCounts =
+          "/v1/glossaryTerms/assets/counts?parent="
+              + URLEncoder.encode(glossary.getFullyQualifiedName(), StandardCharsets.UTF_8);
+      String termFqn = term.getFullyQualifiedName();
+
+      awaitAssetCount("admin counts both tables", admin, termCounts, termFqn, 2);
+      awaitAssetCount("the hidden table is left out", restricted, termCounts, termFqn, 1);
+      // Both tables are indexed with every label by now. The tag counts cover every tag in the
+      // catalog, so each is read once rather than polled.
+      assertEquals(2, assetCount(admin, tagCounts, counted));
+      assertEquals(1, assetCount(restricted, tagCounts, counted));
     } finally {
       drain(cleanup);
     }
@@ -489,6 +535,43 @@ public class SearchAccessRulesIT {
         .withSource(TagLabel.TagSource.CLASSIFICATION)
         .withLabelType(TagLabel.LabelType.MANUAL)
         .withState(TagLabel.State.CONFIRMED);
+  }
+
+  private static TagLabel termLabel(GlossaryTerm term) {
+    return new TagLabel()
+        .withTagFQN(term.getFullyQualifiedName())
+        .withSource(TagLabel.TagSource.GLOSSARY)
+        .withLabelType(TagLabel.LabelType.MANUAL)
+        .withState(TagLabel.State.CONFIRMED);
+  }
+
+  /** Without columns, so a glossary term's count is not also made of the column entries. */
+  private static void createTaggedTable(
+      OpenMetadataClient admin, DatabaseSchema schema, String name, List<TagLabel> tags) {
+    admin
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(name)
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(List.of())
+                .withTags(tags));
+  }
+
+  private static void awaitAssetCount(
+      String description, OpenMetadataClient client, String path, String fqn, int expected) {
+    Awaitility.await(description)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(() -> assertEquals(expected, assetCount(client, path, fqn), path));
+  }
+
+  private static int assetCount(OpenMetadataClient client, String path, String fqn)
+      throws Exception {
+    return MAPPER
+        .readTree(client.getHttpClient().executeForString(HttpMethod.GET, path, null))
+        .path(fqn)
+        .asInt(-1);
   }
 
   private static String id(Pipeline pipeline) {

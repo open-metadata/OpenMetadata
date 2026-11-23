@@ -14,9 +14,12 @@
 package org.openmetadata.service.jdbi3;
 
 import jakarta.ws.rs.BadRequestException;
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
@@ -25,14 +28,18 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.ontology.OntologyChangeEventPublisher;
 import org.openmetadata.service.ontology.RelationshipTypeGraphValidator;
+import org.openmetadata.service.ontology.RelationshipTypeReferenceNames;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.ontology.RelationshipTypeValidator;
 import org.openmetadata.service.resources.ontology.RelationshipTypeResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Repository
 public class RelationshipTypeRepository extends EntityRepository<RelationshipType> {
@@ -42,6 +49,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   private final RelationshipTypeResolver resolver;
   private final RelationshipTypeGraphValidator graphValidator;
   private final OntologyChangeEventPublisher eventPublisher;
+  private final RelationshipTypeReferenceGuard referenceGuard;
 
   public RelationshipTypeRepository() {
     super(
@@ -59,22 +67,30 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
                     .relationshipTypeDAO()
                     .findEntityById(id, Include.NON_DELETED));
     eventPublisher = new OntologyChangeEventPublisher();
+    referenceGuard = new RelationshipTypeReferenceGuard(this);
   }
 
   @Override
   public void setFields(
-      final RelationshipType entity,
-      final Fields fields,
-      final RelationIncludes relationIncludes) {}
+      final RelationshipType entity, final Fields fields, final RelationIncludes relationIncludes) {
+    RelationshipTypeReferenceNames.withNamedReferences(entity);
+  }
+
+  @Override
+  public void setFieldsInBulk(final Fields fields, final List<RelationshipType> entities) {
+    super.setFieldsInBulk(fields, entities);
+    entities.forEach(RelationshipTypeReferenceNames::withNamedReferences);
+  }
 
   @Override
   public void clearFields(final RelationshipType entity, final Fields fields) {}
 
   @Override
   public void prepare(final RelationshipType entity, final boolean update) {
-    entity.setFullyQualifiedName(entity.getName());
+    entity.setFullyQualifiedName(FullyQualifiedName.quoteName(entity.getName()));
     applyDefaults(entity);
     hydrateReferences(entity);
+    referenceGuard.rejectDeletedReferences(entity);
     RelationshipTypeValidator.validate(entity);
     validateUniquePredicate(entity);
     graphValidator.validate(entity);
@@ -111,52 +127,80 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   }
 
   /**
-   * Resolve FQN→id for {@code inverse}, {@code replacedBy}, {@code propertyChain}, and {@code
-   * disjointWith} references. The public REST API ({@link
-   * org.openmetadata.service.resources.ontology.RelationshipTypeMapper}) builds these references
-   * with only {@code type} + {@code fullyQualifiedName} set ({@code id == null}), because a client
-   * supplies FQN strings, not ids. Without this hydration the id-based checks in {@link
-   * RelationshipTypeValidator} and downstream consumers (e.g. the RDF glossary exporter) break for
-   * every client-supplied reference. Self-references (where the reference FQN equals the entity's
-   * own FQN) are hydrated from the entity's own id, which is already set before {@code prepare}
-   * runs.
+   * Completes the {@code inverse}, {@code replacedBy}, {@code propertyChain} and {@code
+   * disjointWith} references, which a client supplies by FQN and a PATCH may carry over with no
+   * name, so every stored reference carries its name and, once its target exists, its id
+   * (ADR:2026-11-19-relationship-type-references-carry-their-name). A self-reference resolves to the
+   * entity itself, whose id is set before {@code prepare} runs.
    */
   private void hydrateReferences(final RelationshipType entity) {
-    final String selfFqn = entity.getFullyQualifiedName();
-    final UUID selfId = entity.getId();
-    entity.setInverse(hydrate(entity.getInverse(), selfFqn, selfId));
-    entity.setReplacedBy(hydrate(entity.getReplacedBy(), selfFqn, selfId));
+    entity.setInverse(hydrate(entity.getInverse(), entity));
+    entity.setReplacedBy(hydrate(entity.getReplacedBy(), entity));
     final List<EntityReference> propertyChain = entity.getPropertyChain();
     if (propertyChain != null) {
-      entity.setPropertyChain(
-          propertyChain.stream().map(ref -> hydrate(ref, selfFqn, selfId)).toList());
+      entity.setPropertyChain(propertyChain.stream().map(ref -> hydrate(ref, entity)).toList());
     }
     final Set<EntityReference> disjointWith = entity.getDisjointWith();
     if (disjointWith != null) {
       entity.setDisjointWith(
           disjointWith.stream()
-              .map(ref -> hydrate(ref, selfFqn, selfId))
-              .collect(Collectors.toUnmodifiableSet()));
+              .map(ref -> hydrate(ref, entity))
+              .collect(Collectors.toCollection(LinkedHashSet::new)));
     }
   }
 
-  private EntityReference hydrate(
-      final EntityReference reference, final String selfFqn, final UUID selfId) {
-    if (reference == null || reference.getId() != null) {
-      return reference;
-    }
+  private EntityReference hydrate(final EntityReference reference, final RelationshipType self) {
+    final EntityReference named = RelationshipTypeReferenceNames.named(reference);
+    final RelationshipType target = named == null ? null : findTarget(named, self);
+    return target == null ? named : RelationshipTypeReferenceNames.referenceTo(target);
+  }
+
+  private RelationshipType findTarget(
+      final EntityReference reference, final RelationshipType self) {
+    final boolean isSelf =
+        reference.getId() == null
+            ? self.getName().equals(reference.getName())
+            : reference.getId().equals(self.getId());
+    final RelationshipType target = isSelf ? self : findStoredTarget(reference);
+    requireOneIdentity(reference, target);
+    return target;
+  }
+
+  /** By id, else by name, deleted or not; null when the reference names no type yet. */
+  private RelationshipType findStoredTarget(final EntityReference reference) {
+    final RelationshipType byId = reference.getId() == null ? null : findByIdOrNull(reference);
+    return byId != null || reference.getName() == null
+        ? byId
+        : findByNameOrNull(FullyQualifiedName.quoteName(reference.getName()), Include.ALL);
+  }
+
+  /**
+   * A reference whose id, name and FQN name different types is refused rather than resolved by one;
+   * only the parts it carries are compared.
+   */
+  private static void requireOneIdentity(
+      final EntityReference reference, final RelationshipType target) {
+    final String name = reference.getName();
     final String fqn = reference.getFullyQualifiedName();
-    if (fqn == null) {
-      return reference;
+    final boolean isConflicting =
+        (target != null && name != null && !target.getName().equals(name))
+            || (name != null && fqn != null && !name.equals(FullyQualifiedName.unquoteName(fqn)));
+    if (isConflicting) {
+      throw new BadRequestException(
+          String.format(
+              "Relationship type reference %s names more than one relationship type",
+              JsonUtils.pojoToJson(reference)));
     }
-    if (fqn.equals(selfFqn)) {
-      return reference.withId(selfId);
+  }
+
+  private RelationshipType findByIdOrNull(final EntityReference reference) {
+    RelationshipType found;
+    try {
+      found = find(reference.getId(), Include.ALL);
+    } catch (EntityNotFoundException exception) {
+      found = null;
     }
-    final RelationshipType resolved = findByNameOrNull(fqn, Include.ALL);
-    if (resolved != null) {
-      return reference.withId(resolved.getId());
-    }
-    return reference;
+    return found;
   }
 
   @Override
@@ -192,12 +236,61 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
         : super.initialEntityStatus(entity);
   }
 
+  /**
+   * A delete clears its partners' inverse and a restore re-links or unlinks one, so each write runs
+   * in one transaction with the partner updates it causes.
+   */
+  @Override
+  protected <R> R executeEntityWrite(
+      final List<RelationshipType> entities, final Supplier<R> work) {
+    return executeInTransaction(work);
+  }
+
   @Override
   protected void preDelete(final RelationshipType entity, final String deletedBy) {
     if (Boolean.TRUE.equals(entity.getSystemDefined())) {
       throw new BadRequestException(
           "System relationship type '" + entity.getName() + "' cannot be deleted");
     }
+    referenceGuard.beforeDelete(entity, deletedBy);
+  }
+
+  /**
+   * A restore links a partner back or clears the type's inverse, which on a live type would change
+   * how its relations read, so only a deleted type is restored.
+   */
+  @Override
+  public void validateRestore(final UUID id) {
+    if (!Boolean.TRUE.equals(find(id, Include.ALL).getDeleted())) {
+      throw new BadRequestException(
+          String.format("Entity %s:%s is not in deleted state", entityType, id));
+    }
+  }
+
+  @Override
+  protected void postRestore(final RelationshipType entity) {
+    super.postRestore(entity);
+    referenceGuard.afterRestore(entity);
+  }
+
+  /** The inverse {@code type} keeps when it is restored. */
+  public EntityReference inverseKeptOnRestore(final RelationshipType type) {
+    return referenceGuard.inverseKeptOnRestore(type);
+  }
+
+  /**
+   * The deprecated settings endpoint removes several types in one write, an inverse pair among
+   * them, so references between the removed types do not block it, and a kept type's back-link to
+   * a removed one is cleared as the type API's delete clears it. It runs before the write is saved,
+   * so the definitions the same write saves replace the stored ones.
+   */
+  public void requireRemovableTogether(
+      final Collection<String> names, final List<RelationshipType> writtenTogether) {
+    referenceGuard.requireRemovableTogether(names, writtenTogether);
+  }
+
+  public void deleteTogether(final String deletedBy, final Collection<String> names) {
+    referenceGuard.deleteTogether(deletedBy, names);
   }
 
   @Override

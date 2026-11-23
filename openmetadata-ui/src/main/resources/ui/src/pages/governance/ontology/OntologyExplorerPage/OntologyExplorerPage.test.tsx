@@ -54,7 +54,6 @@ describe('OntologyExplorerPage', () => {
 
     expect(screen.getByTestId('ontology-explorer')).toBeInTheDocument();
     expect(explorerProps?.scope).toBe('global');
-    expect(explorerProps?.isAuthoringMode).toBeUndefined();
     expect(screen.getByTestId('beta-badge')).toHaveTextContent('LABEL.BETA');
   });
 
