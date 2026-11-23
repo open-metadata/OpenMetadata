@@ -316,6 +316,9 @@ public class TaskChangeEventIT {
     ChangeEvent event = awaitUpdatedEvents(incident.getId(), closedAt, 1).getFirst();
     assertStatusChange(event, TaskEntityStatus.Open, TaskEntityStatus.Completed);
     assertEquals("governance-bot", event.getUserName());
+    Task resolved = client().tasks().get(incident.getId().toString(), "comments,resolution");
+    assertTrue(resolved.getComments() == null || resolved.getComments().isEmpty());
+    assertEquals("AutoResolved", resolved.getResolution().getComment());
   }
 
   // ---------------------------------------------------------------- change events

@@ -25,6 +25,7 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import jakarta.validation.Validator;
+import jakarta.ws.rs.BadRequestException;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -821,23 +822,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       LOG.info("Updating security configuration in database...");
 
-      if (securityConfig.getAuthenticationConfiguration() != null) {
-        Settings authenticationSettings =
-            new Settings()
-                .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
-                .withConfigValue(securityConfig.getAuthenticationConfiguration());
-        Entity.getSystemRepository().createOrUpdate(authenticationSettings);
-        LOG.info("Authentication configuration updated.");
-      }
-
-      if (securityConfig.getAuthorizerConfiguration() != null) {
-        Settings authorizerSettings =
-            new Settings()
-                .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
-                .withConfigValue(securityConfig.getAuthorizerConfiguration());
-        Entity.getSystemRepository().createOrUpdate(authorizerSettings);
-        LOG.info("Authorization configuration updated.");
-      }
+      storeSecurityConfiguration(Entity.getSystemRepository(), securityConfig);
 
       LOG.info("Security configuration successfully updated in the database.");
       LOG.warn("");
@@ -850,10 +835,37 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.warn("========================================================================");
 
       return 0;
+    } catch (BadRequestException refused) {
+      LOG.error("The security configuration was not updated: {}", refused.getMessage());
+      return 1;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration due to: ", e);
       LOG.error("Please verify that the YAML file is valid and contains all required fields.");
       return 1;
+    }
+  }
+
+  /**
+   * Stores the authentication and authorizer configuration of a security configuration file, the
+   * authentication first: a value the settings repository refuses, such as a SAML IdP certificate
+   * a save would refuse, stops it before the authorizer is written.
+   */
+  static void storeSecurityConfiguration(
+      final SystemRepository repository, final SecurityConfiguration securityConfig) {
+    final AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+    if (authConfig != null) {
+      repository.createOrUpdate(
+          new Settings()
+              .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+              .withConfigValue(authConfig));
+      LOG.info("Authentication configuration updated.");
+    }
+    if (securityConfig.getAuthorizerConfiguration() != null) {
+      repository.createOrUpdate(
+          new Settings()
+              .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
+              .withConfigValue(securityConfig.getAuthorizerConfiguration()));
+      LOG.info("Authorization configuration updated.");
     }
   }
 
