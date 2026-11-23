@@ -1143,14 +1143,6 @@ public class OpenLineageLineageResolutionIT {
             Entity.TOPIC, topic.getFullyQualifiedName(), schemaFqn + "." + outputName));
   }
 
-  // ====================================================================================
-  // Helpers
-  // ====================================================================================
-
-  /**
-   * Entity audit fields follow the entity contract, not the edge one: the principal that posted the
-   * event and the moment OpenMetadata created the entity, never the OpenLineage eventTime.
-   */
   @Test
   @Order(30)
   @ResourceLock(
@@ -1200,6 +1192,14 @@ public class OpenLineageLineageResolutionIT {
         fromColumnsByToColumn(fetchOpenLineageEdgeDetails(inputName, outputName)));
   }
 
+  // ====================================================================================
+  // Helpers
+  // ====================================================================================
+
+  /**
+   * Entity audit fields follow the entity contract, not the edge one: the principal that posted the
+   * event and the moment OpenMetadata created the entity, never the OpenLineage eventTime.
+   */
   private static void assertAuditFieldsStamped(EntityInterface<?> entity, long notBefore) {
     String fqn = entity.getFullyQualifiedName();
     assertEquals("admin", entity.getUpdatedBy(), "updatedBy of auto-created " + fqn);
