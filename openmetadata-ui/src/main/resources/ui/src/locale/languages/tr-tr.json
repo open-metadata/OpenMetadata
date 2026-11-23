@@ -3173,6 +3173,7 @@
     "requested-by": "Requested By",
     "requested-on": "Talep tarihi",
     "requests": "İstekler",
+    "require-encrypted-assertions": "Şifrelenmiş SAML Beyanlarını Zorunlu Kıl",
     "required": "Gerekli",
     "required-field": "Zorunlu alan",
     "required-field-plural": "Zorunlu Alanlar",
