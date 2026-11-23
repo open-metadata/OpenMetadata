@@ -24,6 +24,7 @@ from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig
     MetadataEntry,
 )
 from metadata.ingestion.source.storage.s3.metadata import (
+    BUCKET_SIZE_STORAGE_TYPES,
     S3BucketResponse,
     S3ContainerDetails,
     S3Metric,
@@ -171,6 +172,62 @@ class TestFetchMetric:
         result = source._fetch_metric("test-bucket", S3Metric.NUMBER_OF_OBJECTS)
 
         assert result == 0
+
+    def test_bucket_size_sums_all_storage_classes(self):
+        source = _make_s3_source()
+        source.cloudwatch_client.get_metric_data.return_value = {
+            "MetricDataResults": [
+                {"StatusCode": "Complete", "Values": [4_000.0, 1.0]},
+                {"StatusCode": "Complete", "Values": [900_000.0]},
+                {"StatusCode": "Complete", "Values": []},
+                {"StatusCode": "Complete", "Values": [100.0]},
+            ]
+        }
+
+        result = source._fetch_metric("test-bucket", S3Metric.BUCKET_SIZE_BYTES)
+
+        assert result == 904_100
+
+    def test_bucket_size_skips_incomplete_results_when_summing(self):
+        source = _make_s3_source()
+        source.cloudwatch_client.get_metric_data.return_value = {
+            "MetricDataResults": [
+                {"StatusCode": "Complete", "Values": [500.0]},
+                {"StatusCode": "InternalError", "Values": [999.0]},
+            ]
+        }
+
+        result = source._fetch_metric("test-bucket", S3Metric.BUCKET_SIZE_BYTES)
+
+        assert result == 500
+
+    def test_bucket_size_queries_every_storage_class_in_one_call(self):
+        source = _make_s3_source()
+        source.cloudwatch_client.get_metric_data.return_value = {"MetricDataResults": []}
+
+        source._fetch_metric("test-bucket", S3Metric.BUCKET_SIZE_BYTES)
+
+        source.cloudwatch_client.get_metric_data.assert_called_once()
+        queries = source.cloudwatch_client.get_metric_data.call_args.kwargs["MetricDataQueries"]
+        storage_types = [
+            next(d["Value"] for d in q["MetricStat"]["Metric"]["Dimensions"] if d["Name"] == "StorageType")
+            for q in queries
+        ]
+        assert storage_types == list(BUCKET_SIZE_STORAGE_TYPES)
+        assert {"StandardStorage", "IntelligentTieringFAStorage"} <= set(storage_types)
+        assert len({q["Id"] for q in queries}) == len(queries)
+
+    def test_number_of_objects_uses_the_all_storage_types_aggregate(self):
+        source = _make_s3_source()
+        source.cloudwatch_client.get_metric_data.return_value = {
+            "MetricDataResults": [{"StatusCode": "Complete", "Values": [7.0]}]
+        }
+
+        source._fetch_metric("test-bucket", S3Metric.NUMBER_OF_OBJECTS)
+
+        queries = source.cloudwatch_client.get_metric_data.call_args.kwargs["MetricDataQueries"]
+        assert len(queries) == 1
+        assert {"Name": "StorageType", "Value": "AllStorageTypes"} in queries[0]["MetricStat"]["Metric"]["Dimensions"]
 
 
 class TestGetFullPath:
