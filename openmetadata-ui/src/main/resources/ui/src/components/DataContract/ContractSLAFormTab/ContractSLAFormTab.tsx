@@ -494,22 +494,25 @@ export const ContractSLAFormTab: React.FC<{
               }}>
               {({ field, fieldState }) => (
                 // A number input reports incomplete edits like "15e" as empty.
-                <Input
-                  data-testid="refresh-frequency-interval-input"
-                  hint={fieldState.error?.message}
-                  inputMode="decimal"
-                  isInvalid={fieldState.invalid}
-                  label={t('label.interval')}
-                  name={field.name}
-                  placeholder={t('label.enter-entity', {
-                    entity: t('label.interval'),
-                  })}
-                  ref={field.ref}
-                  size="md"
-                  value={field.value}
-                  onBlur={field.onBlur}
-                  onChange={field.onChange}
-                />
+                <Box className="tw:gap-1.5" direction="col">
+                  <FormItemLabel label={t('label.interval')} />
+                  <Input
+                    aria-label={t('label.interval')}
+                    data-testid="refresh-frequency-interval-input"
+                    hint={fieldState.error?.message}
+                    inputMode="decimal"
+                    isInvalid={fieldState.invalid}
+                    name={field.name}
+                    placeholder={t('label.enter-entity', {
+                      entity: t('label.interval'),
+                    })}
+                    ref={field.ref}
+                    size="md"
+                    value={field.value}
+                    onBlur={field.onBlur}
+                    onChange={field.onChange}
+                  />
+                </Box>
               )}
             </FormField>,
             getField(
