@@ -167,13 +167,27 @@ public class McpServer implements McpServerProvider {
     return (context, tool) -> refusalReason(tool, config.get()).isEmpty();
   }
 
+  /** Collate overrides this to supply initialization instructions to MCP clients. */
+  protected String serverInstructions() {
+    return null;
+  }
+
   static McpStatelessSyncServer buildServer(
       McpStatelessServerTransport transport,
       McpSchema.ServerCapabilities capabilities,
       Supplier<MCPConfiguration> mcpConfig) {
+    return buildServer(transport, capabilities, mcpConfig, null);
+  }
+
+  static McpStatelessSyncServer buildServer(
+      McpStatelessServerTransport transport,
+      McpSchema.ServerCapabilities capabilities,
+      Supplier<MCPConfiguration> mcpConfig,
+      String instructions) {
     return io.modelcontextprotocol.server.McpServer.sync(transport)
         .serverInfo(serverInfo(mcpConfig.get()))
         .capabilities(capabilities)
+        .instructions(instructions)
         // SDK 2.x checks tools/call arguments against the tool schema by default. Kept off: the
         // tools accept looser shapes on purpose, see
         // ADR:2026-11-06-mcp-tool-arguments-are-coerced-by-tools-not-validated-by-the-sdk.
@@ -301,7 +315,8 @@ public class McpServer implements McpServerProvider {
           buildServer(
               statelessOauthTransport,
               serverCapabilities,
-              SecurityConfigurationManager::getCurrentMcpConfig);
+              SecurityConfigurationManager::getCurrentMcpConfig,
+              serverInstructions());
       addToolsToServer(server, tools);
       addPromptsToServer(server, prompts);
 
