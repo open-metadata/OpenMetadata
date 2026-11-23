@@ -14,8 +14,6 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -24,7 +22,6 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 
-import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -53,13 +50,13 @@ import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
 /**
- * What the {@code update-security-config} command leaves stored. It writes through the settings
- * repository, whose write step checks the SAML IdP certificate, and writes the authentication
- * first, so a refused certificate leaves both settings as they were. The rows are a map behind the
- * real repository.
+ * What the {@code update-security-config} command leaves stored and the exit code it answers. It
+ * writes through the settings repository, whose write step checks the SAML IdP certificate, and
+ * writes the authentication first, so a refused certificate leaves both settings as they were and a
+ * failed authorizer write is reported, not logged as updated. The rows are a map behind the real
+ * repository.
  */
 class OpenMetadataOperationsSecurityConfigTest {
-  private static final String CERTIFICATE_FIELD = "samlConfiguration.idp.idpX509Certificate";
   private static final String AUTH = AUTHENTICATION_CONFIGURATION.value();
   private static final String AUTHZ = AUTHORIZER_CONFIGURATION.value();
   private static final String IDP_CERTIFICATE = resource("/saml/mock-idp.crt");
@@ -97,10 +94,12 @@ class OpenMetadataOperationsSecurityConfigTest {
   }
 
   @Test
-  void storesBothSettingsOfTheFile() {
-    OpenMetadataOperations.storeSecurityConfiguration(
-        repository, securityFile(OTHER_IDP_CERTIFICATE, "new-admin"));
+  void storesBothSettingsOfTheFileAndExitsZero() {
+    final int exitCode =
+        OpenMetadataOperations.updateSecurityConfiguration(
+            repository, securityFile(OTHER_IDP_CERTIFICATE, authorizer("new-admin")));
 
+    assertEquals(0, exitCode);
     final SecurityConfiguration stored =
         repository.getStoredSecurityConfiguration().configuration();
     assertEquals(
@@ -114,35 +113,63 @@ class OpenMetadataOperationsSecurityConfigTest {
   }
 
   @Test
-  void aRefusedIdpCertificateLeavesBothSettingsAsTheyWere() {
+  void aRefusedIdpCertificateExitsNonZeroAndLeavesBothSettingsAsTheyWere() {
     final String authenticationBefore = rows.get(AUTH);
     final String authorizerBefore = rows.get(AUTHZ);
-    final SecurityConfiguration file = securityFile(EXPIRED_IDP_CERTIFICATE, "new-admin");
 
-    final BadRequestException refused =
-        assertThrows(
-            BadRequestException.class,
-            () -> OpenMetadataOperations.storeSecurityConfiguration(repository, file));
+    final int exitCode =
+        OpenMetadataOperations.updateSecurityConfiguration(
+            repository, securityFile(EXPIRED_IDP_CERTIFICATE, authorizer("new-admin")));
 
-    assertTrue(refused.getMessage().contains(CERTIFICATE_FIELD), refused.getMessage());
+    assertEquals(1, exitCode);
     assertEquals(authenticationBefore, rows.get(AUTH));
     assertEquals(authorizerBefore, rows.get(AUTHZ));
+  }
+
+  /**
+   * {@code enableSecureSocketConnection} is required, so the authorizer cannot be stored. The
+   * authentication, written first, stays stored; the command must not report the authorizer as
+   * updated.
+   */
+  @Test
+  void aFailedAuthorizerWriteExitsNonZeroAndKeepsTheStoredAuthorizer() {
+    final String authorizerBefore = rows.get(AUTHZ);
+    final AuthorizerConfiguration incomplete =
+        authorizer("new-admin").withEnableSecureSocketConnection(null);
+
+    final int exitCode =
+        OpenMetadataOperations.updateSecurityConfiguration(
+            repository, securityFile(OTHER_IDP_CERTIFICATE, incomplete));
+
+    assertEquals(1, exitCode);
+    assertEquals(authorizerBefore, rows.get(AUTHZ));
+    assertEquals(
+        OTHER_IDP_CERTIFICATE,
+        repository
+            .getStoredSecurityConfiguration()
+            .configuration()
+            .getAuthenticationConfiguration()
+            .getSamlConfiguration()
+            .getIdp()
+            .getIdpX509Certificate());
   }
 
   @Test
   void writesNothingWhenTheFileHasNoSecuritySettings() {
     final Map<String, String> before = Map.copyOf(rows);
 
-    OpenMetadataOperations.storeSecurityConfiguration(repository, new SecurityConfiguration());
+    final int exitCode =
+        OpenMetadataOperations.updateSecurityConfiguration(repository, new SecurityConfiguration());
 
+    assertEquals(0, exitCode);
     assertEquals(before, rows);
   }
 
   private static SecurityConfiguration securityFile(
-      final String idpCertificate, final String admin) {
+      final String idpCertificate, final AuthorizerConfiguration authorizer) {
     return new SecurityConfiguration()
         .withAuthenticationConfiguration(saml(idpCertificate))
-        .withAuthorizerConfiguration(authorizer(admin));
+        .withAuthorizerConfiguration(authorizer);
   }
 
   private static AuthenticationConfiguration saml(final String idpCertificate) {
