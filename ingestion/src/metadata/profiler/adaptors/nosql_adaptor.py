@@ -13,6 +13,7 @@ NoSQL adaptor for the NoSQL profiler.
 """
 
 from abc import ABC, abstractmethod
+from datetime import date, datetime, time
 
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -40,7 +41,7 @@ class NoSQLAdaptor(ABC):
         table: Table,
         column: SQALikeColumn,
         aggregate_functions: list[any],
-    ) -> dict[str, int | float]:
+    ) -> dict[str, int | float | str | datetime | date | time | None]:
         raise NotImplementedError
 
     def sum(  # pylint: disable=unused-argument
