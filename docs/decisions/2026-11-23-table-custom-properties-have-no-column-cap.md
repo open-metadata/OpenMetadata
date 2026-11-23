@@ -1,9 +1,9 @@
-# Table custom properties have no column cap; the UI shows three columns and scrolls
+# Table custom properties have no column cap; the UI caps column width and scrolls
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-23 (initial)
 - **Deciders:** Rohit0301
-- **Guard:** `TypeResourceIT.test_tableCustomPropertyStoresValueWithTenColumns` (schemas + backend), `CustomPropertyRow.test.tsx` (full-width host); the three-visible-column layout itself is reviewer-checked (jsdom has no layout)
+- **Guard:** `TypeResourceIT.test_tableCustomPropertyStoresValueWithTenColumns` (schemas + backend), `CustomPropertyRow.test.tsx` (full-width host), `TablePropertyValue.test.tsx` (edge shadows); column widths themselves are reviewer-checked (jsdom has no layout)
 - **Related:** #38473
 
 ## Context
@@ -15,9 +15,14 @@ create form. The cap kept tables readable on asset pages, but customers need mor
 - No upper bound on columns: neither schema sets `maxItems`, `TypeRepository` checks only the
   minimum, and the create form has no count rule. `TableConfig.maxColumns` stays in the schema,
   unenforced, so stored configs that carry it still validate under `additionalProperties: false`.
-- Every UI surface renders the value through `TablePropertyValue.tsx`. Each column takes a third of
-  its container (`100cqw/3`), so at most three columns are visible and the rest scroll horizontally,
-  whatever the host width (230px schema cell to 960px modal).
+- Every UI surface renders the value through `TablePropertyValue.tsx`. A column is a third of its
+  container, capped at 12rem: `min(100cqw/3, 12rem)`. Hosts narrower than about 36rem (the 230px
+  schema cell) show three columns; wider hosts show more, at 12rem each (about four in the 960px
+  modal, five or six on full-width cards). The rest scroll horizontally. The cap is a design
+  choice: a third of a wide card left mostly-empty columns.
+- Whichever edge hides columns carries a shadow, the same treatment as the core card `Tabs`
+  (`useOverflowEdges`, exported from ui-core-components). It is the only scroll cue where the
+  scrollbar is an overlay (macOS). The editor's end shadow sits before its pinned delete column.
 - A container-query host needs a definite width: a host that sizes to its content collapses it to
   zero, so wide values render in a full-width slot (`CustomPropertyRow`, `ColumnCustomPropertyCell`).
 
