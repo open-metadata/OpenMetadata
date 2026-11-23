@@ -3173,6 +3173,7 @@
     "requested-by": "Angefordert von",
     "requested-on": "Angefordert am",
     "requests": "Anfragen",
+    "require-encrypted-assertions": "Verschlüsselte Assertions erforderlich",
     "required": "Erforderlich",
     "required-field": "Pflichtfeld",
     "required-field-plural": "Pflichtfelder",
