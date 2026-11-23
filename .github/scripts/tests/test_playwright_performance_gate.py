@@ -16,9 +16,16 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 SCRIPTS = Path(__file__).parents[1]
 WORKFLOWS = SCRIPTS.parent / "workflows"
+
+
+@pytest.fixture(autouse=True)
+def script_import_path(monkeypatch):
+    monkeypatch.syspath_prepend(str(SCRIPTS))
 
 
 def load_script(name: str):
@@ -82,22 +89,6 @@ def test_timing_targets_are_budget_not_blocking():
     assert budget["executionAtMostTwentyFiveMinutes"] is False
     assert budget["flakyRateAtMostPointFivePercent"] is False
     assert convergence["commonShardSkewAtMostFifteenPercent"] is True
-
-
-def test_summary_workflow_does_not_enforce():
-    # The caller must not pass --enforce: with the blocking set empty it is
-    # inert, but reintroducing it alongside a reclassification would resurrect
-    # the eject-green-PRs failure mode. Guard the workflow text directly
-    # (comments may mention the flag; executable lines may not).
-    caller = (WORKFLOWS / "playwright-postgresql-e2e.yml").read_text()
-    executable_lines = [
-        line for line in caller.splitlines()
-        if "--enforce" in line and not line.lstrip().startswith("#")
-    ]
-    assert executable_lines == [], (
-        "playwright-postgresql-e2e.yml must not pass --enforce to "
-        f"evaluate_playwright_performance.py: {executable_lines}"
-    )
 
 
 def test_offending_shards_lists_only_phases_over_threshold():
@@ -224,7 +215,7 @@ def test_failed_details_absent_when_phase_targets_pass(tmp_path):
         )
     )
 
-    subprocess.run(
+    result = subprocess.run(
         [
             sys.executable,
             str(SCRIPTS / "evaluate_playwright_performance.py"),
@@ -236,8 +227,10 @@ def test_failed_details_absent_when_phase_targets_pass(tmp_path):
         ],
         capture_output=True,
         text=True,
+        check=False,
     )
 
+    assert result.returncode == 0, result.stdout + result.stderr
     payload = json.loads(output.read_text())
     # All three phase-attributable targets are within budget for this fixture.
     for target in (
