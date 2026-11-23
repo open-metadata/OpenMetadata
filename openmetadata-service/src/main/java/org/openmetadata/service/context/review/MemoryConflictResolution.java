@@ -39,6 +39,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.ArchivedWithSources;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
@@ -53,8 +54,10 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * Applies the decision of a memory conflict review task, as the person who decided it. Being able
  * to resolve the task authorizes the decision about the reviewed memory; superseding a disputed
  * memory additionally needs the right to read and supersede it directly. Every check runs before
- * the first write, so a refusal leaves both memories as they were and the task open; a write that
- * fails later leaves the task open for a retry, which converges.
+ * the first write, so a refusal leaves both memories as they were and the task open, except one:
+ * an approval refused because another decision replaced a disputed memory first points the review
+ * at the replacing memory. A write that fails later leaves the task open for a retry, which
+ * converges.
  */
 @Slf4j
 public final class MemoryConflictResolution {
@@ -70,6 +73,9 @@ public final class MemoryConflictResolution {
       "User '%s' may not supersede a disputed memory they cannot read";
   static final String DISPUTED_IN_THE_ARCHIVE =
       "A memory this review disputes is in the Archive; restore its document to decide the review";
+  static final String REPLACED_IN_THE_ARCHIVE =
+      "A memory that replaced one this review disputes is in the Archive; restore its document to"
+          + " decide the review";
   private static final String DISPUTED_FIELDS =
       ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "owners");
 
@@ -166,8 +172,12 @@ public final class MemoryConflictResolution {
   private static void apply(Verdict verdict, Task task, Decision decision) {
     ContextMemory reviewed = reviewedMemory(task);
     List<MemoryDispute> disputes = disputesOf(task, reviewed);
-    Map<UUID, ContextMemory> disputed = disputedMemories(disputes);
+    Map<UUID, ContextMemory> stored = storedDisputed(disputes);
+    Map<UUID, ContextMemory> disputed = stillDisputed(stored, archivedWithSources()::isMarked);
     requireNoneArchived(disputed.values());
+    if (verdict == Verdict.APPROVE) {
+      requireNoLaterValue(reviewed, disputes, stored, decision.user());
+    }
     MemoryConflictDecision.requireComparedAsIs(decision.comparison(), reviewed, disputes, disputed);
     List<MemoryChange> changes =
         verdict == Verdict.APPROVE
@@ -183,6 +193,84 @@ public final class MemoryConflictResolution {
         decision.user(),
         verdict,
         reviewed.getId());
+  }
+
+  /**
+   * Approving over a claim another decision replaced since detection would leave two values
+   * Approved, so the decision is refused. When the person deciding may read the value that replaced
+   * it, the review is first pointed at it, written as that person, so they compare it; otherwise
+   * nothing is written and the memory needs a requeue. The chain starts at every disputed memory
+   * still stored: one a person deleted after another decision replaced it takes nothing back.
+   */
+  private static void requireNoLaterValue(
+      ContextMemory reviewed,
+      List<MemoryDispute> disputes,
+      Map<UUID, ContextMemory> stored,
+      String user) {
+    Map<UUID, ContextMemory> later =
+        reviewed.getEntityStatus() == ContextMemoryStatus.DRAFT
+            ? laterValuesInUse(
+                MemoryConflictDecision.laterValues(
+                    reviewed, stored, MemoryConflictResolution::live),
+                archivedWithSources()::isMarked)
+            : Map.of();
+    if (!later.isEmpty()) {
+      boolean nameable = later.values().stream().allMatch(value -> mayBeNamedBy(value, user));
+      if (nameable) {
+        repoint(reviewed, MemoryConflictDecision.repointed(disputes, later, now()), user);
+      }
+      throw new PreconditionFailedException(
+          nameable
+              ? MemoryConflictDecision.REPLACED_SINCE_DETECTION
+              : MemoryConflictDecision.REPLACED_OUT_OF_SIGHT);
+    }
+  }
+
+  /**
+   * The later values a decision must weigh. One a person deleted is gone, as a disputed memory a
+   * person deleted is; one archived with its document comes back in its stage when the document is
+   * restored, so the decision waits, as it does for a disputed memory in the Archive.
+   */
+  static Map<UUID, ContextMemory> laterValuesInUse(
+      Map<UUID, ContextMemory> later, Predicate<UUID> archivedWithSources) {
+    Map<UUID, ContextMemory> kept = stillDisputed(later, archivedWithSources);
+    if (kept.values().stream().anyMatch(value -> Boolean.TRUE.equals(value.getDeleted()))) {
+      throw TaskStateConflictException.of(REPLACED_IN_THE_ARCHIVE);
+    }
+    return kept;
+  }
+
+  /**
+   * The dispute is written as the person deciding, so they must be able to read the value it
+   * names; its other readers see its title, as for any dispute.
+   */
+  private static boolean mayBeNamedBy(ContextMemory value, String user) {
+    return ContextMemoryVisibility.isVisibleToUser(
+        value, user, SubjectContext.getSubjectContext(user).isAdmin());
+  }
+
+  private static void repoint(ContextMemory reviewed, List<MemoryDispute> disputes, String user) {
+    write(
+        new MemoryChange(
+            reviewed, JsonUtils.deepCopy(reviewed, ContextMemory.class).withDisputes(disputes)),
+        user);
+  }
+
+  private static long now() {
+    return System.currentTimeMillis();
+  }
+
+  /** Archived ones included, so a replacement chain is followed through the Archive. */
+  private static Optional<ContextMemory> live(UUID memoryId) {
+    Optional<ContextMemory> memory = Optional.empty();
+    try {
+      memory =
+          Optional.of(
+              Entity.getEntity(Entity.CONTEXT_MEMORY, memoryId, DISPUTED_FIELDS, Include.ALL));
+    } catch (EntityNotFoundException deleted) {
+      LOG.debug("[MemoryConflictReview] replacing memory {} is gone", memoryId, deleted);
+    }
+    return memory;
   }
 
   /**
@@ -262,11 +350,12 @@ public final class MemoryConflictResolution {
     if (about == null || !Entity.CONTEXT_MEMORY.equals(about.getType())) {
       throw new BadRequestException(NOT_A_MEMORY);
     }
-    return Entity.getEntity(Entity.CONTEXT_MEMORY, about.getId(), "owners", Include.NON_DELETED);
+    return Entity.getEntity(
+        Entity.CONTEXT_MEMORY, about.getId(), DISPUTED_FIELDS, Include.NON_DELETED);
   }
 
-  /** Archived ones included; a permanently deleted one is gone, and the decision skips it. */
-  private static Map<UUID, ContextMemory> disputedMemories(List<MemoryDispute> disputes) {
+  /** Archived and deleted ones included; a permanently deleted one is gone, and is skipped. */
+  private static Map<UUID, ContextMemory> storedDisputed(List<MemoryDispute> disputes) {
     Map<UUID, ContextMemory> disputed = new HashMap<>();
     disputes.forEach(
         dispute -> {
@@ -278,7 +367,7 @@ public final class MemoryConflictResolution {
             LOG.debug("[MemoryConflictReview] disputed memory {} is gone", id, deleted);
           }
         });
-    return stillDisputed(disputed, archivedWithSources()::isMarked);
+    return disputed;
   }
 
   /**

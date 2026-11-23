@@ -129,10 +129,9 @@ rather than hand-patching.
 
 **Node is not version 22**
 Some distro releases provide Node 18/20 while rolling installations may already have Node 24/26.
-The current UI tree includes `i18next-parser@9.4.0`, which accepts Node 18, 20, or 22 and rejects
-newer majors. The script uses `mise` when it is already installed, otherwise it falls back to a
-user-local `nvm` install of Node 22 — neither path needs root. Re-source `.dev-env.local.sh`
-afterwards.
+The UI `.nvmrc` pins Node 22 (`engines.node: ">=22.23.5"`). The script uses `mise` when it is
+already installed, otherwise it falls back to a user-local `nvm` install of Node 22 — neither
+path needs root. Re-source `.dev-env.local.sh` afterwards.
 
 **Yarn resolves to 3.x/4.x (Berry)**
 This repo is Yarn Classic (`engines.yarn: ^1.22.0`). `npm i -g yarn@1.22.22`. A Berry yarn

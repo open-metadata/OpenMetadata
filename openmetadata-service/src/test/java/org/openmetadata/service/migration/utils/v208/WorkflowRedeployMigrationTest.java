@@ -46,7 +46,7 @@ class WorkflowRedeployMigrationTest {
           .when(handler)
           .deploy(any(Workflow.class));
 
-      int redeployed = WorkflowRedeployMigration.redeployEach(handler, workflows);
+      int redeployed = WorkflowRedeployMigration.redeployEach(handler, workflows, "v208");
 
       assertEquals(2, redeployed);
       assertEquals(3, built.constructed().size());

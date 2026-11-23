@@ -54,7 +54,7 @@ import testCaseResultTabClassBase, {
 
 export interface UseTestCaseResultTabResult {
   testCase: TestCase | undefined;
-  setTestCase: (testCase: TestCase) => void;
+  mergeTestCase: (testCase: TestCase) => void;
   isVersionPage: boolean;
   testDefinition: TestDefinition | undefined;
   showComputeRowCount: boolean;
@@ -92,7 +92,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
   const { t } = useTranslation();
   const {
     testCase: testCaseData,
-    setTestCase,
+    mergeTestCase,
     showAILearningBanner,
     testCasePermission,
     isTabExpanded,
@@ -212,7 +212,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     if (jsonPatch.length) {
       try {
         const res = await updateTestCaseById(testCaseData.id ?? '', jsonPatch);
-        setTestCase(res);
+        mergeTestCase(res);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -241,13 +241,13 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
       if (patch.length) {
         try {
           const res = await updateTestCaseById(testCaseData.id ?? '', patch);
-          setTestCase(res);
+          mergeTestCase(res);
         } catch (error) {
           showErrorToast(error as AxiosError);
         }
       }
     },
-    [testCaseData, isReadOnly, setTestCase]
+    [testCaseData, isReadOnly, mergeTestCase]
   );
 
   const handleDescriptionChange = useCallback(
@@ -268,7 +268,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
             testCaseData.id ?? '',
             jsonPatch
           );
-          setTestCase(res);
+          mergeTestCase(res);
           refetchChangeSummary();
           showSuccessToast(
             t('server.update-entity-success', {
@@ -280,7 +280,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
         }
       }
     },
-    [testCaseData, isReadOnly, setTestCase, refetchChangeSummary, t]
+    [testCaseData, isReadOnly, mergeTestCase, refetchChangeSummary, t]
   );
 
   const handleCancelParameter = useCallback(
@@ -331,7 +331,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
 
   return {
     testCase: testCaseData,
-    setTestCase,
+    mergeTestCase,
     isVersionPage,
     testDefinition,
     showComputeRowCount,

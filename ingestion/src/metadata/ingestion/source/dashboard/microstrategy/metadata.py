@@ -379,7 +379,12 @@ class MicrostrategySource(DashboardServiceSource):
                     parsed.tables, service_name, database_name, schema_name, table_name
                 ):
                     columns_lineage = self._safe_column_lineage(
-                        dashboard_details.projectId, dataset, parsed.read_columns, table_entity, datamodel_entity
+                        dashboard_details.projectId,
+                        dataset,
+                        parsed.read_columns,
+                        table_entity,
+                        datamodel_entity,
+                        parsed.cube,
                     )
                     yield Either(
                         left=None,
@@ -431,9 +436,10 @@ class MicrostrategySource(DashboardServiceSource):
         cube and dialect: the base class asks for lineage once per dbServicePrefixes entry, and a
         cube is shared by many dossiers.
         """
-        cube_sql = self.client.get_cube_sql_details(project_id, cube_id)
-        if not cube_sql:
+        details = self.client.get_cube_sql_details(project_id, cube_id)
+        if not details:
             return ParsedCube()
+        cube_sql = details.sql
         parser = LineageParser(cube_sql, dialect=dialect, parser_type=self.get_query_parser_type())
         # The third-party cached_property is not read as a descriptor by type checkers.
         tables = tuple(str(table) for table in cast("list", parser.source_tables))
@@ -444,7 +450,7 @@ class MicrostrategySource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning("Could not read the columns of cube %s: %s", cube_id, exc)
             columns = frozenset()
-        return ParsedCube(tables=tables, read_columns=columns)
+        return ParsedCube(tables=tables, read_columns=columns, cube=details.cube)
 
     def _safe_column_lineage(self, *args: Any) -> list[ColumnLineage]:
         """Column lineage, or none: a failure here must not drop the table lineage it decorates"""
@@ -462,12 +468,14 @@ class MicrostrategySource(DashboardServiceSource):
         cube_reads: frozenset[SourceColumn],
         table_entity: Table,
         datamodel_entity: DashboardDataModel,
+        sql_cube: str | None = None,
     ) -> list[ColumnLineage]:
         """
         Column lineage from one table to a data model. A data model column is matched on the
         warehouse columns the cube SQL reads: through its schema attribute's form expressions, or
         for a Data Import cube on its name, which the import derives from the column. Metrics of a
         schema cube are left out: the API does not tell which fact column a metric aggregates.
+        ``sql_cube`` is the cube the SQL came from, whose type decides how objects are matched.
         """
         schema = getattr(table_entity.databaseSchema, "name", None)
         database = getattr(table_entity.database, "name", None)
@@ -479,16 +487,18 @@ class MicrostrategySource(DashboardServiceSource):
         if not reads:
             return []
         table_entity = self._with_columns(table_entity)
-        data_import = self.client.get_dataset_subtype(project_id, dataset.id) in DATA_IMPORT_CUBE_SUBTYPES
+        data_import = self.client.get_dataset_subtype(project_id, sql_cube or dataset.id) in DATA_IMPORT_CUBE_SUBTYPES
         targets = self._data_model_columns(dataset, datamodel_entity)
         # A dataset may list one object more than once; it is still one data model column.
         objects = {available_object.id: available_object for available_object in dataset.availableObjects or []}
         keys = Counter(normalized(available_object.name or "") for available_object in objects.values())
         ambiguous = {key for key, count in keys.items() if count > 1}
+        names = Counter((available_object.name or "").casefold() for available_object in objects.values())
+        repeated = {name for name, count in names.items() if count > 1}
         lineage = []
         for available_object in objects.values():
             for target, columns in self._object_columns(
-                project_id, available_object, data_import, reads, targets, ambiguous
+                project_id, available_object, data_import, reads, targets, ambiguous, repeated
             ):
                 from_columns = sorted({fqn for column in columns if (fqn := get_column_fqn(table_entity, column))})
                 if from_columns:
@@ -508,6 +518,7 @@ class MicrostrategySource(DashboardServiceSource):
         reads: set[SourceColumn],
         targets: dict[str, str],
         ambiguous: set[str],
+        repeated: set[str],
     ) -> Iterable[tuple[str, set[str]]]:
         """
         (data model column FQN, warehouse columns of this table it reads) for one dataset object.
@@ -518,7 +529,7 @@ class MicrostrategySource(DashboardServiceSource):
         if not target:
             return
         if data_import:
-            match = name_match(available_object.name or "", {column for _, column in reads}, ambiguous)
+            match = name_match(available_object.name or "", {column for _, column in reads}, ambiguous, repeated)
             columns = {match} if match else set()
         elif available_object.type == "attribute":
             form_columns = self.client.get_attribute_form_columns(project_id, available_object.id) or {}

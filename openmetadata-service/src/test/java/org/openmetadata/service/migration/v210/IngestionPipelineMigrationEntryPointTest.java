@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -53,6 +54,8 @@ import org.openmetadata.service.migration.utils.v210.DataContractEntityReference
 import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration;
 import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
+import org.openmetadata.service.migration.utils.v210.HealthyDataAssetsChartMigration;
+import org.openmetadata.service.migration.utils.v210.IncidentWorkflowTransitionMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.McpConsentColumns;
@@ -107,6 +110,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(AlertBacklogMigration.class);
         MockedStatic<AuthenticationSecretsEncryptionMigration> authenticationSecretsMigration =
             mockStatic(AuthenticationSecretsEncryptionMigration.class);
+        MockedStatic<HealthyDataAssetsChartMigration> healthyDataAssetsChartMigration =
+            mockStatic(HealthyDataAssetsChartMigration.class);
         MockedStatic<ConsumerIdMigration> consumerIdMigration =
             mockStatic(ConsumerIdMigration.class);
         MockedStatic<OntologyRolesMigration> ontologyRoles =
@@ -119,6 +124,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(DeltaLakeRetirementMigration.class);
         MockedStatic<GlossaryAutomationReviewMigration> glossaryAutomationReview =
             mockStatic(GlossaryAutomationReviewMigration.class);
+        MockedStatic<IncidentWorkflowTransitionMigration> incidentWorkflowMigration =
+            mockStatic(IncidentWorkflowTransitionMigration.class);
         MockedStatic<LineageEdgePipelineCleanupMigration> lineageEdgeCleanup =
             mockStatic(LineageEdgePipelineCleanupMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
@@ -151,6 +158,8 @@ class IngestionPipelineMigrationEntryPointTest {
       authenticationSecretsMigration.verify(
           () ->
               AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
+      healthyDataAssetsChartMigration.verify(
+          HealthyDataAssetsChartMigration::repairHealthyDataAssetsCharts);
       // 2.1.0 databases skip 2.0.8's data migration, so 2.1.0 repairs containment too.
       containmentRepair.verify(
           () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
@@ -182,7 +191,14 @@ class IngestionPipelineMigrationEntryPointTest {
         collationAlignment.verify(() -> EntityExtensionCollationAlignment.alignOnMySql(handle));
       }
       // `migrate` runs before Flowable starts, so the step that deploys a workflow starts it.
-      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));
+      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)), times(2));
+      InOrder initializedBeforeIncidentMigration =
+          inOrder(WorkflowHandler.class, IncidentWorkflowTransitionMigration.class);
+      initializedBeforeIncidentMigration.verify(
+          workflowHandler, () -> WorkflowHandler.initialize(any(), eq(true)), times(2));
+      initializedBeforeIncidentMigration.verify(
+          incidentWorkflowMigration,
+          IncidentWorkflowTransitionMigration::addAssignedStatusTransitions);
       glossaryAutomationReview.verify(
           GlossaryAutomationReviewMigration::sendAutomationProposalsToPeople);
       lineageEdgeCleanup.verify(

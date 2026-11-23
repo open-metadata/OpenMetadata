@@ -339,6 +339,10 @@ describe('MetricDetails component', () => {
         expect.objectContaining({
           entityFqn: 'test.metric',
           type: AssetsOfEntity.METRIC,
+          // A metric with many linked assets embeds every id in a `must_not` `ids` filter,
+          // which can overflow the GET request-line size limit. The Add-Assets modal must
+          // route the search through POST /v1/search/query.
+          useQueryPost: true,
           queryFilter: {
             query: {
               bool: {

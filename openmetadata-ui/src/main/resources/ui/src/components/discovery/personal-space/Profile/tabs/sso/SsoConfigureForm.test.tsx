@@ -294,7 +294,11 @@ describe('SsoConfigureForm', () => {
       onBack: expect.any(Function),
     });
 
-    fireEvent.click(screen.getByTestId('sso-test-login-back'));
+    act(() => {
+      onSubPageChange.mock.calls[
+        onSubPageChange.mock.calls.length - 1
+      ][0].onBack();
+    });
 
     expect(screen.queryByTestId('sso-test-login-page')).not.toBeInTheDocument();
     expect(onSubPageChange).toHaveBeenLastCalledWith(undefined);

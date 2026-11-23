@@ -1154,26 +1154,17 @@ test.describe(
   { tag: [DOMAIN_TAGS.PLATFORM] },
   () => {
     let persona: PersonaClass;
-    // Save & go writes the persona document, so it gets a persona of its own.
-    let savePersona: PersonaClass;
 
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       persona = buildPersona('exit');
-      savePersona = buildPersona('exit-save');
-      await settleAll([
-        persona.create(apiContext),
-        savePersona.create(apiContext),
-      ]);
+      await persona.create(apiContext);
       await afterAction();
     });
 
     test.afterAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
-      await settleAll([
-        persona.delete(apiContext),
-        savePersona.delete(apiContext),
-      ]);
+      await persona.delete(apiContext);
       await afterAction();
     });
 
@@ -1190,11 +1181,11 @@ test.describe(
 
       await expect(unsavedPopover(page)).toBeVisible();
       await expect(
-        page.getByTestId('unsaved-changes-popover-discard')
+        page.getByTestId('unsaved-changes-popover-confirm')
       ).toHaveText('Discard & go');
       await expect(page.getByTestId('unsaved-changes-modal')).not.toBeVisible();
 
-      await page.getByTestId('unsaved-changes-popover-discard').click();
+      await page.getByTestId('unsaved-changes-popover-confirm').click();
 
       await expect(page.getByTestId('persona-detail-container')).toBeVisible();
       await expect(page.getByTestId('ai-profile-page')).toBeVisible();
@@ -1216,7 +1207,7 @@ test.describe(
         await expect(unsavedPopover(page)).toBeVisible();
 
         await page
-          .getByTestId('unsaved-changes-popover-discard')
+          .getByTestId('unsaved-changes-popover-confirm')
           .press('Escape');
 
         await expectEditorKeepsEdits(page);
@@ -1228,7 +1219,7 @@ test.describe(
         await expect(unsavedPopover(page)).toBeVisible();
 
         await page
-          .getByTestId('unsaved-changes-popover-discard')
+          .getByTestId('unsaved-changes-popover-confirm')
           .press('Escape');
 
         await expectEditorKeepsEdits(page);
@@ -1249,38 +1240,11 @@ test.describe(
       await expect(unsavedPopover(page)).toBeVisible();
       await expect(page.getByTestId('unsaved-changes-modal')).not.toBeVisible();
 
-      await page.getByTestId('unsaved-changes-popover-discard').click();
+      await page.getByTestId('unsaved-changes-popover-confirm').click();
 
       await expect(page.getByTestId('app-shell')).toBeVisible();
       await expect(page.getByTestId('ai-profile-page')).not.toBeVisible();
       await expect(unsavedPopover(page)).not.toBeVisible();
-    });
-
-    test('Save & go saves the edits, then leaves', async ({ page }) => {
-      await openDirtyNavigationEditor(page, savePersona.data.name);
-
-      await page.getByTestId('customize-cancel').click();
-
-      await expect(unsavedPopover(page)).toBeVisible();
-
-      const saveResponse = waitForResponseWithStatus(
-        page,
-        isLayoutSave,
-        [200, 201]
-      );
-      await page.getByTestId('unsaved-changes-popover-confirm').click();
-      const response = await saveResponse;
-
-      expect(response.request().postData() ?? '').toContain('explore');
-      await expect(page.getByTestId('persona-detail-container')).toBeVisible();
-      await expect(unsavedPopover(page)).not.toBeVisible();
-
-      await page.getByTestId('customize-card-navigation').click();
-
-      await expect(
-        page.getByTestId('ai-sidebar-switch-explore').getByRole('switch')
-      ).not.toBeChecked();
-      await expect(page.getByTestId('customize-save')).toBeDisabled();
     });
 
     test('Home page minimize returns to the persona detail in the modal', async ({
