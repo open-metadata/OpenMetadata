@@ -80,13 +80,13 @@ final class IdpCertificatePem {
 
   private static Optional<SequencedSet<String>> certificatesOf(final List<String> blocks) {
     final SequencedSet<String> certificates = new LinkedHashSet<>();
-    boolean readable = true;
+    boolean isReadable = true;
     for (final String block : blocks) {
       final Optional<List<String>> decoded = decode(block);
       decoded.ifPresent(certificates::addAll);
-      readable = readable && decoded.isPresent();
+      isReadable = isReadable && decoded.isPresent();
     }
-    return readable ? Optional.of(certificates) : Optional.empty();
+    return isReadable ? Optional.of(certificates) : Optional.empty();
   }
 
   /** The base64 DER of each certificate in one block, when the block is nothing but certificates. */
@@ -100,7 +100,7 @@ final class IdpCertificatePem {
       if (!parsed.isEmpty() && Arrays.equals(der, concatenatedEncodings(parsed))) {
         certificates = Optional.of(parsed.stream().map(IdpCertificatePem::base64Of).toList());
       }
-    } catch (IllegalArgumentException | CertificateException e) {
+    } catch (IllegalArgumentException | CertificateException notACertificate) {
       certificates = Optional.empty();
     }
     return certificates;
@@ -116,11 +116,13 @@ final class IdpCertificatePem {
   }
 
   private static String base64Of(final Certificate certificate) {
+    final byte[] encoded;
     try {
-      return Base64.getEncoder().encodeToString(certificate.getEncoded());
-    } catch (CertificateException e) {
-      throw new IllegalStateException("A parsed certificate has no encoding", e);
+      encoded = certificate.getEncoded();
+    } catch (CertificateException noEncoding) {
+      throw new IllegalStateException("A parsed certificate has no encoding", noEncoding);
     }
+    return Base64.getEncoder().encodeToString(encoded);
   }
 
   private static String toPem(final SequencedSet<String> certificates) {

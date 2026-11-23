@@ -15,11 +15,14 @@ package org.openmetadata.service.migration.utils.v2010;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.migration.utils.v2010.SamlCertificateFixtures.BEGIN;
+import static org.openmetadata.service.migration.utils.v2010.SamlCertificateFixtures.END;
+import static org.openmetadata.service.migration.utils.v2010.SamlCertificateFixtures.MOCK_IDP;
+import static org.openmetadata.service.migration.utils.v2010.SamlCertificateFixtures.OTHER_IDP;
+import static org.openmetadata.service.migration.utils.v2010.SamlCertificateFixtures.body;
+import static org.openmetadata.service.migration.utils.v2010.SamlCertificateFixtures.singleLine;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
@@ -34,10 +37,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class IdpCertificatePemTest {
-  private static final String BEGIN = "-----BEGIN CERTIFICATE-----";
-  private static final String END = "-----END CERTIFICATE-----";
-  private static final String MOCK_IDP = resource("/saml/mock-idp.crt").strip();
-  private static final String OTHER_IDP = resource("/saml/other-idp.crt").strip();
   private static final String BUNDLE = MOCK_IDP + "\n" + OTHER_IDP;
 
   static Stream<Arguments> singleCertificateLayouts() {
@@ -149,14 +148,6 @@ class IdpCertificatePemTest {
                 new ByteArrayInputStream(pem.getBytes(StandardCharsets.US_ASCII))));
   }
 
-  private static String singleLine(final String pem) {
-    return BEGIN + body(pem) + END;
-  }
-
-  private static String body(final String pem) {
-    return pem.replace(BEGIN, "").replace(END, "").replaceAll("\\s+", "");
-  }
-
   private static String wrapped64(final String pem) {
     return pem.replace(BEGIN + "\n", "").replace("\n" + END, "");
   }
@@ -178,13 +169,5 @@ class IdpCertificatePemTest {
     final byte[] padded = new byte[der.length + 4];
     System.arraycopy(der, 0, padded, 0, der.length);
     return Base64.getEncoder().encodeToString(padded);
-  }
-
-  private static String resource(final String path) {
-    try (InputStream stream = IdpCertificatePemTest.class.getResourceAsStream(path)) {
-      return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
   }
 }

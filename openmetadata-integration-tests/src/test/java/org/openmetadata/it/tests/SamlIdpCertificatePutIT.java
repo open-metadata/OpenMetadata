@@ -38,6 +38,7 @@ import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.ApiException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -153,7 +154,7 @@ class SamlIdpCertificatePutIT {
         + "}]";
   }
 
-  private static String patch(final String jsonPatch) throws Exception {
+  private static String patch(final String jsonPatch) {
     return SdkClients.adminClient()
         .getHttpClient()
         .executeForString(
@@ -165,17 +166,18 @@ class SamlIdpCertificatePutIT {
 
   /** The answer of a request that may fail: its body, or the message of its failure. */
   private interface Request {
-    String send() throws Exception;
+    String send();
   }
 
+  /** A refusal answers 400; a reload that cannot run the stored IdP answers 500. */
   private static String attempt(final Request request) {
     String answer;
     try {
       answer = String.valueOf(request.send());
-    } catch (InvalidRequestException e) {
-      answer = e.getMessage() + " " + e.getResponseBody();
-    } catch (Exception e) {
-      answer = String.valueOf(e.getMessage());
+    } catch (InvalidRequestException refused) {
+      answer = refused.getMessage() + " " + refused.getResponseBody();
+    } catch (ApiException failed) {
+      answer = failed.getMessage() + " " + failed.getResponseBody();
     }
     return answer;
   }
@@ -235,14 +237,14 @@ class SamlIdpCertificatePutIT {
     return storedAuthentication().at("/samlConfiguration/idp/idpX509Certificate").asText();
   }
 
-  private static String get() throws Exception {
+  private static String get() {
     return SdkClients.adminClient()
         .getHttpClient()
         .executeForString(
             HttpMethod.GET, SECURITY_CONFIG_PATH, null, RequestOptions.builder().build());
   }
 
-  private static String put(final String body) throws Exception {
+  private static String put(final String body) {
     return SdkClients.adminClient()
         .getHttpClient()
         .executeForString(

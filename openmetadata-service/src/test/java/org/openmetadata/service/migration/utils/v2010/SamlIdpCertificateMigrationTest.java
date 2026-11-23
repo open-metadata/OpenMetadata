@@ -16,13 +16,14 @@ package org.openmetadata.service.migration.utils.v2010;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.openmetadata.service.migration.utils.v2010.SamlCertificateFixtures.BEGIN;
+import static org.openmetadata.service.migration.utils.v2010.SamlCertificateFixtures.END;
+import static org.openmetadata.service.migration.utils.v2010.SamlCertificateFixtures.MOCK_IDP;
+import static org.openmetadata.service.migration.utils.v2010.SamlCertificateFixtures.singleLine;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
@@ -51,11 +52,7 @@ class SamlIdpCertificateMigrationTest {
   private static final String POSTGRES_DIALECT = "postgres";
   private static final String AUTHENTICATION = "authenticationConfiguration";
   private static final String EMAIL = "emailConfiguration";
-  private static final String BEGIN = "-----BEGIN CERTIFICATE-----";
-  private static final String END = "-----END CERTIFICATE-----";
-  private static final String MOCK_IDP = resource("/saml/mock-idp.crt").strip();
-  private static final String SINGLE_LINE =
-      BEGIN + MOCK_IDP.replace(BEGIN, "").replace(END, "").replaceAll("\\s+", "") + END;
+  private static final String SINGLE_LINE = singleLine(MOCK_IDP);
   private static final String EMAIL_JSON =
       "{\"senderMail\":\"om@example.com\",\"serverEndpoint\":\"smtp.example.com\"}";
 
@@ -285,13 +282,5 @@ class SamlIdpCertificateMigrationTest {
 
   private static ConnectionType connectionType(final String dialect) {
     return POSTGRES_DIALECT.equals(dialect) ? ConnectionType.POSTGRES : ConnectionType.MYSQL;
-  }
-
-  private static String resource(final String path) {
-    try (InputStream stream = SamlIdpCertificateMigrationTest.class.getResourceAsStream(path)) {
-      return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
-    }
   }
 }

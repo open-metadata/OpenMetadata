@@ -237,11 +237,11 @@ public class SamlValidator {
     if (!nullOrEmpty(certificate)) {
       try {
         validateX509Certificate(certificate, "IdP X509 certificate", samlConfig);
-      } catch (Exception e) {
+      } catch (CertificateException refused) {
         error =
             ValidationErrorBuilder.createFieldError(
                 ValidationErrorBuilder.FieldPaths.SAML_IDP_CERT,
-                "IdP certificate validation failed: " + e.getMessage());
+                "IdP certificate validation failed: " + refused.getMessage());
       }
     }
     return error;
@@ -488,7 +488,8 @@ public class SamlValidator {
   }
 
   private void validateX509Certificate(
-      String certData, String certName, SamlSSOClientConfig samlConfig) throws Exception {
+      String certData, String certName, SamlSSOClientConfig samlConfig)
+      throws CertificateException {
     try {
       for (X509Certificate cert :
           samlConfig != null
@@ -497,10 +498,9 @@ public class SamlValidator {
         validateParsedCertificate(cert, certName, samlConfig);
       }
 
+    } catch (CertificateException e) {
+      throw e;
     } catch (Exception e) {
-      if (e instanceof CertificateException) {
-        throw e;
-      }
       throw new CertificateException("Failed to parse " + certName + ": " + e.getMessage(), e);
     }
   }

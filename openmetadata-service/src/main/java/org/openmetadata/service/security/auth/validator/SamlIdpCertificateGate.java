@@ -48,10 +48,10 @@ public final class SamlIdpCertificateGate {
   public static void requireUsable(
       final AuthenticationConfiguration candidate, final AuthenticationConfiguration stored) {
     final Optional<String> certificate = activeIdpCertificate(candidate);
-    final boolean changed =
+    final boolean hasChangedCertificate =
         certificate.isPresent() && !certificate.equals(activeIdpCertificate(stored));
     final FieldError error =
-        changed
+        hasChangedCertificate
             ? new SamlValidator().validateIdpCertificate(candidate.getSamlConfiguration())
             : null;
     if (error != null) {
