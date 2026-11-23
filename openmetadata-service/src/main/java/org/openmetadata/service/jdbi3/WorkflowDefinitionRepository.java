@@ -86,6 +86,17 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     return getEntitiesFromSeedData(".*json/data/governance/workflows/.*\\.json$");
   }
 
+  /** Runs on every start, after seed data, so the deployed workflows follow this server's code. */
+  public void deployChangedWorkflows() {
+    final List<String> deployed =
+        WorkflowHandler.getInstance()
+            .deployChanged(listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter()));
+    LOG.info(
+        "Deployed {} workflow(s) that changed since their last deployment: {}",
+        deployed.size(),
+        deployed);
+  }
+
   @Override
   protected void postCreate(WorkflowDefinition entity) {
     WorkflowHandler.getInstance().deploy(new Workflow(entity));
