@@ -812,6 +812,41 @@ export const findTreeNodeKeyByBrowsePath = (
   return result;
 };
 
+/**
+ * Keys of the loaded nodes that sit above the browsed node on the active
+ * browse path. A tree rebuild (chip removal) or a deep link re-keys every
+ * level below the roots, so the tree expands these to reveal the path again.
+ */
+export const getBrowsePathAncestorKeys = (
+  treeNodes: ExploreTreeNode[],
+  browseFields: ExploreQuickFilterField[]
+): string[] => {
+  const keys: string[] = [];
+  if (isEmpty(browseFields) || isCategoryBrowsePath(browseFields)) {
+    return keys;
+  }
+
+  const visit = (nodes: ExploreTreeNode[]) => {
+    nodes.forEach((node) => {
+      const filterField = node.data?.filterField;
+      if (
+        filterField &&
+        filterField.length < browseFields.length &&
+        getBrowsePathSignature(filterField) ===
+          getBrowsePathSignature(browseFields.slice(0, filterField.length))
+      ) {
+        keys.push(node.key);
+      }
+      if (node.children) {
+        visit(node.children);
+      }
+    });
+  };
+  visit(treeNodes);
+
+  return keys;
+};
+
 export const findTreeNodeByKey = (
   treeNodes: ExploreTreeNode[],
   key: string
