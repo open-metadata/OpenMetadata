@@ -512,7 +512,7 @@ public class SamlValidator {
     }
 
     // Warn if certificate expires soon (within 30 days)
-    long daysUntilExpiry = (notAfter.getTime() - now.getTime()) / (24 * 60 * 60 * 1000);
+    final long daysUntilExpiry = (notAfter.getTime() - now.getTime()) / (24 * 60 * 60 * 1000);
     if (daysUntilExpiry <= 30) {
       LOG.warn(
           "SAML {} expires in {} days ({}). Consider renewing soon.",
