@@ -247,6 +247,56 @@ describe('TaskTransitionFormModal', () => {
     });
   });
 
+  it('keeps confirm disabled until a comment is entered when the transition requires one', () => {
+    const onConfirm = jest.fn();
+    const approve = SCHEMA.transitionForms?.approve as {
+      formSchema: { properties: Record<string, unknown> };
+    };
+    render(
+      <TaskTransitionFormModal
+        open
+        actionLabel="Approve"
+        schema={{
+          ...SCHEMA,
+          transitionForms: {
+            approve: {
+              formSchema: {
+                ...approve.formSchema,
+                properties: {
+                  ...approve.formSchema.properties,
+                  comment: { type: 'string', title: 'Comment' },
+                },
+              },
+              uiSchema: { 'ui:resolution': { mode: 'payload' }, comment: {} },
+            },
+          },
+        }}
+        task={TASK}
+        title="Approve"
+        transition={{ ...TRANSITION, requiresComment: true }}
+        onCancel={jest.fn()}
+        onConfirm={onConfirm}
+      />
+    );
+
+    fireEvent.change(screen.getByRole('textbox', { name: /Proposed Text/ }), {
+      target: { value: 'new description' },
+    });
+
+    expect(screen.getByTestId('task-transition-form-confirm')).toBeDisabled();
+
+    fireEvent.change(screen.getByRole('textbox', { name: /Comment/ }), {
+      target: { value: 'Looks good' },
+    });
+    fireEvent.click(screen.getByTestId('task-transition-form-confirm'));
+
+    expect(onConfirm).toHaveBeenCalledWith({
+      targetField: 'description',
+      proposedText: 'new description',
+      comment: 'Looks good',
+    });
+  });
+
   // A required boolean field set to `false` is a valid answer, not a missing
   // one — confirm must stay enabled so the resolver can submit `false`.
   it('does not block confirm for a required boolean field set to false', () => {

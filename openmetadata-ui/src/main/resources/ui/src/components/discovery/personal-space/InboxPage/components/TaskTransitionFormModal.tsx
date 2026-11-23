@@ -32,6 +32,7 @@ import { TaskPayload } from '../../../../../rest/tasksAPI';
 // alternative (lazy-loading) would defer the only meaningful content of the
 // modal behind a suspense fallback on every open.
 import TaskPayloadSchemaFields from '../../../../../pages/TasksPage/shared/TaskPayloadSchemaFields';
+import { isDescriptionContentEmpty } from '../../../../../utils/BlockEditorPureUtils';
 import {
   applyTaskFormSchemaDefaults,
   getEditableTaskPayload,
@@ -114,8 +115,7 @@ const TaskTransitionFormModal: React.FC<TaskTransitionFormModalProps> = ({
   // `false`/`0` answer.
   const isMissingRequired = useMemo(() => {
     const requiredFields = transitionFormSchema?.required;
-
-    return (
+    const isFieldMissing =
       Array.isArray(requiredFields) &&
       requiredFields.some((field) => {
         if (typeof field !== 'string') {
@@ -124,9 +124,17 @@ const TaskTransitionFormModal: React.FC<TaskTransitionFormModalProps> = ({
         const value = payload?.[field];
 
         return value === undefined || value === null || value === '';
-      })
-    );
-  }, [transitionFormSchema, payload]);
+      });
+    // `requiresComment` adds an optional `comment` field; the server still
+    // rejects the transition without one.
+    const isCommentMissing =
+      Boolean(transition?.requiresComment) &&
+      isDescriptionContentEmpty(
+        typeof payload?.comment === 'string' ? payload.comment : ''
+      );
+
+    return isFieldMissing || isCommentMissing;
+  }, [transitionFormSchema, transition, payload]);
 
   const handleConfirm = () => {
     if (isLoading || isMissingRequired) {
