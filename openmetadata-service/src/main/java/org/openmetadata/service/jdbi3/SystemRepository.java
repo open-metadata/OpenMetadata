@@ -524,6 +524,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
    * Stores {@code setting} and answers 201 or 200. A write that fails is thrown, as a 400 when the
    * value is refused and a 500 otherwise, never answered with a response a caller such as an
    * administration command could ignore and report as stored.
+   * ADR:2026-11-23-a-settings-write-that-fails-is-thrown
    */
   @Transaction
   public Response createOrUpdate(final Settings setting) {
