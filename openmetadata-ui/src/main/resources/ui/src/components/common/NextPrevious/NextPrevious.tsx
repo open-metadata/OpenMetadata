@@ -56,8 +56,7 @@ const NextPrevious: FC<NextPreviousProps> = ({
   const totalPages = computeTotalPages(pageSize, paging.total);
   const cursorTotalPages = Math.max(
     totalPages,
-    currentPage + (paging.after ? 1 : 0),
-    currentPage
+    currentPage + (!totalPages && paging.after ? 1 : 0)
   );
   const displayTotalPages = isNumberBased ? totalPages : cursorTotalPages;
 
