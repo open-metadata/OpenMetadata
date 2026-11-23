@@ -94,31 +94,41 @@ const toNumberString = (value?: number) =>
 
 const MAX_MINUTE_INTERVAL = 2_147_483_647;
 const NON_NEGATIVE_WHOLE_NUMBER = /^[0-9]+(?:\.0+)?$/;
+const DECIMAL_NUMBER =
+  /^-?(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?$/;
+
+const isMinuteInterval = (interval: string) =>
+  NON_NEGATIVE_WHOLE_NUMBER.test(interval) &&
+  Number(interval) <= MAX_MINUTE_INTERVAL;
+
+const isDecimalNumber = (interval: string) =>
+  DECIMAL_NUMBER.test(interval) && Number.isFinite(Number(interval));
 
 const getRefreshFrequencyError = (
   values: Partial<ContractSLAFormValues>,
   t: TFunction
 ) => {
-  const interval = values.refresh_frequency_interval?.trim() ?? '';
+  const interval = values.refresh_frequency_interval?.trim();
   const unit = values.refresh_frequency_unit?.id;
 
-  if (!interval && unit) {
-    return t('message.field-text-is-required', {
-      fieldText: t('label.interval'),
-    });
+  if (!interval && !unit) {
+    return undefined;
   }
-  if (interval && !unit) {
-    return t('message.field-text-is-required', { fieldText: t('label.unit') });
+  if (!interval || !unit) {
+    const missingField = interval ? 'label.unit' : 'label.interval';
+
+    return t('message.field-text-is-required', { fieldText: t(missingField) });
   }
-  if (
-    unit === RefreshFrequencyUnit.Minute &&
-    (!NON_NEGATIVE_WHOLE_NUMBER.test(interval) ||
-      Number(interval) > MAX_MINUTE_INTERVAL)
-  ) {
-    return t('message.integer-value-out-of-range', {
-      min: 0,
-      max: MAX_MINUTE_INTERVAL,
-    });
+  if (unit === RefreshFrequencyUnit.Minute) {
+    return isMinuteInterval(interval)
+      ? undefined
+      : t('message.integer-value-out-of-range', {
+          min: 0,
+          max: MAX_MINUTE_INTERVAL,
+        });
+  }
+  if (!isDecimalNumber(interval)) {
+    return t('label.invalid');
   }
 
   if (Number(interval) < 0) {
@@ -409,18 +419,16 @@ export const ContractSLAFormTab: React.FC<{
   const numberField = (
     name: keyof ContractSLAFormValues,
     label: string,
-    testId: string,
-    required = true
+    testId: string
   ): FieldProp => ({
     id: name,
     label,
     name,
     placeholder: t('label.enter-entity', { entity: label }),
     props: { 'data-testid': testId, size: 'md' },
-    required,
+    required: true,
     rules: {
-      required:
-        required && t('message.field-text-is-required', { fieldText: label }),
+      required: t('message.field-text-is-required', { fieldText: label }),
       min: {
         value: 0,
         message: t('message.entity-size-less-than', { entity: label, min: 0 }),
@@ -478,15 +486,22 @@ export const ContractSLAFormTab: React.FC<{
           t('message.refresh-frequency-contract-description'),
           renderPair(
             getField({
-              ...numberField(
-                'refresh_frequency_interval',
-                t('label.interval'),
-                'refresh-frequency-interval-input',
-                false
-              ),
+              id: 'refresh_frequency_interval',
+              label: t('label.interval'),
+              name: 'refresh_frequency_interval',
+              placeholder: t('label.enter-entity', {
+                entity: t('label.interval'),
+              }),
+              props: {
+                'data-testid': 'refresh-frequency-interval-input',
+                inputMode: 'decimal',
+                size: 'md',
+              },
               rules: {
                 validate: () => getRefreshFrequencyError(form.getValues(), t),
               },
+              // A number input reports incomplete edits like "15e" as empty.
+              type: FieldTypes.TEXT,
             }),
             getField(
               unitField(

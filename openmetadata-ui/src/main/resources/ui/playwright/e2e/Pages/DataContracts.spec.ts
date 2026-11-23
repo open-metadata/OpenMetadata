@@ -1932,7 +1932,7 @@ test.describe('Data Contracts', () => {
       const editor = page.getByTestId('add-contract-card');
       const slaTab = editor.getByRole('tab', { name: 'SLA', exact: true });
       await slaTab.click();
-      const interval = editor.getByRole('spinbutton', { name: 'Interval' });
+      const interval = editor.getByRole('textbox', { name: 'Interval' });
       const saveButton = editor.getByTestId('save-contract-btn');
       await interval.fill('15');
       await selectDropdownOption({
@@ -1947,7 +1947,8 @@ test.describe('Data Contracts', () => {
       await clickEditContractButton(page);
       await slaTab.click();
       await expect(interval).toHaveValue('15');
-      await interval.fill('1.5');
+      await interval.fill('15e');
+      await expect(interval).toHaveValue('15e');
       await expect(editor.getByText(/enter a whole number/i)).toBeVisible();
       await editor.getByRole('tab', { name: 'Contract Details' }).click();
       await fillContractName(page, 'Updated minute freshness');
