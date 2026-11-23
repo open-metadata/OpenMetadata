@@ -25,6 +25,10 @@ updates:
       # See ingestion/setup.py comment on the tableau pin.
       - dependency-name: "urllib3"
         versions: [">=2.0.0"]
+      # Must match the ANTLR CLI that generates the FQN parser (ANTLR_VERSION in the
+      # root Makefile); 4.10+ cannot load 4.9-generated parsers.
+      - dependency-name: "antlr4-python3-runtime"
+        versions: [">=4.10.0"]
 
   - package-ecosystem: "maven"
     directory: "/"
@@ -70,7 +74,7 @@ updates:
     ignore:
       # The antlr4 runtime must match the ANTLR CLI that generates src/generated/antlr,
       # pinned with the Python runtime by ANTLR_VERSION in the root Makefile. 4.10+
-      # cannot load 4.9-generated parsers and drops the antlr4/src/antlr4/tree path.
+      # cannot load 4.9-generated parsers.
       - dependency-name: "antlr4"
         versions: [">=4.10.0"]
       - dependency-name: "@types/antlr4"
