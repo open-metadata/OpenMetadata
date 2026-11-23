@@ -994,7 +994,8 @@ public class SystemResource {
 
       return Response.ok(getSecurityConfig(securityContext)).build();
     } catch (BadRequestException e) {
-      // Raised only by validateConfigurationOfActiveProvider, before anything is written. Rethrow
+      // Raised by validateConfigurationOfActiveProvider before anything is written, or by the
+      // settings write step, which refuses a value such as an unusable IdP certificate. Rethrow
       // so
       // the mapper answers 400 rather than letting the catch below report it as a server failure —
       // and keep the type narrow, so a failure from the writes below still surfaces as a 5xx
