@@ -126,6 +126,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.security.Authorizer;
@@ -138,6 +139,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LikeEscape;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidatorUtil;
 
@@ -1859,8 +1861,35 @@ public class TableRepository extends EntityRepository<Table> {
    * recorded later -- see {@link TimeSeriesDAOs.ProfilerDataTimeSeriesDAO#deleteTableProfilerData}.
    */
   @Override
+  protected void postUpdate(Table original, Table updated) {
+    super.postUpdate(original, updated);
+    if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
+        || !bindingColumnFqns(original).equals(bindingColumnFqns(updated))) {
+      refreshOntologyBindings(updated);
+    }
+  }
+
+  @Override
+  protected void postRestore(Table table) {
+    super.postRestore(table);
+    refreshOntologyBindings(table);
+  }
+
+  private Set<String> bindingColumnFqns(Table table) {
+    final List<String> fqns = new ArrayList<>();
+    collectColumnFqns(table.getColumns(), fqns);
+    return new HashSet<>(fqns);
+  }
+
+  private void refreshOntologyBindings(Table table) {
+    PostCommitActionQueue.runOrDefer(
+        () -> OntologyTermSearch.bindingsChanged(table.getEntityReference()));
+  }
+
+  @Override
   protected void postDelete(Table table, boolean hardDelete) {
     super.postDelete(table, hardDelete);
+    refreshOntologyBindings(table);
     if (hardDelete) {
       long deletedAt = System.currentTimeMillis();
       AsyncService.getInstance()

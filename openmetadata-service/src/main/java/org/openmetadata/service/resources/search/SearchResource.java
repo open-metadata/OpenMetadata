@@ -17,9 +17,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -79,7 +76,6 @@ import org.openmetadata.service.cache.CachedSearchLayer;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobArgs;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.monitoring.LatencyPhase;
@@ -93,7 +89,6 @@ import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.security.PrivateSearchFields;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.TestCaseSearchMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -102,7 +97,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.CSVExportResponse;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobKey;
@@ -283,8 +277,8 @@ public class SearchResource {
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
 
-    return filterQueryResponse(
-        cachedSearch(request, subjectContext), securityContext, subjectContext, request);
+    return filterSearchResponses(
+        cachedSearch(request, subjectContext), securityContext, request, subjectContext);
   }
 
   @POST
@@ -342,59 +336,23 @@ public class SearchResource {
             .withSearchAfter(body.getSearchAfter())
             .withExplain(body.getExplain())
             .withIncludeAggregations(body.getIncludeAggregations());
-    return filterQueryResponse(
-        cachedSearch(request, subjectContext), securityContext, subjectContext, request);
+    return filterSearchResponses(
+        cachedSearch(request, subjectContext), securityContext, request, subjectContext);
   }
 
-  private Response filterQueryResponse(
+  private Response filterSearchResponses(
       Response response,
       SecurityContext securityContext,
-      SubjectContext subject,
-      SearchRequest request)
+      SearchRequest request,
+      SubjectContext subject)
       throws IOException {
-    final var masked = filterTestCaseResponses(response, securityContext, request);
-    if (subject.isAdmin()
-        || masked.getStatus() != 200
-        || !(masked.getEntity() instanceof String body)
-        || searchRepository.getEntityTypesForIndex(request.getIndex()).stream()
-            .noneMatch(OntologyTermSearch::isTerm)) {
-      return masked;
-    }
-    final var result = JsonUtils.getObjectMapper().readTree(body);
-    final Map<String, Boolean> readableTables =
-        Caffeine.newBuilder().maximumSize(512).<String, Boolean>build().asMap();
-    for (JsonNode hit : result.path("hits").path("hits")) {
-      if (hit.path("_source") instanceof ObjectNode source && source.has("boundAssets")) {
-        filterBoundAssets(source, readableTables, securityContext);
-      }
-    }
-    return Response.fromResponse(masked).entity(JsonUtils.pojoToJson(result)).build();
-  }
-
-  private void filterBoundAssets(
-      ObjectNode source, Map<String, Boolean> readableTables, SecurityContext securityContext) {
-    final var assets = source.remove("boundAssets");
-    final var filtered = source.putArray("boundAssets");
-    for (JsonNode asset : assets) {
-      final String fqn = asset.asText();
-      final String table =
-          FullyQualifiedName.split(fqn).length == 4 ? fqn : FullyQualifiedName.getTableFQN(fqn);
-      if (readableTables.computeIfAbsent(table, key -> canViewBindingTable(securityContext, key))) {
-        filtered.add(fqn);
-      }
-    }
-  }
-
-  private boolean canViewBindingTable(SecurityContext securityContext, String table) {
-    try {
-      authorizer.authorize(
-          securityContext,
-          new OperationContext(Entity.TABLE, MetadataOperation.VIEW_BASIC),
-          new ResourceContext<>(Entity.TABLE, null, table, Include.NON_DELETED));
-      return true;
-    } catch (AuthorizationException | EntityNotFoundException unavailable) {
-      return false;
-    }
+    final var filtered = filterTestCaseResponses(response, securityContext, request);
+    return subject.isAdmin()
+            && searchRepository
+                .getEntityTypesForIndex(request.getIndex())
+                .contains(Entity.ONTOLOGY_CONCEPT)
+        ? OntologyTermSearch.withAdminBindingNames(filtered)
+        : filtered;
   }
 
   private Response filterTestCaseResponses(
@@ -836,8 +794,11 @@ public class SearchResource {
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
             .withExplain(explain);
 
-    return filterTestCaseResponses(
-        searchRepository.searchWithNLQ(request, subjectContext), securityContext, request);
+    return filterSearchResponses(
+        searchRepository.searchWithNLQ(request, subjectContext),
+        securityContext,
+        request,
+        subjectContext);
   }
 
   @GET
@@ -906,11 +867,12 @@ public class SearchResource {
           int size)
       throws IOException {
 
-    return filterTestCaseResponses(
-        searchRepository.searchByField(
-            fieldName, fieldValue, index, deleted, from, size, getSubjectContext(securityContext)),
+    final var subject = getSubjectContext(securityContext);
+    return filterSearchResponses(
+        searchRepository.searchByField(fieldName, fieldValue, index, deleted, from, size, subject),
         securityContext,
-        new SearchRequest().withIndex(index));
+        new SearchRequest().withIndex(index),
+        subject);
   }
 
   @GET

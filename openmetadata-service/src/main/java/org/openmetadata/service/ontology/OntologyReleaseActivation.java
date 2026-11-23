@@ -147,8 +147,7 @@ public final class OntologyReleaseActivation {
   private static void refreshSearch(UUID previous, UUID active) {
     final var search = Entity.getSearchRepository();
     if (search != null) {
-      OntologyTermSearch.forReleaseTerms(active, search::refreshOntologyTerm);
-      OntologyTermSearch.forReleaseTerms(previous, search::refreshOntologyTerm);
+      search.refreshOntologyTerms(OntologyTermSearch.releaseTerms(previous, active));
     }
   }
 

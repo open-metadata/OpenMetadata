@@ -42,6 +42,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
@@ -178,10 +179,7 @@ public final class OntologyConceptBindingService {
    */
   private void notifyChanged(
       final OntologyConcept concept, final OntologyBindingAssetType type, final UUID assetId) {
-    final var search = Entity.getSearchRepository();
-    if (search != null) {
-      search.refreshOntologyTerm(concept.getEntityReference());
-    }
+    OntologyTermSearch.bindingsChanged(concept.getEntityReference());
     bindingsChanged.accept(new EntityReference().withType(type.value()).withId(assetId));
   }
 

@@ -194,6 +194,7 @@ import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -2322,58 +2323,73 @@ public class SearchRepository {
   }
 
   public void refreshOntologyTerm(EntityReference reference) {
-    final var type = reference.getType();
-    final var id = reference.getId().toString();
-    final var mapping = getIndexMapping(type);
-    if (mapping == null
-        || shouldSkipStreamingIndexing(
-            type, id, reference.getFullyQualifiedName(), "refreshOntologyTerm")) {
-      return;
-    }
+    refreshOntologyTerms(List.of(reference));
+  }
+
+  public void refreshOntologyTerms(List<EntityReference> references) {
+    final var pending =
+        references.stream()
+            .filter(ref -> getIndexMapping(ref.getType()) != null)
+            .filter(
+                ref ->
+                    !shouldSkipStreamingIndexing(
+                        ref.getType(),
+                        ref.getId().toString(),
+                        ref.getFullyQualifiedName(),
+                        "refreshOntologyTerm"))
+            .toList();
     try {
-      reindexOntologyTerm(reference);
+      writeOntologyTerms(pending);
     } catch (IOException | RuntimeException failure) {
-      SearchIndexRetryQueue.enqueue(
-          id,
-          reference.getFullyQualifiedName(),
-          type,
-          SearchIndexRetryQueue.failureReason("refreshOntologyTerm", failure));
-      LOG.error("Failed to refresh ontology search term {} {}", type, id, failure);
+      pending.forEach(
+          ref ->
+              SearchIndexRetryQueue.enqueue(
+                  ref.getId().toString(),
+                  ref.getFullyQualifiedName(),
+                  ref.getType(),
+                  SearchIndexRetryQueue.failureReason("refreshOntologyTerm", failure)));
+      LOG.error("Failed to refresh {} ontology search terms", pending.size(), failure);
     }
   }
 
   void reindexOntologyTerm(EntityReference reference) throws IOException {
-    final var mapping = getIndexMapping(reference.getType());
-    if (mapping != null) {
-      writeOntologyTerm(reference, mapping, OntologyTermSearch.activeIndex(reference));
+    if (getIndexMapping(reference.getType()) != null) {
+      writeOntologyTerms(List.of(reference));
     }
   }
 
-  private void writeOntologyTerm(
-      EntityReference reference, IndexMapping mapping, OntologyTermIndex index) throws IOException {
-    final var id = reference.getId().toString();
-    final var targets = getWriteFanoutTargets(mapping.getIndexName(clusterAlias));
-    if (index == null) {
-      for (var target : targets) {
-        searchClient.deleteEntity(target, id);
-      }
-      if (vectorIndexService != null) {
-        vectorIndexService.deleteEntityChunks(id);
-      }
+  private void writeOntologyTerms(List<EntityReference> references) throws IOException {
+    if (references.isEmpty()) {
       return;
     }
-    final var document = index.buildSearchIndexDoc();
-    // A replacement also clears released fields that are absent from the new snapshot.
-    document.put(
-        SearchClient.FIELDS_TO_REMOVE,
-        List.of("description", "updatedAt").stream()
-            .filter(field -> !document.containsKey(field))
-            .toList());
-    targets.forEach(
-        target -> searchClient.updateEntity(target, id, document, DEFAULT_UPDATE_SCRIPT));
+    final Map<UUID, OntologyTermIndex> indexes = new HashMap<>();
+    try (var ignored = FreshReadScope.enter()) {
+      references.stream()
+          .collect(Collectors.groupingBy(EntityReference::getType))
+          .forEach(
+              (type, group) -> {
+                final var ids = group.stream().map(EntityReference::getId).toList();
+                for (var page : Lists.partition(ids, 250)) {
+                  indexes.putAll(
+                      OntologyTermSearch.activeIndexes(
+                          type, OntologyTermSearch.loadWorkingTerms(type, page)));
+                }
+              });
+    }
+    OntologyTermBulkWrite.write(
+        searchClient,
+        references,
+        indexes,
+        ref -> {
+          final var mapping = getIndexMapping(ref.getType());
+          return getWriteFanoutTargets(mapping.getIndexName(clusterAlias));
+        });
     if (vectorEmbeddingHandler != null) {
-      vectorEmbeddingHandler.invalidateStaleEmbedding(index.term());
-      vectorEmbeddingHandler.updateEmbedding(index.term());
+      references.forEach(
+          ref ->
+              EntityLifecycleEventDispatcher.getInstance()
+                  .enqueueOntologyEmbedding(
+                      ref, () -> vectorEmbeddingHandler.refreshOntologyEmbedding(ref)));
     }
   }
 

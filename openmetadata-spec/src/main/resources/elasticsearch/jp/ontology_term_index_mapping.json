@@ -118,7 +118,7 @@
       "range": {"type": "keyword"},
       "domainLabels": {"type": "text", "analyzer": "om_analyzer_jp", "similarity": "boolean"},
       "rangeLabels": {"type": "text", "analyzer": "om_analyzer_jp", "similarity": "boolean"},
-      "boundAssets": {"type": "keyword", "index": false, "doc_values": false}
+      "boundAssetIds": {"type": "keyword", "index": false, "doc_values": false}
     }
   }
 }

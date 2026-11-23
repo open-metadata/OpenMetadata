@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-23 (initial)
-- **Deciders:** Pablo Brull
+- **Deciders:** Pere Miquel Brull
 - **Guard:** `OntologyTermSearchIT`, `OntologyTermIndexTest`, `AvailableEntityTypesConsistencyTest`
 - **Related:** ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release, ADR:2026-10-19-native-concept-bindings-remain-operational-metadata
 
@@ -19,9 +19,20 @@ Index `ontologyConcept` and `ontologyProperty` independently and expose them tog
 Both indexes sit outside the catalog asset aliases and Data Insights.
 
 Read semantic fields from the active release. Exclude deleted terms and terms deprecated in that
-release. Refresh the concept's table and column references from the live binding store. Use current
-owners for search access rules. Embed the label, synonyms, description, and property domain and
-range labels. Binding changes leave embedding input intact.
+release. Index current owners and the opaque IDs of live bound tables. Admin REST search
+responses resolve table and column FQNs from the live binding store. Other consumers should
+resolve bindings through the authorized ontology bindings API.
+
+Write term documents synchronously and submit embedding work to the ordered lifecycle queue.
+Activation refreshes the union of the previous and current release members in a single bulk
+write. Ontology owner changes refresh active members. Binding edits and table or column identity
+changes refresh the affected concepts. Reindex batches release membership, binding rows, and table
+reads, and shares resolved property labels with the embedding builder.
+
+Embed the label, synonyms, description, and property domain and range labels. OpenSearch stores
+chunks in `ontology_embeddings_chunks`, and Elasticsearch serves vectors from the term indexes.
+The data-asset chunk generation tracks the entity types that write to it, including for saved
+reindex configurations with explicit entity lists.
 
 ## Consequences
 

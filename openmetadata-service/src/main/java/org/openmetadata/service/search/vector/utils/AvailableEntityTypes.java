@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.openmetadata.service.search.OntologyTermSearch;
 
 /**
  * Entity types whose documents carry vector embeddings. This is the write-path source of truth:
@@ -57,6 +58,11 @@ public final class AvailableEntityTypes {
 
   public static final Set<String> SET =
       LIST.stream().map(s -> s.toLowerCase(Locale.ROOT)).collect(Collectors.toUnmodifiableSet());
+
+  public static final Set<String> DATA_ASSET_CHUNK_TYPES =
+      SET.stream()
+          .filter(type -> !OntologyTermSearch.isTerm(type))
+          .collect(Collectors.toUnmodifiableSet());
 
   public static boolean isVectorIndexable(String entityType) {
     return entityType != null && SET.contains(entityType.toLowerCase(Locale.ROOT));

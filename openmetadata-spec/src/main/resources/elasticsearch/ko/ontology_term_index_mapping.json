@@ -108,7 +108,7 @@
       "range": {"type": "keyword"},
       "domainLabels": {"type": "text", "analyzer": "nori", "similarity": "boolean"},
       "rangeLabels": {"type": "text", "analyzer": "nori", "similarity": "boolean"},
-      "boundAssets": {"type": "keyword", "index": false, "doc_values": false}
+      "boundAssetIds": {"type": "keyword", "index": false, "doc_values": false}
     }
   }
 }

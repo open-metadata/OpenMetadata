@@ -3,7 +3,12 @@ package org.openmetadata.service.search;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.ws.rs.core.Response;
+import java.io.IOException;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,13 +29,16 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingPosition;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.ontology.OntologyBindingRules;
 import org.openmetadata.service.ontology.OntologyReleaseReader;
 import org.openmetadata.service.search.indexes.OntologyTermIndex;
+import org.openmetadata.service.search.security.PrivateSearchFields;
+import org.openmetadata.service.util.FreshReadScope;
 
 public final class OntologyTermSearch {
   public static final String ALIAS = "ontologyTerms";
@@ -39,67 +47,168 @@ public final class OntologyTermSearch {
   private OntologyTermSearch() {}
 
   public static boolean isTerm(String type) {
-    return Entity.ONTOLOGY_CONCEPT.equals(type) || Entity.ONTOLOGY_PROPERTY.equals(type);
+    return Entity.ONTOLOGY_CONCEPT.equalsIgnoreCase(type)
+        || Entity.ONTOLOGY_PROPERTY.equalsIgnoreCase(type);
   }
 
   public static OntologyTermIndex activeIndex(EntityReference reference) {
-    final var dao = Entity.getCollectionDAO();
+    try (var ignored = FreshReadScope.enter()) {
+      return activeIndexes(
+              reference.getType(),
+              loadWorkingTerms(reference.getType(), List.of(reference.getId())))
+          .get(reference.getId());
+    }
+  }
+
+  static List<? extends EntityInterface<?>> loadWorkingTerms(String type, List<UUID> ids) {
+    final var repository = Entity.getEntityRepository(type);
+    return repository.get(
+        null, ids, repository.getOnlySupportedFields("owners"), Include.NON_DELETED);
+  }
+
+  public static Map<UUID, OntologyTermIndex> activeIndexes(
+      String type, List<? extends EntityInterface<?>> working) {
+    final var live =
+        working.stream()
+            .filter(term -> !Boolean.TRUE.equals(term.getDeleted()))
+            .collect(Collectors.toMap(EntityInterface::getId, Function.identity()));
+    if (live.isEmpty()) {
+      return Map.of();
+    }
     final var kind =
-        Entity.ONTOLOGY_CONCEPT.equals(reference.getType())
-            ? MemberKind.CONCEPT
-            : MemberKind.PROPERTY;
+        Entity.ONTOLOGY_CONCEPT.equals(type) ? MemberKind.CONCEPT : MemberKind.PROPERTY;
     final var members =
-        dao.ontologyReleaseDAO()
-            .listActiveMembers(kind.value(), List.of(reference.getId().toString()));
-    if (members.isEmpty()) {
-      return null;
+        Entity.getCollectionDAO()
+            .ontologyReleaseDAO()
+            .listActiveMembers(kind.value(), live.keySet().stream().map(UUID::toString).toList());
+    final var definitions =
+        members.stream()
+            .collect(
+                Collectors.toMap(
+                    OntologyReleaseMember::getMemberId, OntologyReleaseReader::definition));
+    final var assets =
+        kind == MemberKind.CONCEPT
+            ? boundTableIds(definitions.keySet())
+            : Map.<UUID, List<String>>of();
+    final var labels =
+        kind == MemberKind.PROPERTY
+            ? propertyLabels(members, definitions)
+            : Map.<UUID, Map<URI, String>>of();
+    final Map<UUID, OntologyTermIndex> indexes = new HashMap<>();
+    for (var member : members) {
+      final var term = (OntologyEntityInterface) definitions.get(member.getMemberId());
+      term.setOwners(live.get(term.getId()).getOwners());
+      if (term instanceof OntologyConcept concept
+          && !Boolean.TRUE.equals(concept.getDeprecated())) {
+        indexes.put(
+            term.getId(),
+            new OntologyTermIndex(
+                concept, assets.getOrDefault(term.getId(), List.of()), List.of(), List.of()));
+      }
+      if (term instanceof OntologyProperty property
+          && !Boolean.TRUE.equals(property.getDeprecated())) {
+        indexes.put(
+            term.getId(),
+            propertyIndex(property, labels.getOrDefault(member.getReleaseId(), Map.of())));
+      }
     }
-    final var current = liveTerm(reference);
-    if (current == null) {
-      return null;
-    }
-    final var member = members.getFirst();
-    final var term = (OntologyEntityInterface) OntologyReleaseReader.definition(member);
-    term.setOwners(current.getOwners());
-    if (term instanceof OntologyConcept concept && !Boolean.TRUE.equals(concept.getDeprecated())) {
-      return new OntologyTermIndex(concept, boundAssets(concept), List.of(), List.of());
-    }
-    if (term instanceof OntologyProperty property
-        && !Boolean.TRUE.equals(property.getDeprecated())) {
-      return propertyIndex(property, labels(property, member.getReleaseId()));
-    }
-    return null;
+    return indexes;
   }
 
-  private static OntologyEntityInterface liveTerm(EntityReference reference) {
-    final var repository = Entity.getEntityRepository(reference.getType());
-    try {
-      return (OntologyEntityInterface)
-          repository.get(
-              null,
-              reference.getId(),
-              repository.getOnlySupportedFields("owners"),
-              Include.NON_DELETED,
-              false);
-    } catch (EntityNotFoundException missing) {
-      return null;
+  private static void forEachTableBindingPage(Set<UUID> ids, Consumer<List<BindingRow>> action) {
+    if (ids.isEmpty()) {
+      return;
     }
-  }
-
-  private static List<String> boundAssets(OntologyConcept concept) {
-    final var store =
-        new OntologyConceptBindingStore(
-            Entity.getCollectionDAO(), OntologyConceptBindingStore.registeredAssetTables());
-    final var names = new TreeSet<String>();
-    UUID after = null;
-    List<BindingRow> page;
+    final var store = bindingStore();
+    BindingPosition after = null;
+    List<BindingRow> rows;
     do {
-      page = store.page(concept.getId(), after, OntologyConceptBindingStore.SCAN_PAGE_SIZE);
-      final var properties = activeBindingProperties(page);
-      page.forEach(row -> addBoundAsset(names, row, properties));
-      after = page.isEmpty() ? null : page.getLast().assetId();
-    } while (page.size() == OntologyConceptBindingStore.SCAN_PAGE_SIZE);
-    return List.copyOf(names);
+      rows = store.page(ids, after, PAGE_SIZE);
+      action.accept(
+          rows.stream().filter(row -> row.assetType() == OntologyBindingAssetType.TABLE).toList());
+      if (!rows.isEmpty()) {
+        final var last = rows.getLast();
+        after = new BindingPosition(last.conceptId(), last.assetId());
+      }
+    } while (rows.size() == PAGE_SIZE);
+  }
+
+  private static Map<UUID, List<String>> boundTableIds(Set<UUID> ids) {
+    final Map<UUID, Set<String>> assets = new HashMap<>();
+    forEachTableBindingPage(
+        ids,
+        rows -> {
+          final var tableIds = rows.stream().map(BindingRow::assetId).distinct().toList();
+          final var existing =
+              Entity.getCollectionDAO()
+                  .tableDAO()
+                  .findReferencesByIds(tableIds, Include.NON_DELETED)
+                  .stream()
+                  .map(EntityReference::getId)
+                  .collect(Collectors.toSet());
+          rows.stream()
+              .filter(row -> existing.contains(row.assetId()))
+              .forEach(
+                  row ->
+                      assets
+                          .computeIfAbsent(row.conceptId(), ignored -> new TreeSet<>())
+                          .add(row.assetId().toString()));
+        });
+    return assets.entrySet().stream()
+        .collect(Collectors.toMap(Map.Entry::getKey, entry -> List.copyOf(entry.getValue())));
+  }
+
+  public static Response withAdminBindingNames(Response response) throws IOException {
+    if (response.getStatus() != 200 || !(response.getEntity() instanceof String body)) {
+      return response;
+    }
+    final var result = JsonUtils.getObjectMapper().readTree(body);
+    final Map<UUID, ObjectNode> concepts = new HashMap<>();
+    for (JsonNode hit : result.path("hits").path("hits")) {
+      if (hit.path("_source") instanceof ObjectNode source
+          && source.has("boundAssetIds")
+          && Entity.ONTOLOGY_CONCEPT.equals(source.path("entityType").asText())) {
+        concepts.put(UUID.fromString(hit.path("_id").asText()), source);
+      }
+    }
+    if (concepts.isEmpty()) {
+      return response;
+    }
+    final var names = boundAssetNames(concepts.keySet());
+    concepts.forEach(
+        (id, source) -> {
+          final var assets = source.putArray(PrivateSearchFields.BOUND_ASSETS);
+          names.getOrDefault(id, Set.of()).forEach(assets::add);
+        });
+    return Response.fromResponse(response).entity(JsonUtils.pojoToJson(result)).build();
+  }
+
+  private static Map<UUID, Set<String>> boundAssetNames(Set<UUID> conceptIds) {
+    final Map<UUID, Set<String>> names = new HashMap<>();
+    forEachTableBindingPage(
+        conceptIds,
+        rows -> {
+          final var ids = rows.stream().map(BindingRow::assetId).distinct().toList();
+          final var tables =
+              Entity.getCollectionDAO()
+                  .tableDAO()
+                  .findEntitiesByIds(ids, Include.NON_DELETED)
+                  .stream()
+                  .collect(Collectors.toMap(Table::getId, Function.identity()));
+          final var properties = activeBindingProperties(rows);
+          rows.forEach(
+              row -> {
+                final var table = tables.get(row.assetId());
+                if (table != null) {
+                  addBoundAsset(
+                      names.computeIfAbsent(row.conceptId(), ignored -> new TreeSet<>()),
+                      row,
+                      table,
+                      properties);
+                }
+              });
+        });
+    return names;
   }
 
   private static Set<UUID> activeBindingProperties(List<BindingRow> rows) {
@@ -119,15 +228,8 @@ public final class OntologyTermSearch {
             .collect(Collectors.toUnmodifiableSet());
   }
 
-  private static void addBoundAsset(Set<String> names, BindingRow row, Set<UUID> properties) {
-    if (row.assetType() != OntologyBindingAssetType.TABLE) {
-      return;
-    }
-    final Table table =
-        Entity.getEntityOrNull(Entity.TABLE, row.assetId(), "", Include.NON_DELETED);
-    if (table == null) {
-      return;
-    }
+  private static void addBoundAsset(
+      Set<String> names, BindingRow row, Table table, Set<UUID> properties) {
     names.add(table.getFullyQualifiedName());
     row.columns().stream()
         .filter(binding -> properties.contains(binding.getPropertyId()))
@@ -155,14 +257,28 @@ public final class OntologyTermSearch {
         .toList();
   }
 
-  private static Map<URI, String> labels(OntologyProperty property, UUID releaseId) {
-    final var iris =
-        Stream.concat(
-                listOrEmpty(property.getDomain()).stream(),
-                listOrEmpty(property.getRange()).stream())
-            .map(URI::toString)
-            .distinct()
-            .toList();
+  private static Map<UUID, Map<URI, String>> propertyLabels(
+      List<OntologyReleaseMember> members, Map<UUID, ? extends EntityInterface<?>> definitions) {
+    final Map<UUID, Set<String>> irisByRelease = new HashMap<>();
+    for (var member : members) {
+      final var property = (OntologyProperty) definitions.get(member.getMemberId());
+      irisByRelease
+          .computeIfAbsent(member.getReleaseId(), ignored -> new TreeSet<>())
+          .addAll(propertyIris(property).toList());
+    }
+    return irisByRelease.entrySet().stream()
+        .collect(
+            Collectors.toMap(
+                Map.Entry::getKey, entry -> labels(entry.getKey(), List.copyOf(entry.getValue()))));
+  }
+
+  private static Stream<String> propertyIris(OntologyProperty property) {
+    return Stream.concat(
+            listOrEmpty(property.getDomain()).stream(), listOrEmpty(property.getRange()).stream())
+        .map(URI::toString);
+  }
+
+  private static Map<URI, String> labels(UUID releaseId, List<String> iris) {
     if (iris.isEmpty()) {
       return Map.of();
     }
@@ -189,6 +305,14 @@ public final class OntologyTermSearch {
   }
 
   public static String embeddingBody(EntityInterface<?> term, Function<String, String> plainText) {
+    return embeddingBody(
+        term,
+        plainText,
+        term instanceof OntologyProperty property ? propertyEmbeddingLabels(property) : null);
+  }
+
+  public static String embeddingBody(
+      EntityInterface<?> term, Function<String, String> plainText, List<String> propertyLabels) {
     final var description =
         term.getDescription() == null ? "" : plainText.apply(term.getDescription());
     final var extras =
@@ -196,7 +320,7 @@ public final class OntologyTermSearch {
           case OntologyConcept concept -> nullOrEmpty(concept.getSynonyms())
               ? List.<String>of()
               : concept.getSynonyms().stream().sorted().toList();
-          case OntologyProperty property -> propertyEmbeddingLabels(property);
+          case OntologyProperty property -> propertyLabels;
           default -> List.<String>of();
         };
     return String.join(". ", label(term), description, String.join(", ", extras));
@@ -210,31 +334,64 @@ public final class OntologyTermSearch {
     final var labels =
         members.isEmpty()
             ? Map.<URI, String>of()
-            : labels(property, members.getFirst().getReleaseId());
+            : labels(members.getFirst().getReleaseId(), propertyIris(property).distinct().toList());
     return Stream.concat(
             labelList(property.getDomain(), labels).stream(),
             labelList(property.getRange(), labels).stream())
         .toList();
   }
 
-  public static void forReleaseTerms(UUID releaseId, Consumer<EntityReference> refresh) {
-    if (releaseId != null) {
-      refreshMembers(releaseId, MemberKind.CONCEPT, Entity.ONTOLOGY_CONCEPT, refresh);
-      refreshMembers(releaseId, MemberKind.PROPERTY, Entity.ONTOLOGY_PROPERTY, refresh);
+  public static List<EntityReference> releaseTerms(UUID... releaseIds) {
+    final var ids =
+        Stream.of(releaseIds).filter(Objects::nonNull).map(UUID::toString).distinct().toList();
+    if (ids.isEmpty()) {
+      return List.of();
     }
+    return Entity.getCollectionDAO().ontologyReleaseDAO().listAllMemberVersions(ids).stream()
+        .filter(
+            member ->
+                MemberKind.CONCEPT.value().equals(member.memberKind())
+                    || MemberKind.PROPERTY.value().equals(member.memberKind()))
+        .map(
+            member ->
+                new EntityReference()
+                    .withId(UUID.fromString(member.memberId()))
+                    .withType(
+                        MemberKind.CONCEPT.value().equals(member.memberKind())
+                            ? Entity.ONTOLOGY_CONCEPT
+                            : Entity.ONTOLOGY_PROPERTY))
+        .distinct()
+        .toList();
   }
 
-  private static void refreshMembers(
-      UUID releaseId, MemberKind kind, String type, Consumer<EntityReference> refresh) {
-    final var dao = Entity.getCollectionDAO().ontologyReleaseDAO();
-    String after = "";
-    List<OntologyReleaseMember> page;
+  public static void bindingsChanged(EntityReference table) {
+    final var search = Entity.getSearchRepository();
+    if (search == null) {
+      return;
+    }
+    if (Entity.ONTOLOGY_CONCEPT.equals(table.getType())) {
+      search.refreshOntologyTerm(table);
+      return;
+    }
+    final var store = bindingStore();
+    UUID after = null;
+    List<BindingRow> rows;
     do {
-      page = dao.listMembers(releaseId, kind.value(), after, PAGE_SIZE);
-      page.forEach(
-          member ->
-              refresh.accept(new EntityReference().withId(member.getMemberId()).withType(type)));
-      after = page.isEmpty() ? after : page.getLast().getMemberId().toString();
-    } while (page.size() == PAGE_SIZE);
+      rows = store.forAssetAfter(table.getId(), after, PAGE_SIZE);
+      search.refreshOntologyTerms(
+          rows.stream()
+              .map(
+                  row ->
+                      new EntityReference()
+                          .withId(row.conceptId())
+                          .withType(Entity.ONTOLOGY_CONCEPT))
+              .toList());
+      after = rows.isEmpty() ? after : rows.getLast().conceptId();
+    } while (rows.size() == PAGE_SIZE);
+  }
+
+  private static OntologyConceptBindingStore bindingStore() {
+    return new OntologyConceptBindingStore(
+        Entity.getCollectionDAO(), OntologyConceptBindingStore.registeredAssetTables());
   }
 }

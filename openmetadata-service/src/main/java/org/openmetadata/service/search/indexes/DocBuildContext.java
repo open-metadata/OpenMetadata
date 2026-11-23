@@ -40,7 +40,8 @@ import org.openmetadata.schema.entity.type.Style;
 public record DocBuildContext(
     List<EsLineageData> prefetchedUpstreamLineage,
     ServiceStylePrefetch serviceStylePrefetch,
-    Long relationshipRevision) {
+    Long relationshipRevision,
+    OntologyTermIndex activeOntologyTerm) {
 
   private static final DocBuildContext EMPTY =
       new DocBuildContext(null, ServiceStylePrefetch.notPrefetched(), null);
@@ -48,6 +49,15 @@ public record DocBuildContext(
   public DocBuildContext {
     serviceStylePrefetch =
         serviceStylePrefetch == null ? ServiceStylePrefetch.notPrefetched() : serviceStylePrefetch;
+  }
+
+  public DocBuildContext(
+      List<EsLineageData> upstreamLineage, ServiceStylePrefetch styles, Long relationshipRevision) {
+    this(upstreamLineage, styles, relationshipRevision, null);
+  }
+
+  public static DocBuildContext forOntologyTerm(OntologyTermIndex active) {
+    return new DocBuildContext(null, ServiceStylePrefetch.notPrefetched(), null, active);
   }
 
   public DocBuildContext(

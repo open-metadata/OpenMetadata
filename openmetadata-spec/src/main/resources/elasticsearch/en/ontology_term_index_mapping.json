@@ -113,7 +113,7 @@
       "range": {"type": "keyword"},
       "domainLabels": {"type": "text", "analyzer": "om_analyzer", "index_options": "positions", "term_vector": "with_positions_offsets"},
       "rangeLabels": {"type": "text", "analyzer": "om_analyzer", "index_options": "positions", "term_vector": "with_positions_offsets"},
-      "boundAssets": {"type": "keyword", "index": false, "doc_values": false}
+      "boundAssetIds": {"type": "keyword", "index": false, "doc_values": false}
     }
   }
 }

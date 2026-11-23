@@ -314,22 +314,36 @@ public class ElasticSearchVectorService implements VectorIndexService {
 
   @Override
   public Map<String, Object> generateEmbeddingFields(EntityInterface<?> entity) {
-    return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient);
+    return generateEmbeddingFields(entity, null);
+  }
+
+  public Map<String, Object> generateEmbeddingFields(
+      EntityInterface<?> entity, String ontologyBody) {
+    return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient, ontologyBody);
   }
 
   @Override
   public void updateEntityEmbedding(EntityInterface<?> entity, String entityIndexName) {
+    updateEntityEmbeddings(entity, entityIndexName, null);
+  }
+
+  @Override
+  public void updateEntityEmbeddings(
+      EntityInterface<?> entity, String entityIndexName, String ontologyBody) {
     try {
       String entityId = entity.getId().toString();
       String existingFingerprint = getExistingFingerprint(entityIndexName, entityId);
-      String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
+      String currentFingerprint =
+          ontologyBody == null
+              ? VectorDocBuilder.computeFingerprintForEntity(entity)
+              : VectorDocBuilder.computeFingerprintForEntity(entity, ontologyBody);
 
       if (currentFingerprint.equals(existingFingerprint)) {
         LOG.debug("Skipping entity {} - fingerprint unchanged", entityId);
         return;
       }
 
-      Map<String, Object> embeddingFields = generateEmbeddingFields(entity);
+      Map<String, Object> embeddingFields = generateEmbeddingFields(entity, ontologyBody);
       partialUpdateEntity(entityIndexName, entityId, embeddingFields);
     } catch (Exception e) {
       LOG.error("Failed to update embedding for entity {}: {}", entity.getId(), e.getMessage(), e);

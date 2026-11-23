@@ -1,17 +1,22 @@
 package org.openmetadata.it.tests.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.time.Duration;
+import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
@@ -32,6 +37,7 @@ import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyAssetBinding;
 import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyColumnBinding;
@@ -39,9 +45,12 @@ import org.openmetadata.schema.type.OntologyConceptBindingsResponse;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 
 @ExtendWith(TestNamespaceExtension.class)
+@ResourceLock("SEARCH_INDEX_APP")
 class OntologyTermSearchIT {
   private static final String ALIAS = "ontologyTerms";
 
@@ -142,6 +151,184 @@ class OntologyTermSearchIT {
     }
   }
 
+  @Test
+  void keepsBindingNamesPrivateAcrossSearchEndpoints(TestNamespace ns) {
+    SearchAccessRulesIT.assumeTheServerTrustsHarnessSignedTokens();
+    final var ontology = createOntology(ns);
+    final var cleanup = new ArrayDeque<Runnable>();
+    try {
+      final var order = createOrder(ontology, RankingSupport.uniqueTerm(ns));
+      final var table = createTable(ns);
+      final var admin = SdkClients.adminClient();
+      final var reader =
+          SearchAccessRulesIT.deniedUser(admin, ns.shortPrefix(), "table", null, cleanup);
+      assertThatThrownBy(() -> reader.tables().get(table.getId()))
+          .isInstanceOfSatisfying(
+              OpenMetadataException.class,
+              failure -> assertThat(failure.getStatusCode()).isEqualTo(403));
+      activate(ontology);
+      bind(order, table, List.of(), 0);
+      final var raw = rawTerm(order);
+      assertThat(raw.path("boundAssetIds").get(0).asText()).isEqualTo(table.getId().toString());
+      assertThat(raw.has("boundAssets")).isFalse();
+
+      final var paths =
+          List.of(
+              "/query?q=id:" + order.getId(),
+              "/fieldQuery?fieldName=id.keyword&fieldValue=" + order.getId(),
+              "/nlq/query?q=id:" + order.getId());
+      for (var path : paths) {
+        final var adminHit = find(admin, path + "&index=" + ALIAS, order);
+        assertThat(adminHit).as(path).isNotNull();
+        assertThat(adminHit.path("boundAssets").toString()).contains(table.getFullyQualifiedName());
+        final var readerHit = find(reader, path + "&index=" + ALIAS, order);
+        assertThat(readerHit).as(path).isNotNull();
+        assertThat(readerHit.toString()).as(path).doesNotContain(table.getFullyQualifiedName());
+      }
+    } finally {
+      deleteOntology(ontology);
+      cleanup.forEach(Runnable::run);
+    }
+  }
+
+  @Test
+  void refreshesInheritedOwnersAndChangedTables(TestNamespace ns) {
+    final var ontology = createOntology(ns);
+    try {
+      final var query = RankingSupport.uniqueTerm(ns);
+      final var order = createOrder(ontology, query);
+      final var property = createProperty(ontology, order);
+      final var table = createTable(ns);
+      activate(ontology);
+      bind(
+          order,
+          table,
+          List.of(
+              new OntologyColumnBinding()
+                  .withPropertyId(property.getId())
+                  .withColumnPath(List.of("code"))),
+          0);
+      final var owner = UserTestFactory.createUser(ns, ns.shortPrefix("ontology_owner"));
+      patch(
+          "/v1/ontologies/" + ontology.getId(),
+          "add",
+          "/owners",
+          List.of(new EntityReference().withId(owner.getId()).withType("user")));
+      await()
+          .atMost(Duration.ofSeconds(20))
+          .untilAsserted(
+              () -> {
+                assertThat(find(ALIAS, query, order).path("owners").toString())
+                    .contains(owner.getId().toString());
+                assertThat(find(ALIAS, "tracking", property).path("owners").toString())
+                    .contains(owner.getId().toString());
+              });
+      assertThat(boundAssets(query, order))
+          .containsExactlyInAnyOrder(
+              table.getFullyQualifiedName(), table.getColumns().getFirst().getFullyQualifiedName());
+      final var originalColumnFqn = table.getColumns().getFirst().getFullyQualifiedName();
+      final var columns =
+          List.of(new Column().withName("renamed_code").withDataType(ColumnDataType.STRING));
+      final var renamed =
+          SdkClients.adminClient()
+              .tables()
+              .update(table.getId().toString(), table.withColumns(columns));
+      assertThat(renamed.getColumns().getFirst().getFullyQualifiedName())
+          .isNotEqualTo(originalColumnFqn);
+      await()
+          .atMost(Duration.ofSeconds(20))
+          .untilAsserted(
+              () ->
+                  assertThat(boundAssets(query, order))
+                      .containsExactly(renamed.getFullyQualifiedName()));
+      SdkClients.adminClient().tables().delete(table.getId());
+      await()
+          .atMost(Duration.ofSeconds(20))
+          .untilAsserted(
+              () -> {
+                assertThat(boundAssets(query, order)).isEmpty();
+                assertThat(rawTerm(order).path("boundAssetIds").isEmpty()).isTrue();
+              });
+      SdkClients.adminClient()
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/tables/restore",
+              new RestoreEntity().withId(table.getId()),
+              Table.class);
+      await()
+          .atMost(Duration.ofSeconds(20))
+          .untilAsserted(
+              () ->
+                  assertThat(boundAssets(query, order)).contains(renamed.getFullyQualifiedName()));
+    } finally {
+      deleteOntology(ontology);
+    }
+  }
+
+  @Test
+  void replacesTheActiveRelease(TestNamespace ns) {
+    final var ontology = createOntology(ns);
+    try {
+      final var order = createOrder(ontology, RankingSupport.uniqueTerm(ns));
+      final var removed = createConcept(ontology, "Removed");
+      final var deprecated = createConcept(ontology, "Deprecated");
+      activate(ontology);
+      for (var term : List.of(order, removed, deprecated)) {
+        assertThat(find(ALIAS, term.getName(), term)).isNotNull();
+      }
+      patch("/v1/ontologyConcepts/" + order.getId(), "add", "/displayName", "Purchase");
+      patch("/v1/ontologyConcepts/" + deprecated.getId(), "add", "/deprecated", true);
+      SdkClients.adminClient().ontologyConcepts().delete(removed.getId());
+      final var next = capture(ontology);
+      SdkClients.adminClient()
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/ontologyConcepts/restore",
+              new RestoreEntity().withId(removed.getId()),
+              OntologyConcept.class);
+      assertThat(find(ALIAS, "Removed", removed)).isNotNull();
+      assertThat(find(ALIAS, "Deprecated", deprecated)).isNotNull();
+      activate(ontology, next);
+      assertThat(find(ALIAS, "Purchase", order).path("displayName").asText()).isEqualTo("Purchase");
+      assertThat(find(ALIAS, "Removed", removed)).isNull();
+      assertThat(find(ALIAS, "Deprecated", deprecated)).isNull();
+    } finally {
+      deleteOntology(ontology);
+    }
+  }
+
+  private static OntologyConcept createConcept(Ontology ontology, String name) {
+    return SdkClients.adminClient()
+        .ontologyConcepts()
+        .create(
+            new CreateOntologyConcept()
+                .withName(name)
+                .withConceptType(OntologyConceptType.OWL_CLASS)
+                .withOntology(ontology.getFullyQualifiedName()));
+  }
+
+  private static void deleteOntology(Ontology ontology) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.DELETE,
+            "/v1/ontologies/" + ontology.getId() + "?recursive=true",
+            null,
+            Void.class);
+  }
+
+  private static void patch(String path, String operation, String field, Object value) {
+    final var patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", operation)
+        .put("path", field)
+        .set("value", JsonUtils.getObjectMapper().valueToTree(value));
+    SdkClients.adminClient().getHttpClient().execute(HttpMethod.PATCH, path, patch, JsonNode.class);
+  }
+
   private static void editDraft(OntologyConcept term) {
     final var patch = JsonUtils.getObjectMapper().createArrayNode();
     patch.addObject().put("op", "replace").put("path", "/description").put("value", "A shipment");
@@ -156,9 +343,7 @@ class OntologyTermSearchIT {
     final var timeout = Duration.ofMinutes(2);
     final long triggeredAt = System.currentTimeMillis();
     ReindexHelpers.triggerSearchIndexWithConfigWhenIdle(
-        server,
-        Map.of("entities", List.of("ontologyConcept", "ontologyProperty"), "recreateIndex", true),
-        timeout);
+        server, Map.of("entities", List.of("ontologyConcept", "ontologyProperty")), timeout);
     ReindexHelpers.waitForRunStartedSince(
         server, ReindexHelpers.SEARCH_INDEX_APP, triggeredAt, timeout);
     await()
@@ -206,17 +391,28 @@ class OntologyTermSearchIT {
   }
 
   private static void activate(Ontology ontology) {
+    activate(ontology, capture(ontology));
+  }
+
+  private static UUID capture(Ontology ontology) {
     final var ontologies = SdkClients.adminClient().ontologies();
-    final var state = ontologies.state(ontology.getId());
-    final var release =
-        ontologies.capture(
+    return ontologies
+        .capture(
             ontology.getId(),
-            new CaptureOntologyRelease().withExpectedWorkingRevision(state.getWorkingRevision()));
+            new CaptureOntologyRelease()
+                .withExpectedWorkingRevision(
+                    ontologies.state(ontology.getId()).getWorkingRevision()))
+        .getId();
+  }
+
+  private static void activate(Ontology ontology, UUID releaseId) {
+    final var ontologies = SdkClients.adminClient().ontologies();
     ontologies.activate(
         ontology.getId(),
         new ActivateOntologyRelease()
-            .withReleaseId(release.getId())
-            .withExpectedActivationRevision(state.getActivationRevision()));
+            .withReleaseId(releaseId)
+            .withExpectedActivationRevision(
+                ontologies.state(ontology.getId()).getActivationRevision()));
   }
 
   private static Table createTable(TestNamespace ns) {
@@ -248,6 +444,16 @@ class OntologyTermSearchIT {
             OntologyConceptBindingsResponse.class);
   }
 
+  private static JsonNode rawTerm(OntologyConcept concept) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/search/get/ontologyConcept/doc/" + concept.getId(),
+            null,
+            JsonNode.class);
+  }
+
   private static List<String> boundAssets(String query, OntologyConcept term) {
     final var hit = find(ALIAS, query, term);
     assertThat(hit).isNotNull();
@@ -257,14 +463,13 @@ class OntologyTermSearchIT {
   }
 
   private static JsonNode find(String alias, String query, EntityInterface<?> term) {
+    return find(
+        SdkClients.adminClient(), "/query?index=" + alias + "&q=" + query + "&size=100", term);
+  }
+
+  private static JsonNode find(OpenMetadataClient client, String path, EntityInterface<?> term) {
     final var response =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .execute(
-                HttpMethod.GET,
-                "/v1/search/query?index=" + alias + "&q=" + query + "&size=100",
-                null,
-                JsonNode.class);
+        client.getHttpClient().execute(HttpMethod.GET, "/v1/search" + path, null, JsonNode.class);
     for (var hit : response.path("hits").path("hits")) {
       final var source = hit.path("_source");
       if (term.getId().toString().equals(source.path("id").asText())) {

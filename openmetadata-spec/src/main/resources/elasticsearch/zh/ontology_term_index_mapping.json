@@ -108,7 +108,7 @@
       "range": {"type": "keyword"},
       "domainLabels": {"type": "text", "analyzer": "ik_max_word", "search_analyzer": "ik_smart", "similarity": "boolean"},
       "rangeLabels": {"type": "text", "analyzer": "ik_max_word", "search_analyzer": "ik_smart", "similarity": "boolean"},
-      "boundAssets": {"type": "keyword", "index": false, "doc_values": false}
+      "boundAssetIds": {"type": "keyword", "index": false, "doc_values": false}
     }
   }
 }

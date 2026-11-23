@@ -389,21 +389,6 @@ public class OpenSearchBulkSink implements BulkSink {
                 ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
                 : null;
 
-        // Pre-fetch cached embeddings for entities whose fingerprint is unchanged so we can splice
-        // them into the staged doc instead of regenerating (avoids expensive embedding-provider
-        // calls). The service-layer two-step keeps large vector payloads off the wire for entities
-        // that will be re-embedded anyway.
-        Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
-        if (embeddingsEnabled) {
-          Map<String, Supplier<String>> currentById = new HashMap<>(entityInterfaces.size());
-          for (EntityInterface<?> e : entityInterfaces) {
-            currentById.put(
-                e.getId().toString(), () -> VectorDocBuilder.computeFingerprintForEntity(e));
-          }
-          existingEmbeddingsById =
-              fetchExistingEmbeddings(entityInterfaces, currentById, indexName, reindexContext);
-        }
-
         // Per-entity DocBuildContext is prepared by the upstream processor stage (see
         // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
         // transport-only: it just looks up each entity's context by id and hands it to
@@ -412,6 +397,33 @@ public class OpenSearchBulkSink implements BulkSink {
         Map<UUID, DocBuildContext> docBuildContexts =
             (Map<UUID, DocBuildContext>)
                 contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
+        // Pre-fetch cached embeddings for entities whose fingerprint is unchanged so we can splice
+        // them into the staged doc instead of regenerating (avoids expensive embedding-provider
+        // calls). The service-layer two-step keeps large vector payloads off the wire for entities
+        // that will be re-embedded anyway.
+        Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
+        if (embeddingsEnabled) {
+          Map<String, Supplier<String>> currentById = new HashMap<>(entityInterfaces.size());
+          for (EntityInterface<?> e : entityInterfaces) {
+            final var ctx = docBuildContexts.get(e.getId());
+            if (OntologyTermSearch.isTerm(entityType) && ctx != null) {
+              final var active = ctx.activeOntologyTerm();
+              if (active != null) {
+                currentById.put(
+                    e.getId().toString(),
+                    () ->
+                        VectorDocBuilder.computeFingerprintForEntity(
+                            active.term(), active.embeddingBody()));
+              }
+            } else {
+              currentById.put(
+                  e.getId().toString(), () -> VectorDocBuilder.computeFingerprintForEntity(e));
+            }
+          }
+          existingEmbeddingsById =
+              fetchExistingEmbeddings(entityInterfaces, currentById, indexName, reindexContext);
+        }
+
         Map<UUID, Long> relationshipRevisions =
             (Map<UUID, Long>)
                 contextData.getOrDefault(
@@ -518,8 +530,13 @@ public class OpenSearchBulkSink implements BulkSink {
       String entityType = Entity.getEntityTypeFromObject(entity);
       String docId = entity.getId().toString();
       final SearchIndex index;
+      final DocBuildContext ctx = docBuildContexts.get(entity.getId());
+      final String ontologyBody;
       if (OntologyTermSearch.isTerm(entityType)) {
-        final var active = OntologyTermSearch.activeIndex(entity.getEntityReference());
+        final var active =
+            ctx == null
+                ? OntologyTermSearch.activeIndex(entity.getEntityReference())
+                : ctx.activeOntologyTerm();
         if (active == null) {
           final BulkOperation deletion =
               BulkOperation.of(op -> op.delete(delete -> delete.index(indexName).id(docId)));
@@ -533,11 +550,13 @@ public class OpenSearchBulkSink implements BulkSink {
         }
         index = active;
         entity = active.term();
+        ontologyBody = active.embeddingBody();
       } else {
         index = Entity.buildSearchIndex(entityType, entity);
+        ontologyBody = null;
       }
-      DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
-      Map<String, Object> searchIndexDoc = new HashMap<>(index.buildSearchIndexDoc(ctx));
+      Map<String, Object> searchIndexDoc =
+          new HashMap<>(index.buildSearchIndexDoc(ctx == null ? DocBuildContext.empty() : ctx));
       Long relationshipRevision = relationshipRevisions.get(entity.getId());
       SearchRepository.applyRelationshipRevision(entity, searchIndexDoc, relationshipRevision);
       String json = JsonUtils.pojoToJson(searchIndexDoc);
@@ -549,7 +568,8 @@ public class OpenSearchBulkSink implements BulkSink {
         String stagedChunkTarget =
             reindexContext != null ? reindexContext.getStagedChunkIndex().orElse(null) : null;
         json =
-            enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker, stagedChunkTarget);
+            enrichWithEmbedding(
+                entity, json, existingEmbeddingsById, tracker, stagedChunkTarget, ontologyBody);
       }
 
       String finalJson = json;
@@ -1188,7 +1208,8 @@ public class OpenSearchBulkSink implements BulkSink {
       String json,
       Map<String, JsonNode> existingEmbeddingsById,
       StageStatsTracker tracker,
-      String stagedChunkTarget) {
+      String stagedChunkTarget,
+      String ontologyBody) {
     try {
       // Per-instance gate, mirroring VectorEmbeddingHandler: the entity-type check above cannot
       // see that an individual ContextMemory is Private/Shared, and the vector query path carries
@@ -1222,14 +1243,15 @@ public class OpenSearchBulkSink implements BulkSink {
         // shipped). The call is fingerprint-guarded, so it is a cheap no-op once chunks exist;
         // chunk docs reflect committed entity state, so writing them mid-reindex is safe even if
         // the staged index is never promoted.
-        vectorService.backfillEntityChunks(entity, stagedChunkTarget);
+        vectorService.backfillEntityChunks(entity, stagedChunkTarget, ontologyBody);
       } else if (embeddingClient != null && embeddingClient.isAvailable()) {
         // Build the chunk docs once (one embedding call per chunk): chunk 0's embedding fields
         // are spliced into the staged entity doc for hybrid search, and the full set is written to
         // the dedicated chunk index for the semantic vector path (issue #4789). Skipped when the
         // provider circuit is open so a transient outage indexes without embeddings (self-heals on
         // the next reindex) instead of failing every entity.
-        List<Map<String, Object>> chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
+        List<Map<String, Object>> chunkDocs =
+            VectorDocBuilder.fromEntity(entity, embeddingClient, ontologyBody);
         if (!chunkDocs.isEmpty()) {
           doc.setAll(
               (ObjectNode)

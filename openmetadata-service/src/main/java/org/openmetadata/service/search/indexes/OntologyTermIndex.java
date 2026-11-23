@@ -10,10 +10,12 @@ import org.openmetadata.schema.OntologyEntityInterface;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.OntologyTermSearch;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 
 public record OntologyTermIndex(
     OntologyEntityInterface term,
-    List<String> boundAssets,
+    List<String> boundAssetIds,
     List<String> domainLabels,
     List<String> rangeLabels)
     implements SearchIndex {
@@ -39,6 +41,15 @@ public record OntologyTermIndex(
 
   public OntologyTermIndex(OntologyEntityInterface term) {
     this(term, List.of(), List.of(), List.of());
+  }
+
+  public String embeddingBody() {
+    return OntologyTermSearch.embeddingBody(
+        term,
+        VectorDocBuilder::removeHtml,
+        term instanceof OntologyProperty
+            ? java.util.stream.Stream.concat(domainLabels.stream(), rangeLabels.stream()).toList()
+            : null);
   }
 
   @Override
@@ -72,7 +83,7 @@ public record OntologyTermIndex(
         term instanceof OntologyConcept concept && !nullOrEmpty(concept.getSynonyms())
             ? concept.getSynonyms().stream().sorted().toList()
             : List.of());
-    document.put("boundAssets", boundAssets);
+    document.put("boundAssetIds", boundAssetIds);
     document.put("domainLabels", domainLabels);
     document.put("rangeLabels", rangeLabels);
     document.put("deleted", false);

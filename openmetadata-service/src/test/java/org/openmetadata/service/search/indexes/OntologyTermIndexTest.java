@@ -3,6 +3,7 @@ package org.openmetadata.service.search.indexes;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -17,16 +18,20 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
 import org.openmetadata.service.jdbi3.OntologyReleaseDAO;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.SearchIndexFactory;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 class OntologyTermIndexTest {
   private static final EntityReference ONTOLOGY =
@@ -52,12 +57,9 @@ class OntologyTermIndexTest {
             .withUpdatedAt(123L);
     final var index =
         (OntologyTermIndex) new SearchIndexFactory().buildIndex(Entity.ONTOLOGY_CONCEPT, term);
+    final var assetId = UUID.randomUUID().toString();
     final var document =
-        new OntologyTermIndex(
-                index.term(),
-                List.of("svc.db.schema.orders", "svc.db.schema.orders.id"),
-                List.of(),
-                List.of())
+        new OntologyTermIndex(index.term(), List.of(assetId), List.of(), List.of())
             .buildSearchIndexDoc();
     document.putAll(VectorDocBuilder.buildEmbeddingFields(term, new TestEmbeddingClient()));
     assertThat(document)
@@ -69,7 +71,8 @@ class OntologyTermIndexTest {
         .containsEntry("kind", "class")
         .containsEntry("iri", ORDER_IRI.toString())
         .containsEntry("synonyms", List.of("Transaction"))
-        .containsEntry("boundAssets", List.of("svc.db.schema.orders", "svc.db.schema.orders.id"))
+        .containsEntry("boundAssetIds", List.of(assetId))
+        .doesNotContainKey("boundAssets")
         .containsEntry("deleted", false)
         .containsEntry("updatedAt", 123L)
         .containsKeys("ontology", "fingerprint", "embedding");
@@ -108,6 +111,47 @@ class OntologyTermIndexTest {
         .containsKeys("ontology", "fingerprint");
     assertThat(document.get("textToEmbed").toString())
         .contains("Order code", "The reference number", "Purchase order", "string");
+  }
+
+  @Test
+  void activeIndexUsesReleasedTextAndLiveOwners() {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(
+        "ontologyproperty", Entity.ONTOLOGY_PROPERTY);
+    final var id = UUID.randomUUID();
+    final var reference = new EntityReference().withId(id).withType(Entity.ONTOLOGY_PROPERTY);
+    final var owner = new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER);
+    final var working =
+        new OntologyProperty().withId(id).withName("draft").withOwners(List.of(owner));
+    final var released =
+        new OntologyProperty().withId(id).withName("released").withKind(OntologyPropertyKind.DATA);
+    final var release =
+        new OntologyReleaseMember()
+            .withMemberKind(MemberKind.PROPERTY)
+            .withReleaseId(UUID.randomUUID())
+            .withMemberId(id)
+            .withPayload(JsonUtils.valueToTree(released));
+    final var repository = mock(OntologyPropertyRepository.class);
+    final var fields = new Fields(Set.of("owners"));
+    when(repository.getOnlySupportedFields("owners")).thenReturn(fields);
+    doReturn(List.of(working)).when(repository).get(null, List.of(id), fields, Include.NON_DELETED);
+    final var db = mock(CollectionDAO.class);
+    final var releases = mock(OntologyReleaseDAO.class);
+    when(db.ontologyReleaseDAO()).thenReturn(releases);
+
+    try (var entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(db);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.ONTOLOGY_PROPERTY))
+          .thenReturn(repository);
+      assertThat(OntologyTermSearch.activeIndex(reference)).isNull();
+      when(releases.listActiveMembers(MemberKind.PROPERTY.value(), List.of(id.toString())))
+          .thenReturn(List.of(release));
+      final var active = OntologyTermSearch.activeIndex(reference);
+      assertThat(active.term().getName()).isEqualTo("released");
+      assertThat(active.term().getOwners()).containsExactly(owner);
+      release.setPayload(JsonUtils.valueToTree(released.withDeprecated(true)));
+      assertThat(OntologyTermSearch.activeIndex(reference)).isNull();
+    }
   }
 
   private static Map<String, Object> propertyEmbedding(OntologyProperty property) {

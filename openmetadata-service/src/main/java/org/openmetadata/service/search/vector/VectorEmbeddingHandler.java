@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
@@ -137,6 +138,18 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
   private boolean isSupported(EntityInterface<?> entity) {
     String entityType = extractEntityType(entity);
     return entityType != null && isSupportedEntityType(entityType);
+  }
+
+  public void refreshOntologyEmbedding(EntityReference reference) {
+    final var active = OntologyTermSearch.activeIndex(reference);
+    if (active == null) {
+      vectorService.deleteEntityChunks(reference.getType(), reference.getId().toString());
+    } else {
+      final var index = resolveEntityIndexName(reference.getType());
+      if (index != null) {
+        vectorService.updateEntityEmbeddings(active.term(), index, active.embeddingBody());
+      }
+    }
   }
 
   public void updateEmbedding(EntityInterface<?> entity) {
