@@ -19,6 +19,7 @@ tracking to emit typed `LineageGroup` contracts as well as backward-compatible
 """
 
 import ast
+import itertools
 import operator
 import re
 from collections.abc import Callable, Sequence
@@ -458,11 +459,17 @@ class _TupleVal:
     items: tuple["_ProvVal", ...]
 
 
+# Branch copies of one runtime container share an identity, so a state overwrite can hand the joined contents
+# back to the container objects that callers evaluated before the join and still hold.
+_new_container_identity = itertools.count().__next__
+
+
 @dataclass
 class _ListVal:
     items: list["_ProvVal"]
     opaque: bool = False
     contains_frames: bool = False
+    identity: int = field(default_factory=_new_container_identity, compare=False, repr=False)
 
 
 @dataclass
@@ -470,9 +477,11 @@ class _FrameDict:
     entries: dict[DictKey, "_ProvVal"]
     has_unknown_entries: bool = False
     contains_frames: bool = False
+    identity: int = field(default_factory=_new_container_identity, compare=False, repr=False)
 
 
 _ProvVal: TypeAlias = _FrameVal | _ScalarVal | _OpaqueVal | _UnboundVal | _TupleVal | _ListVal | _FrameDict
+_Container: TypeAlias = _ListVal | _FrameDict
 _FlowStatus: TypeAlias = Literal["normal", "break", "continue", "return"]
 
 _OPAQUE_VAL = _OpaqueVal()
@@ -598,7 +607,7 @@ def _clone_prov(val: _ProvVal, memo: dict[int, _ProvVal]) -> _ProvVal:
     if isinstance(val, _ListVal):
         obj_id = id(val)
         if obj_id not in memo:
-            cloned = _ListVal(items=[], opaque=val.opaque, contains_frames=val.contains_frames)
+            cloned = _ListVal(items=[], opaque=val.opaque, contains_frames=val.contains_frames, identity=val.identity)
             memo[obj_id] = cloned
             cloned.items = [_clone_prov(item, memo) for item in val.items]
         return memo[obj_id]
@@ -609,6 +618,7 @@ def _clone_prov(val: _ProvVal, memo: dict[int, _ProvVal]) -> _ProvVal:
                 entries={},
                 has_unknown_entries=val.has_unknown_entries,
                 contains_frames=val.contains_frames,
+                identity=val.identity,
             )
             memo[obj_id] = cloned_dict
             cloned_dict.entries = {k: _clone_prov(v, memo) for k, v in val.entries.items()}
@@ -618,13 +628,22 @@ def _clone_prov(val: _ProvVal, memo: dict[int, _ProvVal]) -> _ProvVal:
     return val
 
 
+def _joined_identity(left: _Container, right: _Container) -> int:
+    # Copies of one container stay that container; a merge of two different ones is a new abstract object.
+    return left.identity if left.identity == right.identity else _new_container_identity()
+
+
 def _join_frame_dicts(
     left: _FrameDict,
     right: _FrameDict,
     pair_key: tuple[int, int],
     pair_memo: dict[tuple[int, int], _ProvVal] | None,
 ) -> _FrameDict:
-    joined_dict = _FrameDict(entries={}, has_unknown_entries=left.has_unknown_entries or right.has_unknown_entries)
+    joined_dict = _FrameDict(
+        entries={},
+        has_unknown_entries=left.has_unknown_entries or right.has_unknown_entries,
+        identity=_joined_identity(left, right),
+    )
     if pair_memo is not None:
         pair_memo[pair_key] = joined_dict
     all_keys: list[DictKey] = [*left.entries.keys(), *(k for k in right.entries if k not in left.entries)]
@@ -650,15 +669,16 @@ def _join_list_vals(
     pair_memo: dict[tuple[int, int], _ProvVal] | None,
 ) -> _ListVal:
     contains = left.contains_frames or right.contains_frames
+    identity = _joined_identity(left, right)
     if not left.opaque and not right.opaque and len(left.items) == len(right.items):
-        joined_list = _ListVal(items=[], opaque=False, contains_frames=contains)
+        joined_list = _ListVal(items=[], opaque=False, contains_frames=contains, identity=identity)
         if pair_memo is not None:
             pair_memo[pair_key] = joined_list
         joined_items = [_join_prov(a, b, pair_memo) for a, b in zip(left.items, right.items, strict=True)]
         joined_list.items = joined_items
         joined_list.contains_frames = contains or any(_carries_frame(v) for v in joined_items)
         return joined_list
-    opaque_list = _ListVal(items=[], opaque=True, contains_frames=contains)
+    opaque_list = _ListVal(items=[], opaque=True, contains_frames=contains, identity=identity)
     if pair_memo is not None:
         pair_memo[pair_key] = opaque_list
         for item in left.items:
@@ -868,6 +888,105 @@ def _join_states(
         global_temp_views=global_views,
         global_temp_views_opaque=global_opaque,
     )
+
+
+def _reachable_containers(roots: Sequence[_ProvVal]) -> list[_Container]:
+    found: list[_Container] = []
+    seen: set[int] = set()
+    stack = list(roots)
+    while stack:
+        cur = stack.pop()
+        if id(cur) in seen:
+            continue
+        seen.add(id(cur))
+        if isinstance(cur, _FrameDict):
+            found.append(cur)
+            stack.extend(cur.entries.values())
+        elif isinstance(cur, _ListVal):
+            found.append(cur)
+            stack.extend(cur.items)
+        elif isinstance(cur, _TupleVal):
+            stack.extend(cur.items)
+    return found
+
+
+def _state_roots(state: _ExecState) -> list[_ProvVal]:
+    roots = [val for env in state.scope_envs.values() for val in env.values()]
+    roots.extend(pval for dmap in state.fn_defaults.values() for pval, _ in dmap.values())
+    return roots
+
+
+def _group_by_identity(containers: Sequence[_Container]) -> dict[int, list[_Container]]:
+    grouped: dict[int, list[_Container]] = {}
+    for container in containers:
+        grouped.setdefault(container.identity, []).append(container)
+    return grouped
+
+
+def _forget_contents(container: _Container) -> None:
+    if isinstance(container, _FrameDict):
+        container.entries.clear()
+        container.has_unknown_entries = True
+    else:
+        container.items.clear()
+        container.opaque = True
+
+
+def _move_contents(target: _Container, source: _Container, swap: Callable[[_ProvVal], _ProvVal]) -> None:
+    if isinstance(source, _FrameDict) and isinstance(target, _FrameDict):
+        entries = {key: swap(val) for key, val in source.entries.items()}
+        target.entries.clear()
+        target.entries.update(entries)
+        target.has_unknown_entries = source.has_unknown_entries
+    elif isinstance(source, _ListVal) and isinstance(target, _ListVal):
+        target.items[:] = [swap(val) for val in source.items]
+        target.opaque = source.opaque
+    target.contains_frames = source.contains_frames
+
+
+def _adopt_joined_containers(dest: _ExecState, src: _ExecState, carried: _ProvVal) -> _ProvVal:
+    """Put src's container contents into the objects dest already has before dest takes over src's scopes.
+
+    An expression may hold a container (a method receiver, an earlier argument, a loop's items) while a later
+    operand joins the state; that value must keep aliasing the state, not a copy the join replaced. A held
+    container whose identity no longer maps to exactly one joined copy cannot stay connected, so it is forgotten.
+    `carried` is a value computed in src (a helper's return) and is relinked the same way."""
+    old_containers = _reachable_containers(_state_roots(dest))
+    new_containers = _reachable_containers(_state_roots(src))
+    new_ids = {id(container) for container in new_containers}
+    new_by_identity = _group_by_identity(new_containers)
+    adopted: dict[int, _Container] = {}
+    for identity, olds in _group_by_identity(old_containers).items():
+        news = new_by_identity.get(identity, [])
+        if len(olds) == 1 and len(news) == 1:
+            if news[0] is not olds[0]:
+                adopted[id(news[0])] = olds[0]
+            continue
+        for old in olds:
+            if id(old) not in new_ids:
+                _forget_contents(old)
+    if not adopted:
+        return carried
+
+    def swap(val: _ProvVal) -> _ProvVal:
+        if isinstance(val, (_ListVal, _FrameDict)):
+            return adopted.get(id(val), val)
+        if isinstance(val, _TupleVal):
+            items = tuple(swap(item) for item in val.items)
+            return val if all(a is b for a, b in zip(items, val.items, strict=True)) else _TupleVal(items)
+        return val
+
+    old_ids = {id(container) for container in old_containers}
+    detached = [c for c in _reachable_containers([carried]) if id(c) not in new_ids and id(c) not in old_ids]
+    for container in [*new_containers, *detached]:
+        _move_contents(adopted.get(id(container), container), container, swap)
+    for env in src.scope_envs.values():
+        for name, val in env.items():
+            env[name] = swap(val)
+    for dmap in src.fn_defaults.values():
+        for p_name, (pval, rval) in dmap.items():
+            dmap[p_name] = (swap(pval), rval)
+    return swap(carried)
 
 
 def _target_frame_expr(call: ast.Call) -> ast.expr | None:
@@ -1209,7 +1328,9 @@ class _ProvenanceAnalyzer:
         return "normal"
 
     @staticmethod
-    def _overwrite_state_in_place(dest: _ExecState, src: _ExecState) -> None:
+    def _overwrite_state_in_place(dest: _ExecState, src: _ExecState, carried: _ProvVal = _NONE_VAL) -> _ProvVal:
+        if src is not dest:
+            carried = _adopt_joined_containers(dest, src, carried)
         dest.scope_envs = src.scope_envs
         dest.loop_overrides = src.loop_overrides
         dest.scope_overrides = src.scope_overrides
@@ -1218,6 +1339,7 @@ class _ProvenanceAnalyzer:
         dest.temp_views_opaque = src.temp_views_opaque
         dest.global_temp_views = src.global_temp_views
         dest.global_temp_views_opaque = src.global_temp_views_opaque
+        return carried
 
     @staticmethod
     def _merge_state_list(states: Sequence[_ExecState]) -> _ExecState:
@@ -2933,8 +3055,7 @@ class _ProvenanceAnalyzer:
                 merged_state = _join_states(merged_state, extra_state, pair_memo=pair_memo)
                 merged_ret = _join_prov(merged_ret, extra_ret, pair_memo=pair_memo)
                 _invalidate_ambiguous_aliases(pair_memo)
-            self._overwrite_state_in_place(state, merged_state)
-            return merged_ret
+            return self._overwrite_state_in_place(state, merged_state, merged_ret)
         finally:
             self._call_stack.pop()
             for k in [key for key in state.scope_overrides if key[0] is fn_def]:

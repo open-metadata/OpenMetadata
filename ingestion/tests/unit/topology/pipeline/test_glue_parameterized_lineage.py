@@ -3192,6 +3192,63 @@ frames["k"].write.format("snowflake").option("dbtable", "OUT").save()
             Resolved((SnowflakeRef(table="OUT"),)),
         )
 
+    @pytest.mark.parametrize(
+        "mutation",
+        [
+            pytest.param(
+                'frames.update({"k": spark.table("db.B"), "unused": flag() and 1})', id="dict_update_short_circuit"
+            ),
+            pytest.param('frames.update(k=spark.table("db.B"), unused=1 < count() < 3)', id="dict_update_comparison"),
+            pytest.param(
+                'def pick():\n    if flag():\n        return 1\n    return 2\nframes.update(k=spark.table("db.B"), unused=pick())',
+                id="dict_update_branching_helper",
+            ),
+            pytest.param(
+                'outer = {"f": frames}\nouter["f"].update(k=spark.table("db.B"), unused=flag() or 1)',
+                id="nested_receiver",
+            ),
+            pytest.param(
+                'parts = []\nparts.extend([spark.table("db.B"), label() or "x"])\nframes["k"] = parts[0]',
+                id="list_extend_receiver",
+            ),
+            pytest.param(
+                'def put(d, name):\n    d["k"] = spark.table("db.B")\nput(frames, name() or "default")',
+                id="earlier_helper_argument",
+            ),
+            pytest.param(
+                'holder = [frames, name() or "default"]\nholder[0]["k"] = spark.table("db.B")',
+                id="earlier_list_element",
+            ),
+            pytest.param(
+                'other = {"k": spark.table("db.A")}\nfor d in [other, frames]:\n    if flag():\n        pass\n    d["k"] = spark.table("db.B")',
+                id="loop_item_after_branch_in_body",
+            ),
+        ],
+    )
+    def test_container_held_while_a_later_operand_joins_state_keeps_aliasing(self, mutation: str):
+        # Joins replace the state's containers with merged copies; a container evaluated before the join (the
+        # receiver, an earlier argument or element, the loop's remaining items) must still be the live one.
+        script = f"""
+frames = {{"k": spark.table("db.A")}}
+{mutation}
+frames["k"].write.saveAsTable("db.OUT")
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(script)] == [
+            (Resolved((CatalogRef(database="db", table="B"),)), Resolved((CatalogRef(database="db", table="OUT"),)))
+        ]
+
+    def test_held_receiver_that_a_join_cannot_map_back_reads_unresolved(self):
+        # The skipped branch reads the original "A"; the other updates the receiver to "C" and then rebinds the
+        # name, so no joined copy is that receiver in both branches and its value cannot be trusted.
+        script = """
+frames = {"k": spark.table("db.A")}
+picked = frames.get("k", flag() and (frames.update(k=spark.table("db.C")) or (frames := {})))
+picked.write.saveAsTable("db.OUT")
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(script)] == [
+            ("unresolved", Resolved((CatalogRef(database="db", table="OUT"),)))
+        ]
+
     def test_helper_parameters_dict_items_loop_temp_view_lifecycle_and_container_aliases(self):
         # 1. Helper function with parameter + `frames.items()` tuple unpacking loop
         helper_items_script = """
