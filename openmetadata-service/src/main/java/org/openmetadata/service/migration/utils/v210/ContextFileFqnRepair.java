@@ -259,31 +259,7 @@ public final class ContextFileFqnRepair {
       // cache helper above does not clear.
       CacheBundle.invalidateEntity(CONTEXT_FILE, misnamed.id(), misnamed.derivedFqn());
       reindex(repaired.get());
-      if (!sharingStoredFqn.isEmpty()) {
-        LOG.warn(
-            "Context Center file {} now has the FQN {}. Its old FQN {} is also the FQN of {}, and"
-                + " tag_usage does not record which entity a row belongs to, so every tag under {}"
-                + " was left where it is. Move the file's own tags to {} by hand",
-            misnamed.id(),
-            misnamed.derivedFqn(),
-            misnamed.storedFqn(),
-            sharingStoredFqn,
-            misnamed.storedFqn(),
-            misnamed.derivedFqn());
-      }
-      if (!sharingDerivedFqn.isEmpty()) {
-        LOG.warn(
-            "Context Center file {} now has the FQN {}. Its new FQN {} is also the FQN of {}, and"
-                + " tag_usage does not record which entity a row belongs to, so every tag under {}"
-                + " was left where it is to keep the rows from merging under the one hash. Rename"
-                + " the file or the other entity, then move the file's own tags to the file's new"
-                + " FQN by hand",
-            misnamed.id(),
-            misnamed.derivedFqn(),
-            misnamed.derivedFqn(),
-            sharingDerivedFqn,
-            misnamed.storedFqn());
-      }
+      logCollisions(misnamed, sharingStoredFqn, sharingDerivedFqn);
       return Outcome.REPAIRED;
     } catch (Exception e) {
       LOG.warn(
@@ -348,6 +324,38 @@ public final class ContextFileFqnRepair {
     return holders.holding(fqn).stream()
         .filter(holder -> !holder.is(CONTEXT_FILE, id.toString()))
         .toList();
+  }
+
+  /** Logs each FQN another entity shares with the file, so its tag rows can be moved by hand. */
+  private static void logCollisions(
+      final Misnamed misnamed,
+      final List<Holder> sharingStoredFqn,
+      final List<Holder> sharingDerivedFqn) {
+    if (!sharingStoredFqn.isEmpty()) {
+      LOG.warn(
+          "Context Center file {} now has the FQN {}. Its old FQN {} is also the FQN of {}, and"
+              + " tag_usage does not record which entity a row belongs to, so every tag under {}"
+              + " was left where it is. Move the file's own tags to {} by hand",
+          misnamed.id(),
+          misnamed.derivedFqn(),
+          misnamed.storedFqn(),
+          sharingStoredFqn,
+          misnamed.storedFqn(),
+          misnamed.derivedFqn());
+    }
+    if (!sharingDerivedFqn.isEmpty()) {
+      LOG.warn(
+          "Context Center file {} now has the FQN {}. Its new FQN {} is also the FQN of {}, and"
+              + " tag_usage does not record which entity a row belongs to, so every tag under {}"
+              + " was left where it is to keep the rows from merging under the one hash. Rename"
+              + " the file or the other entity, then move the file's own tags to the file's new"
+              + " FQN by hand",
+          misnamed.id(),
+          misnamed.derivedFqn(),
+          misnamed.derivedFqn(),
+          sharingDerivedFqn,
+          misnamed.storedFqn());
+    }
   }
 
   /** A tag under both FQNs keeps its row under the derived one, so the move breaks no key. */

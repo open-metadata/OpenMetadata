@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.openmetadata.it.util.UriTestUtils.encodeURIComponent;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -54,6 +56,31 @@ class ContextFileFqnRepairMigrationIT {
   private static final String TAG_FROM_THE_EDIT = "PersonalData.Personal";
   private static final String OTHER_ENTITY_TAG = "PII.NonSensitive";
   private static final String FILE_TAG = "PersonalData.SpecialCategory";
+
+  // Folders this test created and must delete itself: TestNamespaceExtension cleans only the root
+  // types it knows (glossaries, context files, …), and folders are not in its collection map.
+  // Deleting a folder cascades the files and subfolders inside it.
+  private final List<UUID> foldersToCleanup = new ArrayList<>();
+
+  @AfterEach
+  void deleteFolders() {
+    for (UUID id : foldersToCleanup) {
+      try {
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.DELETE, FOLDERS + "/" + id + "?hardDelete=true", null, Object.class);
+      } catch (RuntimeException ignored) {
+        // Best-effort, like NamespaceCleanup: a failed delete never fails a green test.
+      }
+    }
+    foldersToCleanup.clear();
+  }
+
+  private Folder trackFolder(Folder folder) {
+    foldersToCleanup.add(folder.getId());
+    return folder;
+  }
 
   @Test
   void aFileEditedInAFolderGetsItsFolderBackInItsFqn(TestNamespace ns) {
@@ -141,27 +168,19 @@ class ContextFileFqnRepairMigrationIT {
     // subdomain named like the file can too. Moving the file's tag_usage rows onto that hash
     // would merge them with the subfolder's, so the repair gives the file its folder FQN and
     // leaves every row under the bare name where it is, mirroring the stored-FQN policy.
-    Folder parent = createFolder(ns.shortPrefix("Y"));
+    Folder parent = trackFolder(createFolder(ns.shortPrefix("Y")));
     String name = ns.shortPrefix("x");
-    ContextFile file = createFile(name, parent, FILE_TAG);
+    ContextFile file = ns.trackRoot(Entity.CONTEXT_FILE, createFile(name, parent, FILE_TAG));
     damageAsAnEditDid(file, TAG_FROM_THE_EDIT);
-    Folder subfolder = createFolder(name, parent, OTHER_ENTITY_TAG, FILE_TAG);
+    Folder subfolder = trackFolder(createFolder(name, parent, OTHER_ENTITY_TAG, FILE_TAG));
     String folderFqn = subfolder.getFullyQualifiedName();
     List<String> subfolderTagsBefore = folderTags(subfolder);
     assertEquals(List.of(OTHER_ENTITY_TAG, FILE_TAG), subfolderTagsBefore);
     int rowsUnderBareName = tagRowsUnder(name);
 
     assertEquals(1, repairAll());
-
-    ContextFile repaired = getByName(folderFqn);
-    assertEquals(file.getId(), repaired.getId());
-    assertEquals(FullyQualifiedName.buildHash(folderFqn), storedNameHash(file.getId()));
-    assertEquals(
-        subfolderTagsBefore,
-        folderTags(subfolder),
-        "the subfolder keeps every tag it had; none of the file's tags moved onto its hash");
-    assertEquals(rowsUnderBareName, tagRowsUnder(name), "no row under the bare name moves or goes");
-    assertEquals(0, repairAll(), "a repaired file needs nothing on a second run");
+    assertTagsStayUnderTheirOwner(
+        file, folderFqn, subfolderTagsBefore, () -> folderTags(subfolder), name, rowsUnderBareName);
   }
 
   /** A glossary term named like the file under a glossary named like the file's folder. */
@@ -169,32 +188,9 @@ class ContextFileFqnRepairMigrationIT {
   void aGlossaryTermNamedLikeTheFileKeepsEveryTagRowUnderTheBareName(TestNamespace ns) {
     String folderName = ns.shortPrefix("Y");
     String name = ns.shortPrefix("x");
-    Glossary glossary =
-        ns.trackRoot(
-            Entity.GLOSSARY,
-            SdkClients.adminClient()
-                .getHttpClient()
-                .execute(
-                    HttpMethod.POST,
-                    GLOSSARIES,
-                    new CreateGlossary()
-                        .withName(folderName)
-                        .withDescription("Named like the file's folder"),
-                    Glossary.class));
-    GlossaryTerm term =
-        SdkClients.adminClient()
-            .getHttpClient()
-            .execute(
-                HttpMethod.POST,
-                GLOSSARY_TERMS,
-                new CreateGlossaryTerm()
-                    .withName(name)
-                    .withGlossary(glossary.getFullyQualifiedName())
-                    .withDescription("Named like the file; holds the file's derived FQN")
-                    .withTags(List.of(tagLabel(OTHER_ENTITY_TAG), tagLabel(FILE_TAG))),
-                GlossaryTerm.class);
-    Folder parent = createFolder(folderName);
-    ContextFile file = createFile(name, parent, FILE_TAG);
+    GlossaryTerm term = glossaryTermNamedLikeTheFile(ns, folderName, name);
+    Folder parent = trackFolder(createFolder(folderName));
+    ContextFile file = ns.trackRoot(Entity.CONTEXT_FILE, createFile(name, parent, FILE_TAG));
     damageAsAnEditDid(file, TAG_FROM_THE_EDIT);
     String termFqn = term.getFullyQualifiedName();
     List<String> termTagsBefore = glossaryTermTags(term);
@@ -203,19 +199,10 @@ class ContextFileFqnRepairMigrationIT {
     int rowsUnderDerivedFqn = tagRowsUnder(termFqn);
 
     assertEquals(1, repairAll());
-
-    assertEquals(
-        FullyQualifiedName.buildHash(termFqn),
-        storedNameHash(file.getId()),
-        "the file takes the derived FQN");
-    assertEquals(
-        termTagsBefore,
-        glossaryTermTags(term),
-        "the glossary term keeps every tag it had; the file's edit tag did not merge in");
-    assertEquals(rowsUnderBareName, tagRowsUnder(name), "no row under the bare name moves or goes");
+    assertTagsStayUnderTheirOwner(
+        file, termFqn, termTagsBefore, () -> glossaryTermTags(term), name, rowsUnderBareName);
     assertEquals(
         rowsUnderDerivedFqn, tagRowsUnder(termFqn), "no row moved onto the glossary term's hash");
-    assertEquals(0, repairAll(), "a repaired file needs nothing on a second run");
   }
 
   /**
@@ -243,6 +230,31 @@ class ContextFileFqnRepairMigrationIT {
         rowsUnderBareName, tagRowsUnder(bareName), "no row under the bare name moves or goes");
     assertEquals(
         List.of(FILE_TAG), tagFqns(repaired.getTags()), "the file gains no tag it did not own");
+    assertEquals(0, repairAll(), "a repaired file needs nothing on a second run");
+  }
+
+  /**
+   * A derived-FQN collision leaves the file's tag rows where they are: the file takes the derived
+   * FQN (its nameHash is unique per table), the other entity keeps every tag it had, no row under
+   * the bare name moves, and a second run repairs nothing.
+   */
+  private static void assertTagsStayUnderTheirOwner(
+      ContextFile file,
+      String derivedFqn,
+      List<String> otherTagsBefore,
+      Supplier<List<String>> otherTagsAfter,
+      String bareName,
+      int rowsUnderBareName) {
+    assertEquals(
+        FullyQualifiedName.buildHash(derivedFqn),
+        storedNameHash(file.getId()),
+        "the file takes the derived FQN");
+    assertEquals(
+        otherTagsBefore,
+        otherTagsAfter.get(),
+        "the other entity keeps every tag it had; the file's tags did not merge in");
+    assertEquals(
+        rowsUnderBareName, tagRowsUnder(bareName), "no row under the bare name moves or goes");
     assertEquals(0, repairAll(), "a repaired file needs nothing on a second run");
   }
 
@@ -328,6 +340,42 @@ class ContextFileFqnRepairMigrationIT {
                 null,
                 GlossaryTerm.class)
             .getTags());
+  }
+
+  /** A glossary named like the file's folder, tracked so its cascade cleans its terms. */
+  private static Glossary createGlossary(
+      TestNamespace ns, String name, String description, String... tags) {
+    CreateGlossary request = new CreateGlossary().withName(name).withDescription(description);
+    if (tags.length > 0) {
+      request.withTags(Stream.of(tags).map(ContextFileFqnRepairMigrationIT::tagLabel).toList());
+    }
+    return ns.trackRoot(
+        Entity.GLOSSARY,
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.POST, GLOSSARIES, request, Glossary.class));
+  }
+
+  /** A glossary term named like the file under {@code glossary}, holding the file's derived FQN. */
+  private static GlossaryTerm createGlossaryTerm(String name, Glossary glossary, String... tags) {
+    CreateGlossaryTerm request =
+        new CreateGlossaryTerm()
+            .withName(name)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Named like the file; holds the file's derived FQN");
+    if (tags.length > 0) {
+      request.withTags(Stream.of(tags).map(ContextFileFqnRepairMigrationIT::tagLabel).toList());
+    }
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.POST, GLOSSARY_TERMS, request, GlossaryTerm.class);
+  }
+
+  /** The glossary and term a derived-FQN collision with a glossary term needs. */
+  private static GlossaryTerm glossaryTermNamedLikeTheFile(
+      TestNamespace ns, String folderName, String name) {
+    Glossary glossary = createGlossary(ns, folderName, "Named like the file's folder");
+    return createGlossaryTerm(name, glossary, OTHER_ENTITY_TAG, FILE_TAG);
   }
 
   private static List<String> folderTags(Folder folder) {
