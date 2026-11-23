@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.openmetadata.schema.entity.data.Container;
@@ -235,14 +236,40 @@ public class PIIMasker {
    * must not stop at the top level.
    */
   private static void maskNestedColumnProfiles(List<Column> columns, boolean ancestorSensitive) {
+    visitProfileMasking(
+        columns,
+        ancestorSensitive,
+        (column, masked) -> {
+          if (masked) {
+            column.setProfile(null);
+            column.setName(flagMaskedName(column.getName()));
+          }
+        });
+  }
+
+  /**
+   * The columns, nested ones included, whose profile a caller without PII access is shown: the
+   * columns {@link #getTableProfile} leaves unmasked for such a caller.
+   */
+  public static List<Column> columnsWithUnmaskedProfiles(List<Column> columns) {
+    List<Column> unmasked = new ArrayList<>();
+    visitProfileMasking(
+        columns,
+        false,
+        (column, masked) -> {
+          if (!masked) {
+            unmasked.add(column);
+          }
+        });
+    return unmasked;
+  }
+
+  private static void visitProfileMasking(
+      List<Column> columns, boolean ancestorSensitive, BiConsumer<Column, Boolean> visitor) {
     for (Column column : listOrEmpty(columns)) {
-      boolean masked = ancestorSensitive || hasPiiSensitiveTag(column);
-      if (masked) {
-        column.setProfile(null);
-        column.setName(flagMaskedName(column.getName()));
-      }
-      maskNestedColumnProfiles(
-          column.getChildren(), ancestorSensitive || hasDirectPiiSensitiveTag(column));
+      visitor.accept(column, ancestorSensitive || hasPiiSensitiveTag(column));
+      visitProfileMasking(
+          column.getChildren(), ancestorSensitive || hasDirectPiiSensitiveTag(column), visitor);
     }
   }
 
@@ -359,15 +386,19 @@ public class PIIMasker {
   }
 
   private static TestCase maskTestCase(TestCase testCase) {
+    maskTestCaseFields(testCase);
+    testCase.setName(flagMaskedName(testCase.getName()));
+    return testCase;
+  }
+
+  /** Removes sensitive content from a test case selected for masking. */
+  public static void maskTestCaseFields(final TestCase testCase) {
     testCase.setIncidentStatus(null);
     testCase.setTestCaseResult(null);
     testCase.setParameterValues(null);
     testCase.setDescription(null);
     testCase.setChangeDescription(null);
     testCase.setIncrementalChangeDescription(null);
-    testCase.setName(flagMaskedName(testCase.getName()));
-
-    return testCase;
   }
 
   /**
@@ -406,6 +437,28 @@ public class PIIMasker {
     return result == null
         ? null
         : new TestCaseMasker(authorizer, securityContext).maskResult(result);
+  }
+
+  /**
+   * Whether a caller without PII access is denied the results of a test case that {@code link}
+   * points at {@code table} with: a missing table, or a column that is sensitive or unresolved.
+   */
+  public static boolean hidesTestCaseResults(Table table, MessageParser.EntityLink link) {
+    return table == null
+        || (link.getFieldName() != null && isSensitiveColumn(table, link.getArrayFieldName()));
+  }
+
+  /**
+   * A column test case outlives the column it points at: schema drift (rename/drop) deletes the
+   * column's tags while the test case and its results keep their dangling {@code entityLink}, and
+   * {@code OrphanTestCaseCleanup} only sweeps rows whose table is gone. An unresolved column path
+   * must therefore fail closed exactly like a missing table and the profile path resolution in
+   * {@link #isPiiSensitiveOrUnresolvedProfile} — when the deciding metadata is gone, fall back to
+   * the caller's PII authorization rather than exposing the orphan's results.
+   */
+  private static boolean isSensitiveColumn(Table table, String columnName) {
+    final List<Column> path = ColumnUtil.resolveColumnChainByPath(table.getColumns(), columnName);
+    return path.isEmpty() || hasPiiSensitiveTagInPath(path);
   }
 
   static final class TestCaseMasker {
@@ -447,23 +500,7 @@ public class PIIMasker {
               .orElse(null);
       final boolean authorized =
           authorizer.authorizePII(securityContext, table == null ? null : table.getOwners());
-      return !authorized
-          && (table == null
-              || (link.getFieldName() != null
-                  && isSensitiveColumn(table, link.getArrayFieldName())));
-    }
-
-    /**
-     * A column test case outlives the column it points at: schema drift (rename/drop) deletes the
-     * column's tags while the test case and its results keep their dangling {@code entityLink},
-     * and {@code OrphanTestCaseCleanup} only sweeps rows whose table is gone. An unresolved column
-     * path must therefore fail closed exactly like a missing table and the profile path resolution
-     * in {@link #isPiiSensitiveOrUnresolvedProfile} — when the deciding metadata is gone, fall back
-     * to the caller's PII authorization rather than exposing the orphan's results.
-     */
-    private boolean isSensitiveColumn(Table table, String columnName) {
-      final List<Column> path = ColumnUtil.resolveColumnChainByPath(table.getColumns(), columnName);
-      return path.isEmpty() || hasPiiSensitiveTagInPath(path);
+      return !authorized && hidesTestCaseResults(table, link);
     }
 
     TestCaseResult maskResult(TestCaseResult result) {

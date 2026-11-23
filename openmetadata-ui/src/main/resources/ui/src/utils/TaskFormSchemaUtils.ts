@@ -219,7 +219,7 @@ const ensureTransitionCommentFields = (
   };
 
   nextUiSchema.comment = nextUiSchema.comment ?? {
-    'ui:widget': 'textarea',
+    'ui:widget': 'richtext',
   };
 
   if (Array.isArray(nextUiSchema['ui:order'])) {

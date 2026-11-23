@@ -266,6 +266,9 @@ describe('useSsoConfiguration', () => {
         'authenticationConfiguration.samlConfiguration.security'
       );
 
+    expect(securityUiSchema().wantAssertionEncrypted).toEqual({
+      'ui:title': 'label.require-encrypted-assertions',
+    });
     expect(securityUiSchema().wantMessagesSigned).toEqual({
       'ui:widget': 'hidden',
       'ui:hideError': true,
@@ -294,6 +297,9 @@ describe('useSsoConfiguration', () => {
       } as Parameters<typeof result.current.handleOnChange>[0]);
     });
 
+    expect(securityUiSchema().wantAssertionEncrypted).toEqual({
+      'ui:title': 'label.require-encrypted-assertions',
+    });
     expect(securityUiSchema().wantMessagesSigned).toEqual({
       'ui:title': 'Want Messages Signed',
     });

@@ -49,6 +49,8 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   (
     {
       content = '',
+      ariaLabel,
+      variant = 'document',
       editable = true,
       menuType = 'bubble',
       autoFocus,
@@ -101,7 +103,12 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         // tiptap v3 gives every editor role="textbox". A read-only viewer is
         // not a text field, so it keeps the generic semantics it had on v2.
         attributes: () => ({
-          class: 'om-block-editor',
+          class: classNames('om-block-editor', {
+            'tw:min-h-24': variant === 'comment',
+            'tw:[&>p:last-child]:pb-[30vh]':
+              variant === 'document' && editableRef.current,
+          }),
+          ...(ariaLabel ? { 'aria-label': ariaLabel } : {}),
           ...(autoFocus ? { autofocus: 'true' } : {}),
           ...(editableRef.current ? {} : { role: 'presentation' }),
         }),
