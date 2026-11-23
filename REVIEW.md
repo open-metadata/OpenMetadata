@@ -447,7 +447,8 @@ These go red on the PR. Update them in the same change:
 
 - a new `Relationship` enum value → `EnumBackwardCompatibilityTest` (the ordinal is stored);
 - a new entity-schema field → its `om:` predicate in
-  `openmetadata-spec/src/main/resources/rdf/ontology/openmetadata.ttl` (`RdfOntologyContractTest`);
+  `openmetadata-spec/src/main/resources/rdf/ontology/openmetadata.ttl`
+  (`RdfOntologyContractTest`, `RdfOntologyDescriptionContractTest`);
 - a new v2xx data-migration step → the `mockStatic` list in `IngestionPipelineMigrationEntryPointTest`;
 - a changed Pydantic model or base-class annotation → basedpyright, where any new violation in any
   file fails.
