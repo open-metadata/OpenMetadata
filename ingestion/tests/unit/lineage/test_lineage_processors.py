@@ -608,7 +608,7 @@ def _process_view(view_definition, override=True, view_in_catalog=True, extensio
         queue=queue,
         metadata=metadata,
         service_name="svc",
-        connectionType="postgres",
+        connectionType="Postgres",
         processCrossDatabaseLineage=False,
         crossDatabaseServiceNames=[],
         parsingTimeoutLimit=10,
