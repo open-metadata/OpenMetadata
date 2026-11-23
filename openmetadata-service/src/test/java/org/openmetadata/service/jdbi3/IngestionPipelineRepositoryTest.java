@@ -764,15 +764,15 @@ class IngestionPipelineRepositoryTest {
             suitePipeline(new DatabaseServiceMetadataPipeline()),
             false),
         Arguments.of(
-            "different pipeline type",
+            "other pipeline type with suite parent",
             suite,
             suitePipeline(matching).withPipelineType(PipelineType.METADATA),
-            false),
+            true),
         Arguments.of(
-            "suite config with metadata pipeline",
+            "other pipeline type with suite config",
             new DatabaseService(),
             suitePipeline(matching).withPipelineType(PipelineType.METADATA),
-            false),
+            true),
         Arguments.of(
             "metadata pipeline",
             new DatabaseService(),

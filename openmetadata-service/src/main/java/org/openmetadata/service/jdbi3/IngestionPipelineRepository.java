@@ -559,13 +559,13 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   static void validateTestSuiteConfig(IngestionPipeline pipeline, EntityInterface<?> parent) {
-    final Map<?, ?> config = getSourceConfigMap(getRequiredSourceConfig(pipeline));
-    final String configType = Objects.toString(config.get(SOURCE_CONFIG_TYPE), null);
-    final boolean suitePipeline = PipelineType.TEST_SUITE.equals(pipeline.getPipelineType());
-    if (!suitePipeline && !(parent instanceof TestSuite) && !"TestSuite".equals(configType)) {
+    if (!PipelineType.TEST_SUITE.equals(pipeline.getPipelineType())) {
       return;
     }
-    if (!suitePipeline || !(parent instanceof TestSuite suite) || !"TestSuite".equals(configType)) {
+    final Map<?, ?> config = getSourceConfigMap(getRequiredSourceConfig(pipeline));
+    final String configType = Objects.toString(config.get(SOURCE_CONFIG_TYPE), null);
+    if (!(parent instanceof TestSuite suite)
+        || !PipelineType.TEST_SUITE.value().equals(configType)) {
       throw new BadRequestException(
           "TestSuite pipeline requires a test suite and TestSuite config");
     }
