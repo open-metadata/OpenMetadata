@@ -101,6 +101,7 @@ const BotListV1 = ({
   const [searchedData, setSearchedData] = useState<Bot[]>([]);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const latestSearchRequest = useRef(0);
+  const latestBotsRequest = useRef(0);
   const botsByUserNameRef = useRef<Map<string, Bot>>(new Map());
   const botMapLoadPromiseRef = useRef<Promise<void> | null>(null);
 
@@ -242,6 +243,7 @@ const BotListV1 = ({
     showDeleted?: boolean,
     pagingOffset?: Partial<Paging>
   ) => {
+    const requestId = ++latestBotsRequest.current;
     try {
       setLoading(true);
       const { data, paging } = await getBots({
@@ -250,6 +252,9 @@ const BotListV1 = ({
         limit: pageSize,
         include: showDeleted ? Include.Deleted : Include.NonDeleted,
       });
+      if (requestId !== latestBotsRequest.current) {
+        return;
+      }
       const activeSearchTerm = searchTerm.trim();
 
       handlePagingChange(paging);
@@ -261,9 +266,13 @@ const BotListV1 = ({
       }
       setHandleErrorPlaceholder(!showDeleted && isEmpty(data));
     } catch (error) {
-      showErrorToast((error as AxiosError).message);
+      if (requestId === latestBotsRequest.current) {
+        showErrorToast((error as AxiosError).message);
+      }
     } finally {
-      setLoading(false);
+      if (requestId === latestBotsRequest.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -351,10 +360,6 @@ const BotListV1 = ({
     cursorType,
   }: PagingHandlerParams) => {
     if (cursorType) {
-      fetchBots(false, {
-        [cursorType]: paging[cursorType],
-        total: paging.total,
-      } as Paging);
       handlePageChange(
         currentPage,
         { cursorType, cursorValue: paging[cursorType] },

@@ -16,8 +16,8 @@ import { Col, Row, Space, Tooltip, Typography } from 'antd';
 import Card from 'antd/lib/card/Card';
 import { ColumnsType, TableProps } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { isEmpty, map, startCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { isEmpty, isEqual, map, startCase } from 'lodash';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -39,6 +39,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Include } from '../../../generated/type/include';
+import { Paging } from '../../../generated/type/paging';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
@@ -84,6 +85,7 @@ const Services = ({ serviceName }: ServicesProps) => {
   }, [navigate, serviceName]);
 
   const [isLoading, setIsLoading] = useState(true);
+  const latestServiceRequest = useRef(0);
   const [serviceDetails, setServiceDetails] = useState<ServicesType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceTypeFilter, setServiceTypeFilter] =
@@ -155,9 +157,11 @@ const Services = ({ serviceName }: ServicesProps) => {
       before?: string;
       queryFilter?: Record<string, unknown>;
     }) => {
+      const requestId = ++latestServiceRequest.current;
       setIsLoading(true);
       try {
         let services = [];
+        let servicePaging: Paging;
         if (isEmpty(queryFilter)) {
           const { data, paging } = await getServices({
             serviceName,
@@ -168,7 +172,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           });
 
           services = data;
-          handlePagingChange(paging);
+          servicePaging = paging;
         } else {
           const {
             hits: { hits, total },
@@ -183,9 +187,14 @@ const Services = ({ serviceName }: ServicesProps) => {
           services = hits.map(
             ({ _source }) => _source as DatabaseServiceSearchSource
           );
-          handlePagingChange({ total: total.value });
+          servicePaging = { total: total.value };
         }
 
+        if (requestId !== latestServiceRequest.current) {
+          return;
+        }
+
+        handlePagingChange(servicePaging);
         setServiceDetails(
           serviceName === ServiceCategory.METADATA_SERVICES
             ? services.filter(
@@ -194,6 +203,9 @@ const Services = ({ serviceName }: ServicesProps) => {
             : services
         );
       } catch (error) {
+        if (requestId !== latestServiceRequest.current) {
+          return;
+        }
         setServiceDetails([]);
         handlePagingChange(pagingObject);
         showErrorToast(
@@ -201,7 +213,9 @@ const Services = ({ serviceName }: ServicesProps) => {
           t('server.entity-fetch-error', { entity: t('label.service-plural') })
         );
       } finally {
-        setIsLoading(false);
+        if (requestId === latestServiceRequest.current) {
+          setIsLoading(false);
+        }
       }
     },
     [searchIndex, serviceName, deleted, pageSize]
@@ -211,23 +225,15 @@ const Services = ({ serviceName }: ServicesProps) => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (!isEmpty(serviceQueryFilter)) {
         handlePageChange(currentPage);
-        getServiceDetails({
-          currentPage,
-          limit: pageSize,
-          queryFilter: serviceQueryFilter,
-        });
       } else if (cursorType) {
         handlePageChange(
           currentPage,
           { cursorType, cursorValue: paging[cursorType] },
           pageSize
         );
-        getServiceDetails({
-          [cursorType]: paging[cursorType],
-        });
       }
     },
-    [getServiceDetails, serviceQueryFilter, paging, pageSize]
+    [serviceQueryFilter, paging, pageSize, handlePageChange]
   );
 
   const addServicePermission = useMemo(
@@ -241,10 +247,13 @@ const Services = ({ serviceName }: ServicesProps) => {
     [permissions, serviceName]
   );
 
-  const handleDeletedSwitchChange = useCallback(
-    () => setDeleted((prevValue) => !prevValue),
-    []
-  );
+  const handleDeletedSwitchChange = useCallback(() => {
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
+    setDeleted((prevValue) => !prevValue);
+  }, [handlePageChange]);
 
   const getServicePageHeader = useCallback(() => {
     let pageHeader;
@@ -538,11 +547,21 @@ const Services = ({ serviceName }: ServicesProps) => {
   );
 
   useEffect(() => {
-    const { cursorType, cursorValue } = pagingCursor ?? {};
+    const {
+      cursorType,
+      cursorValue,
+      currentPage: cursorPage,
+    } = pagingCursor ?? {};
+
+    // A filter reset can update local paging before the URL catches up.
+    if (Number(cursorPage ?? currentPage) !== currentPage) {
+      return;
+    }
 
     if (cursorType && cursorValue) {
       getServiceDetails({
         limit: pageSize,
+        currentPage,
         queryFilter: serviceQueryFilter,
         [cursorType as 'before' | 'after']: cursorValue,
       });
@@ -551,6 +570,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     }
     getServiceDetails({
       limit: pageSize,
+      currentPage,
       queryFilter: serviceQueryFilter,
     });
   }, [
@@ -560,6 +580,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     searchTerm,
     serviceQueryFilter,
     deleted,
+    currentPage,
     pagingCursor,
   ]);
 
@@ -567,7 +588,16 @@ const Services = ({ serviceName }: ServicesProps) => {
     _pagination,
     filters
   ) => {
-    setServiceTypeFilter(filters.serviceType as ServicesType['serviceType'][]);
+    const nextServiceTypeFilter = (filters.serviceType ??
+      []) as ServicesType['serviceType'][];
+
+    if (!isEqual(nextServiceTypeFilter, serviceTypeFilter ?? [])) {
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+    }
+    setServiceTypeFilter(nextServiceTypeFilter);
   };
 
   return (

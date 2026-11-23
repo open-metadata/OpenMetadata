@@ -92,10 +92,6 @@ const ApplicationPage = () => {
     cursorType,
   }: PagingHandlerParams) => {
     if (cursorType) {
-      fetchApplicationList(showDisabled, {
-        [cursorType]: paging[cursorType],
-        total: paging.total,
-      });
       handlePageChange(
         currentPage,
         { cursorType, cursorValue: paging[cursorType] },

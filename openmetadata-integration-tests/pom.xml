@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,SystemResourceIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,AppsResourceIT,TestSuiteReindexIT,SystemResourceIT,SamlIdpCertificatePutIT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tags excluded from the ui-it profile. Override on the CLI to include them, e.g.
@@ -420,6 +420,7 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/SamlIdpCertificatePutIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -465,6 +466,7 @@
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/SamlIdpCertificatePutIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -541,6 +543,7 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/SamlIdpCertificatePutIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -586,6 +589,7 @@
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/SamlIdpCertificatePutIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -663,6 +667,7 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/SamlIdpCertificatePutIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -709,6 +714,7 @@
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/SamlIdpCertificatePutIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -786,6 +792,7 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/SamlIdpCertificatePutIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -831,6 +838,7 @@
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/SamlIdpCertificatePutIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -907,6 +915,7 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/SamlIdpCertificatePutIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -952,6 +961,7 @@
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/SamlIdpCertificatePutIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1027,6 +1037,7 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/SamlIdpCertificatePutIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -1073,6 +1084,7 @@
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/SamlIdpCertificatePutIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1165,6 +1177,7 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/SamlIdpCertificatePutIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -1212,6 +1225,7 @@
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/SamlIdpCertificatePutIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -1290,6 +1304,7 @@
                     <include>**/AppsResourceIT.java</include>
                     <include>**/TestSuiteReindexIT.java</include>
                     <include>**/SystemResourceIT.java</include>
+                    <include>**/SamlIdpCertificatePutIT.java</include>
                     <include>**/VectorEmbeddingIntegrationIT.java</include>
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
@@ -1337,6 +1352,7 @@
                     <exclude>**/AppsResourceIT.java</exclude>
                     <exclude>**/TestSuiteReindexIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
+                    <exclude>**/SamlIdpCertificatePutIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>

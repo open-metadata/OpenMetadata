@@ -20,13 +20,12 @@ import validators
 from cachetools import LRUCache
 from tableauserverclient import (
     Pager,
-    PersonalAccessTokenAuth,
     ProjectItem,
     RequestOptions,
     Server,
-    TableauAuth,
     ViewItem,
 )
+from tableauserverclient.models import Credentials
 
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.dashboard.tableau.models import (
@@ -110,7 +109,7 @@ class TableauClient:
 
     def __init__(
         self,
-        tableau_server_auth: Union[PersonalAccessTokenAuth, TableauAuth],  # noqa: UP007
+        tableau_server_auth: Credentials,
         config,
         verify_ssl: Union[bool, str],  # noqa: UP007
         pagination_limit: int,

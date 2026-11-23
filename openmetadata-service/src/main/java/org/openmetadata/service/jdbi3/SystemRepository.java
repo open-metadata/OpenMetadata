@@ -8,6 +8,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.annotations.VisibleForTesting;
 import com.unboundid.ldap.sdk.LDAPConnection;
 import com.unboundid.ldap.sdk.LDAPConnectionOptions;
@@ -17,6 +18,7 @@ import com.unboundid.util.ssl.SSLUtil;
 import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -123,6 +125,7 @@ import org.openmetadata.service.security.auth.validator.CustomOidcValidator;
 import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
 import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
+import org.openmetadata.service.security.auth.validator.SamlIdpCertificateGate;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.GlossaryTermRelationSettingsUtil;
@@ -322,7 +325,7 @@ public class SystemRepository {
     OpenMetadataBaseUrlValidator.validate(setting);
     final Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
     preserveEmailSettings(setting, oldValue);
-    updateSetting(setting);
+    updateSetting(setting, storedValueOf(oldValue));
     prepareFetchedSettings(setting);
     if (oldValue == null) {
       return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, ENTITY_CREATED))
@@ -336,7 +339,7 @@ public class SystemRepository {
     OpenMetadataBaseUrlValidator.validate(setting);
     try {
       updateSetting(setting);
-    } catch (BadRequestException ex) {
+    } catch (BadRequestException | WebApplicationException ex) {
       throw ex;
     } catch (Exception ex) {
       LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
@@ -447,11 +450,15 @@ public class SystemRepository {
   }
 
   public void updateSetting(Settings setting) {
+    updateSetting(setting, storedValueOf(setting.getConfigType()));
+  }
+
+  private void updateSetting(final Settings setting, final JsonNode stored) {
     try {
-      String updatedJson = prepareSettingForUpdate(setting);
+      final String updatedJson = prepareSettingForUpdate(setting, stored);
       dao.insertSettings(setting.getConfigType().toString(), updatedJson);
       settingUpdated(setting.getConfigType());
-    } catch (BadRequestException ex) {
+    } catch (BadRequestException | WebApplicationException ex) {
       throw ex;
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
@@ -464,7 +471,7 @@ public class SystemRepository {
 
   private void updateSettingIfCurrent(Settings setting, String expectedJson) {
     try {
-      String updatedJson = prepareSettingForUpdate(setting);
+      final String updatedJson = prepareSettingForUpdate(setting, valueOf(expectedJson));
       int updated =
           dao.updateSettingsIfCurrent(
               setting.getConfigType().toString(), expectedJson, updatedJson);
@@ -473,7 +480,8 @@ public class SystemRepository {
             "Setting changed while the JSON Patch was being applied");
       }
       settingUpdated(setting.getConfigType());
-    } catch (BadRequestException | PreconditionFailedException ex) {
+    } catch (BadRequestException | WebApplicationException ex) {
+      // A refused value, such as an unusable IdP certificate, or a 412 from a concurrent write.
       throw ex;
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
@@ -484,7 +492,13 @@ public class SystemRepository {
     }
   }
 
-  private String prepareSettingForUpdate(Settings setting) {
+  /**
+   * Every write of a setting's value passes here before it reaches the database, whichever way it
+   * came in: an API save, an administration command or a first-start seed. The checks of a setting
+   * type that compare with what is stored get {@code stored}, the value this write replaces, or null
+   * when there is none. ADR:2026-11-20-the-stored-saml-idp-certificate-is-standard-pem
+   */
+  private String prepareSettingForUpdate(final Settings setting, final JsonNode stored) {
     if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
       SmtpSettings emailConfig =
           JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
@@ -521,6 +535,11 @@ public class SystemRepository {
       AuthenticationConfiguration authConfig =
           JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
       rejectInvalidTokenValidity(authConfig);
+      SamlIdpCertificateGate.requireUsable(
+          authConfig,
+          stored == null
+              ? null
+              : JsonUtils.convertValue(stored, AuthenticationConfiguration.class));
       setting.setConfigValue(authConfig);
     } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
       AuthorizerConfiguration authorizerConfig =
@@ -529,6 +548,21 @@ public class SystemRepository {
       setting.setConfigValue(authorizerConfig);
     }
     return JsonUtils.pojoToJson(setting.getConfigValue());
+  }
+
+  /** The stored value of a setting; null when it is not stored. */
+  private JsonNode storedValueOf(final SettingsType type) {
+    return valueOf(dao.getConfigJsonWithKey(type.value()));
+  }
+
+  private static JsonNode storedValueOf(final Settings stored) {
+    return stored == null || stored.getConfigValue() == null
+        ? null
+        : JsonUtils.valueToTree(stored.getConfigValue());
+  }
+
+  private static JsonNode valueOf(final String storedJson) {
+    return storedJson == null ? null : JsonUtils.readTree(storedJson);
   }
 
   /**

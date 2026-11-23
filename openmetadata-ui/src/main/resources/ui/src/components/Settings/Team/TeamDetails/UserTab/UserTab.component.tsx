@@ -16,7 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import { isEmpty, orderBy } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExportIcon } from '../../../../../assets/svg/ic-export.svg';
@@ -71,6 +71,7 @@ export const UserTab = ({
   const [deletingUser, setDeletingUser] = useState<EntityReference>();
   const { showModal } = useEntityExportModalProvider();
   const [isLoading, setIsLoading] = useState(true);
+  const latestUsersRequest = useRef(0);
   const [users, setUsers] = useState<User[]>([]);
   const [searchText, setSearchText] = useState('');
   const {
@@ -109,6 +110,8 @@ export const UserTab = ({
    * Make API call to fetch current team user data
    */
   const getCurrentTeamUsers = (team: string, paging: Partial<Paging> = {}) => {
+    const requestId = ++latestUsersRequest.current;
+    const isLatest = () => requestId === latestUsersRequest.current;
     setIsLoading(true);
     getUsers({
       fields: `${TabSpecificField.ROLES}`,
@@ -117,21 +120,27 @@ export const UserTab = ({
       ...paging,
     })
       .then((res) => {
-        if (res.data) {
+        if (isLatest() && res.data) {
           setUsers(res.data);
           handlePagingChange(res.paging);
         }
       })
       .catch(() => {
-        setUsers([]);
-        handlePagingChange({ total: 0 });
+        if (isLatest()) {
+          setUsers([]);
+          handlePagingChange({ total: 0 });
+        }
       })
       .finally(() => {
-        setIsLoading(false);
+        if (isLatest()) {
+          setIsLoading(false);
+        }
       });
   };
 
   const searchUsers = (text: string, currentPage: number) => {
+    const requestId = ++latestUsersRequest.current;
+    const isLatest = () => requestId === latestUsersRequest.current;
     setIsLoading(true);
     searchQuery({
       query: text,
@@ -162,6 +171,9 @@ export const UserTab = ({
       searchIndex: SearchIndex.USER,
     })
       .then((res) => {
+        if (!isLatest()) {
+          return;
+        }
         const data = formatUsersResponse(res.hits.hits);
         setUsers(data);
         handlePagingChange({
@@ -169,9 +181,15 @@ export const UserTab = ({
         });
       })
       .catch(() => {
-        setUsers([]);
+        if (isLatest()) {
+          setUsers([]);
+        }
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        if (isLatest()) {
+          setIsLoading(false);
+        }
+      });
   };
 
   const userPagingHandler = ({
@@ -180,11 +198,7 @@ export const UserTab = ({
   }: PagingHandlerParams) => {
     if (searchText) {
       handlePageChange(currentPage);
-      searchUsers(searchText, currentPage);
     } else if (cursorType) {
-      getCurrentTeamUsers(currentTeam.name, {
-        [cursorType]: paging[cursorType],
-      });
       handlePageChange(
         currentPage,
         { cursorType, cursorValue: paging[cursorType] },
@@ -193,31 +207,35 @@ export const UserTab = ({
     }
   };
 
-  const handleCurrentUserPage = (value?: number) => {
-    handlePageChange(value ?? INITIAL_PAGING_VALUE);
-  };
-
   const handleUsersSearchAction = (text: string) => {
     setSearchText(text);
-    handleCurrentUserPage(INITIAL_PAGING_VALUE);
-    if (text) {
-      searchUsers(text, INITIAL_PAGING_VALUE);
-    } else {
-      getCurrentTeamUsers(currentTeam.name);
-    }
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
   };
 
   useEffect(() => {
-    const { cursorType, cursorValue } = pagingCursor ?? {};
+    const {
+      cursorType,
+      cursorValue,
+      currentPage: cursorPage,
+    } = pagingCursor ?? {};
 
-    if (cursorType && cursorValue) {
+    if (Number(cursorPage ?? currentPage) !== currentPage) {
+      return;
+    }
+
+    if (searchText) {
+      searchUsers(searchText, currentPage);
+    } else if (cursorType && cursorValue) {
       getCurrentTeamUsers(currentTeam.name, {
         [cursorType]: cursorValue,
       });
     } else {
       getCurrentTeamUsers(currentTeam.name);
     }
-  }, [currentTeam, pageSize, pagingCursor]);
+  }, [currentTeam, pageSize, pagingCursor, searchText, currentPage]);
 
   const isTeamDeleted = currentTeam.deleted ?? false;
 
