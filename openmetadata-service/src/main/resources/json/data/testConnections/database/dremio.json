@@ -1,7 +1,7 @@
 {
   "name": "Dremio",
   "displayName": "Dremio Test Connection",
-  "description": "This Test Connection validates the access to Dremio (Software or Cloud) through its Arrow Flight SQL interface and basic metadata extraction of namespaces, folders, and tables.",
+  "description": "This Test Connection validates the access to Dremio (Software or Cloud) through its REST API and basic metadata extraction of namespaces, folders, and tables.",
   "steps": [
     {
       "name": "CheckAccess",
@@ -30,8 +30,8 @@
     },
     {
       "name": "GetQueries",
-      "description": "Check if we can access the job history (sys.jobs_recent in Dremio Software, sys.project.jobs_recent in Dremio Cloud) to get query logs. These queries are analyzed in the usage & lineage workflow.",
-      "errorMessage": "Failed to read the job history from Dremio. Please validate that the user is allowed to read sys.jobs_recent (Dremio Software) or sys.project.jobs_recent (Dremio Cloud) for usage and lineage extraction.",
+      "description": "Check if we can access the job history (sys.jobs_recent in Dremio Software, sys.project.history.jobs in Dremio Cloud) to get query logs. These queries are analyzed in the usage & lineage workflow.",
+      "errorMessage": "Failed to read the job history from Dremio. Please validate that the user is allowed to read sys.jobs_recent (Dremio Software) or sys.project.history.jobs (Dremio Cloud) for usage and lineage extraction.",
       "mandatory": false
     }
   ]

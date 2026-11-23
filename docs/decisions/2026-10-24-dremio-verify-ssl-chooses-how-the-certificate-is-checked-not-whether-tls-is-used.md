@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-24 (initial)
-- **Deciders:** Charly Clairmont
-- **Guard:** `TestSoftwareTls` in `ingestion/tests/unit/source/database/dremio/test_connection.py`
+- **Deciders:** Charly Clairmont, ulixius9
+- **Guard:** `TestCertificate` in `ingestion/tests/unit/source/database/dremio/test_client.py`
 - **Related:** [#34366](https://github.com/open-metadata/OpenMetadata/issues/34366), [PR #36163](https://github.com/open-metadata/OpenMetadata/pull/36163); `security/ssl/verifySSLConfig.json`
 
 ## Context
@@ -31,5 +31,4 @@ certificate fields of `sslConfig`) are not supported by the connector and are no
 
 An `https` Dremio with a public certificate works with the default configuration. The value
 `no-ssl` does not mean "no TLS" here, which differs from the other connectors and is written in the
-description of the field. Mutual TLS needs a new decision: the driver has no option for a client
-certificate today.
+description of the field. Mutual TLS needs a new decision.

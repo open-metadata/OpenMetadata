@@ -1,89 +1,93 @@
-# Derived from https://github.com/TIKI-Institut/openmetadata-dremio-connector
-# Copyright TIKI GmbH, licensed under the Apache License, Version 2.0.
-# The queries below up to DREMIO_GET_VIEWS come from that project; the
-# test-connection queries that follow were added for OpenMetadata.
-
+#  Copyright 2025 Collate
+#  Licensed under the Collate Community License, Version 1.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  https://github.com/open-metadata/OpenMetadata/blob/main/ingestion/LICENSE
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
 """
-SQL queries used by the Dremio connector.
-
-Dremio exposes spaces, sources and folders as schemas whose names are dotted
-paths: `<space>.<folder>(.<folder>)`. A top-level name is a database for
-OpenMetadata, and the remainder of the path is its schema.
+Queries on the Dremio job history, read by the usage and lineage workflows
 """
 
-import textwrap
+from collections.abc import Iterator
+from dataclasses import dataclass
+from datetime import datetime
 
-# `INFORMATION_SCHEMA` and `sys` are Dremio's own catalogs, present in every
-# project: they hold no user data and are not ingested as databases.
-DREMIO_GET_DATABASES = textwrap.dedent(
-    """
-SELECT SCHEMA_NAME
-FROM INFORMATION_SCHEMA.SCHEMATA
-WHERE SCHEMA_NAME NOT LIKE '%.%'
-  AND NOT STARTS_WITH(SCHEMA_NAME, '@')
-  AND NOT STARTS_WITH(SCHEMA_NAME, '$')
-  AND UPPER(SCHEMA_NAME) NOT IN ('INFORMATION_SCHEMA', 'SYS')
-    """
-)
-
-# The folders of a namespace, and the namespace itself when objects sit at its
-# root, which is where Dremio puts them in a space that has no folder.
-# STARTS_WITH, because `_` is a wildcard of LIKE and namespaces have underscores.
-DREMIO_GET_SCHEMAS = textwrap.dedent(
-    """
-SELECT SCHEMA_NAME
-FROM INFORMATION_SCHEMA.SCHEMATA
-WHERE STARTS_WITH(SCHEMA_NAME, '{database_name}.')
-UNION
-SELECT DISTINCT TABLE_SCHEMA
-FROM INFORMATION_SCHEMA."TABLES"
-WHERE TABLE_SCHEMA = '{database_name}'
-    """
-)
+from metadata.generated.schema.type.tableQuery import TableQuery
 
 
-DREMIO_GET_TABLES = textwrap.dedent(
-    """
-SELECT TABLE_NAME
-FROM INFORMATION_SCHEMA."TABLES"
-WHERE TABLE_SCHEMA  = '{schema_name}'
-AND TABLE_TYPE = 'TABLE'
-    """
-)
+@dataclass(frozen=True)
+class JobsTable:
+    """Where an edition keeps its job history, and the unit of its epoch columns"""
 
-DREMIO_GET_VIEWS = textwrap.dedent(
-    """
-SELECT TABLE_NAME
-FROM INFORMATION_SCHEMA."TABLES"
-WHERE TABLE_SCHEMA  = '{schema_name}'
-AND TABLE_TYPE = 'VIEW'
-    """
-)
+    name: str
+    time_column: str
+    cpu_column: str
+    units_per_second: int
 
 
-# Test connection
-DREMIO_TEST_GET_SCHEMAS = textwrap.dedent(
-    """
-SELECT SCHEMA_NAME
-FROM INFORMATION_SCHEMA.SCHEMATA
-    """
-)
+# `sys."jobs"` of Dremio Software only lists the jobs that are running;
+# finished ones are in `sys.jobs_recent`.
+CLOUD_JOBS = JobsTable("sys.project.history.jobs", "submitted_epoch", "execution_cpu_time_ns", 1_000_000_000)
+SOFTWARE_JOBS = JobsTable("sys.jobs_recent", "submitted_epoch_millis", "execution_cpu_time_millis", 1_000)
 
-# `TABLE_SCHEMA <> 'INFORMATION_SCHEMA'` keeps the check on user datasets and
-# off the system catalog that Dremio always exposes.
-DREMIO_TEST_GET_TABLES = textwrap.dedent(
-    """
-SELECT TABLE_NAME
-FROM INFORMATION_SCHEMA."TABLES"
-WHERE TABLE_TYPE IN ('TABLE', 'VIEW')
-  AND TABLE_SCHEMA <> 'INFORMATION_SCHEMA'
-    """
-)
+USAGE_FILTER = "UPPER(query) LIKE '%SELECT%'"
 
-# The job history lives in a different system table depending on the edition:
-# `sys.project.jobs_recent` on Dremio Cloud, `sys.jobs_recent` on Dremio
-# Software. It is resolved at run time by probing these candidates in order.
-# `jobs` next to them only lists the jobs that are running.
-DREMIO_JOBS_TABLES = ("sys.project.jobs_recent", "sys.jobs_recent")
+LINEAGE_FILTER = """(
+    UPPER(query) LIKE '%CREATE%TABLE%AS%SELECT%'
+    OR UPPER(query) LIKE '%INSERT%INTO%'
+    OR UPPER(query) LIKE '%UPDATE%'
+    OR UPPER(query) LIKE '%MERGE%'
+    OR UPPER(query) LIKE '%CREATE%VIEW%'
+)"""
 
-DREMIO_TEST_GET_JOBS = "SELECT job_id FROM {jobs_table} LIMIT 1"
+TEST_GET_JOBS = "SELECT job_id FROM {jobs_table} LIMIT 1"
+
+
+def get_jobs_query(
+    jobs: JobsTable, start_time: datetime, end_time: datetime, query_filter: str, result_limit: int
+) -> str:
+    """
+    The user queries submitted between the two times, newest first. Reads of the
+    job history itself, such as this query, are left out.
+    """
+    start = int(start_time.timestamp() * jobs.units_per_second)
+    end = int(end_time.timestamp() * jobs.units_per_second)
+    return f"""
+SELECT
+    query,
+    user_name,
+    {jobs.time_column} AS submitted_epoch,
+    {jobs.cpu_column} AS cpu_time
+FROM {jobs.name}
+WHERE {jobs.time_column} >= {start}
+  AND {jobs.time_column} < {end}
+  AND query_type IN ('UI_RUN', 'JDBC', 'ODBC', 'REST', 'FLIGHT')
+  AND query IS NOT NULL
+  AND LOWER(query) NOT LIKE '%{jobs.name.lower()}%'
+  AND {query_filter}
+ORDER BY {jobs.time_column} DESC
+LIMIT {result_limit}
+"""
+
+
+def to_table_query(row: dict, jobs: JobsTable, service_name: str) -> TableQuery:
+    submitted = row.get("submitted_epoch")
+    cpu_time = row.get("cpu_time")
+    return TableQuery(
+        query=row["query"],
+        userName=row.get("user_name") or "",
+        startTime=datetime.fromtimestamp(submitted / jobs.units_per_second).isoformat() if submitted else "",
+        duration=cpu_time / jobs.units_per_second if cpu_time else 0,
+        analysisDate=datetime.now(),
+        serviceName=service_name,
+    )
+
+
+def iter_table_queries(rows: list[dict], jobs: JobsTable, service_name: str) -> Iterator[TableQuery]:
+    for row in rows:
+        if row.get("query"):
+            yield to_table_query(row, jobs, service_name)

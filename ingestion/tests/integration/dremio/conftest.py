@@ -22,8 +22,6 @@ from metadata.generated.schema.entity.services.databaseService import (
 
 DREMIO_IMAGE = "dremio/dremio-oss:26.0.5"
 DREMIO_REST_PORT = 9047
-# The connector reaches Arrow Flight on this port of the host in the hostPort URL.
-DREMIO_FLIGHT_PORT = 32010
 DREMIO_USER = "admin"
 DREMIO_PASSWORD = "Admin-1234-test"
 NAS_PATH = "/var/lib/dremio/lake"
@@ -73,11 +71,7 @@ class DremioRest:
 
 @pytest.fixture(scope="module")
 def dremio_container():
-    container = (
-        DockerContainer(DREMIO_IMAGE)
-        .with_exposed_ports(DREMIO_REST_PORT)
-        .with_bind_ports(DREMIO_FLIGHT_PORT, DREMIO_FLIGHT_PORT)
-    )
+    container = DockerContainer(DREMIO_IMAGE).with_exposed_ports(DREMIO_REST_PORT)
     with container:
         wait_for_logs(container, r"Dremio Daemon Started as master", timeout=600)
         yield container

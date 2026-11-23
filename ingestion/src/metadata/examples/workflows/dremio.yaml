@@ -5,7 +5,6 @@ source:
     config:
       type: Dremio
       # Dremio Software: the REST URL of the coordinator, with a user and its password.
-      # The connector reaches Arrow Flight on port 32010 of the same host.
       authType:
         hostPort: http://localhost:9047
         username: user

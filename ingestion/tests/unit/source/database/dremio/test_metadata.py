@@ -1,4 +1,4 @@
-#  Copyright 2026 Collate
+#  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -8,151 +8,181 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
-Unit tests for how the Dremio source maps spaces, folders and tables
+The Dremio metadata source, on a fake REST API
 """
 
-from unittest.mock import MagicMock
+import requests
 
-import pytest
+from metadata.generated.schema.entity.data.table import DataType, TableType
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
+from metadata.ingestion.source.database.dremio.metadata import to_column
 
-from metadata.ingestion.source.database.dremio.metadata import DremioSource
-from metadata.ingestion.source.database.dremio.queries import DREMIO_GET_DATABASES, DREMIO_GET_SCHEMAS
+from ._fixtures import dataset, folder  # noqa: TID252
 
-
-def dremio_source(database="polaris") -> DremioSource:
-    source = DremioSource.__new__(DremioSource)
-    source.database = database
-    source.schema_paths = {}
-    return source
-
-
-class TestSchemaNames:
-    @pytest.mark.parametrize(
-        "dremio_schema,expected",
-        [
-            ("polaris.demo", "demo"),
-            ("polaris.demo.sub", "demo.sub"),
-            ("polaris", "polaris"),  # the objects at the root of the namespace
-            ("polaris2.demo", "polaris2.demo"),  # another namespace that starts the same
-        ],
-    )
-    def test_the_namespace_is_removed_from_the_schema(self, dremio_schema, expected):
-        assert dremio_source()._remove_database_from_schema_name(dremio_schema) == expected
-
-    @pytest.mark.parametrize(
-        "schema,expected",
-        [
-            ("demo", "polaris.demo"),
-            ("demo.sub", "polaris.demo.sub"),
-            ("polaris", "polaris"),
-            ("", "polaris"),
-            (None, "polaris"),
-            ("  ", "polaris"),
-        ],
-    )
-    def test_the_namespace_is_added_back_to_the_schema(self, schema, expected):
-        assert dremio_source()._add_database_to_schema_name(schema) == expected
-
-    def test_names_are_left_alone_without_a_namespace(self):
-        source = dremio_source(database=None)
-
-        assert source._add_database_to_schema_name("demo") == "demo"
-        assert source._remove_database_from_schema_name("polaris.demo") == "polaris.demo"
+CATALOG = {
+    "/catalog": {
+        "data": [
+            {"containerType": "SPACE", "path": ["reporting"], "id": "space-id"},
+            {"containerType": "SOURCE", "path": ["lake"], "id": "lake-id"},
+            {"containerType": "HOME", "path": ["@admin"], "id": "home-id"},
+        ]
+    },
+    "/catalog/by-path/reporting": {
+        "children": [
+            dataset("reporting", "totals", view=True),
+            folder("reporting", "reporting"),
+            folder("reporting", "deep"),
+            folder("reporting", "empty"),
+        ]
+    },
+    "/catalog/by-path/reporting/reporting": {"children": [dataset("reporting", "reporting", "archived", view=True)]},
+    "/catalog/by-path/reporting/deep": {"children": [folder("reporting", "deep", "er")]},
+    "/catalog/by-path/reporting/deep/er": {"children": [dataset("reporting", "deep", "er", "v", view=True)]},
+    "/catalog/by-path/reporting/empty": {"children": []},
+}
 
 
-class TestSchemas:
-    def test_the_objects_at_the_root_of_a_namespace_have_a_schema(self):
-        source = dremio_source("om_demo")
-        source._execute_database_query = MagicMock(return_value=["om_demo.reports", "om_demo"])
-
-        assert list(source.get_raw_database_schema_names()) == ["reports", "om_demo"]
-
-    @pytest.mark.parametrize(
-        "dremio_schemas",
-        [["sales", "sales.sales"], ["sales.sales", "sales"]],
-    )
-    def test_a_folder_named_like_its_namespace_keeps_its_full_path(self, dremio_schemas):
-        # The root of `sales` is the schema `sales`: the folder `sales.sales`
-        # cannot have that name too, or its objects are never read.
-        source = dremio_source("sales")
-        source._execute_database_query = MagicMock(return_value=dremio_schemas)
-
-        assert sorted(source.get_raw_database_schema_names()) == ["sales", "sales.sales"]
-        assert source._add_database_to_schema_name("sales") == "sales"
-        assert source._add_database_to_schema_name("sales.sales") == "sales.sales"
-
-    def test_a_schema_is_read_from_the_path_it_was_listed_with(self):
-        source = dremio_source("om_demo")
-        source._execute_database_query = MagicMock(return_value=["om_demo", "om_demo.reports.monthly"])
-
-        list(source.get_raw_database_schema_names())
-
-        assert source._add_database_to_schema_name("reports.monthly") == "om_demo.reports.monthly"
-        assert source._add_database_to_schema_name("om_demo") == "om_demo"
-
-    def test_two_paths_that_would_share_a_name_are_read_once(self):
-        # `sales.sales` keeps its full path, which is also the name of the folder `sales.sales.sales`
-        source = dremio_source("sales")
-        source._execute_database_query = MagicMock(return_value=["sales.sales", "sales.sales.sales"])
-
-        assert list(source.get_raw_database_schema_names()) == ["sales.sales"]
-        assert source._add_database_to_schema_name("sales.sales") == "sales.sales"
-
-    def test_the_paths_of_the_previous_namespace_are_forgotten(self):
-        source = dremio_source("sales")
-        source._execute_database_query = MagicMock(return_value=["sales", "sales.sales"])
-        list(source.get_raw_database_schema_names())
-
-        source.database = "finance"
-        source._execute_database_query = MagicMock(return_value=["finance", "finance.sales"])
-        list(source.get_raw_database_schema_names())
-
-        assert source._add_database_to_schema_name("sales") == "finance.sales"
-
-    def test_the_query_looks_for_the_namespace_itself_and_its_folders(self):
-        assert "STARTS_WITH(SCHEMA_NAME, '{database_name}.')" in DREMIO_GET_SCHEMAS
-        assert "UNION" in DREMIO_GET_SCHEMAS
-        assert "TABLE_SCHEMA = '{database_name}'" in DREMIO_GET_SCHEMAS
-
-    def test_an_underscore_is_not_a_wildcard(self):
-        # `sulo_catalog` would match `suloXcatalog` with LIKE
-        assert "LIKE" not in DREMIO_GET_SCHEMAS
-
-    def test_a_quote_in_a_namespace_cannot_break_the_query(self):
-        source = dremio_source("o'brien")
-        source._execute_database_query = MagicMock(return_value=[])
-
-        list(source.get_raw_database_schema_names())
-
-        assert "TABLE_SCHEMA = 'o''brien'" in source._execute_database_query.call_args.args[0]
+def schemas_of(source, database: str) -> list[str]:
+    source.context.get().database = database
+    return list(source.get_database_schema_names())
 
 
-class TestDatabaseQuery:
-    def test_the_system_catalogs_are_not_databases(self):
-        assert "UPPER(SCHEMA_NAME) NOT IN ('INFORMATION_SCHEMA', 'SYS')" in DREMIO_GET_DATABASES
+class TestNames:
+    def test_sources_and_spaces_are_the_databases(self, make_source):
+        assert list(make_source(CATALOG).get_database_names()) == ["reporting", "lake"]
 
-    def test_folders_and_internal_spaces_are_still_left_out(self):
-        assert "NOT LIKE '%.%'" in DREMIO_GET_DATABASES
-        assert "STARTS_WITH(SCHEMA_NAME, '@')" in DREMIO_GET_DATABASES
-        assert "STARTS_WITH(SCHEMA_NAME, '$')" in DREMIO_GET_DATABASES
+    def test_a_folder_path_is_one_schema_and_the_root_is_default(self, make_source):
+        # ADR:2026-11-18-dremio-schema-name-is-the-folder-path-without-its-space
+        assert schemas_of(make_source(CATALOG), "reporting") == ["deep.er", "default", "reporting"]
+
+    def test_the_tables_of_a_schema(self, make_source):
+        source = make_source(CATALOG)
+        schemas_of(source, "reporting")
+        source.context.get().database_schema = "default"
+
+        assert list(source.get_tables_name_and_type()) == [TableNameAndType(name="totals", type_=TableType.View)]
+
+    def test_the_namespace_is_read_once_per_database(self, make_source):
+        source = make_source(CATALOG)
+        schemas_of(source, "reporting")
+        list(source.get_raw_database_schema_names())  # as mark_tables_as_deleted does
+
+        assert source.client.requested.count("/catalog/by-path/reporting") == 1
+
+    def test_a_folder_that_cannot_be_read_is_reported_and_the_others_are_kept(self, make_source):
+        source = make_source({**CATALOG, "/catalog/by-path/reporting/deep": requests.ConnectionError("down")})
+
+        assert schemas_of(source, "reporting") == ["default", "reporting"]
+        assert source.status.failures[0].name == "reporting/deep"
+
+    def test_cloud_internal_sources_are_skipped(self, make_source):
+        source = make_source(
+            {**CATALOG, "/catalog/lake-id": {"type": "DCS_CORE_ICEBERG"}, "/catalog/space-id": {"type": "SPACE"}},
+            is_cloud=True,
+        )
+
+        assert list(source.get_database_names()) == ["reporting"]
+
+    def test_the_database_filter(self, make_source):
+        source = make_source(CATALOG, source_config={"databaseFilterPattern": {"includes": ["^lake$"]}})
+
+        assert list(source.get_database_names()) == ["lake"]
 
 
-class TestTableQueries:
-    def test_the_tables_of_the_root_are_read_from_the_namespace(self):
-        source = dremio_source("om_demo")
-        source._execute_database_query = MagicMock(return_value=["sales_v"])
+TOTALS = {
+    "id": "reporting/totals",
+    "sql": "SELECT name FROM lake.customers",
+    "fields": [{"name": "name", "type": {"name": "VARCHAR"}}],
+}
 
-        views = list(source.query_view_names_and_types("om_demo"))
 
-        assert [view.name for view in views] == ["sales_v"]
-        assert "TABLE_SCHEMA  = 'om_demo'" in source._execute_database_query.call_args.args[0]
+class TestTable:
+    def test_a_view_with_its_wiki_and_tags(self, make_source):
+        source = make_source(
+            {
+                **CATALOG,
+                "/catalog/reporting/totals": TOTALS,
+                "/catalog/reporting/totals/collaboration/wiki": {"text": "Totals per customer"},
+                "/catalog/reporting/totals/collaboration/tag": {"tags": ["gold", "gold", 3]},
+            },
+            source_config={"includeTags": True},
+        )
+        schemas_of(source, "reporting")
+        source.context.get().database_schema = "default"
+        list(source.yield_tag("default"))
 
-    def test_the_tables_of_a_folder_are_read_with_the_full_path(self):
-        source = dremio_source("polaris")
-        source._execute_database_query = MagicMock(return_value=[])
+        (either,) = source.yield_table(TableNameAndType(name="totals", type_=TableType.View))
 
-        list(source.query_table_names_and_types("demo"))
+        table = either.right
+        assert table.databaseSchema.root == "svc.reporting.default"
+        assert table.schemaDefinition.root == 'CREATE VIEW "totals" AS SELECT name FROM lake.customers'
+        assert table.description.root == "Totals per customer"
+        assert [tag.tagFQN.root for tag in table.tags] == ["DremioTags.gold"]
 
-        assert "TABLE_SCHEMA  = 'polaris.demo'" in source._execute_database_query.call_args.args[0]
+    def test_a_dataset_that_cannot_be_read_is_an_error(self, make_source):
+        source = make_source(CATALOG)
+        schemas_of(source, "reporting")
+        source.context.get().database_schema = "default"
+
+        (either,) = source.yield_table(TableNameAndType(name="totals", type_=TableType.View))
+
+        assert either.right is None
+        assert either.left.name == "totals"
+
+    def test_the_wiki_of_a_folder_describes_its_schema(self, make_source):
+        source = make_source({**CATALOG, "/catalog/reporting/deep/er/collaboration/wiki": {"text": "Deep"}})
+        schemas_of(source, "reporting")
+        source.context.get().database = "reporting"
+
+        (either,) = source.yield_database_schema("deep.er")
+
+        assert either.right.description.root == "Deep"
+
+
+class TestColumns:
+    def test_a_struct_keeps_the_names_of_its_fields(self):
+        column = to_column(
+            {
+                "name": "address",
+                "type": {
+                    "name": "STRUCT",
+                    "subSchema": [
+                        {"name": "Street Name", "type": {"name": "VARCHAR"}},
+                        {
+                            "name": "geo",
+                            "type": {"name": "STRUCT", "subSchema": [{"name": "lat", "type": {"name": "DOUBLE"}}]},
+                        },
+                    ],
+                },
+            },
+            1,
+        )
+
+        assert column.dataType == DataType.STRUCT
+        assert [child.name.root for child in column.children] == ["Street Name", "geo"]
+        assert column.children[1].children[0].dataType == DataType.DOUBLE
+
+    def test_a_list_is_an_array_of_its_element(self):
+        column = to_column(
+            {
+                "name": "items",
+                "type": {
+                    "name": "LIST",
+                    "subSchema": [
+                        {"type": {"name": "STRUCT", "subSchema": [{"name": "sku", "type": {"name": "INTEGER"}}]}}
+                    ],
+                },
+            }
+        )
+
+        assert column.dataType == DataType.ARRAY
+        assert column.arrayDataType == DataType.STRUCT
+        assert [child.name.root for child in column.children] == ["sku"]
+
+    def test_lengths_and_precision(self):
+        varchar = to_column({"name": "s", "type": {"name": "VARCHAR"}})
+        decimal = to_column({"name": "d", "type": {"name": "DECIMAL", "precision": 10, "scale": 2}})
+
+        assert varchar.dataLength == 65535
+        assert (decimal.precision, decimal.scale) == (10, 2)

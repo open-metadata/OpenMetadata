@@ -22,7 +22,7 @@ def test_ingest_tables_and_views(
     assert {c.name.root for c in customers.columns} == {"id", "name", "country"}
 
     view = metadata.get_by_name(
-        entity=Table, fqn=f"{service}.reporting.reporting.customer_totals", fields=["columns", "schemaDefinition"]
+        entity=Table, fqn=f"{service}.reporting.default.customer_totals", fields=["columns", "schemaDefinition"]
     )
     assert view
     assert view.tableType == TableType.View
@@ -41,11 +41,10 @@ def test_a_folder_named_like_its_space_is_ingested(
     run_workflow(MetadataWorkflow, ingestion_config)
     service = db_service.fullyQualifiedName.root
 
-    # The root of the space is the schema `reporting`, the folder `reporting` keeps its full path.
-    assert metadata.get_by_name(entity=Table, fqn=f"{service}.reporting.reporting.customer_totals")
-    assert not metadata.get_by_name(entity=Table, fqn=f"{service}.reporting.reporting.archived_customers")
+    # ADR:2026-11-18-dremio-schema-name-is-the-folder-path-without-its-space
+    assert metadata.get_by_name(entity=Table, fqn=f"{service}.reporting.default.customer_totals")
     archived = metadata.get_by_name(
-        entity=Table, fqn=f'{service}.reporting."reporting.reporting".archived_customers', fields=["columns"]
+        entity=Table, fqn=f"{service}.reporting.reporting.archived_customers", fields=["columns"]
     )
     assert archived
     assert archived.tableType == TableType.View
