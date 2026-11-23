@@ -5238,6 +5238,7 @@
     "expected-schema-structure-of-this-asset": "מבנה סchema צפוי של נכס זה",
     "expected-true-or-false-got-type": "צפוי true או false, התקבל {{type}}",
     "explore-assets-indexed-suffix": "נכסים נוספו לאינדקס",
+    "explore-filter-partially-shown": "לא ניתן להציג חלק מהתנאים בקישור זה בחיפוש המתקדם. התוצאות עדיין משתמשות בכולם; החלת שינויים שומרת רק את התנאים המוצגים.",
     "explore-our-guide-here": "חקור את המדריך שלנו כאן.",
     "explore-search-placeholder": "חפש בכל פלטפורמת ההקשר שלך",
     "export-all-matching-assets-description": "ייצא את כל הנכסים המתאימים לחיפוש זה בכל סוגי הנכסים",

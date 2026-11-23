@@ -32,10 +32,10 @@ import {
   RuleSpec,
   sampleValue,
   toQueryFilter,
-  withoutSingleClauseMust,
 } from '../../test/unit/queryBuilderHarness';
 import { getExploreURLForAdvancedFilter } from '../CuratedAssetsPureUtils';
 import { getRuleExplorePath } from '../PersonaAIContextUtils';
+import { withoutSingleClauseMust } from '../QueryBuilderPureUtils';
 import { getExplorePath } from '../RouterUtils';
 import searchClassBase from '../SearchClassBase';
 import { getScopedQueryFilter } from './count';
@@ -185,6 +185,8 @@ describe('Explore links from other screens', () => {
             entityType
           );
           const opened = openInExplore(url, explore);
+
+          expect(opened?.isComplete).toBe(true);
 
           expect(withoutSingleClauseMust(opened?.queryFilter?.query)).toEqual(
             withoutSingleClauseMust(applied.query)

@@ -17,6 +17,7 @@ import React from 'react';
 import { ROUTES } from '../../../constants/constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getAllCustomProperties } from '../../../rest/metadataTypeAPI';
+import { showWarningToast } from '../../../utils/ToastUtils';
 import {
   AdvanceSearchProvider,
   useAdvanceSearch,
@@ -44,6 +45,10 @@ jest.mock('../AdvanceSearchModal.component', () => ({
         <button onClick={onCancel}>Close Modal</button>
       </>
     )),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showWarningToast: jest.fn(),
 }));
 
 jest.mock('../../common/Loader/Loader', () =>
@@ -476,6 +481,50 @@ describe('AdvanceSearchProvider — the advanced search in the URL', () => {
       },
     ]);
     expect(readJson('query-filter')).toEqual(customPropertyFilter);
+  });
+
+  it("searches with a link's whole filter and warns when some of it cannot be shown", async () => {
+    const partlyReadable = {
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                must: [
+                  { term: { 'tier.tagFQN': 'Tier.Tier1' } },
+                  { prefix: { 'name.keyword': 'dim_' } },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    await renderWithSearch({ queryFilter: partlyReadable });
+
+    expect(readJson('query-filter')).toEqual(partlyReadable);
+    expect(readJson('groups')).toEqual([
+      {
+        conjunction: 'AND',
+        rules: [
+          {
+            field: 'tier.tagFQN',
+            operator: 'select_equals',
+            value: ['Tier.Tier1'],
+          },
+        ],
+      },
+    ]);
+    expect(showWarningToast).toHaveBeenCalledWith(
+      'message.explore-filter-partially-shown'
+    );
+  });
+
+  it('does not warn when the whole link can be shown', async () => {
+    await renderWithSearch({ queryFilter: twoGroupFilter });
+
+    expect(showWarningToast).not.toHaveBeenCalled();
   });
 
   it('writes the Elasticsearch filter, not the tree, when the search is applied', async () => {

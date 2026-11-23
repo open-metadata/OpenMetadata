@@ -5238,6 +5238,7 @@
     "expected-schema-structure-of-this-asset": "Förväntad schemastruktur för denna tillgång",
     "expected-true-or-false-got-type": "förväntade true eller false, fick {{type}}",
     "explore-assets-indexed-suffix": "assets indexed",
+    "explore-filter-partially-shown": "Vissa villkor i den här länken kan inte visas i Avancerad sökning. Resultaten använder fortfarande alla; när du tillämpar ändringar behålls bara de visade villkoren.",
     "explore-our-guide-here": "utforska vår guide här.",
     "explore-search-placeholder": "Search across your Context Platform",
     "export-all-matching-assets-description": "Exportera tillgångar över alla tillgångstyper",

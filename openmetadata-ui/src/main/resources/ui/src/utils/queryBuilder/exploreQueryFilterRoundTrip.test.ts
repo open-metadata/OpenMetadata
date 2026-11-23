@@ -89,6 +89,7 @@ const expectRoundTrip = (
     configs.provider
   );
 
+  expect(back.isComplete).toBe(true);
   expect(back.queryFilter).toEqual(queryFilter);
   expect(toJs(back.tree).properties?.conjunction).toBe(rootConjunction);
   expect(describeGroups(back.tree)).toEqual(
@@ -344,7 +345,7 @@ describe('custom properties of an entity type', () => {
     ).toEqual([tableRule]);
   });
 
-  it("drops a rule whose entity type no longer declares the property, rather than reading another entity type's", () => {
+  it("keeps searching with the link's filter when a rule's entity type no longer declares the property", () => {
     const extension = provider.fields.extension as {
       subfields: Record<string, unknown>;
     };
@@ -358,11 +359,55 @@ describe('custom properties of an entity type', () => {
         },
       },
     } as unknown as typeof provider;
+    const back = readInExplore(tableFilter, dashboardOnly);
 
-    expect(
-      describeGroups(readInExplore(tableFilter, dashboardOnly).tree).flatMap(
-        (group) => group.rules
-      )
-    ).toEqual([]);
+    // Never read under another entity type's property of the same name.
+    expect(describeGroups(back.tree).flatMap((group) => group.rules)).toEqual(
+      []
+    );
+    expect(back.isComplete).toBe(false);
+    expect(back.queryFilter).toEqual(tableFilter);
+  });
+});
+
+describe('a link Explore can only partly show', () => {
+  const { provider } = getExploreConfigs(SearchIndex.DATA_ASSET);
+  const tierRule = { term: { 'tier.tagFQN': 'Tier.Tier1' } };
+  // A clause no builder writes: a hand-edited or another tool's link.
+  const unreadable = { prefix: { 'name.keyword': 'dim_' } };
+  const linkFilter = {
+    query: { bool: { must: [{ bool: { must: [tierRule, unreadable] } }] } },
+  } as unknown as QueryFilterInterface;
+
+  it('shows the rules it can read', () => {
+    expect(describeGroups(readInExplore(linkFilter, provider).tree)).toEqual([
+      {
+        conjunction: 'AND',
+        rules: [
+          {
+            field: 'tier.tagFQN',
+            operator: 'select_equals',
+            value: ['Tier.Tier1'],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("searches with the link's whole filter, never the narrower one the shown rules write", () => {
+    const back = readInExplore(linkFilter, provider);
+
+    expect(back.isComplete).toBe(false);
+    expect(back.queryFilter).toEqual(linkFilter);
+  });
+
+  it('keeps the filter even when none of it can be shown', () => {
+    const onlyUnreadable = {
+      query: { bool: { must: [{ bool: { must: [unreadable] } }] } },
+    } as unknown as QueryFilterInterface;
+    const back = readInExplore(onlyUnreadable, provider);
+
+    expect(back.isComplete).toBe(false);
+    expect(back.queryFilter).toEqual(onlyUnreadable);
   });
 });

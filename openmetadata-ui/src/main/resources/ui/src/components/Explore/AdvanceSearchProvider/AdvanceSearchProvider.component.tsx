@@ -29,8 +29,10 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -47,10 +49,13 @@ import {
   getExploreResetFiltersSearchParams,
   parseExploreQueryFilterParam,
 } from '../../../utils/ExplorePureUtils';
-import { getEmptyJsonTree } from '../../../utils/queryBuilder/tree';
+import {
+  getEmptyJsonTree,
+  loadExploreQueryFilter,
+} from '../../../utils/queryBuilder/tree';
 import { elasticSearchFormat } from '../../../utils/QueryBuilderElasticsearchFormatUtils';
-import { getExploreJsonTreeFromQueryFilter } from '../../../utils/QueryBuilderPureUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { showWarningToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Loader from '../../common/Loader/Loader';
 import { UrlParams } from '../ExplorePage.interface';
@@ -93,6 +98,7 @@ export const AdvanceSearchProvider = ({
   searchOutputType = SearchOutputType.ElasticSearch,
   entityType,
 }: AdvanceSearchProviderProps) => {
+  const { t } = useTranslation();
   const tabsInfo = searchClassBase.getTabsInfo();
   const location = useCustomLocation();
   const navigate = useNavigate();
@@ -327,25 +333,46 @@ export const AdvanceSearchProvider = ({
     };
   }, [searchOutputType, searchIndex]);
 
+  const applyUrlFilter = () => {
+    if (urlFilter.tree) {
+      loadTree(urlFilter.tree);
+
+      return;
+    }
+    if (!urlFilter.queryFilter) {
+      handleReset();
+
+      return;
+    }
+
+    const {
+      tree,
+      queryFilter: qFilter,
+      isComplete,
+    } = loadExploreQueryFilter(urlFilter.queryFilter, config);
+
+    setTreeInternal(tree);
+    setSQLQuery(QbUtils.sqlFormat(tree, config) ?? '');
+    // Applying the modal writes this same filter to the URL; keep the current object so the page does not search twice.
+    setQueryFilter((current) =>
+      isEqual(current, qFilter) ? current : qFilter
+    );
+
+    if (!isComplete) {
+      showWarningToast(t('message.explore-filter-partially-shown'));
+    }
+  };
+  // Read through a ref so the URL is applied when it changes and once the config has loaded — after custom properties,
+  // which a property's rule is matched to — and not again whenever the config or a handler changes identity, which
+  // would reload the URL's tree over the user's edits.
+  const applyUrlFilterRef = useRef(applyUrlFilter);
+  applyUrlFilterRef.current = applyUrlFilter;
+
   useEffect(() => {
     if (!initialised) {
       return;
     }
-    // Read once the custom properties are in the config: a property's rule is matched to its field by them.
-    const jsonTree =
-      urlFilter.tree ??
-      (urlFilter.queryFilter &&
-        getExploreJsonTreeFromQueryFilter(
-          urlFilter.queryFilter,
-          config.fields
-        ));
-
-    if (jsonTree && !isEmpty(jsonTree)) {
-      loadTree(jsonTree);
-    } else {
-      handleReset();
-    }
-
+    applyUrlFilterRef.current();
     setLoading(false);
   }, [urlFilter, initialised]);
 

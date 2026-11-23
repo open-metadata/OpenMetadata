@@ -5238,6 +5238,7 @@
     "expected-schema-structure-of-this-asset": "Estrutura de esquema esperada deste activo",
     "expected-true-or-false-got-type": "esperábase true ou false, obtívose {{type}}",
     "explore-assets-indexed-suffix": "activos indexados",
+    "explore-filter-partially-shown": "Algunhas condicións desta ligazón non se poden mostrar na busca avanzada. Os resultados seguen usándoas todas; ao aplicar cambios só se conservan as condicións mostradas.",
     "explore-our-guide-here": "explora a nosa guía aquí.",
     "explore-search-placeholder": "Busca na túa Plataforma de Contexto",
     "export-all-matching-assets-description": "Exportar todos os activos coincidentes con esta busca a través de tipos de activos",

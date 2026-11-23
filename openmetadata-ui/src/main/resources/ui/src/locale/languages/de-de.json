@@ -5238,6 +5238,7 @@
     "expected-schema-structure-of-this-asset": "Erwartete Schemastruktur dieses Assets",
     "expected-true-or-false-got-type": "true oder false erwartet, erhalten: {{type}}",
     "explore-assets-indexed-suffix": "Assets indexiert",
+    "explore-filter-partially-shown": "Einige Bedingungen dieses Links können in der erweiterten Suche nicht angezeigt werden. Die Ergebnisse berücksichtigen weiterhin alle; beim Übernehmen von Änderungen bleiben nur die angezeigten Bedingungen erhalten.",
     "explore-our-guide-here": "Erkunden Sie unseren Leitfaden hier.",
     "explore-search-placeholder": "Suchen Sie in Ihrer Kontextplattform",
     "export-all-matching-assets-description": "Alle übereinstimmenden Assets in allen Asset-Typen exportieren",

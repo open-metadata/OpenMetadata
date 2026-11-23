@@ -5238,6 +5238,7 @@
     "expected-schema-structure-of-this-asset": "此資產的預期結構",
     "expected-true-or-false-got-type": "應為 true 或 false，但收到 {{type}}",
     "explore-assets-indexed-suffix": "assets indexed",
+    "explore-filter-partially-shown": "此連結中的部分條件無法在進階搜尋中顯示。結果仍會使用所有條件；套用變更後只會保留顯示的條件。",
     "explore-our-guide-here": "在此處探索我們的指南。",
     "explore-search-placeholder": "Search across your Context Platform",
     "export-all-matching-assets-description": "跨資產類型導出與此搜索匹配的所有資產",

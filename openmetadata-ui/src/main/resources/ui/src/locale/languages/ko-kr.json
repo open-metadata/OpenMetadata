@@ -5238,6 +5238,7 @@
     "expected-schema-structure-of-this-asset": "이 자산의 예상 스키마 구조",
     "expected-true-or-false-got-type": "true 또는 false가 필요하지만 {{type}}이(가) 제공되었습니다",
     "explore-assets-indexed-suffix": "assets indexed",
+    "explore-filter-partially-shown": "이 링크의 일부 조건은 고급 검색에 표시할 수 없습니다. 결과에는 여전히 모든 조건이 적용되며, 변경 사항을 적용하면 표시된 조건만 유지됩니다.",
     "explore-our-guide-here": "여기에서 우리의 가이드를 탐색하세요.",
     "explore-search-placeholder": "Search across your Context Platform",
     "export-all-matching-assets-description": "모든 자산을 자산 유형별로 이 검색과 일치하는 것을 내보냅니다",

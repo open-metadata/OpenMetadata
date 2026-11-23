@@ -17,16 +17,19 @@ import type {
   OldJsonTree,
 } from '@react-awesome-query-builder/ui';
 import { Utils as QbUtils } from '@react-awesome-query-builder/ui';
-import { isEmpty } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   EntityFields,
   EntityReferenceFields,
 } from '../../enums/AdvancedSearch.enum';
 import type { QueryFilterInterface } from '../../interface/queryFilter.interface';
+import { elasticSearchFormat } from '../QueryBuilderElasticsearchFormatUtils';
 import {
+  getExploreJsonTreeFromQueryFilter,
   getJsonTreeFromQueryFilter,
   migrateJsonLogic,
+  withoutSingleClauseMust,
 } from '../QueryBuilderPureUtils';
 import { generateUUID } from '../StringUtils';
 import { collapseColumnTagsVar } from './jsonLogicColumnTags';
@@ -258,4 +261,41 @@ export const loadQueryBuilderTree = ({
   } catch {
     return emptyTree();
   }
+};
+
+/**
+ * Explore's Advanced Search as read from its URL: the tree its modal shows, and the filter Explore searches with.
+ * The tree holds only the rules the reader recognises. When it would write back a different filter than the URL's
+ * (a hand-edited link, a property since deleted), the URL's own filter is kept, so a link never returns more than it
+ * states; `isComplete` says whether the tree shows all of it.
+ */
+export const loadExploreQueryFilter = (
+  queryFilter: QueryFilterInterface,
+  config: Config
+): {
+  tree: ImmutableTree;
+  queryFilter: QueryFilterInterface;
+  isComplete: boolean;
+} => {
+  const jsonTree = getExploreJsonTreeFromQueryFilter(
+    queryFilter,
+    config.fields
+  );
+  const tree = QbUtils.checkTree(
+    QbUtils.loadTree(isEmpty(jsonTree) ? getEmptyJsonTree() : jsonTree),
+    config
+  );
+  const written = elasticSearchFormat(tree, config);
+  const isComplete = isEqual(
+    withoutSingleClauseMust(written),
+    withoutSingleClauseMust(queryFilter.query)
+  );
+
+  return {
+    tree,
+    queryFilter: isComplete
+      ? ({ query: written } as QueryFilterInterface)
+      : queryFilter,
+    isComplete,
+  };
 };

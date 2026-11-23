@@ -1540,6 +1540,47 @@ export const getExploreJsonTreeFromQueryFilter = (
   };
 };
 
+// The clause of `{ bool: { must: [clause] } }`, when that is all the value is.
+const getOnlyMustClause = (value: object): unknown => {
+  const { bool, ...rest } = value as { bool?: Record<string, unknown> };
+  const must = bool?.must;
+  const isOnlyMust =
+    isEmpty(rest) &&
+    Object.keys(bool ?? {}).length === 1 &&
+    Array.isArray(must);
+
+  return isOnlyMust && (must as unknown[]).length === 1
+    ? (must as unknown[])[0]
+    : undefined;
+};
+
+/**
+ * A filter with every one-clause `bool.must` replaced by its clause: such a wrapper matches exactly what its clause
+ * matches. Builders nest one per group and per custom-property drill level, so two filters that search the same way
+ * can differ only in these.
+ */
+export const withoutSingleClauseMust = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(withoutSingleClauseMust);
+  }
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  const onlyClause = getOnlyMustClause(value);
+
+  if (onlyClause) {
+    return withoutSingleClauseMust(onlyClause);
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [
+      key,
+      withoutSingleClauseMust(child),
+    ])
+  );
+};
+
 export interface ElasticsearchQuery {
   bool?: {
     must?: ElasticsearchQuery[];

@@ -20,7 +20,6 @@ import {
   TreeStore,
   Utils as QbUtils,
 } from '@react-awesome-query-builder/ui';
-import { isEmpty } from 'lodash';
 import { SearchOutputType } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -31,13 +30,13 @@ import { buildQueryBuilderConfig } from '../../utils/queryBuilder/config';
 import {
   getEmptyFlatJsonTree,
   getEmptyJsonTree,
+  loadExploreQueryFilter,
 } from '../../utils/queryBuilder/tree';
 import {
   GroupMode,
   QUERY_BUILDER_GROUP_MODE,
 } from '../../utils/queryBuilder/types';
 import { elasticSearchFormat } from '../../utils/QueryBuilderElasticsearchFormatUtils';
-import { getExploreJsonTreeFromQueryFilter } from '../../utils/QueryBuilderPureUtils';
 import searchClassBase from '../../utils/SearchClassBase';
 
 /**
@@ -318,21 +317,11 @@ export const toQueryFilter = (tree: ImmutableTree, config: Config) => {
   return query ? ({ query } as QueryFilterInterface) : undefined;
 };
 
-// What the provider does with a filter it reads from the URL: rebuild the tree, load it, and search with the filter it
-// writes back out.
+// What the provider does with a filter it reads from the URL.
 export const readInExplore = (
   queryFilter: QueryFilterInterface,
   config: Config
-) => {
-  const tree = QbUtils.checkTree(
-    QbUtils.loadTree(
-      getExploreJsonTreeFromQueryFilter(queryFilter, config.fields)
-    ),
-    config
-  );
-
-  return { tree, queryFilter: toQueryFilter(tree, config) };
-};
+) => loadExploreQueryFilter(queryFilter, config);
 
 // What Explore does with a link: read its `queryFilter` param, as the provider does on load.
 export const openInExplore = (url: string, config: Config) => {
@@ -342,44 +331,6 @@ export const openInExplore = (url: string, config: Config) => {
   );
 
   return queryFilter ? readInExplore(queryFilter, config) : undefined;
-};
-
-// The clause of `{ bool: { must: [clause] } }`, when that is all the value is.
-const getOnlyMustClause = (value: object): unknown => {
-  const { bool, ...rest } = value as { bool?: Record<string, unknown> };
-  const must = bool?.must;
-  const isOnlyMust =
-    isEmpty(rest) &&
-    Object.keys(bool ?? {}).length === 1 &&
-    Array.isArray(must);
-
-  return isOnlyMust && (must as unknown[]).length === 1
-    ? (must as unknown[])[0]
-    : undefined;
-};
-
-// A `bool.must` of one clause matches what that clause matches. Explore wraps a link's filter in a root and a group,
-// and nests each custom-property drill level in one, so filters are compared without these.
-export const withoutSingleClauseMust = (value: unknown): unknown => {
-  if (Array.isArray(value)) {
-    return value.map(withoutSingleClauseMust);
-  }
-  if (!value || typeof value !== 'object') {
-    return value;
-  }
-
-  const onlyClause = getOnlyMustClause(value);
-
-  if (onlyClause) {
-    return withoutSingleClauseMust(onlyClause);
-  }
-
-  return Object.fromEntries(
-    Object.entries(value).map(([key, child]) => [
-      key,
-      withoutSingleClauseMust(child),
-    ])
-  );
 };
 
 // A group as the builder shows it: its conjunction and its rules. Drill levels collapse into the rule they lead to.

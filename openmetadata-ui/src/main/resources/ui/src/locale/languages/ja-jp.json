@@ -5238,6 +5238,7 @@
     "expected-schema-structure-of-this-asset": "このアセットの予想されるスキーマ構造",
     "expected-true-or-false-got-type": "true または false が必要ですが、{{type}} が指定されました",
     "explore-assets-indexed-suffix": "アセットがインデックス登録済み",
+    "explore-filter-partially-shown": "このリンクの一部の条件は高度な検索に表示できません。結果には引き続きすべての条件が使われますが、変更を適用すると表示されている条件のみが保持されます。",
     "explore-our-guide-here": "ガイドを見る",
     "explore-search-placeholder": "コンテキストプラットフォーム全体を検索",
     "export-all-matching-assets-description": "Export all assets matching this search across asset types",
