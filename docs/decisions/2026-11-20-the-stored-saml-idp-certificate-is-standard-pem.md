@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-20 (initial)
 - **Deciders:** Adrià Manero
-- **Guard:** `IdpCertificatePemTest` and `SamlIdpCertificateMigrationTest` (the layouts the step rewrites and the values it leaves alone); `SettingsWriteFunnelTest` (no setting is written past the write step); `SystemRepositorySecuritySettingsTest` and `SsoSamlIdpCertificateIT` (each way in refuses a bad new certificate and keeps an unchanged one)
+- **Guard:** `IdpCertificatePemTest` and `SamlIdpCertificateMigrationTest` (the layouts the step rewrites and the values it leaves alone); `SettingsWriteFunnelTest` (no setting is written past the write step); `SystemRepositorySecuritySettingsTest` and `SsoSamlIdpCertificateIT` (each way in refuses a bad new certificate and keeps an unchanged one); `SystemResourceSecurityConfigApplyTest` and `SsoSamlIdpCertificateIT` (a refused save puts the rows back unchanged)
 - **Related:** #37056; PR #38197, PR #38219 and PR #38302 (the strict reader); PR #37535 (a data migration carries its own logic)
 
 ## Context
@@ -55,6 +55,12 @@ Checking each of them by hand would leave the next new way unchecked.
    with it; a reconciled value follows the setting's mode: in `AUTO` and `DB` the stored value
    stays and the error is logged on every start until the deployment value is fixed, in `ENV` the
    start stops.
+8. **Undoing a refused save is not a new write.** When the server cannot apply a security
+   configuration save (ADR:2026-11-12-a-security-configuration-save-applies-in-full-or-is-refused),
+   it puts back the two rows that save replaced as they were read, compared and set against what it
+   wrote, without the write step. Those rows passed the step when they were stored; checked again
+   against the refused save, a certificate that expired since would be refused and the refused save
+   left stored. `SettingsWriteFunnelTest` lists that method among the reviewed writers.
 
 ## Consequences
 

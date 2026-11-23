@@ -387,6 +387,29 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   /**
+   * Puts back {@code restored}, the rows a save read before it wrote {@code written}, while both
+   * rows still hold what that save wrote; a 412 when another save replaced them meanwhile. The rows
+   * go back as they were read, without the write step: they passed it when they were stored, and
+   * checking them again against the save being undone would refuse what was accepted, such as an
+   * IdP certificate that has expired since.
+   * ADR:2026-11-12-a-security-configuration-save-applies-in-full-or-is-refused
+   */
+  public void restoreSecurityConfigurationIfCurrent(
+      StoredSecurityConfiguration restored, StoredSecurityConfiguration written) {
+    dao.updateSecuritySettingsIfCurrent(
+        new SecuritySettingsUpdate(
+            SettingsType.AUTHENTICATION_CONFIGURATION.value(),
+            written.authenticationJson(),
+            restored.authenticationJson()),
+        new SecuritySettingsUpdate(
+            SettingsType.AUTHORIZER_CONFIGURATION.value(),
+            written.authorizerJson(),
+            restored.authorizerJson()));
+    settingUpdated(SettingsType.AUTHENTICATION_CONFIGURATION);
+    settingUpdated(SettingsType.AUTHORIZER_CONFIGURATION);
+  }
+
+  /**
    * Writes both security settings whatever the rows hold, for when one is missing and there is
    * nothing to compare with, and returns what is stored now. A failed write is thrown, never
    * answered with a response the caller could ignore.
