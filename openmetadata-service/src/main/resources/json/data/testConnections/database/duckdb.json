@@ -1,0 +1,38 @@
+{
+  "name": "DuckDB",
+  "displayName": "DuckDB Test Connection",
+  "description": "Validate that OpenMetadata can open the DuckDB file and read its metadata.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that OpenMetadata can open the DuckDB database file in read-only mode.",
+      "errorMessage": "Failed to open the DuckDB database file. Check that the path exists on the machine running the ingestion and that no process holds it open for writing.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetSchemas",
+      "description": "List all the schemas in the DuckDB database.",
+      "errorMessage": "Failed to list the schemas in the DuckDB database.",
+      "mandatory": true
+    },
+    {
+      "name": "GetTables",
+      "description": "List the tables belonging to a schema.",
+      "errorMessage": "Failed to list the tables belonging to a schema.",
+      "mandatory": true
+    },
+    {
+      "name": "GetViews",
+      "description": "List the views belonging to a schema.",
+      "errorMessage": "Failed to list the views belonging to a schema.",
+      "mandatory": false
+    },
+    {
+      "name": "GetQueries",
+      "description": "Read query history from main.duckdb_query_log. Required only for usage and query lineage ingestion.",
+      "errorMessage": "Failed to read main.duckdb_query_log. Usage and query lineage need this table; metadata, view lineage and profiling are not affected.",
+      "mandatory": false
+    }
+  ]
+}

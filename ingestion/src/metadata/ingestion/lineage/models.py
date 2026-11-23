@@ -37,6 +37,9 @@ from metadata.generated.schema.entity.services.connections.database.db2Connectio
 from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
     DorisType,
 )
+from metadata.generated.schema.entity.services.connections.database.duckDBConnection import (
+    DuckDBType,
+)
 from metadata.generated.schema.entity.services.connections.database.exasolConnection import (
     ExasolType,
 )
@@ -139,6 +142,7 @@ MAP_CONNECTION_TYPE_DIALECT: dict[str, Dialect] = {
     str(DatabricksType.Databricks.value): Dialect.DATABRICKS,
     str(UnityCatalogType.UnityCatalog.value): Dialect.DATABRICKS,
     str(Db2Type.Db2.value): Dialect.DB2,
+    str(DuckDBType.DuckDB.value): Dialect.DUCKDB,
     str(HiveType.Hive.value): Dialect.HIVE,
     str(ImpalaType.Impala.value): Dialect.IMPALA,
     str(MySQLType.Mysql.value): Dialect.MYSQL,
