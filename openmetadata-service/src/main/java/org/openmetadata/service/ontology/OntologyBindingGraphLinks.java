@@ -19,10 +19,12 @@ import org.openmetadata.service.rdf.RdfGraphService.GraphRequest;
 import org.openmetadata.service.security.AuthorizationException;
 
 /**
- * Adds a root entity's concept bindings to its explore graph. Bindings are not projected into RDF
- * (ADR:2026-10-19-native-concept-bindings-remain-operational-metadata), so each request reads them
- * from SQL with the caller's permissions, after the graph cache, and they are never stale. The edge
- * runs concept to asset under the predicate the release export writes, {@code om:boundAsset}.
+ * Adds a root entity's concept bindings to its explore graph. The knowledge graph states every
+ * binding to anyone who may query it, so each request reads them from SQL with the caller's
+ * permissions instead, after the graph cache, and they are never stale
+ * (ADR:2026-10-19-native-concept-bindings-remain-operational-metadata). The edge runs concept to
+ * asset under the predicate the release export and the knowledge graph write, {@code
+ * om:boundAsset}.
  */
 public final class OntologyBindingGraphLinks {
   public static final String BOUND_ASSET = "boundAsset";

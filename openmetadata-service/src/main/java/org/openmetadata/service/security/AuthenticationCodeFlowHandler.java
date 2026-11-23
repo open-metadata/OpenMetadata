@@ -162,6 +162,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final long BROWSER_RENEWAL_MARGIN_MILLIS = TimeUnit.SECONDS.toMillis(60);
 
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
+  public static final String SIGN_IN_FAILURE_ATTRIBUTE = "signInFailure";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
   public static final String SESSION_SSO_CALLBACK_URL = "googleCallbackUrl";
 
@@ -680,7 +681,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // configuration names, and its expiry is the provider's.
       sendRedirectWithToken(resp, redirectUri, user, credentials.getIdToken());
     } catch (SignInFailedException failure) {
-      endFailedSignIn(resp, pendingSession, failure);
+      endFailedSignIn(req, resp, pendingSession, failure);
     } catch (IllegalArgumentException e) {
       try {
         org.openmetadata.service.security.SecurityUtil.writeErrorResponse(
@@ -700,10 +701,15 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
    * (ADR:2026-11-12-a-failed-sso-sign-in-returns-to-the-sign-in-page).
    */
   private void endFailedSignIn(
-      HttpServletResponse resp, UserSession pendingSession, SignInFailedException failure) {
+      HttpServletRequest req,
+      HttpServletResponse resp,
+      UserSession pendingSession,
+      SignInFailedException failure) {
     boolean isMcpSignIn =
         pendingSession != null && isMcpRedirectUri(pendingSession.getRedirectUri());
     if (isMcpSignIn) {
+      // The status stays as it was; the reason lets the MCP callback tell the person why.
+      req.setAttribute(SIGN_IN_FAILURE_ATTRIBUTE, failure.failure());
       getErrorMessage(resp, failure);
     } else {
       returnToSignInPage(resp, failure);

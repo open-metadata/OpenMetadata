@@ -11,15 +11,18 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseCapture;
 
 final class OntologyCaptureFixture {
@@ -125,6 +128,17 @@ final class OntologyCaptureFixture {
                           .withUpdatedBy("admin"))
               .toList();
       members.forEach(member -> concepts.create(null, member));
+    }
+
+    void activate(OntologyRelease release, long expectedActivationRevision) {
+      releases.getDao().update(release.withEntityStatus(EntityStatus.APPROVED));
+      new OntologyReleaseActivation(ontologies, releases, Clock.systemUTC(), ignored -> {})
+          .activate(
+              ontology.getId(),
+              new ActivateOntologyRelease()
+                  .withReleaseId(release.getId())
+                  .withExpectedActivationRevision(expectedActivationRevision),
+              new OntologyReleaseActivation.Access("admin", ignored -> {}));
     }
 
     int rowCount(String table) {
