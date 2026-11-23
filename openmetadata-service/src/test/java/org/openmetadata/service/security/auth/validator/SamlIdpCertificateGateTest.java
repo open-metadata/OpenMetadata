@@ -36,6 +36,7 @@ class SamlIdpCertificateGateTest {
   private static final String EXPIRED = resource("/saml/expired-idp.crt");
   private static final String NOT_A_CERTIFICATE =
       "-----BEGIN CERTIFICATE-----\nnot-a-certificate\n-----END CERTIFICATE-----";
+  private static final String WHITESPACE_ONLY = "  \n\t ";
 
   @Test
   void refusesANewCertificateTheSaveCheckRefusesAndNamesTheField() {
@@ -56,6 +57,20 @@ class SamlIdpCertificateGateTest {
     assertThrows(
         BadRequestException.class,
         () -> SamlIdpCertificateGate.requireUsable(saml(EXPIRED), saml(VALID)));
+  }
+
+  /** The server cannot start on a certificate of only whitespace, so a save refuses it. */
+  @Test
+  void refusesAWhitespaceOnlyCertificate() {
+    final BadRequestException refused =
+        assertThrows(
+            BadRequestException.class,
+            () -> SamlIdpCertificateGate.requireUsable(saml(WHITESPACE_ONLY), null));
+
+    assertTrue(refused.getMessage().contains(CERTIFICATE_FIELD));
+    assertThrows(
+        BadRequestException.class,
+        () -> SamlIdpCertificateGate.requireUsable(saml(WHITESPACE_ONLY), saml(VALID)));
   }
 
   @Test
