@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-23 (initial)
 - **Deciders:** Adrià Manero, Shreyansh Verma
-- **Guard:** `WorkflowStartupDeployIT`, `MigrationArchitectureTest`
+- **Guard:** `WorkflowStartupDeployIT`, `WorkflowBpmnStableAcrossJvmsTest`, `MigrationArchitectureTest`
 - **Related:** ADR:2026-11-11-a-data-migration-carries-its-own-logic, ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains, ADR:2026-11-20-suggestion-tasks-fall-back-through-every-owner-to-the-admins
 
 ## Context
@@ -35,6 +35,10 @@ A release's change to a workflow or to its builders reaches every existing workf
 start after the upgrade, whichever migrations ran, with no manual redeploy. Each start costs one
 BPMN build and two deployment reads per workflow. Several servers starting at once can each deploy
 the same changed workflow, which leaves one extra version; overlapping deploys are already safe
-(ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains). The comparison relies on the BPMN built from a stored definition being the same on
-every build; a builder that put a random or time-based value in the BPMN would deploy that workflow
-on every start.
+(ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains).
+
+The comparison relies on the BPMN built from a stored definition being the same in every JVM. A
+builder writes collections into the BPMN in a fixed order, from a `List` or a `LinkedHashMap`:
+`Set.of` and `Map.of` iterate in an order that changes from one JVM to the next, so a builder that
+iterates one, or that writes a random or time-based value, would deploy its workflows on every
+start.
