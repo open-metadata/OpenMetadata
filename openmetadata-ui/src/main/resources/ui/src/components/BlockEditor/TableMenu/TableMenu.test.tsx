@@ -77,27 +77,7 @@ const mockEditor = {
 const renderTableMenu = () => {
   const rendered = render(<TableMenu editor={mockEditor} />);
 
-  const safeUnmount = () => {
-    const calls = (tippy as unknown as jest.Mock).mock.calls;
-    const latestCall = calls[calls.length - 1];
-    const tippyOptions = latestCall?.[1] as
-      | {
-          content?: HTMLElement;
-        }
-      | undefined;
-    const menuContent = tippyOptions?.content;
-
-    if (menuContent && !menuContent.isConnected) {
-      rendered.container.appendChild(menuContent);
-    }
-
-    rendered.unmount();
-  };
-
-  return {
-    ...rendered,
-    safeUnmount,
-  };
+  return { ...rendered, safeUnmount: rendered.unmount };
 };
 
 describe('TableMenu', () => {
@@ -265,5 +245,16 @@ describe('TableMenu', () => {
       tableWrapper.remove();
       safeUnmount();
     }
+  });
+
+  it('unmounts on its own while its parent stays mounted', () => {
+    const Host = ({ showMenu }: { showMenu: boolean }) => (
+      <div>{showMenu && <TableMenu editor={mockEditor} />}</div>
+    );
+    const { rerender } = render(<Host showMenu />);
+
+    // The editor turning read-only unmounts the menu but keeps the editor.
+    expect(() => rerender(<Host showMenu={false} />)).not.toThrow();
+    expect(mockDestroy).toHaveBeenCalled();
   });
 });
