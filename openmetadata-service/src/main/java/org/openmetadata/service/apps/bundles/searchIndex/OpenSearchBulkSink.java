@@ -511,7 +511,12 @@ public class OpenSearchBulkSink implements BulkSink {
 
       if (embeddingsEnabled) {
         json =
-            embeddingEnricher.enrich(entity, json, existingEmbeddingsById, tracker, reindexContext);
+            embeddingEnricher.enrich(
+                entity,
+                json,
+                existingEmbeddingsById,
+                tracker,
+                EmbeddingTargets.of(indexName, reindexContext));
       }
 
       String finalJson = json;

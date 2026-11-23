@@ -533,6 +533,24 @@ class ElasticSearchVectorServiceTest {
     assertEquals("[0.1,0.2,0.3]", update.path("doc").path("embedding").toString());
   }
 
+  @Test
+  void aReindexRetryMergesTheEmbeddingIntoTheEntityDocAndReportsWhetherItWasWritten()
+      throws Exception {
+    String entityId = UUID.randomUUID().toString();
+    Map<String, Object> fields = Map.of("fingerprint", "fp", "embedding", List.of(0.1, 0.2, 0.3));
+    String update = "/table_search_index_staged/_update/" + entityId + "?retry_on_conflict=3";
+    answerByEndpointSuffix(Map.of());
+
+    assertTrue(vectorService.writeEntityEmbedding("table_search_index_staged", entityId, fields));
+    JsonNode doc = bodyOf(sentRequest("POST", update)).path("doc");
+    assertEquals("fp", doc.path("fingerprint").asText());
+    assertEquals("[0.1,0.2,0.3]", doc.path("embedding").toString());
+
+    answerByEndpointSuffix(
+        Map.of(update, response(404, "{\"error\":{\"type\":\"document_missing_exception\"}}")));
+    assertFalse(vectorService.writeEntityEmbedding("table_search_index_staged", entityId, fields));
+  }
+
   static Stream<Arguments> rejectedChunkBulks() throws Exception {
     return Stream.of(
         Arguments.of("an HTTP failure", response(503, "{\"error\":\"unavailable\"}")),

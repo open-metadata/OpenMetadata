@@ -71,6 +71,14 @@ public interface VectorIndexService {
   boolean backfillEntityChunks(EntityInterface<?> entity, String stagedChunkTarget);
 
   /**
+   * Reindex-sink write of an entity's embedding fields into its already indexed document in
+   * {@code entityIndexName}, for an entity the run could not embed on its first attempt. Returns
+   * false when the document could not be updated, a miss the caller counts.
+   */
+  boolean writeEntityEmbedding(
+      String entityIndexName, String entityId, Map<String, Object> embeddingFields);
+
+  /**
    * The stored entity-doc embeddings a reindex may reuse, keyed by entity id: those whose stored
    * fingerprint equals the current one.
    *

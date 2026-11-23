@@ -30,8 +30,8 @@ import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 /**
  * The embedding step of a reindex bulk sink, the same on Elasticsearch and OpenSearch: it splices
  * an entity's embedding into its staged search document and writes the entity's chunk documents.
- * Chunks it cannot write are retried once when their partition ends, then counted; see {@link
- * MissedChunks}.
+ * An embedding or chunks it cannot write are retried once when their partition ends, then counted;
+ * see {@link MissedChunks}.
  */
 @Slf4j
 final class EmbeddingEnricher {
@@ -48,7 +48,9 @@ final class EmbeddingEnricher {
     COMPLETE,
     /** The entity document has its embedding; its chunks were missed and wait for the retry. */
     CHUNKS_MISSED,
-    /** The provider was unavailable, so the entity document has no embedding either. */
+    /** The provider failed or its circuit was open: no embedding and no chunks, until the retry. */
+    EMBEDDING_MISSED,
+    /** There is no embedding client, so nothing can be embedded or retried. */
     NONE
   }
 
@@ -105,26 +107,25 @@ final class EmbeddingEnricher {
 
   /**
    * Returns {@code json} with the entity's embedding fields added, after writing its chunk
-   * documents to the generation {@code reindexContext} staged, or to the live chunk index when it
-   * staged none. A failure is counted and returns {@code json} unchanged, so the entity is still
-   * indexed.
+   * documents to {@code targets}. A miss returns {@code json} without them, so the entity is still
+   * indexed, and the retry at the end of its partition writes what was missed.
    */
   String enrich(
       EntityInterface<?> entity,
       String json,
       Map<String, JsonNode> reusableById,
       StageStatsTracker tracker,
-      ReindexContext reindexContext) {
+      EmbeddingTargets targets) {
     String enriched = json;
     try {
       VectorIndexService vectorService = searchRepository.getVectorIndexService();
       Optional<ObjectNode> doc = embeddableDoc(entity, json, vectorService);
       if (doc.isPresent()) {
         JsonNode stored = reusableById.get(entity.getId().toString());
-        String stagedChunkTarget = stagedChunkTarget(reindexContext);
-        Embedded embedded = embed(entity, doc.get(), stored, vectorService, stagedChunkTarget);
-        record(embedded, entity, tracker, stagedChunkTarget);
+        Embedded embedded =
+            embed(entity, doc.get(), stored, vectorService, targets.stagedChunkTarget());
         enriched = MAPPER.writeValueAsString(doc.get());
+        record(embedded, entity, tracker, targets);
       }
     } catch (JsonProcessingException | RuntimeException e) {
       LOG.warn(
@@ -153,21 +154,16 @@ final class EmbeddingEnricher {
     return doc;
   }
 
-  // Only a full recreate stages a chunk generation. Every other run carries none, and null
-  // sends its chunk documents to the live chunk index.
-  private static String stagedChunkTarget(ReindexContext reindexContext) {
-    return reindexContext == null ? null : reindexContext.getStagedChunkIndex().orElse(null);
-  }
-
-  // A missed chunk write is counted once the retry decides it; the other outcomes are final now.
+  // A miss is counted once the retry decides it; the other outcomes are final now.
   private void record(
       Embedded embedded,
       EntityInterface<?> entity,
       StageStatsTracker tracker,
-      String stagedChunkTarget) {
+      EmbeddingTargets targets) {
     switch (embedded) {
       case COMPLETE -> count(succeeded, tracker, StatsResult.SUCCESS);
-      case CHUNKS_MISSED -> missedChunks.add(entity, tracker, stagedChunkTarget);
+      case CHUNKS_MISSED -> missedChunks.addChunks(entity, tracker, targets);
+      case EMBEDDING_MISSED -> missedChunks.addEmbedding(entity, tracker, targets);
       case NONE -> count(failed, tracker, StatsResult.FAILED);
     }
   }
@@ -190,11 +186,9 @@ final class EmbeddingEnricher {
       // documents describe committed entity state, so writing them is safe even when this run's
       // staged entity index is never promoted.
       embedded = chunksOutcome(vectorService.backfillEntityChunks(entity, stagedChunkTarget));
-    } else if (embeddingClient != null && embeddingClient.isAvailable()) {
+    } else if (embeddingClient != null) {
       embedded = embedAfresh(entity, doc, vectorService, stagedChunkTarget);
     }
-    // Otherwise the provider is out: the entity is indexed without an embedding, which the next
-    // reindex adds, instead of every entity in the run failing.
     return embedded;
   }
 
@@ -208,8 +202,36 @@ final class EmbeddingEnricher {
       ObjectNode doc,
       VectorIndexService vectorService,
       String stagedChunkTarget) {
-    List<Map<String, Object>> chunkDocs =
-        VectorDocBuilder.fromEntity(entity, vectorService.getEmbeddingClient());
+    return embedChunks(entity, vectorService.getEmbeddingClient())
+        .map(
+            chunkDocs ->
+                spliceAndWriteChunks(entity, doc, chunkDocs, vectorService, stagedChunkTarget))
+        .orElse(Embedded.EMBEDDING_MISSED);
+  }
+
+  // A provider error, or a circuit open so no call is made, is a miss: the node's summary warning
+  // reports it, so each entity is logged at debug only.
+  private static Optional<List<Map<String, Object>>> embedChunks(
+      EntityInterface<?> entity, EmbeddingClient embeddingClient) {
+    Optional<List<Map<String, Object>>> chunkDocs;
+    try {
+      chunkDocs = Optional.of(VectorDocBuilder.fromEntity(entity, embeddingClient));
+    } catch (RuntimeException e) {
+      LOG.debug(
+          "Could not embed {}; retrying it before the partition ends: {}",
+          entity.getId(),
+          e.getMessage());
+      chunkDocs = Optional.empty();
+    }
+    return chunkDocs;
+  }
+
+  private static Embedded spliceAndWriteChunks(
+      EntityInterface<?> entity,
+      ObjectNode doc,
+      List<Map<String, Object>> chunkDocs,
+      VectorIndexService vectorService,
+      String stagedChunkTarget) {
     boolean chunksWritten = true;
     if (!chunkDocs.isEmpty()) {
       Map<String, Object> entityFields =
@@ -222,8 +244,8 @@ final class EmbeddingEnricher {
   }
 
   /**
-   * Retries once the chunks missed for {@code entityType} on this node and counts each: a success
-   * when its chunks are now written, a failure when they are still missing.
+   * Retries once what was missed for {@code entityType} on this node and counts each entity: a
+   * success when its embedding and chunks are now written, a failure when they are still missing.
    */
   void retryMissedChunks(String entityType) {
     VectorIndexService vectorService = searchRepository.getVectorIndexService();

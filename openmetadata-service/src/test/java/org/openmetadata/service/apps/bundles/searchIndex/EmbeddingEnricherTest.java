@@ -15,7 +15,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,10 +48,12 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.slf4j.LoggerFactory;
 
 class EmbeddingEnricherTest {
   private static final String INDEX = "table_search_index";
   private static final String ORIGINAL_INDEX = "table_search_index_rebuild_1";
+  private static final String STAGED_INDEX = INDEX + "_staged";
   private static final String STAGED_CHUNKS = "data_asset_embeddings_chunks_g1700000000000";
   private static final String ENTITY_JSON = "{\"name\":\"orders\"}";
 
@@ -92,6 +99,7 @@ class EmbeddingEnricherTest {
     when(vectorService.getEmbeddingClient()).thenReturn(embeddings);
     when(vectorService.backfillEntityChunks(any(), any())).thenReturn(true);
     when(vectorService.writeEntityChunks(any(), any(), any())).thenReturn(true);
+    when(vectorService.writeEntityEmbedding(any(), any(), any())).thenReturn(true);
   }
 
   @Test
@@ -138,8 +146,7 @@ class EmbeddingEnricherTest {
     JsonNode stored = storedEmbedding("[0.5,0.6,0.7]");
 
     String enriched =
-        enricher.enrich(
-            table, ENTITY_JSON, Map.of(tableId, stored), tracker, recreateOf(Entity.TABLE));
+        enricher.enrich(table, ENTITY_JSON, Map.of(tableId, stored), tracker, recreateRun());
 
     assertEquals(
         JsonUtils.readTree(
@@ -159,7 +166,7 @@ class EmbeddingEnricherTest {
   @Test
   void anEntityWithoutAStoredEmbeddingIsEmbeddedAndItsChunksWrittenToTheLiveIndex()
       throws Exception {
-    String enriched = enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, null);
+    String enriched = enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, liveRun());
 
     JsonNode doc = JsonUtils.readTree(enriched);
     assertEquals("orders", doc.path("name").asText());
@@ -180,7 +187,7 @@ class EmbeddingEnricherTest {
 
     String enriched =
         enricher.enrich(
-            table, ENTITY_JSON, Map.of(tableId, twoDimensional), tracker, recreateOf(Entity.TABLE));
+            table, ENTITY_JSON, Map.of(tableId, twoDimensional), tracker, recreateRun());
 
     assertEquals("[0.1,0.2,0.3]", JsonUtils.readTree(enriched).path("embedding").toString());
     assertEquals(1, chunksWrittenTo(STAGED_CHUNKS).size());
@@ -188,16 +195,117 @@ class EmbeddingEnricherTest {
   }
 
   @Test
-  void aProviderOutageIndexesTheEntityWithoutAnEmbeddingAndCountsAVectorFailure() {
-    embeddings.available = false;
+  void aFreshEmbedTheProviderFailsIsRetriedAndWritesTheEntityEmbeddingAndChunks() {
+    embeddings.failuresLeft = 1;
+    theRetryReadsTheTable();
 
-    String enriched = enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, null);
+    String enriched = enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
 
-    assertEquals(ENTITY_JSON, enriched);
-    assertEquals(0, embeddings.calls.get());
+    assertEquals(JsonUtils.readTree(ENTITY_JSON), JsonUtils.readTree(enriched));
+    verify(vectorService, never()).writeEntityChunks(any(), any(), any());
+    assertVectorStats(0, 0);
+    enricher.retryMissedChunks(Entity.TABLE);
+
+    Map<String, Object> written = entityEmbeddingWrittenTo(STAGED_INDEX);
+    assertEquals(VectorDocBuilder.computeFingerprintForEntity(table), written.get("fingerprint"));
+    assertTrue(written.containsKey("embedding"), "the entity document gets its embedding");
+    Map<String, Object> chunk = chunksWrittenTo(STAGED_CHUNKS).getFirst();
+    assertEquals(VectorDocBuilder.legacyEmbeddingFields(chunk), written);
+    verify(vectorService, never()).backfillEntityChunks(any(), any());
+    assertVectorStats(1, 0);
+    verify(tracker).recordVector(StatsResult.SUCCESS);
+    verify(tracker, never()).recordVector(StatsResult.FAILED);
+  }
+
+  @Test
+  void aFreshEmbedRetriedOnALiveRunWritesToTheLiveIndexes() {
+    embeddings.failuresLeft = 1;
+    theRetryReadsTheTable();
+
+    enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, liveRun());
+    enricher.retryMissedChunks(Entity.TABLE);
+
+    entityEmbeddingWrittenTo(INDEX);
+    assertEquals(1, chunksWrittenTo(null).size());
+    assertVectorStats(1, 0);
+  }
+
+  @Test
+  void aFreshEmbedThatFailsAgainCountsOneFailureAndWritesNothing() {
+    embeddings.failuresLeft = Integer.MAX_VALUE;
+    theRetryReadsTheTable();
+
+    enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
+    enricher.retryMissedChunks(Entity.TABLE);
+    enricher.retryMissedChunks(Entity.TABLE);
+
+    assertEquals(2, embeddings.calls.get(), "one first attempt and one retry");
+    verify(vectorService, never()).writeEntityEmbedding(any(), any(), any());
     verify(vectorService, never()).writeEntityChunks(any(), any(), any());
     assertVectorStats(0, 1);
     verify(tracker).recordVector(StatsResult.FAILED);
+  }
+
+  @Test
+  void aRetryThatCannotWriteTheChunksStillWritesTheEntityEmbeddingAndCountsAFailure() {
+    embeddings.failuresLeft = 1;
+    when(vectorService.writeEntityChunks(any(), any(), any())).thenReturn(false);
+    theRetryReadsTheTable();
+
+    enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
+    enricher.retryMissedChunks(Entity.TABLE);
+
+    entityEmbeddingWrittenTo(STAGED_INDEX);
+    assertVectorStats(0, 1);
+  }
+
+  @Test
+  void anOpenCircuitOnTheFreshPathMakesNoCallAndCountsTheMissOnceAfterTheSkippedRetry() {
+    embeddings.available = false;
+    theRetryReadsTheTable();
+
+    String enriched = enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
+    assertVectorStats(0, 0);
+    enricher.retryMissedChunks(Entity.TABLE);
+
+    assertEquals(ENTITY_JSON, enriched);
+    assertEquals(0, embeddings.calls.get(), "no provider call while the circuit is open");
+    verify(vectorService, never()).writeEntityEmbedding(any(), any(), any());
+    verify(vectorService, never()).writeEntityChunks(any(), any(), any());
+    assertVectorStats(0, 1);
+    verify(tracker).recordVector(StatsResult.FAILED);
+  }
+
+  @Test
+  void freshEmbedMissesLogOneSummaryWarningAndNoStackTracePerEntity() {
+    ListAppender<ILoggingEvent> log = captureLogsOf(EmbeddingEnricher.class, MissedChunks.class);
+    Table other =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("refunds")
+            .withFullyQualifiedName("svc.db.schema.refunds")
+            .withDescription("Refunds");
+    entities.when(() -> Entity.isVectorEmbeddable(other)).thenReturn(true);
+    embeddings.failuresLeft = 2;
+    theRetryReadsTheTable();
+
+    enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
+    enricher.enrich(other, ENTITY_JSON, Map.of(), tracker, recreateRun());
+    assertTrue(atLeast(log, Level.WARN).isEmpty(), "no warning per entity");
+    enricher.retryMissedChunks(Entity.TABLE);
+    enricher.logMissedChunksSummary();
+
+    List<ILoggingEvent> warnings = atLeast(log, Level.WARN);
+    assertEquals(1, warnings.size());
+    assertTrue(
+        warnings
+            .getFirst()
+            .getFormattedMessage()
+            .startsWith(
+                "Search Indexing missed the chunk "
+                    + "documents of 2 entities on this node, 2 of them with their entity embedding too; "
+                    + "the retry recovered 2."));
+    assertTrue(log.list.stream().allMatch(event -> event.getThrowableProxy() == null));
   }
 
   @Test
@@ -210,7 +318,7 @@ class EmbeddingEnricherTest {
         ENTITY_JSON,
         Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")),
         tracker,
-        recreateOf(Entity.TABLE));
+        recreateRun());
     assertVectorStats(0, 0);
     enricher.retryMissedChunks(Entity.TABLE);
     enricher.retryMissedChunks(Entity.TABLE);
@@ -227,7 +335,7 @@ class EmbeddingEnricherTest {
     when(vectorService.backfillEntityChunks(table, STAGED_CHUNKS)).thenReturn(false);
     theRetryReadsTheTable();
 
-    enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateOf(Entity.TABLE));
+    enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateRun());
     enricher.retryMissedChunks(Entity.TABLE);
 
     verify(vectorService).backfillEntityChunks(table, STAGED_CHUNKS);
@@ -245,7 +353,7 @@ class EmbeddingEnricherTest {
         ENTITY_JSON,
         Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")),
         tracker,
-        recreateOf(Entity.TABLE));
+        recreateRun());
     embeddings.available = false;
     enricher.retryMissedChunks(Entity.TABLE);
 
@@ -264,7 +372,7 @@ class EmbeddingEnricherTest {
         ENTITY_JSON,
         Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")),
         tracker,
-        recreateOf(Entity.TABLE));
+        recreateRun());
     enricher.retryMissedChunks(Entity.GLOSSARY_TERM);
 
     verify(vectorService, times(1)).backfillEntityChunks(table, STAGED_CHUNKS);
@@ -283,7 +391,11 @@ class EmbeddingEnricherTest {
 
     String enriched =
         enricher.enrich(
-            table, ENTITY_JSON, Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")), tracker, null);
+            table,
+            ENTITY_JSON,
+            Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")),
+            tracker,
+            liveRun());
 
     assertSame(ENTITY_JSON, enriched);
     verify(vectorService, never()).backfillEntityChunks(any(), any());
@@ -296,7 +408,11 @@ class EmbeddingEnricherTest {
   void aReusedEmbeddingOfANonRecreateRunIsSplicedAndBackfilledToTheLiveIndex() {
     String enriched =
         enricher.enrich(
-            table, ENTITY_JSON, Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")), tracker, null);
+            table,
+            ENTITY_JSON,
+            Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")),
+            tracker,
+            liveRun());
 
     JsonNode doc = JsonUtils.readTree(enriched);
     assertEquals("fp-stored", doc.path("fingerprint").asText());
@@ -321,6 +437,43 @@ class EmbeddingEnricherTest {
             + "\"parentId\":\""
             + tableId
             + "\"}");
+  }
+
+  private static EmbeddingTargets liveRun() {
+    return EmbeddingTargets.of(INDEX, null);
+  }
+
+  private static EmbeddingTargets recreateRun() {
+    return EmbeddingTargets.of(STAGED_INDEX, recreateOf(Entity.TABLE));
+  }
+
+  @SuppressWarnings("unchecked")
+  private Map<String, Object> entityEmbeddingWrittenTo(String entityIndex) {
+    ArgumentCaptor<Map<String, Object>> written = ArgumentCaptor.forClass(Map.class);
+    verify(vectorService).writeEntityEmbedding(eq(entityIndex), eq(tableId), written.capture());
+    return written.getValue();
+  }
+
+  private final List<Logger> capturedLoggers = new ArrayList<>();
+  private final ListAppender<ILoggingEvent> capturedLog = new ListAppender<>();
+
+  private ListAppender<ILoggingEvent> captureLogsOf(Class<?>... owners) {
+    capturedLog.start();
+    for (Class<?> owner : owners) {
+      Logger logger = (Logger) LoggerFactory.getLogger(owner);
+      logger.addAppender(capturedLog);
+      capturedLoggers.add(logger);
+    }
+    return capturedLog;
+  }
+
+  @AfterEach
+  void releaseCapturedLogs() {
+    capturedLoggers.forEach(logger -> logger.detachAppender(capturedLog));
+  }
+
+  private static List<ILoggingEvent> atLeast(ListAppender<ILoggingEvent> log, Level level) {
+    return log.list.stream().filter(event -> event.getLevel().isGreaterOrEqual(level)).toList();
   }
 
   /** A full recreate: it replaces {@code entityType}'s index and stages a chunk generation. */
@@ -352,10 +505,15 @@ class EmbeddingEnricherTest {
   private static final class ThreeDimensionalEmbeddings extends EmbeddingClient {
     private final AtomicInteger calls = new AtomicInteger();
     private boolean available = true;
+    private int failuresLeft;
 
     @Override
     protected float[] doEmbed(String text) {
       calls.incrementAndGet();
+      if (failuresLeft > 0) {
+        failuresLeft--;
+        throw new IllegalStateException("OpenAI API returned status 429: injected");
+      }
       return new float[] {0.1f, 0.2f, 0.3f};
     }
 

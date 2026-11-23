@@ -145,6 +145,11 @@ class VectorChunkIndexIT {
     void aGrowthWhoseHeaderFailedLeavesNoChunkBehind() {
       assertAGrowthWhoseHeaderFailedLeavesNoChunkBehind(service);
     }
+
+    @Test
+    void aRetriedEmbeddingMergesIntoTheIndexedEntityDocument() {
+      assertARetriedEmbeddingMergesIntoTheIndexedEntityDocument(service);
+    }
   }
 
   @Nested
@@ -205,6 +210,11 @@ class VectorChunkIndexIT {
     @Test
     void aGrowthWhoseHeaderFailedLeavesNoChunkBehind() {
       assertAGrowthWhoseHeaderFailedLeavesNoChunkBehind(service);
+    }
+
+    @Test
+    void aRetriedEmbeddingMergesIntoTheIndexedEntityDocument() {
+      assertARetriedEmbeddingMergesIntoTheIndexedEntityDocument(service);
     }
   }
 
@@ -388,6 +398,43 @@ class VectorChunkIndexIT {
       refresh(service, live);
       service.deleteEntityChunks(id(orders));
       refresh(service, live);
+    }
+  }
+
+  /**
+   * A reindex that could not embed an entity indexes its document without an embedding and retries
+   * it when the partition ends. The retry merges chunk 0's embedding fields into that document, so
+   * the entity ends as a first attempt that succeeded would have left it. A document the bulk never
+   * indexed is reported as a miss, not created.
+   */
+  private static void assertARetriedEmbeddingMergesIntoTheIndexedEntityDocument(
+      AbstractVectorIndexService service) {
+    Table orders = table("orders", "Orders placed online");
+    String entityIndex = "table_search_index_retry";
+    String document = "/" + entityIndex + "/_doc/" + id(orders);
+    try {
+      service.executeGenericRequest(
+          "PUT", document + "?refresh=true", JsonUtils.pojoToJson(Map.of("name", "orders")));
+      Map<String, Object> fields =
+          VectorDocBuilder.legacyEmbeddingFields(
+              VectorDocBuilder.fromEntity(orders, service.getEmbeddingClient()).getFirst());
+
+      assertTrue(service.writeEntityEmbedding(entityIndex, id(orders), fields));
+      JsonNode source =
+          JsonUtils.readTree(
+                  service.executeGenericRequest(
+                      "GET", document + "?_source_includes=name,fingerprint,embedding", null))
+              .path("_source");
+      assertEquals("orders", source.path("name").asText());
+      assertEquals(
+          VectorDocBuilder.computeFingerprintForEntity(orders),
+          source.path("fingerprint").asText());
+      assertEquals(3, source.path("embedding").size());
+      assertFalse(
+          service.writeEntityEmbedding(entityIndex, UUID.randomUUID().toString(), fields),
+          "A document the bulk never indexed is a miss");
+    } finally {
+      service.executeGenericRequest("DELETE", "/" + entityIndex, null);
     }
   }
 

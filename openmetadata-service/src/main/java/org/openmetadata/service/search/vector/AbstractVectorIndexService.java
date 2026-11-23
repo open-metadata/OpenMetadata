@@ -2,6 +2,7 @@ package org.openmetadata.service.search.vector;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -2055,14 +2056,37 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   public void partialUpdateEntity(
       String indexName, String entityId, Map<String, Object> embeddingFields) {
     try {
-      String docJson = MAPPER.writeValueAsString(embeddingFields);
-      String updateBody = "{\"doc\":" + docJson + "}";
-      executeGenericRequest(
-          "POST", "/" + indexName + "/_update/" + entityId + "?retry_on_conflict=3", updateBody);
+      sendEmbeddingUpdate(indexName, entityId, embeddingFields);
     } catch (Exception e) {
       LOG.error(
           "Failed to partial update entity {} in {}: {}", entityId, indexName, e.getMessage(), e);
     }
+  }
+
+  @Override
+  public boolean writeEntityEmbedding(
+      String entityIndexName, String entityId, Map<String, Object> embeddingFields) {
+    boolean written;
+    try {
+      sendEmbeddingUpdate(entityIndexName, entityId, embeddingFields);
+      written = true;
+    } catch (JsonProcessingException | RuntimeException e) {
+      LOG.debug(
+          "Failed to write the embedding of {} into {}: {}",
+          entityId,
+          entityIndexName,
+          e.getMessage());
+      written = false;
+    }
+    return written;
+  }
+
+  private void sendEmbeddingUpdate(
+      String indexName, String entityId, Map<String, Object> embeddingFields)
+      throws JsonProcessingException {
+    String updateBody = "{\"doc\":" + MAPPER.writeValueAsString(embeddingFields) + "}";
+    executeGenericRequest(
+        "POST", "/" + indexName + "/_update/" + entityId + "?retry_on_conflict=3", updateBody);
   }
 
   @Override

@@ -473,7 +473,12 @@ public class ElasticSearchBulkSink implements BulkSink {
 
       if (embeddingsEnabled) {
         json =
-            embeddingEnricher.enrich(entity, json, existingEmbeddingsById, tracker, reindexContext);
+            embeddingEnricher.enrich(
+                entity,
+                json,
+                existingEmbeddingsById,
+                tracker,
+                EmbeddingTargets.of(indexName, reindexContext));
       }
 
       long rawDocSize = (long) json.getBytes(StandardCharsets.UTF_8).length;
