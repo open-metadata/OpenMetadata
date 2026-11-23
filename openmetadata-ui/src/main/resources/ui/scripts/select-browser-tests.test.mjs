@@ -135,3 +135,16 @@ it('selects by translation key, and runs everything for keys built at runtime', 
     ['label.a', 'label.c']
   );
 });
+
+it('runs the test whose screenshot baseline changed', () => {
+  const shot =
+    'src/pages/Roles/__screenshots__/Roles.browser.test.tsx/list-chromium-linux.png';
+  assert.deepEqual(select([shot]).tests, [ROLES]);
+});
+
+it('runs everything for a global style', () => {
+  assert.equal(
+    select(['src/styles/tokens.css'], { inCode: () => true }).mode,
+    'all'
+  );
+});

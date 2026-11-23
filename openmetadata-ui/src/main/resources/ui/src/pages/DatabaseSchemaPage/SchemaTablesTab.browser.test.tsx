@@ -22,11 +22,11 @@ import {
 import { isListPage } from '../../test/browser/fixtures/paging';
 import { describePaginatedList } from '../../test/browser/paginationContract';
 
-const tables = many(40, (i) => ({
+const tables: Table[] = many(40, (i) => ({
   ...named('table', i, SCHEMA.fullyQualifiedName),
   columns: [],
   databaseSchema: SCHEMA,
-})) as unknown as Table[];
+}));
 
 describePaginatedList({
   name: 'Database schema › Tables',

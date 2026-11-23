@@ -30,7 +30,10 @@ import {
   EntityReference,
   TagLabel,
 } from '../../../generated/entity/data/table';
-import { Topic } from '../../../generated/entity/data/topic';
+import {
+  Field as TopicField,
+  Topic,
+} from '../../../generated/entity/data/topic';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { AnnouncementServer } from '../fixtures/announcements';
 import {
@@ -63,6 +66,7 @@ import { serveSearch } from '../fixtures/search';
 import {
   ALL_COLUMNS,
   makeTable,
+  ColumnLike,
   serveColumns,
   TABLE_FQN,
 } from '../fixtures/table';
@@ -127,6 +131,13 @@ export interface EntityLike {
   dataProducts?: EntityReference[];
   certification?: AssetCertification;
   deleted?: boolean;
+  // Where each type keeps the children its page lists.
+  columns?: Column[];
+  messageSchema?: Topic['messageSchema'];
+  requestSchema?: APIEndpoint['requestSchema'];
+  tasks?: Pipeline['tasks'];
+  mlFeatures?: Mlmodel['mlFeatures'];
+  fields?: SearchIndex['fields'];
 }
 
 /** A child row (column, field, task, feature) as the server holds it. */
@@ -190,11 +201,11 @@ export interface EntityConfig extends PageConfig {
 }
 
 /** A child that lives inside the entity, so the page edits it with a PATCH on the entity. */
-const childOf = <T>(
+const childOf = (
   server: EntityServer<EntityLike>,
-  read: (entity: T) => Child | undefined
+  read: (entity: EntityLike) => Child | undefined
 ): ChildServer => ({
-  current: () => read(server.current() as unknown as T) ?? { name: '' },
+  current: () => read(server.current()) ?? { name: '' },
   writes: () => server.patches,
 });
 
@@ -211,29 +222,23 @@ const columnOf = (parent: string, columns: Column[]): ChildServer => {
 };
 
 /** Where an entity keeps the columns its page lists. */
-interface HeldColumns {
-  read: (entity: EntityLike) => Column[];
-  write: (entity: EntityLike, columns: Column[]) => EntityLike;
+interface HeldColumns<C extends ColumnLike> {
+  read: (entity: EntityLike) => C[];
+  write: (entity: EntityLike, columns: C[]) => EntityLike;
 }
 
-const DATA_MODEL_COLUMNS: HeldColumns = {
-  read: (entity) => (entity as unknown as { columns: Column[] }).columns,
-  write: (entity, columns) => ({ ...entity, columns } as EntityLike),
+const DATA_MODEL_COLUMNS: HeldColumns<Column> = {
+  read: (entity) => entity.columns ?? [],
+  write: (entity, columns) => ({ ...entity, columns }),
 };
 
 /** A topic's schema fields, which the page lists and edits like columns. */
-const TOPIC_FIELDS: HeldColumns = {
-  read: (entity) =>
-    ((entity as unknown as Topic).messageSchema?.schemaFields ??
-      []) as unknown as Column[],
-  write: (entity, columns) => {
-    const topic = entity as unknown as Topic;
-
-    return {
-      ...topic,
-      messageSchema: { ...topic.messageSchema, schemaFields: columns },
-    } as unknown as EntityLike;
-  },
+const TOPIC_FIELDS: HeldColumns<TopicField> = {
+  read: (entity) => entity.messageSchema?.schemaFields ?? [],
+  write: (entity, schemaFields) => ({
+    ...entity,
+    messageSchema: { ...entity.messageSchema, schemaFields },
+  }),
 };
 
 /**
@@ -242,10 +247,10 @@ const TOPIC_FIELDS: HeldColumns = {
  * row with `PUT /columns/name/{fqn}` and the detail panel with a PATCH on the
  * entity, and both land in the same columns, as on the server.
  */
-const entityColumnsOf = (
+const entityColumnsOf = <C extends ColumnLike & Child>(
   parent: string,
   server: EntityServer<EntityLike>,
-  held: HeldColumns = DATA_MODEL_COLUMNS
+  held: HeldColumns<C>
 ): ChildServer => {
   const columns = () => held.read(server.current());
   const store = serveColumns(parent, [], {
@@ -275,7 +280,7 @@ const ENTITIES: EntityConfig[] = [
     endpoint: 'apiEndpoints',
     make: makeApiEndpoint,
     serveExtras: (server) =>
-      childOf<APIEndpoint>(server, (e) => e.requestSchema?.schemaFields?.[0]),
+      childOf(server, (e) => e.requestSchema?.schemaFields?.[0]),
     children: {
       tabId: 'schema',
       rowId:
@@ -320,7 +325,7 @@ const ENTITIES: EntityConfig[] = [
     url: at('pipeline', makePipeline().fullyQualifiedName),
     endpoint: 'pipelines',
     make: makePipeline,
-    serveExtras: (server) => childOf<Pipeline>(server, (e) => e.tasks?.[0]),
+    serveExtras: (server) => childOf(server, (e) => e.tasks?.[0]),
     children: { tabId: 'tasks', rowId: makePipeline().tasks?.[0].name ?? '' },
   },
   {
@@ -341,7 +346,7 @@ const ENTITIES: EntityConfig[] = [
     endpoint: 'mlmodels',
     make: makeMlModel,
     serveExtras: (server) =>
-      childOf<Mlmodel>(server, (e) => {
+      childOf(server, (e) => {
         const feature = e.mlFeatures?.[0];
 
         return feature && { ...feature, name: feature.name ?? '' };
@@ -373,7 +378,7 @@ const ENTITIES: EntityConfig[] = [
     url: at('searchIndex', makeSearchIndex().fullyQualifiedName),
     endpoint: 'searchIndexes',
     make: makeSearchIndex,
-    serveExtras: (server) => childOf<SearchIndex>(server, (e) => e.fields?.[0]),
+    serveExtras: (server) => childOf(server, (e) => e.fields?.[0]),
     children: {
       tabId: 'fields',
       rowId: makeSearchIndex().fields[0].fullyQualifiedName ?? '',
@@ -384,7 +389,8 @@ const ENTITIES: EntityConfig[] = [
     url: at('dashboardDataModel', makeDashboardDataModel().fullyQualifiedName),
     endpoint: 'dashboard/datamodels',
     make: makeDashboardDataModel,
-    serveExtras: (server) => entityColumnsOf('dashboard/datamodels', server),
+    serveExtras: (server) =>
+      entityColumnsOf('dashboard/datamodels', server, DATA_MODEL_COLUMNS),
     children: {
       tabId: 'model',
       rowId: makeDashboardDataModel().columns[0].fullyQualifiedName ?? '',

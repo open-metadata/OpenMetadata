@@ -62,10 +62,10 @@ export const makeTable = (overrides: Partial<Table> = {}): Table => ({
  * this wrong is exactly the drift a recorded-fixture contract check prevents
  * (the first POC draft used {offset, limit} and the Next button stayed disabled).
  */
-export const pageOf = (
-  columns: Column[],
+export const pageOf = <C>(
+  columns: C[],
   { offset, limit }: { offset: number; limit: number }
-): { data: Column[]; paging: Paging } => {
+): { data: C[]; paging: Paging } => {
   const total = columns.length;
   const toIndex = Math.min(offset + limit, total);
 
@@ -79,9 +79,23 @@ export const pageOf = (
   };
 };
 
-/** The columns of one table/data model as the server holds them, and each column write. */
-export interface ColumnServer {
-  current: () => Column[];
+/**
+ * What the column endpoints read and write. Table and data-model columns fit,
+ * and so do a topic's schema fields, which the page lists and edits the same way.
+ */
+export interface ColumnLike {
+  name: string;
+  fullyQualifiedName?: string;
+  displayName?: string;
+  description?: string;
+  tags?: { tagFQN: string }[];
+  extension?: unknown;
+  children?: ColumnLike[];
+}
+
+/** The columns of one entity as the server holds them, and each column write. */
+export interface ColumnServer<C extends ColumnLike = Column> {
+  current: () => C[];
   /** Each `GET /columns/name/{fqn}` the page sent (the column detail panel's read). */
   reads: string[];
   /** Each column search's query (`q`, `tags`, `glossaryTerms`, paging). */
@@ -91,11 +105,11 @@ export interface ColumnServer {
 }
 
 /** Depth-first: a nested column is addressed by its own FQN too. */
-const flatten = (columns: Column[]): Column[] =>
+const flatten = (columns: ColumnLike[]): ColumnLike[] =>
   columns.flatMap((column) => [column, ...flatten(column.children ?? [])]);
 
 /** A column or one of its descendants carries one of `fqns`. */
-const carries = (column: Column, fqns: string[]): boolean =>
+const carries = (column: ColumnLike, fqns: string[]): boolean =>
   flatten([column]).some((c) =>
     (c.tags ?? []).some((tag) => fqns.includes(tag.tagFQN))
   );
@@ -105,7 +119,10 @@ const carries = (column: Column, fqns: string[]): boolean =>
  * and which (or whose descendants) carry one of `tags` and one of
  * `glossaryTerms`; the total counts every match, not a page.
  */
-const searchColumns = (columns: Column[], params: URLSearchParams) => {
+const searchColumns = <C extends ColumnLike>(
+  columns: C[],
+  params: URLSearchParams
+) => {
   const q = (params.get('q') ?? '').toLowerCase();
   const filters = ['tags', 'glossaryTerms']
     .map((key) => params.get(key)?.split(',').filter(Boolean) ?? [])
@@ -119,13 +136,13 @@ const searchColumns = (columns: Column[], params: URLSearchParams) => {
 };
 
 /** Where the columns live: their own list, or the entity that holds them. */
-export interface ColumnStore {
-  read: () => Column[];
-  write: (columns: Column[]) => void;
+export interface ColumnStore<C extends ColumnLike = Column> {
+  read: () => C[];
+  write: (columns: C[]) => void;
 }
 
-const ownStore = (columns: Column[]): ColumnStore => {
-  let stored = deepClone(columns) as Column[];
+const ownStore = <C extends ColumnLike>(columns: C[]): ColumnStore<C> => {
+  let stored: C[] = deepClone(columns);
 
   return { read: () => stored, write: (next) => (stored = next) };
 };
@@ -138,12 +155,12 @@ const ownStore = (columns: Column[]): ColumnStore => {
  * custom property values arrive in `extension`.
  * Pass a `store` to keep the columns inside an entity the page also PATCHes.
  */
-export const serveColumns = (
+export const serveColumns = <C extends ColumnLike = Column>(
   parent: string,
-  columns: Column[],
-  store: ColumnStore = ownStore(columns)
-): ColumnServer => {
-  const server: ColumnServer = {
+  columns: C[],
+  store: ColumnStore<C> = ownStore(columns)
+): ColumnServer<C> => {
+  const server: ColumnServer<C> = {
     current: store.read,
     reads: [],
     searches: [],
@@ -201,7 +218,7 @@ export const serveColumns = (
           updated.description = blankToUndefined(body.description);
         }
         if (body.tags !== undefined) {
-          updated.tags = body.tags as Column['tags'];
+          updated.tags = body.tags;
         }
         if (body.extension !== undefined) {
           updated.extension = body.extension;

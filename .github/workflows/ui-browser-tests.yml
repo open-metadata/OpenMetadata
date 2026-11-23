@@ -122,7 +122,7 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             node scripts/select-browser-tests.mjs --map impact-map.json --base HEAD^1 --out selection.json \
               | tee -a "$GITHUB_STEP_SUMMARY"
-          elif [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
+          elif [ "${{ github.event_name }}" = "merge_group" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
             echo '{"mode": "none", "reason": "no UI change in this merge-queue entry", "tests": [], "uncovered": []}' > selection.json
           else
             echo '{"mode": "all", "reason": "full run on ${{ github.event_name }}", "tests": [], "uncovered": []}' > selection.json
@@ -147,6 +147,38 @@ jobs:
           name: browser-selection
           path: ${{ env.UI_DIR }}/selection.json
           retention-days: 1
+      # When nothing runs, the report job is skipped; leave a comment saying
+      # why, so an earlier push's results are not left standing.
+      - name: Report that no browser test ran
+        if: github.event_name == 'pull_request' && steps.plan.outputs.mode == 'none'
+        working-directory: ${{ env.UI_DIR }}
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/browser-tests-comment"
+          {
+            echo '<!-- ui-browser-tests -->'
+            echo '### UI browser tests'
+            echo
+            echo "**Ran:** none ($(jq -r .reason selection.json))"
+            uncovered=$(jq -r '.uncovered[] | "- `\(.)`"' selection.json)
+            if [ -n "$uncovered" ]; then
+              echo
+              echo '<details><summary>Changed files no browser test loads</summary>'
+              echo
+              echo "$uncovered"
+              echo
+              echo '</details>'
+            fi
+          } > "$RUNNER_TEMP/browser-tests-comment/comment.md"
+          echo "$PR" > "$RUNNER_TEMP/browser-tests-comment/pr-number"
+          cat "$RUNNER_TEMP/browser-tests-comment/comment.md" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: github.event_name == 'pull_request' && steps.plan.outputs.mode == 'none'
+        with:
+          name: browser-tests-comment
+          path: ${{ runner.temp }}/browser-tests-comment/
+          retention-days: 3
 
   # Core components' own tests, run whenever core changes. A core change
   # selects no browser tests, so this is its gate.

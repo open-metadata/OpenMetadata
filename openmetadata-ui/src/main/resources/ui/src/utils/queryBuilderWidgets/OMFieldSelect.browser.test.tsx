@@ -14,7 +14,6 @@
  * The real react-aria ComboBox behind a query builder Field control (the Jest
  * suites stub it): the box must never show a field the rule does not hold.
  */
-import type { Config, FieldProps } from '@react-awesome-query-builder/ui';
 import { describe, expect, test, vi } from 'vitest';
 import { render } from 'vitest-browser-react';
 import { page, userEvent } from 'vitest/browser';
@@ -31,13 +30,10 @@ const renderOwnersSelect = async () => {
   await render(
     <>
       <OMFieldSelect
-        {...({
-          config: {} as Config,
-          items: FIELDS,
-          readonly: false,
-          selectedKey: 'owners',
-          setField,
-        } as unknown as FieldProps)}
+        items={FIELDS}
+        readonly={false}
+        selectedKey="owners"
+        setField={setField}
       />
       <button type="button">elsewhere</button>
     </>

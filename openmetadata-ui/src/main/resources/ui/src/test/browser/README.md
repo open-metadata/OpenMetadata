@@ -65,6 +65,8 @@ see what a branch would run:
 node scripts/select-browser-tests.mjs --map impact-map.json --base origin/main
 ```
 
+The policy is ADR:2026-11-23-browser-tests-run-by-impact-on-pull-requests-and-in-full-in-the-merge-queue.
+
 The static import graph alone cannot do this here: lazy imports tie about
 1,000 modules into one import cycle.
 

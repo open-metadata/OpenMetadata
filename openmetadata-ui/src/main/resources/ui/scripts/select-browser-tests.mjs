@@ -165,7 +165,19 @@ export const selectTests = ({
     if (!file.startsWith('src/') || file.startsWith('src/locale/')) {
       continue;
     }
-    const hits = reaching(file);
+    // A screenshot baseline sits beside its test:
+    // <dir>/__screenshots__/<name>.browser.test.tsx/<shot>.png
+    const shot = file.match(
+      /^(.*)\/__screenshots__\/([^/]+\.browser\.test\.tsx?)\//
+    );
+    const hits = shot
+      ? tests.filter((test) => test === `${shot[1]}/${shot[2]}`)
+      : reaching(file);
+    if (file.startsWith('src/styles/')) {
+      // Global styles load in every test (setup.ts), and a stylesheet change
+      // there can move any page.
+      return all(`${file} is a global style`);
+    }
     if (hits.length) {
       hits.forEach((test) => selected.add(test));
     } else if (isTestSide(file) && !tests.includes(file)) {
@@ -275,16 +287,19 @@ const main = async () => {
   const head = option('--head') ?? 'HEAD';
   const git = (...cmd) =>
     execFileSync('git', cmd, { encoding: 'utf8', maxBuffer: 1 << 26 });
-  // Deletions are left out: a deleted test needs no run, and a deleted
-  // source file's importers change with it.
-  const changed = git(
-    'diff',
-    '--name-only',
-    '--diff-filter=d',
-    `${base}...${head}`
-  )
+  // Deleted test files need no run; a deleted source file still selects the
+  // tests that loaded it, since its removal can break them.
+  const deleted = new Set(
+    git('diff', '--name-only', '--diff-filter=D', `${base}...${head}`)
+      .split('\n')
+      .filter(Boolean)
+  );
+  const changed = git('diff', '--name-only', `${base}...${head}`)
     .split('\n')
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter(
+      (file) => !(deleted.has(file) && isTestSide(file.slice(UI.length)))
+    );
   const tests = git(
     'ls-files',
     'src/*.browser.test.ts',

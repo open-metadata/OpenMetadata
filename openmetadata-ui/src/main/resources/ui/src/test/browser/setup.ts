@@ -37,13 +37,13 @@ const unhandledApiCalls: string[] = [];
 // App-wide stores pages write (signed-in user, domain, search, app mode).
 // Files run in one page (`isolate: false`), so reset them between tests;
 // otherwise a test inherits e.g. the previous test's currentUser.
-const stores = [
-  useApplicationStore,
-  usePersistentStorage,
-  useDomainStore,
-  useSearchStore,
-  useAppModeStore,
-];
+const resetStores = () => {
+  useApplicationStore.setState(useApplicationStore.getInitialState(), true);
+  usePersistentStorage.setState(usePersistentStorage.getInitialState(), true);
+  useDomainStore.setState(useDomainStore.getInitialState(), true);
+  useSearchStore.setState(useSearchStore.getInitialState(), true);
+  useAppModeStore.setState(useAppModeStore.getInitialState(), true);
+};
 
 beforeAll(async () => {
   await worker.start({
@@ -84,7 +84,7 @@ afterEach(async () => {
     worker.resetHandlers();
     globalThis.history.replaceState(null, '', runnerUrl);
     localStorage.clear();
-    stores.forEach((store) => store.setState(store.getInitialState(), true));
+    resetStores();
     // Explore keeps search results for 30 s across mounts (as across a user's
     // tab switches); a later test would render this test's results first.
     useExploreCache.getState().clearCache();

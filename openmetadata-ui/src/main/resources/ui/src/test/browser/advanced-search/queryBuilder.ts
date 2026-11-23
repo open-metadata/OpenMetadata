@@ -86,9 +86,13 @@ const chooseOption = async (
 /**
  * Picks `label` in the react-aria ComboBox inside `control`: types it as a
  * filter (or, with `filter: false`, opens the full list), clicks the option
- * and confirms the box, once left, shows it. A click the popup re-renders
- * under can miss the option; the box then shows the selection it kept, and
- * the option is picked again.
+ * and confirms the box, once left, shows it.
+ *
+ * The one sanctioned re-attempt in the browser tests: a click the popup
+ * re-renders under can miss the option, and no event marks the popup settled
+ * (waiting for network idle, a settled filter or a stable option node each
+ * still missed 1-3 picks in 283 tests). So the box's own value confirms the
+ * pick, and only a pick that did not stick is made again, never a blind replay.
  */
 export const pickOption = async (
   control: Locator,

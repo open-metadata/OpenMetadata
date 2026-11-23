@@ -427,11 +427,13 @@ export const TreeSelect = <T = unknown,>({
     [selectedData, isLocked]
   );
 
-  // Keyed by the selected ids: a parent that re-renders with an equal array
-  // (an entity refetch rebuilds its tags) must not discard a staged draft.
-  const valueKey = toArray(value)
-    .map((node) => node.id)
-    .join('\u0000');
+  // Keyed by the selected nodes' content, not the array's identity: a parent
+  // that re-renders with an equal array (an entity refetch rebuilds its tags)
+  // must not discard a staged draft, but a changed label or data (a renamed
+  // domain) still updates the selection.
+  const valueKey = JSON.stringify(
+    toArray(value).map((node) => [node.id, node.label, node.data ?? null])
+  );
   useEffect(() => {
     if (valueKey !== prevValueKeyRef.current) {
       prevValueKeyRef.current = valueKey;

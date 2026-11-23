@@ -245,6 +245,26 @@ describe('TreeSelect', () => {
     expect(emittedAt(onChange, 0).map((node) => node.id)).toEqual(['a']);
   });
 
+  it("shows a selected node's new label when the parent renames it", async () => {
+    const fetchData = vi.fn().mockResolvedValue({ nodes: [] });
+    const renderPicker = (label: string) => (
+      <TreeSelect
+        multiple
+        fetchData={fetchData}
+        value={[{ id: 'a', label, value: 'a' }]}
+        onChange={vi.fn()}
+      />
+    );
+    const { rerender } = render(renderPicker('Old name'));
+
+    expect(await screen.findByText('Old name')).toBeInTheDocument();
+
+    rerender(renderPicker('New name'));
+
+    expect(await screen.findByText('New name')).toBeInTheDocument();
+    expect(screen.queryByText('Old name')).not.toBeInTheDocument();
+  });
+
   it('opens the dropdown below the trigger by default', async () => {
     renderCustomTrigger(fetchNodes(), true);
 

@@ -37,7 +37,9 @@ Real Chromium (Vitest browser mode), real components and providers. Only the net
   A list page uses `describePaginatedList` from `paginationContract.ts`.
 - Assert what the user sees **and** what the page sent (`server.patches`, query params, request count).
 - Never `vi.mock` our own components; a test that needs it belongs in Jest.
-- Wait on a condition (`expect.element`, `expect.poll`), never a sleep, and do not add retries.
+- Wait on a condition (`expect.element`, `expect.poll`), never a sleep. Do not retry a step; where no
+  event marks a widget ready, confirm the action from the DOM's own state and redo only an action that
+  did not stick (`setSelected`, `pickOption`), with the reason in a comment.
   Long cold-load waits use `scaled(ms)` / `suiteTimeout(ms)` from `src/test/browser/timeouts.ts`;
   coverage runs are about 2× slower.
 - A click a re-render can drop (pickers, panel tabs) goes through `openPicker(trigger, ready)` from
