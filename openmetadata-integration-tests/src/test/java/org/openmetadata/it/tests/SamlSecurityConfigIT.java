@@ -226,10 +226,10 @@ public class SamlSecurityConfigIT {
    */
   @Test
   void validateSecurityConfig_acceptsAnEmptyProviderNameForSaml() throws Exception {
-    SecurityConfiguration config = samlConfig(OKTA_ENTITY_ID, OKTA_SSO_URL, OKTA_ORG_CERT);
+    final SecurityConfiguration config = samlConfig(OKTA_ENTITY_ID, OKTA_SSO_URL, OKTA_ORG_CERT);
     config.getAuthenticationConfiguration().setProviderName("");
 
-    JsonNode response = validate(config);
+    final JsonNode response = validate(config);
 
     assertNoErrorOnField(response, PROVIDER_NAME_FIELD);
     assertEquals("success", response.get("status").asText(), "Validation response: " + response);
