@@ -1074,13 +1074,17 @@
         "destructiveHint": false,
         "openWorldHint": false
       },
-      "description": "Return the OpenMetadata ontology — either the full canonical ontology (when 'resource' is omitted) or a SPARQL DESCRIBE for a single class or property URI. Use this to discover available classes, properties, ranges, and domains the agent can query. Prefer passing 'resource' for a focused DESCRIBE because the full ontology can exceed the response limit; the body is capped at maxBytes and flagged 'truncated' when it does not fit. Format: turtle (default), jsonld, ntriples, rdfxml. The full ontology (no 'resource') is open to every caller, like the REST ontology endpoint. A DESCRIBE of a 'resource' reads instance data and requires the ExecuteSparqlQuery permission; administrators always pass.",
+      "description": "Return the OpenMetadata ontology: one of its terms ('term'), the full canonical ontology (no 'term' and no 'resource'), or a SPARQL DESCRIBE of one graph resource ('resource'). Prefer 'term' to learn what an edge or a node type means before querying: a class comes back with every property whose rdfs:domain is the class or one of its superclasses, in full, and with the shared properties the projection uses on it (schema:domainIncludes) by label and comment; a property comes back on its own. Both fit the response limit. The full ontology exceeds that limit; its body is capped at maxBytes and flagged 'truncated'. Format: turtle (default), jsonld, ntriples, rdfxml. The full ontology (no 'resource') is open to every caller, like the REST ontology endpoint, and so is a 'term'. A DESCRIBE of a 'resource' reads instance data and requires the ExecuteSparqlQuery permission; administrators always pass.",
       "parameters": {
         "type": "object",
         "properties": {
+          "term": {
+            "type": "string",
+            "description": "Optional. One class or property of the ontology, as a prefixed name such as 'om:Table' or a full IRI such as 'https://open-metadata.org/ontology/hasOwner'. Read a shared property by name for its range and every class it is used on. Cannot be combined with 'resource'."
+          },
           "resource": {
             "type": "string",
-            "description": "Optional. Full URI of the class or property to DESCRIBE (e.g. 'https://open-metadata.org/ontology/Column'). Omit to return the full ontology."
+            "description": "Optional. Full URI to DESCRIBE in the knowledge graph, such as an entity IRI. For a class or property of the ontology prefer 'term'. Omit both to return the full ontology."
           },
           "format": {
             "type": "string",
