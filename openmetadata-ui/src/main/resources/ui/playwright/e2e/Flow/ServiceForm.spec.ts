@@ -331,6 +331,9 @@ test.describe(
         browser,
         page,
       }) => {
+        // Allow time for the real recursive hard delete that cleans up the service.
+        test.slow();
+
         const serviceName = `pw-looker-lineage-${uuid()}`;
         const servicePath = '/api/v1/services/dashboardServices';
         const { apiContext, afterAction } = await createNewPage(browser);
@@ -356,13 +359,12 @@ test.describe(
           const fieldName = 'Include Explore-to-Chart Lineage';
           const scopeSection = page.getByTestId('connection-section-scope');
 
-          await visitServiceDetailsPage(
-            page,
-            { name: serviceName, type: SERVICE_TYPE.Dashboard },
-            false,
-            false
+          await page.goto(
+            `/service/dashboardServices/${encodeURIComponent(
+              serviceName
+            )}/connection`,
+            { waitUntil: 'domcontentloaded' }
           );
-          await page.getByRole('tab', { name: 'Connection' }).click();
           await page.getByTestId('edit-connection-button').click();
           await waitForServiceConnectionForm(page);
           await scopeSection.getByRole('button').click();
