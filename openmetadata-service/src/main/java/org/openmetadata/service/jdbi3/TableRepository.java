@@ -1124,6 +1124,8 @@ public class TableRepository extends EntityRepository<Table> {
     try (var ignored = phase("tableProfileDataHydrate")) {
       setFieldsInternal(table, Fields.EMPTY_FIELDS);
     }
+    // Profiles are time-series rows that no entity hook sees; the graph carries the latest one.
+    RdfUpdater.updateEntity(table);
     return table.withProfile(createTableProfile.getTableProfile());
   }
 
@@ -1160,6 +1162,20 @@ public class TableRepository extends EntityRepository<Table> {
       throw new IllegalArgumentException("entityType must be table, column or system");
     }
     daoCollection.profilerDataTimeSeriesDao().deleteAtTimestamp(fqn, extension, timestamp);
+    if (!SYSTEM_PROFILE_EXTENSION.equals(extension)) {
+      refreshProfiledTable(
+          TABLE_COLUMN_PROFILE_EXTENSION.equals(extension)
+              ? FullyQualifiedName.getTableFQN(fqn)
+              : fqn);
+    }
+  }
+
+  /** A deleted profile may have been the latest one, which the graph then has to replace. */
+  private void refreshProfiledTable(String tableFqn) {
+    if (RdfUpdater.isEnabled()) {
+      Optional.ofNullable(findByNameOrNull(tableFqn, NON_DELETED))
+          .ifPresent(RdfUpdater::updateEntity);
+    }
   }
 
   public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) {

@@ -62,14 +62,23 @@ final class LiveReferenceFilter {
     retainLive(document, liveLabels);
   }
 
+  /** The lookup that resolves one document's references when it is mapped on its own. */
+  LiveTagLookup lookup() {
+    return tagLookup;
+  }
+
   /**
-   * Resolves the labels of every document with one lookup per label type. The result answers for
-   * these documents only and is dropped with them, so it never outlives the read it reflects.
+   * Resolves the labels of every document, and the {@code references} the caller names by type,
+   * with one lookup per type. The result answers for these documents only and is dropped with them,
+   * so it never outlives the read it reflects.
    */
-  LiveTagLookup resolveTogether(final Collection<JsonNode> documents) {
+  LiveTagLookup resolveTogether(
+      final Collection<JsonNode> documents, final Map<String, Set<String>> references) {
+    final Map<String, Set<String>> fqnsByType = labelFqnsByType(documents);
+    references.forEach(
+        (type, fqns) -> fqnsByType.computeIfAbsent(type, ignored -> new HashSet<>()).addAll(fqns));
     final Map<String, Map<String, UUID>> resolved = new HashMap<>();
-    labelFqnsByType(documents)
-        .forEach((type, fqns) -> resolved.put(type, tagLookup.liveIds(type, fqns)));
+    fqnsByType.forEach((type, fqns) -> resolved.put(type, tagLookup.liveIds(type, fqns)));
     return (type, fqns) -> {
       final Map<String, UUID> live = resolved.getOrDefault(type, Map.of());
       final Map<String, UUID> requested = new HashMap<>();
