@@ -23,7 +23,6 @@ import {
   GLOSSARIES_DOCS,
   TAGS_DOCS,
 } from '../../../constants/docs.constants';
-import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
@@ -34,7 +33,6 @@ import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilter
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 
 type Props = {
-  type: ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE;
   query?: Qs.ParsedQs;
 };
 

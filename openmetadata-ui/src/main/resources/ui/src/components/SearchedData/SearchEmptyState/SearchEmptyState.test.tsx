@@ -12,7 +12,6 @@
  */
 
 import { getByTestId, render, screen } from '@testing-library/react';
-import { ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import SearchEmptyState from './SearchEmptyState';
 
 jest.mock('react-router-dom', () => ({
@@ -39,20 +38,12 @@ jest.mock('../../../utils/i18next/LocalUtil', () => ({
 describe('Test Error placeholder ingestion Component', () => {
   it('switches to filter guidance when search clears but deleted assets remain selected', () => {
     const { rerender } = render(
-      <SearchEmptyState
-        query={{ search: 'missing', showDeleted: 'true' }}
-        type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
-      />
+      <SearchEmptyState query={{ search: 'missing', showDeleted: 'true' }} />
     );
 
     expect(screen.getByText('label.no-result-found')).toBeInTheDocument();
 
-    rerender(
-      <SearchEmptyState
-        query={{ showDeleted: 'true' }}
-        type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
-      />
-    );
+    rerender(<SearchEmptyState query={{ showDeleted: 'true' }} />);
 
     expect(
       screen.getByText('label.no-result-for-these-filter-plural')
@@ -63,9 +54,7 @@ describe('Test Error placeholder ingestion Component', () => {
   });
 
   it('keeps the domain status in the headline, with separate guidance and documentation', () => {
-    const { container } = render(
-      <SearchEmptyState type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA} />
-    );
+    const { container } = render(<SearchEmptyState />);
 
     expect(getByTestId(container, 'no-search-results')).toBeInTheDocument();
     expect(screen.getByText('message.no-data-available-entity')).toHaveClass(
@@ -80,10 +69,7 @@ describe('Test Error placeholder ingestion Component', () => {
 
   it('Component should render Filter Placeholder for query search', () => {
     const { container } = render(
-      <SearchEmptyState
-        query={{ search: 'test' }}
-        type={ELASTICSEARCH_ERROR_PLACEHOLDER_TYPE.NO_DATA}
-      />
+      <SearchEmptyState query={{ search: 'test' }} />
     );
     const noDataES = getByTestId(container, 'no-search-results');
     const searchFilterPlaceholder = getByTestId(
