@@ -14,84 +14,187 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
 
 import jakarta.ws.rs.BadRequestException;
-import java.util.List;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.IdentityProviderConfig;
+import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
-import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.migration.MigrationValidationClient;
+import org.openmetadata.service.resources.settings.SettingsCache;
 
 /**
- * The {@code update-security-config} command writes through the settings repository, whose write
- * step checks the SAML IdP certificate ({@code SystemRepositoryIdpCertificateTest} covers that).
- * The command writes the authentication configuration first, so a refusal leaves both settings as
- * they were.
+ * What the {@code update-security-config} command leaves stored. It writes through the settings
+ * repository, whose write step checks the SAML IdP certificate, and writes the authentication
+ * first, so a refused certificate leaves both settings as they were. The rows are a map behind the
+ * real repository.
  */
 class OpenMetadataOperationsSecurityConfigTest {
-  private final SystemRepository repository = mock(SystemRepository.class);
+  private static final String AUTH = AUTHENTICATION_CONFIGURATION.value();
+  private static final String AUTHZ = AUTHORIZER_CONFIGURATION.value();
+  private static final String IDP_CERTIFICATE = resource("/saml/mock-idp.crt");
+  private static final String OTHER_IDP_CERTIFICATE = resource("/saml/other-idp.crt");
+  private static final String EXPIRED_IDP_CERTIFICATE = resource("/saml/expired-idp.crt");
 
-  @Test
-  void aRefusedAuthenticationConfigurationStopsBeforeTheAuthorizerIsWritten() {
-    BadRequestException refusal =
-        new BadRequestException("samlConfiguration.idp.idpX509Certificate was refused");
-    when(repository.createOrUpdate(
-            argThat(OpenMetadataOperationsSecurityConfigTest::isAuthentication)))
-        .thenThrow(refusal);
+  private final Map<String, String> rows = new ConcurrentHashMap<>();
+  private MockedStatic<Entity> entityMock;
+  private MockedStatic<MigrationValidationClient> migrationMock;
+  private MockedStatic<SettingsCache> settingsCacheMock;
+  private SystemRepository repository;
 
-    BadRequestException thrown =
-        assertThrows(
-            BadRequestException.class,
-            () -> OpenMetadataOperations.storeSecurityConfiguration(repository, securityFile()));
+  @BeforeEach
+  void setUp() {
+    entityMock = mockStatic(Entity.class);
+    migrationMock = mockStatic(MigrationValidationClient.class);
+    settingsCacheMock = mockStatic(SettingsCache.class);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    SystemDAO dao = inMemoryDao();
+    when(collectionDAO.systemDAO()).thenReturn(dao);
+    entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+    migrationMock
+        .when(MigrationValidationClient::getInstance)
+        .thenReturn(mock(MigrationValidationClient.class));
+    repository = new SystemRepository();
+    rows.put(AUTH, JsonUtils.pojoToJson(saml(IDP_CERTIFICATE)));
+    rows.put(AUTHZ, JsonUtils.pojoToJson(authorizer("admin")));
+  }
 
-    assertSame(refusal, thrown);
-    verify(repository, never())
-        .createOrUpdate(argThat(settings -> settings.getConfigType() == AUTHORIZER_CONFIGURATION));
+  @AfterEach
+  void tearDown() {
+    settingsCacheMock.close();
+    migrationMock.close();
+    entityMock.close();
   }
 
   @Test
-  void storesTheAuthenticationThenTheAuthorizer() {
-    OpenMetadataOperations.storeSecurityConfiguration(repository, securityFile());
+  void storesBothSettingsOfTheFile() {
+    OpenMetadataOperations.storeSecurityConfiguration(
+        repository, securityFile(OTHER_IDP_CERTIFICATE, "new-admin"));
 
-    ArgumentCaptor<Settings> written = ArgumentCaptor.forClass(Settings.class);
-    verify(repository, times(2)).createOrUpdate(written.capture());
+    AuthenticationConfiguration authentication =
+        (AuthenticationConfiguration) repository.getConfigWithKey(AUTH).getConfigValue();
+    AuthorizerConfiguration authorizer =
+        (AuthorizerConfiguration) repository.getConfigWithKey(AUTHZ).getConfigValue();
     assertEquals(
-        List.of(AUTHENTICATION_CONFIGURATION, AUTHORIZER_CONFIGURATION),
-        written.getAllValues().stream().map(Settings::getConfigType).toList());
+        OTHER_IDP_CERTIFICATE,
+        authentication.getSamlConfiguration().getIdp().getIdpX509Certificate());
+    assertEquals(Set.of("new-admin"), authorizer.getAdminPrincipals());
+  }
+
+  @Test
+  void aRefusedIdpCertificateLeavesBothSettingsAsTheyWere() {
+    String authenticationBefore = rows.get(AUTH);
+    String authorizerBefore = rows.get(AUTHZ);
+    SecurityConfiguration file = securityFile(EXPIRED_IDP_CERTIFICATE, "new-admin");
+
+    BadRequestException refused =
+        assertThrows(
+            BadRequestException.class,
+            () -> OpenMetadataOperations.storeSecurityConfiguration(repository, file));
+
+    assertTrue(
+        refused.getMessage().contains("samlConfiguration.idp.idpX509Certificate"),
+        refused.getMessage());
+    assertEquals(authenticationBefore, rows.get(AUTH));
+    assertEquals(authorizerBefore, rows.get(AUTHZ));
   }
 
   @Test
   void writesNothingWhenTheFileHasNoSecuritySettings() {
+    Map<String, String> before = Map.copyOf(rows);
+
     OpenMetadataOperations.storeSecurityConfiguration(repository, new SecurityConfiguration());
 
-    verify(repository, never()).createOrUpdate(any());
+    assertEquals(before, rows);
   }
 
-  private static boolean isAuthentication(Settings settings) {
-    return settings != null && settings.getConfigType() == AUTHENTICATION_CONFIGURATION;
-  }
-
-  private static SecurityConfiguration securityFile() {
+  private static SecurityConfiguration securityFile(String idpCertificate, String admin) {
     return new SecurityConfiguration()
-        .withAuthenticationConfiguration(
-            new AuthenticationConfiguration().withProvider(AuthProvider.SAML))
-        .withAuthorizerConfiguration(
-            new AuthorizerConfiguration().withAdminPrincipals(Set.of("admin")));
+        .withAuthenticationConfiguration(saml(idpCertificate))
+        .withAuthorizerConfiguration(authorizer(admin));
+  }
+
+  private static AuthenticationConfiguration saml(String idpCertificate) {
+    return new AuthenticationConfiguration()
+        .withProvider(AuthProvider.SAML)
+        .withProviderName("SAML")
+        .withSamlConfiguration(
+            new SamlSSOClientConfig()
+                .withIdp(
+                    new IdentityProviderConfig()
+                        .withEntityId("https://idp.example.com/metadata")
+                        .withSsoLoginUrl("https://idp.example.com/sso")
+                        .withIdpX509Certificate(idpCertificate))
+                .withSp(
+                    new ServiceProviderConfig()
+                        .withEntityId("http://localhost:8585/api/v1/saml/metadata")
+                        .withAcs("http://localhost:8585/api/v1/saml/acs")
+                        .withCallback("http://localhost:8585/saml/callback")));
+  }
+
+  private static AuthorizerConfiguration authorizer(String admin) {
+    return new AuthorizerConfiguration()
+        .withClassName("org.openmetadata.service.security.DefaultAuthorizer")
+        .withContainerRequestFilter("org.openmetadata.service.security.JwtFilter")
+        .withAdminPrincipals(Set.of(admin))
+        .withPrincipalDomain("open-metadata.org")
+        .withEnforcePrincipalDomain(false)
+        .withEnableSecureSocketConnection(false);
+  }
+
+  private static String resource(String path) {
+    try (InputStream stream =
+        OpenMetadataOperationsSecurityConfigTest.class.getResourceAsStream(path)) {
+      return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  private SystemDAO inMemoryDao() {
+    SystemDAO dao = mock(SystemDAO.class);
+    when(dao.getConfigJsonWithKey(anyString())).thenAnswer(i -> rows.get(i.<String>getArgument(0)));
+    when(dao.getConfigWithKey(anyString()))
+        .thenAnswer(
+            i -> {
+              String json = rows.get(i.<String>getArgument(0));
+              return json == null
+                  ? null
+                  : CollectionDAO.SettingsRowMapper.getSettings(
+                      SettingsType.fromValue(i.getArgument(0)), json);
+            });
+    doAnswer(i -> rows.put(i.getArgument(0), i.getArgument(1)))
+        .when(dao)
+        .insertSettings(anyString(), anyString());
+    return dao;
   }
 }
