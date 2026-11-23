@@ -30,7 +30,21 @@ const props: UserTabProps = {
   onRemoveUser: mockOnRemoveUser,
 };
 jest.mock('../../../../common/NextPrevious/NextPrevious', () => {
-  return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
+  return jest
+    .fn()
+    .mockImplementation(
+      ({
+        pagingHandler,
+      }: {
+        pagingHandler: (params: { currentPage: number }) => void;
+      }) => (
+        <button
+          data-testid="next-page"
+          onClick={() => pagingHandler({ currentPage: 2 })}>
+          NextPrevious
+        </button>
+      )
+    );
 });
 jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () => {
   return jest
@@ -253,6 +267,55 @@ describe('UserTab', () => {
       // The team itself and its descendant team are both in the teams.id filter.
       expect(queryFilter).toContain(nonGroupTeam.id);
       expect(queryFilter).toContain('sub-group-1');
+    });
+  });
+
+  describe('Search paging', () => {
+    afterEach(() => {
+      globalThis.history.replaceState({}, '', '/');
+      jest
+        .requireMock('../../../../../rest/searchAPI')
+        .searchQuery.mockResolvedValue({
+          hits: { hits: [], total: { value: 0 } },
+        });
+    });
+
+    it('fetches the next search page once and does not reload the unfiltered team list', async () => {
+      const { searchQuery } = jest.requireMock('../../../../../rest/searchAPI');
+      searchQuery.mockResolvedValue({
+        hits: {
+          hits: [{ _source: { id: 'u1', name: 'ali' } }],
+          total: { value: 50 },
+        },
+      });
+
+      render(
+        <BrowserRouter>
+          <UserTab {...props} />
+        </BrowserRouter>
+      );
+
+      fireEvent.click(await screen.findByTestId('user-searchbar'));
+
+      await waitFor(() =>
+        expect(searchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({ query: 'ali', pageNumber: 1 })
+        )
+      );
+
+      (getUsers as jest.Mock).mockClear();
+      searchQuery.mockClear();
+
+      fireEvent.click(await screen.findByTestId('next-page'));
+
+      await waitFor(() =>
+        expect(searchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({ query: 'ali', pageNumber: 2 })
+        )
+      );
+
+      expect(searchQuery).toHaveBeenCalledTimes(1);
+      expect(getUsers).not.toHaveBeenCalled();
     });
   });
 

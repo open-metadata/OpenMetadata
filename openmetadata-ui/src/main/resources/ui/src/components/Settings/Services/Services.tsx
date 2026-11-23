@@ -246,11 +246,6 @@ const Services = ({ serviceName }: ServicesProps) => {
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (!isEmpty(serviceQueryFilter)) {
         handlePageChange(currentPage);
-        getServiceDetails({
-          currentPage,
-          limit: pageSize,
-          queryFilter: serviceQueryFilter,
-        });
       } else if (cursorType) {
         handlePageChange(
           currentPage,
@@ -259,7 +254,7 @@ const Services = ({ serviceName }: ServicesProps) => {
         );
       }
     },
-    [getServiceDetails, serviceQueryFilter, paging, pageSize]
+    [serviceQueryFilter, paging, pageSize, handlePageChange]
   );
 
   const addServicePermission = useMemo(
@@ -547,11 +542,12 @@ const Services = ({ serviceName }: ServicesProps) => {
   );
 
   useEffect(() => {
-    const { cursorType, cursorValue } = pagingCursor ?? {};
+    const { cursorType, cursorValue, currentPage } = pagingCursor ?? {};
 
     if (cursorType && cursorValue) {
       getServiceDetails({
         limit: pageSize,
+        currentPage: Number(currentPage),
         queryFilter: serviceQueryFilter,
         [cursorType as 'before' | 'after']: cursorValue,
       });
@@ -560,6 +556,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     }
     getServiceDetails({
       limit: pageSize,
+      currentPage: Number(currentPage),
       queryFilter: serviceQueryFilter,
     });
   }, [

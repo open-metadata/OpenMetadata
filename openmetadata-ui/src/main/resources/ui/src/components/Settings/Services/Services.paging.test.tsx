@@ -21,7 +21,7 @@ import { ReactNode } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { PIPELINE_SERVICE_PLATFORM } from '../../../constants/Services.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { getServices } from '../../../rest/serviceAPI';
+import { getServices, searchService } from '../../../rest/serviceAPI';
 import Services from './Services';
 
 jest.mock('../../../rest/serviceAPI', () => ({
@@ -72,6 +72,7 @@ jest.mock('../../common/DomainFilterChip/DomainFilterChip.component', () => ({
 }));
 
 const mockGetServices = getServices as jest.Mock;
+const mockSearchService = searchService as jest.Mock;
 
 const LocationProbe = () => {
   const { search } = useLocation();
@@ -116,5 +117,58 @@ describe('Services paging across a view switch', () => {
     expect(search).not.toContain('currentPage');
     expect(search).not.toContain('pageSize');
     expect(screen.getByTestId('page-indicator')).toHaveTextContent('1');
+  });
+});
+
+describe('Services search paging', () => {
+  it('fetches the next search page once, at the requested page number', async () => {
+    mockSearchService.mockResolvedValue({
+      hits: {
+        hits: [
+          {
+            _source: {
+              id: 'service-1',
+              name: 'airbyte',
+              fullyQualifiedName: 'airbyte',
+              serviceType: 'Airbyte',
+            },
+          },
+        ],
+        total: { value: 40 },
+      },
+    });
+
+    await act(async () => {
+      renderServices('/settings/services/pipelines');
+    });
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'air' },
+    });
+
+    await waitFor(
+      () =>
+        expect(mockSearchService).toHaveBeenCalledWith(
+          expect.objectContaining({ currentPage: 1 })
+        ),
+      { timeout: 3000 }
+    );
+
+    mockSearchService.mockClear();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('next'));
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('page-indicator')).toHaveTextContent(
+        /label\.page 2 /
+      )
+    );
+
+    expect(mockSearchService).toHaveBeenCalledTimes(1);
+    expect(mockSearchService).toHaveBeenCalledWith(
+      expect.objectContaining({ currentPage: 2 })
+    );
   });
 });

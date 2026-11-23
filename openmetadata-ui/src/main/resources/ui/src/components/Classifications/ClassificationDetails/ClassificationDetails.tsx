@@ -539,6 +539,10 @@ const ClassificationDetails = forwardRef(
       ]
     );
 
+    const isPagedPastFirstPage =
+      Number(pagingCursor.currentPage) !== 1 ||
+      Boolean(pagingCursor.cursorType || pagingCursor.cursorValue);
+
     useEffect(() => {
       if (currentClassification?.fullyQualifiedName && !isAddingTag) {
         const classificationChanged =
@@ -550,12 +554,7 @@ const ClassificationDetails = forwardRef(
           currentClassification.fullyQualifiedName;
 
         if (classificationChanged) {
-          // Only skip a subsequent effect if resetting pagination will change
-          // its URL cursor. A switch on page 1 needs no reset effect: leaving
-          // this flag set would discard the next real Next/Previous fetch.
-          isClassificationChangingRef.current =
-            Number(pagingCursor.currentPage) !== 1 ||
-            Boolean(pagingCursor.cursorType || pagingCursor.cursorValue);
+          isClassificationChangingRef.current = isPagedPastFirstPage;
           handlePageChange(1, { cursorType: null, cursorValue: undefined });
           fetchClassificationChildren(currentClassification.fullyQualifiedName);
 

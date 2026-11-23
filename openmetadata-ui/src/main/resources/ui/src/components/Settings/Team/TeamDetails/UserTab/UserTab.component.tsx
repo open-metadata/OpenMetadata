@@ -223,7 +223,6 @@ export const UserTab = ({
   }: PagingHandlerParams) => {
     if (searchText) {
       handlePageChange(currentPage);
-      searchUsers(searchText, currentPage);
     } else if (cursorType) {
       handlePageChange(
         currentPage,
@@ -233,31 +232,27 @@ export const UserTab = ({
     }
   };
 
-  const handleCurrentUserPage = (value?: number) => {
-    handlePageChange(value ?? INITIAL_PAGING_VALUE);
-  };
-
   const handleUsersSearchAction = (text: string) => {
     setSearchText(text);
-    handleCurrentUserPage(INITIAL_PAGING_VALUE);
-    if (text) {
-      searchUsers(text, INITIAL_PAGING_VALUE);
-    } else {
-      getCurrentTeamUsers(currentTeam.name);
-    }
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
   };
 
   useEffect(() => {
-    const { cursorType, cursorValue } = pagingCursor ?? {};
+    const { cursorType, cursorValue, currentPage } = pagingCursor ?? {};
 
-    if (cursorType && cursorValue) {
+    if (searchText) {
+      searchUsers(searchText, Number(currentPage));
+    } else if (cursorType && cursorValue) {
       getCurrentTeamUsers(currentTeam.name, {
         [cursorType]: cursorValue,
       });
     } else {
       getCurrentTeamUsers(currentTeam.name);
     }
-  }, [currentTeam, pageSize, pagingCursor]);
+  }, [currentTeam, pageSize, pagingCursor, searchText]);
 
   const columns: ColumnsType<User> = useMemo(() => {
     const tabColumns: ColumnsType<User> = [
