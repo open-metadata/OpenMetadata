@@ -68,6 +68,9 @@ public final class AIContextMarkdown {
   private static final String COLUMN_MAPPING_CAP_NOTE =
       "\n_Column mappings are capped at %d per edge — fetch the full lineage graph with "
           + "get_entity_lineage(entityType=`%s`, fqn=`%s`)._\n";
+  private static final String KNOWLEDGE_CONTENT_HINT =
+      "\n_Excerpt — fetch the full content with get_entity_details(entityType=`%s`, fqn=`%s`,"
+          + " include=[\"content\"])._\n";
   private static final Set<ContextSection> LEGACY_RENDER_SECTIONS =
       EnumSet.complementOf(EnumSet.of(ContextSection.TAGS));
 
@@ -667,12 +670,11 @@ public final class AIContextMarkdown {
       }
     }
     if (Boolean.TRUE.equals(item.getContentTruncated())) {
-      markdown
-          .append("\n_Excerpt — fetch the full content with get_knowledge_content(entityType=`")
-          .append(item.getType() == null ? "" : item.getType().value())
-          .append("`, fqn=`")
-          .append(nullOrEmpty(item.getFullyQualifiedName()) ? "" : item.getFullyQualifiedName())
-          .append("`)._\n");
+      markdown.append(
+          KNOWLEDGE_CONTENT_HINT.formatted(
+              inlineCodeValue(item.getType() == null ? "" : item.getType().value()),
+              inlineCodeValue(
+                  nullOrEmpty(item.getFullyQualifiedName()) ? "" : item.getFullyQualifiedName())));
     }
   }
 

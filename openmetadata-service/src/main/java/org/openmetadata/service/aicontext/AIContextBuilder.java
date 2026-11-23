@@ -241,7 +241,8 @@ public class AIContextBuilder {
    * pills (potentially long). Each item is kept in full when it fits under the per-item ceiling and
    * the remaining budget, degraded to a lead excerpt when it doesn't, and finally reduced to a
    * reference (content omitted) once the budget is exhausted. Truncated items carry
-   * {@code contentTruncated=true} so the agent knows to fetch the full body via get_knowledge_content.
+   * {@code contentTruncated=true} so the agent knows to fetch the full body via
+   * {@code get_entity_details(include=["content"])}.
    */
   void applyKnowledgeBudget(AIContext context) {
     int remaining = knowledgeBudgetChars;
@@ -1059,9 +1060,8 @@ public class AIContextBuilder {
   }
 
   /**
-   * The full (un-budgeted) body of a knowledge entity, for the get_knowledge_content tool's
-   * progressive-disclosure path. Keeps the per-type extraction (metric expression, pill answer)
-   * in one place so it matches what the bundle excerpts.
+   * The full (un-budgeted) body of a knowledge entity, keeping the per-type extraction (metric
+   * expression, pill answer) in one place so it matches what the bundle excerpts.
    */
   public static String fullContentOf(EntityInterface<?> entity) {
     String content;
@@ -1073,6 +1073,41 @@ public class AIContextBuilder {
       content = unescapeRichText(entity.getDescription());
     }
     return content;
+  }
+
+  /**
+   * The prompt-ready full body of a knowledge entity for the
+   * {@code get_entity_details(include=["content"])} progressive-disclosure path. Strips inline
+   * images and render-only HTML via {@link PromptText#forPrompt} on rich-text descriptions while
+   * keeping metric expression code verbatim so SQL operators such as {@code <} and {@code >} are
+   * never HTML-escaped.
+   */
+  public static String promptContentOf(EntityInterface<?> entity) {
+    String content;
+    if (entity instanceof Metric metric) {
+      content = promptMetricContent(metric);
+    } else if (entity instanceof ContextMemory pill) {
+      content = PromptText.forPrompt(pillContent(pill));
+    } else {
+      content = PromptText.forPrompt(unescapeRichText(entity.getDescription()));
+    }
+    return content;
+  }
+
+  private static String promptMetricContent(Metric metric) {
+    StringBuilder content = new StringBuilder();
+    String description = PromptText.forPrompt(unescapeRichText(metric.getDescription()));
+    if (!nullOrEmpty(description) && !description.isBlank()) {
+      content.append(description);
+    }
+    MetricExpression expression = metric.getMetricExpression();
+    if (expression != null && !nullOrEmpty(expression.getCode())) {
+      if (content.length() > 0) {
+        content.append('\n');
+      }
+      content.append(expression.getCode());
+    }
+    return content.toString();
   }
 
   /**
@@ -1223,7 +1258,8 @@ public class AIContextBuilder {
   /**
    * A metric's structural context is its expression — the query that defines it. Without this, asking
    * get_asset_context about a metric returned only its description, while the same expression was
-   * already reachable through get_knowledge_content and as attached knowledge of a table.
+   * already reachable through {@code get_entity_details(include=["content"])} and as attached
+   * knowledge of a table.
    */
   private static GenericAssetContext buildMetricContext(Metric metric, ConceptContext concept) {
     MetricExpression expression = metric.getMetricExpression();

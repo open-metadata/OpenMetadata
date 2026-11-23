@@ -122,6 +122,221 @@ class GetEntityToolTest {
     assertThat(result).doesNotContainKey("description");
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"markdown", "json"})
+  void contentOnlyStripsInlineImagesAndPresentationalMarkup(String format) throws Exception {
+    String fqn = "Knowledge.Architecture";
+    String diagram = "iVBORw0KGgoAAAANSUhEUg" + "A".repeat(20_000) + "ErkJggg==";
+    Page page =
+        new Page()
+            .withId(UUID.randomUUID())
+            .withName("Architecture")
+            .withFullyQualifiedName(fqn)
+            .withDescription(
+                "<p class=\"om-p\" style=\"color:red\">Semantic layer overview.</p>"
+                    + "<p><img src=\"data:image/png;base64,"
+                    + diagram
+                    + "\" alt=\"Architecture\"></p>"
+                    + "<p><img src=\"https://cdn.example.com/diagram.png\"></p>"
+                    + "<p>Uses <a data-entitytype=\"table\" data-fqn=\"svc.db.sch.orders\""
+                    + " class=\"om-mention\">Orders</a>.</p>");
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityByName(Entity.PAGE, fqn, "", Include.NON_DELETED))
+          .thenReturn(page);
+      result =
+          new GetEntityTool()
+              .execute(
+                  mock(Authorizer.class),
+                  mock(CatalogSecurityContext.class),
+                  Map.of(
+                      "entityType",
+                      Entity.PAGE,
+                      "fqn",
+                      fqn,
+                      "include",
+                      List.of("content"),
+                      "format",
+                      format));
+    }
+
+    String content = (String) castMap(result.get("content")).get("content");
+    assertThat(content)
+        .contains("Semantic layer overview.")
+        .contains("data-fqn=\"svc.db.sch.orders\"")
+        .doesNotContain("base64")
+        .doesNotContain(diagram)
+        .doesNotContain("<img")
+        .doesNotContain("diagram.png")
+        .doesNotContain("class=")
+        .doesNotContain("style=");
+    assertThat(content.length()).isLessThan(300);
+  }
+
+  @Test
+  void combinedIncludeContentStripsInlineImages() throws Exception {
+    String fqn = "Knowledge.Runbook";
+    String diagram = "A".repeat(10_000);
+    Page page =
+        new Page()
+            .withId(UUID.randomUUID())
+            .withName("Runbook")
+            .withFullyQualifiedName(fqn)
+            .withDescription(
+                "<p>Restart the worker.</p><p><img src=\"data:image/png;base64,"
+                    + diagram
+                    + "\"></p>");
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityByName(eq(Entity.PAGE), eq(fqn), anyString(), any()))
+          .thenReturn(page);
+      result =
+          new GetEntityTool()
+              .execute(
+                  mock(Authorizer.class),
+                  securityContextFor("alice"),
+                  Map.of(
+                      "entityType",
+                      Entity.PAGE,
+                      "fqn",
+                      fqn,
+                      "include",
+                      List.of("quality", "content")));
+    }
+
+    String content = (String) castMap(result.get("content")).get("content");
+    assertThat(content)
+        .contains("Restart the worker.")
+        .doesNotContain("base64")
+        .doesNotContain("<img");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"markdown", "json"})
+  void contentQueryPassagesStripInlineImagesAndDropImageOnlyChunks(String format) throws Exception {
+    String fqn = "Knowledge.DiagramGuide";
+    String diagram = "B".repeat(5_000);
+    Page page =
+        new Page()
+            .withId(UUID.randomUUID())
+            .withName("DiagramGuide")
+            .withFullyQualifiedName(fqn)
+            .withDescription("<p>Fallback body.</p>");
+    CatalogSecurityContext securityContext = securityContextFor("alice");
+    SubjectContext alice = new SubjectContext(new User().withName("alice"), null, null);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    when(vectorService.searchChunksByParent(page.getId().toString(), "diagram", 3, alice))
+        .thenReturn(
+            List.of(
+                "<p>Matched passage.</p><img src=\"data:image/png;base64," + diagram + "\">",
+                "<img src=\"data:image/png;base64," + diagram + "\">"));
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class);
+        MockedStatic<OpenSearchVectorService> vectors = mockStatic(OpenSearchVectorService.class)) {
+      entities
+          .when(() -> Entity.getEntityByName(Entity.PAGE, fqn, "", Include.NON_DELETED))
+          .thenReturn(page);
+      entities.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      subjects.when(() -> DefaultAuthorizer.getSubjectContext(securityContext)).thenReturn(alice);
+      vectors.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+
+      result =
+          new GetEntityTool()
+              .execute(
+                  mock(Authorizer.class),
+                  securityContext,
+                  Map.of(
+                      "entityType",
+                      Entity.PAGE,
+                      "fqn",
+                      fqn,
+                      "include",
+                      List.of("content"),
+                      "query",
+                      "diagram",
+                      "format",
+                      format));
+    }
+
+    Map<String, Object> contentMap = castMap(result.get("content"));
+    if ("json".equals(format)) {
+      @SuppressWarnings("unchecked")
+      List<String> passages = (List<String>) contentMap.get("passages");
+      assertThat(passages).hasSize(1);
+      assertThat(passages.getFirst())
+          .contains("Matched passage.")
+          .doesNotContain("base64")
+          .doesNotContain("<img");
+    } else {
+      String rendered = (String) contentMap.get("content");
+      assertThat(rendered)
+          .contains("Matched passage.")
+          .doesNotContain("base64")
+          .doesNotContain("<img")
+          .doesNotContain("---");
+    }
+  }
+
+  @Test
+  void contentQueryFallsBackToSanitizedBodyWhenAllPassagesWereImageOnly() throws Exception {
+    String fqn = "Knowledge.OnlyImageChunks";
+    Page page =
+        new Page()
+            .withId(UUID.randomUUID())
+            .withName("OnlyImageChunks")
+            .withFullyQualifiedName(fqn)
+            .withDescription(
+                "<p>Sanitized fallback body.</p><img src=\"data:image/png;base64,AAAA\">");
+    CatalogSecurityContext securityContext = securityContextFor("alice");
+    SubjectContext alice = new SubjectContext(new User().withName("alice"), null, null);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    when(vectorService.searchChunksByParent(page.getId().toString(), "diagram", 3, alice))
+        .thenReturn(List.of("<img src=\"data:image/png;base64,BBBB\">"));
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class);
+        MockedStatic<OpenSearchVectorService> vectors = mockStatic(OpenSearchVectorService.class)) {
+      entities
+          .when(() -> Entity.getEntityByName(Entity.PAGE, fqn, "", Include.NON_DELETED))
+          .thenReturn(page);
+      entities.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      subjects.when(() -> DefaultAuthorizer.getSubjectContext(securityContext)).thenReturn(alice);
+      vectors.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+
+      result =
+          new GetEntityTool()
+              .execute(
+                  mock(Authorizer.class),
+                  securityContext,
+                  Map.of(
+                      "entityType",
+                      Entity.PAGE,
+                      "fqn",
+                      fqn,
+                      "include",
+                      List.of("content"),
+                      "query",
+                      "diagram"));
+    }
+
+    String rendered = (String) castMap(result.get("content")).get("content");
+    assertThat(rendered)
+        .contains("Sanitized fallback body.")
+        .doesNotContain("base64")
+        .doesNotContain("<img");
+  }
+
   /** A call with neither a batch nor an entity is the caller's mistake, not a backend fault. */
   @Test
   void missingEntityIsRejectedAsABadRequest() {

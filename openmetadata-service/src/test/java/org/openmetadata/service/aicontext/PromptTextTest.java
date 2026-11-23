@@ -177,6 +177,27 @@ class PromptTextTest {
   }
 
   @Test
+  void markdownInlineBase64ImagesAreRemovedWithoutEscapingPlainText() {
+    String diagram = "iVBORw0KGgoAAAANSUhEUg" + "A".repeat(20_000) + "ErkJggg==";
+    String description =
+        "Revenue rules where a < b.\n\n"
+            + "![Architecture](data:image/png;base64,"
+            + diagram
+            + " \"Diagram\")\n\n"
+            + "See [docs](https://docs.example.com/revenue).";
+
+    String prompt = PromptText.forPrompt(description);
+
+    assertFalse(prompt.contains("base64"));
+    assertFalse(prompt.contains(diagram));
+    assertTrue(prompt.contains("Revenue rules where a < b."));
+    assertTrue(prompt.contains("[docs](https://docs.example.com/revenue)"));
+    assertTrue(
+        prompt.length() < 200,
+        "the 20k-character markdown payload must not survive, got " + prompt.length());
+  }
+
+  @Test
   void nullAndBlankPassThrough() {
     assertNull(PromptText.forPrompt(null));
     assertEquals("", PromptText.forPrompt(""));

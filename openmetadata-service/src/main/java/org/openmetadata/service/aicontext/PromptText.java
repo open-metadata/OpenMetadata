@@ -98,18 +98,38 @@ public final class PromptText {
               + "|dt|em|h[1-6]|hr|i|img|ins|li|mark|ol|p|pre|s|section|small|span|strong|sub"
               + "|summary|sup|table|tbody|td|tfoot|th|thead|tr|u|ul)\\b[^>]*+>");
 
+  /**
+   * Matches Markdown inline images whose destination is a {@code data:} URI (for example
+   * {@code ![diagram](data:image/png;base64,...)}), with optional angle-bracket destination or
+   * title. Possessive quantifiers guarantee linear-time matching on long base64 payloads.
+   */
+  private static final Pattern MARKDOWN_DATA_IMAGE =
+      Pattern.compile(
+          "(?i)!\\[[^\\]\\r\\n]*+\\]\\(\\s*+<?data:[^>)\\s]++>?(?:\\s++(?:\"[^\"]*+\"|'[^']*+'))?\\s*+\\)");
+
   private PromptText() {}
 
   /**
-   * The description with render-only markup removed, or the input unchanged when it carries no
-   * HTML. Null and blank inputs are returned as given so callers keep their existing emptiness
-   * checks.
+   * The description with render-only markup and inline {@code data:} images removed, or the input
+   * unchanged when it carries neither HTML nor Markdown {@code data:} images. Null and blank inputs
+   * are returned as given so callers keep their existing emptiness checks.
    */
   public static String forPrompt(String description) {
-    if (description == null || description.isBlank() || !hasHtmlTag(description)) {
+    if (description == null || description.isBlank()) {
       return description;
     }
-    return DescriptionSanitizer.sanitizeWith(PROMPT_POLICY, description);
+    String text = stripMarkdownDataImages(description);
+    if (!hasHtmlTag(text)) {
+      return text;
+    }
+    return DescriptionSanitizer.sanitizeWith(PROMPT_POLICY, text);
+  }
+
+  private static String stripMarkdownDataImages(String text) {
+    if (!text.contains("![")) {
+      return text;
+    }
+    return MARKDOWN_DATA_IMAGE.matcher(text).replaceAll("");
   }
 
   private static boolean hasHtmlTag(String description) {

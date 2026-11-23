@@ -30,6 +30,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.AIContextBuilder;
 import org.openmetadata.service.aicontext.AIContextMarkdown;
+import org.openmetadata.service.aicontext.PromptText;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.lineage.LineagePermissionFilter;
@@ -426,11 +427,11 @@ public class GetEntityTool implements McpTool {
     String query = ctx.options().query();
     List<String> found =
         query != null && !query.isBlank() && vectorSearchEnabled()
-            ? passages(ctx, query)
+            ? sanitizePassages(passages(ctx, query))
             : List.of();
     Object rendered;
     if (found.isEmpty()) {
-      String body = AIContextBuilder.fullContentOf(ctx.entity());
+      String body = AIContextBuilder.promptContentOf(ctx.entity());
       rendered = renderText(ctx, body == null ? "" : body);
     } else {
       rendered =
@@ -439,6 +440,20 @@ public class GetEntityTool implements McpTool {
               : renderText(ctx, String.join("\n\n---\n\n", found));
     }
     return rendered;
+  }
+
+  /**
+   * Strips inline images and render-only markup from retrieved chunk passages (page chunks can
+   * carry raw HTML from the block editor) and drops passages that reduce to blank text.
+   */
+  private static List<String> sanitizePassages(List<String> passages) {
+    if (nullOrEmpty(passages)) {
+      return List.of();
+    }
+    return passages.stream()
+        .map(PromptText::forPrompt)
+        .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
+        .toList();
   }
 
   private static boolean masksTestCaseContent(IncludeContext ctx) {
