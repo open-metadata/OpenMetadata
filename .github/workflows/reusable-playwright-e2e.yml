@@ -178,10 +178,14 @@ jobs:
     outputs:
       e2e: ${{ steps.filter.outputs.e2e }}
       docker-compose: ${{ steps.filter.outputs.docker-compose }}
-      # The visual and RDF lanes run whole projects, switched on by these
-      # filters rather than by spec impact; manual and nightly runs take both.
-      # Neither runs on h2: both start plain-HTTP Docker servers.
-      visual: ${{ inputs.protocol != 'h2' && (contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.visual) || 'false' }}
+      # The RDF lane runs a whole project, switched on by its filter rather
+      # than by spec impact; manual and nightly runs always take it. It does
+      # not run on h2: it starts a plain-HTTP Docker server.
+      # The visual lane is off on every event. Its baselines went stale after
+      # each rendering change, because it ran only after merge, and kept
+      # failing nightlies. Restore the previous expression to turn it back on
+      # (ADR:2026-11-19-the-playwright-visual-lane-is-off-until-baselines-are-checked-before-merge).
+      visual: 'false'
       rdf: ${{ inputs.protocol != 'h2' && (contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.rdf) || 'false' }}
     steps:
       - name: Checkout

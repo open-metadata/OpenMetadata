@@ -20,7 +20,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.doris.lineage_utils import get_view_lineage_parser
 from metadata.ingestion.source.database.lineage_source import LineageSource
+from metadata.utils.db_utils import ViewLineageParserFactory
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -39,3 +41,7 @@ class DorisLineageSource(LineageSource):
         if not isinstance(connection, DorisConnection):
             raise InvalidSourceException(f"Expected DorisConnection, but got {connection}")
         return cls(config, metadata)
+
+    def get_view_lineage_parser_factory(self) -> ViewLineageParserFactory | None:
+        """Read the Doris view and materialized view DDL the MySQL dialect cannot parse"""
+        return get_view_lineage_parser

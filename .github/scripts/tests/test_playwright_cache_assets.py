@@ -758,10 +758,10 @@ def test_visual_renders_the_regular_bundle_in_front_of_the_shared_server() -> No
     outputs = reusable.split("  check-changes:", 1)[1].split("    steps:", 1)[0]
     visual = next(line for line in outputs.splitlines() if line.startswith("      visual:"))
     rdf = next(line for line in outputs.splitlines() if line.startswith("      rdf:"))
-    assert "coarse_bundle" not in visual
-    assert "inputs.protocol != 'h2'" in visual
+    # ADR:2026-11-19-the-playwright-visual-lane-is-off-until-baselines-are-checked-before-merge
+    assert visual.strip() == "visual: 'false'"
     assert "inputs.protocol != 'h2'" in rdf
-    assert visual.endswith("|| 'false' }}") and rdf.endswith("|| 'false' }}")
+    assert rdf.endswith("|| 'false' }}")
 
     for workflow in ("reusable-playwright-e2e.yml", "playwright-postgresql-e2e.yml",
                      "postgresql-nightly-e2e.yml", "mysql-nightly-e2e.yml"):

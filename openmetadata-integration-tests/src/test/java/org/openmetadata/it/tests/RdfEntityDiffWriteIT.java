@@ -24,11 +24,16 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Statement;
+import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,10 +58,13 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfEntityWriteResult;
 import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteRequest;
+import org.openmetadata.service.rdf.translator.ConceptBindingLookup.ServedBinding;
+import org.openmetadata.service.rdf.translator.ConceptBindingLookup.ServedColumn;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.rdf.translator.ReferenceScope;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -84,6 +92,8 @@ public class RdfEntityDiffWriteIT {
   private static final int WIDE_COLUMNS = 200;
   private static final String TABLE = "table";
   private static final String TOPIC = "topic";
+  private static final String CUSTOMER = "https://example.com/onto/Customer";
+  private static final String EMAIL = "https://example.com/onto/email";
 
   private static GenericContainer<?> fuseki;
   private static String endpoint;
@@ -278,12 +288,21 @@ public class RdfEntityDiffWriteIT {
     assertEquals(
         1,
         composite.listObjectsOfProperty(composite.createProperty(OM + "isUnique")).toList().size());
+    assertEquals(columnIris(firstColumn, "tenant_id"), keyMembers(composite, "PRIMARY_KEY"));
     assertCurrentProjection(translator.toRdf(table));
 
     primaryKey.setColumns(List.of("tenant_id"));
     table.setTableConstraints(List.of(primaryKey));
     writeBoth(TABLE, table);
     assertSameGraph();
+    final Model reduced = graph(diff);
+    assertEquals(columnIris("tenant_id"), keyMembers(reduced, "PRIMARY_KEY"));
+    assertEquals(
+        1,
+        reduced
+            .listSubjectsWithProperty(RDF.type, reduced.createResource(OM + "ConstraintMember"))
+            .toList()
+            .size());
     assertCurrentProjection(translator.toRdf(table));
 
     table.setTableConstraints(List.of());
@@ -317,6 +336,122 @@ public class RdfEntityDiffWriteIT {
     diff.storeEntity(TABLE, TABLE_ID, original);
     diff.deleteEntity(TABLE, TABLE_ID);
     assertTrue(graph(diff).isEmpty());
+  }
+
+  @Test
+  void conceptBindingEdgesFollowTheBindingsAndLeaveTheReleaseGraphAlone() {
+    final String release = BASE + "graph/ontology/" + UUID.randomUUID();
+    diff.executeSparqlUpdate(
+        "INSERT DATA { GRAPH <"
+            + release
+            + "> { <"
+            + CUSTOMER
+            + "> a <http://www.w3.org/2002/07/owl#Class> ; "
+            + "<http://www.w3.org/2000/01/rdf-schema#label> \"Customer\" . <"
+            + EMAIL
+            + "> a <http://www.w3.org/2002/07/owl#DatatypeProperty> } }");
+    final Map<UUID, List<ServedBinding>> served = new HashMap<>();
+    final JsonLdTranslator bound =
+        new JsonLdTranslator(
+            JsonUtils.getObjectMapper(),
+            BASE,
+            (type, fqns) -> Map.of(),
+            assetIds -> served,
+            ReferenceScope.ALL);
+    final Table table =
+        wideTable().withTags(List.of()).withColumns(List.of(column("cust_email"), column("phone")));
+    served.put(
+        TABLE_ID,
+        List.of(
+            new ServedBinding(CUSTOMER, List.of(new ServedColumn(EMAIL, List.of("cust_email"))))));
+
+    writeBoth(bound, table);
+    assertSameGraph();
+    assertTrue(ask(boundAsset()), "binding a table states the concept to asset edge");
+    assertTrue(ask(boundColumn("cust_email")), "the assignment states the property to column edge");
+
+    table.setColumns(List.of(column("phone")));
+    writeBoth(bound, table);
+    assertSameGraph();
+    assertFalse(ask(boundColumn("cust_email")), "a dropped column takes its binding edge along");
+    assertTrue(ask(boundAsset()));
+
+    served.clear();
+    writeBoth(bound, table);
+    assertSameGraph();
+    assertFalse(ask(boundAsset()), "unbinding removes the edge");
+    final String releaseTriples =
+        diff.executeSparqlQuery(
+            "SELECT (COUNT(*) AS ?n) WHERE { GRAPH <" + release + "> { ?s ?p ?o } }", "json");
+    assertEquals(
+        3L,
+        JsonUtils.readTree(releaseTriples).at("/results/bindings/0/n/value").asLong(),
+        releaseTriples);
+
+    served.put(TABLE_ID, List.of(new ServedBinding(CUSTOMER, List.of())));
+    writeBoth(bound, table);
+    diff.deleteEntity(TABLE, TABLE_ID);
+    assertFalse(ask(boundAsset()), "deleting the asset removes the edge into it");
+  }
+
+  private RdfEntityWriteResult writeBoth(final JsonLdTranslator projection, final Table table) {
+    replace.storeEntity(
+        TABLE, table.getId(), projection.toRdf(table), RdfEntityWriteStrategy.REPLACE);
+    return diff.storeEntity(TABLE, table.getId(), projection.toRdf(table));
+  }
+
+  private static boolean ask(final String pattern) {
+    return diff.executeSparqlQuery("ASK { GRAPH <" + GRAPH + "> { " + pattern + " } }", "json")
+        .contains("true");
+  }
+
+  private static String boundAsset() {
+    return "<" + CUSTOMER + "> <" + OM + "boundAsset> <" + TABLE_URI + ">";
+  }
+
+  private static String boundColumn(final String column) {
+    return "<"
+        + EMAIL
+        + "> <"
+        + OM
+        + "boundColumn> <"
+        + RdfUtils.columnUri(BASE, FullyQualifiedName.add(TABLE_FQN, column))
+        + ">";
+  }
+
+  /** The column IRIs of the table's {@code type} key, in member position order. */
+  private static List<String> keyMembers(final Model graph, final String type) {
+    final List<String> members = new ArrayList<>();
+    graph
+        .listSubjectsWithProperty(graph.createProperty(OM + "constraintType"), type)
+        .forEachRemaining(
+            key ->
+                key
+                    .listProperties(graph.createProperty(OM + "hasConstraintMember"))
+                    .toList()
+                    .stream()
+                    .map(Statement::getResource)
+                    .sorted(
+                        Comparator.comparingInt(
+                            member ->
+                                member
+                                    .getRequiredProperty(
+                                        graph.createProperty(OM + "memberPosition"))
+                                    .getInt()))
+                    .map(
+                        member ->
+                            member
+                                .getRequiredProperty(graph.createProperty(OM + "memberColumn"))
+                                .getResource()
+                                .getURI())
+                    .forEach(members::add));
+    return members;
+  }
+
+  private static List<String> columnIris(final String... names) {
+    return Arrays.stream(names)
+        .map(name -> RdfUtils.columnUri(BASE, FullyQualifiedName.add(TABLE_FQN, name)))
+        .toList();
   }
 
   private RdfEntityWriteResult writeBoth(final String type, final EntityInterface<?> entity) {

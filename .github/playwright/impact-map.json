@@ -310,7 +310,10 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/AddIngestionPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/EditIngestionPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/ServiceDetailsPage/**",
-        "openmetadata-ui/src/main/resources/ui/src/pages/TestSuiteIngestionPage/**"
+        "openmetadata-ui/src/main/resources/ui/src/pages/TestSuiteIngestionPage/**",
+        "openmetadata-ui/src/main/resources/ui/public/jsons/connectionSchemas/**",
+        "openmetadata-ui/src/main/resources/ui/src/jsons/ingestionSchemas/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/DatabaseServicePureUtils.ts"
       ],
       "projects": ["Ingestion"],
       "specs": [
@@ -326,6 +329,7 @@
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
         "playwright/e2e/Features/TestSuite*.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
+        "playwright/e2e/Flow/ServiceForm.spec.ts",
         "playwright/e2e/Pages/HealthCheck.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
         "playwright/e2e/Pages/TestSuite*.spec.ts"
@@ -1666,6 +1670,30 @@
       ],
       "projects": ["Basic"],
       "specs": ["playwright/e2e/Pages/AuditLogs.spec.ts"]
+    },
+    {
+      "_comment": "Jest file beside the data asset header. The generated map routes only the component (by testId), so a test-only change would otherwise escalate the PR to the full suite. The two specs read the header's source life cycle times.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/DataAssetsHeader/*.test.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/SourceUpdatedTime.spec.ts",
+        "playwright/e2e/Pages/TableCreationTime.spec.ts"
+      ]
+    },
+    {
+      "_comment": "The header info builders and ExtraInfoLabel render the metadata row on every entity page header. Entity.spec.ts checks that row per entity type; the two life cycle specs read its Created Time and Updated at source fields.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataAssetsHeader.utils.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataAssetsHeader.utils.test.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/Entity.spec.ts",
+        "playwright/e2e/Pages/SourceUpdatedTime.spec.ts",
+        "playwright/e2e/Pages/TableCreationTime.spec.ts"
+      ]
     },
     {
       "_comment": "The navbar domain scope applied to every request (withDomainFilter, also read by the batched Data Quality report) and the subdomain glyph in the scope picker. The DomainIsolation specs select a domain and check each surface narrows to it.",

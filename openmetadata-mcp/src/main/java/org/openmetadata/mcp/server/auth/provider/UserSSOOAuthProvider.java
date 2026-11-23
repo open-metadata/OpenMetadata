@@ -101,6 +101,12 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   static final String AUTH_REQUEST_ID_PARAM = "auth_request_id";
   static final String CONSENT_TOKEN_PARAM = "consent_token";
   static final String CONSENT_DECISION_PARAM = "decision";
+
+  static final String ACCOUNT_NOT_REGISTERED = "Your account is not registered in OpenMetadata.";
+  // Self-signup off, a registration domain not allowed or an unverified address: one sentence
+  // that is true for each, since the login step reports them as the same refusal.
+  public static final String ACCOUNT_NOT_ALLOWED =
+      "Your account is not allowed to sign in to OpenMetadata.";
   static final String CONSENT_APPROVE = "approve";
 
   private static final String SSO_ERROR_TITLE = "Authentication Failed";
@@ -527,27 +533,7 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     } catch (EntityNotFoundException e) {
       LOG.warn("SSO-authenticated user not found in OpenMetadata. Denying access.");
       LOG.debug("Denied user details: {}", userName);
-      response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-      response.setContentType("text/html; charset=UTF-8");
-      response
-          .getWriter()
-          .write(
-              "<!DOCTYPE html><html><head><meta charset=\"UTF-8\">"
-                  + "<style>"
-                  + "body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;"
-                  + "display:flex;justify-content:center;align-items:center;min-height:100vh;"
-                  + "margin:0;background:#f5f5f5;color:#333}"
-                  + ".card{text-align:center;background:#fff;border-radius:12px;"
-                  + "padding:48px;box-shadow:0 2px 8px rgba(0,0,0,0.1);max-width:480px}"
-                  + "h1{color:#c62828;margin:0 0 12px}"
-                  + "p{margin:4px 0;color:#666}"
-                  + "</style></head><body>"
-                  + "<div class=\"card\">"
-                  + "<h1>Access Denied</h1>"
-                  + "<p>Your account is not registered in OpenMetadata.</p>"
-                  + "<p>Please contact your administrator to get access.</p>"
-                  + "<p style=\"font-size:13px;margin-top:16px\">You can close this window.</p>"
-                  + "</div></body></html>");
+      writeAccessDenied(response, ACCOUNT_NOT_REGISTERED);
       return;
     }
 
@@ -646,6 +632,37 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
                     + "="
                     + consent.authRequestId(),
                 consent.token()));
+  }
+
+  /**
+   * The page for a person the identity provider vouched for but who may not use this server;
+   * {@code reason} is the sentence that tells them why.
+   */
+  public static void writeAccessDenied(HttpServletResponse response, String reason)
+      throws IOException {
+    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+    response.setContentType("text/html; charset=UTF-8");
+    response
+        .getWriter()
+        .write(
+            "<!DOCTYPE html><html><head><meta charset=\"UTF-8\">"
+                + "<style>"
+                + "body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;"
+                + "display:flex;justify-content:center;align-items:center;min-height:100vh;"
+                + "margin:0;background:#f5f5f5;color:#333}"
+                + ".card{text-align:center;background:#fff;border-radius:12px;"
+                + "padding:48px;box-shadow:0 2px 8px rgba(0,0,0,0.1);max-width:480px}"
+                + "h1{color:#c62828;margin:0 0 12px}"
+                + "p{margin:4px 0;color:#666}"
+                + "</style></head><body>"
+                + "<div class=\"card\">"
+                + "<h1>Access Denied</h1>"
+                + "<p>"
+                + reason
+                + "</p>"
+                + "<p>Please contact your administrator to get access.</p>"
+                + "<p style=\"font-size:13px;margin-top:16px\">You can close this window.</p>"
+                + "</div></body></html>");
   }
 
   /**

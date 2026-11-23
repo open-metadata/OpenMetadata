@@ -45,6 +45,12 @@
       background-color: @red-9;
       color: @red-10;
     }
+
+    &.Stopped {
+      border-color: var(--tw-color-utility-gray-200);
+      background-color: var(--tw-color-utility-gray-50);
+      color: var(--tw-color-utility-gray-700);
+    }
   }
 
   .RUNNING {
@@ -110,6 +116,14 @@
           border-color: @red-10;
           .agent-status-summary-text {
             color: @red-10;
+          }
+        }
+
+        &.Stopped {
+          background-color: var(--tw-color-utility-gray-50);
+          border-color: var(--tw-color-utility-gray-700);
+          .agent-status-summary-text {
+            color: var(--tw-color-utility-gray-700);
           }
         }
       }

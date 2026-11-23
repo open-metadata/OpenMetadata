@@ -9488,6 +9488,7 @@ openlineage = [
     { name = "fastavro", version = "1.12.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "fastavro", version = "1.13.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "grpcio-tools" },
+    { name = "nats-py", extra = ["nkeys"] },
     { name = "protobuf" },
 ]
 opensearch = [
@@ -10649,6 +10650,7 @@ requires-dist = [
     { name = "nats-py", extras = ["nkeys"], marker = "extra == 'all'", specifier = ">=2.7.0,<3.0.0" },
     { name = "nats-py", extras = ["nkeys"], marker = "extra == 'all-dev-env'", specifier = ">=2.7.0,<3.0.0" },
     { name = "nats-py", extras = ["nkeys"], marker = "extra == 'nats'", specifier = ">=2.7.0,<3.0.0" },
+    { name = "nats-py", extras = ["nkeys"], marker = "extra == 'openlineage'", specifier = ">=2.7.0,<3.0.0" },
     { name = "nats-py", extras = ["nkeys"], marker = "extra == 'slim'", specifier = ">=2.7.0,<3.0.0" },
     { name = "ndg-httpsclient", marker = "extra == 'all'", specifier = "~=0.5.1" },
     { name = "ndg-httpsclient", marker = "extra == 'all-dev-env'", specifier = "~=0.5.1" },

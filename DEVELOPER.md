@@ -632,8 +632,8 @@ uv before invoking Make; commands validate and reuse that executable.
 Application profiles reuse `env/` and remove
 packages outside the selected profile; switching from `test` to `dev` removes test-only
 packages. Formatting, generation and coverage tools use separate `ingestion/.nox/`
-environments. The test profile locks the four classification models and validates them locally;
-repeat runs reuse matching models. Updating their versions requires a manifest/lock update.
+environments. The `test-classification` profile locks the four classification models and validates them locally;
+repeat runs reuse matching models. Updating their versions requires a dependency-group, metadata and lock update.
 
 For another interpreter/environment, use Nox explicitly after setup:
 
