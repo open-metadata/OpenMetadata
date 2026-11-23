@@ -21,7 +21,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { isEmpty, map, startCase } from 'lodash';
+import { isEmpty, isEqual, map, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
@@ -268,10 +268,13 @@ const Services = ({ serviceName }: ServicesProps) => {
     [permissions, serviceName]
   );
 
-  const handleDeletedSwitchChange = useCallback(
-    () => setDeleted((prevValue) => !prevValue),
-    []
-  );
+  const handleDeletedSwitchChange = useCallback(() => {
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
+    setDeleted((prevValue) => !prevValue);
+  }, [handlePageChange]);
 
   const getServicePageHeader = useCallback(() => {
     const pageHeaderByCategory: Partial<
@@ -573,7 +576,16 @@ const Services = ({ serviceName }: ServicesProps) => {
     _pagination,
     filters
   ) => {
-    setServiceTypeFilter(filters.serviceType as ServicesType['serviceType'][]);
+    const nextServiceTypeFilter = (filters.serviceType ??
+      []) as ServicesType['serviceType'][];
+
+    if (!isEqual(nextServiceTypeFilter, serviceTypeFilter ?? [])) {
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+    }
+    setServiceTypeFilter(nextServiceTypeFilter);
   };
 
   return (

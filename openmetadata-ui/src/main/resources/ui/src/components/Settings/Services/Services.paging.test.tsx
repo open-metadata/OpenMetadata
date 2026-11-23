@@ -120,23 +120,25 @@ describe('Services paging across a view switch', () => {
   });
 });
 
+const SEARCH_RESULTS = {
+  hits: {
+    hits: [
+      {
+        _source: {
+          id: 'service-1',
+          name: 'airbyte',
+          fullyQualifiedName: 'airbyte',
+          serviceType: 'Airbyte',
+        },
+      },
+    ],
+    total: { value: 40 },
+  },
+};
+
 describe('Services search paging', () => {
   it('fetches the next search page once, at the requested page number', async () => {
-    mockSearchService.mockResolvedValue({
-      hits: {
-        hits: [
-          {
-            _source: {
-              id: 'service-1',
-              name: 'airbyte',
-              fullyQualifiedName: 'airbyte',
-              serviceType: 'Airbyte',
-            },
-          },
-        ],
-        total: { value: 40 },
-      },
-    });
+    mockSearchService.mockResolvedValue(SEARCH_RESULTS);
 
     await act(async () => {
       renderServices('/settings/services/pipelines');
@@ -169,6 +171,50 @@ describe('Services search paging', () => {
     expect(mockSearchService).toHaveBeenCalledTimes(1);
     expect(mockSearchService).toHaveBeenCalledWith(
       expect.objectContaining({ currentPage: 2 })
+    );
+  });
+
+  it('returns to page 1 when the deleted filter changes on a later search page', async () => {
+    mockSearchService.mockResolvedValue(SEARCH_RESULTS);
+
+    await act(async () => {
+      renderServices('/settings/services/pipelines');
+    });
+
+    fireEvent.change(screen.getByTestId('searchbar'), {
+      target: { value: 'air' },
+    });
+
+    await waitFor(
+      () =>
+        expect(mockSearchService).toHaveBeenCalledWith(
+          expect.objectContaining({ currentPage: 1 })
+        ),
+      { timeout: 3000 }
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('next'));
+    });
+
+    await waitFor(() =>
+      expect(mockSearchService).toHaveBeenLastCalledWith(
+        expect.objectContaining({ currentPage: 2 })
+      )
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('show-deleted-switch'));
+    });
+
+    await waitFor(() =>
+      expect(mockSearchService).toHaveBeenLastCalledWith(
+        expect.objectContaining({ currentPage: 1, deleted: true })
+      )
+    );
+
+    expect(screen.getByTestId('page-indicator')).toHaveTextContent(
+      /label\.page 1 /
     );
   });
 });
