@@ -314,20 +314,18 @@ public class SystemRepository {
     return null;
   }
 
+  /**
+   * Stores {@code setting} and answers 201 or 200. A write that fails is thrown, as a 400 when the
+   * value is refused and a 500 otherwise, never answered with a response a caller such as an
+   * administration command could ignore and report as stored.
+   * ADR:2026-11-23-a-settings-write-that-fails-is-thrown
+   */
   @Transaction
-  public Response createOrUpdate(Settings setting) {
+  public Response createOrUpdate(final Settings setting) {
     OpenMetadataBaseUrlValidator.validate(setting);
-    Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
+    final Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
     preserveEmailSettings(setting, oldValue);
-
-    try {
-      updateSetting(setting, storedValueOf(oldValue));
-    } catch (BadRequestException | WebApplicationException ex) {
-      throw ex;
-    } catch (Exception ex) {
-      LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
-      return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
-    }
+    updateSetting(setting, storedValueOf(oldValue));
     prepareFetchedSettings(setting);
     if (oldValue == null) {
       return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, ENTITY_CREATED))
@@ -1657,7 +1655,9 @@ public class SystemRepository {
             FieldPaths.AUTH_PROVIDER, "Provider is required");
       }
 
-      if (nullOrEmpty(authConfig.getProviderName())) {
+      // openmetadata.yaml defines providerName for custom OIDC only and leaves it empty otherwise.
+      if (authConfig.getProvider() == AuthProvider.CUSTOM_OIDC
+          && nullOrEmpty(authConfig.getProviderName())) {
         return ValidationErrorBuilder.createFieldError(
             "authenticationConfiguration.providerName", "Provider name is required");
       }

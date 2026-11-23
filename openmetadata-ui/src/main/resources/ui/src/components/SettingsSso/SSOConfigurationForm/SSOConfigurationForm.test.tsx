@@ -1817,10 +1817,20 @@ describe('SSOConfigurationForm', () => {
     });
 
     it('should allow editing the default SAML entity ID and ACS URL', async () => {
-      renderComponent({ selectedProvider: AuthProvider.Saml });
+      const { container } = renderComponent({
+        selectedProvider: AuthProvider.Saml,
+      });
 
-      const entityId = await screen.findByLabelText(/SP Entity ID/);
-      const acs = screen.getByLabelText(/Assertion Consumer Service URL/);
+      const acs = await screen.findByLabelText(
+        /label\.assertion-consumer-service-url/
+      );
+      const entityId = container.querySelector(
+        '[id="root/authenticationConfiguration/samlConfiguration/sp/entityId"]'
+      );
+
+      expect(screen.getAllByLabelText(/label\.provider-entity-id/)).toContain(
+        entityId
+      );
 
       expect(entityId).not.toHaveAttribute('readonly');
       expect(acs).not.toHaveAttribute('readonly');
@@ -1840,14 +1850,14 @@ describe('SSOConfigurationForm', () => {
       renderComponent({ selectedProvider: AuthProvider.Saml });
 
       await waitFor(() => {
-        expect(screen.getByText('Strict Mode')).toBeInTheDocument();
+        expect(screen.getByText('label.strict-mode')).toBeInTheDocument();
       });
 
       expect(
-        screen.queryByText('Want Messages Signed')
+        screen.queryByText('label.want-messages-signed')
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByText('Want Assertions Signed')
+        screen.queryByText('label.want-assertions-signed')
       ).not.toBeInTheDocument();
     });
 
@@ -1883,10 +1893,14 @@ describe('SSOConfigurationForm', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('Want Messages Signed')).toBeInTheDocument();
+        expect(
+          screen.getByText('label.want-messages-signed')
+        ).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Want Assertions Signed')).toBeInTheDocument();
+      expect(
+        screen.getByText('label.want-assertions-signed')
+      ).toBeInTheDocument();
     });
 
     it('should load defaults for Auth0 provider', async () => {
