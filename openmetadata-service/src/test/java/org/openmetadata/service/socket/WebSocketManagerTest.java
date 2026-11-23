@@ -26,15 +26,19 @@ import static org.mockito.Mockito.when;
 
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.socketio.server.SocketIoSocket;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.SessionStore;
@@ -43,14 +47,21 @@ import org.openmetadata.service.security.session.UserSession;
 class WebSocketManagerTest {
 
   private WebSocketManager manager;
+  private AuthenticationConfiguration configuredBefore;
 
   @BeforeEach
   void setUp() throws Exception {
+    configuredBefore = SecurityConfigurationManager.getCurrentAuthConfig();
     WebSocketManager.WebSocketManagerBuilder.build(EngineIoServerOptions.newFromDefault());
     manager = WebSocketManager.getInstance();
     manager.getActivityFeedEndpoints().clear();
     clearManagerMap("socketSessionIds");
     clearManagerMap("socketSessionValidatedAt");
+  }
+
+  @AfterEach
+  void restoreConfiguredProvider() {
+    SecurityConfigurationManager.getInstance().setCurrentAuthConfig(configuredBefore);
   }
 
   @Test
@@ -221,6 +232,48 @@ class WebSocketManagerTest {
     assertTrue(socketSessionIds().isEmpty());
   }
 
+  /**
+   * The handshake is validated on the upgrade and the socket registers a round trip later, so a
+   * provider switch can land in between: the reload's disconnectAll has already run when the late
+   * sockets register, and the sweep never looks at one without a session.
+   */
+  @Test
+  void onConnection_closesASocketValidatedUnderTheOldProviderThatRegistersAfterTheSwitch()
+      throws Exception {
+    configureProvider(AuthProvider.GOOGLE);
+    SocketIoSocket openBeforeSwitch =
+        connect(UUID.randomUUID(), "socket-open", null, AuthProvider.GOOGLE);
+
+    configureProvider(AuthProvider.AZURE);
+    manager.disconnectAll();
+    UUID lateUser = UUID.randomUUID();
+    SocketIoSocket lateSessionless = connect(lateUser, "socket-late", null, AuthProvider.GOOGLE);
+    SocketIoSocket lateWithSession =
+        connect(lateUser, "socket-late-session", "session-g", AuthProvider.GOOGLE);
+    SocketIoSocket validatedUnderAzure =
+        connect(lateUser, "socket-azure", null, AuthProvider.AZURE);
+
+    verify(openBeforeSwitch, times(1)).disconnect(true);
+    verify(lateSessionless, times(1)).disconnect(true);
+    verify(lateWithSession, times(1)).disconnect(true);
+    verify(validatedUnderAzure, never()).disconnect(anyBoolean());
+    assertEquals(
+        Map.of(lateUser, Map.of("socket-azure", validatedUnderAzure)),
+        manager.getActivityFeedEndpoints());
+    assertTrue(socketSessionIds().isEmpty());
+  }
+
+  @Test
+  void onConnection_keepsASocketValidatedUnderTheOtherNativePasswordProviderName() {
+    configureProvider(AuthProvider.OPENMETADATA);
+    UUID userId = UUID.randomUUID();
+
+    SocketIoSocket socket = connect(userId, "socket-basic", "session-b", AuthProvider.BASIC);
+
+    verify(socket, never()).disconnect(anyBoolean());
+    assertEquals(Set.of("socket-basic"), manager.getActivityFeedEndpoints().get(userId).keySet());
+  }
+
   @Test
   void sendToOne_deliversLocallyAndPublishesToRelay() {
     UUID userId = UUID.randomUUID();
@@ -351,6 +404,27 @@ class WebSocketManagerTest {
 
   private UserSession sessionIssuedBy(AuthProvider provider, String sessionId, UUID userId) {
     return activeSession(sessionId, userId).toBuilder().provider(provider.value()).build();
+  }
+
+  private static void configureProvider(AuthProvider provider) {
+    SecurityConfigurationManager.getInstance()
+        .setCurrentAuthConfig(new AuthenticationConfiguration().withProvider(provider));
+  }
+
+  /** A socket whose handshake headers were stamped the way SocketAddressFilter stamps them. */
+  private SocketIoSocket connect(
+      UUID userId, String socketId, String sessionId, AuthProvider validatedUnder) {
+    SocketIoSocket socket = mock(SocketIoSocket.class);
+    when(socket.getId()).thenReturn(socketId);
+    Map<String, List<String>> headers = new HashMap<>();
+    headers.put("UserId", List.of(userId.toString()));
+    headers.put("AuthProvider", List.of(validatedUnder.value()));
+    if (sessionId != null) {
+      headers.put("SessionId", List.of(sessionId));
+    }
+    when(socket.getInitialHeaders()).thenReturn(headers);
+    manager.onConnection(socket);
+    return socket;
   }
 
   private SocketIoSocket trackSocket(UUID userId, String socketId, String sessionId)

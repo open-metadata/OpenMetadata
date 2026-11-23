@@ -3,6 +3,7 @@ package org.openmetadata.service.socket;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.Entity.USER;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.socket.engineio.server.EngineIoServer;
 import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.socketio.server.SocketIoNamespace;
@@ -17,10 +18,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.session.SessionProviders;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 
@@ -71,70 +75,96 @@ public class WebSocketManager {
   private void initializeHandlers() {
     SocketIoNamespace ns = socketIoServer.namespace("/");
     // On Connection
-    ns.on(
-        "connection",
-        args -> {
-          SocketIoSocket socket = (SocketIoSocket) args[0];
-          List<String> remoteAddress = socket.getInitialHeaders().get("RemoteAddress");
-          Map<String, List<String>> initialHeaders = socket.getInitialHeaders();
-          List<String> userIdHeaders = listOrEmpty(initialHeaders.get("UserId"));
-          List<String> sessionIdHeaders = listOrEmpty(initialHeaders.get("SessionId"));
-          // The socket identity and session come exclusively from the UserId/SessionId headers
-          // stamped by SocketAddressFilter after validating the handshake credential. The raw
-          // query params are client-controlled and must never key a socket.
-          String userId = userIdHeaders.isEmpty() ? null : userIdHeaders.get(0);
-          String sessionId = sessionIdHeaders.isEmpty() ? null : sessionIdHeaders.get(0);
-
-          if (userId != null && !userId.isEmpty()) {
-            LOG.info("Client : {} with Remote Address:{} connected", userId, remoteAddress);
-
-            // On Socket Disconnect
-            socket.on(
-                "disconnect",
-                args1 -> {
-                  LOG.info(
-                      "Client from: {} with Remote Address:{} disconnected.",
-                      userId,
-                      remoteAddress);
-                  UUID id = UUID.fromString(userId);
-                  activityFeedEndpoints.computeIfPresent(
-                      id,
-                      (key, connections) -> {
-                        connections.remove(socket.getId());
-                        socketSessionIds.remove(socket.getId());
-                        socketSessionValidatedAt.remove(socket.getId());
-                        return connections.isEmpty() ? null : connections;
-                      });
-                });
-
-            // On Socket Connection Error
-            socket.on(
-                "connect_error",
-                args1 ->
-                    LOG.error(
-                        "Connection ERROR for user:{} with Remote Address:{} disconnected",
-                        userId,
-                        remoteAddress));
-
-            // On Socket Connection Failure
-            socket.on(
-                "connect_failed",
-                args1 ->
-                    LOG.error(
-                        "Connection failed ERROR for user: {} with Remote Address: {} disconnected",
-                        userId,
-                        remoteAddress));
-
-            UUID id = UUID.fromString(userId);
-            Map<String, SocketIoSocket> userSocketConnections =
-                activityFeedEndpoints.computeIfAbsent(id, k -> new ConcurrentHashMap<>());
-            userSocketConnections.put(socket.getId(), socket);
-            if (sessionId != null && !sessionId.isEmpty()) {
-              socketSessionIds.put(socket.getId(), sessionId);
-            }
-          }
-        });
+    ns.on("connection", args -> onConnection((SocketIoSocket) args[0]));
     ns.on("error", args -> LOG.error("Connection error on the server"));
+  }
+
+  @VisibleForTesting
+  void onConnection(SocketIoSocket socket) {
+    List<String> remoteAddress = socket.getInitialHeaders().get("RemoteAddress");
+    Map<String, List<String>> initialHeaders = socket.getInitialHeaders();
+    List<String> userIdHeaders = listOrEmpty(initialHeaders.get("UserId"));
+    List<String> sessionIdHeaders = listOrEmpty(initialHeaders.get("SessionId"));
+    List<String> providerHeaders = listOrEmpty(initialHeaders.get("AuthProvider"));
+    // The socket identity, session and provider come exclusively from the headers stamped by
+    // SocketAddressFilter after validating the handshake credential. The raw query params are
+    // client-controlled and must never key a socket.
+    String userId = userIdHeaders.isEmpty() ? null : userIdHeaders.get(0);
+    String sessionId = sessionIdHeaders.isEmpty() ? null : sessionIdHeaders.get(0);
+    String validatedProvider = providerHeaders.isEmpty() ? null : providerHeaders.get(0);
+
+    if (userId != null && !userId.isEmpty()) {
+      LOG.info("Client : {} with Remote Address:{} connected", userId, remoteAddress);
+
+      // On Socket Disconnect
+      socket.on(
+          "disconnect",
+          args1 -> {
+            LOG.info("Client from: {} with Remote Address:{} disconnected.", userId, remoteAddress);
+            UUID id = UUID.fromString(userId);
+            activityFeedEndpoints.computeIfPresent(
+                id,
+                (key, connections) -> {
+                  connections.remove(socket.getId());
+                  socketSessionIds.remove(socket.getId());
+                  socketSessionValidatedAt.remove(socket.getId());
+                  return connections.isEmpty() ? null : connections;
+                });
+          });
+
+      // On Socket Connection Error
+      socket.on(
+          "connect_error",
+          args1 ->
+              LOG.error(
+                  "Connection ERROR for user:{} with Remote Address:{} disconnected",
+                  userId,
+                  remoteAddress));
+
+      // On Socket Connection Failure
+      socket.on(
+          "connect_failed",
+          args1 ->
+              LOG.error(
+                  "Connection failed ERROR for user: {} with Remote Address: {} disconnected",
+                  userId,
+                  remoteAddress));
+
+      UUID id = UUID.fromString(userId);
+      Map<String, SocketIoSocket> userSocketConnections =
+          activityFeedEndpoints.computeIfAbsent(id, k -> new ConcurrentHashMap<>());
+      userSocketConnections.put(socket.getId(), socket);
+      if (sessionId != null && !sessionId.isEmpty()) {
+        socketSessionIds.put(socket.getId(), sessionId);
+      }
+      disconnectIfValidatedUnderAnotherProvider(id, socket, validatedProvider);
+    }
+  }
+
+  /**
+   * The handshake is validated on the upgrade, but the socket registers here one round trip later,
+   * when the client's CONNECT arrives. A provider switch landing between the two would miss it: the
+   * reload closes only registered sockets, and the sweep skips a socket without a session. The
+   * socket is registered before this check, and the configuration is swapped before the reload
+   * closes sockets, so whichever runs second catches it.
+   * ADR:2026-10-20-a-refresh-ends-sessions-issued-by-a-provider-no-longer-configured
+   */
+  private void disconnectIfValidatedUnderAnotherProvider(
+      UUID userId, SocketIoSocket socket, String validatedProvider) {
+    AuthenticationConfiguration current = SecurityConfigurationManager.getCurrentAuthConfig();
+    if (current == null
+        || !SessionProviders.isFromAnotherProvider(validatedProvider, current.getProvider())) {
+      return;
+    }
+    LOG.info(
+        "Closing socket for user {}: its handshake was validated under provider {}, but {} is"
+            + " configured now",
+        userId,
+        validatedProvider,
+        current.getProvider().value());
+    disconnectSocket(userId, socket);
+    activityFeedEndpoints.computeIfPresent(
+        userId, (key, connections) -> connections.isEmpty() ? null : connections);
   }
 
   public static WebSocketManager getInstance() {

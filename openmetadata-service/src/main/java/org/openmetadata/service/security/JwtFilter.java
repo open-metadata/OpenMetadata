@@ -130,7 +130,7 @@ public class JwtFilter implements ContainerRequestFilter {
   private String principalDomain;
   private Set<String> allowedDomains;
   private boolean enforcePrincipalDomain;
-  private AuthProvider providerType;
+  @Getter private AuthProvider providerType;
   private boolean useRolesFromProvider = false;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
   private OidcClientConfig serverSideOidcClient;

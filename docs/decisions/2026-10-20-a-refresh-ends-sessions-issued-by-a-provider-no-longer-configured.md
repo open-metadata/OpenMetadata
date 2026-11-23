@@ -7,9 +7,11 @@
   `acquireRefreshLease_leasesANativePasswordSessionUnderEitherNativeProviderName`);
   `SessionProvidersTest`; `BasicAuthServletHandlerTest` and `LdapAuthServletHandlerTest`
   (`handleRefresh_revokedSession_answersSessionRevoked`); `SsoTokenRenewalIT` (RN-16);
-  `SocketAddressFilterTest` (`cookieHandshakeIsRejectedWhenItsSessionsProviderIsNoLongerConfigured`);
+  `SocketAddressFilterTest` (`cookieHandshakeIsRejectedWhenItsSessionsProviderIsNoLongerConfigured`,
+  `handshakeIsStampedWithTheProviderOfTheFilterThatValidatedIt`);
   `WebSocketManagerTest` (`disconnectInactiveSessions_closesSocketsWhoseSessionProviderIsNoLongerConfigured`,
-  `disconnectAll_closesSessionBoundAndSessionlessSockets`); `OpenMetadataApplicationAuthReloadTest`
+  `disconnectAll_closesSessionBoundAndSessionlessSockets`,
+  `onConnection_closesASocketValidatedUnderTheOldProviderThatRegistersAfterTheSwitch`); `OpenMetadataApplicationAuthReloadTest`
   (`closeSocketsOnProviderSwitch_closesOnlyOnAProviderSwitch`,
   `pushFeedReloadListener_closesSocketsOnlyWhenAReloadChangesTheProvider`); `SessionMultiNodeIT`
   (`pushFeedHandshakeRejectsASessionIssuedByAProviderNoLongerConfigured`)
@@ -52,3 +54,10 @@ sessions the new provider issued. `SessionProviders.isFromAnotherProvider` is th
 `JwtFilter` passes its own configured provider; `SessionService.isFromAnotherProvider` passes this
 server's current one for refresh, the handshake and the sweep; and the reload compares the previous
 provider with the new one.
+
+A socket registers one round trip after its handshake, when the client's CONNECT arrives, so a
+handshake validated just before a switch can register after the reload has closed every socket.
+The handshake therefore stamps the provider of the filter that validated it, and registration
+compares that stamp with the configured provider, closing the socket on a mismatch. The socket is
+registered before the comparison and the configuration is swapped before the reload closes sockets,
+so whichever runs second catches it.

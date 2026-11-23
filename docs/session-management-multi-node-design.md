@@ -432,7 +432,9 @@ This is the fallback when there is no cross-pod pub/sub. With JDBC and no pub/su
 remote node is closed within the validator interval instead of immediately.
 
 A security reload that changes the configured provider closes every socket on that server, with or
-without a session (`closeSocketsOnProviderSwitch`).
+without a session (`closeSocketsOnProviderSwitch`). A socket whose handshake was validated just
+before the switch can register after that close; registration compares the provider stamped at the
+handshake (`AuthProvider` header) with the configured one and closes the socket on a mismatch.
 
 ## 9. End-to-End Flow
 

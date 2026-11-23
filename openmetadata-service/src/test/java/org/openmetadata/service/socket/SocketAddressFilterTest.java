@@ -191,6 +191,38 @@ class SocketAddressFilterTest {
         "session-1", wrappedRequest.getHeader("SessionId"));
   }
 
+  /**
+   * WebSocketManager closes a socket that registers under a provider other than the configured one,
+   * so the stamp must name the provider whose filter validated the handshake, never the client's.
+   */
+  @Test
+  void handshakeIsStampedWithTheProviderOfTheFilterThatValidatedIt() throws Exception {
+    UUID tokenUserId = UUID.randomUUID();
+    mockRequest("userId=" + tokenUserId, "Bearer token");
+    mockTokenClaims("sam", "session-1");
+    when(jwtFilter.getProviderType()).thenReturn(AuthProvider.GOOGLE);
+    when(sessionService.getFreshSessionById("session-1"))
+        .thenReturn(Optional.of(activeSession("session-1", "sam")));
+    lenient().when(request.getHeader("AuthProvider")).thenReturn("azure");
+    lenient()
+        .when(request.getHeaders("AuthProvider"))
+        .thenReturn(java.util.Collections.enumeration(List.of("azure")));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "sam", Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(tokenUserId));
+
+      filter.doFilter(request, response, chain);
+    }
+
+    ArgumentCaptor<ServletRequest> requestCaptor = ArgumentCaptor.forClass(ServletRequest.class);
+    verify(chain).doFilter(requestCaptor.capture(), eq(response));
+    HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
+    assertEquals(
+        List.of("google"), java.util.Collections.list(wrappedRequest.getHeaders("AuthProvider")));
+  }
+
   @Test
   void secureSocketRejectsInactiveJwtSessionWhenCookieIsMissing() throws Exception {
     UUID tokenUserId = UUID.randomUUID();
