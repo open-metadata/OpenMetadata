@@ -92,7 +92,7 @@ class RdfGlossaryTermRelationTest {
             new RdfProjectionLoaders(
                 null,
                 null,
-                rel -> true,
+                (fromId, fromEntity, toId, toEntity, type) -> true,
                 (a, b) -> List.copyOf(storedGlossaryRelations),
                 null,
                 (type, ids) -> Set.copyOf(ids),

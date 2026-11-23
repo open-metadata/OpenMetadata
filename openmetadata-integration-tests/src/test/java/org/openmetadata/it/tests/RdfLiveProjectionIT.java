@@ -24,6 +24,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import org.apache.jena.rdf.model.Model;
 import org.awaitility.Awaitility;
@@ -43,12 +44,14 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.api.rdf.RdfStatus;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
@@ -319,6 +322,80 @@ public class RdfLiveProjectionIT {
                 Relationship.CONTAINS.ordinal());
       }
       GlossaryTestFactory.delete(glossary);
+    }
+  }
+
+  @Test
+  void bidirectionalMetricRelatedToProjectsBothDirectionsAndReconcilesOnReplay(
+      final TestNamespace namespace) throws Exception {
+    RdfUpdater.initialize(servingConfig);
+    final Metric first =
+        SdkClients.adminClient()
+            .metrics()
+            .create(new CreateMetric().withName(namespace.prefix("rdfMetricA")));
+    namespace.trackRoot(Entity.METRIC, first);
+    final Metric second =
+        SdkClients.adminClient()
+            .metrics()
+            .create(
+                new CreateMetric()
+                    .withName(namespace.prefix("rdfMetricB"))
+                    .withRelatedMetrics(List.of(first.getFullyQualifiedName())));
+    namespace.trackRoot(Entity.METRIC, second);
+
+    final UUID smallerId =
+        first.getId().compareTo(second.getId()) < 0 ? first.getId() : second.getId();
+    final UUID largerId = smallerId.equals(first.getId()) ? second.getId() : first.getId();
+    final String relatedToPredicate = "https://open-metadata.org/ontology/relatedTo";
+    final String smallerUri = "https://open-metadata.org/entity/metric/" + smallerId;
+    final String largerUri = "https://open-metadata.org/entity/metric/" + largerId;
+
+    final EntityRelationship canonical =
+        new EntityRelationship()
+            .withFromId(smallerId)
+            .withFromEntity(Entity.METRIC)
+            .withToId(largerId)
+            .withToEntity(Entity.METRIC)
+            .withRelation(Relationship.RELATED_TO.ordinal())
+            .withRelationshipType(Relationship.RELATED_TO);
+    final EntityRelationship reversed =
+        new EntityRelationship()
+            .withFromId(largerId)
+            .withFromEntity(Entity.METRIC)
+            .withToId(smallerId)
+            .withToEntity(Entity.METRIC)
+            .withRelation(Relationship.RELATED_TO.ordinal())
+            .withRelationshipType(Relationship.RELATED_TO);
+    final RdfLiveWrite canonicalAdd = RdfLiveWrite.RelationshipChange.capture(canonical, false);
+    final RdfLiveWrite reversedAdd = RdfLiveWrite.RelationshipChange.capture(reversed, false);
+
+    try (var storage = new JenaFusekiStorage(servingConfig)) {
+      // Both directions must project even though SQL holds only the canonical (smaller -> larger)
+      // row.
+      Awaitility.await()
+          .atMost(Duration.ofSeconds(60))
+          .untilAsserted(
+              () -> {
+                assertTriplePresent(storage, smallerUri, relatedToPredicate, largerUri, true);
+                assertTriplePresent(storage, largerUri, relatedToPredicate, smallerUri, true);
+              });
+
+      // Replaying both directions while the SQL row exists preserves both triples.
+      canonicalAdd.apply(RdfRepository.getInstance());
+      reversedAdd.apply(RdfRepository.getInstance());
+      assertTriplePresent(storage, smallerUri, relatedToPredicate, largerUri, true);
+      assertTriplePresent(storage, largerUri, relatedToPredicate, smallerUri, true);
+
+      // Removing the canonical SQL row directly and replaying both adds removes both triples.
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .delete(
+              smallerId, Entity.METRIC, largerId, Entity.METRIC, Relationship.RELATED_TO.ordinal());
+      canonicalAdd.apply(RdfRepository.getInstance());
+      reversedAdd.apply(RdfRepository.getInstance());
+      assertTriplePresent(storage, smallerUri, relatedToPredicate, largerUri, false);
+      assertTriplePresent(storage, largerUri, relatedToPredicate, smallerUri, false);
+      assertEquals(RdfProjectionState.READY, status());
     }
   }
 

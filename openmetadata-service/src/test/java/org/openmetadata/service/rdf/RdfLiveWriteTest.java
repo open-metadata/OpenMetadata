@@ -85,7 +85,7 @@ class RdfLiveWriteTest {
   private Table currentEntity;
   private LineageDetails currentLineageDetails;
   private boolean lineageEdgeExists = true;
-  private boolean relationshipExists = true;
+  private final Set<StoredRelationship> storedRelationships = new HashSet<>();
   private List<EntityRelationshipObject> glossaryRelationRows;
   private final Set<UUID> softDeleted = new HashSet<>();
   private final List<EntityReference> boundAssets = new ArrayList<>();
@@ -130,6 +130,7 @@ class RdfLiveWriteTest {
             .withFromEntity(Entity.TABLE)
             .withToEntity(Entity.TABLE)
             .withRelationshipType(Relationship.CONTAINS);
+    storeRelationship(relationship);
     replay(RdfLiveWrite.RelationshipChange.capture(relationship, false));
     assertFalse(dataset.getNamedModel(GRAPH).isEmpty());
     replay(RdfLiveWrite.RelationshipChange.capture(relationship, true));
@@ -200,6 +201,7 @@ class RdfLiveWriteTest {
             .withFromEntity(Entity.TABLE)
             .withToEntity(Entity.TABLE)
             .withRelationshipType(Relationship.CONTAINS);
+    storeRelationship(contains);
 
     replay(RdfLiveWrite.RelationshipChange.capture(contains, false));
     replay(RdfLiveWrite.RelationshipChange.capture(lineage(deleted, live), false));
@@ -252,11 +254,12 @@ class RdfLiveWriteTest {
             .withFromEntity(Entity.TABLE)
             .withToEntity(Entity.TABLE)
             .withRelationshipType(Relationship.CONTAINS);
+    storeRelationship(relationship);
     final RdfLiveWrite addition = RdfLiveWrite.RelationshipChange.capture(relationship, false);
     replay(addition);
     assertFalse(dataset.getNamedModel(GRAPH).isEmpty());
 
-    relationshipExists = false;
+    storedRelationships.clear();
     // Even if no remove command ran (e.g. bulk SQL delete), replaying ADD reconciles & removes it.
     replay(addition);
     assertTrue(dataset.getNamedModel(GRAPH).isEmpty());
@@ -278,6 +281,7 @@ class RdfLiveWriteTest {
             .withFromEntity(Entity.TABLE)
             .withToEntity(Entity.TABLE)
             .withRelationshipType(Relationship.CONTAINS);
+    storeRelationship(contains);
     final RdfLiveWrite addition = RdfLiveWrite.RelationshipChange.capture(contains, false);
     replay(addition);
     assertFalse(dataset.getNamedModel(GRAPH).isEmpty());
@@ -286,6 +290,107 @@ class RdfLiveWriteTest {
     replay(addition);
 
     assertTrue(dataset.getNamedModel(GRAPH).isEmpty());
+  }
+
+  @Test
+  void bidirectionalRelatedToWithCanonicalReversedSqlRowProjectsBothDirections() {
+    final UUID smaller = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    final UUID larger = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff");
+    // EntityRepository.addRelationship(..., true) writes one canonical SQL row (smaller -> larger)
+    // and queues RDF adds in both directions (e.g. Metric.relatedMetrics).
+    final EntityRelationship canonical =
+        new EntityRelationship()
+            .withFromId(smaller)
+            .withToId(larger)
+            .withFromEntity(Entity.METRIC)
+            .withToEntity(Entity.METRIC)
+            .withRelationshipType(Relationship.RELATED_TO);
+    final EntityRelationship reversed =
+        new EntityRelationship()
+            .withFromId(larger)
+            .withToId(smaller)
+            .withFromEntity(Entity.METRIC)
+            .withToEntity(Entity.METRIC)
+            .withRelationshipType(Relationship.RELATED_TO);
+    storeRelationship(canonical);
+
+    final RdfLiveWrite canonicalAdd = RdfLiveWrite.RelationshipChange.capture(canonical, false);
+    final RdfLiveWrite reversedAdd = RdfLiveWrite.RelationshipChange.capture(reversed, false);
+    replay(canonicalAdd);
+    replay(reversedAdd);
+
+    final Model graph = dataset.getNamedModel(GRAPH);
+    final Resource smallerRes = graph.createResource(BASE + "entity/metric/" + smaller);
+    final Resource largerRes = graph.createResource(BASE + "entity/metric/" + larger);
+    final Property relatedToProp = graph.createProperty(RELATED_TO);
+    assertTrue(graph.contains(smallerRes, relatedToProp, largerRes));
+    assertTrue(graph.contains(largerRes, relatedToProp, smallerRes));
+
+    // Once the canonical SQL row is deleted, replaying either direction removes its triple.
+    storedRelationships.clear();
+    replay(canonicalAdd);
+    replay(reversedAdd);
+    assertTrue(graph.isEmpty());
+  }
+
+  @Test
+  void directedAndCrossTypeRelationshipsDoNotMatchReversedSqlRows() {
+    final UUID first = UUID.randomUUID();
+    final UUID second = UUID.randomUUID();
+    final EntityRelationship forwardContains =
+        new EntityRelationship()
+            .withFromId(first)
+            .withToId(second)
+            .withFromEntity(Entity.TABLE)
+            .withToEntity(Entity.TABLE)
+            .withRelationshipType(Relationship.CONTAINS);
+    final EntityRelationship reverseContains =
+        new EntityRelationship()
+            .withFromId(second)
+            .withToId(first)
+            .withFromEntity(Entity.TABLE)
+            .withToEntity(Entity.TABLE)
+            .withRelationshipType(Relationship.CONTAINS);
+    storeRelationship(forwardContains);
+    final RdfLiveWrite staleForwardAdd =
+        RdfLiveWrite.RelationshipChange.capture(forwardContains, false);
+    replay(staleForwardAdd);
+
+    // Replace SQL with only the reversed CONTAINS row: stale forward add must be removed, not kept.
+    storedRelationships.clear();
+    storeRelationship(reverseContains);
+    replay(RdfLiveWrite.RelationshipChange.capture(reverseContains, false));
+    replay(staleForwardAdd);
+
+    final Model graph = dataset.getNamedModel(GRAPH);
+    final Resource firstTable = graph.createResource(BASE + "entity/table/" + first);
+    final Resource secondTable = graph.createResource(BASE + "entity/table/" + second);
+    final Property containsProp = graph.createProperty(BASE + "ontology/contains");
+    assertFalse(graph.contains(firstTable, containsProp, secondTable));
+    assertTrue(graph.contains(secondTable, containsProp, firstTable));
+
+    // Cross-type RELATED_TO is directed and must not match a reversed SQL row either.
+    final EntityRelationship reverseCrossType =
+        new EntityRelationship()
+            .withFromId(second)
+            .withToId(first)
+            .withFromEntity(Entity.TABLE)
+            .withToEntity(Entity.METRIC)
+            .withRelationshipType(Relationship.RELATED_TO);
+    final EntityRelationship forwardCrossType =
+        new EntityRelationship()
+            .withFromId(first)
+            .withToId(second)
+            .withFromEntity(Entity.METRIC)
+            .withToEntity(Entity.TABLE)
+            .withRelationshipType(Relationship.RELATED_TO);
+    storeRelationship(reverseCrossType);
+    replay(RdfLiveWrite.RelationshipChange.capture(forwardCrossType, false));
+    assertFalse(
+        graph.contains(
+            graph.createResource(BASE + "entity/metric/" + first),
+            graph.createProperty(RELATED_TO),
+            secondTable));
   }
 
   @Test
@@ -604,7 +709,9 @@ class RdfLiveWriteTest {
                 lineageEdgeExists
                     ? Optional.of(new RdfProjectionLoaders.StoredLineageEdge(currentLineageDetails))
                     : Optional.empty(),
-            rel -> relationshipExists,
+            (fromId, fromEntity, toId, toEntity, type) ->
+                storedRelationships.contains(
+                    new StoredRelationship(fromId, fromEntity, toId, toEntity, type)),
             (fromId, toId) ->
                 glossaryRelationRows != null
                     ? glossaryRelationRows
@@ -619,6 +726,19 @@ class RdfLiveWriteTest {
                     .toList(),
             tableFqn -> {}));
   }
+
+  private void storeRelationship(final EntityRelationship relationship) {
+    storedRelationships.add(
+        new StoredRelationship(
+            relationship.getFromId(),
+            relationship.getFromEntity(),
+            relationship.getToId(),
+            relationship.getToEntity(),
+            relationship.getRelationshipType()));
+  }
+
+  private record StoredRelationship(
+      UUID fromId, String fromEntity, UUID toId, String toEntity, Relationship type) {}
 
   private static EntityRelationshipObject glossaryRow(
       final UUID fromId, final UUID toId, final String relationType, final String json) {

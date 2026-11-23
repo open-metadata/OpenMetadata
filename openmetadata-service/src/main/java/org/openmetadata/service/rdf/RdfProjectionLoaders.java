@@ -58,10 +58,11 @@ record RdfProjectionLoaders(
     Optional<StoredLineageEdge> load(UUID fromId, UUID toId);
   }
 
-  /** Whether a non-lineage relationship row still exists in SQL. */
+  /** Whether a directed non-lineage relationship row still exists in SQL. */
   @FunctionalInterface
   interface RelationshipExists {
-    boolean exists(EntityRelationship relationship);
+    boolean exists(
+        UUID fromId, String fromEntity, UUID toId, String toEntity, Relationship relationship);
   }
 
   /** Current glossary-term {@code RELATED_TO} rows between two terms in either direction. */
@@ -86,7 +87,7 @@ record RdfProjectionLoaders(
     return new RdfProjectionLoaders(
         withQualityEvidence(RdfProjectionLoaders::loadEntity, RdfQualityEvidence.database()),
         RdfProjectionLoaders::loadLineageDetails,
-        RdfProjectionLoaders::relationshipExists,
+        RdfProjectionLoaders::relationshipRowExists,
         RdfProjectionLoaders::loadGlossaryTermRelationRows,
         () -> new OntologyActiveGraph(Entity.getCollectionDAO()),
         RdfEntityLiveness.database(),
@@ -149,7 +150,14 @@ record RdfProjectionLoaders(
     return Optional.ofNullable(edge).map(RdfProjectionLoaders::storedLineageEdge);
   }
 
-  private static boolean relationshipExists(final EntityRelationship relationship) {
+  /**
+   * Matches a non-lineage relationship against SQL. Bidirectional relationships (same-type {@link
+   * Relationship#RELATED_TO}, stored via {@code EntityRepository.addRelationship(..., true)}) keep
+   * a single row with {@code fromId < toId} while queuing RDF adds in both directions, so the
+   * reversed row is accepted only for that case. Directed relations (such as {@code CONTAINS} and
+   * {@code OWNS}) must match the queried direction only.
+   */
+  boolean relationshipExists(final EntityRelationship relationship) {
     if (relationship == null
         || relationship.getFromId() == null
         || relationship.getToId() == null
@@ -158,14 +166,38 @@ record RdfProjectionLoaders(
         || relationship.getRelationshipType() == null) {
       return false;
     }
-    return Entity.getCollectionDAO()
-        .relationshipDAO()
-        .exists(
-            relationship.getFromId(),
-            relationship.getFromEntity(),
+    if (relationshipExists.exists(
+        relationship.getFromId(),
+        relationship.getFromEntity(),
+        relationship.getToId(),
+        relationship.getToEntity(),
+        relationship.getRelationshipType())) {
+      return true;
+    }
+    return isBidirectional(relationship)
+        && !relationship.getFromId().equals(relationship.getToId())
+        && relationshipExists.exists(
             relationship.getToId(),
             relationship.getToEntity(),
-            relationship.getRelationshipType().ordinal());
+            relationship.getFromId(),
+            relationship.getFromEntity(),
+            relationship.getRelationshipType());
+  }
+
+  private static boolean isBidirectional(final EntityRelationship relationship) {
+    return relationship.getRelationshipType() == Relationship.RELATED_TO
+        && relationship.getFromEntity().equals(relationship.getToEntity());
+  }
+
+  private static boolean relationshipRowExists(
+      final UUID fromId,
+      final String fromEntity,
+      final UUID toId,
+      final String toEntity,
+      final Relationship relationship) {
+    return Entity.getCollectionDAO()
+        .relationshipDAO()
+        .exists(fromId, fromEntity, toId, toEntity, relationship.ordinal());
   }
 
   private static List<EntityRelationshipObject> loadGlossaryTermRelationRows(

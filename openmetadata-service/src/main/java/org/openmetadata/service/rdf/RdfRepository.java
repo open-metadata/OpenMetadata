@@ -675,8 +675,7 @@ public class RdfRepository {
     }
     if (relationship.getRelationshipType() == Relationship.UPSTREAM) {
       refreshLineage(relationship);
-    } else if (!projectionLoaders.relationshipExists().exists(relationship)
-        || !hasLiveEnds(relationship)) {
+    } else if (!projectionLoaders.relationshipExists(relationship) || !hasLiveEnds(relationship)) {
       removeRelationship(relationship);
     } else {
       addRelationship(relationship);
