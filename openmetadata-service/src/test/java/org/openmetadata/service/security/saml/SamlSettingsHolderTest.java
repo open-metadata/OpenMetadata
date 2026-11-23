@@ -125,7 +125,8 @@ class SamlSettingsHolderTest {
       SamlSettingsHolder.getInstance().initDefaultSettings(null);
     }
     assertEquals(
-        SamlCertificates.parse(expired), SamlSettingsHolder.getSaml2Settings().getIdpx509certMulti());
+        SamlCertificates.parse(expired),
+        SamlSettingsHolder.getSaml2Settings().getIdpx509certMulti());
   }
 
   @AfterEach
