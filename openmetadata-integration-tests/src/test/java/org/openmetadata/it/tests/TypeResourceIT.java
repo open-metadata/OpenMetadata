@@ -11,8 +11,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -44,6 +46,7 @@ import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.CustomPropertyConfig;
 import org.openmetadata.schema.type.customProperties.EnumConfig;
+import org.openmetadata.schema.type.customProperties.TableConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
@@ -274,6 +277,53 @@ public class TypeResourceIT {
     assertNotNull(addedProperty);
     assertEquals(propertyName, addedProperty.getName());
     assertNotNull(addedProperty.getCustomPropertyConfig());
+  }
+
+  @Test
+  void test_tableCustomPropertyStoresValueWithTenColumns(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    List<String> columns = List.of("c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c10");
+    String property = ns.prefix("wideTable");
+    addCustomProperty(
+        client,
+        getTypeByName(client, Entity.DOMAIN).getId(),
+        tableCustomProperty(
+            client, property, new TableConfig().withColumns(new LinkedHashSet<>(columns))));
+    try {
+      Map<String, String> row = new HashMap<>();
+      columns.forEach(column -> row.put(column, "value-" + column));
+      Map<String, Object> value = Map.of("columns", columns, "rows", List.of(row));
+
+      Domain domain = createDomain(client, ns, property, value);
+
+      JsonNode stored =
+          JsonUtils.valueToTree(client.domains().get(domain.getId().toString(), "extension"))
+              .path("extension")
+              .path(property);
+      assertEquals(JsonUtils.valueToTree(value), stored);
+    } finally {
+      deleteDomainProperty(client, property);
+    }
+  }
+
+  @Test
+  void test_addTableCustomPropertyWithoutColumns_fails(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CustomProperty property =
+        tableCustomProperty(
+            client, ns.prefix("emptyTableProp"), new TableConfig().withColumns(Set.of()));
+
+    assertThrows(
+        Exception.class, () -> addCustomProperty(client, TABLE_ENTITY_TYPE.getId(), property));
+  }
+
+  private static CustomProperty tableCustomProperty(
+      OpenMetadataClient client, String name, TableConfig tableConfig) throws Exception {
+    return new CustomProperty()
+        .withName(name)
+        .withDescription("Table custom property")
+        .withPropertyType(getTypeByName(client, "table-cp").getEntityReference())
+        .withCustomPropertyConfig(new CustomPropertyConfig().withConfig(tableConfig));
   }
 
   @Test

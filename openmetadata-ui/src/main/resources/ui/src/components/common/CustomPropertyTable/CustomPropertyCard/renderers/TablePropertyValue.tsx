@@ -36,18 +36,29 @@ const getColumns = (config: unknown): string[] =>
 const getRows = (value: unknown): TableRow[] =>
   (value as { rows?: TableRow[] } | undefined)?.rows ?? [];
 
+// Each column takes a third of the container (`cqw`) so at most three are
+// visible; wider tables scroll horizontally instead of squeezing every column.
+const VIEW_COLUMN_CLASS =
+  'tw:min-w-[calc(100cqw/3)] tw:max-w-[calc(100cqw/3)] tw:break-words';
+// 2.5rem is the delete-action column (`tw:w-10`).
+const EDIT_COLUMN_CLASS = 'tw:min-w-[calc((100cqw-2.5rem)/3)]';
+
 const TablePropertyView = ({ property, value }: PropertyViewProps) => {
   const columns = getColumns(property.customPropertyConfig?.config);
   const rows = getRows(value);
 
   return (
     <div
-      className="tw:overflow-x-auto tw:rounded-lg tw:border tw:border-secondary"
+      className="tw:@container tw:rounded-lg tw:border tw:border-secondary"
       data-testid="table-type-property-value">
-      <Table aria-label={property.displayName || property.name} size="sm">
+      <Table
+        aria-label={property.displayName || property.name}
+        className="tw:w-max tw:min-w-full"
+        size="sm">
         <Table.Header>
           {columns.map((column, index) => (
             <Table.Head
+              className={VIEW_COLUMN_CLASS}
               id={column}
               isRowHeader={index === 0}
               key={column}
@@ -61,7 +72,9 @@ const TablePropertyView = ({ property, value }: PropertyViewProps) => {
             // eslint-disable-next-line react/no-array-index-key
             <Table.Row id={`row-${rowIndex}`} key={rowIndex}>
               {columns.map((column) => (
-                <Table.Cell key={column}>{row[column]}</Table.Cell>
+                <Table.Cell className={VIEW_COLUMN_CLASS} key={column}>
+                  {row[column]}
+                </Table.Cell>
               ))}
             </Table.Row>
           ))}
@@ -120,19 +133,21 @@ const TablePropertyEdit = ({
   return (
     <form noValidate id={formId} onSubmit={handleSubmit}>
       <Box direction="col" gap={3}>
-        <div className="tw:overflow-x-auto tw:rounded-lg tw:border tw:border-secondary">
-          <table className="tw:w-full tw:text-sm">
+        <div className="tw:@container tw:overflow-x-auto tw:rounded-lg tw:border tw:border-secondary">
+          <table className="tw:w-max tw:min-w-full tw:text-sm">
             <thead className="tw:bg-secondary">
               <tr>
                 {columns.map((column) => (
                   <th
-                    className="tw:px-2 tw:py-2 tw:text-left tw:text-xs tw:font-semibold tw:text-tertiary"
+                    className={`${EDIT_COLUMN_CLASS} tw:px-2 tw:py-2 tw:text-left tw:text-xs tw:font-semibold tw:text-tertiary`}
                     key={column}
                     scope="col">
                     {column}
                   </th>
                 ))}
-                <th className="tw:w-10" scope="col">
+                <th
+                  className="tw:sticky tw:right-0 tw:w-10 tw:bg-secondary"
+                  scope="col">
                   <span className="tw:sr-only">{t('label.action-plural')}</span>
                 </th>
               </tr>
@@ -144,7 +159,9 @@ const TablePropertyEdit = ({
                   data-testid={`table-row-${rowIndex}`}
                   key={row.key}>
                   {columns.map((column) => (
-                    <td className="tw:px-2 tw:py-1.5" key={column}>
+                    <td
+                      className={`${EDIT_COLUMN_CLASS} tw:px-2 tw:py-1.5`}
+                      key={column}>
                       <Input
                         aria-label={`${column} ${rowIndex + 1}`}
                         inputDataTestId={`${column}-${rowIndex}`}
@@ -156,7 +173,7 @@ const TablePropertyEdit = ({
                       />
                     </td>
                   ))}
-                  <td className="tw:px-1">
+                  <td className="tw:sticky tw:right-0 tw:bg-primary tw:px-1">
                     <ButtonUtility
                       data-testid={`delete-row-${rowIndex}`}
                       icon={Trash01}
