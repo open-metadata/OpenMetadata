@@ -11,9 +11,11 @@
 
 """Exercise Python CI selection, gates, suite exit codes and report collection."""
 
+import fnmatch
 import itertools
 import json
 import os
+import runpy
 import shutil
 import subprocess
 import sys
@@ -40,6 +42,14 @@ def run(*args, cwd=ROOT, env=None):
 
 def workflow(name):
     return yaml.load((ROOT / ".github/workflows" / name).read_text(), Loader=yaml.BaseLoader)
+
+
+def test_generation_inputs_select_python_workloads():
+    generation = runpy.run_path(str(ROOT / "scripts/check_generated_models.py"))
+    rules = yaml.safe_load((ROOT / ".github/python-ci/paths.yml").read_text())["python"]
+    changed = [path.relative_to(ROOT).as_posix() for path in generation["input_paths"]()]
+    omitted = [path for path in changed if not any(fnmatch.fnmatchcase(path, pattern) for pattern in rules)]
+    assert not omitted, f"Generation inputs would skip Python CI: {omitted}"
 
 
 @pytest.mark.parametrize("output_file", [False, True])

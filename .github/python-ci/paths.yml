@@ -1,5 +1,8 @@
 python:
   - ingestion/**
+  - scripts/check_generated_models.py
+  - scripts/datamodel_generation.py
+  - scripts/generate_ingestion_models.py
   - scripts/prepare_classification_models.py
   - .github/actions/prepare-classification-models/**
   - .github/actions/prepare-classification-model/**

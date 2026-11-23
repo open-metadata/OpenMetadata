@@ -21,7 +21,7 @@ on:
         type: string
         required: true
       collect-coverage:
-        description: Upload coverage from MySQL shards
+        description: Collect and upload coverage from MySQL shards
         type: boolean
         required: false
         default: false

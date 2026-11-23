@@ -21,6 +21,7 @@ on:
         type: string
         required: true
       collect-coverage:
+        description: Collect and upload unit coverage for nightly Sonar
         type: boolean
         required: false
         default: false

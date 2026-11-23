@@ -99,6 +99,34 @@ def reported_test_names(repo: Path, suite: str) -> list[str]:
     return [case.attrib["name"] for case in report.findall(".//testcase")]
 
 
+@pytest.mark.parametrize("suite", ["unit", "integration"])
+@pytest.mark.parametrize("collect", [False, True])
+def test_ci_suite_collects_coverage_only_when_selected(nox_repo: Path, monkeypatch, suite: str, collect: bool) -> None:
+    from coverage import CoverageData
+
+    test = nox_repo / f"ingestion/tests/{suite}/test_selection.py"
+    test.write_text(
+        "from metadata.sample import classify\n\ndef test_selected():\n    assert classify(1) == 'positive'\n"
+    )
+    action = yaml.safe_load((REPO_ROOT / ".github/actions/python-suite/action.yml").read_text())
+    script = next(step["run"] for step in action["runs"]["steps"] if "run" in step)
+    monkeypatch.setenv("SUITE", suite)
+    monkeypatch.setenv("NOX_ARGS", "-n 1" if suite == "unit" else "--standalone")
+    monkeypatch.setenv("COLLECT_COVERAGE", "true" if collect else "false")
+
+    assert_success(run("make", "install_test", cwd=nox_repo))
+    assert_success(run("bash", "-eo", "pipefail", "-c", script, cwd=nox_repo))
+
+    assert reported_test_names(nox_repo, suite) == ["test_selected"]
+    coverage_file = nox_repo / "ingestion/.coverage"
+    assert coverage_file.is_file() == collect
+    if collect:
+        data = CoverageData(str(coverage_file))
+        data.read()
+        assert data.has_arcs()
+        assert data.lines("src/metadata/sample.py") == [1, 2, 3]
+
+
 @pytest.mark.parametrize("profile", ["dev", "test", "types"])
 def test_ci_python_action_installs_the_locked_selection(nox_repo: Path, monkeypatch, profile: str) -> None:
     action = yaml.safe_load((REPO_ROOT / ".github/actions/prepare-python-environment/action.yml").read_text())

@@ -1,5 +1,5 @@
 name: Run Python tests
-description: Run a Nox test suite, stream its logs, and optionally upload coverage.
+description: Run a Nox test suite, stream its logs, and optionally collect and upload coverage.
 inputs:
   suite:
     description: suite
@@ -8,7 +8,7 @@ inputs:
     description: Whitespace-separated pytest arguments forwarded to Nox.
     default: ''
   collect-coverage:
-    description: collect-coverage
+    description: Collect branch coverage and upload the data.
     default: 'false'
   coverage-name:
     description: coverage-name
@@ -20,11 +20,15 @@ runs:
       env:
         SUITE: ${{ inputs.suite }}
         NOX_ARGS: ${{ inputs.nox-args }}
+        COLLECT_COVERAGE: ${{ inputs.collect-coverage }}
       run: |
         set -o pipefail
         source env/bin/activate
         cd ingestion
         read -r -a args <<< "$NOX_ARGS"
+        if [[ "$COLLECT_COVERAGE" != 'true' ]]; then
+          args+=(--no-cov)
+        fi
         nox --no-venv -s "${SUITE}-tests" -- "${args[@]}" 2>&1 | tee "${SUITE}-test-run.log"
       shell: bash
     - name: Upload coverage artifact
