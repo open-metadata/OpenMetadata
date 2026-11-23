@@ -110,7 +110,7 @@ class TestDbtModelLanguage:
         source.metadata.get_by_name.reset_mock()
         caplog.clear()
 
-        with caplog.at_level(logging.DEBUG):
+        with caplog.at_level(logging.DEBUG, logger="metadata.Ingestion"):
             lineage = list(source.create_dbt_query_lineage(link))
 
         assert link.parse_query_lineage is False
