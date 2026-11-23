@@ -1025,6 +1025,8 @@ MODEL_METRICS = {
     "M_LOOP_BACK": [("metric", "M_LOOP", "Loop")],
     "M_PCT_QTY": [("fact", "F_QTY", "Quantity")],
     "M_SHARE": [("metric", "M_PCT_QTY", "% Margin")],
+    "M_REV_SHARE": [("metric", "M_PCT_REV", "% Revenue")],
+    "M_PCT_REV": [("fact", "F_QTY", "Quantity")],
 }
 
 
@@ -1455,6 +1457,37 @@ class TestColumnLineage:
             (["quantity"], f"{SCHEMA_CUBE}.Margin Share"),
         ]
 
+    def test_a_referenced_metric_outside_the_dataset_takes_no_alias_a_dataset_object_owns(self, server, client):
+        # Revenue Share is built from % Revenue, which the dataset does not hold: REVENUE is Revenue's
+        # projection, so % Revenue is followed to its fact instead.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_REV", "name": "Revenue", "type": "metric"},
+                {"id": "M_REV_SHARE", "name": "Revenue Share", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.revenue) REVENUE, sum(a11.quantity) WJXBFS1 from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "revenue"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [
+            (["quantity"], f"{SCHEMA_CUBE}.Revenue Share"),
+            (["revenue"], f"{SCHEMA_CUBE}.Revenue"),
+        ]
+
     def test_a_metric_without_a_schema_definition_is_warned_about_once(self, server, client, caplog):
         _model_routes(server, {SCHEMA_CUBE: 776})
         for metric in ("M_D1", "M_D2"):
@@ -1475,7 +1508,7 @@ class TestColumnLineage:
 
         parts = client.get_metric_parts("P", "M_LOOP")
 
-        assert parts.metrics == {"Loop back"}
+        assert parts.metrics == {("M_LOOP_BACK", "Loop back")}
         assert parts.facts == set()
         assert len(server.requests_to("/model/metrics/")) == 2
 
