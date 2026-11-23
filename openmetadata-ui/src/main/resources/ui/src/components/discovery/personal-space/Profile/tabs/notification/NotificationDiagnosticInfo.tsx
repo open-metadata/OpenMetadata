@@ -112,9 +112,8 @@ function NotificationDiagnosticInfo({
                     {`${item.key}:`}
                   </Typography>
                   <ButtonUtility
-                    color="tertiary"
                     icon={InfoCircle}
-                    size="xs"
+                    size="sm"
                     tooltip={String(item.description)}
                   />
                 </Box>

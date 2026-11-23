@@ -114,6 +114,20 @@ class McpResponseTrimTest {
   }
 
   @Test
+  void searchFailureDoesNotNameTheSearchHost() {
+    RuntimeException failure =
+        new RuntimeException(
+            "method [POST], host [http://search.internal:9200], URI"
+                + " [/dataAsset/_search?typed_keys=true&preference=admin], status line [HTTP/1.1"
+                + " 500 Internal Server Error]\n"
+                + "{\"error\":{\"root_cause\":[{\"type\":\"null_pointer_exception\"}]}}");
+
+    assertThat(McpResponseTrim.summarizeFailure(failure, true))
+        .doesNotContain("search.internal", "preference=admin")
+        .startsWith("search request failed, status line [HTTP/1.1 500 Internal Server Error]");
+  }
+
+  @Test
   void slimRefKeepsOnlyTheActionableIdentifier() {
     Map<String, Object> ref = new LinkedHashMap<>();
     ref.put("id", "8c1e1f4e-0000-0000-0000-000000000000");

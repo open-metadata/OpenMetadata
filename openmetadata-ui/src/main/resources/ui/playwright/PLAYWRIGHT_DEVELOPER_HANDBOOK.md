@@ -672,36 +672,9 @@ await expect(page.locator(".ant-select-dropdown:visible")).not.toBeVisible();
 
 **Why**: Stored `:visible` locators become stale when re-queried. Always chain them inline!
 
-### ⚠️ CRITICAL: Clicking an Ant Design Dropdown Menu Item
+### Assert the Post-Click State
 
-**A click on the item you located can select the item above it.**
-
-Ant Design animates a dropdown open with `transform: scaleY(0.8) -> scaleY(1)` around
-`transform-origin: 0 0`, and rc-motion applies the start class one frame before the `-active`
-class that begins the transition. Playwright's actionability check ("bounding box unchanged
-across two consecutive animation frames") can be satisfied on those pre-transition frames, so
-the click point is computed against the 0.8-scaled menu. Once the menu finishes growing, that
-point has slid onto the previous item. Under CI worker contention this happens often.
-
-```typescript
-// ❌ WRONG - clicks while the menu is still scaling open
-await trigger.click();
-const response = page.waitForResponse("/api/v1/activity/following");
-await page.getByRole("menuitem", { name: "Following" }).click();
-await response; // may hang forever - "My Data" was selected and my-feed was fetched
-
-// ✅ CORRECT - wait for the popup to settle, then assert the selection took
-await trigger.click();
-const menuItem = page.getByRole("menuitem", { name: "Following" });
-await expect(menuItem).toBeVisible();
-await waitForAntdPopupToSettle(page); // from playwright/utils/common.ts
-const response = page.waitForResponse("/api/v1/activity/following");
-await menuItem.click();
-await expect(trigger).toContainText("Following"); // fails fast if the click drifted
-await response;
-```
-
-**Always assert the post-click state** (trigger label, `ant-*-item-selected`, rendered content)
+**Always assert the post-click state** (trigger label, selected item, rendered content)
 before awaiting a response. A `waitForResponse` whose predicate can never match does not fail —
 it hangs until the test timeout and then reports `Target page, context or browser has been
 closed`, which points nowhere near the real cause.
@@ -835,7 +808,7 @@ Pick the wait that proves the state the **next step depends on** — not a gener
 | An entity created/updated via API showing up in search-backed UI | `waitForSearchIndexed` / `waitForOwnerIndexed` / `waitForOwnedAssetCount` (`playwright/utils/polling.ts`) | a bare `/search/query` wait — the component's initial query satisfies it |
 | A dropdown's aggregation for typed text | `waitForAggregation(page, { field, value })` (`playwright/utils/searchAggregation.ts`) | `waitForResponse('/search/aggregate*')` |
 | An async backend job (move, validation, propagation) | `expect.poll` on the entity GET | the 200 of the triggering call |
-| An Ant Design overlay/dropdown to finish animating | `waitForAntOverlayToOpen(overlay)` / `waitForAntdPopupToSettle(page)` | `toBeVisible()` alone |
+| A modal or popover to finish fading in | `waitForOverlayToOpen(overlay)` | `toBeVisible()` alone |
 | Client-side persistence with no network call | poll the store (`waitForDraftPersisted`, `waitForRecentlyViewed` in `playwright/utils/ContextCenterUtil.ts`) | a hard wait |
 
 ### Search index lag
@@ -1138,8 +1111,7 @@ root-caused to the problem it solves. Paths are relative to `playwright/`.
 |---|---|---|
 | `waitForResponseWithStatus(page, predicate, status)` | `utils/waitHelpers.ts` | Awaiting a response: matches the request, then throws a legible error on the wrong status |
 | `clickAndWaitFor(page, locator, urlPattern, status?)` | `utils/waitHelpers.ts` | Click + hoisted response listener + status check in one call |
-| `waitForAntOverlayToOpen(overlay)` | `utils/waitHelpers.ts` | Before clicking inside an Ant modal/popover still running its zoom animation |
-| `waitForAntdPopupToSettle(page)` | `utils/common.ts` | Before clicking an Ant dropdown menu item (scale animation drift) |
+| `waitForOverlayToOpen(overlay)` | `utils/waitHelpers.ts` | Before clicking inside a modal or popover that is still fading in |
 | `waitForAllLoadersToDisappear(page)` | `utils/entity.ts` | Data loaders gone |
 | `waitForWidgetsToRender(page)` | `utils/entity.ts` | Right-panel Suspense skeletons gone (tags, owners, glossary, domain) |
 | `waitForPageLoaded(page)` | `utils/polling.ts` | `domcontentloaded` + loaders + widgets; the `networkidle` replacement |
@@ -1481,7 +1453,7 @@ Before finalizing tests, verify:
 - [ ] No positional selectors (`.first()`, `.last()`, `.nth()`)
 - [ ] No stored `:visible` locator references
 - [ ] All dropdowns use `:visible` chain pattern correctly
-- [ ] Ant dropdown items clicked only after `waitForAntdPopupToSettle`; post-click selection asserted
+- [ ] Post-click selection asserted before awaiting its response
 - [ ] React Aria pickers use `scrollIntoViewAndSettle` / `selectOptionWithRetry`
 - [ ] No branching on `isVisible()` / `textContent()` / `count()` — web-first assertions only
 - [ ] Every negative assertion is preceded by a positive one proving the view rendered

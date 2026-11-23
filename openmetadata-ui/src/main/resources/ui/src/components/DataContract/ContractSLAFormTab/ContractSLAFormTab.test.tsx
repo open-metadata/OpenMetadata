@@ -334,4 +334,40 @@ describe('ContractSLAFormTab', () => {
       expect(sla.columnName).toBe('updated_at');
     });
   });
+
+  it('saves the top-level column FQN when a nested child shares its name', () => {
+    mockTable = {
+      ...mockTableData,
+      columns: [
+        {
+          name: 'payload',
+          fullyQualifiedName: 'svc.db.schema.orders.payload',
+          children: [
+            {
+              name: 'created_at',
+              fullyQualifiedName: 'svc.db.schema.orders.payload.created_at',
+            },
+          ],
+        },
+        {
+          name: 'created_at',
+          fullyQualifiedName: 'svc.db.schema.orders.created_at',
+        },
+      ],
+    } as Table;
+
+    renderForm();
+    const combobox = screen.getByRole('combobox', {
+      name: 'label.column-name',
+    });
+    fireEvent.focus(combobox);
+    fireEvent.mouseDown(combobox);
+    const option = screen.getByRole('option', { name: 'created_at' });
+    fireEvent.pointerDown(option);
+    fireEvent.click(option);
+
+    const [{ sla }] = mockOnChange.mock.calls.at(-1) ?? [{}];
+
+    expect(sla.columnName).toBe('svc.db.schema.orders.created_at');
+  });
 });

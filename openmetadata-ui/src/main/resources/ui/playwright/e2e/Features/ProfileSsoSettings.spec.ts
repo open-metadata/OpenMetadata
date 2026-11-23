@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
 import path from 'path';
+import { selectOptionWithRetry } from '../../utils/common';
 import {
   BASIC_CONFIG,
   configureProvider,
@@ -20,6 +21,7 @@ import {
   ssoField,
   stubSecurityConfig,
 } from '../../utils/profileSso';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 const VALID_SAML_XML = path.join(
@@ -28,6 +30,33 @@ const VALID_SAML_XML = path.join(
 );
 const SAML_ENTITY_ID =
   'https://sts.example.com/00000000-0000-0000-0000-000000000000/';
+
+const pickRole = async (
+  page: Page,
+  input: Locator,
+  roleName: string,
+  displayName: string
+) => {
+  const searchResponse = waitForResponseWithStatus(
+    page,
+    (response) =>
+      response.url().includes('/api/v1/roles/search') &&
+      new URL(response.url()).searchParams.get('q') === roleName,
+    200
+  );
+  // The combobox opens with every role on focus, so search first; otherwise the
+  // pick can land on the unfiltered list and the awaited search is never sent.
+  await input.fill(roleName);
+  await searchResponse;
+  await selectOptionWithRetry(
+    input,
+    page.getByRole('option', { name: displayName, exact: true }),
+    () => input.fill(roleName)
+  );
+  // Multi-select keeps its listbox open after a pick, which blocks the next field.
+  await input.press('Escape');
+  await expect(page.getByRole('listbox')).toBeHidden();
+};
 
 const waitForSecurityConfigWrite = (page: Page, method: 'PUT' | 'PATCH') =>
   page.waitForRequest(
@@ -96,10 +125,48 @@ test.describe(
 
         await clientId.fill('changed-client-id');
         await page.getByTestId('cancel-sso-configuration').click();
-        await page.getByTestId('sso-unsaved-changes-discard').click();
+        await expect(page.getByTestId('unsaved-changes-popover')).toBeVisible();
+        await page.getByTestId('unsaved-changes-popover-confirm').click();
 
         await expect(clientId).toHaveValue('okta-client-id');
         expect(writes.puts).toHaveLength(0);
+      });
+    });
+
+    test('Test Login opens as a sub page and Back keeps the edited values', async ({
+      page,
+    }) => {
+      await stubSecurityConfig(page, EXISTING_OKTA_CONFIG);
+      // The stubbed provider is not a real IdP, so the test sign-in fails fast instead of
+      // opening a popup.
+      await page.route('**/api/v1/system/security/test-login/start', (route) =>
+        route.fulfill({ status: 400, json: { message: 'Stubbed test login' } })
+      );
+      await openProfileSso(page);
+      const header = page.getByTestId('profile-content-header');
+      const breadcrumb = header.getByRole('list', { name: 'Breadcrumb' });
+
+      await header.getByTestId('sso-tab-configure').click();
+      const clientId = ssoField(page, 'authenticationConfiguration/clientId');
+      await clientId.fill('edited-client-id');
+
+      await test.step('Test Login replaces the form with its own page', async () => {
+        await page.getByTestId('test-login-sso-configuration').click();
+
+        await expect(page.getByTestId('sso-test-login-page')).toBeVisible();
+        await expect(page.getByTestId('sso-configure-form-body')).toBeHidden();
+        await expect(page.getByTestId('sso-configure-footer')).toBeHidden();
+        await expect(breadcrumb.getByText('Test Login')).toBeVisible();
+        await expect(header.getByTestId('sso-tab-configure')).toBeHidden();
+        await expect(header.getByTestId('show-hint-toggle')).toBeHidden();
+      });
+
+      await test.step('the provider crumb returns to the form with the edit kept', async () => {
+        await breadcrumb.getByRole('link', { name: 'Okta' }).click();
+
+        await expect(page.getByTestId('sso-test-login-page')).toBeHidden();
+        await expect(clientId).toHaveValue('edited-client-id');
+        await expect(header.getByTestId('sso-tab-configure')).toBeVisible();
       });
     });
 
@@ -127,15 +194,28 @@ test.describe(
       await openProfileSso(page);
       await configureProvider(page, 'ldap');
 
+      await page.getByTestId('add-mapping-btn').click();
       await page
-        .getByRole('textbox', { name: /Auth Roles Mapping/ })
-        .fill('{"cn=admins,ou=groups,dc=example,dc=com":["DataConsumer"]}');
-      const reassignRoles = ssoField(
+        .getByRole('textbox', { name: 'LDAP Group DN' })
+        .fill('cn=admins,ou=groups,dc=example,dc=com');
+      await pickRole(
         page,
-        'authenticationConfiguration/ldapConfiguration/authReassignRoles'
+        page
+          .locator('[data-testid^="mapping-card-"]')
+          .getByRole('combobox', { name: /Roles$/ }),
+        'DataConsumer',
+        'Data Consumer'
       );
-      await reassignRoles.fill('DataSteward');
-      await reassignRoles.press('Enter');
+      await pickRole(
+        page,
+        page
+          .getByTestId(
+            'sso-configuration-form-array-field-template-authReassignRoles'
+          )
+          .getByRole('combobox'),
+        'DataSteward',
+        'Data Steward'
+      );
 
       const putRequest = waitForSecurityConfigWrite(page, 'PUT');
       await page.getByTestId('save-anyway-sso-configuration').click();

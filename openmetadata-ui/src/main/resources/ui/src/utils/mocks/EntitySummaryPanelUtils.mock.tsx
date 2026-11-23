@@ -12,6 +12,7 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import { Link } from 'react-router-dom';
 import { BasicEntityInfo } from '../../components/Explore/EntitySummaryPanel/SummaryList/SummaryList.interface';
 import { Task } from '../../generated/entity/data/pipeline';
@@ -27,7 +28,6 @@ import {
   TagSource,
 } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/type/entityReference';
-import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 
 export const mockTextBasedSummaryTitleResponse = (
   <Typography
@@ -50,7 +50,7 @@ export const mockLinkBasedSummaryTitleResponse = (
         ellipsis={{ tooltip: true }}>
         dim_address Task
       </Typography>
-      <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
+      <LinkExternal01 className="tw:shrink-0" size={14} />
     </div>
   </Link>
 );
@@ -177,7 +177,7 @@ export const mockEntityDataWithoutNestingResponse: BasicEntityInfo[] = [
             ellipsis={{ tooltip: true }}>
             Assert Table Exists
           </Typography>
-          <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
+          <LinkExternal01 className="tw:shrink-0" size={14} />
         </div>
       </Link>
     ),

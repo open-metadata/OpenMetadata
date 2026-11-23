@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { GraphData } from '../../../components/discovery/knowledge-graph/KnowledgeGraph.interface';
+import {
+  GraphData,
+  GraphNode,
+} from '../../../components/discovery/knowledge-graph/KnowledgeGraph.interface';
 import {
   isConceptNode,
   isMappingEdge,
@@ -19,6 +22,12 @@ import {
 
 export const graphEntityId = (nodeId: string) =>
   nodeId.split('/').pop() ?? nodeId;
+
+/** The entity type the explore API resolves a concept node by; other concept kinds are glossary terms. */
+export const conceptEntityType = (node?: GraphNode) =>
+  node?.type.toLowerCase() === 'ontologyconcept'
+    ? 'ontologyConcept'
+    : 'glossaryTerm';
 
 export const getOntologyScope = (
   data: GraphData | null,

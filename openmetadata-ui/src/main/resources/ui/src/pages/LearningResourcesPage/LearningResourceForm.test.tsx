@@ -211,7 +211,7 @@ describe('LearningResourceForm', () => {
       render(<LearningResourceForm {...mockProps} />);
     });
 
-    const closeIcon = document.querySelector('.drawer-close');
+    const closeIcon = screen.getByTestId('drawer-close-icon');
 
     await act(async () => {
       fireEvent.click(closeIcon as Element);

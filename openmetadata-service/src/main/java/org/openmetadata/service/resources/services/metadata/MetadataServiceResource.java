@@ -119,7 +119,7 @@ public class MetadataServiceResource
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
+    return super.getEntitySpecificOperations();
   }
 
   public static class MetadataServiceList extends ResultList<MetadataService> {
@@ -480,7 +480,7 @@ public class MetadataServiceResource
       @Valid CreateMetadataService update) {
     MetadataService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (MetadataService) response.getEntity());
     return response;
   }

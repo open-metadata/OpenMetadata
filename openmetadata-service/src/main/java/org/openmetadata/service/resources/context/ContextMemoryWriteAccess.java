@@ -29,6 +29,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,6 +57,10 @@ public final class ContextMemoryWriteAccess {
   static final String MISSING_WRITER = "A context memory requires an authenticated writer";
   static final String EXTRACTION_SOURCE =
       "Only an admin or bot can claim file or page extraction provenance";
+  public static final String APPROVAL_NEEDS_REVIEW =
+      "Only an admin, a bot or a conflict review can approve a context memory";
+  public static final String DISPUTES_NEED_AUTOMATION =
+      "Only an admin or a bot can open a conflict review on a context memory";
 
   /** Whether a writer may read the entity a memory field points at. */
   @FunctionalInterface
@@ -68,7 +73,7 @@ public final class ContextMemoryWriteAccess {
   /** Whether an explicitly named writer may write memories for others or claim extraction provenance. */
   public static boolean isPrivilegedWriter(String writer) {
     return writer != null
-        && (Entity.ADMIN_USER_NAME.equalsIgnoreCase(writer) || isAdminOrBot(writer));
+        && (SecurityUtil.sameIdentifier(Entity.ADMIN_USER_NAME, writer) || isAdminOrBot(writer));
   }
 
   public static void requireWriter(String writer) {

@@ -95,7 +95,7 @@ public class DatabaseServiceResource
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
+    return super.getEntitySpecificOperations();
   }
 
   public DatabaseServiceResource(Authorizer authorizer, Limits limits) {
@@ -404,7 +404,7 @@ public class DatabaseServiceResource
       @Valid CreateDatabaseService update) {
     DatabaseService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }

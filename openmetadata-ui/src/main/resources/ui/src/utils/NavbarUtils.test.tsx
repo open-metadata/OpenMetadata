@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom';
 import { ROUTES } from '../constants/constants';
 import { HELP_ITEMS_ENUM } from '../constants/Navbar.constants';
 import { URL_OM_RELEASE_UPDATES } from '../constants/URL.constants';
+import { useProductTourStore } from '../hooks/useProductTourStore';
 import { getHelpDropdownItems } from './NavbarUtils';
 
 describe('NavbarUtils test', () => {
@@ -128,15 +129,6 @@ describe('NavbarUtils test', () => {
     it('should render internal links with correct attributes', () => {
       const helpDropdownItems = getHelpDropdownItems();
 
-      // Test TOUR item (internal)
-      const tourItem = helpDropdownItems.find(
-        (item) => item.key === HELP_ITEMS_ENUM.TOUR
-      );
-
-      expect(tourItem?.label.type).toBe(Link);
-      expect(tourItem?.label.props.to).toBe(ROUTES.TOUR);
-      expect(tourItem?.label.props.className).toBe('no-underline');
-
       // Test API item (internal)
       const apiItem = helpDropdownItems.find(
         (item) => item.key === HELP_ITEMS_ENUM.API
@@ -147,11 +139,44 @@ describe('NavbarUtils test', () => {
       expect(apiItem?.label.props.className).toBe('no-underline');
     });
 
+    it('should colour every item icon the same, link or not', () => {
+      getHelpDropdownItems().forEach((item) => {
+        const row =
+          item.key === HELP_ITEMS_ENUM.TOUR
+            ? item.label
+            : item.label.props.children;
+        const icon = row.props.children[0].props.children;
+
+        expect(icon.props.className.split(/\s+/)).toContain(
+          'tw:text-brand-secondary'
+        );
+      });
+    });
+
+    it('should give the tour item an action that opens the product tour', () => {
+      const tourItem = getHelpDropdownItems().find(
+        (item) => item.key === HELP_ITEMS_ENUM.TOUR
+      );
+
+      expect(tourItem?.label.type).not.toBe(Link);
+
+      tourItem?.onAction?.();
+
+      expect(useProductTourStore.getState().isOpen).toBe(true);
+
+      useProductTourStore.getState().close();
+    });
+
     it('should render label content with correct structure', () => {
       const helpDropdownItems = getHelpDropdownItems();
 
       helpDropdownItems.forEach((item) => {
-        const labelContent = item.label.props.children;
+        // The tour opens a popup rather than a page, so its row is not
+        // wrapped in a link.
+        const labelContent =
+          item.key === HELP_ITEMS_ENUM.TOUR
+            ? item.label
+            : item.label.props.children;
 
         expect(labelContent.props.className.split(/\s+/)).toContain(
           'cursor-pointer'
@@ -193,18 +218,17 @@ describe('NavbarUtils test', () => {
         // Second child should be the external link icon
         const externalIcon = secondColumn.props.children[1];
 
-        // The SVG asset is now rendered directly, sized by a class rather
-        // than antd's injected font-size.
         expect(externalIcon.props.className).toBe(
-          'tw:ml-1 tw:text-secondary tw:size-4 tw:shrink-0'
+          'tw:ml-1 tw:text-secondary tw:shrink-0'
         );
+        expect(externalIcon.props.size).toBe(16);
       });
     });
 
     it('should not include external link icon for internal items', () => {
       const helpDropdownItems = getHelpDropdownItems();
 
-      const internalItems = [HELP_ITEMS_ENUM.TOUR, HELP_ITEMS_ENUM.API];
+      const internalItems = [HELP_ITEMS_ENUM.API];
 
       internalItems.forEach((key) => {
         const item = helpDropdownItems.find((item) => item.key === key);

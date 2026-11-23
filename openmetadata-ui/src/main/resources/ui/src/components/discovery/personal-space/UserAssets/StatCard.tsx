@@ -41,6 +41,7 @@ interface StatCardProps {
   isSelected?: boolean;
   // Destination of the whole tile; shown as an arrow in its top-right corner.
   to?: To;
+  cardVariant?: 'default' | 'muted';
 }
 
 const StatCard: React.FC<StatCardProps> = ({
@@ -53,6 +54,7 @@ const StatCard: React.FC<StatCardProps> = ({
   testId,
   isSelected = false,
   to,
+  cardVariant = 'default',
 }) => {
   const hasBreakdown = breakdown && breakdown.length > 0;
 
@@ -64,7 +66,7 @@ const StatCard: React.FC<StatCardProps> = ({
       isClickable={Boolean(to)}
       isSelected={isSelected}
       size="sm"
-      variant="muted">
+      variant={cardVariant}>
       <Card.Content>
         <Box direction="col" gap={2}>
           <Box align="center" gap={2}>

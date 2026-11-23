@@ -968,6 +968,30 @@ public interface EntityDataDAOs {
       return "fqnHash";
     }
 
+    /** Name and FQN of every deployed pipeline but one, soft-deleted ones included. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT name, JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn "
+                + "FROM ingestion_pipeline_entity "
+                + "WHERE JSON_EXTRACT(json, '$.deployed') = true AND id != :excludeId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT name, json->>'fullyQualifiedName' AS fqn FROM ingestion_pipeline_entity "
+                + "WHERE json->>'deployed' = 'true' AND id != :excludeId",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(DeployedPipelineMapper.class)
+    List<EntityReference> listOtherDeployed(@Bind("excludeId") String excludeId);
+
+    class DeployedPipelineMapper implements RowMapper<EntityReference> {
+      @Override
+      public EntityReference map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new EntityReference()
+            .withName(rs.getString("name"))
+            .withFullyQualifiedName(rs.getString("fqn"));
+      }
+    }
+
     /**
      * A pipeline's service category is not a column on the pipeline row — it lives in {@code
      * entity_relationship.fromEntity} — so the {@code serviceType} filter has to be a join rather

@@ -72,6 +72,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
       ...props
     }: Record<string, unknown>) =>
       React.createElement('button', props, children),
+    ButtonUtility: jest.requireActual('@openmetadata/ui-core-components')
+      .ButtonUtility,
     GlossaryTag: ({ label, ...props }: Record<string, unknown>) =>
       React.createElement('span', props, label),
     Select: Object.assign(
@@ -113,17 +115,6 @@ jest.mock('../../../common/WidgetCard/WidgetCard', () => ({
     }
   ),
 }));
-
-jest.mock('../../../common/WidgetActionButton/WidgetActionButton', () => {
-  const React = require('react');
-
-  return {
-    WidgetEditButton: (props: Record<string, unknown>) =>
-      React.createElement('button', props),
-    WidgetPlusButton: (props: Record<string, unknown>) =>
-      React.createElement('button', props),
-  };
-});
 
 jest.mock('../../../../rest/glossaryAPI', () => ({
   searchGlossaryTermsPaginated: jest.fn().mockResolvedValue({ data: [] }),

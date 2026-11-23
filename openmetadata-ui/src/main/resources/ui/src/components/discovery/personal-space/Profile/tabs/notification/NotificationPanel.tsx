@@ -37,6 +37,10 @@ import {
   NotificationSectionContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import {
+  settingsHashOptions,
+  SettingsNavigateOptions,
+} from '../../../../../../utils/SettingsHistory.utils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
@@ -100,10 +104,15 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   );
 
   const onNavigate = useCallback(
-    (nextView: NotificationView) => {
-      setHash('notification', viewToSubPath(nextView));
+    (nextView: NotificationView, options?: SettingsNavigateOptions) => {
+      setHash(
+        'notification',
+        viewToSubPath(nextView),
+        undefined,
+        settingsHashOptions(view, nextView, options)
+      );
     },
-    [setHash]
+    [setHash, view]
   );
 
   // Actions injected by detail panels (e.g. edit/delete buttons).
@@ -522,7 +531,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   })();
 
   return (
-    <Box className="tw:flex-1 tw:overflow-hidden" direction="col">
+    <Box className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto" direction="col">
       {view.type === 'section' ? sectionContent : content}
     </Box>
   );

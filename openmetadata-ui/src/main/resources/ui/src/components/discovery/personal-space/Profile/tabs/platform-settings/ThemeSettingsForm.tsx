@@ -30,6 +30,7 @@ import {
   SettingType,
 } from '../../../../../../generated/settings/settings';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import { updateSettingsConfig } from '../../../../../../rest/settingConfigAPI';
 import { generatePalette } from '../../../../../../styles/colorPallet';
 import {
@@ -48,7 +49,6 @@ import {
   toThemeConfig,
   toThemeFormValues,
 } from './ThemeSettings.utils';
-import { useFormFieldDocs } from './useFormFieldDocs';
 
 // Shades of the primary palette the classic page derives hover/selected from.
 const HOVER_SHADE = 2;

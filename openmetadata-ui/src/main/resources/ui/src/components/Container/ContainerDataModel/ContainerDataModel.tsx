@@ -47,6 +47,7 @@ import {
   updateContainerColumnTags,
 } from '../../../utils/ContainerDetailPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityDetailsUrl } from '../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getHighlightedRowClassName,
@@ -55,7 +56,7 @@ import {
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { ColumnsType } from '../../common/Table/Table.interface';
@@ -207,10 +208,15 @@ const ContainerDataModel: FC<ContainerDataModelProps> = ({
               </Typography>
             </Tooltip>
             {record.fullyQualifiedName && (
-              <CopyLinkButton
-                entityType={EntityType.CONTAINER}
-                fieldFqn={record.fullyQualifiedName}
+              <CopyButton
+                className="hover-cell-icon"
+                isDisabled={!record.fullyQualifiedName}
+                size="xs"
                 testId="copy-column-link-button"
+                value={getEntityDetailsUrl(
+                  EntityType.CONTAINER,
+                  record.fullyQualifiedName ?? ''
+                )}
               />
             )}
           </div>

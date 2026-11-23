@@ -18,10 +18,7 @@ import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createConversationThread } from '../../utils/activityAPI';
 import { performAdminLogin } from '../../utils/admin';
-import {
-  dismissHoverPopovers,
-  waitForAntdPopupToSettle,
-} from '../../utils/common';
+import { dismissHoverPopovers } from '../../utils/common';
 import { waitForPageLoaded } from '../../utils/polling';
 import { waitForTaskListResponse } from '../../utils/task';
 
@@ -78,7 +75,6 @@ async function switchTaskFilter(
   await filter.click();
   const option = page.getByTestId(optionTestId);
   await expect(option).toBeVisible();
-  await waitForAntdPopupToSettle(page);
   const tasksListResponse = waitForTaskListResponse(page);
   await option.click();
   await tasksListResponse;
@@ -326,6 +322,50 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
       await expect(mentionCards).toHaveCount(1);
     } finally {
       await mentionTable.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('right panel drops the All selection on the Tasks and Mentions sub-tabs', async ({
+    browser,
+  }) => {
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+    const selectionTable = new TableClass();
+    const message = `Selected on All ${Date.now()}`;
+
+    try {
+      await selectionTable.create(apiContext);
+      await createConversationThread(apiContext, selectionTable, message);
+
+      await selectionTable.visitEntityPage(page);
+      await page.getByTestId('activity_feed').click();
+      await waitForPageLoaded(page);
+
+      const rightPanelCard = page.locator('#feed-panel, #activity-panel');
+
+      await expect(rightPanelCard).toContainText(message);
+
+      const tasksResponse = waitForTaskListResponse(page);
+      await page.getByTestId('activity-feed-left-panel-tasks').click();
+      await tasksResponse;
+
+      const centerList = page.locator('#center-container');
+
+      await expect(centerList.getByText('Great News')).toBeVisible();
+      await expect(rightPanelCard).toHaveCount(0);
+
+      const mentionsResponse = waitForMentionedConversationResponse(page);
+      await page.getByTestId('mentions-toggle').click();
+      await mentionsResponse;
+
+      await expect(
+        centerList.getByText(/no mentions in any activities just yet/)
+      ).toBeVisible();
+      await expect(rightPanelCard).toHaveCount(0);
+    } finally {
+      await selectionTable.delete(apiContext);
       await afterAction();
     }
   });

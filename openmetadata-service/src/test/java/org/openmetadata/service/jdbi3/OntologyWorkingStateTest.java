@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrate;
 import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
 
+import jakarta.ws.rs.ClientErrorException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -165,6 +166,104 @@ class OntologyWorkingStateTest {
             assertEquals(current, dao.ontologyEntityDAO().findEntityById(current.getId()));
             assertEquals(1L, dao.ontologyStateDAO().get(current.getId()).getWorkingRevision());
           }
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void recreatingADefinitionAnotherRequestRestoredConflictsInsteadOfOverwritingIt(
+      final ConnectionType dialect) {
+    withDatabase(
+        dialect,
+        handle -> {
+          migrate(handle, dialect);
+          final CollectionDAO dao = handle.attach(CollectionDAO.class);
+          final Ontology deleted = definition().withDeleted(true);
+          final Ontology restored =
+              JsonUtils.deepCopy(deleted, Ontology.class).withDeleted(false).withUpdatedAt(2L);
+          dao.ontologyEntityDAO().insert(restored, restored.getFullyQualifiedName());
+          dao.ontologyStateDAO().initialize(restored.getId());
+          final OntologyWorkingState state = new OntologyWorkingState(dao);
+
+          final ClientErrorException conflict =
+              assertThrows(
+                  ClientErrorException.class,
+                  () ->
+                      dao.inTransaction(
+                          ignored ->
+                              state.mutate(
+                                  dao.ontologyEntityDAO(),
+                                  List.of(deleted),
+                                  () -> {
+                                    dao.ontologyEntityDAO()
+                                        .update(
+                                            deleted
+                                                .withDeleted(false)
+                                                .withDescription("Re-created"));
+                                    return null;
+                                  })));
+
+          assertEquals(409, conflict.getResponse().getStatus());
+          assertEquals(restored, dao.ontologyEntityDAO().findEntityById(restored.getId()));
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void aFinalizerThatKeepsWritingFailsTheMutationInsteadOfLooping(ConnectionType dialect) {
+    withDatabase(
+        dialect,
+        handle -> {
+          migrate(handle, dialect);
+          CollectionDAO dao = handle.attach(CollectionDAO.class);
+          Ontology ontology = definition();
+          OntologyWorkingState state = new OntologyWorkingState(dao);
+          List<Integer> passes = new ArrayList<>();
+          IllegalStateException error =
+              assertThrows(
+                  IllegalStateException.class,
+                  () ->
+                      dao.inTransaction(
+                          ignored ->
+                              state.mutate(
+                                  dao.ontologyEntityDAO(),
+                                  List.of(ontology),
+                                  () -> {
+                                    dao.ontologyEntityDAO()
+                                        .insert(ontology, ontology.getFullyQualifiedName());
+                                    state.beforeValidation(
+                                        "restless",
+                                        (ontologyId, changes) -> {
+                                          passes.add(changes.size());
+                                          Ontology stored =
+                                              dao.ontologyEntityDAO()
+                                                  .findEntityById(ontology.getId());
+                                          state.mutate(
+                                              dao.ontologyEntityDAO(),
+                                              List.of(stored),
+                                              () -> {
+                                                dao.ontologyEntityDAO()
+                                                    .update(
+                                                        stored.withDescription(
+                                                            "pass " + passes.size()));
+                                                return null;
+                                              });
+                                        });
+                                    return null;
+                                  })));
+          assertEquals("Ontology writes did not settle within 8 passes", error.getMessage());
+          assertEquals(List.of(1, 1, 1, 1, 1, 1, 1, 1), passes);
+          assertEquals(
+              0,
+              handle
+                  .createQuery("SELECT COUNT(*) FROM ontology_entity WHERE id = :id")
+                  .bind("id", ontology.getId().toString())
+                  .mapTo(Integer.class)
+                  .one());
         });
   }
 

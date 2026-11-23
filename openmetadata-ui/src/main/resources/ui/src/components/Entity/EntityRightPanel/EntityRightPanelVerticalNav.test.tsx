@@ -172,7 +172,7 @@ describe('EntityRightPanelVerticalNav', () => {
     it('should call onTabChange with correct tab when custom properties tab is clicked', () => {
       render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-      const customPropsTab = screen.getByText('label.custom-property');
+      const customPropsTab = screen.getByText('label.custom-property-plural');
       fireEvent.click(customPropsTab);
 
       expect(mockOnTabChange).toHaveBeenCalledWith(
@@ -447,7 +447,9 @@ describe('EntityRightPanelVerticalNav', () => {
       it('should always show custom properties tab for TABLE entity', () => {
         render(<EntityRightPanelVerticalNav {...defaultProps} />);
 
-        expect(screen.getByText('label.custom-property')).toBeInTheDocument();
+        expect(
+          screen.getByText('label.custom-property-plural')
+        ).toBeInTheDocument();
       });
 
       it('should always show custom properties tab for DASHBOARD entity', () => {
@@ -458,7 +460,9 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.getByText('label.custom-property')).toBeInTheDocument();
+        expect(
+          screen.getByText('label.custom-property-plural')
+        ).toBeInTheDocument();
       });
 
       it('should always show custom properties tab for any entity type', () => {
@@ -478,7 +482,9 @@ describe('EntityRightPanelVerticalNav', () => {
             />
           );
 
-          expect(screen.getByText('label.custom-property')).toBeInTheDocument();
+          expect(
+            screen.getByText('label.custom-property-plural')
+          ).toBeInTheDocument();
 
           unmount();
         });
@@ -498,7 +504,7 @@ describe('EntityRightPanelVerticalNav', () => {
         'label.schema',
         'label.lineage',
         'label.data-quality',
-        'label.custom-property',
+        'label.custom-property-plural',
       ]);
     });
 
@@ -517,7 +523,7 @@ describe('EntityRightPanelVerticalNav', () => {
         'label.overview',
         'label.schema',
         'label.lineage',
-        'label.custom-property',
+        'label.custom-property-plural',
       ]);
     });
 
@@ -535,7 +541,7 @@ describe('EntityRightPanelVerticalNav', () => {
       expect(tabLabels).toEqual([
         'label.overview',
         'label.lineage',
-        'label.custom-property',
+        'label.custom-property-plural',
       ]);
     });
   });
@@ -576,7 +582,7 @@ describe('EntityRightPanelVerticalNav', () => {
       expect(mockT).toHaveBeenCalledWith('label.schema');
       expect(mockT).toHaveBeenCalledWith('label.lineage');
       expect(mockT).toHaveBeenCalledWith('label.data-quality');
-      expect(mockT).toHaveBeenCalledWith('label.custom-property');
+      expect(mockT).toHaveBeenCalledWith('label.custom-property-plural');
     });
   });
 
@@ -592,7 +598,7 @@ describe('EntityRightPanelVerticalNav', () => {
       // Should only show overview tab for unknown entity types
       expect(screen.getByText('label.overview')).toBeInTheDocument();
       expect(
-        screen.queryByText('label.custom-property')
+        screen.queryByText('label.custom-property-plural')
       ).not.toBeInTheDocument();
       expect(screen.queryByText('label.schema')).not.toBeInTheDocument();
       expect(screen.queryByText('label.lineage')).not.toBeInTheDocument();

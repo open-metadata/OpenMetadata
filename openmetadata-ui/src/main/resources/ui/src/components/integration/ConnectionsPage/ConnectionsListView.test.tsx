@@ -13,6 +13,10 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  LIST_PAGE_SIZE_OPTIONS,
+} from '../../../constants/constants';
 import { ALL_SERVICES_CATEGORY } from '../../../constants/Services.constant';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { EXTENSION_POINTS } from '../../../utils/ExtensionPointTypes';
@@ -20,10 +24,6 @@ import ConnectionsListView, {
   NAME_COLUMN_WIDTH,
   SECONDARY_COLUMN_WIDTH,
 } from './ConnectionsListView';
-import {
-  GRID_PAGE_SIZE_OPTIONS,
-  LIST_PAGE_SIZE_OPTIONS,
-} from './ConnectionsPage.constants';
 import { ConnectionsCategory } from './useConnectionsData';
 
 const mockNavigate = jest.fn();
@@ -268,6 +268,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Skeleton: () => (
       <span className="tw:animate-pulse" data-testid="count-skeleton" />
     ),
+    FeaturedIcon: ({ icon }: { icon?: React.ReactNode }) => <>{icon}</>,
     Table,
     // Renders only its children (the wrapped name), not the `title`, so the name
     // appears once — the row itself carries navigation via onAction.
@@ -449,7 +450,7 @@ const defaultData = {
   serviceTypeOptions: [{ count: 24, value: 'Mysql' }],
   serviceTypesInTab: ['Mysql'],
   page: 1,
-  pageSize: 10,
+  pageSize: LIST_PAGE_SIZE_OPTIONS[0],
   rows: [row],
   setPage: mockSetPage,
   setPageSize: mockSetPageSize,
@@ -1271,7 +1272,7 @@ describe('ConnectionsListView', () => {
     );
   });
 
-  it('uses twelve cards per grid page and ten rows per list page', () => {
+  it('uses the grid scale for cards and the list scale for rows', () => {
     renderView('grid');
 
     expect(mockUseConnectionsData).toHaveBeenLastCalledWith(

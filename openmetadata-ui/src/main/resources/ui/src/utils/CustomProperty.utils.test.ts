@@ -723,6 +723,12 @@ describe('CustomProperty.utils', () => {
       expect(
         buildUpdatedExtension(extension, 'team', 'hyperlink-cp', {})
       ).toEqual({ owner: 'Riya' });
+      expect(
+        buildUpdatedExtension(extension, 'team', 'table-cp', {
+          columns: ['name'],
+          rows: [],
+        })
+      ).toEqual({ owner: 'Riya' });
     });
 
     it('returns undefined when no values remain', () => {

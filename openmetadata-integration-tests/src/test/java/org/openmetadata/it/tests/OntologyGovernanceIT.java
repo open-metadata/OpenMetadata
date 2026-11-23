@@ -15,15 +15,23 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFParser;
 import org.junit.jupiter.api.AfterEach;
@@ -31,8 +39,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
+import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -41,6 +51,10 @@ import org.openmetadata.schema.api.data.OntologyImportResult;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.rdf.OntologySparqlQueryService;
+import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 
 /** Cross-cutting integration coverage for database-primary ontology governance APIs. */
 @Execution(ExecutionMode.CONCURRENT)
@@ -155,6 +169,7 @@ public class OntologyGovernanceIT {
   }
 
   @Test
+  @ResourceLock("ontology-sparql-worker")
   void scopedSparqlCannotObserveAnotherGlossaryOrSelectExternalGraphs(TestNamespace ns)
       throws Exception {
     Glossary visibleGlossary = GlossaryTestFactory.createWithName(ns, "visibleGlossary");
@@ -179,6 +194,112 @@ public class OntologyGovernanceIT {
             .withQuery("SELECT * FROM <https://example.org/external> WHERE { ?s ?p ?o }");
     HttpResponse<String> rejected = queryOntology(visibleGlossary, external);
     assertEquals(400, rejected.statusCode(), rejected.body());
+  }
+
+  @Test
+  @ResourceLock("ontology-sparql-worker")
+  void rejectsMemoryExhaustionForANonAdminAndServesTheNextQuery(TestNamespace ns) {
+    final Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    final String path = "/v1/glossaries/" + glossary.getId() + "/sparql";
+    final var http = SdkClients.user2Client().getHttpClient();
+    final StringBuilder query = new StringBuilder("SELECT ?s27 WHERE { BIND(\"12345678\" AS ?s0) ");
+    for (int index = 1; index <= 27; index++) {
+      query.append("BIND(CONCAT(?s%d, ?s%d) AS ?s%d) ".formatted(index - 1, index - 1, index));
+    }
+    query.append('}');
+
+    final OpenMetadataException failure =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                http.execute(
+                    HttpMethod.POST,
+                    path,
+                    new SparqlQuery().withQuery(query.toString()),
+                    JsonNode.class));
+
+    assertEquals(400, failure.getStatusCode());
+    assertTrue(failure.getMessage().contains("memory"), failure.getMessage());
+    final JsonNode result =
+        http.execute(HttpMethod.POST, path, new SparqlQuery().withQuery("ASK {}"), JsonNode.class);
+    assertTrue(result.path("boolean").asBoolean());
+  }
+
+  @Test
+  @ResourceLock("ontology-sparql-worker")
+  void servesConcurrentAskQueriesFromDifferentPrincipals(TestNamespace ns) throws Exception {
+    final Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    final String firstToken = SdkClients.user1Client().getConfig().getAccessToken();
+    final String secondToken = SdkClients.user2Client().getConfig().getAccessToken();
+    final CountDownLatch ready = new CountDownLatch(2);
+    try (final var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      final var first = executor.submit(() -> askTogether(glossary, firstToken, ready));
+      final var second = executor.submit(() -> askTogether(glossary, secondToken, ready));
+      for (final var pending : List.of(first, second)) {
+        final HttpResponse<String> response = pending.get(30, TimeUnit.SECONDS);
+        assertEquals(200, response.statusCode(), response.body());
+        assertTrue(OBJECT_MAPPER.readTree(response.body()).path("boolean").asBoolean());
+      }
+    }
+  }
+
+  @Test
+  @ResourceLock("ontology-sparql-worker")
+  void validatesBeforeWorkerAdmissionAndSuggestsRetryForSaturation(TestNamespace ns)
+      throws Exception {
+    assumeFalse(OssTestServer.isExternalMode(), "Requires the embedded server's worker admission");
+    final Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    final CountDownLatch materializing = new CountDownLatch(1);
+    final CountDownLatch release = new CountDownLatch(1);
+    final var holder =
+        new OntologySparqlQueryService(
+            (id, includeRelations) -> {
+              materializing.countDown();
+              try {
+                assertTrue(release.await(20, TimeUnit.SECONDS));
+              } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException(exception);
+              }
+              return ModelFactory.createDefaultModel();
+            },
+            new SparqlFederationGuard(null));
+    try (final var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      final var running =
+          executor.submit(
+              () -> holder.query(glossary.getId(), new SparqlQuery().withQuery("ASK {}")));
+      try {
+        assertTrue(materializing.await(10, TimeUnit.SECONDS));
+        final HttpResponse<String> invalid =
+            queryOntology(glossary, new SparqlQuery().withQuery("not sparql"));
+        assertEquals(400, invalid.statusCode(), invalid.body());
+        final HttpResponse<String> saturated =
+            queryOntology(glossary, new SparqlQuery().withQuery("ASK {}"));
+        assertEquals(429, saturated.statusCode(), saturated.body());
+        assertTrue(
+            Integer.parseInt(saturated.headers().firstValue("Retry-After").orElseThrow()) > 0);
+      } finally {
+        release.countDown();
+      }
+      assertTrue(
+          OBJECT_MAPPER
+              .readTree(running.get(30, TimeUnit.SECONDS).body())
+              .path("boolean")
+              .asBoolean());
+    }
+  }
+
+  private static HttpResponse<String> askTogether(
+      final Glossary glossary, final String token, final CountDownLatch ready) throws Exception {
+    ready.countDown();
+    assertTrue(ready.await(10, TimeUnit.SECONDS));
+    final String path = "/v1/glossaries/" + glossary.getId() + "/sparql";
+    return send(
+        "POST",
+        path,
+        OBJECT_MAPPER.writeValueAsString(new SparqlQuery().withQuery("ASK {}")),
+        "application/json",
+        token);
   }
 
   private static OntologyImportResult importTurtle(Glossary glossary, String body)
@@ -243,10 +364,15 @@ public class OntologyGovernanceIT {
 
   private static HttpResponse<String> send(
       String method, String path, String body, String contentType) throws Exception {
+    return send(method, path, body, contentType, SdkClients.getAdminToken());
+  }
+
+  private static HttpResponse<String> send(
+      String method, String path, String body, String contentType, String token) throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(SdkClients.getServerUrl() + path))
-            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Authorization", "Bearer " + token)
             .header("Content-Type", contentType)
             .timeout(Duration.ofSeconds(60))
             .method(method, HttpRequest.BodyPublishers.ofString(body))

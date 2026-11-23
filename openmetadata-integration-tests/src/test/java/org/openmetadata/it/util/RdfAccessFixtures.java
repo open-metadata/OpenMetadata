@@ -84,7 +84,12 @@ public final class RdfAccessFixtures implements AutoCloseable {
   }
 
   public Role denyRole(final MetadataOperation operation, final String resource) {
-    return role("deny" + operation.value(), operation, resource, Rule.Effect.DENY);
+    return role("deny" + operation.value(), operation, resource, Rule.Effect.DENY, null);
+  }
+
+  public Role denyRole(
+      final MetadataOperation operation, final String resource, final String condition) {
+    return role("deny" + operation.value(), operation, resource, Rule.Effect.DENY, condition);
   }
 
   public String userToken(final String name, final List<UUID> roleIds) {
@@ -184,12 +189,22 @@ public final class RdfAccessFixtures implements AutoCloseable {
       final MetadataOperation operation,
       final String resource,
       final Rule.Effect effect) {
+    return role(name, operation, resource, effect, null);
+  }
+
+  private Role role(
+      final String name,
+      final MetadataOperation operation,
+      final String resource,
+      final Rule.Effect effect,
+      final String condition) {
     final Rule rule =
         new Rule()
             .withName(prefix + effect.value())
             .withOperations(List.of(operation))
             .withResources(List.of(resource))
-            .withEffect(effect);
+            .withEffect(effect)
+            .withCondition(condition);
     final Policy policy =
         admin
             .policies()

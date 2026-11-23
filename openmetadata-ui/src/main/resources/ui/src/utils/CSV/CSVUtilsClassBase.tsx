@@ -25,7 +25,7 @@ import {
   BookOpen02,
   Check,
   Code01,
-  Cube01,
+  DataProduct,
   Globe02,
   Italic01,
   List,
@@ -89,6 +89,10 @@ import {
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   ROUTES,
 } from '../../constants/constants';
+import {
+  GlobalSettingOptions,
+  GlobalSettingsMenuCategory,
+} from '../../constants/GlobalSettings.constants';
 import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -116,7 +120,9 @@ import {
 import { getEntityName } from '../EntityNameUtils';
 import Fqn from '../Fqn';
 import { t } from '../i18next/LocalUtil';
+import { getSettingPath } from '../RouterUtils';
 import { getTermQuery } from '../SearchPureUtils';
+import { getSettingsHashForHref } from '../SettingsModalLinkUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -178,8 +184,10 @@ type CustomPropertyDefinition = NonNullable<Type['customProperties']>[number];
 
 interface InlineDescriptionEditorProps {
   value: string;
+  rowIdx: number;
   onCancel: () => void;
   onComplete: (value: string) => void;
+  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void;
 }
 
 interface InlineTextCellEditorProps {
@@ -958,7 +966,7 @@ const getBulkEditPickerConfig = (
     case 'owner':
     case 'owners':
       return {
-        actionPath: ROUTES.USER_LIST,
+        actionPath: getSettingPath(GlobalSettingsMenuCategory.MEMBERS),
         actionStyle: 'secondary',
         description: t('message.bulk-edit-owners-empty-description'),
         emptyIcon: <Sliders02 size={20} />,
@@ -971,7 +979,10 @@ const getBulkEditPickerConfig = (
 
     case 'reviewers':
       return {
-        actionPath: ROUTES.USER_LIST,
+        actionPath: getSettingPath(
+          GlobalSettingsMenuCategory.MEMBERS,
+          GlobalSettingOptions.USERS
+        ),
         actionStyle: 'secondary',
         description: t('message.bulk-edit-reviewers-empty-description'),
         emptyIcon: <Sliders02 size={20} />,
@@ -1001,7 +1012,7 @@ const getBulkEditPickerConfig = (
         actionPath: ROUTES.DATA_PRODUCT,
         actionStyle: 'secondary',
         description: t('message.bulk-edit-data-products-empty-description'),
-        emptyIcon: <Cube01 size={20} />,
+        emptyIcon: <DataProduct size={20} />,
         emptyTitle: t('message.bulk-edit-no-data-products-available'),
         hint: t('message.bulk-edit-data-products-empty-hint'),
         placeholder: t('message.bulk-edit-data-products-placeholder'),
@@ -1061,8 +1072,15 @@ const getBulkEditPickerConfig = (
   }
 };
 
+// In AI mode settings live in the settings modal, not on a page: open it over
+// the grid instead of a new tab, which would neither keep AI mode nor the edits.
 const openBulkEditPickerPath = (path: string) => {
-  window.open(path, '_blank', 'noopener,noreferrer');
+  const settingsHash = getSettingsHashForHref(path);
+  if (settingsHash === undefined) {
+    window.open(path, '_blank', 'noopener,noreferrer');
+  } else {
+    globalThis.location.hash = settingsHash;
+  }
 };
 
 const renderBulkEditPickerOptionMarker = (option: BulkEditPickerOption) => {
@@ -1274,6 +1292,7 @@ const InlineBulkEditReferencePickerEditor = ({
               // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
               autoFocus
               aria-label={config.searchPlaceholder}
+              autoComplete="off"
               placeholder={config.searchPlaceholder}
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
@@ -1543,9 +1562,9 @@ const InlineCustomPropertiesEditor = ({
           {selectedValue && (
             <ButtonUtility
               aria-label={t('label.clear')}
-              color="tertiary"
               data-testid={`${customProperty.name}-enum-clear`}
-              icon={<XClose size={14} />}
+              icon={XClose}
+              size="xs"
               onClick={() => handleUpdateDraft(customProperty.name, [])}
             />
           )}
@@ -1892,10 +1911,15 @@ const getInlineCustomPropertiesEditor =
 
 const InlineDescriptionEditor = ({
   value,
+  rowIdx,
   onCancel,
   onComplete,
+  onEditCellHeightChange,
 }: InlineDescriptionEditorProps) => {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  // The editor is taller than a grid row; growing the row keeps it from covering the next one.
+  useEditCellHeightReporter(containerRef, rowIdx, onEditCellHeightChange);
   const [draft, setDraft] = useState(value);
 
   useEffect(() => {
@@ -2010,6 +2034,7 @@ const InlineDescriptionEditor = ({
         className="bulk-edit-description-editor tw:z-10 tw:gap-2.5 tw:px-3.5 tw:pt-2.5 tw:pb-3"
         data-testid="bulk-edit-description-editor"
         direction="col"
+        ref={containerRef}
         role="presentation"
         onBlur={handleBlur}>
         <Box
@@ -2044,9 +2069,9 @@ const InlineDescriptionEditor = ({
             },
           ].map(({ label, icon, onClick }) => (
             <ButtonUtility
-              color="tertiary"
               icon={icon}
               key={label}
+              size="lg"
               tooltip={t(label)}
               onClick={onClick}
               onMouseDown={handleToolbarMouseDown}
@@ -2054,8 +2079,8 @@ const InlineDescriptionEditor = ({
           ))}
           <Divider className="tw:mx-2 tw:h-5" orientation="vertical" />
           <ButtonUtility
-            color="tertiary"
             icon={Type01}
+            size="lg"
             tooltip={t('label.clear-formatting')}
             onClick={clearFormatting}
             onMouseDown={handleToolbarMouseDown}
@@ -2125,10 +2150,12 @@ const renderGridEnumSelect = ({
     autoFocus
     defaultOpen
     aria-label={ariaLabel}
-    className="react-grid-select-dropdown"
+    className="react-grid-select-dropdown tw:w-full"
     data-testid={testId}
     items={options.map((option) => ({ id: option.value, label: option.label }))}
-    popoverClassName="react-grid-select-dropdown"
+    // The list portals to <body>; it takes the cell's width (core default) with a floor, never
+    // the page's width.
+    popoverClassName="react-grid-select-dropdown tw:min-w-48"
     size="sm"
     value={value || null}
     // A cleared selection reports null; keep the cell empty rather than "null".
@@ -2217,6 +2244,7 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
   if (options.usePlainTextEditor) {
     return ({
       row,
+      rowIdx,
       onRowChange,
       onClose,
       column,
@@ -2235,9 +2263,11 @@ const getCsvDescriptionEditor: CSVEditorFactory = ({ options }) => {
 
       return (
         <InlineDescriptionEditor
+          rowIdx={rowIdx}
           value={value}
           onCancel={() => onClose(false)}
           onComplete={handleComplete}
+          onEditCellHeightChange={options.onEditCellHeightChange}
         />
       );
     };
@@ -2621,9 +2651,13 @@ const getCsvDomainsEditor: CSVEditorFactory = ({ entityType, options }) => {
     };
 
     return (
+      // The picker anchors below its trigger; the trigger must fill the cell or
+      // the dropdown opens mid-cell, over the field being edited.
       <DomainSelectableList
+        fullWidthTrigger
         hasPermission
         multiple
+        className="tw:h-full tw:w-full"
         popoverProps={{ open: true }}
         selectedDomain={domains}
         onUpdate={(domain) => handleChange(domain as EntityReference[])}>
@@ -2801,7 +2835,7 @@ const getCsvMultiSelectEditor: CSVEditorFactory = ({
             hideDropdown
             multiple
             aria-label={startCase(column.key)}
-            className="react-grid-select-dropdown"
+            className="react-grid-select-dropdown tw:w-full tw:min-w-48"
             icon={null}
             items={[]}
             placeholder={t('label.add-entity', {

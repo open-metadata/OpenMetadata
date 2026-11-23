@@ -245,6 +245,7 @@ public final class AIContextMarkdown {
           .append(typeLabel(item))
           .append(")\n");
       appendYamlInline(markdown, item.getFullyQualifiedName());
+      appendHierarchy(markdown, item);
       appendKnowledgeContent(markdown, item, true);
     }
     if (!found.candidateAssets().isEmpty()) {
@@ -261,6 +262,16 @@ public final class AIContextMarkdown {
       }
     }
     return markdown.toString().strip() + "\n";
+  }
+
+  /** A metric's place in its hierarchy; a count of 0 is left out, as most metrics have none. */
+  private static void appendHierarchy(StringBuilder markdown, KnowledgeItem item) {
+    if (item.getParent() != null) {
+      appendYaml(markdown, "parent", item.getParent().getFullyQualifiedName());
+    }
+    if (orZero(item.getChildrenCount()) > 0) {
+      markdown.append("childrenCount: ").append(item.getChildrenCount()).append('\n');
+    }
   }
 
   private static String typeLabel(KnowledgeItem item) {
