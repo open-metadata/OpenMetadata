@@ -747,6 +747,180 @@ describe('SSOUtils', () => {
       }
     );
 
+    it.each([
+      'https://saml.example.com/api/v1/saml/acs',
+      'https://proxy.example.com/api/v1/saml/acs',
+    ])(
+      'replaces a browser callback an earlier save set to the ACS URL (%s)',
+      (savedCallback) => {
+        const data = getDefaultsForProvider(
+          AuthProvider.Saml,
+          ClientType.Public
+        );
+        const auth = data.authenticationConfiguration;
+        const sp = auth.samlConfiguration?.sp;
+
+        if (!sp) {
+          throw new Error('Missing SAML SP defaults');
+        }
+        auth.callbackUrl = savedCallback;
+        sp.callback = savedCallback;
+        sp.acs = 'https://saml.example.com/api/v1/saml/acs';
+
+        const result = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+        const cleaned = result?.authenticationConfiguration;
+
+        expect(cleaned?.samlConfiguration?.sp?.acs).toBe(sp.acs);
+        expect(cleaned?.samlConfiguration?.sp?.callback).toBe(
+          'https://saml.example.com/callback'
+        );
+        expect(cleaned?.callbackUrl).toBe('https://saml.example.com/callback');
+      }
+    );
+
+    // The base path keeps no trailing slash at runtime, whichever form it was
+    // configured in (ADR:2026-11-17-base-path-has-one-trailing-slash-in-html-and-none-at-runtime).
+    it.each([
+      ['https://saml.example.com/om/api/v1/saml/acs', 'acs-saved'],
+      ['https://saml.example.com/om/api/v1/saml/acs', ''],
+      ['https://saml.example.com/om//api/v1/saml/acs', 'acs-saved'],
+      ['https://saml.example.com/om//api/v1/saml/acs', ''],
+      ['https://saml.example.com/om/api/v1/saml/acs/', 'acs-saved'],
+      ['https://saml.example.com/om/api/v1/saml/acs/', ''],
+    ])(
+      'keeps the base path of the ACS %s in the fallback callback (%s)',
+      (acs, savedCallback) => {
+        const data = getDefaultsForProvider(
+          AuthProvider.Saml,
+          ClientType.Public
+        );
+        const auth = data.authenticationConfiguration;
+        const sp = auth.samlConfiguration?.sp;
+
+        if (!sp) {
+          throw new Error('Missing SAML SP defaults');
+        }
+        const callback = savedCallback ? acs : '';
+        auth.callbackUrl = callback;
+        sp.callback = callback;
+        sp.acs = acs;
+
+        const result = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+        const cleaned = result?.authenticationConfiguration;
+
+        expect(cleaned?.samlConfiguration?.sp?.acs).toBe(acs);
+        expect(cleaned?.samlConfiguration?.sp?.callback).toBe(
+          'https://saml.example.com/om/callback'
+        );
+        expect(cleaned?.callbackUrl).toBe(
+          'https://saml.example.com/om/callback'
+        );
+      }
+    );
+
+    it('keeps a usable SP callback when only the root callback was saved as the ACS URL', () => {
+      const data = getDefaultsForProvider(AuthProvider.Saml, ClientType.Public);
+      const auth = data.authenticationConfiguration;
+      const sp = auth.samlConfiguration?.sp;
+
+      if (!sp) {
+        throw new Error('Missing SAML SP defaults');
+      }
+      auth.callbackUrl = 'https://saml.example.com/api/v1/saml/acs';
+      sp.callback = 'https://ui.example.com/callback';
+      sp.acs = 'https://saml.example.com/api/v1/saml/acs';
+
+      const cleaned = cleanupProviderSpecificFields(
+        data,
+        AuthProvider.Saml
+      )?.authenticationConfiguration;
+
+      expect(cleaned?.callbackUrl).toBe('https://ui.example.com/callback');
+      expect(cleaned?.samlConfiguration?.sp?.callback).toBe(
+        'https://ui.example.com/callback'
+      );
+    });
+
+    it('keeps a configured browser callback under a base path', () => {
+      const data = getDefaultsForProvider(AuthProvider.Saml, ClientType.Public);
+      const auth = data.authenticationConfiguration;
+      const sp = auth.samlConfiguration?.sp;
+
+      if (!sp) {
+        throw new Error('Missing SAML SP defaults');
+      }
+      auth.callbackUrl = 'https://ui.example.com/om/callback';
+      sp.callback = '';
+      sp.acs = 'https://saml.example.com/om/api/v1/saml/acs';
+
+      const cleaned = cleanupProviderSpecificFields(
+        data,
+        AuthProvider.Saml
+      )?.authenticationConfiguration;
+
+      expect(cleaned?.callbackUrl).toBe('https://ui.example.com/om/callback');
+      expect(cleaned?.samlConfiguration?.sp?.callback).toBe(
+        'https://ui.example.com/om/callback'
+      );
+    });
+
+    it('keeps a custom authorizer and fills the defaults only when missing', () => {
+      const custom = getDefaultsForProvider(
+        AuthProvider.Okta,
+        ClientType.Public
+      );
+      custom.authorizerConfiguration.className = 'com.example.CustomAuthorizer';
+      custom.authorizerConfiguration.containerRequestFilter =
+        'com.example.CustomJwtFilter';
+      const missing = getDefaultsForProvider(
+        AuthProvider.Okta,
+        ClientType.Public
+      );
+      delete (missing.authorizerConfiguration as Record<string, unknown>)
+        .className;
+      delete (missing.authorizerConfiguration as Record<string, unknown>)
+        .containerRequestFilter;
+
+      const kept = cleanupProviderSpecificFields(
+        custom,
+        AuthProvider.Okta
+      )?.authorizerConfiguration;
+      const filled = cleanupProviderSpecificFields(
+        missing,
+        AuthProvider.Okta
+      )?.authorizerConfiguration;
+
+      expect(kept?.className).toBe('com.example.CustomAuthorizer');
+      expect(kept?.containerRequestFilter).toBe('com.example.CustomJwtFilter');
+      expect(filled?.className).toBe(
+        'org.openmetadata.service.security.DefaultAuthorizer'
+      );
+      expect(filled?.containerRequestFilter).toBe(
+        'org.openmetadata.service.security.JwtFilter'
+      );
+    });
+
+    it('leaves the data it cleans unchanged', () => {
+      const data = getDefaultsForProvider(AuthProvider.Saml, ClientType.Public);
+      const sp = data.authenticationConfiguration.samlConfiguration?.sp;
+
+      if (!sp) {
+        throw new Error('Missing SAML SP defaults');
+      }
+      data.authenticationConfiguration.callbackUrl =
+        'https://saml.example.com/api/v1/saml/acs';
+      sp.callback = 'https://saml.example.com/api/v1/saml/acs';
+      sp.acs = 'https://saml.example.com/api/v1/saml/acs';
+      const before = JSON.stringify(data);
+
+      const cleaned = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+
+      expect(JSON.stringify(data)).toBe(before);
+      expect(cleaned?.authenticationConfiguration.callbackUrl).toBe(
+        'https://saml.example.com/callback'
+      );
+    });
+
     it('should handle LDAP trustStore cleanup by format', () => {
       const data: FormData = {
         authenticationConfiguration: {
