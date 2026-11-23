@@ -136,7 +136,7 @@ public final class TestLoginRoundTrip {
           "Credential test failed unexpectedly for {} ({})",
           entry.protocol(),
           e.getClass().getSimpleName());
-      TestLoginStageRecorder recorder = TestLoginStageRecorder.forProtocol(entry.protocol());
+      final TestLoginStageRecorder recorder = TestLoginStageRecorder.forProtocol(entry.protocol());
       recorder.pass(TestLoginStage.STARTED);
       recorder.fail(
           TestLoginStage.CREDENTIALS_VERIFIED,
