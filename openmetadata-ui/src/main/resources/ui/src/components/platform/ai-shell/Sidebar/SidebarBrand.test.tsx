@@ -20,6 +20,10 @@ jest.mock('react-router-dom', () => ({
 }));
 
 let mockCustomLogoConfig: Record<string, string> = {};
+let mockTheme = 'light';
+jest.mock('../../../../context/UntitledUIThemeProvider/theme-provider', () => ({
+  useResolvedTheme: () => mockTheme,
+}));
 jest.mock('../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({
     applicationConfig: { customLogoConfig: mockCustomLogoConfig },
@@ -48,6 +52,7 @@ describe('SidebarBrand', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockCustomLogoConfig = {};
+    mockTheme = 'light';
   });
 
   // `/my-data` is the personal-space My Data page in app mode; the brand is
@@ -83,7 +88,7 @@ describe('SidebarBrand', () => {
   it('shows the admin custom logo and monogram when set', () => {
     mockCustomLogoConfig = {
       customLogoUrlPath: 'https://cdn.example.com/logo.svg',
-      customMonogramDarkUrlPath: 'https://cdn.example.com/mark-dark.svg',
+      customMonogramUrlPath: 'https://cdn.example.com/mark.svg',
     };
     const { rerender } = render(<SidebarBrand />);
 
@@ -93,5 +98,19 @@ describe('SidebarBrand', () => {
     rerender(<SidebarBrand variant="rail" />);
 
     expect(screen.getByTestId('custom-monogram')).toBeInTheDocument();
+  });
+
+  it('uses a dark-only custom logo in the dark theme and the build mark in light', () => {
+    mockCustomLogoConfig = {
+      customLogoDarkUrlPath: 'https://cdn.example.com/logo-dark.svg',
+    };
+    const { rerender } = render(<SidebarBrand />);
+
+    expect(screen.getByTestId('logo')).toBeInTheDocument();
+
+    mockTheme = 'dark';
+    rerender(<SidebarBrand />);
+
+    expect(screen.getByTestId('custom-logo')).toBeInTheDocument();
   });
 });

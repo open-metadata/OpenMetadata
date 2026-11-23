@@ -16,6 +16,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
+import { useResolvedTheme } from '../../../../context/UntitledUIThemeProvider/theme-provider';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import brandClassBase from '../../../../utils/BrandData/BrandClassBase';
 import BrandImage from '../../../common/BrandImage/BrandImage';
@@ -54,9 +55,13 @@ const SidebarBrand: React.FC<SidebarBrandProps> = ({ variant = 'panel' }) => {
     customMonogramUrlPath,
     customMonogramDarkUrlPath,
   } = applicationConfig?.customLogoConfig ?? {};
-  const hasCustomLogo = isRail
-    ? Boolean(customMonogramUrlPath || customMonogramDarkUrlPath)
-    : Boolean(customLogoUrlPath || customLogoDarkUrlPath);
+  const isDark = useResolvedTheme() === 'dark';
+  const [lightUrl, darkUrl] = isRail
+    ? [customMonogramUrlPath, customMonogramDarkUrlPath]
+    : [customLogoUrlPath, customLogoDarkUrlPath];
+  // Same choice BrandImage makes; when it resolves to nothing, keep the build's
+  // sidebar mark rather than BrandImage's generic default.
+  const hasCustomLogo = Boolean((isDark && darkUrl) || lightUrl);
 
   const renderBrand = () => {
     if (hasCustomLogo) {

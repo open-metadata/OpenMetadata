@@ -423,6 +423,8 @@ describe('useResolvedTheme', () => {
 
   afterEach(() => {
     document.documentElement.classList.remove('dark-mode');
+    localStorage.removeItem('ui-theme');
+    mockIsAiMode = true;
   });
 
   it('follows the boot script root class on pre-auth pages without a provider', () => {
@@ -450,8 +452,5 @@ describe('useResolvedTheme', () => {
 
     // Classic mode is light-only, whatever the stored preference.
     expect(screen.getByTestId('resolved-theme')).toHaveTextContent('light');
-
-    mockIsAiMode = true;
-    localStorage.removeItem('ui-theme');
   });
 });

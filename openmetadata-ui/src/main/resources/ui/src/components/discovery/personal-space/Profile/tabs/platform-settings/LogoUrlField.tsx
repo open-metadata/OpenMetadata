@@ -32,7 +32,7 @@ import classNames from 'classnames';
 import type { FC, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
-import { useWatch } from 'react-hook-form';
+import { useFormState, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import LogoPreview from './LogoPreview';
 import {
@@ -329,8 +329,15 @@ interface LogoUrlFieldProps {
   onBlockingChange: (name: LogoUrlKey, isBlocking: boolean) => void;
 }
 
-const isBlockingStatus = ({ status }: ImageCheck) =>
-  status === 'invalid' || status === 'loading' || status === 'error';
+const BLOCKING_STATUSES: ImageStatus[] = ['invalid', 'loading', 'error'];
+
+// Only URLs edited in this session block Save, so a saved logo that no longer
+// loads (or is unreachable from this browser) cannot hold up a colour change.
+const blocksSave = (
+  dirtyFields: Partial<Record<LogoUrlKey, boolean>>,
+  key: LogoUrlKey | undefined,
+  { status }: ImageCheck
+) => Boolean(key && dirtyFields[key]) && BLOCKING_STATUSES.includes(status);
 
 /** One logo URL with its light/dark previews and optional dark-mode variant. */
 const LogoUrlField = ({
@@ -351,8 +358,10 @@ const LogoUrlField = ({
   const [isDarkOpen, setIsDarkOpen] = useState(false);
   const lightCheck = useImageCheck(url);
   const darkCheck = useImageCheck(darkUrl);
+  const { dirtyFields } = useFormState({ control: form.control });
   const isBlocking =
-    isBlockingStatus(lightCheck) || isBlockingStatus(darkCheck);
+    blocksSave(dirtyFields, name, lightCheck) ||
+    blocksSave(dirtyFields, dark?.name, darkCheck);
   const isHardToSee = !darkUrl && lightCheck.isHardToSeeOnDark;
 
   useEffect(() => {

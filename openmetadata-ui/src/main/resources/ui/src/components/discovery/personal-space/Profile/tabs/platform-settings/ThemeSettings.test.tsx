@@ -264,18 +264,48 @@ describe('Theme settings', () => {
   it.each([
     ['error', 'message.image-url-load-error'],
     ['invalid', 'message.enter-full-url-starting-with-https'],
-  ])('shows the %s message live and blocks saving', (status, message) => {
+  ])(
+    'shows the %s message live and blocks saving an edited URL',
+    async (status, message) => {
+      const editedUrl = 'https://cdn.example.com/new-logo.svg';
+      mockImageCheck.mockImplementation((url?: string) => ({
+        status: url === editedUrl ? status : 'loaded',
+        isHardToSeeOnDark: false,
+      }));
+
+      render(<ThemeSettingsForm showHint={false} onNavigate={onNavigate} />);
+
+      expect(screen.getByTestId('save-button')).toBeEnabled();
+
+      fireEvent.change(
+        screen
+          .getByTestId('customLogoUrlPath')
+          .querySelector('input') as HTMLInputElement,
+        { target: { value: editedUrl } }
+      );
+
+      expect(screen.getByTestId('customLogoUrlPath-error')).toHaveTextContent(
+        message
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('save-button')).toBeDisabled()
+      );
+    }
+  );
+
+  it('does not block saving on a saved logo URL that fails to load', () => {
     mockImageCheck.mockImplementation((url?: string) => ({
-      status: url === 'https://cdn.example.com/logo.svg' ? status : 'idle',
+      status: url ? 'error' : 'idle',
       isHardToSeeOnDark: false,
     }));
 
     render(<ThemeSettingsForm showHint={false} onNavigate={onNavigate} />);
 
     expect(screen.getByTestId('customLogoUrlPath-error')).toHaveTextContent(
-      message
+      'message.image-url-load-error'
     );
-    expect(screen.getByTestId('save-button')).toBeDisabled();
+    expect(screen.getByTestId('save-button')).toBeEnabled();
   });
 
   it('warns when the logo is hard to see in dark mode and no dark version is set', () => {
