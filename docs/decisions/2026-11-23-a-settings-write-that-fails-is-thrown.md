@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-23 (initial)
 - **Deciders:** Adrià Manero
-- **Guard:** `SystemRepositoryFailedWriteTest` (a write that fails is thrown and stores nothing)
+- **Guard:** `OpenMetadataOperationsSecurityConfigTest` (an authorizer that cannot be stored makes `update-security-config` exit 1)
 - **Related:** PR #38315
 
 ## Context
