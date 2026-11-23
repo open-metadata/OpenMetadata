@@ -7,10 +7,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.search.ReindexHelpers;
+import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -92,6 +95,20 @@ class OntologyTermSearchIT {
                           table.getFullyQualifiedName(),
                           table.getColumns().getFirst().getFullyQualifiedName()));
 
+      final var draft =
+          SdkClients.adminClient()
+              .ontologyConcepts()
+              .create(
+                  new CreateOntologyConcept()
+                      .withName("DraftOnly")
+                      .withConceptType(OntologyConceptType.OWL_CLASS)
+                      .withOntology(ontology.getFullyQualifiedName()));
+      reindexTerms();
+      assertThat(find(ALIAS, "DraftOnly", draft)).isNull();
+      assertThat(find(ALIAS, "shipment", order)).isNull();
+      assertThat(boundAssets(purchase, order)).contains(table.getFullyQualifiedName());
+      assertThat(find(ALIAS, "tracking", property)).isNotNull();
+
       SdkClients.adminClient().ontologyProperties().delete(property.getId());
       SdkClients.adminClient()
           .getHttpClient()
@@ -127,6 +144,26 @@ class OntologyTermSearchIT {
         .getHttpClient()
         .execute(
             HttpMethod.PATCH, "/v1/ontologyConcepts/" + term.getId(), patch, OntologyConcept.class);
+  }
+
+  private static void reindexTerms() {
+    final var server = OssTestServer.defaultHandle();
+    final var timeout = Duration.ofMinutes(2);
+    final long triggeredAt = System.currentTimeMillis();
+    ReindexHelpers.triggerSearchIndexWithConfigWhenIdle(
+        server,
+        Map.of("entities", List.of("ontologyConcept", "ontologyProperty"), "recreateIndex", true),
+        timeout);
+    ReindexHelpers.waitForRunStartedSince(
+        server, ReindexHelpers.SEARCH_INDEX_APP, triggeredAt, timeout);
+    await()
+        .atMost(timeout)
+        .untilAsserted(
+            () ->
+                assertThat(
+                        ReindexHelpers.isSuccess(
+                            ReindexHelpers.fetchLatestRun(server, ReindexHelpers.SEARCH_INDEX_APP)))
+                    .isTrue());
   }
 
   private static Ontology createOntology(TestNamespace ns) {

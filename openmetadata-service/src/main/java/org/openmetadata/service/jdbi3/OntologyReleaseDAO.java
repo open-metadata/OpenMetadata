@@ -97,13 +97,15 @@ public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
 
   @ConnectionAwareSqlQuery(
       value =
-          "SELECT * FROM ontology_release_member WHERE releaseId = :releaseId AND memberKind = 'CONCEPT' "
-              + "AND JSON_UNQUOTE(JSON_EXTRACT(payload, '$.iri')) COLLATE utf8mb4_bin IN (<iris>)",
+          "SELECT m.* FROM ontology_release_member m JOIN ontology_release_entity r ON r.id = m.releaseId "
+              + "WHERE m.releaseId = :releaseId AND r.sealedAt IS NOT NULL AND m.memberKind = 'CONCEPT' "
+              + "AND JSON_UNQUOTE(JSON_EXTRACT(m.payload, '$.iri')) COLLATE utf8mb4_bin IN (<iris>)",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
       value =
-          "SELECT * FROM ontology_release_member WHERE releaseId = :releaseId AND memberKind = 'CONCEPT' "
-              + "AND payload::jsonb ->> 'iri' IN (<iris>)",
+          "SELECT m.* FROM ontology_release_member m JOIN ontology_release_entity r ON r.id = m.releaseId "
+              + "WHERE m.releaseId = :releaseId AND r.sealedAt IS NOT NULL AND m.memberKind = 'CONCEPT' "
+              + "AND m.payload::jsonb ->> 'iri' IN (<iris>)",
       connectionType = POSTGRES)
   @RegisterRowMapper(MemberMapper.class)
   List<OntologyReleaseMember> listConceptsByIri(

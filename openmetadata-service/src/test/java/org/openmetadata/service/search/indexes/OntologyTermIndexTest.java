@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.EntityReference;
@@ -25,6 +26,8 @@ class OntologyTermIndexTest {
 
   @Test
   void indexesAConceptWithItsSynonymsAndBindings() {
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.putIfAbsent(
+        "ontologyconcept", Entity.ONTOLOGY_CONCEPT);
     final var term =
         new OntologyConcept()
             .withId(UUID.randomUUID())
