@@ -194,7 +194,7 @@ if [[ -n "$ingestion_image_path" ]]; then
   fi
 fi
 
-# restore-playwright-test-environment pulls the database and search images
+# setup-openmetadata-test-environment pulls the database and search images
 # before this script's 5m budget starts, so these are normally cache hits.
 # The AutoPilot MySQL source is started only after the server is healthy, so a
 # bare `docker run` there pulled it late with no retry (run 36851901152 failed

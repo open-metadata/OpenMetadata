@@ -114,7 +114,6 @@ FIXTURE_PREFIXES = (
     "openmetadata-ui/src/main/resources/ui/src/utils/SwTokenStorageUtils.ts",
     "openmetadata-ui/src/main/resources/ui/yarn.lock",
     ".github/actions/setup-openmetadata-test-environment/",
-    ".github/actions/restore-playwright-test-environment/",
     ".github/scripts/create_playwright_fixture.sh",
     ".github/scripts/playwright_fixture_profile.sh",
     ".github/scripts/start_playwright_fast_environment.sh",

@@ -60,8 +60,6 @@ Stack startup does not prepare or modify host Python environments. Python integr
 and operator jobs explicitly prepare their locked profile after startup; browser jobs use container
 ingestion without host Python dependencies. Classification models are verified during Python
 preparation. Nox still prepares the selected profile before tests.
-Docker startup and Playwright fixture restoration use separate composite actions, each exposing
-only the inputs needed by its startup path.
 Failure diagnostics are collected before the hosted runner is discarded, without
 explicit Docker teardown or local data deletion. Test results retain JUnit and outcome metadata;
 raw test logs are uploaded for

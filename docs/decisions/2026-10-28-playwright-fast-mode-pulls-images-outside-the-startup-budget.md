@@ -5,7 +5,7 @@
 - **Deciders:** Shrabanti Paul
 - **Guard:** reviewer
 - **Related:** open-metadata/OpenMetadata#36404, open-metadata/OpenMetadata#36509,
-  `.github/actions/restore-playwright-test-environment/action.yml`,
+  `.github/actions/setup-openmetadata-test-environment/action.yml`,
   ADR:2026-10-28-playwright-golden-fixtures-are-scoped-to-their-seed-database
 
 ## Context
