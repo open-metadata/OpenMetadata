@@ -87,6 +87,10 @@ updates:
         update-types: ["version-update:semver-minor"]
       - dependency-name: "react-aria"
         update-types: ["version-update:semver-minor"]
+      # Same reason: core imports echarts-for-react/esm/core as an external, and 3.1.0's
+      # exports map no longer allows that path.
+      - dependency-name: "echarts-for-react"
+        update-types: ["version-update:semver-minor"]
 
   - package-ecosystem: "github-actions"
     directory: "/"

@@ -144,7 +144,7 @@
     "diff": "^8.0.3",
     "dompurify": "^3.4.18",
     "echarts": "^6.1.0",
-    "echarts-for-react": "^3.1.0",
+    "echarts-for-react": "^3.0.6",
     "elkjs": "^0.12.1",
     "eventemitter3": "^5.0.1",
     "fast-json-patch": "^3.1.1",
