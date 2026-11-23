@@ -21,6 +21,7 @@ import com.onelogin.saml2.servlet.ServletUtils;
 import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.util.Constants;
 import com.onelogin.saml2.util.Util;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import org.joda.time.DateTime;
@@ -69,11 +70,27 @@ public final class SamlResponseValidator {
 
   static void validate(Saml2Settings settings, HttpRequest request) {
     try {
+      requireEncryptedAssertion(settings, request);
       validate(settings, new SamlResponse(settings, request));
     } catch (AuthenticationException e) {
       throw e;
     } catch (Exception e) {
       throw rejected(e.getMessage());
+    }
+  }
+
+  private static void requireEncryptedAssertion(Saml2Settings settings, HttpRequest request)
+      throws Exception {
+    if (settings.getWantAssertionsEncrypted()) {
+      final Document document =
+          Util.loadXML(
+              new String(
+                  Util.base64decoder(request.getParameter("SAMLResponse")),
+                  StandardCharsets.UTF_8));
+      if (Util.query(document, "/samlp:Response/saml:EncryptedAssertion").getLength() != 1
+          || Util.query(document, "/samlp:Response/saml:Assertion").getLength() != 0) {
+        throw rejected("the assertion is not encrypted and the SP requires it");
+      }
     }
   }
 
