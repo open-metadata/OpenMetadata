@@ -1,26 +1,19 @@
-name: Check Python
+name: Run Python static checks
 description: Run formatting, lint, and optional type checks with locked tools.
 inputs:
   python-version:
     description: Python interpreter for the checks.
     required: true
   check-types:
-    description: Run type checks in addition to formatting and lint.
+    description: Run ingestion type checks in addition to formatting and lint.
     default: 'false'
 runs:
   using: composite
   steps:
     - uses: ./.github/actions/prepare-python-environment
-      if: inputs.check-types == 'true'
       with:
         python-version: ${{ inputs.python-version }}
         profile: types
-    - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-      if: inputs.check-types != 'true'
-      with:
-        python-version: ${{ inputs.python-version }}
-    - uses: ./.github/actions/setup-uv
-      if: inputs.check-types != 'true'
     - name: Check formatting and lint
       run: make py_format_check
       shell: bash

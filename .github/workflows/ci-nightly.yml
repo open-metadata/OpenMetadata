@@ -75,8 +75,8 @@ jobs:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
           fetch-depth: 1
-      - name: Run Python checks
-        uses: ./.github/actions/python-checks
+      - name: Run Python static checks
+        uses: ./.github/actions/python-static-checks
         with:
           python-version: ${{ needs.plan.outputs.python-lowest }}
           check-types: 'true'

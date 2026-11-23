@@ -33,8 +33,9 @@ For relevant changes, select these workloads:
 | Nightly | Full supported matrix | Full supported matrix | Highest supported Python |
 
 Formatting, lint and type checks share one job on the lowest supported Python, with separate
-steps and isolated tool environments. Changes that only select formatting/lint do not install
-the type-checking environment.
+steps and isolated tool environments. Both formatting/lint-only and type-checking runs share the
+same environment preparation. Airflow API changes alone select formatting/lint without ingestion
+type checks.
 
 `ci-pr.yml`, `ci-merge-queue.yml` and `ci-nightly.yml` own their respective triggers, workload
 selection, Python matrices, dependencies, permissions and required `py-tests-status` check.
