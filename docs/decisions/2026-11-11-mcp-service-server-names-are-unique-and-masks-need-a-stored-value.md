@@ -1,9 +1,9 @@
 # MCP service server names are unique, and a masked value is kept only where a stored value exists
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-11 (initial); v2 2026-11-14 (checked on any server change, order included); v3 2026-11-19 (secret ids of list elements stay distinct once cleaned)
+- **Revisions:** v1 2026-11-11 (initial); v2 2026-11-14 (checked on any server change, order included); v3 2026-11-19 (secret ids of list elements stay distinct once cleaned); v4 2026-11-23 (allocate a fresh id when another element still references a list element's default id)
 - **Deciders:** backend
-- **Guard:** `PasswordEntityMaskerTest.testMaskedSecretWithNoStoredValueIsRejected`, `PasswordEntityMaskerTest.testNamesSharingASecretIdKeepTheirOwnKeysWhenReordered`; `ReflectionUtilCollectionKeysTest`, `SecretMapEntriesExternalStoreTest.reorderingServersThatShareACleanedNameThenReplacingOneKeyKeepsTheOther`; `McpServiceResourceIT.post_mcpServiceWithDuplicateServerNames_400`, `McpServiceResourceIT.put_renamedServerWithMaskedApiKey_400_keepsStoredKey`, `McpServiceResourceIT.put_reorderedStoredServersWithSameName_400_otherEditsStillSave`
+- **Guard:** `PasswordEntityMaskerTest.testMaskedSecretWithNoStoredValueIsRejected`, `PasswordEntityMaskerTest.testNamesSharingASecretIdKeepTheirOwnKeysWhenReordered`; `ReflectionUtilCollectionKeysTest`, `SecretMapEntriesExternalStoreTest.reorderingServersThatShareACleanedNameThenReplacingOneKeyKeepsTheOther`, `SecretMapEntriesExternalStoreTest.renamingAServerThenReusingItsOldNameInALaterSaveKeepsBothKeys`, `ListSecretReferenceAllocationTest`, `SecretsManagerNullSecretIT.renamedMcpServerKeepsItsApiKeyWhenOldNameIsReusedAndSwapped`; `McpServiceResourceIT.post_mcpServiceWithDuplicateServerNames_400`, `McpServiceResourceIT.put_renamedServerWithMaskedApiKey_400_keepsStoredKey`, `McpServiceResourceIT.put_reorderedStoredServersWithSameName_400_otherEditsStillSave`
 - **Related:** open-metadata/openmetadata-collate#7962, ADR:2026-10-24-a-masked-connection-secret-is-kept-only-while-the-endpoint-is-unchanged
 
 ## Context
@@ -52,3 +52,28 @@ deleted from, the id computed for the element on that save. With position ids, s
 and then editing one key overwrote, or deleted, the secret the other server still referenced.
 Server names are still only refused when they repeat exactly: `Prod` and `prod` are accepted, keep
 their own keys through a reorder, and get distinct, stable secret ids.
+
+## Amendment (v4, 2026-11-23)
+
+Renaming a list element (or deleting a position-keyed element so a later element shifts down) keeps
+the element's existing `secret:` reference pointing at its old id. Writing a new secret under that
+old name or position previously overwrote (or, when cleared, deleted) the secret the renamed or
+shifted element still referenced.
+
+- **Reference-based allocation:** before writing or clearing a password field inside a collection
+  element on an external secrets manager, `SecretsManager` collects every `secret:` reference from
+  both the locked stored config (passed by `ServiceEntityRepository` / `IngestionPipelineRepository`)
+  and the incoming config — never probing the vault. References are compared by the provider's
+  `canonicalSecretName`.
+- **Overwrite vs. fresh id:** a new value writes to the element's default id (or reuses a fresh id
+  already held by that exact slot) only when no other slot in the stored or incoming config still
+  references it; otherwise it writes to a fresh id (`<defaultId><sep><13-char base32 suffix>`, with
+  a hashed fallback under the entity root when a provider's max length would be exceeded). If a
+  provider refuses a soft-deleted name (such as Azure Key Vault 409), the write falls back to a
+  fresh id as well.
+- **Clearing:** clearing a list element's secret never deletes an id referenced by another slot or a
+  reference pointing outside the element's own id.
+- **Ownership and rollback safety:** checking the stored config prevents a save that later fails in
+  the database from overwriting a secret still referenced by the committed entity. `SecretMapOwnership`
+  records the actual secret id written for each plaintext slot (including fresh ids), so hard delete
+  removes every owned secret while leaving user-supplied references untouched.

@@ -19,6 +19,7 @@ import static org.openmetadata.service.Entity.INGESTION_PIPELINE;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -231,8 +233,8 @@ public abstract class ServiceEntityRepository<
     writeWithSecretOwnership(
         List.of(service),
         update,
-        () -> {
-          encryptConnection(service);
+        originals -> {
+          encryptConnection(service, originals.getFirst());
           super.store(service, update, expectedVersion);
         });
   }
@@ -242,8 +244,10 @@ public abstract class ServiceEntityRepository<
     writeWithSecretOwnership(
         services,
         false,
-        () -> {
-          services.forEach(this::encryptConnection);
+        originals -> {
+          for (int i = 0; i < services.size(); i++) {
+            encryptConnection(services.get(i), originals.get(i));
+          }
           super.storeMany(services);
         });
   }
@@ -253,8 +257,10 @@ public abstract class ServiceEntityRepository<
     writeWithSecretOwnership(
         services,
         true,
-        () -> {
-          services.forEach(this::encryptConnection);
+        originals -> {
+          for (int i = 0; i < services.size(); i++) {
+            encryptConnection(services.get(i), originals.get(i));
+          }
           super.updateMany(services);
         });
   }
@@ -263,10 +269,10 @@ public abstract class ServiceEntityRepository<
     return manager.secretInventory(entity, serviceType);
   }
 
-  private void writeWithSecretOwnership(List<T> entities, boolean update, Runnable write) {
+  private void writeWithSecretOwnership(List<T> entities, boolean update, Consumer<List<T>> write) {
     SecretsManager manager = SecretsManagerFactory.getSecretsManager();
     if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
-      write.run();
+      write.accept(Collections.nCopies(entities.size(), null));
       return;
     }
     List<SecretInventory> inputs =
@@ -276,16 +282,16 @@ public abstract class ServiceEntityRepository<
           SecretMapOwnership ownership =
               new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
           ownership.lock();
-          List<SecretInventory> originals =
+          List<T> originalEntities =
               entities.stream()
-                  .map(
-                      entity ->
-                          update
-                              ? secretInventory(manager, lockStoredForSecretWrite(entity))
-                              : null)
+                  .map(entity -> update ? lockStoredForSecretWrite(entity) : null)
+                  .toList();
+          List<SecretInventory> originals =
+              originalEntities.stream()
+                  .map(original -> original == null ? null : secretInventory(manager, original))
                   .toList();
           SecretMapOwnership.preserveWriteInputs(daoCollection, entities);
-          write.run();
+          write.accept(originalEntities);
           for (int i = 0; i < entities.size(); i++) {
             T entity = entities.get(i);
             ownership.recordWrite(
@@ -336,14 +342,19 @@ public abstract class ServiceEntityRepository<
         });
   }
 
-  private void encryptConnection(T service) {
+  private void encryptConnection(T service, T original) {
     if (service.getConnection() != null) {
+      Object originalConfig =
+          original != null && original.getConnection() != null
+              ? original.getConnection().getConfig()
+              : null;
       service
           .getConnection()
           .setConfig(
               SecretsManagerFactory.getSecretsManager()
                   .encryptServiceConnectionConfig(
                       service.getConnection().getConfig(),
+                      originalConfig,
                       service.getServiceType().value(),
                       service.getName(),
                       serviceType));

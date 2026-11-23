@@ -138,6 +138,11 @@ public abstract class ExternalSecretsManager extends SecretsManager {
     return SECRET_FIELD_PREFIX + secretId;
   }
 
+  @Override
+  protected void validateSecretValue(String fieldName, String value) {
+    rejectReservedPlaceholder(fieldName, value);
+  }
+
   /**
    * Whether a write failed because the provider keeps the name for a secret deleted earlier. Only
    * providers that delete softly, keeping the name for a retention period, override this.

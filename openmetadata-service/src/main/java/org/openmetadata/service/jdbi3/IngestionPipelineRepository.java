@@ -755,12 +755,20 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return true;
   }
 
+  private static final ThreadLocal<Map<UUID, IngestionPipeline>> STORED_ORIGINALS_FOR_WRITE =
+      new ThreadLocal<>();
+
   @Override
   protected IngestionPipeline prepareForStorage(IngestionPipeline ingestionPipeline) {
     final SecretsManager secretsManager = SecretsManagerFactory.getSecretsManager();
 
     if (secretsManager != null) {
-      secretsManager.encryptIngestionPipeline(ingestionPipeline);
+      Map<UUID, IngestionPipeline> originals = STORED_ORIGINALS_FOR_WRITE.get();
+      IngestionPipeline original =
+          originals != null && ingestionPipeline.getId() != null
+              ? originals.get(ingestionPipeline.getId())
+              : null;
+      secretsManager.encryptIngestionPipeline(ingestionPipeline, original);
     }
     return ingestionPipeline;
   }
@@ -826,16 +834,34 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           SecretMapOwnership ownership =
               new SecretMapOwnership(daoCollection.entityExtensionDAO(), manager);
           ownership.lock();
-          List<SecretInventory> originals =
+          List<IngestionPipeline> originalEntities =
               entities.stream()
-                  .map(
-                      entity ->
-                          update
-                              ? secretInventory(manager, lockStoredForSecretWrite(entity))
-                              : null)
+                  .map(entity -> update ? lockStoredForSecretWrite(entity) : null)
+                  .toList();
+          List<SecretInventory> originals =
+              originalEntities.stream()
+                  .map(original -> original == null ? null : secretInventory(manager, original))
                   .toList();
           SecretMapOwnership.preserveWriteInputs(daoCollection, entities);
-          write.run();
+          Map<UUID, IngestionPipeline> previousOriginals = STORED_ORIGINALS_FOR_WRITE.get();
+          Map<UUID, IngestionPipeline> scopedOriginals =
+              previousOriginals == null ? new HashMap<>() : new HashMap<>(previousOriginals);
+          for (int i = 0; i < entities.size(); i++) {
+            IngestionPipeline originalEntity = originalEntities.get(i);
+            if (originalEntity != null && entities.get(i).getId() != null) {
+              scopedOriginals.put(entities.get(i).getId(), originalEntity);
+            }
+          }
+          STORED_ORIGINALS_FOR_WRITE.set(scopedOriginals);
+          try {
+            write.run();
+          } finally {
+            if (previousOriginals == null) {
+              STORED_ORIGINALS_FOR_WRITE.remove();
+            } else {
+              STORED_ORIGINALS_FOR_WRITE.set(previousOriginals);
+            }
+          }
           for (int i = 0; i < entities.size(); i++) {
             IngestionPipeline entity = entities.get(i);
             ownership.recordWrite(

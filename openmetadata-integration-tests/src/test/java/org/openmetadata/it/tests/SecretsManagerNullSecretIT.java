@@ -36,11 +36,14 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
+import org.openmetadata.schema.api.services.CreateMcpService;
+import org.openmetadata.schema.api.services.CreateMcpService.McpServiceType;
 import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.CreateMessagingService.MessagingServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.McpService;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -52,9 +55,13 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpHeaders;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
+import org.openmetadata.schema.services.connections.mcp.McpConnection.DiscoveryMethod;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig.TransportType;
 import org.openmetadata.schema.services.connections.messaging.ConsumerConfig;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.McpConnection;
 import org.openmetadata.schema.type.MessagingConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
@@ -69,6 +76,7 @@ import org.openmetadata.service.secrets.ExternalSecretsManager;
 import org.openmetadata.service.secrets.InMemorySecretsManager;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RequestEntityCache;
 
@@ -862,6 +870,119 @@ public class SecretsManagerNullSecretIT {
     assertTrue(stagedFields.contains("description"), stagedFields.toString());
     assertFalse(stagedFields.contains("connection"), stagedFields.toString());
     assertFalse(stagedFields.contains("serviceAttributes"), stagedFields.toString());
+  }
+
+  /**
+   * Reproduces #38241 end to end: renaming an MCP server keeps its existing secret reference, and
+   * later reusing its old name or swapping names and editing a key must allocate a fresh secret id
+   * instead of overwriting the other server's key — and hard delete must clean up all secrets.
+   */
+  @Test
+  void renamedMcpServerKeepsItsApiKeyWhenOldNameIsReusedAndSwapped(TestNamespace ns) {
+    String serviceName = ns.prefix("mcp_rename_reuse");
+    String mcpPath = "/v1/services/mcpServices";
+    CreateMcpService createRequest =
+        new CreateMcpService()
+            .withName(serviceName)
+            .withServiceType(McpServiceType.Mcp)
+            .withConnection(mcpDirectConnection(mcpServer("alpha", "alpha-key-1")));
+    McpService created = SdkClients.adminClient().mcpServices().create(createRequest);
+    ns.trackRoot(Entity.MCP_SERVICE, created);
+    String root = entitySecretRoot("mcp", serviceName);
+
+    // 1. Rename alpha -> beta via PATCH without changing its key.
+    ArrayNode renamePatch = JsonUtils.getObjectMapper().createArrayNode();
+    renamePatch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/connection/config/servers/0/name")
+        .put("value", "beta");
+    SdkClients.adminClient().mcpServices().patch(created.getId(), renamePatch);
+
+    // 2. Add a new server named alpha via PUT while keeping beta masked.
+    CreateMcpService addAlphaRequest =
+        new CreateMcpService()
+            .withName(serviceName)
+            .withServiceType(McpServiceType.Mcp)
+            .withConnection(
+                mcpDirectConnection(
+                    mcpServer("beta", PasswordEntityMasker.PASSWORD_MASK),
+                    mcpServer("alpha", "alpha-key-2")));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, mcpPath, addAlphaRequest, McpService.class);
+
+    Map<String, String> afterReuse = mcpBotReferences(created.getId().toString());
+    assertTrue(afterReuse.get("beta").startsWith(SecretsManager.SECRET_FIELD_PREFIX));
+    assertTrue(afterReuse.get("alpha").startsWith(SecretsManager.SECRET_FIELD_PREFIX));
+    assertFalse(afterReuse.get("beta").equals(afterReuse.get("alpha")));
+    assertEquals("alpha-key-1", vault.getSecretValue(afterReuse.get("beta")));
+    assertEquals("alpha-key-2", vault.getSecretValue(afterReuse.get("alpha")));
+
+    // 3. Swap beta <-> alpha via PATCH, then edit beta's key via PUT while keeping alpha masked.
+    ArrayNode swapPatch = JsonUtils.getObjectMapper().createArrayNode();
+    swapPatch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/connection/config/servers/0/name")
+        .put("value", "alpha");
+    swapPatch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/connection/config/servers/1/name")
+        .put("value", "beta");
+    SdkClients.adminClient().mcpServices().patch(created.getId(), swapPatch);
+
+    CreateMcpService editAfterSwap =
+        new CreateMcpService()
+            .withName(serviceName)
+            .withServiceType(McpServiceType.Mcp)
+            .withConnection(
+                mcpDirectConnection(
+                    mcpServer("alpha", PasswordEntityMasker.PASSWORD_MASK),
+                    mcpServer("beta", "beta-key-3")));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, mcpPath, editAfterSwap, McpService.class);
+
+    Map<String, String> afterSwapEdit = mcpBotReferences(created.getId().toString());
+    assertEquals("alpha-key-1", vault.getSecretValue(afterSwapEdit.get("alpha")));
+    assertEquals("beta-key-3", vault.getSecretValue(afterSwapEdit.get("beta")));
+
+    // 4. Hard delete cleans up every secret under this MCP service (including fresh ids).
+    SdkClients.adminClient()
+        .mcpServices()
+        .delete(created.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    assertFalse(vault.getSecretsMap().keySet().stream().anyMatch(id -> id.startsWith(root + "/")));
+  }
+
+  private static McpConnection mcpDirectConnection(McpServerConfig... servers) {
+    return new McpConnection()
+        .withConfig(
+            new org.openmetadata.schema.services.connections.mcp.McpConnection()
+                .withDiscoveryMethod(DiscoveryMethod.DirectConnection)
+                .withServers(List.of(servers)));
+  }
+
+  private static McpServerConfig mcpServer(String name, String apiKey) {
+    return new McpServerConfig()
+        .withName(name)
+        .withTransport(TransportType.StreamableHTTP)
+        .withUrl("http://localhost:9000/mcp")
+        .withApiKey(apiKey);
+  }
+
+  private static Map<String, String> mcpBotReferences(String serviceId) {
+    McpService botView = SdkClients.ingestionBotClient().mcpServices().get(serviceId);
+    org.openmetadata.schema.services.connections.mcp.McpConnection config =
+        JsonUtils.convertValue(
+            botView.getConnection().getConfig(),
+            org.openmetadata.schema.services.connections.mcp.McpConnection.class);
+    Map<String, String> references = new java.util.HashMap<>();
+    for (McpServerConfig server : config.getServers()) {
+      references.put(server.getName(), server.getApiKey());
+    }
+    return references;
   }
 
   private static CreateDatabaseService request(String serviceName) {

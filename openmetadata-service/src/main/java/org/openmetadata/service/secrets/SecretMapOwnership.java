@@ -92,8 +92,8 @@ public final class SecretMapOwnership {
       state.owned().addAll(original.storedMaps());
       scalars.addAll(original.storedScalars());
     }
-    state.owned().addAll(input.writtenMaps());
-    scalars.addAll(input.writtenScalars());
+    state.owned().addAll(stored.writtenSecretsFor(input.writtenMaps()));
+    scalars.addAll(stored.writtenSecretsFor(input.writtenScalars()));
     state.owners().put(owner, new Owner(stored.references(), scalars));
     save(stored.root(), state);
   }
@@ -112,8 +112,21 @@ public final class SecretMapOwnership {
 
   public void clean(String root) {
     State state = load(root);
-    Set<String> removed = new HashSet<>(state.owned());
-    state.owners().values().forEach(owner -> removed.removeAll(owner.references()));
+    Set<String> liveReferences = new HashSet<>();
+    state
+        .owners()
+        .values()
+        .forEach(
+            owner ->
+                owner
+                    .references()
+                    .forEach(ref -> liveReferences.add(manager.canonicalSecretName(ref))));
+    Set<String> removed = new HashSet<>();
+    for (String owned : state.owned()) {
+      if (!liveReferences.contains(manager.canonicalSecretName(owned))) {
+        removed.add(owned);
+      }
+    }
     removed.forEach(manager::deleteStoredSecret);
     state.owned().removeAll(removed);
     save(root, state);
