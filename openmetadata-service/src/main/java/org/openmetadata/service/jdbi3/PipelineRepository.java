@@ -2726,7 +2726,7 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
             .map(
                 task ->
                     ApprovedGlossaryTermGuard.TaggedField.of(
-                        task.getName(), task.getFullyQualifiedName(), task.getTags()))
+                        task.getName(), task.getFullyQualifiedName(), task::getTags, task::setTags))
             .toList());
   }
 

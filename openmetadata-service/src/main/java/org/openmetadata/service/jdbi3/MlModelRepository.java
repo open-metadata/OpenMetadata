@@ -640,7 +640,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
             .map(
                 feature ->
                     ApprovedGlossaryTermGuard.TaggedField.of(
-                        feature.getName(), feature.getFullyQualifiedName(), feature.getTags()))
+                        feature.getName(),
+                        feature.getFullyQualifiedName(),
+                        feature::getTags,
+                        feature::setTags))
             .toList());
   }
 

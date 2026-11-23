@@ -1,7 +1,8 @@
 # Only Approved glossary terms can be newly applied to an asset
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-06 (initial)
+- **Revisions:** v1 2026-11-06 (initial) · v3 2026-11-19 (a term that is not Approved is kept
+  as pending instead of refused, and shown when it is approved)
 - **Deciders:** Ram Narayan Balaji
 - **Guard:** `GlossaryTermApprovedTaggingIT`, `ApprovedGlossaryTermGuardTest`
 - **Related:** open-metadata/OpenMetadata#37164, open-metadata/OpenMetadata#37256
@@ -47,3 +48,49 @@ client applied the term. CSV import already rejected a non-Approved term on ever
 - CSV import keeps its stricter per-row check, which also rejects a non-Approved term the asset
   already holds. So does a term's `assets/add`: it exists only to apply the term, so a term that is
   not Approved is rejected for every asset in the request, whether or not one already holds it.
+
+## Amendment — a term that is not Approved is kept as pending, and shown once it is approved
+
+This replaces the refusal in the initial decision. On 2.0 there is no v2: the approval gate
+it amends is not part of this branch. Customers that sync glossary terms
+onto assets from their own systems apply a term as soon as they create it, before a reviewer
+approves it. A 400 broke those syncs, and nothing applied the term once it was approved, so each
+sync would have had to watch for approvals and run again.
+
+A write that newly applies a term that is not Approved now succeeds. The term is taken out of the
+write, so it is not in the entity's answer, its change description, its search document or its
+cache, and it is stored in `tag_usage` with the `state` value 2. Pending is a storage state only
+the tag DAO knows (`TagUsageDAO.PENDING_STATE`), one past the public `TagLabel.State` values, so no
+client can send or receive it. Every tag read
+leaves pending rows out (`TagUsageDAO.NOT_PENDING`): entity and column reads, the list API's tag
+filter, tag and term usage counts. No table or join is added.
+Because a pending row is an ordinary `tag_usage` row, renames, moves and deletes of the asset, its
+fields or the term already carry it. Writes that clear an asset's tags to write them again (CSV
+import, data model, bulk re-store) keep pending rows. A client never sees a pending term, so no
+write of the asset's labels removes one, by any user: a pending term leaves an asset only when the
+term is removed from it through the term's `assets/remove`, or when the term is rejected.
+`assets/remove` drops the term's pending labels on the asset, as it drops its shown ones, under
+the same authorization. `GET
+/v1/glossaryTerms/{id}/pendingAssets` lists the assets a term is pending on, paged by an `after`
+cursor over target FQN hashes, leaving out assets the caller may not view.
+
+When the term moves to Approved, after the term is stored (`GlossaryTermRepository.postUpdate`, so
+a bulk update's status change is acted on only once it is saved), `GlossaryTermPendingLabels` adds
+the term to each asset holding pending labels, in batches of 500 targets, as an ordinary PATCH by
+the governance bot. The asset therefore records a version and a change event, and its cache,
+search document and RDF are updated by the same pipeline as any edit; a document that fails to
+index goes on the search retry queue. The PATCH's upsert turns the pending rows into shown ones: an
+automated label, as ingestion sends, comes back Suggested, any other Confirmed, and `appliedBy`
+keeps the user who applied it. A PATCH the pipeline refuses, as when the term would be mutually
+exclusive with a tag the asset shows, leaves the asset's labels pending. When the term is
+rejected, its pending rows are deleted.
+
+Pending labels of an Approved term are shown again whenever they are found. An asset whose edit
+fails is retried, up to three times. A write that held a term checks the term once the write commits, so a
+term approved while the write ran is not missed. The server sweeps for them when it starts, so a
+restart does not leave them hidden.
+
+dbt no longer skips a term
+that is not Approved (#37256); the server holds it. CSV import, of entities and of columns, keeps
+its per-row refusal. Labels a
+term already had before this change are left as they are.

@@ -108,6 +108,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.HeldTerm;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
@@ -128,6 +129,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.IntakeFormValidator;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RequestEntityCache;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -1091,7 +1093,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   public BulkOperationResult bulkAddAndValidateGlossaryToAssets(
-      UUID glossaryTermId, AddGlossaryToAssetsRequest request) {
+      UUID glossaryTermId, AddGlossaryToAssetsRequest request, String updatedBy) {
     boolean dryRun = Boolean.TRUE.equals(request.getDryRun());
 
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id,tags"));
@@ -1101,8 +1103,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             null, term.getGlossary().getFullyQualifiedName(), glossaryRepository.getFields("tags"));
     // Check if the tags are mutually exclusive for the glossary
     checkMutuallyExclusive(glossary.getTags());
-    // This endpoint only applies the term, so a term that is not Approved is refused outright.
-    TagLabelUtil.checkGlossaryTermsApproved(Set.of(term.getFullyQualifiedName()));
 
     BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
     List<BulkResponse> failures = new ArrayList<>();
@@ -1118,11 +1118,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validation for entityReferences
     EntityUtil.populateEntityReferences(request.getAssets());
 
-    TagLabel tagLabel =
-        new TagLabel()
-            .withTagFQN(term.getFullyQualifiedName())
-            .withSource(TagSource.GLOSSARY)
-            .withLabelType(TagLabel.LabelType.MANUAL);
+    TermAssignment assignment =
+        TermAssignment.of(
+            term,
+            new TagLabel()
+                .withTagFQN(term.getFullyQualifiedName())
+                .withSource(TagSource.GLOSSARY)
+                .withLabelType(TagLabel.LabelType.MANUAL),
+            updatedBy);
 
     for (EntityReference ref : request.getAssets()) {
       // Update Result Processed
@@ -1131,7 +1134,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // Handle column assets specially - columns don't have their own repository
       if (Entity.TABLE_COLUMN.equals(ref.getType())) {
         try {
-          addTagToColumn(ref, tagLabel, glossary.getTags(), dryRun, success, failures, result);
+          addTagToColumn(ref, assignment, glossary.getTags(), dryRun, success, failures, result);
         } catch (Exception ex) {
           failures.add(new BulkResponse().withRequest(ref).withMessage(ex.getMessage()));
           result.withFailedRequest(failures);
@@ -1162,10 +1165,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
       // Validate and Store Tags
       if (!dryRun && CommonUtil.nullOrEmpty(result.getFailedRequest())) {
-        List<TagLabel> tempList = new ArrayList<>(asset.getTags());
-        tempList.add(tagLabel);
-        // Apply Tags to Entities
-        entityRepository.applyTags(getUniqueTags(tempList), asset.getFullyQualifiedName());
+        assignment.write(entityRepository, asset.getTags(), asset.getFullyQualifiedName());
 
         searchRepository.updateEntity(ref);
         RdfUpdater.updateEntity(asset);
@@ -1206,7 +1206,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
    */
   private void addTagToColumn(
       EntityReference columnRef,
-      TagLabel tagLabel,
+      TermAssignment assignment,
       List<TagLabel> glossaryTags,
       boolean dryRun,
       List<BulkResponse> success,
@@ -1238,15 +1238,36 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         columnFqn, FullyQualifiedName.buildHash(columnFqn), allAssetTags, glossaryTags, false);
 
     if (!dryRun && CommonUtil.nullOrEmpty(result.getFailedRequest())) {
-      List<TagLabel> columnTags = new ArrayList<>(listOrEmpty(targetColumn.getTags()));
-      columnTags.add(tagLabel);
-      applyTags(getUniqueTags(columnTags), columnFqn);
+      assignment.write(this, targetColumn.getTags(), columnFqn);
       searchRepository.updateEntity(table.getEntityReference());
       RdfUpdater.updateEntity(table);
     }
 
     success.add(new BulkResponse().withRequest(columnRef));
     result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+  }
+
+  /**
+   * The term label assets/add writes. A term that is not Approved is held on the target as pending
+   * until its approval, as every other write holds it; an Approved one is applied with the
+   * target's other labels.
+   */
+  private record TermAssignment(TagLabel label, boolean held, String appliedBy) {
+    static TermAssignment of(GlossaryTerm term, TagLabel label, String appliedBy) {
+      boolean held =
+          !TagLabelUtil.unapprovedGlossaryTerms(Set.of(term.getFullyQualifiedName())).isEmpty();
+      return new TermAssignment(label, held, appliedBy);
+    }
+
+    void write(EntityRepository<?> repository, List<TagLabel> targetTags, String targetFqn) {
+      if (held) {
+        repository.storePendingGlossaryTerms(List.of(new HeldTerm(targetFqn, label)), appliedBy);
+      } else {
+        List<TagLabel> tags = new ArrayList<>(listOrEmpty(targetTags));
+        tags.add(label);
+        repository.applyTags(getUniqueTags(tags), targetFqn);
+      }
+    }
   }
 
   private Column findColumnByFqn(List<Column> columns, String columnFqn) {
@@ -1536,6 +1557,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   public void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
     super.postUpdate(original, updated);
+    showOrDropPendingLabels(original, updated);
     if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
       if (updated.getEntityStatus() == EntityStatus.APPROVED) {
         closeApprovalTask(updated, "Approved the glossary term");
@@ -1555,6 +1577,22 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         closeApprovalTask(updated, "Closed due to glossary term going back to DRAFT.");
       } catch (EntityNotFoundException ignored) {
       } // No ApprovalTask is present, and thus we don't need to worry about this.
+    }
+  }
+
+  /**
+   * Labels applied while the term waited for approval are shown once it is approved and dropped
+   * once it is rejected. This runs after the term is stored, on every update path, bulk included,
+   * so neither happens for a status change that was never saved.
+   */
+  private static void showOrDropPendingLabels(GlossaryTerm original, GlossaryTerm updated) {
+    EntityStatus to = updated.getEntityStatus();
+    if (to != null && to != original.getEntityStatus()) {
+      if (to == EntityStatus.APPROVED) {
+        PostCommitActionQueue.runOrDefer(() -> GlossaryTermPendingLabels.showWhenApproved(updated));
+      } else if (to == EntityStatus.REJECTED) {
+        GlossaryTermPendingLabels.dropRejected(updated);
+      }
     }
   }
 
