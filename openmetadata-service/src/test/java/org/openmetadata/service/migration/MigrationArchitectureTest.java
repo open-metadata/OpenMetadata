@@ -49,12 +49,15 @@ class MigrationArchitectureTest {
       resideInAnyPackage(
           MIGRATION + ".mysql.*..", MIGRATION + ".postgres.*..", MIGRATION + ".utils.*..");
 
-  /** The 1.x, 2.0.x and 2.1.0 steps were written before this rule and are left as they are. */
+  /**
+   * The 1.x, 2.0.0 to 2.0.9 and 2.1.0 steps were written before this rule and are left as they are.
+   * The 2.0.10 steps ({@code v2010}) came after it and are checked.
+   */
   private static final DescribedPredicate<JavaClass> WRITTEN_BEFORE_THE_RULE =
       resideInAnyPackage(
           MIGRATION + ".*.v1*..",
           MIGRATION + ".*.V1*..",
-          MIGRATION + ".*.v20*..",
+          MIGRATION + ".*.[v200|v201|v202|v203|v204|v205|v206|v207|v208|v209]..",
           MIGRATION + ".*.v210..");
 
   /**
