@@ -249,7 +249,7 @@ final class TestLoginCredentialHandler {
     recorder.pass(TestLoginStage.STARTED);
     TestLoginResult result;
     try {
-      User user = requireMatchingAccount(email, password, users, tokens);
+      final User user = requireMatchingAccount(email, password, users, tokens);
       recorder.pass(TestLoginStage.CREDENTIALS_VERIFIED, user.getName());
       result =
           TestLoginService.resolveCredentialIdentity(

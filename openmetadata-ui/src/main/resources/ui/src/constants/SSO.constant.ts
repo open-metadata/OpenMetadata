@@ -344,7 +344,11 @@ export const SAML_UI_SCHEMA = {
       validateXml: { 'ui:widget': 'hidden', 'ui:hideError': true },
       sendEncryptedNameId: { 'ui:widget': 'hidden', 'ui:hideError': true },
       signSpMetadata: { 'ui:widget': 'hidden', 'ui:hideError': true },
-      wantAssertionEncrypted: { 'ui:title': 'Require Encrypted Assertions' },
+      wantAssertionEncrypted: {
+        get 'ui:title'() {
+          return i18next.t('label.require-encrypted-assertions');
+        },
+      },
       keyStoreFilePath: { 'ui:widget': 'hidden', 'ui:hideError': true },
       keyStoreAlias: { 'ui:widget': 'hidden', 'ui:hideError': true },
       keyStorePassword: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -754,7 +758,7 @@ export const COMMON_AUTH_FIELDS_TO_REMOVE = [
   'forceSecureSessionCookie',
 ];
 
-// Hardcoded authorizer values
+// Authorizer values for a configuration that has none
 export const DEFAULT_AUTHORIZER_CLASS_NAME =
   'org.openmetadata.service.security.DefaultAuthorizer';
 export const DEFAULT_CONTAINER_REQUEST_FILTER =

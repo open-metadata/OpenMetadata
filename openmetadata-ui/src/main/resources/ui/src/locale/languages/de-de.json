@@ -2153,6 +2153,7 @@
     "request-schema-field": "Anfrage Feld Schema",
     "request-tag-plural": "Tag-Anfragen",
     "requested-by": "Angefordert von",
+    "require-encrypted-assertions": "Verschlüsselte Assertions erforderlich",
     "required": "Erforderlich",
     "required-field": "Pflichtfeld",
     "required-field-plural": "Pflichtfelder",

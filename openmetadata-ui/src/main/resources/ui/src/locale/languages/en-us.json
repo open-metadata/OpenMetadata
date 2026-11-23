@@ -2153,6 +2153,7 @@
     "request-schema-field": "Request Schema Field",
     "request-tag-plural": "Request Tags",
     "requested-by": "Requested By",
+    "require-encrypted-assertions": "Require Encrypted Assertions",
     "required": "Required",
     "required-field": "Required Field",
     "required-field-plural": "Required Fields",

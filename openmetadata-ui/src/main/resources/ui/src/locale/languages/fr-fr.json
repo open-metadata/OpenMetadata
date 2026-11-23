@@ -2153,6 +2153,7 @@
     "request-schema-field": "Champ de Schéma de Requête",
     "request-tag-plural": "Demander l'ajout de tags",
     "requested-by": "Demandé par",
+    "require-encrypted-assertions": "Exiger des assertions chiffrées",
     "required": "Requis",
     "required-field": "Champ obligatoire",
     "required-field-plural": "Champs obligatoires",

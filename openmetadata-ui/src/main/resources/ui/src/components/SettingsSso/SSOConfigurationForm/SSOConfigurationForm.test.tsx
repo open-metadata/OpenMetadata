@@ -1350,6 +1350,161 @@ describe('SSOConfigurationForm', () => {
     });
   });
 
+  describe('Save an untouched existing configuration', () => {
+    const authorizer = {
+      adminPrincipals: ['admin'],
+      className: 'org.openmetadata.service.security.DefaultAuthorizer',
+      containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+      enableSecureSocketConnection: false,
+      enforcePrincipalDomain: false,
+      principalDomain: '',
+    } as AuthorizerConfiguration;
+
+    const samlConfig = (callback: string) =>
+      ({
+        authenticationConfiguration: {
+          provider: AuthProvider.Saml,
+          providerName: 'SAML',
+          clientType: ClientType.Public,
+          authority: 'https://om.example.com/api/v1/saml/login',
+          callbackUrl: callback,
+          publicKeyUrls: ['https://om.example.com/api/v1/system/config/jwks'],
+          jwtPrincipalClaims: ['email'],
+          enableSelfSignup: true,
+          samlConfiguration: {
+            debugMode: false,
+            idp: {
+              entityId: 'https://idp.example.com/metadata',
+              ssoLoginUrl: 'https://idp.example.com/sso',
+              idpX509Certificate: 'IDP_CERT',
+              authorityUrl: 'https://om.example.com/api/v1/saml/login',
+            },
+            sp: {
+              entityId: 'https://om.example.com/api/v1/saml/metadata',
+              acs: 'https://om.example.com/api/v1/saml/acs',
+              callback,
+            },
+            security: {
+              strictMode: false,
+              wantAssertionsSigned: false,
+              wantMessagesSigned: false,
+              sendSignedAuthRequest: false,
+            },
+          },
+        } as AuthenticationConfiguration,
+        authorizerConfiguration: authorizer,
+      } as SecurityConfiguration);
+
+    const oktaConfig = {
+      authenticationConfiguration: {
+        provider: AuthProvider.Okta,
+        providerName: 'Okta',
+        clientType: ClientType.Public,
+        authority: 'https://okta.example.com',
+        clientId: 'okta-client-id',
+        callbackUrl: 'https://app.example.com/callback',
+        publicKeyUrls: ['https://okta.example.com/oauth2/v1/keys'],
+        jwtPrincipalClaims: ['email'],
+        enableSelfSignup: true,
+      } as AuthenticationConfiguration,
+      authorizerConfiguration: authorizer,
+    } as SecurityConfiguration;
+
+    const oktaConfidentialConfig = {
+      authenticationConfiguration: {
+        ...oktaConfig.authenticationConfiguration,
+        clientType: ClientType.Confidential,
+        oidcConfiguration: {
+          type: 'okta',
+          id: 'okta-client-id',
+          secret: 'okta-secret',
+          discoveryUri:
+            'https://okta.example.com/.well-known/openid-configuration',
+          callbackUrl: 'https://app.example.com/callback',
+          serverUrl: 'https://app.example.com',
+        },
+      } as AuthenticationConfiguration,
+      authorizerConfiguration: authorizer,
+    } as SecurityConfiguration;
+
+    const customAuthorizerConfig = {
+      ...oktaConfig,
+      authorizerConfiguration: {
+        ...authorizer,
+        className: 'com.example.CustomAuthorizer',
+        containerRequestFilter: 'com.example.CustomJwtFilter',
+      },
+    } as SecurityConfiguration;
+
+    const saveUntouched = async (config: SecurityConfiguration) => {
+      mockGetSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse(config)
+      );
+      mockPatchSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({} as SecurityConfiguration)
+      );
+      const { showSuccessToast } = jest.requireMock(
+        '../../../utils/ToastUtils'
+      );
+
+      renderComponent({ forceEditMode: true });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('save-sso-configuration')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('save-sso-configuration'));
+
+      await waitFor(() => {
+        expect(showSuccessToast).toHaveBeenCalled();
+      });
+    };
+
+    // The form fills schema defaults into fields the stored configuration leaves out, which the
+    // PATCH sends as `add` ops. A save must never replace or remove a stored value it was not asked
+    // to change.
+    const opsChangingStoredValues = () =>
+      (
+        (mockPatchSecurityConfiguration.mock.calls[0]?.[0] ?? []) as Array<{
+          op: string;
+        }>
+      ).filter(({ op }) => op !== 'add');
+
+    it.each([
+      ['an OIDC public client', oktaConfig],
+      ['an OIDC confidential client', oktaConfidentialConfig],
+      ['a SAML configuration', samlConfig('https://om.example.com/callback')],
+      ['a custom authorizer', customAuthorizerConfig],
+    ])(
+      'should save %s without changing a stored value',
+      async (_name, config) => {
+        await saveUntouched(config);
+
+        expect(opsChangingStoredValues()).toEqual([]);
+      }
+    );
+
+    it('should change only the browser callback of a SAML configuration saved with the ACS URL', async () => {
+      // Saved by an earlier form version that wrote the ACS URL into both browser callback fields.
+      await saveUntouched(samlConfig('https://om.example.com/api/v1/saml/acs'));
+
+      expect(opsChangingStoredValues()).toEqual([
+        {
+          op: 'replace',
+          path: '/authenticationConfiguration/samlConfiguration/sp/callback',
+          value: 'https://om.example.com/callback',
+        },
+        {
+          op: 'replace',
+          path: '/authenticationConfiguration/callbackUrl',
+          value: 'https://om.example.com/callback',
+        },
+      ]);
+    });
+  });
+
   describe('Handle Save and Exit Modal', () => {
     beforeEach(() => {
       mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));

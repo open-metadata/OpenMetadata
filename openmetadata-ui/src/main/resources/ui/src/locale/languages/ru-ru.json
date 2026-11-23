@@ -2153,6 +2153,7 @@
     "request-schema-field": "Поле схемы запроса",
     "request-tag-plural": "Предложить тег",
     "requested-by": "Запрошено",
+    "require-encrypted-assertions": "Требовать зашифрованные утверждения",
     "required": "Необходимый",
     "required-field": "Обязательное поле",
     "required-field-plural": "Обязательные поля",

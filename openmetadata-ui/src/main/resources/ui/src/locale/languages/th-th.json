@@ -2153,6 +2153,7 @@
     "request-schema-field": "ฟิลด์สคีมาของคำขอ",
     "request-tag-plural": "แท็กคำขอ",
     "requested-by": "Requested By",
+    "require-encrypted-assertions": "กำหนดให้ใช้การยืนยัน SAML ที่เข้ารหัส",
     "required": "จำเป็น",
     "required-field": "ฟิลด์ที่จำเป็น",
     "required-field-plural": "ฟิลด์ที่จำเป็น",

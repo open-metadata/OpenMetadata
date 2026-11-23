@@ -18,7 +18,7 @@ describe('SAML encryption policy', () => {
     expect(
       SAML_UI_SCHEMA.samlConfiguration.security.wantAssertionEncrypted
     ).toEqual({
-      'ui:title': 'Require Encrypted Assertions',
+      'ui:title': 'label.require-encrypted-assertions',
     });
   });
 });
