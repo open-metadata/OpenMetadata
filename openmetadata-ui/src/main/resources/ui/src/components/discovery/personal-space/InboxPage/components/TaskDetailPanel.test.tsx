@@ -36,8 +36,6 @@ const mockDeleteComment = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockGetEntityPermission = jest.fn();
 const mockGetResolvedTaskFormSchema = jest.fn();
-const mockGetTaskTransitionFormSchema = jest.fn();
-const mockGetTaskTransitionUiSchema = jest.fn();
 
 let mockCurrentUser: {
   id?: string;
@@ -103,17 +101,12 @@ jest.mock('utils/TaskFormSchemaUtils', () => ({
     payload: Record<string, unknown>
   ) => payload.newDescription,
   shouldRequireTaskResolutionValue: () => false,
-  getTaskTransitionFormSchema: (...a: unknown[]) =>
-    mockGetTaskTransitionFormSchema(...a),
-  getTaskTransitionUiSchema: (...a: unknown[]) =>
-    mockGetTaskTransitionUiSchema(...a),
-  // The real helper checks the schema's `required` array; keep that contract so
-  // the panel's `requiresForm` guard mirrors production.
-  hasRequiredTaskFormFields: (schema?: { required?: unknown }) => {
-    const required = schema?.required;
-
-    return Array.isArray(required) && required.length > 0;
-  },
+  getTaskTransitionFormSchema: jest.requireActual('utils/TaskFormSchemaUtils')
+    .getTaskTransitionFormSchema,
+  getTaskTransitionUiSchema: jest.requireActual('utils/TaskFormSchemaUtils')
+    .getTaskTransitionUiSchema,
+  hasRequiredTaskFormFields: jest.requireActual('utils/TaskFormSchemaUtils')
+    .hasRequiredTaskFormFields,
 }));
 
 jest.mock('hooks/useApplicationStore', () => ({
@@ -620,11 +613,6 @@ beforeEach(() => {
   mockGetTaskById.mockResolvedValue({ data: TASK });
   mockGetEntityPermission.mockResolvedValue({ ResolveTask: true });
   mockGetResolvedTaskFormSchema.mockResolvedValue(undefined);
-  // By default no transition carries a form with required fields, so the
-  // existing behaviour (fire requiresComment transitions, fire plain ones)
-  // is unchanged; individual tests override this to exercise the form modal.
-  mockGetTaskTransitionFormSchema.mockReturnValue(undefined);
-  mockGetTaskTransitionUiSchema.mockReturnValue(undefined);
 });
 
 describe('TaskDetailPanel', () => {
@@ -1319,12 +1307,6 @@ describe('TaskDetailPanel', () => {
     beforeEach(() => {
       mockGetTaskById.mockResolvedValue({ data: FORM_TASK });
       mockGetResolvedTaskFormSchema.mockResolvedValue(FORM_SCHEMA);
-      mockGetTaskTransitionFormSchema.mockReturnValue(
-        FORM_SCHEMA.transitionForms.approve.formSchema
-      );
-      mockGetTaskTransitionUiSchema.mockReturnValue(
-        FORM_SCHEMA.transitionForms.approve.uiSchema
-      );
       mockResolveTask.mockResolvedValue({ ...FORM_TASK, status: 'Approved' });
       mockFormConfirmPayload.mockReturnValue({
         targetField: 'description',
@@ -1422,10 +1404,15 @@ describe('TaskDetailPanel', () => {
           ],
         },
       });
-      mockGetResolvedTaskFormSchema.mockResolvedValue(undefined);
-      mockGetTaskTransitionFormSchema.mockReturnValue({
-        type: 'object',
-        properties: { comment: { type: 'string' } },
+      mockGetResolvedTaskFormSchema.mockResolvedValue({
+        transitionForms: {
+          approve: {
+            formSchema: {
+              type: 'object',
+              properties: { comment: { type: 'string' } },
+            },
+          },
+        },
       });
 
       await act(async () => render(<TaskDetailPanel taskId="task-1" />));
@@ -1466,7 +1453,6 @@ describe('TaskDetailPanel', () => {
           resolveSchema = () => resolve(undefined);
         })
       );
-      mockGetTaskTransitionFormSchema.mockReturnValue(undefined);
 
       await act(async () => {
         fireEvent.click(screen.getByText('label.approve'));
