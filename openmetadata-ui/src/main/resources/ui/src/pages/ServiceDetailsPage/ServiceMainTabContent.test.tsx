@@ -47,9 +47,27 @@ jest.mock('../../utils/ServicePureUtils', () => ({
   getSearchIndexForService: jest.fn().mockReturnValue(undefined),
 }));
 
-jest.mock('../../utils/ServiceMainTabContentUtils', () => ({
-  callServicePatchAPI: jest.fn(),
-  getServiceMainTabColumns: jest.fn().mockReturnValue([]),
+jest.mock('../../utils/ServiceMainTabContentUtils', () => {
+  const actual = jest.requireActual('../../utils/ServiceMainTabContentUtils');
+
+  return {
+    callServicePatchAPI: jest.fn(),
+    // Delegate to the real implementation so the rendered table actually
+    // contains the columns (and the Usage column appears/disappears with
+    // `viewUsagePermission`) instead of an empty array. Still a `jest.fn`
+    // so the wiring tests can assert `toHaveBeenCalledWith`.
+    getServiceMainTabColumns: jest.fn(actual.getServiceMainTabColumns),
+  };
+});
+
+jest.mock('../../utils/TableColumn.util', () => ({
+  certificationTableObject: jest.fn().mockReturnValue([]),
+  dataProductTableObject: jest.fn().mockReturnValue([]),
+  descriptionTableObject: jest.fn().mockReturnValue([]),
+  domainTableObject: jest.fn().mockReturnValue([]),
+  ownerTableObject: jest.fn().mockReturnValue([]),
+  tagTableObject: jest.fn().mockReturnValue([]),
+  tierTableObject: jest.fn().mockReturnValue([]),
 }));
 
 jest.mock('../../utils/TablePureUtils', () => ({
@@ -96,9 +114,24 @@ jest.mock('../../components/common/Table/TableV2', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ extraTableFilters }: { extraTableFilters?: ReactNode }) => (
-        <div data-testid="service-table">{extraTableFilters}</div>
-      )
+      ({
+        columns,
+        extraTableFilters,
+      }: {
+        columns?: unknown;
+        extraTableFilters?: ReactNode;
+      }) => {
+        const cols = columns as Array<{ title?: ReactNode }> | undefined;
+
+        return (
+          <div data-testid="service-table">
+            {cols?.map((c) => (
+              <span key={String(c.title)}>{c.title}</span>
+            ))}
+            {extraTableFilters}
+          </div>
+        );
+      }
     )
 );
 
@@ -222,6 +255,7 @@ describe('ServiceMainTabContent permission wiring', () => {
     (usePermissionProvider as jest.Mock).mockReturnValue({
       permissions: {
         databaseService: FULL_PERMISSION,
+        database: FULL_PERMISSION,
       },
     });
     (getEntityTypeFromServiceCategory as jest.Mock).mockReturnValue(
@@ -297,7 +331,8 @@ describe('ServiceMainTabContent permission wiring', () => {
       'databaseServices',
       true,
       expect.any(Function),
-      undefined
+      undefined,
+      true
     );
   });
 
@@ -311,6 +346,7 @@ describe('ServiceMainTabContent permission wiring', () => {
           ...FULL_PERMISSION,
           EditDisplayName: false,
         },
+        database: FULL_PERMISSION,
       },
     });
 
@@ -320,8 +356,51 @@ describe('ServiceMainTabContent permission wiring', () => {
       'databaseServices',
       false,
       expect.any(Function),
-      undefined
+      undefined,
+      true
     );
+  });
+
+  it('renders the Usage column when the database resource grants ViewUsage', () => {
+    // Visible-outcome check (not mock-wiring): the real `getServiceMainTabColumns`
+    // produces the Usage column only when `viewUsagePermission` is true, which
+    // `ServiceMainTabContent` derives from `permissions.database.canViewUsage`.
+    // With a full database permission the column header must appear in the
+    // rendered table.
+    renderComponent({ servicePermission: FULL_PERMISSION });
+
+    expect(screen.getByText('label.usage')).toBeInTheDocument();
+  });
+
+  it('hides the Usage column when the database resource denies ViewUsage', () => {
+    // Without ViewUsage the API omits `usageSummary`, so the column must not
+    // render at all — otherwise every row reads the fabricated "0th pctile"
+    // the `?? 0` coercion produced (the bug this PR fixes).
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      permissions: {
+        databaseService: FULL_PERMISSION,
+        database: { ...FULL_PERMISSION, ViewUsage: false },
+      },
+    });
+
+    renderComponent({ servicePermission: FULL_PERMISSION });
+
+    expect(screen.queryByText('label.usage')).not.toBeInTheDocument();
+  });
+
+  it('hides the Usage column when both ViewUsage and ViewAll are absent on the database resource', () => {
+    // No ViewUsage key and no ViewAll key → getPrioritizedViewPermission
+    // falls through to an undefined ViewAll → Boolean(undefined) → false.
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      permissions: {
+        databaseService: FULL_PERMISSION,
+        database: { EditAll: true } as OperationPermission,
+      },
+    });
+
+    renderComponent({ servicePermission: FULL_PERMISSION });
+
+    expect(screen.queryByText('label.usage')).not.toBeInTheDocument();
   });
 
   describe('card framing', () => {

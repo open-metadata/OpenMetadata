@@ -23,6 +23,7 @@ import {
   buildTreeCountQueryFilter,
   findActiveSearchIndex,
   findTreeNodeKeyByBrowsePath,
+  getBrowsePathAncestorKeys,
   getBrowsePathQueryFilter,
   getCanonicalEntityType,
   getDisabledExploreTreeKeys,
@@ -37,6 +38,12 @@ import {
   refreshRootCounts,
   truncateBrowsePath,
 } from './ExplorePureUtils';
+
+const field = (key: string, value: string): ExploreQuickFilterField => ({
+  key,
+  label: key,
+  value: [{ key: value, label: value }],
+});
 
 const DATABASE_KEY = 'database_root';
 const DASHBOARD_KEY = 'dashboard_root';
@@ -696,6 +703,91 @@ describe('findTreeNodeKeyByBrowsePath', () => {
   });
 });
 
+describe('getBrowsePathAncestorKeys', () => {
+  const serviceType = field('serviceType', 'postgres');
+  const service = field('service.displayName.keyword', 'mns_db');
+  const database = field('database.displayName', 'postgres');
+  const schema = field('databaseSchema.displayName', 'ppg');
+  const nodes = [
+    {
+      key: 'db_root',
+      title: 'Databases',
+      data: { isRoot: true, childEntities: [EntityType.TABLE] },
+      children: [
+        {
+          key: 'svc_type',
+          data: { filterField: [serviceType] },
+          children: [
+            {
+              key: 'svc',
+              data: { filterField: [serviceType, service] },
+              children: [
+                {
+                  key: 'db',
+                  data: { filterField: [serviceType, service, database] },
+                },
+              ],
+            },
+            {
+              key: 'other_svc',
+              data: {
+                filterField: [
+                  serviceType,
+                  field('service.displayName.keyword', 'other'),
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    },
+  ] as unknown as ExploreTreeNode[];
+
+  it('returns the loaded ancestors of the browsed node, not the node itself', () => {
+    expect(
+      getBrowsePathAncestorKeys(nodes, [serviceType, service, database])
+    ).toEqual(['svc_type', 'svc']);
+  });
+
+  it('includes only the category roots that hold matches for the path', () => {
+    const roots = [
+      { key: 'db_root', totalCount: 0, data: { isRoot: true } },
+      { key: 'dashboard_root', totalCount: 4, data: { isRoot: true } },
+      { key: 'pipeline_root', data: { isRoot: true } },
+    ] as unknown as ExploreTreeNode[];
+
+    expect(
+      getBrowsePathAncestorKeys(roots, [field('serviceType', 'superset')], {
+        rootCountsMatchPath: true,
+      })
+    ).toEqual(['dashboard_root']);
+  });
+
+  it('ignores category roots while their counts belong to an earlier path', () => {
+    const roots = [
+      { key: 'db_root', totalCount: 9, data: { isRoot: true } },
+      { key: 'dashboard_root', totalCount: 4, data: { isRoot: true } },
+    ] as unknown as ExploreTreeNode[];
+
+    expect(
+      getBrowsePathAncestorKeys(roots, [field('serviceType', 'superset')])
+    ).toEqual([]);
+  });
+
+  it('returns only the loaded levels of a deeper path', () => {
+    expect(
+      getBrowsePathAncestorKeys(nodes, [serviceType, service, database, schema])
+    ).toEqual(['svc_type', 'svc', 'db']);
+  });
+
+  it('returns nothing for an empty or category path', () => {
+    expect(getBrowsePathAncestorKeys(nodes, [])).toEqual([]);
+    expect(
+      getBrowsePathAncestorKeys(nodes, [field('entityType', 'table')])
+    ).toEqual([]);
+  });
+});
+
 describe('refreshRootCounts', () => {
   const serviceField: ExploreQuickFilterField = {
     key: 'serviceType',
@@ -900,11 +992,6 @@ describe('findActiveSearchIndex', () => {
 });
 
 describe('isSelectionWithinBrowsePath', () => {
-  const field = (key: string, value: string): ExploreQuickFilterField => ({
-    key,
-    label: key,
-    value: [{ key: value, label: value }],
-  });
   const serviceType = field('serviceType', 'BigQuery');
   const service = field('service.name.keyword', 'bigquery');
   const database = field('database.displayName.keyword', 'modified-leaf');
