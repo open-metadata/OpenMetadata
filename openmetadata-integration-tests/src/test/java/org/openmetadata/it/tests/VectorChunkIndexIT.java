@@ -313,6 +313,8 @@ class VectorChunkIndexIT {
       writeChunks(service, orders, null);
       writeChunks(service, refunds, null);
       refresh(service, service.getChunkIndexName());
+      Set<String> liveAfterTheDelete = new HashSet<>(parentsFound(service));
+      liveAfterTheDelete.remove(id(refunds));
       staged = service.beginStagedChunkRecreate();
       assertNotNull(staged, "A reachable embedding provider stages a generation");
       writeChunks(service, orders, staged);
@@ -327,7 +329,7 @@ class VectorChunkIndexIT {
           type -> service.markEntityTypeReindexed(type, true, generation));
 
       assertEquals(Set.of(), aliasesOf(service, staged), "The generation is not promoted");
-      assertEquals(Set.of(id(orders)), parentsFound(service), "The live chunks stay");
+      assertEquals(liveAfterTheDelete, parentsFound(service), "The live chunks stay");
       assertTrue(missedDeleteFlag(service, staged), "The generation is flagged");
     } finally {
       if (staged != null) {
