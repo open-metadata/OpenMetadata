@@ -11,6 +11,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.nimbusds.jose.util.Pair;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
@@ -582,15 +583,64 @@ public class EsUtils {
    * </ul>
    */
   public static String enrichIndexMappingForElasticsearch(String indexMappingContent) {
+    return enrichIndexMapping(indexMappingContent, true);
+  }
+
+  /**
+   * As {@link #enrichIndexMappingForElasticsearch}, for a {@code PUT _mapping} on an existing index:
+   * the vector index options are left out, so the field keeps the options it was created with.
+   * Elasticsearch refuses some {@code index_options} changes on an existing field.
+   */
+  public static String enrichIndexMappingForElasticsearchUpdate(String indexMappingContent) {
+    return enrichIndexMapping(indexMappingContent, false);
+  }
+
+  private static String enrichIndexMapping(String indexMappingContent, boolean creatingIndex) {
     if (nullOrEmpty(indexMappingContent)) {
       throw new IllegalArgumentException("Empty Index Mapping Content.");
     }
     JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
-    addDenseVectorSettings(rootNode);
+    addDenseVectorSettings(rootNode, creatingIndex);
     return rootNode.toString();
   }
 
+  /** HNSW graph options pinned to the OpenSearch values, so both engines build the same index. */
+  static final int HNSW_M = 48;
+
+  static final int HNSW_EF_CONSTRUCTION = 256;
+
+  /**
+   * The {@code embedding} field of an index created now: a float HNSW graph with {@code m} 48 and
+   * {@code ef_construction} 256, the OpenSearch values, instead of the engine default, which
+   * quantizes and changes with version and licence
+   * (ADR:2026-11-23-elasticsearch-vector-fields-pin-their-index-options).
+   */
+  public static ObjectNode denseVectorMapping(int dimension) {
+    ObjectNode embedding = denseVectorFieldWithoutOptions(dimension);
+    embedding.set(
+        "index_options",
+        mapper
+            .createObjectNode()
+            .put("type", "hnsw")
+            .put("m", HNSW_M)
+            .put("ef_construction", HNSW_EF_CONSTRUCTION));
+    return embedding;
+  }
+
+  private static ObjectNode denseVectorFieldWithoutOptions(int dimension) {
+    return mapper
+        .createObjectNode()
+        .put("type", "dense_vector")
+        .put("dims", dimension)
+        .put("index", true)
+        .put("similarity", "cosine");
+  }
+
   static void addDenseVectorSettings(JsonNode rootNode) {
+    addDenseVectorSettings(rootNode, true);
+  }
+
+  static void addDenseVectorSettings(JsonNode rootNode, boolean creatingIndex) {
     JsonNode properties = rootNode.path("mappings").path("properties");
     if (properties.isMissingNode() || !properties.has("fingerprint")) {
       return;
@@ -621,12 +671,8 @@ public class EsUtils {
       assertDimensionMatches(existingEmbedding.get("dims").asInt(), dimension);
     }
 
-    com.fasterxml.jackson.databind.node.ObjectNode embeddingNode = mapper.createObjectNode();
-    embeddingNode.put("type", "dense_vector");
-    embeddingNode.put("dims", dimension);
-    embeddingNode.put("index", true);
-    embeddingNode.put("similarity", "cosine");
-    ((com.fasterxml.jackson.databind.node.ObjectNode) properties).set("embedding", embeddingNode);
+    ((ObjectNode) properties)
+        .set("embedding", embeddingField(existingEmbedding, dimension, creatingIndex));
 
     JsonNode mappings = rootNode.path("mappings");
     if (!mappings.isMissingNode() && mappings.isObject()) {
@@ -644,6 +690,21 @@ public class EsUtils {
           .put("embedding_model", searchRepository.getEmbeddingClient().getModelId())
           .put("embedding_dimension", dimension);
     }
+  }
+
+  /**
+   * The {@code embedding} field to declare: an existing field keeps its own index options, a field
+   * created now gets the pinned ones, and an update of an existing index sends none.
+   */
+  private static ObjectNode embeddingField(
+      JsonNode existingEmbedding, int dimension, boolean creatingIndex) {
+    ObjectNode field = denseVectorFieldWithoutOptions(dimension);
+    if (existingEmbedding.has("index_options")) {
+      field.set("index_options", existingEmbedding.get("index_options").deepCopy());
+    } else if (creatingIndex) {
+      field = denseVectorMapping(dimension);
+    }
+    return field;
   }
 
   private static void assertDimensionMatches(int existing, int client) {

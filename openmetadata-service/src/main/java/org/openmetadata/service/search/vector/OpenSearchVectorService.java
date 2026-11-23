@@ -172,6 +172,12 @@ public class OpenSearchVectorService extends AbstractVectorIndexService {
   }
 
   @Override
+  protected String buildKnnQueryClause(
+      float[] vector, VectorSearchParameters parameters, Set<String> readableAnchorIds) {
+    return VectorSearchQueryBuilder.buildQueryClause(vector, parameters, readableAnchorIds);
+  }
+
+  @Override
   protected String engineName() {
     return "OpenSearch";
   }

@@ -456,8 +456,10 @@ class ElasticSearchVectorServiceTest {
     JsonNode index = bodyOf(sentRequest("PUT", "/data_asset_embeddings_chunks"));
     JsonNode properties = index.path("mappings").path("properties");
     assertEquals(
-        "{\"type\":\"dense_vector\",\"dims\":3,\"index\":true,\"similarity\":\"cosine\"}",
-        properties.path("embedding").toString());
+        "{\"type\":\"dense_vector\",\"dims\":3,\"index\":true,\"similarity\":\"cosine\","
+            + "\"index_options\":{\"type\":\"hnsw\",\"m\":48,\"ef_construction\":256}}",
+        properties.path("embedding").toString(),
+        "a new chunk index pins the OpenSearch HNSW options");
     assertEquals("{\"type\":\"keyword\"}", properties.path("parentId").toString());
     assertEquals("{\"dataAssetEmbeddings\":{}}", index.path("aliases").toString());
     assertFalse(

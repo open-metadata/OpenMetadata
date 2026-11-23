@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
@@ -16,6 +17,7 @@ import static org.openmetadata.service.search.SearchUtils.DOWNSTREAM_ENTITY_RELA
 import static org.openmetadata.service.search.SearchUtils.getLineageDirectionAggregationField;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.nimbusds.jose.util.Pair;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
@@ -35,10 +37,12 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.lineage.MissingLineageEntityException;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 @ExtendWith(MockitoExtension.class)
 class EsUtilsTest {
@@ -737,5 +741,64 @@ class EsUtilsTest {
       assertEquals(10000, request.size());
       assertNotNull(request.postFilter());
     }
+  }
+
+  private static final String VECTOR_MAPPING =
+      "{\"mappings\":{\"properties\":{\"fingerprint\":{\"type\":\"keyword\"}}}}";
+
+  private static JsonNode embeddingOf(String mapping) {
+    return JsonUtils.readTree(mapping).path("mappings").path("properties").path("embedding");
+  }
+
+  private void withEmbeddingClient(Runnable test) {
+    EmbeddingClient embeddings = mock(EmbeddingClient.class);
+    when(embeddings.getDimension()).thenReturn(8);
+    when(embeddings.getModelId()).thenReturn("test-model");
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.getEmbeddingClient()).thenReturn(embeddings);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      test.run();
+    }
+  }
+
+  @Test
+  void aNewEmbeddingField_getsThePinnedHnswOptions() {
+    withEmbeddingClient(
+        () -> {
+          var options =
+              embeddingOf(EsUtils.enrichIndexMappingForElasticsearch(VECTOR_MAPPING))
+                  .path("index_options");
+          assertEquals("hnsw", options.path("type").asText());
+          assertEquals(48, options.path("m").asInt());
+          assertEquals(256, options.path("ef_construction").asInt());
+        });
+  }
+
+  @Test
+  void anExistingEmbeddingField_keepsItsOwnOptions() {
+    String existing =
+        "{\"mappings\":{\"properties\":{\"fingerprint\":{\"type\":\"keyword\"},"
+            + "\"embedding\":{\"type\":\"dense_vector\",\"dims\":8,"
+            + "\"index_options\":{\"type\":\"int8_hnsw\"}}}}}";
+    withEmbeddingClient(
+        () ->
+            assertEquals(
+                "int8_hnsw",
+                embeddingOf(EsUtils.enrichIndexMappingForElasticsearch(existing))
+                    .path("index_options")
+                    .path("type")
+                    .asText()));
+  }
+
+  @Test
+  void aMappingUpdate_sendsNoIndexOptions() {
+    withEmbeddingClient(
+        () -> {
+          var embedding =
+              embeddingOf(EsUtils.enrichIndexMappingForElasticsearchUpdate(VECTOR_MAPPING));
+          assertEquals("dense_vector", embedding.path("type").asText());
+          assertFalse(embedding.has("index_options"));
+        });
   }
 }

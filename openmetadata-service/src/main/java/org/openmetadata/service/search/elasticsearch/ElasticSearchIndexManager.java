@@ -97,7 +97,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
 
       String transformedContent =
           (indexMappingContent != null && !indexMappingContent.isEmpty())
-              ? EsUtils.enrichIndexMappingForElasticsearch(indexMappingContent)
+              ? EsUtils.enrichIndexMappingForElasticsearchUpdate(indexMappingContent)
               : indexMappingContent;
       String mappingsJson = extractMappingsJson(transformedContent);
       PutMappingRequest request =

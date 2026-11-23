@@ -1373,24 +1373,31 @@ public class SystemRepository implements DeploymentSettingPreparer {
       StepValidation embeddingsValidation,
       String description,
       String configMessage) {
-    Optional<String> pipelineError = searchRepository.checkHybridSearchPipeline();
-    if (pipelineError.isPresent()) {
-      return embeddingsValidation
-          .withDescription(description)
-          .withMessage(
-              "Embeddings are working but the hybrid search pipeline check failed: "
-                  + pipelineError.get()
-                  + " "
-                  + configMessage)
-          .withPassed(false);
-    }
-
+    boolean usesPipeline = searchRepository.usesHybridSearchPipeline();
+    Optional<String> pipelineError =
+        usesPipeline ? searchRepository.checkHybridSearchPipeline() : Optional.empty();
+    String message =
+        pipelineError
+            .map(
+                error ->
+                    "Embeddings are working but the hybrid search pipeline check failed: "
+                        + error
+                        + " "
+                        + configMessage)
+            .orElseGet(() -> workingMessage(usesPipeline, configMessage));
     return embeddingsValidation
         .withDescription(description)
-        .withMessage(
-            String.format(
-                "Embeddings and hybrid search pipeline are working correctly. %s", configMessage))
-        .withPassed(true);
+        .withMessage(message)
+        .withPassed(pipelineError.isEmpty());
+  }
+
+  /** An engine without the hybrid RRF pipeline has nothing to say about one. */
+  private static String workingMessage(boolean usesPipeline, String configMessage) {
+    String working =
+        usesPipeline
+            ? "Embeddings and hybrid search pipeline are working correctly. %s"
+            : "Embeddings are working correctly. %s";
+    return String.format(working, configMessage);
   }
 
   private StepValidation validateEmbeddingGeneration(
