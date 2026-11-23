@@ -306,6 +306,70 @@ class SecretMapEntriesExternalStoreTest {
     assertTrue(secretsManager.getSecretsMap().isEmpty());
   }
 
+  /**
+   * {@code Prod} and {@code prod} clean into one secret id, so each is stored under an id from its
+   * exact name: swapping them and then replacing one key never writes over the other's secret.
+   */
+  @Test
+  void reorderingServersThatShareACleanedNameThenReplacingOneKeyKeepsTheOther() {
+    final McpConnection created =
+        encryptMcp(
+            List.of(mcpServer("Prod", "prod-upper-key"), mcpServer("prod", "prod-key")), null);
+
+    final McpServerConfig upper = copy(created.getServers().getFirst()).withApiKey("replaced-key");
+    final McpConnection updated =
+        encryptMcp(List.of(copy(created.getServers().get(1)), upper), created);
+
+    assertEquals("prod-key", storedKey(updated, "prod"));
+    assertEquals("replaced-key", storedKey(updated, "Prod"));
+  }
+
+  /** Clearing one of two swapped keys removes that server's secret, not the other's. */
+  @Test
+  void reorderingServersThatShareACleanedNameThenClearingOneKeyKeepsTheOther() {
+    final McpConnection created =
+        encryptMcp(
+            List.of(mcpServer("Prod", "prod-upper-key"), mcpServer("prod", "prod-key")), null);
+
+    final McpServerConfig upper = copy(created.getServers().getFirst()).withApiKey("");
+    final McpConnection updated =
+        encryptMcp(List.of(copy(created.getServers().get(1)), upper), created);
+
+    assertEquals("prod-key", storedKey(updated, "prod"));
+  }
+
+  /** Adding {@code prod} next to {@code Prod} and then editing a key keeps each server's own key. */
+  @Test
+  void addingAServerThatSharesACleanedNameThenEditingKeepsEachKey() {
+    final McpConnection created = encryptMcp(List.of(mcpServer("Prod", "prod-upper-key")), null);
+    final McpConnection added =
+        encryptMcp(
+            List.of(mcpServer("prod", "prod-key"), copy(created.getServers().getFirst())), created);
+
+    final McpServerConfig lower = copy(added.getServers().getFirst()).withApiKey("replaced-key");
+    final McpConnection updated =
+        encryptMcp(List.of(copy(added.getServers().get(1)), lower), added);
+
+    assertEquals("prod-upper-key", storedKey(updated, "Prod"));
+    assertEquals("replaced-key", storedKey(updated, "prod"));
+  }
+
+  private String storedKey(final McpConnection connection, final String name) {
+    final String apiKey =
+        connection.getServers().stream()
+            .filter(server -> name.equals(server.getName()))
+            .findFirst()
+            .orElseThrow()
+            .getApiKey();
+    final String reference =
+        Fernet.isTokenized(apiKey) ? Fernet.getInstance().decrypt(apiKey) : apiKey;
+    return secretsManager.getSecretValue(reference);
+  }
+
+  private static McpServerConfig copy(final McpServerConfig server) {
+    return JsonUtils.deepCopy(server, McpServerConfig.class);
+  }
+
   private McpConnection encryptMcp(List<McpServerConfig> servers, McpConnection original) {
     McpConnection config = new McpConnection().withServers(servers);
     SecretInventory input = secretsManager.secretInventory(config, mcpRoot());

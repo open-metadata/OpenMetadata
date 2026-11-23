@@ -78,10 +78,13 @@ export const TEST_CASE_STATUS: Record<
     TestCaseResolutionStatusTypes.Resolved,
   ],
   [TestCaseResolutionStatusTypes.ACK]: [
+    TestCaseResolutionStatusTypes.New,
     TestCaseResolutionStatusTypes.Assigned,
     TestCaseResolutionStatusTypes.Resolved,
   ],
   [TestCaseResolutionStatusTypes.Assigned]: [
+    TestCaseResolutionStatusTypes.New,
+    TestCaseResolutionStatusTypes.ACK,
     TestCaseResolutionStatusTypes.Resolved,
   ],
   [TestCaseResolutionStatusTypes.Resolved]: [],
@@ -102,8 +105,8 @@ const ALL_INCIDENT_STATUSES = Object.values(TestCaseResolutionStatusTypes);
 /**
  * Statuses an incident's status menu offers from each status: its own, plus
  * the edges `TestCaseResolutionTaskWorkflow` declares from that stage. An
- * assigned incident can only be reassigned or resolved. A resolved one is
- * reopened rather than transitioned, so it offers every status.
+ * assigned incident can go back to New or Ack, or be resolved. A resolved incident is
+ * final: Resolved allows editing its resolution details, while New starts a separate incident.
  */
 export const INCIDENT_STATUS_MENU_OPTIONS: Record<
   TestCaseResolutionStatusTypes,
@@ -113,9 +116,14 @@ export const INCIDENT_STATUS_MENU_OPTIONS: Record<
   [TestCaseResolutionStatusTypes.ACK]: ALL_INCIDENT_STATUSES,
   [TestCaseResolutionStatusTypes.Assigned]: [
     TestCaseResolutionStatusTypes.Assigned,
+    TestCaseResolutionStatusTypes.New,
+    TestCaseResolutionStatusTypes.ACK,
     TestCaseResolutionStatusTypes.Resolved,
   ],
-  [TestCaseResolutionStatusTypes.Resolved]: ALL_INCIDENT_STATUSES,
+  [TestCaseResolutionStatusTypes.Resolved]: [
+    TestCaseResolutionStatusTypes.Resolved,
+    TestCaseResolutionStatusTypes.New,
+  ],
 };
 
 export const TABLE_DIFF = 'tableDiff';

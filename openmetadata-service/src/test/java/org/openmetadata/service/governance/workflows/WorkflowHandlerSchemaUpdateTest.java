@@ -693,6 +693,7 @@ class WorkflowHandlerSchemaUpdateTest {
     TimerJobQuery exactTriggerQuery = mock(TimerJobQuery.class);
     TimerJobQuery allTimerJobsQuery = mock(TimerJobQuery.class);
     Job entitySpecificTimer = mock(Job.class);
+    Job longNamedEntityTimer = mock(Job.class);
     Workflow workflow = mock(Workflow.class, RETURNS_DEEP_STUBS);
 
     when(mockEngine.getRepositoryService()).thenReturn(repositoryService);
@@ -702,8 +703,15 @@ class WorkflowHandlerSchemaUpdateTest {
         .thenReturn(allTimerJobsQuery);
     when(exactTriggerQuery.processDefinitionKey("approvalTrigger")).thenReturn(exactTriggerQuery);
     when(exactTriggerQuery.list()).thenReturn(List.of());
-    when(allTimerJobsQuery.list()).thenReturn(List.of(entitySpecificTimer));
+    when(allTimerJobsQuery.list()).thenReturn(List.of(entitySpecificTimer, longNamedEntityTimer));
+    when(entitySpecificTimer.getId()).thenReturn("composite-id-timer");
     when(entitySpecificTimer.getProcessDefinitionId()).thenReturn("approvalTrigger-table:1:abc");
+    when(repositoryService.getProcessDefinition("approvalTrigger-table:1:abc").getKey())
+        .thenReturn("approvalTrigger-table");
+    // #36148: a definition whose "key:version:id" exceeds 64 characters has a bare generated ID.
+    when(longNamedEntityTimer.getId()).thenReturn("generated-id-timer");
+    when(longNamedEntityTimer.getProcessDefinitionId()).thenReturn("6310");
+    when(repositoryService.getProcessDefinition("6310").getKey()).thenReturn("approvalTrigger-tag");
     when(workflow.getWorkflowDefinition().getName()).thenReturn("approval");
     when(workflow.getWorkflowDefinition().getTrigger().getType()).thenReturn("periodicBatchEntity");
     when(workflow.getTriggerWorkflow().getWorkflowName()).thenReturn("approvalTrigger");
@@ -727,7 +735,40 @@ class WorkflowHandlerSchemaUpdateTest {
       WorkflowHandler.initialize(buildMockConfig(), true);
       WorkflowHandler.getInstance().deploy(workflow);
 
-      verify(managementService).deleteJob(entitySpecificTimer.getId());
+      verify(managementService).deleteJob("composite-id-timer");
+      verify(managementService).deleteJob("generated-id-timer");
+    }
+  }
+
+  // #36148: the bare generated ID names no workflow, so the running engine's deployed definition
+  // is the only place the key can come from.
+  @Test
+  void runningEngineReadsTheKeyOfABareGeneratedIdFromTheDeployedDefinition() {
+    String longTriggerKey = "ownerAssignedTagApproval_0b5a8e1c-6f0d-4d7e-9d55-3c1f2b7a9e10Trigger";
+    ProcessEngine mockEngine = mock(ProcessEngine.class, RETURNS_DEEP_STUBS);
+    RepositoryService repositoryService = mock(RepositoryService.class, RETURNS_DEEP_STUBS);
+    when(mockEngine.getRepositoryService()).thenReturn(repositoryService);
+    when(repositoryService.getProcessDefinition("6308").getKey()).thenReturn(longTriggerKey);
+
+    try (MockedConstruction<StandaloneProcessEngineConfiguration> ignored =
+            mockConstruction(
+                StandaloneProcessEngineConfiguration.class,
+                (mock, ctx) -> {
+                  when(mock.buildProcessEngine()).thenReturn(mockEngine);
+                  stubWrapperGetters(mock);
+                });
+        MockedStatic<ProcessEngines> ignoredEngines = mockStatic(ProcessEngines.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<PipelineServiceClientFactory> pscMock =
+            mockStatic(PipelineServiceClientFactory.class)) {
+      setupEntityMock(entityMock);
+      pscMock
+          .when(() -> PipelineServiceClientFactory.createPipelineServiceClient(any()))
+          .thenReturn(null);
+
+      WorkflowHandler.initialize(buildMockConfig(), true);
+
+      assertEquals(longTriggerKey, WorkflowHandler.getProcessDefinitionKeyFromId("6308"));
     }
   }
 
