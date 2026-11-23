@@ -104,10 +104,15 @@ class OntologyTermSearchIT {
                       .withConceptType(OntologyConceptType.OWL_CLASS)
                       .withOntology(ontology.getFullyQualifiedName()));
       reindexTerms();
-      assertThat(find(ALIAS, "DraftOnly", draft)).isNull();
-      assertThat(find(ALIAS, "shipment", order)).isNull();
-      assertThat(boundAssets(purchase, order)).contains(table.getFullyQualifiedName());
-      assertThat(find(ALIAS, "tracking", property)).isNotNull();
+      await()
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () -> {
+                assertThat(boundAssets(purchase, order)).contains(table.getFullyQualifiedName());
+                assertThat(find(ALIAS, "tracking", property)).isNotNull();
+                assertThat(find(ALIAS, "DraftOnly", draft)).isNull();
+                assertThat(find(ALIAS, "shipment", order)).isNull();
+              });
 
       SdkClients.adminClient().ontologyProperties().delete(property.getId());
       SdkClients.adminClient()
