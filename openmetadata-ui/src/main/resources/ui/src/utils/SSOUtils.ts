@@ -600,14 +600,17 @@ const browserCallbackFor = (acs: URL): string => {
   return `${acs.origin}${basePath}/callback`;
 };
 
+/**
+ * The browser callback to save: the first saved callback that is not the ACS
+ * URL, or the one derived from the ACS when none is.
+ */
 const resolveSamlBrowserCallback = (
   acs: string,
-  configuredCallback: string | undefined
+  configuredCallbacks: Array<string | undefined>
 ): string | undefined => {
-  const usableCallback =
-    configuredCallback && !isSamlAcsCallback(configuredCallback, acs)
-      ? configuredCallback
-      : undefined;
+  const usableCallback = configuredCallbacks.find(
+    (callback) => callback && !isSamlAcsCallback(callback, acs)
+  );
 
   try {
     const url = new URL(acs);
@@ -634,11 +637,10 @@ const cleanupSamlSp = (
 
   if (typeof acs === 'string' && acs) {
     spConfig.acs = acs;
-    const callbackUrl = resolveSamlBrowserCallback(
-      acs,
-      authConfig.callbackUrl ||
-        (typeof spConfig.callback === 'string' ? spConfig.callback : undefined)
-    );
+    const callbackUrl = resolveSamlBrowserCallback(acs, [
+      authConfig.callbackUrl,
+      typeof spConfig.callback === 'string' ? spConfig.callback : undefined,
+    ]);
 
     if (callbackUrl) {
       authConfig.callbackUrl = callbackUrl;

@@ -832,6 +832,29 @@ describe('SSOUtils', () => {
       }
     );
 
+    it('keeps a usable SP callback when only the root callback was saved as the ACS URL', () => {
+      const data = getDefaultsForProvider(AuthProvider.Saml, ClientType.Public);
+      const auth = data.authenticationConfiguration;
+      const sp = auth.samlConfiguration?.sp;
+
+      if (!sp) {
+        throw new Error('Missing SAML SP defaults');
+      }
+      auth.callbackUrl = 'https://saml.example.com/api/v1/saml/acs';
+      sp.callback = 'https://ui.example.com/callback';
+      sp.acs = 'https://saml.example.com/api/v1/saml/acs';
+
+      const cleaned = cleanupProviderSpecificFields(
+        data,
+        AuthProvider.Saml
+      )?.authenticationConfiguration;
+
+      expect(cleaned?.callbackUrl).toBe('https://ui.example.com/callback');
+      expect(cleaned?.samlConfiguration?.sp?.callback).toBe(
+        'https://ui.example.com/callback'
+      );
+    });
+
     it('keeps a configured browser callback under a base path', () => {
       const data = getDefaultsForProvider(AuthProvider.Saml, ClientType.Public);
       const auth = data.authenticationConfiguration;
