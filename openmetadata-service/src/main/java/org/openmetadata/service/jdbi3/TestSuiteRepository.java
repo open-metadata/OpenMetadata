@@ -799,6 +799,14 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     /* Nothing to do */
   }
 
+  @Override
+  public void restorePatchAttributes(TestSuite original, TestSuite updated) {
+    super.restorePatchAttributes(original, updated);
+    updated
+        .withBasic(original.getBasic())
+        .withBasicEntityReference(original.getBasicEntityReference());
+  }
+
   private List<EntityReference> getTestCases(TestSuite entity) {
     return findTo(entity.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
   }
@@ -1155,6 +1163,9 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      updated
+          .withBasic(original.getBasic())
+          .withBasicEntityReference(original.getBasicEntityReference());
       compareAndUpdate(
           UPDATE_FIELDS,
           () -> {

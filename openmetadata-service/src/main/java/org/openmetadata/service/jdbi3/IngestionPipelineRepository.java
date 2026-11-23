@@ -69,6 +69,7 @@ import org.openmetadata.schema.metadataIngestion.ApplicationPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -553,6 +554,34 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     var service = getCachedParentOrLoad(ingestionPipeline.getService(), "", Include.NON_DELETED);
     ingestionPipeline.setService(service.getEntityReference());
     validateSourceConfigHasType(ingestionPipeline);
+    validateTestSuiteConfig(ingestionPipeline, service);
+  }
+
+  static void validateTestSuiteConfig(IngestionPipeline pipeline, EntityInterface<?> parent) {
+    final Map<?, ?> config = getSourceConfigMap(getRequiredSourceConfig(pipeline));
+    final String configType = Objects.toString(config.get(SOURCE_CONFIG_TYPE), null);
+    final boolean suitePipeline = PipelineType.TEST_SUITE.equals(pipeline.getPipelineType());
+    if (!suitePipeline && !(parent instanceof TestSuite) && !"TestSuite".equals(configType)) {
+      return;
+    }
+    if (!suitePipeline || !(parent instanceof TestSuite suite) || !"TestSuite".equals(configType)) {
+      throw new BadRequestException(
+          "TestSuite pipeline requires a test suite and TestSuite config");
+    }
+    validateTestSuiteTable(suite, config.get("entityFullyQualifiedName"));
+  }
+
+  private static void validateTestSuiteTable(TestSuite suite, Object tableFqn) {
+    if (Boolean.TRUE.equals(suite.getBasic())) {
+      final EntityReference table = suite.getBasicEntityReference();
+      final String expected = table == null ? null : table.getFullyQualifiedName();
+      if (nullOrEmpty(expected) || (tableFqn != null && !expected.equals(tableFqn))) {
+        throw new BadRequestException("TestSuite pipeline table must match its test suite");
+      }
+    } else if (tableFqn != null) {
+      throw new BadRequestException(
+          "Logical test suite pipelines must omit entityFullyQualifiedName");
+    }
   }
 
   static void validateSourceConfigHasType(IngestionPipeline ingestionPipeline) {
@@ -590,6 +619,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       final IngestionPipeline original, final IngestionPipeline updated) {
     super.restorePatchAttributes(original, updated);
     updated.setService(original.getService());
+    validateTestSuiteConfig(
+        updated, getCachedParentOrLoad(updated.getService(), "", Include.NON_DELETED));
   }
 
   @Override
@@ -1993,6 +2024,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   public PipelineServiceClientResponse deployIngestionPipeline(
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     validateSourceConfigHasType(ingestionPipeline);
+    validateTestSuiteConfig(ingestionPipeline, service);
     assertOwnsRunnerName(ingestionPipeline);
     applyStreamableLogsConfig(ingestionPipeline);
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
@@ -2076,6 +2108,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       IngestionPipeline ingestionPipeline,
       ServiceEntityInterface service,
       RunOptions options) {
+    validateTestSuiteConfig(ingestionPipeline, service);
     if (pipelineServiceClient == null) {
       return new PipelineServiceClientResponse()
           .withCode(200)
