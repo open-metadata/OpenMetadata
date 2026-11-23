@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Locator, Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 import { expect, test } from '../../support/fixtures/base';
 
 import { RDG_ACTIVE_CELL_SELECTOR } from '../../constant/bulkImportExport';
@@ -19,6 +20,7 @@ import { Domain } from '../../support/domain/Domain';
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -148,6 +150,75 @@ const storedProcedureDetails = {
   ...createStoredProcedureRowDetails(),
   glossary: glossaryDetails,
 };
+
+test(
+  'schema CSV export downloads only the selected stored procedures',
+  { tag: '@import-export' },
+  async ({ page }) => {
+    const schema = new DatabaseSchemaClass();
+    const table = new TableClass({ schema });
+    const procedure = new StoredProcedureClass({ schema });
+    const { apiContext, afterAction } = await getApiContext(page);
+
+    try {
+      await schema.create(apiContext);
+      await table.create(apiContext);
+      await procedure.create(apiContext);
+      await schema.visitEntityPage(page);
+
+      const openExport = async () => {
+        await page.getByTestId('manage-button').click();
+        await page.getByTestId('export-button-title').click();
+      };
+      const modal = page.getByRole('dialog', { name: 'Export', exact: true });
+      const scope = modal.getByRole('button', { name: /Export Scope/ });
+
+      await openExport();
+      await expect(scope).toHaveText('All');
+      await scope.click();
+      await page
+        .getByRole('option', { name: 'Tables only', exact: true })
+        .click();
+      await modal.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await expect(modal).toBeHidden();
+      await openExport();
+      await expect(scope).toHaveText('All');
+      await scope.click();
+      await page
+        .getByRole('option', { name: 'Stored Procedures', exact: true })
+        .click();
+
+      const accepted = page.waitForResponse(
+        (response) =>
+          response.url().includes('/databaseSchemas/') &&
+          new URL(response.url()).pathname.endsWith('/exportAsync') &&
+          response.request().method() === 'GET'
+      );
+      await modal.getByRole('button', { name: 'Export', exact: true }).click();
+      const response = await accepted;
+      expect(response.status()).toBe(202);
+      const query = new URL(response.url()).searchParams;
+      expect(query.get('entityTypes')).toBe('storedProcedure');
+      expect(query.get('recursive')).toBe('true');
+      const { jobId } = await response.json();
+      await expect(modal).toBeHidden();
+
+      const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        page
+          .getByTestId(`csv-job-${jobId}`)
+          .getByRole('button', { name: 'Download' })
+          .click({ timeout: 60_000 }),
+      ]);
+      const csv = await readFile(await download.path(), 'utf8');
+      expect(csv).toContain(procedure.entityResponseData.fullyQualifiedName);
+      expect(csv).toContain('CREATE OR REPLACE PROCEDURE');
+      expect(csv).not.toContain(table.entityResponseData.fullyQualifiedName);
+    } finally {
+      await schema.delete(apiContext).finally(afterAction);
+    }
+  }
+);
 
 test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
@@ -600,7 +671,7 @@ test.describe('Bulk Import Export', { tag: '@import-export' }, () => {
 
     await test.step('should export data database schema details', async () => {
       await dbSchemaEntity.visitEntityPage(page);
-      await performBulkDownload(page, dbSchemaEntity.entity.name);
+      await performBulkDownload(page, dbSchemaEntity.entity.name, true);
     });
 
     await test.step('should import and edit with two additional table', async () => {

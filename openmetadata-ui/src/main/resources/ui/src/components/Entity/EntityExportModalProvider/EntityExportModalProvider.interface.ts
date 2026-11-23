@@ -13,7 +13,10 @@ import { ExportTypes } from '../../../constants/Export.constants';
  *  limitations under the License.
  */
 
-import { CSVExportResponse } from '../../../interface/entity/csv.interface';
+import {
+  CSVExportParams,
+  CSVExportResponse,
+} from '../../../interface/entity/csv.interface';
 
 export type CSVExportWebsocketResponse = {
   jobId: string;
@@ -49,11 +52,18 @@ export interface PDFDimensions {
   gridRows: number;
 }
 
+interface CSVExportScope {
+  id: string;
+  label: string;
+  params: CSVExportParams;
+}
+
 export type ExportData = {
   name: string;
   title?: string;
   documentSelector?: string;
   exportTypes: ExportTypes[];
+  csvScopes?: CSVExportScope[];
   /** Frames the content of a PNG capture. `getViewport` takes precedence. */
   viewport?: ExportViewport;
   /**
@@ -80,9 +90,7 @@ export type ExportData = {
   afterCapture?: () => void;
   onExport: (
     name: string,
-    params?: {
-      recursive?: boolean;
-    }
+    params?: CSVExportParams
   ) => Promise<CSVExportResponse | string>;
   onError?: () => void;
 };

@@ -1789,7 +1789,11 @@ export const performColumnSelectAndDeleteOperation = async (page: Page) => {
   ).not.toBeVisible(); // Display Name cell should be deleted
 };
 
-export const performBulkDownload = async (page: Page, fileName: string) => {
+export const performBulkDownload = async (
+  page: Page,
+  fileName: string,
+  confirmScope = false
+) => {
   const { apiContext, afterAction } = await getApiContext(page);
   const exportResponsePromise = page.waitForResponse(
     (response) =>
@@ -1803,6 +1807,12 @@ export const performBulkDownload = async (page: Page, fileName: string) => {
       .getByTestId('manage-dropdown-list-container')
       .waitFor({ state: 'visible' });
     await page.click('[data-testid="export-button-title"]');
+    if (confirmScope) {
+      await page
+        .getByTestId('export-entity-modal')
+        .getByTestId('submit-button')
+        .click();
+    }
 
     const exportResponse = await exportResponsePromise;
     expect(exportResponse.ok()).toBeTruthy();

@@ -28,6 +28,7 @@ import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { ExportTypes } from '../../../constants/Export.constants';
+import { CSVExportParams } from '../../../interface/entity/csv.interface';
 import {
   CsvAsyncJob,
   getCsvAsyncJob,
@@ -173,6 +174,19 @@ const runCSVPollAttempt = async (
   }
 };
 
+const addExportToTray = (
+  name: string,
+  result: Awaited<ReturnType<ExportData['onExport']>>
+) => {
+  if (isString(result)) {
+    downloadCsv(result, `${name}_${getCurrentISODate()}.csv`);
+  } else {
+    // Claim jobs that finish before the tray has polled for them.
+    markCsvJobOwned(result?.jobId);
+    window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
+  }
+};
+
 export const EntityExportModalProvider = ({
   children,
 }: {
@@ -201,6 +215,8 @@ export const EntityExportModalProvider = ({
   const csvExportPollingWatchdogRef = useRef<ReturnType<typeof setTimeout>>();
   const csvExportResultAbortControllerRef = useRef<AbortController>();
   const exportGenerationRef = useRef(0);
+  const pendingScopedExportRef = useRef<number>();
+  const scopedExportPathRef = useRef(location.pathname);
   const isMountedRef = useRef(true);
 
   const [csvExportJob, setCSVExportJob] = useState<Partial<CSVExportJob>>();
@@ -219,6 +235,7 @@ export const EntityExportModalProvider = ({
   const isCsvOnly = useMemo(
     () =>
       !isBulkEdit &&
+      !exportData?.csvScopes &&
       exportData?.exportTypes?.length === 1 &&
       exportData.exportTypes[0] === ExportTypes.CSV,
     [exportData, isBulkEdit]
@@ -291,9 +308,23 @@ export const EntityExportModalProvider = ({
     stopCSVExportPolling,
   ]);
 
-  const showModal = useCallback((data: ExportData) => {
-    setExportData(data);
-  }, []);
+  const showModal = useCallback(
+    (data: ExportData) => {
+      handleCancel();
+      setExportData(data);
+    },
+    [handleCancel]
+  );
+
+  useEffect(() => {
+    if (
+      exportData?.csvScopes &&
+      scopedExportPathRef.current !== location.pathname
+    ) {
+      handleCancel();
+    }
+    scopedExportPathRef.current = location.pathname;
+  }, [exportData?.csvScopes, handleCancel, location.pathname]);
 
   const triggerExportForBulkEdit = useCallback((data: ExportData) => {
     setExportData(data);
@@ -622,6 +653,37 @@ export const EntityExportModalProvider = ({
     [handleCancel, isExportStale]
   );
 
+  const handleScopedCsvExport = async (
+    data: ExportData,
+    params: CSVExportParams
+  ) => {
+    if (pendingScopedExportRef.current === exportGenerationRef.current) {
+      return;
+    }
+    const generation = ++exportGenerationRef.current;
+    pendingScopedExportRef.current = generation;
+    setDownloading(true);
+    try {
+      const result = await data.onExport(data.name, params);
+      if (isMountedRef.current) {
+        addExportToTray(data.name, result);
+      }
+      if (!isExportStale(generation)) {
+        handleCancel();
+      }
+    } catch (error) {
+      if (!isExportStale(generation)) {
+        setDownloading(false);
+        showErrorToast(error as AxiosError);
+        data.onError?.();
+      }
+    } finally {
+      if (pendingScopedExportRef.current === generation) {
+        pendingScopedExportRef.current = undefined;
+      }
+    }
+  };
+
   const handleExport = async ({
     fileName,
     exportType,
@@ -725,14 +787,7 @@ export const EntityExportModalProvider = ({
       if (!isMountedRef.current) {
         return;
       }
-      if (isString(result)) {
-        downloadCsv(result, `${data.name}_${getCurrentISODate()}.csv`);
-      } else {
-        // Claim the just-started job so the tray always surfaces it, even if it
-        // finishes before the tray's first fetch.
-        markCsvJobOwned((result as { jobId?: string })?.jobId);
-        window.dispatchEvent(new Event(CSV_JOBS_REFRESH_EVENT));
-      }
+      addExportToTray(data.name, result);
     } catch (error) {
       if (!isMountedRef.current) {
         return;
@@ -807,10 +862,14 @@ export const EntityExportModalProvider = ({
               downloading={downloading}
               exportData={exportData}
               fileName={fileName}
+              key={exportData.name}
               selectedExportType={selectedExportType}
               onCancel={handleCancel}
               onExport={handleExport}
               onFileNameChange={setFileName}
+              onScopedCsvExport={(params) =>
+                handleScopedCsvExport(exportData, params)
+              }
               onSelectedExportTypeChange={setSelectedExportType}
             />
           </Suspense>

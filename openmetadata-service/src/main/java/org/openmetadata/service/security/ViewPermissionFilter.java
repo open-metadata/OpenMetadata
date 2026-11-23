@@ -64,12 +64,15 @@ public class ViewPermissionFilter {
    */
   public Set<UUID> viewableIds(
       String userName, MetadataOperation operation, List<EntityReference> references) {
+    return viewableIds(ChangeActor.recorded(userName, null), operation, references);
+  }
+
+  public Set<UUID> viewableIds(
+      ChangeActor actor, MetadataOperation operation, List<EntityReference> references) {
     AccessCheck check =
         (reference, resource) ->
             authorizer.authorizeActor(
-                ChangeActor.recorded(userName, null),
-                new OperationContext(reference.getType(), operation),
-                resource);
+                actor, new OperationContext(reference.getType(), operation), resource);
     return viewableIds(check, references);
   }
 

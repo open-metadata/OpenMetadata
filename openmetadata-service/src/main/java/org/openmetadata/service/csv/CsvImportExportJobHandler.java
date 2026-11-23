@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.csv.CsvExportProgressCallback;
@@ -27,11 +28,13 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
@@ -40,6 +43,9 @@ import org.openmetadata.service.jobs.JobHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.CSVExportMessage;
@@ -59,9 +65,16 @@ public class CsvImportExportJobHandler implements JobHandler {
     CsvAsyncJobArgs args = JsonUtils.convertValue(job.getJobArgs(), CsvAsyncJobArgs.class);
     String jobId = String.valueOf(job.getId());
     try {
+      if (args.getDatabaseSchemaEntityTypes() != null
+          && (args.getOperation() != CsvAsyncJob.Operation.EXPORT
+              || !Entity.DATABASE_SCHEMA.equals(args.getEntityType()))) {
+        throw new IllegalArgumentException("entityTypes requires a database schema export job");
+      }
       jobManager.markRunning(jobId, getStartedMessage(args));
       jobManager.checkpoint(jobId);
-      if (args.getOperation() == CsvAsyncJob.Operation.IMPORT) {
+      if (args.getDatabaseSchemaEntityTypes() != null) {
+        runDatabaseSchemaExport(job, args);
+      } else if (args.getOperation() == CsvAsyncJob.Operation.IMPORT) {
         runImport(job, args);
       } else if (args.getSearchExport() != null) {
         runSearchExport(job, args.getSearchExport());
@@ -71,6 +84,8 @@ public class CsvImportExportJobHandler implements JobHandler {
         runAuditExport(job, args.getAuditExport());
       } else if (args.getTestCaseExport() != null) {
         runTestCaseExport(job, args);
+      } else if (Entity.DATABASE_SCHEMA.equals(args.getEntityType())) {
+        runDatabaseSchemaExport(job, args);
       } else {
         runExport(job, args);
       }
@@ -153,6 +168,32 @@ public class CsvImportExportJobHandler implements JobHandler {
             Boolean.TRUE.equals(args.getRecursive()),
             exportProgressCallback(job));
     completeEntityExport(job, csvData);
+  }
+
+  private void runDatabaseSchemaExport(BackgroundJob job, CsvAsyncJobArgs args) throws IOException {
+    String user = job.getCreatedBy();
+    String impersonatedBy = args.getImpersonatedBy();
+    ImpersonationContext.setImpersonatedBy(impersonatedBy);
+    try {
+      // The caller's schema access can change while the export is queued.
+      Entity.getAuthorizer()
+          .authorize(
+              new CatalogSecurityContext(() -> user, null, null, Set.of(), false, impersonatedBy),
+              new OperationContext(Entity.DATABASE_SCHEMA, MetadataOperation.VIEW_ALL),
+              new ResourceContext<>(Entity.DATABASE_SCHEMA, null, args.getTargetFqn()));
+      DatabaseSchemaRepository repository =
+          (DatabaseSchemaRepository) Entity.getEntityRepository(Entity.DATABASE_SCHEMA);
+      String csvData =
+          repository.exportToCsv(
+              args.getTargetFqn(),
+              user,
+              Boolean.TRUE.equals(args.getRecursive()),
+              args.getDatabaseSchemaEntityTypes(),
+              exportProgressCallback(job));
+      completeEntityExport(job, csvData);
+    } finally {
+      ImpersonationContext.clear();
+    }
   }
 
   private void runTestCaseExport(BackgroundJob job, CsvAsyncJobArgs args) throws IOException {

@@ -898,7 +898,7 @@ test.describe(
         await page.getByTestId(schemaName).click();
 
         // Export from schema level
-        await performBulkDownload(page, schemaName);
+        await performBulkDownload(page, schemaName, true);
 
         // Import at schema level
         await page.click('[data-testid="manage-button"]');

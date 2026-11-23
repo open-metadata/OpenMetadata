@@ -25,6 +25,10 @@ import { EntityHistory } from '../generated/type/entityHistory';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
+import {
+  CSVExportParams,
+  CSVExportResponse,
+} from '../interface/entity/csv.interface';
 import { QueryVote } from '../interface/entity/vote.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
@@ -320,11 +324,9 @@ export const importDatabaseInCSVFormat = async (
 
 export const exportDatabaseSchemaDetailsInCSV = async (
   fqn: string,
-  params?: {
-    recursive?: boolean;
-  }
+  params?: CSVExportParams
 ) => {
-  const res = await APIClient.get(
+  const res = await APIClient.get<CSVExportResponse>(
     `databaseSchemas/name/${getEncodedFqn(fqn)}/exportAsync`,
     {
       params,

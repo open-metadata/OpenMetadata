@@ -14,19 +14,30 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.http.HttpResponse;
+import java.util.List;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.bootstrap.SessionMultiNodeCluster;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.CsvJobClient;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateMetric;
+import org.openmetadata.schema.api.data.CreateStoredProcedure;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.StoredProcedureCode;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.StoredProcedureLanguage;
 
 /**
  * Exercises a CSV export whose lifecycle spans two servers: the export is requested on one node and
@@ -65,6 +76,47 @@ class CsvExportMultiNodeIT {
     assertTrue(
         download.body().contains(metric.getName()),
         "The CSV served by the far node must be the exported content");
+  }
+
+  @Test
+  void scopedSchemaExportRetainsSelectionAcrossNodes(TestNamespace ns) throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    CsvJobClient nodeA = CsvJobClient.on(cluster.nodeABaseUrl());
+    CsvJobClient nodeB = CsvJobClient.on(cluster.nodeBBaseUrl());
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    String table = ns.prefix("orders");
+    String procedure = ns.prefix("order_report");
+    SdkClients.adminClient()
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(table)
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
+    SdkClients.adminClient()
+        .storedProcedures()
+        .create(
+            new CreateStoredProcedure()
+                .withName(procedure)
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withStoredProcedureCode(
+                    new StoredProcedureCode()
+                        .withCode("SELECT 1;")
+                        .withLanguage(StoredProcedureLanguage.SQL)));
+    String jobId =
+        nodeA.startExport(
+            "/v1/databaseSchemas/name/"
+                + schema.getFullyQualifiedName()
+                + "/exportAsync?recursive=true&entityTypes=storedProcedure");
+
+    assertEquals(1, nodeB.awaitJobStatus(jobId, "COMPLETED").path("total").asInt());
+    HttpResponse<String> download = nodeB.downloadResult(jobId);
+    assertEquals(200, download.statusCode(), download.body());
+    assertTrue(download.body().contains(procedure));
+    assertTrue(download.body().contains("SELECT 1;"));
+    assertFalse(download.body().contains(table));
   }
 
   @Test

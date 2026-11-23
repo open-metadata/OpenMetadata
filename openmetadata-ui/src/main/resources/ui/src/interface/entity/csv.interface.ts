@@ -13,6 +13,11 @@
 
 import { CSVImportResult } from '../../generated/type/csvImportResult';
 
+export interface CSVExportParams {
+  recursive?: boolean;
+  entityTypes?: 'table' | 'storedProcedure';
+}
+
 export type CSVExportResponse = {
   jobId: string;
   message: string;

@@ -2830,13 +2830,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /** Lists the entities below {@code parentFqn} that {@code user} may view, for a CSV export. */
   public final List<T> listAllForCSV(Fields fields, String parentFqn, String user) {
+    return listAllForCSV(fields, parentFqn, ChangeActor.recorded(user, null));
+  }
+
+  public final List<T> listAllForCSV(Fields fields, String parentFqn, ChangeActor actor) {
     ListFilter filter = new ListFilter(NON_DELETED);
     List<String> jsons = listAllByParentFqn(parentFqn, filter);
     List<T> all = new ArrayList<>();
     for (String json : jsons) {
       all.add(JsonUtils.readValue(json, entityClass));
     }
-    List<T> entities = retainViewableForExport(all, user);
+    List<T> entities = retainViewableForExport(all, actor);
     // TODO: Ensure consistent behavior with setFieldsInBulk when all repositories implement it
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
@@ -2852,12 +2856,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   public static <E extends EntityInterface<?>> List<E> retainViewableForExport(
       List<E> entities, String user) {
+    return retainViewableForExport(entities, ChangeActor.recorded(user, null));
+  }
+
+  private static <E extends EntityInterface<?>> List<E> retainViewableForExport(
+      List<E> entities, ChangeActor actor) {
     List<E> viewable = new ArrayList<>(listOrEmpty(entities));
-    if (!viewable.isEmpty() && !SubjectContext.getSubjectContext(user).isAdmin()) {
+    if (!viewable.isEmpty()
+        && !SubjectContext.getSubjectContext(actor.userName(), actor.impersonatedBy()).isAdmin()) {
       Set<UUID> viewableIds =
           new ViewPermissionFilter(Entity.getAuthorizer())
               .viewableIds(
-                  user,
+                  actor,
                   MetadataOperation.VIEW_ALL,
                   viewable.stream().map(EntityInterface::getEntityReference).toList());
       viewable.removeIf(entity -> !viewableIds.contains(entity.getId()));

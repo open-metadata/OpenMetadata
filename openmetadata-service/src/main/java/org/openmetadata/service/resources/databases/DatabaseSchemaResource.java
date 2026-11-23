@@ -31,6 +31,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
@@ -48,8 +50,11 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import lombok.Getter;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -65,6 +70,9 @@ import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.csv.CsvAsyncJob;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
+import org.openmetadata.service.csv.DatabaseSchemaExportEntityType;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -615,30 +623,34 @@ public class DatabaseSchemaResource
   @Produces(MediaType.APPLICATION_JSON)
   @Valid
   @Operation(
-      operationId = "exportDatabaseSchema",
-      summary = "Export database schema in CSV format",
+      operationId = "exportDatabaseSchemaAsync",
+      summary = "Queue a database schema CSV export",
       responses = {
         @ApiResponse(
-            responseCode = "200",
-            description = "Exported csv with tables from the database schema",
+            responseCode = "202",
+            description = "CSV export job accepted",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = CSVExportResponse.class)))
+                    schema = @Schema(implementation = CSVExportResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid entityTypes selection")
       })
   public Response exportCsvAsync(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Database schema", schema = @Schema(type = "string"))
-          @PathParam("name")
+      @Parameter(description = "Fully qualified name of the database schema") @PathParam("name")
           String name,
-      @Parameter(
-              description =
-                  "If true, export will include child entities (schemas, tables, columns)",
-              schema = @Schema(type = "boolean"))
-          @DefaultValue("false") // Default: Export only database
-          @QueryParam("recursive")
-          boolean recursive) {
-    return exportCsvInternalAsync(securityContext, name, recursive);
+      @BeanParam DatabaseSchemaExportQuery query) {
+    authorizeCsv(securityContext, name, MetadataOperation.VIEW_ALL);
+    CsvAsyncJob job =
+        CsvAsyncJobManager.getInstance()
+            .createDatabaseSchemaExportJob(
+                name,
+                securityContext.getUserPrincipal().getName(),
+                query.isRecursive(),
+                query.selectedEntityTypes());
+    CSVExportResponse response =
+        new CSVExportResponse(job.getJobId(), "Export initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
   }
 
   @GET
@@ -647,30 +659,69 @@ public class DatabaseSchemaResource
   @Valid
   @Operation(
       operationId = "exportDatabaseSchema",
-      summary = "Export database schema in CSV format",
+      summary = "Export database schema assets in CSV format",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Exported csv with tables from the database schema",
+            description = "CSV containing the selected and visible assets",
             content =
                 @Content(
-                    mediaType = "application/json",
-                    schema = @Schema(implementation = String.class)))
+                    mediaType = "text/plain",
+                    schema = @Schema(implementation = String.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid entityTypes selection")
       })
   public String exportCsv(
       @Context SecurityContext securityContext,
-      @Parameter(description = "Name of the Database schema", schema = @Schema(type = "string"))
-          @PathParam("name")
+      @Parameter(description = "Fully qualified name of the database schema") @PathParam("name")
           String name,
-      @Parameter(
-              description =
-                  "If true, export will include child entities (schemas, tables, columns)",
-              schema = @Schema(type = "boolean"))
-          @DefaultValue("false") // Default: Export only database
-          @QueryParam("recursive")
-          boolean recursive)
+      @BeanParam DatabaseSchemaExportQuery query)
       throws IOException {
-    return exportCsvInternal(securityContext, name, recursive);
+    authorizeCsv(securityContext, name, MetadataOperation.VIEW_ALL);
+    return repository.exportToCsv(
+        name,
+        securityContext.getUserPrincipal().getName(),
+        query.isRecursive(),
+        query.selectedEntityTypes(),
+        null);
+  }
+
+  // Getters let OpenAPI expose the bean properties as query parameters.
+  @Getter
+  public static final class DatabaseSchemaExportQuery {
+    @Parameter(
+        description =
+            "Include table columns and use the typed CSV format with asset FQNs and procedure code. "
+                + "Use true when exporting stored procedures for reimport.",
+        schema = @Schema(type = "boolean", defaultValue = "false"))
+    @DefaultValue("false")
+    @QueryParam("recursive")
+    private boolean recursive;
+
+    @Parameter(
+        description =
+            "Select table, storedProcedure, or both. Omit to select both. Repeat the parameter "
+                + "or supply comma-separated values. Blank segments and unknown types return 400.",
+        schema = @Schema(type = "string", example = "table,storedProcedure"))
+    @QueryParam("entityTypes")
+    private List<String> entityTypes;
+
+    private Set<DatabaseSchemaExportEntityType> selectedEntityTypes() {
+      if (entityTypes == null || entityTypes.isEmpty()) {
+        return null;
+      }
+      EnumSet<DatabaseSchemaExportEntityType> selected =
+          EnumSet.noneOf(DatabaseSchemaExportEntityType.class);
+      for (String parameter : entityTypes) {
+        for (String value : parameter.split(",", -1)) {
+          try {
+            selected.add(DatabaseSchemaExportEntityType.fromValue(value.trim()));
+          } catch (IllegalArgumentException e) {
+            throw new BadRequestException(e.getMessage());
+          }
+        }
+      }
+      return selected.equals(EnumSet.allOf(DatabaseSchemaExportEntityType.class)) ? null : selected;
+    }
   }
 
   @PUT

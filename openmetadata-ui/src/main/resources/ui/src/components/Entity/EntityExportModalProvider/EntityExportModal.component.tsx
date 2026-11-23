@@ -26,12 +26,13 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Loading01 } from '@openmetadata/ui-core-components/icons';
 import { lowerCase } from 'lodash';
-import { FC, Fragment, useMemo } from 'react';
+import { FC, Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   BETA_EXPORT_TYPES,
   ExportTypes,
 } from '../../../constants/Export.constants';
+import { CSVExportParams } from '../../../interface/entity/csv.interface';
 import exportUtilClassBase from '../../../utils/ExportUtilClassBase';
 import {
   CSVExportJob,
@@ -49,6 +50,7 @@ interface EntityExportModalProps {
     fileName: string;
     exportType: ExportTypes;
   }) => Promise<void>;
+  onScopedCsvExport: (params: CSVExportParams) => Promise<void>;
   onFileNameChange: (fileName: string) => void;
   onSelectedExportTypeChange: (exportType: ExportTypes) => void;
 }
@@ -137,12 +139,17 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
   selectedExportType,
   onCancel,
   onExport,
+  onScopedCsvExport,
   onFileNameChange,
   onSelectedExportTypeChange,
 }) => {
   const { t } = useTranslation();
   const exportLabel = t('label.export');
   const dialogTitle = exportData.title ?? exportLabel;
+  const [csvScope, setCsvScope] = useState(exportData.csvScopes?.[0]?.id);
+  const csvParams = exportData.csvScopes?.find(
+    ({ id }) => id === csvScope
+  )?.params;
   const exportTypeItems = useMemo(() => {
     const options = exportUtilClassBase.getExportTypeOptions();
 
@@ -174,42 +181,60 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
             </Typography>
           </Dialog.Header>
           <Dialog.Content>
-            <Select
-              data-testid="export-type-select"
-              isDisabled={exportData.exportTypes.length === 1}
-              items={exportTypeItems}
-              label={`${t('label.export-type')}:`}
-              selectedKey={selectedExportType}
-              onSelectionChange={(key) =>
-                key && onSelectedExportTypeChange(key as ExportTypes)
-              }>
-              {(item) => (
-                <Select.Item id={item.id} textValue={item.label}>
-                  <div className="tw:flex tw:items-center tw:gap-2">
+            {exportData.csvScopes ? (
+              <Select
+                data-testid="csv-export-scope"
+                isDisabled={downloading}
+                items={exportData.csvScopes}
+                label={t('label.export-scope')}
+                selectedKey={csvScope}
+                onSelectionChange={(key) => key && setCsvScope(String(key))}>
+                {(item) => (
+                  <Select.Item id={item.id} textValue={item.label}>
                     {item.label}
-                    {isBetaExportType(item.id) && (
-                      <Badge color="gray" size="sm">
-                        {t('label.beta')}
-                      </Badge>
-                    )}
-                  </div>
-                </Select.Item>
-              )}
-            </Select>
+                  </Select.Item>
+                )}
+              </Select>
+            ) : (
+              <>
+                <Select
+                  data-testid="export-type-select"
+                  isDisabled={exportData.exportTypes.length === 1}
+                  items={exportTypeItems}
+                  label={`${t('label.export-type')}:`}
+                  selectedKey={selectedExportType}
+                  onSelectionChange={(key) =>
+                    key && onSelectedExportTypeChange(key as ExportTypes)
+                  }>
+                  {(item) => (
+                    <Select.Item id={item.id} textValue={item.label}>
+                      <div className="tw:flex tw:items-center tw:gap-2">
+                        {item.label}
+                        {isBetaExportType(item.id) && (
+                          <Badge color="gray" size="sm">
+                            {t('label.beta')}
+                          </Badge>
+                        )}
+                      </div>
+                    </Select.Item>
+                  )}
+                </Select>
 
-            <InputGroup
-              label={`${t('label.entity-name', {
-                entity: t('label.file'),
-              })}:`}
-              trailingAddon={
-                <InputGroup.Prefix position="trailing">
-                  {`.${lowerCase(selectedExportType)}`}
-                </InputGroup.Prefix>
-              }
-              value={fileName}
-              onChange={onFileNameChange}>
-              <InputBase inputDataTestId="file-name-input" />
-            </InputGroup>
+                <InputGroup
+                  label={`${t('label.entity-name', {
+                    entity: t('label.file'),
+                  })}:`}
+                  trailingAddon={
+                    <InputGroup.Prefix position="trailing">
+                      {`.${lowerCase(selectedExportType)}`}
+                    </InputGroup.Prefix>
+                  }
+                  value={fileName}
+                  onChange={onFileNameChange}>
+                  <InputBase inputDataTestId="file-name-input" />
+                </InputGroup>
+              </>
+            )}
 
             <ExportJobStatus
               csvExportJob={csvExportJob}
@@ -225,11 +250,15 @@ export const EntityExportModal: FC<EntityExportModalProps> = ({
             <Button
               color="primary"
               data-testid="submit-button"
-              isDisabled={downloading}
+              isDisabled={
+                downloading || Boolean(exportData.csvScopes && !csvParams)
+              }
               isLoading={downloading}
               size="lg"
               onClick={() =>
-                onExport({ fileName, exportType: selectedExportType })
+                csvParams
+                  ? onScopedCsvExport(csvParams)
+                  : onExport({ fileName, exportType: selectedExportType })
               }>
               {exportLabel}
             </Button>

@@ -8,6 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,12 +34,16 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateStoredProcedure;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.StoredProcedureCode;
 import org.openmetadata.schema.api.entityRelationship.EsEntityRelationshipData;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
@@ -45,6 +52,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.StaticSamplingConfig;
+import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -1113,6 +1121,224 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   }
 
   @Test
+  void test_schemaCsvExportSelectsEntityTypesWithAsyncParity(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = createImportSchema(ns, ns.prefix("sales.reports"));
+    Table second = createExportTable(schema, ns.prefix("z_orders"), List.of());
+    Table first =
+        createExportTable(
+            schema,
+            ns.prefix("a_orders"),
+            List.of(),
+            List.of(
+                new Column()
+                    .withName("summary")
+                    .withDataType(ColumnDataType.STRUCT)
+                    .withChildren(
+                        List.of(
+                            new Column().withName("count").withDataType(ColumnDataType.BIGINT)))));
+    String code = "SELECT 'status, \"paid\"';\nSELECT 2;";
+    StoredProcedure procedure = createExportProcedure(schema, ns.prefix("report"), code, List.of());
+    Table deleted = createExportTable(schema, ns.prefix("deleted_orders"), List.of());
+    SdkClients.adminClient().tables().delete(deleted.getId());
+    StoredProcedure deletedProcedure =
+        createExportProcedure(schema, ns.prefix("deleted_report"), "SELECT 1;", List.of());
+    SdkClients.adminClient().storedProcedures().delete(deletedProcedure.getId());
+    DatabaseSchema sibling =
+        createEntity(
+            new CreateDatabaseSchema()
+                .withName(ns.prefix("sibling"))
+                .withDatabase(schema.getDatabase().getFullyQualifiedName()));
+    createExportTable(sibling, ns.prefix("other_orders"), List.of());
+
+    CsvJobClient jobs = CsvJobClient.onDefaultServer();
+    String path = schemaExportPath(schema);
+    for (boolean recursive : List.of(false, true)) {
+      String query = "?recursive=" + recursive;
+      String tableCsv = fetchCsv(jobs, path + "/export" + query + "&entityTypes=table");
+      String procedureCsv =
+          fetchCsv(jobs, path + "/export" + query + "&entityTypes=%20storedProcedure%20");
+      String defaultCsv = fetchCsv(jobs, path + "/export" + query);
+      assertEquals(
+          defaultCsv,
+          fetchCsv(jobs, path + "/export" + query + "&entityTypes=storedProcedure%2Ctable,table"));
+      assertEquals(
+          defaultCsv,
+          fetchCsv(
+              jobs, path + "/export" + query + "&entityTypes=table&entityTypes=storedProcedure"));
+
+      List<CSVRecord> tableRows = parseSchemaCsv(tableCsv);
+      List<CSVRecord> procedureRows = parseSchemaCsv(procedureCsv);
+      assertEquals(recursive ? 5 : 2, tableRows.size());
+      assertEquals(1, procedureRows.size());
+      CSVRecord firstTable = tableRows.getFirst();
+      CSVRecord secondTable = tableRows.get(recursive ? 3 : 1);
+      CSVRecord storedProcedure = procedureRows.getFirst();
+      List<String> shortHeader =
+          List.of(
+              "name*",
+              "displayName",
+              "description",
+              "owner",
+              "tags",
+              "glossaryTerms",
+              "tiers",
+              "certification",
+              "retentionPeriod",
+              "sourceUrl",
+              "domains",
+              "extension");
+      assertEquals(first.getName(), firstTable.get(0));
+      assertEquals(second.getName(), secondTable.get(0));
+      assertEquals(procedure.getName(), storedProcedure.get(0));
+      if (recursive) {
+        List<String> recursiveHeader = new ArrayList<>(shortHeader);
+        recursiveHeader.addAll(
+            List.of(
+                "entityType*",
+                "fullyQualifiedName",
+                "column.dataTypeDisplay",
+                "column.dataType",
+                "column.arrayDataType",
+                "column.dataLength",
+                "storedProcedure.code",
+                "storedProcedure.language"));
+        assertEquals(recursiveHeader, parseSchemaCsvHeader(tableCsv));
+        assertEquals(recursiveHeader, parseSchemaCsvHeader(procedureCsv));
+        assertEquals(Entity.TABLE, firstTable.get(12));
+        assertEquals(first.getFullyQualifiedName(), firstTable.get(13));
+        assertEquals("column", tableRows.get(1).get(12));
+        assertEquals(first.getFullyQualifiedName() + ".summary.count", tableRows.get(2).get(13));
+        assertEquals(Entity.STORED_PROCEDURE, storedProcedure.get(12));
+        assertEquals(procedure.getFullyQualifiedName(), storedProcedure.get(13));
+        assertEquals(code, storedProcedure.get(18));
+        assertEquals(
+            procedure.getStoredProcedureCode().getLanguage().toString(), storedProcedure.get(19));
+      } else {
+        assertEquals(shortHeader, parseSchemaCsvHeader(tableCsv));
+        assertEquals(shortHeader, parseSchemaCsvHeader(procedureCsv));
+      }
+
+      for (Map.Entry<String, String> entry :
+          Map.of("table", tableCsv, "storedProcedure", procedureCsv).entrySet()) {
+        String jobId =
+            jobs.startExport(path + "/exportAsync" + query + "&entityTypes=" + entry.getKey());
+        var job = jobs.awaitJobStatus(jobId, "COMPLETED");
+        assertEquals(entry.getKey().equals("table") ? 2 : 1, job.path("total").asInt());
+        HttpResponse<String> result = jobs.downloadResult(jobId);
+        assertEquals(200, result.statusCode());
+        assertEquals(entry.getValue(), result.body());
+      }
+    }
+  }
+
+  @Test
+  void test_schemaCsvExportRejectsInvalidEntityTypes(TestNamespace ns) throws Exception {
+    CsvJobClient jobs = CsvJobClient.onDefaultServer();
+    String path = schemaExportPath(createImportSchema(ns));
+    for (String selector :
+        List.of(
+            "", "%20", "column", "table,", "table,,storedProcedure", "table&entityTypes=bogus")) {
+      assertEquals(
+          400, jobs.request("GET", path + "/export?entityTypes=" + selector, null).statusCode());
+      assertEquals(
+          400,
+          jobs.request("GET", path + "/exportAsync?entityTypes=" + selector, null).statusCode());
+    }
+  }
+
+  @Test
+  void test_schemaCsvExportFiltersUnauthorizedRowsAndProtectsTheResult(TestNamespace ns)
+      throws Exception {
+    DatabaseSchema schema = createImportSchema(ns);
+    Table visible = createExportTable(schema, ns.prefix("open_table"), List.of());
+    Table hidden =
+        createExportTable(schema, ns.prefix("hidden_table"), List.of(personalDataTagLabel()));
+    StoredProcedure hiddenProcedure =
+        createExportProcedure(
+            schema,
+            ns.prefix("hidden_procedure"),
+            "SELECT 'hidden';",
+            List.of(personalDataTagLabel()));
+    User requester =
+        DenyPolicyPrincipals.userDeniedWhen(
+            ns.shortPrefix("scope_export"),
+            "All",
+            MetadataOperation.VIEW_ALL,
+            "matchAnyTag('" + personalDataTagLabel().getTagFQN() + "')");
+    String token =
+        JwtAuthProvider.tokenFor(requester.getName(), requester.getEmail(), new String[] {}, 3600);
+
+    CsvJobClient jobs = CsvJobClient.onDefaultServer();
+    String path = schemaExportPath(schema);
+    String tableQuery = "?recursive=true&entityTypes=table";
+    String procedureQuery = "?recursive=true&entityTypes=storedProcedure";
+    HttpResponse<String> tables = jobs.request("GET", path + "/export" + tableQuery, null, token);
+    assertEquals(200, tables.statusCode(), tables.body());
+    assertTrue(tables.body().contains(visible.getFullyQualifiedName()));
+    assertFalse(tables.body().contains(hidden.getFullyQualifiedName()));
+    assertFalse(tables.body().contains(hiddenProcedure.getFullyQualifiedName()));
+    HttpResponse<String> procedures =
+        jobs.request("GET", path + "/export" + procedureQuery, null, token);
+    assertEquals(200, procedures.statusCode(), procedures.body());
+    assertTrue(parseSchemaCsv(procedures.body()).isEmpty());
+
+    String procedureJob = jobs.startJob("GET", path + "/exportAsync" + procedureQuery, null, token);
+    assertEquals(0, jobs.awaitJobStatus(procedureJob, "COMPLETED").path("total").asInt());
+    String result = "/v1/csvAsyncJobs/" + procedureJob + "/result";
+    HttpResponse<String> ownerDownload = jobs.request("GET", result, null, token);
+    assertEquals(200, ownerDownload.statusCode(), ownerDownload.body());
+    assertEquals(procedures.body(), ownerDownload.body());
+
+    User anotherRequester =
+        DenyPolicyPrincipals.userDeniedWhen(
+            ns.shortPrefix("other_scope"), "All", MetadataOperation.VIEW_ALL, null);
+    String otherToken =
+        JwtAuthProvider.tokenFor(
+            anotherRequester.getName(), anotherRequester.getEmail(), new String[] {}, 3600);
+    assertEquals(403, jobs.request("GET", result, null, otherToken).statusCode());
+  }
+
+  private static String schemaExportPath(DatabaseSchema schema) {
+    return "/v1/databaseSchemas/name/"
+        + URLEncoder.encode(schema.getFullyQualifiedName(), StandardCharsets.UTF_8)
+            .replace("+", "%20");
+  }
+
+  private static String fetchCsv(CsvJobClient jobs, String path) throws Exception {
+    HttpResponse<String> response = jobs.request("GET", path, null);
+    assertEquals(200, response.statusCode(), response.body());
+    return response.body();
+  }
+
+  private static List<CSVRecord> parseSchemaCsv(String csv) throws IOException {
+    CSVFormat format = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build();
+    try (CSVParser parser = CSVParser.parse(csv, format)) {
+      return parser.getRecords();
+    }
+  }
+
+  private static List<String> parseSchemaCsvHeader(String csv) throws IOException {
+    try (CSVParser parser = CSVParser.parse(csv, CSVFormat.DEFAULT)) {
+      return parser.iterator().next().toList();
+    }
+  }
+
+  private StoredProcedure createExportProcedure(
+      DatabaseSchema schema, String name, String code, List<TagLabel> tags) {
+    return SdkClients.adminClient()
+        .storedProcedures()
+        .create(
+            new CreateStoredProcedure()
+                .withName(name)
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withTags(tags)
+                .withStoredProcedureCode(
+                    new StoredProcedureCode()
+                        .withCode(code)
+                        .withLanguage(StoredProcedureLanguage.SQL)));
+  }
+
+  @Test
   void test_exportLeavesOutTablesTheExporterMayNotView(TestNamespace ns) throws Exception {
     DatabaseSchema schema = createImportSchema(ns);
     Table open = createExportTable(schema, ns.prefix("open_table"), List.of());
@@ -1160,19 +1386,31 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
   }
 
   private Table createExportTable(DatabaseSchema schema, String name, List<TagLabel> tags) {
+    return createExportTable(
+        schema,
+        name,
+        tags,
+        List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
+  }
+
+  private Table createExportTable(
+      DatabaseSchema schema, String name, List<TagLabel> tags, List<Column> columns) {
     CreateTable createTable = new CreateTable();
     createTable.setName(name);
     createTable.setDatabaseSchema(schema.getFullyQualifiedName());
     createTable.setTags(tags);
-    createTable.setColumns(
-        List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
+    createTable.setColumns(columns);
     return SdkClients.adminClient().tables().create(createTable);
   }
 
   private DatabaseSchema createImportSchema(TestNamespace ns) {
+    return createImportSchema(ns, ns.prefix("import_history_schema"));
+  }
+
+  private DatabaseSchema createImportSchema(TestNamespace ns, String name) {
     Database database = createDatabase(ns, DatabaseServiceTestFactory.createPostgres(ns));
     CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
-    createSchema.setName(ns.prefix("import_history_schema"));
+    createSchema.setName(name);
     createSchema.setDatabase(database.getFullyQualifiedName());
     return createEntity(createSchema);
   }

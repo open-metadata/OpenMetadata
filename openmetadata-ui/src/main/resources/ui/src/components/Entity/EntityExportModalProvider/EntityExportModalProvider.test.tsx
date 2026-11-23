@@ -1014,6 +1014,65 @@ describe('EntityExportModalProvider component', () => {
     await waitFor(() => expect(onError).toHaveBeenCalledTimes(1));
   });
 
+  it('waits for schema scope confirmation before putting an export in the tray', async () => {
+    (useLocation as jest.Mock).mockReturnValue({ pathname: '/mock-path' });
+    const { promise, resolve } = createDeferredExport();
+    const onExport = jest.fn().mockReturnValue(promise);
+    const options = {
+      name: 'service.database.schema',
+      exportTypes: [ExportTypes.CSV],
+      csvScopes: [
+        { id: 'all', label: 'All', params: { recursive: true } },
+        {
+          id: 'procedures',
+          label: 'Stored procedures',
+          params: { recursive: true, entityTypes: 'storedProcedure' as const },
+        },
+      ],
+      onExport,
+    };
+    const SchemaExportConsumer = () => {
+      const { showModal } = useEntityExportModalProvider();
+
+      return <button onClick={() => showModal(options)}>Schema export</button>;
+    };
+
+    render(
+      <EntityExportModalProvider>
+        <SchemaExportConsumer />
+      </EntityExportModalProvider>
+    );
+
+    fireEvent.click(screen.getByText('Schema export'));
+    const modal = await screen.findByTestId('export-entity-modal');
+
+    expect(onExport).not.toHaveBeenCalled();
+
+    const scope = within(modal).getByRole('button', { name: /export-scope/i });
+
+    expect(scope).toHaveTextContent('All');
+
+    fireEvent.click(scope);
+    fireEvent.click(
+      await screen.findByRole('option', { name: 'Stored procedures' })
+    );
+
+    const submit = within(modal).getByTestId('submit-button');
+    fireEvent.click(submit);
+    fireEvent.click(submit);
+
+    expect(onExport).toHaveBeenCalledTimes(1);
+    expect(onExport).toHaveBeenCalledWith('service.database.schema', {
+      recursive: true,
+      entityTypes: 'storedProcedure',
+    });
+
+    await act(async () => resolve(mockExportJob));
+
+    expect(isCsvJobOwned(mockExportJob.jobId)).toBe(true);
+    expect(screen.queryByTestId('export-entity-modal')).not.toBeInTheDocument();
+  });
+
   it('should run a CSV-only export into the tray without opening the modal', async () => {
     (useLocation as jest.Mock).mockReturnValue({
       pathname: '/mock-path',

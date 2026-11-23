@@ -21,6 +21,7 @@ import LimitWrapper from '../hoc/LimitWrapper';
 import { exportDatabaseSchemaDetailsInCSV } from '../rest/databaseAPI';
 import { getEntityImportPath } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
+import { getDerivedPermissionFlags } from './PermissionDerivation';
 
 export const ExtraDatabaseSchemaDropdownOptions = (
   fqn: string,
@@ -29,10 +30,13 @@ export const ExtraDatabaseSchemaDropdownOptions = (
   navigate: NavigateFunction,
   showModal: (data: ExportData) => void
 ) => {
-  const { ViewAll, EditAll } = permission;
+  const { canViewAll, canEditAll } = getDerivedPermissionFlags(
+    permission,
+    deleted
+  );
 
   return [
-    ...(EditAll && !deleted
+    ...(canEditAll
       ? [
           {
             label: (
@@ -54,7 +58,7 @@ export const ExtraDatabaseSchemaDropdownOptions = (
           },
         ]
       : []),
-    ...(ViewAll && !deleted
+    ...(canViewAll && !deleted
       ? [
           {
             label: (
@@ -73,6 +77,28 @@ export const ExtraDatabaseSchemaDropdownOptions = (
                 name: fqn,
                 onExport: exportDatabaseSchemaDetailsInCSV,
                 exportTypes: [ExportTypes.CSV],
+                csvScopes: [
+                  {
+                    id: 'all',
+                    label: t('label.all'),
+                    params: { recursive: true },
+                  },
+                  {
+                    id: 'tables-and-columns',
+                    label: t('label.tables-and-columns'),
+                    params: { recursive: true, entityTypes: 'table' },
+                  },
+                  {
+                    id: 'tables-only',
+                    label: t('label.tables-only'),
+                    params: { recursive: false, entityTypes: 'table' },
+                  },
+                  {
+                    id: 'stored-procedures',
+                    label: t('label.stored-procedure-plural'),
+                    params: { recursive: true, entityTypes: 'storedProcedure' },
+                  },
+                ],
               }),
           },
         ]

@@ -180,10 +180,14 @@
       "_comment": "The export modal and the PNG/CSV writers behind it: every spec that opens the export modal.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityExportModalProvider/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/DatabaseSchemaDropdownOptions.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/rest/databaseAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/utils/Export/**"
       ],
       "projects": ["chromium", "ImportExport"],
       "specs": [
+        "playwright/e2e/Features/BulkImport.spec.ts",
+        "playwright/e2e/Features/BulkImportWithDotInName.spec.ts",
         "playwright/e2e/Features/ClassificationImportExport.spec.ts",
         "playwright/e2e/Features/LineageExportPNGSnapshot.spec.ts",
         "playwright/e2e/Features/SampleDataTableOperations.spec.ts",

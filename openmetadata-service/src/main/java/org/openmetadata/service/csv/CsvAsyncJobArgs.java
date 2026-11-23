@@ -13,6 +13,10 @@
 
 package org.openmetadata.service.csv;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.annotation.Nulls;
+import java.util.Set;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -41,6 +45,10 @@ public class CsvAsyncJobArgs {
   private AuditExportArgs auditExport;
   // Present when a test case export is narrowed by list filters or paginated.
   private TestCaseExportArgs testCaseExport;
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  @JsonSetter(nulls = Nulls.FAIL, contentNulls = Nulls.FAIL)
+  private Set<DatabaseSchemaExportEntityType> databaseSchemaEntityTypes;
 
   @Getter
   @Setter

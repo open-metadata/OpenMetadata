@@ -1,5 +1,5 @@
 {
-  "summary": "Database CSV file is used for importing and exporting table metadata from and to an **existing** database.",
+  "summary": "Database schema CSV exports can include tables, stored procedures, or both. The short format carries metadata without entity types, FQNs, or procedure code. Its rows are interpreted as tables when imported. Use a recursive export for nested table columns or to export stored procedures with code for reimport.",
   "headers": [
     {
       "name": "name",

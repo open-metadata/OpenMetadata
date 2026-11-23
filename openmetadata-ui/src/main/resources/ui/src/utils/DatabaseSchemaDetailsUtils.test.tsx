@@ -156,6 +156,29 @@ describe('ExtraDatabaseSchemaDropdownOptions', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].key).toBe('export-button');
+
+    result[0].onClick();
+
+    expect(mockShowModal).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'databaseSchemaFqn',
+        csvScopes: [
+          expect.objectContaining({ id: 'all', params: { recursive: true } }),
+          expect.objectContaining({
+            id: 'tables-and-columns',
+            params: { recursive: true, entityTypes: 'table' },
+          }),
+          expect.objectContaining({
+            id: 'tables-only',
+            params: { recursive: false, entityTypes: 'table' },
+          }),
+          expect.objectContaining({
+            id: 'stored-procedures',
+            params: { recursive: true, entityTypes: 'storedProcedure' },
+          }),
+        ],
+      })
+    );
   });
 
   it('should render both button when user has viewAll & editAll permission', () => {

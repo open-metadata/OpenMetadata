@@ -66,9 +66,12 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.csv.DatabaseSchemaExportEntityType;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.databases.DatabaseSchemaResource;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -664,32 +667,56 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
   public String exportToCsv(
       String name, String user, boolean recursive, CsvExportProgressCallback callback)
       throws IOException {
-    DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS); // Validate database schema
+    return exportToCsv(name, user, recursive, null, callback);
+  }
 
-    // Get tables under this schema
+  public String exportToCsv(
+      String name,
+      String user,
+      boolean recursive,
+      Set<DatabaseSchemaExportEntityType> entityTypes,
+      CsvExportProgressCallback callback)
+      throws IOException {
+    if (entityTypes != null && entityTypes.isEmpty()) {
+      throw new IllegalArgumentException("Schema export entityTypes must contain a selected type");
+    }
+    DatabaseSchema schema = getByName(null, name, Fields.EMPTY_FIELDS);
+    ChangeActor actor = ChangeActor.user(user, ImpersonationContext.getImpersonatedBy());
+    List<Table> tables =
+        entityTypes == null || entityTypes.contains(DatabaseSchemaExportEntityType.TABLE)
+            ? tablesForCsv(schema, actor)
+            : List.of();
+    List<StoredProcedure> storedProcedures =
+        entityTypes == null || entityTypes.contains(DatabaseSchemaExportEntityType.STORED_PROCEDURE)
+            ? storedProceduresForCsv(schema, actor)
+            : List.of();
+    return new DatabaseSchemaCsv(schema, user, recursive)
+        .exportAllCsv(tables, storedProcedures, recursive, callback);
+  }
+
+  private List<Table> tablesForCsv(DatabaseSchema schema, ChangeActor actor) {
     TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
     List<Table> tables =
         tableRepository.listAllForCSV(
             tableRepository.getFields("owners,tags,domains,extension"),
             schema.getFullyQualifiedName(),
-            user);
+            actor);
     tables.forEach(
         table -> tableRepository.setFieldsInternal(table, new Fields(Set.of("columns", "tags"))));
     tables.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
+    return tables;
+  }
 
-    // Get stored procedures under this schema
-    StoredProcedureRepository spRepository =
+  private List<StoredProcedure> storedProceduresForCsv(DatabaseSchema schema, ChangeActor actor) {
+    StoredProcedureRepository repository =
         (StoredProcedureRepository) Entity.getEntityRepository(STORED_PROCEDURE);
-    List<StoredProcedure> storedProcedures =
-        spRepository.listAllForCSV(
-            spRepository.getFields("owners,tags,domains,extension,storedProcedureCode"),
+    List<StoredProcedure> procedures =
+        repository.listAllForCSV(
+            repository.getFields("owners,tags,domains,extension,storedProcedureCode"),
             schema.getFullyQualifiedName(),
-            user);
-    storedProcedures.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
-
-    // Export all entities using a single CSV
-    return new DatabaseSchemaCsv(schema, user, recursive)
-        .exportAllCsv(tables, storedProcedures, recursive, callback);
+            actor);
+    procedures.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
+    return procedures;
   }
 
   @Override
@@ -839,11 +866,14 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
       int batchNumber = 0;
 
       // Add tables with entityType = table and include columns
-      TableRepository tableRepository = (TableRepository) Entity.getEntityRepository(TABLE);
+      TableRepository tableRepository =
+          recursive && !tables.isEmpty()
+              ? (TableRepository) Entity.getEntityRepository(TABLE)
+              : null;
       for (Table table : tables) {
         // Export the table entity
         addEntityToCSV(csvFile, table, TABLE);
-        if (recursive) {
+        if (tableRepository != null) {
           // Export all columns as separate rows with entityType = COLUMN
           tableRepository.exportColumnsRecursively(table, csvFile);
         }

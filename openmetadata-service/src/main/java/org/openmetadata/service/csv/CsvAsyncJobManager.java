@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -121,6 +122,20 @@ public final class CsvAsyncJobManager {
       String targetFqn, String createdBy, CsvAsyncJobArgs.TestCaseExportArgs testCaseExport) {
     return insertExportJob(
         exportArgs(Entity.TEST_CASE, targetFqn).setTestCaseExport(testCaseExport),
+        createdBy,
+        BackgroundJob.JobType.CSV_EXPORT);
+  }
+
+  public CsvAsyncJob createDatabaseSchemaExportJob(
+      String targetFqn,
+      String createdBy,
+      boolean recursive,
+      Set<DatabaseSchemaExportEntityType> entityTypes) {
+    return insertExportJob(
+        exportArgs(Entity.DATABASE_SCHEMA, targetFqn)
+            .setRecursive(recursive)
+            .setDatabaseSchemaEntityTypes(entityTypes)
+            .setImpersonatedBy(ImpersonationContext.getImpersonatedBy()),
         createdBy,
         BackgroundJob.JobType.CSV_EXPORT);
   }
