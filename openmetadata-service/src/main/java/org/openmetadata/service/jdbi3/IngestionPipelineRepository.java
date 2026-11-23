@@ -521,8 +521,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     validateTestSuiteConfig(ingestionPipeline, service);
   }
 
-  public static void validateTestSuiteConfig(
-      IngestionPipeline pipeline, EntityInterface<?> parent) {
+  public static void validateTestSuiteConfig(IngestionPipeline pipeline, EntityInterface parent) {
     if (!PipelineType.TEST_SUITE.equals(pipeline.getPipelineType())) {
       return;
     }

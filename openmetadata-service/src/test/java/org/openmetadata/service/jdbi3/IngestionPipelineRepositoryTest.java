@@ -466,7 +466,7 @@ class IngestionPipelineRepositoryTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("testSuiteConfigurations")
   void validatesTestSuiteConfiguration(
-      String name, EntityInterface<?> parent, IngestionPipeline pipeline, boolean valid) {
+      String name, EntityInterface parent, IngestionPipeline pipeline, boolean valid) {
     if (valid) {
       assertDoesNotThrow(
           () -> IngestionPipelineRepository.validateTestSuiteConfig(pipeline, parent));
@@ -491,6 +491,14 @@ class IngestionPipelineRepositoryTest {
             suitePipeline(Map.of("type", "TestSuite", "entityFullyQualifiedName", tableFqn)),
             true),
         Arguments.of("omitted table", suite, suitePipeline(new TestSuitePipeline()), true),
+        Arguments.of(
+            "missing source config",
+            suite,
+            new IngestionPipeline().withPipelineType(PipelineType.TEST_SUITE),
+            false),
+        Arguments.of("missing config", suite, suitePipeline(null), false),
+        Arguments.of("malformed config", suite, suitePipeline("not-an-object"), false),
+        Arguments.of("missing config type", suite, suitePipeline(Map.of()), false),
         Arguments.of("logical suite", logical, suitePipeline(new TestSuitePipeline()), true),
         Arguments.of("logical suite with table", logical, suitePipeline(matching), false),
         Arguments.of(
