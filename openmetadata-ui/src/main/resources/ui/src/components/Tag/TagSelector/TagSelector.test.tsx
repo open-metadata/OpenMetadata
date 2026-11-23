@@ -26,7 +26,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     return <div data-testid="filter-select" />;
   }),
   FormItemLabel: jest.fn(({ label }: { label: React.ReactNode }) => (
-    // eslint-disable-next-line jsx-a11y/label-has-for -- test mock
     <label data-testid="form-item-label">{label}</label>
   )),
 }));

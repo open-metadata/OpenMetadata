@@ -18,8 +18,6 @@
  * text); adding htmlFor/id pairs would require unique per-instance ids and
  * aria-label would override those nesting-based names, breaking assertions.
  */
-/* eslint-disable jsx-a11y/label-has-for */
-/* eslint-disable jsx-a11y/control-has-associated-label */
 
 import {
   act,
@@ -167,7 +165,6 @@ jest.mock(
     __esModule: true,
     default: ({ markdown }: { markdown?: string }) => (
       <div
-        // eslint-disable-next-line react/no-danger -- test fixture markup
         dangerouslySetInnerHTML={{ __html: markdown ?? '' }}
         data-testid="field-doc-preview"
       />

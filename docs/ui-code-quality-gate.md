@@ -4,7 +4,7 @@ How frontend quality is enforced on every `openmetadata-ui` PR, and what you mus
 SonarCloud and branch protection to complete it.
 
 The governing rule: **new code must be clean; existing debt is fixed gradually.** Every gate below is
-scoped to what a change *adds*, never to the whole file or the whole repo, so the backlog can never
+scoped to what a change _adds_, never to the whole file or the whole repo, so the backlog can never
 block a PR.
 
 ## The two sides
@@ -12,11 +12,11 @@ block a PR.
 Almost all new UI code is AI-generated, so a check that only runs in CI arrives too late — the model
 already chose the wrong pattern. Every rule therefore exists twice.
 
-| | Generation-time (agent is writing) | Review-time (CI) |
-|---|---|---|
-| **Knowledge** | `.claude/rules/*.md`, auto-loaded by `paths:` glob | — |
-| **Enforcement** | `.claude/settings.json` hooks | `ui-checkstyle` job |
-| **Self-serve** | `make ui-checkstyle-changed` | required status check |
+|                 | Generation-time (agent is writing)                 | Review-time (CI)      |
+| --------------- | -------------------------------------------------- | --------------------- |
+| **Knowledge**   | `.claude/rules/*.md`, auto-loaded by `paths:` glob | —                     |
+| **Enforcement** | `.claude/settings.json` hooks                      | `ui-checkstyle` job   |
+| **Self-serve**  | `make ui-checkstyle-changed`                       | required status check |
 
 **One toolchain, three call sites.** The same ESLint config runs in the agent hook, in
 `make ui-checkstyle-changed`, and in the `ui-checkstyle` CI job. Prefer an off-the-shelf ESLint plugin
@@ -55,18 +55,18 @@ Warnings remain non-blocking; ESLint errors and formatting changes still fail `u
 
 ## What each gate enforces
 
-| Gate | Scope | Fails when |
-|---|---|---|
-| ESLint + Prettier + organize-imports | changed files | output differs from committed form |
-| Licence header | changed files | Apache-2.0 header missing/stale |
-| i18n key-sync | all locales | locale files out of sync with `en-us.json` |
-| `tw-audit` | changed files | hardcoded Tailwind value that maps to a design token |
-| `tw-guard` | **added lines** | new `assets/svg/` `.svg` file or import (fails); new `.less` file (reported) |
-| `jsx-a11y` (ESLint) | changed files | one of 19 zero-backlog accessibility rules trips |
-| SonarJS (ESLint) | changed files | one of 16 zero-backlog correctness rules trips |
-| OpenMetadata performance (ESLint) | changed files | eager route page import, unguarded lazy component, or unbounded module cache |
-| OpenMetadata import architecture (ESLint) | changed files | warning-only architecture, cycle, barrel, or request fan-out finding |
-| SonarCloud analysis | trusted nightly `main` run | branch quality conditions fail after merge |
+| Gate                                      | Scope                      | Fails when                                                                   |
+| ----------------------------------------- | -------------------------- | ---------------------------------------------------------------------------- |
+| ESLint + Prettier + organize-imports      | changed files              | output differs from committed form                                           |
+| Licence header                            | changed files              | Apache-2.0 header missing/stale                                              |
+| i18n key-sync                             | all locales                | locale files out of sync with `en-us.json`                                   |
+| `tw-audit`                                | changed files              | hardcoded Tailwind value that maps to a design token                         |
+| `tw-guard`                                | **added lines**            | new `assets/svg/` `.svg` file or import (fails); new `.less` file (reported) |
+| `jsx-a11y` (ESLint)                       | changed files              | one of 19 zero-backlog accessibility rules trips                             |
+| SonarJS (ESLint)                          | changed files              | one of 16 zero-backlog correctness rules trips                               |
+| OpenMetadata performance (ESLint)         | changed files              | eager route page import, unguarded lazy component, or unbounded module cache |
+| OpenMetadata import architecture (ESLint) | changed files              | warning-only architecture, cycle, barrel, or request fan-out finding         |
+| SonarCloud analysis                       | trusted nightly `main` run | branch quality conditions fail after merge                                   |
 
 ## Component reuse — guidance, not a gate
 
@@ -81,22 +81,22 @@ could report "clean" when the diff had failed to load. Its one real advantage �
 added lines — existed to tolerate a backlog of **16** instances, small enough not to justify ~430
 lines of bespoke code and its own test suite.
 
-What CI enforces instead is that a hand-rolled widget must at least be *accessible*: `jsx-a11y`
+What CI enforces instead is that a hand-rolled widget must at least be _accessible_: `jsx-a11y`
 rejects an invalid `role`, a role missing its required `aria-*` props, and an unusable tab order.
 Using the library component is the easy way to satisfy that.
 
 ## Two severity tiers, chosen by measurement
 
 Every rule is on. Severity is decided by the rule's **measured backlog**, never by taste, because
-ESLint reports per *file* rather than per added line — an `error` rule with existing violations
+ESLint reports per _file_ rather than per added line — an `error` rule with existing violations
 would fail PRs for code they merely touched.
 
-| Tier | Meaning | Today |
-|---|---|---|
-| `error` | zero measured backlog — blocking | 16 SonarJS + 19 jsx-a11y + 3 OpenMetadata performance + `i18next/no-literal-string` |
-| `warn` | has a backlog — visible in the editor and CI output, not blocking | 21 SonarJS, 15 jsx-a11y, 4 React, 10 OpenMetadata import rules, `react-hooks/exhaustive-deps`, `@typescript-eslint/no-non-null-assertion` |
+| Tier    | Meaning                                                           | Today                                                                                                                                     |
+| ------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `error` | zero measured backlog — blocking                                  | 16 SonarJS + 19 jsx-a11y + 3 OpenMetadata performance + `i18next/no-literal-string`                                                       |
+| `warn`  | has a backlog — visible in the editor and CI output, not blocking | 21 SonarJS, 15 jsx-a11y, 4 React, 10 OpenMetadata import rules, `react-hooks/exhaustive-deps`, `@typescript-eslint/no-non-null-assertion` |
 
-Repo-wide today: **0 errors, 10120 warnings** across 2228 files. The warnings *are* the backlog, made
+Repo-wide today: **0 errors, 10120 warnings** across 2228 files. The warnings _are_ the backlog, made
 visible instead of hidden — the target is zero, reached rule by rule.
 
 `i18next/no-literal-string` was disabled with a `TODO: re-enable when the plugin supports ESLint 9`.
@@ -131,18 +131,18 @@ reporting-only rules. None autofix. `no-hook-ui-imports`, `no-internal-barrel-im
 they do not fail CI while their measured backlog is reduced. The baselines below are the counts at
 introduction.
 
-| Rule | What it reports | Baseline findings / files |
-|---|---|---:|
-| `no-impure-pure-utils` | React/JSX or upward UI, state, page, hook, or REST dependencies in `*PureUtils` | 62 / 23 |
-| `no-lower-layer-page-imports` | page imports outside pages and the AppRouter owner | 291 / 271 |
-| `no-cross-page-imports` | one page feature statically importing another page feature | 43 / 32 |
-| `no-rest-ui-imports` | REST clients depending on components, pages, hooks, context, or stores | 55 / 37 |
-| `no-hook-ui-imports` | hooks depending on components or pages | 10 / 6 |
-| `no-circular-imports` | runtime imports/re-exports that participate in a cycle; type-only imports are ignored | 295 / 164 |
-| `no-internal-barrel-imports` | runtime imports resolving to an app-internal `index` barrel; type-only imports are allowed | 143 / 134 |
-| `no-lodash-default-import` | default or namespace imports from the Lodash package root | 1 / 1 |
-| `no-api-calls-in-iteration` | REST calls inside loops or dynamic iteration callbacks such as `map` | 28 / 21 |
-| `review-sequential-api-calls` | a second or later directly awaited REST call in one function, for dependency review | 207 / 105 |
+| Rule                          | What it reports                                                                            | Baseline findings / files |
+| ----------------------------- | ------------------------------------------------------------------------------------------ | ------------------------: |
+| `no-impure-pure-utils`        | React/JSX or upward UI, state, page, hook, or REST dependencies in `*PureUtils`            |                   62 / 23 |
+| `no-lower-layer-page-imports` | page imports outside pages and the AppRouter owner                                         |                 291 / 271 |
+| `no-cross-page-imports`       | one page feature statically importing another page feature                                 |                   43 / 32 |
+| `no-rest-ui-imports`          | REST clients depending on components, pages, hooks, context, or stores                     |                   55 / 37 |
+| `no-hook-ui-imports`          | hooks depending on components or pages                                                     |                    10 / 6 |
+| `no-circular-imports`         | runtime imports/re-exports that participate in a cycle; type-only imports are ignored      |                 295 / 164 |
+| `no-internal-barrel-imports`  | runtime imports resolving to an app-internal `index` barrel; type-only imports are allowed |                 143 / 134 |
+| `no-lodash-default-import`    | default or namespace imports from the Lodash package root                                  |                     1 / 1 |
+| `no-api-calls-in-iteration`   | REST calls inside loops or dynamic iteration callbacks such as `map`                       |                   28 / 21 |
+| `review-sequential-api-calls` | a second or later directly awaited REST call in one function, for dependency review        |                 207 / 105 |
 
 The last rule is intentionally phrased as a review: static analysis cannot prove whether the second
 request depends on the first. Keep legitimate sequencing; parallelize independent requests. Promote
@@ -185,7 +185,7 @@ on its own schedule and that drift is silent.
 
 ## The Sonar lens in your editor — SonarQube for IDE
 
-This is the third place the same rules appear, and the only one that shows the *server's* profile
+This is the third place the same rules appear, and the only one that shows the _server's_ profile
 verbatim rather than a local approximation.
 
 1. Install **SonarQube for IDE** (formerly SonarLint) — available for VS Code, IntelliJ, and others.
@@ -211,13 +211,13 @@ threshold 15 in both places).
 
 Gate name: **OpenMetadata UI — Clean as You Code**. Set it as the project's default gate.
 
-| Condition (New Code) | Operator | Value |
-|---|---|---|
-| Coverage | is less than | **90.0%** |
-| Issues | is greater than | **0** |
-| Security Hotspots Reviewed | is less than | **100%** |
-| Duplicated Lines (%) | is greater than | **3.0%** |
-| *any condition on Overall Code* | — | **none** |
+| Condition (New Code)            | Operator        | Value     |
+| ------------------------------- | --------------- | --------- |
+| Coverage                        | is less than    | **90.0%** |
+| Issues                          | is greater than | **0**     |
+| Security Hotspots Reviewed      | is less than    | **100%**  |
+| Duplicated Lines (%)            | is greater than | **3.0%**  |
+| _any condition on Overall Code_ | —               | **none**  |
 
 **Never attach a condition to Overall Code.** It would fail on legacy debt from day one and break the
 entire "new code only" contract. Every condition above is evaluated solely against the lines a PR
@@ -231,6 +231,7 @@ adds or modifies.
 > teams should hear it before the gate turns on rather than from a red check.
 >
 > Two mechanical consequences worth knowing:
+>
 > - A PR that only **moves or reformats** code can still register those lines as new and uncovered.
 > - Coverage comes from `sonar.typescript.lcov.reportPaths` (`src/test/unit/coverage/lcov.info`), so
 >   if the Jest run fails or the lcov is missing, new-code coverage reads as 0% and the gate fails.
@@ -238,17 +239,17 @@ adds or modifies.
 
 ### New Code definition
 
-*Reference branch = `main`* for branches; *Previous version* (or 30 days) for `main` itself. Set in
+_Reference branch = `main`_ for branches; _Previous version_ (or 30 days) for `main` itself. Set in
 project settings, not on the gate.
 
 ### Branch protection
 
 Mark these checks required on `main`:
 
-| Required check | Enforces |
-|---|---|
+| Required check  | Enforces                                                                         |
+| --------------- | -------------------------------------------------------------------------------- |
 | `ui-checkstyle` | lint (incl. SonarJS + jsx-a11y), prettier, licence, i18n, `tw-audit`, `tw-guard` |
-| `ui-coverage` | Jest run completed |
+| `ui-coverage`   | Jest run completed                                                               |
 
 Do not require `ui-sonar-gate` or SonarCloud's PR check. PR jobs do not receive Sonar credentials,
 including same-repository PRs, under ADR:2026-11-10-pr-jobs-never-receive-credentials.
@@ -266,7 +267,7 @@ parameters. Use the nightly result to track regressions that require Sonar's cre
 ## Tracking the backlog
 
 The gate is blind to old code by design, so it will never tell you whether debt is shrinking. Track
-`sqale_index`, `code_smells` and `duplicated_lines_density` on *overall* code monthly:
+`sqale_index`, `code_smells` and `duplicated_lines_density` on _overall_ code monthly:
 
 ```
 GET https://sonarcloud.io/api/measures/search_history
@@ -275,3 +276,15 @@ GET https://sonarcloud.io/api/measures/search_history
 
 Expectation: flat or falling on a growing `ncloc`. Two consecutive months climbing is the signal to
 schedule targeted cleanup — Clean as You Code only retires debt where people happen to edit.
+
+## Unit-test lint scope
+
+Unit tests keep type and correctness checks but exclude production accessibility,
+rendering-cost, architecture, design-token and complexity rules on their mock JSX
+and fixtures. Production files retain those checks. Jest rules match the runner's
+`src/**/*.test.{js,jsx,ts,tsx}` pattern; Playwright and the Vitest component library
+keep separate policies. Unused disable directives fail lint.
+
+See ADR:2026-11-23-unit-tests-enforce-runner-correctness for the measured rollout
+and rejected rule candidates. Warning removal through scope correction is reported
+separately from fixes to test logic and promotions from warning to error.

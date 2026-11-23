@@ -83,3 +83,78 @@ test('keeps string warnings enabled in production TSX files', async () => {
     true
   );
 });
+
+for (const extension of ['ts', 'tsx', 'js', 'jsx']) {
+  test(`applies unit-test policy only to .test.${extension} files`, async () => {
+    const config = await eslint.calculateConfigForFile(
+      `src/Example.test.${extension}`
+    );
+
+    assert.equal(config.rules['jest/no-focused-tests']?.[0], 2);
+    assert.equal(config.rules['jest/valid-describe-callback']?.[0], 2);
+    assert.equal(config.rules['jsx-a11y/control-has-associated-label']?.[0], 0);
+    assert.equal(config.rules['sonarjs/cognitive-complexity']?.[0], 0);
+    assert.equal(config.rules['@typescript-eslint/no-require-imports']?.[0], 0);
+    assert.equal(config.rules['@typescript-eslint/no-explicit-any']?.[0], 2);
+    assert.equal(config.rules['react-hooks/rules-of-hooks']?.[0], 2);
+  });
+}
+
+test('keeps production JSX checks and excludes Jest rules from production', async () => {
+  const config = await eslint.calculateConfigForFile('src/Example.tsx');
+
+  assert.equal(config.rules['jsx-a11y/control-has-associated-label']?.[0], 2);
+  assert.equal(config.rules['sonarjs/cognitive-complexity']?.[0], 2);
+  assert.equal(config.rules['jest/no-focused-tests'], undefined);
+});
+
+test('rejects focused tests and asynchronous describe callbacks', async () => {
+  const [result] = await eslint.lintText(
+    "describe('suite', async () => { it.only('checks value', () => { expect(true).toBe(true); }); });",
+    { filePath: 'src/Example.test.ts' }
+  );
+  const ruleIds = result.messages.map(({ ruleId }) => ruleId);
+
+  assert.ok(ruleIds.includes('jest/no-focused-tests'));
+  assert.ok(ruleIds.includes('jest/valid-describe-callback'));
+});
+
+test('accepts deliberately simplified mock JSX without disable directives', async () => {
+  const [result] = await eslint.lintText(
+    "it('renders mock', () => { const Mock = () => <div onClick={() => {}}>mock</div>; expect(Mock).toBeDefined(); });",
+    { filePath: 'src/Example.test.tsx' }
+  );
+
+  assert.deepEqual(
+    result.messages.filter(({ ruleId }) => ruleId?.startsWith('jsx-a11y/')),
+    []
+  );
+});
+
+test('does not apply unit-test assertion rules to Playwright or setup files', async () => {
+  for (const filePath of [
+    'playwright/e2e/example.spec.ts',
+    'src/setupTests.js',
+  ]) {
+    const config = await eslint.calculateConfigForFile(filePath);
+
+    assert.equal(config.rules['jest/no-focused-tests'], undefined);
+    assert.equal(config.rules['jest/valid-expect'], undefined);
+  }
+});
+
+test('reports stale disable directives as errors in unit tests', async () => {
+  const [result] = await eslint.lintText(
+    "// eslint-disable-next-line no-console\nit('checks value', () => { expect(true).toBe(true); });",
+    { filePath: 'src/Example.test.ts' }
+  );
+
+  assert.ok(
+    result.messages.some(
+      ({ ruleId, severity, message }) =>
+        ruleId === null &&
+        severity === 2 &&
+        message.includes('Unused eslint-disable')
+    )
+  );
+});
