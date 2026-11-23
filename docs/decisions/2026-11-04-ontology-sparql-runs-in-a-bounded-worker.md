@@ -1,7 +1,7 @@
 # Ontology SPARQL runs in a disposable JVM with bounded query memory
 
 - **Status:** Proposed
-- **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-04 (input-proportional heap and loading refusals) · v3 2026-11-05 (prefix fidelity and bounded admission wait) · v4 2026-11-10 (an active release too large for the worker is answered from its served graph)
+- **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-04 (input-proportional heap and loading refusals) · v3 2026-11-05 (prefix fidelity and bounded admission wait) · v4 2026-11-10 (an active release too large for the worker is answered from its served graph) · v5 2026-11-23 (OWL Mini inference is removed)
 - **Deciders:** Pending maintainer review
 - **Guard:** OntologySparqlQueryServiceTest, OntologySparqlServedGraphTest, OntologyReleaseQueryTest, RdfLibraryPackActivationIT and reviewer
 - **Related:** [#37088](https://github.com/open-metadata/OpenMetadata/issues/37088), ANT-2026-J4XIPJA4
@@ -117,3 +117,11 @@ exports. RDFS and OWL inference run only in memory, so they are refused for such
 Fuseki's streaming read counts only an unreachable or unavailable store toward its circuit breaker,
 so slow caller queries cannot open it for every other RDF read. Glossary queries and draft-scope
 queries are unchanged.
+
+## Amendment: OWL Mini inference is removed (v5, 2026-11-23)
+
+Reasoning moves out of OpenMetadata into a `ReasoningProvider` (ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena). The OWL Mini reasoner
+in `OntologySparqlQueryService` is removed in 2.2, so the worker no longer runs OWL inference,
+and the Consequences' "NONE/RDFS/OWL Mini inference retain their semantics" no longer includes
+OWL Mini. OWL entailments come from the provider's graphs in Fuseki. The worker's isolation,
+budgets and refusals are unchanged.

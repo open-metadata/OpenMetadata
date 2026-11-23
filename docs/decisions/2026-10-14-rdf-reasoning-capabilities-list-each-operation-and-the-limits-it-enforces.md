@@ -1,7 +1,8 @@
 # RDF reasoning capabilities list each operation and the limits the store enforces, and an unimplemented operation fails NOT_IMPLEMENTED
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial)
+- **Revisions:** v1 2026-10-14 (initial) · v2 2026-11-23 (a reasoning provider reports
+  capabilities, and QUERY is `NOT_IMPLEMENTED`)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** `RdfReasoningContractTest#theContractRejects` (the capabilities cases),
   `RdfReasoningContractTest#aStoreListsOnlyTheLimitsItEnforces` and
@@ -74,3 +75,15 @@ value, its row in the table above and its schema rule in the same change, and th
 the schemas (`openmetadata/fuseki/extension/src/test/resources/openmetadata-contract/` in
 open-metadata/jena) must be refreshed. Revisit if an operation can run with a limit unenforced
 safely, or if a store needs per-engine rather than per-operation availability.
+
+## Amendment: a reasoning provider reports capabilities (v2, 2026-11-23)
+
+Reasoning moved out of the `openmetadata/fuseki` image into a `ReasoningProvider`
+(ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena). The provider reports these capabilities, not the store's `/reasoning` API, and the
+operation, availability, problem-code and limit rules above apply to it unchanged.
+
+- A provider reports `QUERY` as `NOT_IMPLEMENTED`, because Fuseki answers reads over the graphs
+  the provider publishes.
+- With no provider installed, as in OSS, readiness is `DISABLED`.
+- The store's copy of the schemas in open-metadata/jena and its `JobServiceTest` leave the fork
+  with the reasoner, so a new operation no longer refreshes that copy.

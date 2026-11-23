@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-11 (initial) · v2 2026-10-14 (a new operation is also listed in
-  capabilities)
+  capabilities) · v3 2026-11-23 (a reasoning provider, not the store, validates requests)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** `RdfReasoningContractTest#theContractRejects` and
   `RdfReasoningContractTest#aConsistencyCheckTakesNoExpression`; in open-metadata/jena,
@@ -47,3 +47,11 @@ v2 2026-10-14: capabilities now say which operations a store implements and whic
 needs (ADR:2026-10-14-rdf-reasoning-capabilities-list-each-operation-and-the-limits-it-enforces).
 A new job operation therefore also adds its value to the capabilities `operation` enum and its
 required limits to `rdfReasoningCapabilities.json` in the same change.
+
+## Amendment: a reasoning provider validates requests (v3, 2026-11-23)
+
+Reasoning moved out of the `openmetadata/fuseki` image into a `ReasoningProvider`
+(ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena). The provider, not the RDF store's job API, now receives and validates job requests, and
+the per-operation rules above apply to it unchanged. A REFRESH request also names its target
+dataset. The store's copy of the schema in open-metadata/jena and its `JobRequestTest` leave the
+fork with the reasoner, so a new operation or check kind no longer refreshes that copy.

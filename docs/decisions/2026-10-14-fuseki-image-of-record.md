@@ -1,7 +1,7 @@
 # OpenMetadata runs and tests the published openmetadata/fuseki image, pinned by commit
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial)
+- **Revisions:** v1 2026-10-14 (initial) · v2 2026-11-23 (the image no longer carries a reasoner)
 - **Deciders:** OpenMetadata RDF maintainers
 - **Guard:** the RDF integration-test lane (`-DintegrationTests.lane=rdf`), which starts
   `FusekiTestImage.DEFAULT_IMAGE`; `RdfFusekiAuthorizationIT` and `RdfStorageReadinessIT` pin its
@@ -49,3 +49,12 @@ run downloaded Fuseki from `archive.apache.org`.
 - Image changes now land in the fork first and reach OpenMetadata by moving the pin after the RDF
   lane passes against the new tag. Revisit only if OpenMetadata needs an image the fork cannot
   publish.
+
+## Amendment: the image no longer carries a reasoner (v2, 2026-11-23)
+
+Reasoning moved out of the `openmetadata/fuseki` image into a `ReasoningProvider`
+(ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena). The reasoner worker is no longer a reason to run this image, and the v1 consequence
+that the RDF lane tests the image reasoning runs in no longer applies. The image is still the only one OpenMetadata runs,
+tests and documents, for its Graph Store extension and its operational guards: the bounded upload,
+`GuardedUpdate`, the free-space write guard and the storage report. The commit-pinned tag and the
+environment contract above are unchanged.

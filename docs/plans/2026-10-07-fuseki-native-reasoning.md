@@ -1,6 +1,17 @@
 # Reasoning inside the OpenMetadata Fuseki image
 
-Status: proposed design and phased implementation plan; phases 0 and 2 are merged, phase 1 is
+**Superseded 2026-11-23 by ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena.** Reasoning no longer runs in the Fuseki image or in
+OpenMetadata. A `ReasoningProvider` runs it and publishes derived facts into Fuseki, OSS ships no
+provider, and Collate provides one. The [alternatives table](#rollout-and-alternatives) below
+rejected "Reasoner sidecar or separate service" because it would add a deployable to every
+installation. That reason no longer holds, because only an installation that uses reasoning runs
+a provider. Building the in-image worker also showed its costs: a shared container memory budget,
+a maintained HermiT build in every image, and snapshot reads beside the graph Fuseki already
+serves. The record keeps the typed contract from this plan. It picks Konclude as the OWL engine
+and has Jena evaluate the rules, and the provider publishes each generation's graphs behind a
+pointer graph. The rest of this document is historical design context.
+
+Former status: proposed design and phased implementation plan; phases 0 and 2 are merged, phase 1 is
 complete except its CI items (see [phase 1](#phase-1--prove-the-reasoner-worker-in-the-fuseki-image-and-capture-a-baseline)),
 and phase 3 has started. Date:
 2026-10-07. Revised the same day after a review that checked each current-state claim against the
@@ -1177,7 +1188,7 @@ restore reasoning inside OM.
 | Jena `InfModel`/generic rules over the full catalog | Small change, but deduction/cache memory remains and built-in OWL coverage is insufficient |
 | Only SPARQL rules/property paths | Useful for governance/simple hierarchies; cannot cover every authorable construct |
 | Reasoning threads inside the Fuseki JVM | No extra process, but heap exhaustion takes down serving, live writes, and rebuilds |
-| Reasoner sidecar or separate service | Own container memory limit, but adds a deployable to every installation; rejected |
+| Reasoner sidecar or separate service | Own container memory limit, but adds a deployable to every installation; rejected. Reversed by ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena |
 | Worker JVM processes inside the Fuseki container | **Recommended:** one image and no new service; hard heap and kill-based cancellation; safe only within the checked memory budget, because it shares the container limit and page cache |
 
 Defer incremental truth maintenance, arbitrary user plugins, recursive rules across both engines,

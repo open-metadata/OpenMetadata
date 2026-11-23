@@ -1,8 +1,7 @@
 # The OpenMetadata Fuseki image
 
 OpenMetadata's triple store is the published **`openmetadata/fuseki`** image: the released Apache
-Jena Fuseki distribution plus an optional OpenMetadata Graph Store extension and an optional
-reasoner worker. It is the image of record for tests, Compose files, Kubernetes manifests and
+Jena Fuseki distribution plus an optional OpenMetadata Graph Store extension. It is the image of record for tests, Compose files, Kubernetes manifests and
 deployments ([decision record](decisions/2026-10-14-fuseki-image-of-record.md)). This repository no
 longer builds a Fuseki image; the former `docker/rdf-store/` build is retired.
 
@@ -12,11 +11,11 @@ For sizing and tuning, see [rdf-production-setup.md](rdf-production-setup.md).
 
 The image is built in the [open-metadata/jena](https://github.com/open-metadata/jena) fork, from
 the self-contained `openmetadata/fuseki/` directory on each `release/<fuseki-version>` branch. Its
-README documents every environment variable, the layout and the reasoner. The Dockerfile downloads
+README documents every environment variable and the layout. The Dockerfile downloads
 the released Fuseki distribution, checks its SHA-512, and compiles the extension against that exact
 `fuseki-server.jar`; Jena itself is not rebuilt or patched.
 
-The fork's workflow tests the extension and the reasoner, smoke-tests the image, and publishes
+The fork's workflow tests the extension, smoke-tests the image, and publishes
 `linux/amd64` and `linux/arm64` under two tags:
 
 | Tag | Moves | Use |
@@ -58,7 +57,8 @@ FUSEKI_HEAP=4g                                         # or JVM_ARGS, which then
   writer.
 - **Extension.** Bounds Graph Store uploads (`OPENMETADATA_MAX_UPLOAD_BYTES`, default 64 MiB) and
   their writer hold time (`OPENMETADATA_WRITE_TIMEOUT_MS`, default 50000), and advertises the
-  settings to readiness. Reasoning, when it is enabled later, requires it too.
+  settings to readiness. Reasoning does not run in this image; a reasoning provider runs it and
+  writes its results into Fuseki (ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena).
 - **Access.** The rendered `shiro.ini` has one account, `admin`; only `/$/ping` is anonymous. To
   add scoped accounts, set `FUSEKI_MANAGE_SHIRO=false` and provide `/fuseki/shiro.ini`.
 

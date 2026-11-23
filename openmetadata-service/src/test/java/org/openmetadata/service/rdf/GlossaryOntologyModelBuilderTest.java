@@ -63,8 +63,8 @@ import org.semanticweb.owlapi.model.parameters.Imports;
 /**
  * Builds a glossary that uses every seeded relationship type, every attribute datatype, each
  * concept type, mappings, realizations and authored axioms, then reads the projection with OWL API
- * as the reasoner worker does. The whole projection must be OWL 2 DL, and reserved vocabulary must
- * keep its RDFS and SKOS meaning.
+ * through {@link OwlApiProjection}. The whole projection must be OWL 2 DL, and reserved vocabulary
+ * must keep its RDFS and SKOS meaning.
  */
 class GlossaryOntologyModelBuilderTest {
   private static final URI BASE = URI.create("https://open-metadata.org/");

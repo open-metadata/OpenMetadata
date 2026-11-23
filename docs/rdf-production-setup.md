@@ -228,6 +228,17 @@ older server's blue/green promotion also switches datasets without assigning a n
 Avoid blue/green rebuilds until every server runs 2.1.0, and refresh reasoning after the last older
 server stops.
 
+Planned for 2.2 and not yet built: reasoning runs in a reasoning provider, not in OpenMetadata or
+the Fuseki image (ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena).
+OSS ships no provider, so reasoning readiness will report `DISABLED`. Collate provides one.
+A provider recomputes every derived fact in full, daily by default on the schedule set in
+`RdfInferenceApp`, and on demand. The on-demand triggers are an admin "refresh now", ontology
+activation and a blue/green promotion. There is no incremental maintenance, so answers can be up
+to one schedule interval old. Every answer carries `computedAt`, and `ReasoningFreshness` labels
+it `CURRENT` or `STALE` by comparing the live-write watermark the refresh captured with the
+current one. A refresh after the last older server stops is still the way to make results
+current after a rolling upgrade.
+
 ## Write throughput
 
 TDB2 is a single-writer store, and the indexing pipeline is built around that fact: reader
@@ -645,6 +656,14 @@ repeated connection failures or request timeouts; check Fuseki health, request l
 credentials, and network reachability before increasing retries.
 
 ## Inference
+
+This section describes the in-process rule runs, which still run in this release. The plan for
+2.2, not yet built, is that OpenMetadata stops running rules itself and
+`RDF_MATERIALIZED_INFERENCE_ENABLED` becomes an ignored, deprecated setting. A reasoning provider
+will write each generation under `<baseUri>graph/inferred/<generation>/`, and a pointer graph will
+name the current one. Every such graph keeps the inferred prefix, so the asserted-only reads below
+stay unchanged. Each generation will add its size to the TDB2 database until the database is compacted
+(ADR:2026-11-23-reasoning-runs-in-an-external-provider-that-publishes-into-jena).
 
 Materialized inference is the only inference path. Set `RDF_MATERIALIZED_INFERENCE_ENABLED=true`, keep the asserted RDF rebuild current, and schedule `RdfInferenceApp`. Rules write to durable per-rule named graphs in Fuseki and expose dirty state, last materialization time, triple count, and error details through the inference status APIs. SPARQL queries see that output when they request `inferenceLevel=custom`.
 
