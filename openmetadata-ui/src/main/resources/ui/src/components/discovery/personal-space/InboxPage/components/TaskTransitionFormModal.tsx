@@ -59,10 +59,9 @@ export interface TaskTransitionFormModalProps {
  * seeded from the task payload + the transition's schema defaults, and the
  * same `required`-field guard `onEditAndSuggest` enforces before submit.
  *
- * The comment modal (`TaskActionCommentModal`) still handles
- * `requiresComment` transitions (comment / incident root cause / assignee);
- * this modal is reached only for transitions that need form data the comment
- * modal does not collect.
+ * It takes precedence over the comment modal (`TaskActionCommentModal`) for
+ * any transition with required form fields, except an incident's root cause,
+ * so a transition needing both a comment and other fields loses neither.
  */
 const TaskTransitionFormModal: React.FC<TaskTransitionFormModalProps> = ({
   open,
