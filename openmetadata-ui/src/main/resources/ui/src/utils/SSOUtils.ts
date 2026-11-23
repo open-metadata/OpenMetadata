@@ -581,14 +581,28 @@ const cleanupSamlIdp = (
   }
 };
 
-const SAML_ACS_PATH = '/api/v1/saml/acs';
+const SAML_ACS_SUFFIX = /\/api\/v1\/saml\/acs\/*$/;
 
 /**
  * An earlier form version saved the ACS URL as the browser callback. The ACS
  * servlet only accepts POST, so such a callback must not be kept.
  */
 const isSamlAcsCallback = (callback: string, acs: string): boolean =>
-  callback === acs || callback.split(/[?#]/)[0].endsWith(SAML_ACS_PATH);
+  callback === acs || SAML_ACS_SUFFIX.test(callback.split(/[?#]/)[0]);
+
+/**
+ * The UI callback next to an ACS URL. An ACS served under a base path keeps
+ * that path: https://host/om/api/v1/saml/acs pairs with
+ * https://host/om/callback, whatever trailing slashes the base path carries.
+ */
+const browserCallbackFor = (acs: URL): string => {
+  const suffix = SAML_ACS_SUFFIX.exec(acs.pathname);
+  const basePath = suffix
+    ? acs.pathname.slice(0, suffix.index).replace(/\/+$/, '')
+    : '';
+
+  return `${acs.origin}${basePath}/callback`;
+};
 
 const resolveSamlBrowserCallback = (
   acs: string,
@@ -604,7 +618,7 @@ const resolveSamlBrowserCallback = (
 
     return url.pathname.endsWith('/callback')
       ? acs
-      : usableCallback || `${url.origin}/callback`;
+      : usableCallback || browserCallbackFor(url);
   } catch {
     return usableCallback;
   }
