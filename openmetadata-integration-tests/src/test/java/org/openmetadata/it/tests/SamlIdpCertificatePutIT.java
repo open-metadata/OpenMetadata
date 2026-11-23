@@ -77,6 +77,9 @@ class SamlIdpCertificatePutIT {
 
   private static final String OTHER_VALID_SPACED = OTHER_VALID.strip().replace("\n", " ");
 
+  /** Whitespace only: the startup reader tries to read it and fails, so a save must refuse it. */
+  private static final String WHITESPACE_ONLY = "  \n\t ";
+
   private static String original;
 
   @BeforeAll
@@ -98,7 +101,9 @@ class SamlIdpCertificatePutIT {
     final JsonNode stored = storedAuthentication();
 
     for (final String unusable :
-        new String[] {NOT_A_CERTIFICATE, EXPIRED, OTHER_VALID_SINGLE_LINE, OTHER_VALID_SPACED}) {
+        new String[] {
+          NOT_A_CERTIFICATE, EXPIRED, OTHER_VALID_SINGLE_LINE, OTHER_VALID_SPACED, WHITESPACE_ONLY
+        }) {
       final InvalidRequestException refused =
           assertThrows(InvalidRequestException.class, () -> put(withIdpCertificate(unusable)));
 
@@ -140,7 +145,9 @@ class SamlIdpCertificatePutIT {
     final JsonNode stored = storedAuthentication();
 
     for (final String unusable :
-        new String[] {NOT_A_CERTIFICATE, EXPIRED, OTHER_VALID_SINGLE_LINE, OTHER_VALID_SPACED}) {
+        new String[] {
+          NOT_A_CERTIFICATE, EXPIRED, OTHER_VALID_SINGLE_LINE, OTHER_VALID_SPACED, WHITESPACE_ONLY
+        }) {
       final String answer = attempt(() -> patch(replaceCertificate(unusable)));
 
       assertTrue(answer.contains(CERTIFICATE_NAME), answer);
