@@ -46,6 +46,8 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 class SamlSettingsHolderTest {
   private static final String KEYSTORE_PASSWORD = "changeit";
+  private static final String IDP_SSO_URL = "https://idp.example.com/sso";
+  private static final String SP_ACS_URL = "https://sp.example.com/api/v1/saml/acs";
 
   @Test
   void rejectsMalformedAdditionalSigningCertificates() throws Exception {
@@ -83,7 +85,7 @@ class SamlSettingsHolderTest {
   @Test
   void acceptsResponsesSignedByTheSecondMetadataCertificate() throws Exception {
     MockSamlIdp idp = new MockSamlIdp("https://idp.example/metadata");
-    SamlSSOClientConfig config = samlConfig("https://idp.example.com/sso");
+    SamlSSOClientConfig config = samlConfig(IDP_SSO_URL);
     config
         .getIdp()
         .withEntityId(idp.idpEntityId())
@@ -126,7 +128,7 @@ class SamlSettingsHolderTest {
    */
   @Test
   void buildSettingsGivesJavaSamlTheSpKeyWithoutRequestSigning() throws Exception {
-    SamlSSOClientConfig samlConfig = samlConfig("https://idp.example.com/sso");
+    SamlSSOClientConfig samlConfig = samlConfig(IDP_SSO_URL);
     samlConfig
         .getSp()
         .withSpX509Certificate(resource("/saml/mock-idp.crt"))
@@ -179,7 +181,7 @@ class SamlSettingsHolderTest {
 
   @Test
   void buildSettingsReadsTheKeyStoreWithItsPassword(@TempDir Path directory) throws Exception {
-    SamlSSOClientConfig samlConfig = samlConfig("https://idp.example.com/sso");
+    SamlSSOClientConfig samlConfig = samlConfig(IDP_SSO_URL);
     samlConfig.setSecurity(
         new SamlSecurityConfig()
             .withSendSignedAuthRequest(true)
@@ -200,24 +202,31 @@ class SamlSettingsHolderTest {
    */
   @Test
   void buildSettingsMergesRepeatedAttributeNames() throws Exception {
-    String response =
-        "<samlp:Response xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\""
-            + " xmlns:saml=\"urn:oasis:names:tc:SAML:2.0:assertion\" ID=\"_r\" Version=\"2.0\""
-            + " IssueInstant=\"2026-11-18T00:00:00Z\">"
-            + "<saml:Assertion ID=\"_a\" Version=\"2.0\" IssueInstant=\"2026-11-18T00:00:00Z\">"
-            + "<saml:AttributeStatement>"
-            + "<saml:Attribute Name=\"email\"><saml:AttributeValue>user@example.com"
-            + "</saml:AttributeValue></saml:Attribute>"
-            + "<saml:Attribute Name=\"Role\"><saml:AttributeValue>offline_access"
-            + "</saml:AttributeValue></saml:Attribute>"
-            + "<saml:Attribute Name=\"Role\"><saml:AttributeValue>uma_authorization"
-            + "</saml:AttributeValue></saml:Attribute>"
-            + "</saml:AttributeStatement></saml:Assertion></samlp:Response>";
+    final String response =
+        """
+        <samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" \
+        xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_r" Version="2.0" \
+        IssueInstant="2026-11-18T00:00:00Z">
+          <saml:Assertion ID="_a" Version="2.0" IssueInstant="2026-11-18T00:00:00Z">
+            <saml:AttributeStatement>
+              <saml:Attribute Name="email">
+                <saml:AttributeValue>user@example.com</saml:AttributeValue>
+              </saml:Attribute>
+              <saml:Attribute Name="Role">
+                <saml:AttributeValue>offline_access</saml:AttributeValue>
+              </saml:Attribute>
+              <saml:Attribute Name="Role">
+                <saml:AttributeValue>uma_authorization</saml:AttributeValue>
+              </saml:Attribute>
+            </saml:AttributeStatement>
+          </saml:Assertion>
+        </samlp:Response>
+        """;
 
-    SamlResponse samlResponse =
+    final SamlResponse samlResponse =
         new SamlResponse(
-            SamlSettingsHolder.buildSettings(samlConfig("https://idp.example.com/sso")),
-            "https://sp.example.com/api/v1/saml/acs",
+            SamlSettingsHolder.buildSettings(samlConfig(IDP_SSO_URL)),
+            SP_ACS_URL,
             Base64.getEncoder().encodeToString(response.getBytes(StandardCharsets.UTF_8)));
 
     assertEquals(
@@ -239,7 +248,7 @@ class SamlSettingsHolderTest {
         .withSp(
             new ServiceProviderConfig()
                 .withEntityId("https://sp.example.com/entity")
-                .withAcs("https://sp.example.com/api/v1/saml/acs")
+                .withAcs(SP_ACS_URL)
                 .withCallback("https://sp.example.com/callback"))
         .withIdp(
             new IdentityProviderConfig()
