@@ -107,6 +107,7 @@ import org.openmetadata.service.config.source.RawConfigCapture;
 import org.openmetadata.service.config.source.SettingsSourceService;
 import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -822,22 +823,20 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       LOG.info("Updating security configuration in database...");
 
-      storeSecurityConfiguration(Entity.getSystemRepository(), securityConfig);
-
-      LOG.info("Security configuration successfully updated in the database.");
-      LOG.warn("");
-      LOG.warn("========================================================================");
-      LOG.warn("IMPORTANT: You MUST restart the OpenMetadata service now!");
-      LOG.warn("========================================================================");
-      LOG.warn(
-          "The new security configuration will NOT take effect until the service is restarted.");
-      LOG.warn("Run: 'systemctl restart openmetadata' (or equivalent for your deployment)");
-      LOG.warn("========================================================================");
-
-      return 0;
-    } catch (BadRequestException refused) {
-      LOG.error("The security configuration was not updated: {}", refused.getMessage());
-      return 1;
+      final int exitCode =
+          updateSecurityConfiguration(Entity.getSystemRepository(), securityConfig);
+      if (exitCode == 0) {
+        LOG.info("Security configuration successfully updated in the database.");
+        LOG.warn("");
+        LOG.warn("========================================================================");
+        LOG.warn("IMPORTANT: You MUST restart the OpenMetadata service now!");
+        LOG.warn("========================================================================");
+        LOG.warn(
+            "The new security configuration will NOT take effect until the service is restarted.");
+        LOG.warn("Run: 'systemctl restart openmetadata' (or equivalent for your deployment)");
+        LOG.warn("========================================================================");
+      }
+      return exitCode;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration due to: ", e);
       LOG.error("Please verify that the YAML file is valid and contains all required fields.");
@@ -846,11 +845,31 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   /**
-   * Stores the authentication and authorizer configuration of a security configuration file, the
-   * authentication first: a value the settings repository refuses, such as a SAML IdP certificate
-   * a save would refuse, stops it before the authorizer is written.
+   * Stores the security settings of a configuration file and answers the command's exit code: 0
+   * when every setting was stored, 1 when a write was refused or failed. The writes stop at the one
+   * that failed, so a setting logged as updated before it stays stored and none after it is written.
    */
-  static void storeSecurityConfiguration(
+  static int updateSecurityConfiguration(
+      final SystemRepository repository, final SecurityConfiguration securityConfig) {
+    int exitCode = 0;
+    try {
+      storeSecurityConfiguration(repository, securityConfig);
+    } catch (BadRequestException | CustomExceptionMessage notStored) {
+      LOG.error(
+          "The security configuration was not updated: {}. Only a setting logged as updated above"
+              + " was stored.",
+          notStored.getMessage());
+      exitCode = 1;
+    }
+    return exitCode;
+  }
+
+  /**
+   * Stores the authentication and authorizer configuration of a security configuration file, the
+   * authentication first: a value the settings repository refuses or fails to write, such as a SAML
+   * IdP certificate a save would refuse, stops it before the authorizer is written.
+   */
+  private static void storeSecurityConfiguration(
       final SystemRepository repository, final SecurityConfiguration securityConfig) {
     final AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
     if (authConfig != null) {
