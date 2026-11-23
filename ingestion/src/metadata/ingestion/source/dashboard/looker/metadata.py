@@ -277,6 +277,9 @@ class LookerSource(DashboardServiceSource):
         self._view_data_model: DashboardDataModel | None = None
 
         self._parsed_views: dict[str, str] | None = {}
+        # Rendered `sql_table_name` of each view, so a view whose `sql_table_name` is another
+        # view's `${view.SQL_TABLE_NAME}` can reuse it.
+        self._view_table_names: dict[str, str] = {}
         self._unparsed_views: dict[str, str] | None = {}
         self._derived_dependencies = nx.DiGraph()
 
@@ -1152,6 +1155,30 @@ class LookerSource(DashboardServiceSource):
             logger.warning(f"Something went wrong while replacing derived view references: {e}")
         return sql_query
 
+    def _resolve_sql_table_name_reference(self, view_name: str, sql_table_name: str) -> tuple[str | None, str | None]:
+        """
+        Resolve a `sql_table_name: ${other_view.SQL_TABLE_NAME} ;;` reference.
+
+        Returns `(table_name, derived_sql)`: the table name to use for lineage, or the SQL of
+        the referenced derived table when the other view is a derived table. Both are None when
+        the referenced view has not been processed yet.
+        """
+        match = re.fullmatch(rf"\s*{DERIVED_REFERENCES}\s*", sql_table_name)
+        if not match:
+            self._view_table_names[view_name] = sql_table_name
+            return sql_table_name, None
+        referenced_view = match.group(1)
+        if referenced_view in self._view_table_names:
+            table_name = self._view_table_names[referenced_view]
+            self._view_table_names[view_name] = table_name
+            return table_name, None
+        derived_sql = (self._parsed_views or {}).get(referenced_view)
+        if derived_sql is None:
+            logger.warning(
+                f"View [{view_name}] uses the table of view [{referenced_view}], which is not parsed yet. Skipping."
+            )
+        return None, derived_sql
+
     def build_lineage_for_unparsed_views(self) -> Iterable[Either[AddLineageRequest]]:
         """
         build lineage by parsing the unparsed views containing derived references
@@ -1350,6 +1377,11 @@ class LookerSource(DashboardServiceSource):
             if view.sql_table_name:
                 sql_table_name = self._resolve_lookml_constants(view.sql_table_name)
                 sql_table_name = self._render_table_name(sql_table_name, model_name, view_name=view.name)
+                sql_table_name, derived_sql = self._resolve_sql_table_name_reference(view.name, sql_table_name)
+                if derived_sql is not None:
+                    yield from self._build_lineage_for_view(view.name, derived_sql)
+                if sql_table_name is None:
+                    return
 
                 # Column lineage only depends on the view definition, so resolve it once
                 column_lineage = self._extract_column_lineage(view)
@@ -1478,6 +1510,11 @@ class LookerSource(DashboardServiceSource):
                     explore_name=explore.name,
                     view_name=view.name,
                 )
+                sql_table_name, derived_sql = self._resolve_sql_table_name_reference(view.name, sql_table_name)
+                if derived_sql is not None:
+                    yield from self._build_lineage_for_view(view.name, derived_sql)
+                if sql_table_name is None:
+                    return
 
                 # Column lineage only depends on the view definition, so resolve it once
                 column_lineage = self._extract_column_lineage(view)

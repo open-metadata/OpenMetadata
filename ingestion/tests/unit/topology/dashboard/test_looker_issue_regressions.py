@@ -60,6 +60,7 @@ def _view_lineage_source() -> LookerSource:
     source._explores_cache = {}
     source._views_cache = {}
     source._parsed_views = {}
+    source._view_table_names = {}
     source._lookml_constants_map = {}
     source._view_data_model = _view_data_model(LookMlView(name="table_details"))
     source._added_lineage = {}
@@ -185,6 +186,43 @@ def test_liquid_scopes_select_source_table_for_view_lineage(sql_table_name: str)
     assert not edge.lineageDetails.columnsLineage
 
 
+def test_sql_table_name_referencing_another_view_uses_its_table() -> None:
+    """`sql_table_name: ${fact.SQL_TABLE_NAME}` gets the lineage of the referenced view's table (#38326)."""
+    source = _view_lineage_source()
+    explore = SimpleNamespace(model_name="finance_reports", name="table_details_explore")
+    fact = LookMlView(name="fact_usage", sql_table_name="schema_prod.table_name")
+    usage = LookMlView(name="table_details", sql_table_name="${fact_usage.SQL_TABLE_NAME}")
+    with _stubbed_db_services(source) as catalog:
+        list(source.add_view_lineage(fact, explore))
+        source._view_data_model = _view_data_model(usage)
+        results = list(source.add_view_lineage(usage, explore))
+    assert len(results) == 1 and results[0].left is None
+    assert results[0].right.edge.fromEntity.id == catalog.tables["trino_service"].id
+    assert "${fact_usage.SQL_TABLE_NAME}" not in catalog.searches[-1]
+
+
+def test_sql_table_name_referencing_a_derived_view_uses_its_sql() -> None:
+    source = _view_lineage_source()
+    source._parsed_views["fact_usage"] = "SELECT * FROM schema_prod.table_name"
+    usage = LookMlView(name="table_details", sql_table_name="${fact_usage.SQL_TABLE_NAME}")
+    explore = SimpleNamespace(model_name="finance_reports", name="table_details_explore")
+    with (
+        _stubbed_db_services(source),
+        patch.object(source, "_build_lineage_for_view", return_value=iter(())) as build_lineage,
+    ):
+        list(source.add_view_lineage(usage, explore))
+    build_lineage.assert_called_once_with("table_details", "SELECT * FROM schema_prod.table_name")
+
+
+def test_sql_table_name_referencing_an_unparsed_view_is_not_looked_up_as_a_table() -> None:
+    source = _view_lineage_source()
+    usage = LookMlView(name="table_details", sql_table_name="${fact_usage.SQL_TABLE_NAME}")
+    explore = SimpleNamespace(model_name="finance_reports", name="table_details_explore")
+    with _stubbed_db_services(source) as catalog:
+        assert list(source.add_view_lineage(usage, explore)) == []
+    assert catalog.searches == []
+
+
 def test_view_lineage_skips_unresolved_lineage_request() -> None:
     source = _view_lineage_source()
     view = LookMlView(name="table_details", sql_table_name=MODEL_CONDITIONAL_TABLE)
@@ -230,6 +268,7 @@ def test_standalone_view_lineage_skips_when_the_data_model_was_never_written() -
     source = object.__new__(LookerSource)
     source._views_cache = {}
     source._parsed_views = {}
+    source._view_table_names = {}
     source._lookml_constants_map = {}
     source._view_data_model = None
     view = LookMlView(name="table_details", sql_table_name=MODEL_CONDITIONAL_TABLE)
