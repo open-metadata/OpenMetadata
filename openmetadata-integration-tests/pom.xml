@@ -18,8 +18,12 @@
     <integrationTests.parallelStrategy>dynamic</integrationTests.parallelStrategy>
     <integrationTests.parallelism>4</integrationTests.parallelism>
     <integrationTests.maxPoolSize>16</integrationTests.maxPoolSize>
-    <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
-    <integrationTests.skipParallel>false</integrationTests.skipParallel>
+    <!-- Failsafe 3.6 lets an explicit <skipITs> win over -DskipTests, so build-only runs
+         (mvn -DskipTests install) would start the whole suite. Default both executions to
+         skipTests; every integrationTests.lane profile sets them explicitly. -->
+    <skipTests>false</skipTests>
+    <integrationTests.skipIsolated>${skipTests}</integrationTests.skipIsolated>
+    <integrationTests.skipParallel>${skipTests}</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
     <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CsvExportMultiNodeIT,RdfDisabledMarkLifecycleIT</integrationTests.multiNodeTests>
