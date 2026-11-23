@@ -549,23 +549,17 @@ public class SystemRepository implements DeploymentSettingPreparer {
     return null;
   }
 
+  /**
+   * Stores {@code setting} and answers 201 or 200. A write that fails is thrown, as a 400 when the
+   * value is refused and a 500 otherwise, never answered with a response a caller such as an
+   * administration command could ignore and report as stored.
+   */
   @Transaction
-  public Response createOrUpdate(Settings setting) {
+  public Response createOrUpdate(final Settings setting) {
     OpenMetadataBaseUrlValidator.validate(setting);
-    Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
+    final Settings oldValue = dao.getConfigWithKey(setting.getConfigType().toString());
     preserveEmailSettings(setting, oldValue);
-
-    try {
-      updateSetting(setting, storedValueOf(oldValue));
-    } catch (BadRequestException
-        | SettingsManagedByEnvironmentException
-        | WebApplicationException ex) {
-      // Callers such as administration jobs only notice a rejection that is thrown.
-      throw ex;
-    } catch (Exception ex) {
-      LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
-      return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
-    }
+    updateSetting(setting, storedValueOf(oldValue));
     prepareFetchedSettings(setting);
     if (oldValue == null) {
       return (new RestUtil.PutResponse<>(Response.Status.CREATED, setting, ENTITY_CREATED))
