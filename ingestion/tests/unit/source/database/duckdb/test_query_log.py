@@ -62,14 +62,24 @@ def test_queries_use_the_database_the_metadata_run_named(shop_db_with_query_log)
 
 
 def test_lineage_reads_only_statements_that_move_data(shop_db_with_query_log):
-    source = create(DuckDBLineageSource, shop_db_with_query_log, "DatabaseLineage")
+    queries = list(create(DuckDBLineageSource, shop_db_with_query_log, "DatabaseLineage").yield_table_query())
 
-    with source.engine.connect() as conn:
-        rows = conn.exec_driver_sql(source.get_sql_statement(source.start, source.end)).fetchall()
-
-    assert sorted(row.query_text for row in rows) == sorted(
+    assert sorted(query.query for query in queries) == sorted(
         query for _, query, _, _ in LOGGED_QUERIES if not query.startswith("SELECT")
     )
+    assert {(query.databaseName, query.databaseSchema) for query in queries} == {("shop", "main")}
+
+
+def test_database_names_with_quotes_and_colons_reach_usage_and_lineage(shop_db_with_query_log):
+    """The name is a SQL literal in a statement run through text(), where ' and : are both special."""
+    name = "o'brien:2024"
+    usage = logged_queries(create(DuckDBUsageSource, shop_db_with_query_log, "DatabaseUsage", databaseName=name))
+    lineage = list(
+        create(DuckDBLineageSource, shop_db_with_query_log, "DatabaseLineage", databaseName=name).yield_table_query()
+    )
+
+    assert len(usage) == len(LOGGED_QUERIES)
+    assert {query.databaseName for query in usage + lineage} == {name}
 
 
 def test_without_a_query_log_no_queries_are_read(shop_db):

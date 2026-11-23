@@ -72,10 +72,19 @@ class DuckDBQueryParserSource(QueryParserSource):
                 "Create and populate it to ingest usage and query lineage."
             )
             return DUCKDB_EMPTY_SQL_STATEMENT
+        database_name = get_database_name(self.engine, self.service_connection)  # pyright: ignore[reportArgumentType]
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
             filters=self.get_filters(),
             result_limit=self.source_config.resultLimit,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
-            database_name=get_database_name(self.engine, self.service_connection),  # pyright: ignore[reportArgumentType]
+            database_name=_as_text_literal_body(database_name),
         )
+
+
+def _as_text_literal_body(value: str) -> str:
+    """Escape a value for a single-quoted literal in SQL the base sources run through ``text()``.
+
+    Doubling quotes keeps the literal closed; ``\\:`` stops ``text()`` reading a colon as a bind parameter.
+    """
+    return value.replace("'", "''").replace(":", r"\:")
