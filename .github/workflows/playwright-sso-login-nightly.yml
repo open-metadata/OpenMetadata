@@ -343,6 +343,7 @@ jobs:
         if: env.SKIP_LEG != 'true'
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
+          corepack enable
           # Retry transient registry failures (5xx on tarball fetches) —
           # yarn v1 does not retry HTTP errors on its own.
           for attempt in 1 2 3; do
