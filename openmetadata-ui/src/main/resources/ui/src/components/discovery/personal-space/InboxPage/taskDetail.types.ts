@@ -43,6 +43,7 @@ export type TaskDetailRowIcon =
 
 export type TaskDetailRowValue =
   | { kind: 'text'; text: string }
+  | { kind: 'richText'; text: string }
   | { kind: 'date'; timestamp?: number }
   // `title` heads the "+N" overflow, plural where the row's label is not.
   | { kind: 'users'; refs: EntityReference[]; title?: string }

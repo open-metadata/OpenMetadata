@@ -128,7 +128,7 @@ const BubbleMenu: FC<BubbleMenuProps> = ({ editor, toggleLink }) => {
 
   return (
     <CoreBubbleMenu
-      className="menu-wrapper"
+      className="menu-wrapper tw:z-1000"
       data-testid="menu-container"
       editor={editor}
       shouldShow={handleShouldShow}>
