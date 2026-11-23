@@ -185,12 +185,10 @@ const KnowledgePageVersionPage: FC<KnowledgePageVersionPageProps> = ({
       direction="col"
       gap={2}
       itemClassName="layout-space-item">
-      <div className="tw:flex tw:gap-4">
+      <Box gap={4}>
         <Skeleton className="tw:shrink-0" variant="circular" width={40} />
-        <div className="tw:flex-1">
-          <SkeletonParagraph rows={2} title={false} />
-        </div>
-      </div>
+        <SkeletonParagraph rows={2} title={false} />
+      </Box>
       <SkeletonParagraph className="m-t-sm" rows={8} title={false} />
     </Box>
   );
