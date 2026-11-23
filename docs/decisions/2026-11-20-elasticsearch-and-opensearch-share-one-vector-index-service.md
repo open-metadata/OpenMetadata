@@ -73,11 +73,13 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   (the provider fails, its circuit is open, the cluster rejects the bulk, or a live edit's mirror
   fails), the entity keeps its document embedding and the miss is recorded on that node. An entity
   the run embeds afresh has no embedding yet, so the provider failing it records the same miss and
-  the entity is indexed without one. When a partition of the entity's type finishes, the node
-  retries it once, writing both the entity document's embedding and the chunks when both were
-  missed, and skipping the retry while the provider's circuit is open. The entity then counts as
-  one vector success, or one vector failure if its chunks are still missing. Each node logs one summary warning per run, and the
-  detail per entity at debug. An entity left without chunks gets them on its next edit or
+  the entity is indexed without one. When the partition that missed the entity finishes and its
+  writes are flushed, the node retries it once, writing both the entity document's embedding and
+  the chunks when both were missed, and skipping the retry while the provider's circuit is open.
+  Another partition of the same type never retries it, because the entity's document may not be
+  written yet. The entity then counts as one vector success, or one vector failure if its chunks
+  are still missing. Each node logs one summary warning per run, and the detail per entity at
+  debug. An entity left without chunks gets them on its next edit or
   reindex, through the fingerprint-guarded backfill. A missed mirror is not retried; it heals the
   same way.
 - **Only a missed delete blocks promotion.** A delete that fails in the staged generation would
