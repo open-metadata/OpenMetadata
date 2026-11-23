@@ -7,8 +7,8 @@ import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.HealthStatus;
 import es.co.elastic.clients.elasticsearch.cluster.ClusterStatsResponse;
-import es.co.elastic.clients.elasticsearch.cluster.ComponentTemplateNode;
-import es.co.elastic.clients.elasticsearch.cluster.ComponentTemplateSummary;
+import es.co.elastic.clients.elasticsearch.cluster.ComponentTemplateNodeWithRollover;
+import es.co.elastic.clients.elasticsearch.cluster.ComponentTemplateSummaryRes;
 import es.co.elastic.clients.elasticsearch.cluster.GetClusterSettingsResponse;
 import es.co.elastic.clients.elasticsearch.cluster.GetComponentTemplateResponse;
 import es.co.elastic.clients.elasticsearch.cluster.HealthResponse;
@@ -285,9 +285,9 @@ public class ElasticSearchGenericManager implements GenericClient {
         return;
       }
 
-      ComponentTemplateNode componentTemplate =
+      ComponentTemplateNodeWithRollover componentTemplate =
           getResponse.componentTemplates().getFirst().componentTemplate();
-      ComponentTemplateSummary template = componentTemplate.template();
+      ComponentTemplateSummaryRes template = componentTemplate.template();
 
       if (template != null && template.settings() != null) {
         // Update the component template with ILM policy removed

@@ -36,7 +36,7 @@
         <dependency>
             <groupId>io.fabric8</groupId>
             <artifactId>kubernetes-httpclient-okhttp</artifactId>
-            <version>6.12.0</version>
+            <version>${fabric8.version}</version>
         </dependency>
         
         <!-- Jackson for JSON processing -->
@@ -138,7 +138,7 @@
         <dependency>
             <groupId>io.fabric8</groupId>
             <artifactId>kubernetes-server-mock</artifactId>
-            <version>6.12.0</version>
+            <version>${fabric8.version}</version>
             <scope>test</scope>
         </dependency>
 

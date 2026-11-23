@@ -105,23 +105,36 @@ class OntologySparqlQueryServiceTest {
     assertTrue(model.isClosed());
   }
 
+  @Test
+  void runawayReplaceGrowthReturnsWithoutTheOversizedString() {
+    String expression = "\"abcdefgh\"";
+    for (int index = 0; index < 27; index++) {
+      expression = "REPLACE(" + expression + ", \"(.)\", \"$1$1\")";
+    }
+    final String query = "SELECT (" + expression + " AS ?value) WHERE {}";
+
+    // Jena 6.3+ leaves REPLACE unbound once its result passes a few million characters, so the
+    // 1 GiB string this doubling asks for is never built and the worker heap budget is not reached.
+    final String body =
+        service(ModelFactory.createDefaultModel())
+            .query(GLOSSARY_ID, request(query).withTimeout(10_000))
+            .body();
+
+    assertTrue(body.length() < 4_096, "Unexpected result size: %d".formatted(body.length()));
+  }
+
   private static Stream<String> memoryIntensiveQueries() {
     final String product = "{ ?a ?b ?c . ?d ?e ?f . ?g ?h ?i }";
     final String values =
         IntStream.range(0, 600).mapToObj(Integer::toString).collect(Collectors.joining(" "));
     final String valueProduct =
         "{ VALUES ?a { %s } VALUES ?b { %s } VALUES ?c { %s } }".formatted(values, values, values);
-    String expression = "\"abcdefgh\"";
-    for (int index = 0; index < 27; index++) {
-      expression = "REPLACE(" + expression + ", \"(.)\", \"$1$1\")";
-    }
     return Stream.of(
         "SELECT * WHERE " + product + " ORDER BY ?c",
         "SELECT * WHERE " + product + " ORDER BY ?c LIMIT 10000",
         "SELECT ?a ?b ?c ?d ?e ?f WHERE " + product + " GROUP BY ?a ?b ?c ?d ?e ?f",
         "SELECT * WHERE " + valueProduct + " ORDER BY ?c",
         "SELECT * WHERE { { SELECT * WHERE " + product + " ORDER BY ?c } }",
-        "SELECT (" + expression + " AS ?value) WHERE {}",
         "SELECT (GROUP_CONCAT(?c) AS ?value) WHERE " + product,
         "SELECT ?wide WHERE { VALUES ?a { %s } VALUES ?b { %s } BIND(CONCAT(\"%s\", STR(?a), STR(?b)) AS ?wide) } ORDER BY ?wide"
             .formatted(values, values, "x".repeat(4_096)));
