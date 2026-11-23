@@ -324,15 +324,13 @@ export const SAML_UI_SCHEMA = {
       'ui:title': 'Service Provider (SP)',
       entityId: {
         'ui:title': 'SP Entity ID',
-        'ui:readonly': true,
         'ui:help':
-          'Auto-generated Service Provider Entity ID. Copy this value and paste it as Entity ID in your SAML Identity Provider configuration.',
+          'Defaults to the application URL. You can change it to match the Identifier (Entity ID) configured in your SAML Identity Provider.',
       },
       acs: {
         'ui:title': 'Assertion Consumer Service URL',
-        'ui:readonly': true,
         'ui:help':
-          'Auto-generated Assertion Consumer Service URL. Copy this value and paste it as ACS URL (or Reply URL) in your SAML Identity Provider configuration.',
+          'Defaults to the application callback URL. Set your public callback URL here and use the same ACS URL (or Reply URL) in your SAML Identity Provider.',
       },
       callback: { 'ui:widget': 'hidden', 'ui:hideError': true },
       spX509Certificate: {
@@ -355,7 +353,11 @@ export const SAML_UI_SCHEMA = {
       validateXml: { 'ui:widget': 'hidden', 'ui:hideError': true },
       sendEncryptedNameId: { 'ui:widget': 'hidden', 'ui:hideError': true },
       signSpMetadata: { 'ui:widget': 'hidden', 'ui:hideError': true },
-      wantAssertionEncrypted: { 'ui:widget': 'hidden', 'ui:hideError': true },
+      wantAssertionEncrypted: {
+        get 'ui:title'() {
+          return i18next.t('label.require-encrypted-assertions');
+        },
+      },
       keyStoreFilePath: { 'ui:widget': 'hidden', 'ui:hideError': true },
       keyStoreAlias: { 'ui:widget': 'hidden', 'ui:hideError': true },
       keyStorePassword: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -765,7 +767,7 @@ export const COMMON_AUTH_FIELDS_TO_REMOVE = [
   'forceSecureSessionCookie',
 ];
 
-// Hardcoded authorizer values
+// Authorizer values for a configuration that has none
 export const DEFAULT_AUTHORIZER_CLASS_NAME =
   'org.openmetadata.service.security.DefaultAuthorizer';
 export const DEFAULT_CONTAINER_REQUEST_FILTER =

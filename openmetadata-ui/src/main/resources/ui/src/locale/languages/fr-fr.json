@@ -3173,6 +3173,7 @@
     "requested-by": "Demandé par",
     "requested-on": "Demandé le",
     "requests": "Requêtes",
+    "require-encrypted-assertions": "Exiger des assertions chiffrées",
     "required": "Requis",
     "required-field": "Champ obligatoire",
     "required-field-plural": "Champs obligatoires",
