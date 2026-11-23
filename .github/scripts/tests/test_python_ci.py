@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""Exercise Python CI selection, gates, suite exit codes and report collection."""
+"""Exercise Python CI selection, gates and report collection."""
 
 import fnmatch
 import itertools
@@ -253,9 +253,14 @@ def test_reporting_records_outcomes_and_keeps_only_failure_logs(tmp_path, step_o
 def test_diagnostics_keeps_runner_evidence_without_docker(tmp_path):
     binaries = tmp_path / "bin"
     binaries.mkdir()
-    docker = binaries / "docker"
-    docker.write_text("#!/bin/sh\nexit 1\n")
-    docker.chmod(0o755)
+    for name, command in (
+        ("df", "printf 'runner disk evidence\\n'"),
+        ("free", "printf 'runner memory evidence\\n'"),
+        ("docker", "exit 1"),
+    ):
+        binary = binaries / name
+        binary.write_text(f"#!/bin/sh\n{command}\n")
+        binary.chmod(0o755)
     runner = tmp_path / "runner"
     runner.mkdir()
     result = run(
@@ -271,5 +276,5 @@ def test_diagnostics_keeps_runner_evidence_without_docker(tmp_path):
     )
     assert result.returncode == 0, result.stderr
     artifacts = runner / "python-ci-diagnostics"
-    assert (artifacts / "disk-usage.txt").stat().st_size > 0
-    assert (artifacts / "memory-usage.txt").exists()
+    assert (artifacts / "disk-usage.txt").read_text() == "runner disk evidence\n"
+    assert (artifacts / "memory-usage.txt").read_text() == "runner memory evidence\n"
