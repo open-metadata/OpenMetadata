@@ -1920,6 +1920,8 @@ test.describe('Data Contracts', () => {
   test('creates, edits, and reloads a minute refresh frequency', async ({
     page,
   }) => {
+    test.slow();
+
     const { apiContext } = await getApiContext(page);
     const table = new TableClass();
 
@@ -1959,7 +1961,21 @@ test.describe('Data Contracts', () => {
       await expect(saveButton).toBeEnabled();
       await saveButton.click();
       await expect(slaCard).toContainText(/1 minute\b/i);
-      await page.reload();
+
+      const [reloadedContract] = await Promise.all([
+        page.waitForResponse((response) => {
+          const url = new URL(response.url());
+
+          return (
+            response.request().method() === 'GET' &&
+            url.pathname === '/api/v1/dataContracts/entity' &&
+            url.searchParams.get('entityId') === table.entityResponseData.id &&
+            url.searchParams.get('fields') === 'owners'
+          );
+        }),
+        page.reload(),
+      ]);
+      expect(reloadedContract.status()).toBe(200);
       await expect(slaCard).toContainText(/1 minute\b/i);
     } finally {
       await table.delete(apiContext);
