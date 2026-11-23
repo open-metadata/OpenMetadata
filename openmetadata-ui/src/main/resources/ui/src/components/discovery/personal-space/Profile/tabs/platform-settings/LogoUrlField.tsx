@@ -20,6 +20,7 @@ import {
   Typography,
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
+import type { TypographyColor } from '@openmetadata/ui-core-components';
 import {
   Alert,
   Browser,
@@ -28,7 +29,6 @@ import {
   Sparkle,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
 import type { FC, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
@@ -50,19 +50,24 @@ const STATUS_ERROR_KEYS: Partial<Record<ImageStatus, string>> = {
 };
 const PREVIEW_COLUMNS = 'tw:flex tw:w-68 tw:shrink-0 tw:gap-2';
 
+type MessageTone = 'error' | 'warning' | 'hint';
+
+const TONE_COLORS: Record<MessageTone, TypographyColor> = {
+  error: 'danger',
+  warning: 'warning',
+  hint: 'secondary',
+};
+
 interface FieldMessageProps {
-  tone: 'error' | 'warning' | 'hint';
+  tone: MessageTone;
   testId: string;
   children: ReactNode;
 }
 
 const FieldMessage = ({ tone, testId, children }: FieldMessageProps) => (
   <Typography
-    className={classNames('tw:flex tw:items-start tw:gap-1.5', {
-      'tw:text-error-primary': tone === 'error',
-      'tw:text-warning-primary': tone === 'warning',
-      'tw:text-tertiary': tone === 'hint',
-    })}
+    className="tw:flex tw:items-start tw:gap-1.5"
+    color={TONE_COLORS[tone]}
     data-testid={testId}
     size="text-sm">
     {tone !== 'hint' && <Alert className="tw:mt-0.5 tw:shrink-0" size={16} />}
@@ -76,7 +81,8 @@ const Caption: FC<{ icon: FC<{ size?: number }>; label: string }> = ({
 }) => (
   <div className={PREVIEW_COLUMN}>
     <Typography
-      className="tw:flex tw:items-center tw:gap-1 tw:text-tertiary"
+      className="tw:flex tw:items-center tw:gap-1"
+      color="secondary"
       size="text-xs">
       <Icon size={12} />
       {label}
