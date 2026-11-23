@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { TypographyColor } from '@openmetadata/ui-core-components';
 import {
   Button,
   ButtonUtility,
@@ -20,7 +21,6 @@ import {
   Typography,
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
-import type { TypographyColor } from '@openmetadata/ui-core-components';
 import {
   Alert,
   Browser,
