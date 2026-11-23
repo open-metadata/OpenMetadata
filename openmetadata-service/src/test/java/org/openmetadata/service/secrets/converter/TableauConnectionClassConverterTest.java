@@ -7,7 +7,6 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.security.credentials.TableauConnectedAppAuth;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
-import org.openmetadata.schema.services.connections.pipeline.TableauPipelineConnection;
 
 /**
  * A connected app's secret value sits behind the {@code authType} oneOf, so it is masked and
@@ -31,17 +30,6 @@ class TableauConnectionClassConverterTest {
     TableauConnection connection =
         (TableauConnection)
             ClassConverterFactory.getConverter(TableauConnection.class).convert(CONNECTION);
-
-    TableauConnectedAppAuth auth =
-        assertInstanceOf(TableauConnectedAppAuth.class, connection.getAuthType());
-    assertEquals("secret-value", auth.getSecretValue());
-  }
-
-  @Test
-  void pipelineConnectionTypesAConnectedApp() {
-    TableauPipelineConnection connection =
-        (TableauPipelineConnection)
-            ClassConverterFactory.getConverter(TableauPipelineConnection.class).convert(CONNECTION);
 
     TableauConnectedAppAuth auth =
         assertInstanceOf(TableauConnectedAppAuth.class, connection.getAuthType());

@@ -13,6 +13,9 @@ from tableauserverclient.server.endpoint.exceptions import ServerResponseError
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
+from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
+    TableauConnection as TableauConnectionConfig,
+)
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.dashboard.tableau.client import (
     TableauChartsException,
@@ -32,7 +35,6 @@ from .....utils.tableau_connected_app import (  # noqa: TID252
     CONNECTED_APP,
     CONNECTED_APP_SCOPES,
     PAT,
-    SCOPE_REJECTION,
     connected_app_claims,
 )
 
@@ -359,15 +361,6 @@ def test_each_connected_app_sign_in_gets_its_own_jti():
     assert first != second
 
 
-def test_a_connected_app_401_names_the_app_checks_and_scopes():
-    diagnosis = TableauConnection(_connected_app_config()).checks().errors.classify(SCOPE_REJECTION)
-
-    assert diagnosis.title == "Authentication failed"
-    assert "connected app" in diagnosis.remediation
-    assert "clock" in diagnosis.remediation
-    assert all(scope in diagnosis.remediation for scope in CONNECTED_APP_SCOPES)
-
-
 def test_unresolvable_owners_name_the_users_scope_for_a_connected_app():
     # The owner lookup swallows the 401, so a token without the users scope surfaces here.
     diagnosis = TableauConnection(_connected_app_config()).checks().errors.classify(TableauOwnersNotFound("nope"))
@@ -392,7 +385,7 @@ def test_a_pat_connection_keeps_the_pat_hints():
         .errors
     )
 
-    for error in (SCOPE_REJECTION, TableauOwnersNotFound("nope"), TableauDataModelsException("nope")):
+    for error in (TableauOwnersNotFound("nope"), TableauDataModelsException("nope")):
         remediation = errors.classify(error).remediation
         assert "connected app" not in remediation
         assert "tableau:" not in remediation

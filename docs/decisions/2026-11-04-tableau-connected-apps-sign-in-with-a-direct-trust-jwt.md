@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-16 (the scope set adds the five write scopes of Collate's reverse metadata)
 - **Deciders:** Akash Verma
-- **Guard:** `ingestion/tests/unit/source/dashboard/tableau/test_connection.py`, `ingestion/tests/unit/topology/pipeline/test_tableaupipeline_connection.py`, the `connected_app` runs of `ingestion/tests/integration/tableau/` and `ingestion/tests/integration/tableaupipeline/`
+- **Guard:** `ingestion/tests/unit/source/dashboard/tableau/test_connection.py`
 - **Related:** [#33371](https://github.com/open-metadata/OpenMetadata/issues/33371)
 
 ## Context
