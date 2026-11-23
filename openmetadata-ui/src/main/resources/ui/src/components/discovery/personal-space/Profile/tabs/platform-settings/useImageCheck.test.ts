@@ -15,6 +15,7 @@ import { act, renderHook } from '@testing-library/react';
 import { useImageCheck } from './useImageCheck';
 
 let loadsSucceed = true;
+let corsLoadsHang = false;
 
 class FakeImage {
   onload: (() => void) | null = null;
@@ -22,6 +23,10 @@ class FakeImage {
   crossOrigin = '';
 
   set src(_value: string) {
+    // The contrast check is the only load that sets crossOrigin.
+    if (this.crossOrigin && corsLoadsHang) {
+      return;
+    }
     setTimeout(() => (loadsSucceed ? this.onload?.() : this.onerror?.()));
   }
 }
@@ -35,6 +40,7 @@ describe('useImageCheck', () => {
   });
 
   afterEach(() => {
+    corsLoadsHang = false;
     jest.useRealTimers();
     global.Image = OriginalImage;
   });
@@ -79,6 +85,21 @@ describe('useImageCheck', () => {
 
     expect(result.current).toEqual({
       status: 'error',
+      isHardToSeeOnDark: false,
+    });
+  });
+
+  it('reports loaded without waiting for the optional contrast check', async () => {
+    loadsSucceed = true;
+    corsLoadsHang = true;
+    const { result } = renderHook(() =>
+      useImageCheck('https://cdn.example.com/logo.svg')
+    );
+
+    await settle();
+
+    expect(result.current).toEqual({
+      status: 'loaded',
       isHardToSeeOnDark: false,
     });
   });

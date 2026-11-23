@@ -86,9 +86,15 @@ export const useImageCheck = (url?: string): ImageCheck => {
 
         return;
       }
+      if (!isActive) {
+        return;
+      }
+      // The image loads, so Save need not wait; the contrast warning is optional
+      // and its CORS request may be slow or never finish.
+      setCheck({ status: 'loaded', isHardToSeeOnDark: false });
       const isHard = await checkDarkContrast(url);
-      if (isActive) {
-        setCheck({ status: 'loaded', isHardToSeeOnDark: isHard });
+      if (isActive && isHard) {
+        setCheck({ status: 'loaded', isHardToSeeOnDark: true });
       }
     }, DEBOUNCE_MS);
 
