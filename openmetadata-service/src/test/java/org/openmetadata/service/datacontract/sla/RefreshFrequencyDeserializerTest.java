@@ -30,15 +30,25 @@ import org.openmetadata.schema.api.data.RefreshFrequency;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.RefreshFrequencyDeserializer;
+import org.openmetadata.service.JsonPatchProvider;
 
 class RefreshFrequencyDeserializerTest {
-  private final ObjectMapper json =
-      new ObjectMapper().registerModule(RefreshFrequencyDeserializer.module());
+  private final ObjectMapper json = new JsonPatchProvider().getContext(CreateDataContract.class);
   private final ObjectMapper yaml =
       new YAMLMapper().registerModule(RefreshFrequencyDeserializer.module());
 
   @ParameterizedTest
-  @ValueSource(strings = {"15.5", "15.000000000000000001", "2147483648", "null", "\"15\""})
+  @ValueSource(
+      strings = {
+        "15.5",
+        "15.000000000000000001",
+        "2147483648",
+        "null",
+        "\"15\"",
+        "NaN",
+        "Infinity",
+        "-Infinity"
+      })
   void nativeReadersRejectLossyMinuteIntervals(String interval) {
     String request =
         "{\"sla\":{\"refreshFrequency\":{\"unit\":\"minute\",\"interval\":%s}}}"

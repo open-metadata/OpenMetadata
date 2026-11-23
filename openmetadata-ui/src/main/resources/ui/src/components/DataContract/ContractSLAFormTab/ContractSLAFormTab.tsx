@@ -20,6 +20,7 @@ import {
   getField,
   HelperTextType,
   HookForm,
+  Input,
   TimePicker,
   TimePickerValue,
   Typography,
@@ -485,24 +486,32 @@ export const ContractSLAFormTab: React.FC<{
           t('label.refresh-frequency'),
           t('message.refresh-frequency-contract-description'),
           renderPair(
-            getField({
-              id: 'refresh_frequency_interval',
-              label: t('label.interval'),
-              name: 'refresh_frequency_interval',
-              placeholder: t('label.enter-entity', {
-                entity: t('label.interval'),
-              }),
-              props: {
-                'data-testid': 'refresh-frequency-interval-input',
-                inputMode: 'decimal',
-                size: 'md',
-              },
-              rules: {
+            <FormField
+              control={form.control}
+              name="refresh_frequency_interval"
+              rules={{
                 validate: () => getRefreshFrequencyError(form.getValues(), t),
-              },
-              // A number input reports incomplete edits like "15e" as empty.
-              type: FieldTypes.TEXT,
-            }),
+              }}>
+              {({ field, fieldState }) => (
+                // A number input reports incomplete edits like "15e" as empty.
+                <Input
+                  data-testid="refresh-frequency-interval-input"
+                  hint={fieldState.error?.message}
+                  inputMode="decimal"
+                  isInvalid={fieldState.invalid}
+                  label={t('label.interval')}
+                  name={field.name}
+                  placeholder={t('label.enter-entity', {
+                    entity: t('label.interval'),
+                  })}
+                  ref={field.ref}
+                  size="md"
+                  value={field.value}
+                  onBlur={field.onBlur}
+                  onChange={field.onChange}
+                />
+              )}
+            </FormField>,
             getField(
               unitField(
                 'refresh_frequency_unit',

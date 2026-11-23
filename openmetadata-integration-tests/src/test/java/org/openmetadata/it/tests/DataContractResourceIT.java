@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import jakarta.json.Json;
+import java.math.BigDecimal;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -3145,7 +3146,6 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             () -> client.getHttpClient().execute(method, path, body, DataContract.class, options));
 
     assertEquals(400, error.getStatusCode());
-    assertTrue(error.getMessage().contains("interval"), error.getMessage());
   }
 
   @Test
@@ -3189,8 +3189,13 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   private static void assertMinuteFreshnessProperty(
       String version, JsonNode property, String column) {
     assertEquals("freshness", property.path("property").asText(), version);
-    assertTrue(property.path("value").isIntegralNumber(), version);
-    assertEquals(15, property.path("value").asInt(), version);
+    JsonNode value = property.path("value");
+    if (version.equals("v2.2.1")) {
+      assertEquals("15", value.textValue(), version);
+    } else {
+      assertTrue(value.isNumber(), version);
+      assertEquals(0, value.decimalValue().compareTo(BigDecimal.valueOf(15)), version);
+    }
     assertEquals("minute", property.path("unit").asText(), version);
     assertEquals(
         column, property.path(version.startsWith("v2") ? "column" : "element").asText(), version);

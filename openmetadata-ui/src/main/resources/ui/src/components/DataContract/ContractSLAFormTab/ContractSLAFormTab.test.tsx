@@ -86,6 +86,7 @@ describe('ContractSLAFormTab', () => {
     renderForm(mockContract);
 
     expect(getRefreshIntervalInput()).toHaveValue('1');
+    expect(getRefreshIntervalInput()).toHaveAttribute('inputmode', 'decimal');
     expect(getNumberInput('label.value')).toHaveValue(2);
     expect(getNumberInput('label.period')).toHaveValue(30);
     expect(screen.getAllByText('label.day').length).toBeGreaterThan(0);

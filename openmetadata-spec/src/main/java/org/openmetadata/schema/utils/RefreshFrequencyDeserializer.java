@@ -94,7 +94,8 @@ public final class RefreshFrequencyDeserializer extends DelegatingDeserializer {
   }
 
   private static boolean isExactInteger(JsonParser parser) throws IOException {
-    if (parser.currentToken() == null || !parser.currentToken().isNumeric()) {
+    JsonToken token = parser.currentToken();
+    if (token == null || !token.isNumeric() || parser.isNaN()) {
       return false;
     }
     try {
