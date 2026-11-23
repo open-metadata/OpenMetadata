@@ -165,6 +165,72 @@ class OntologyTermSearchIT {
   }
 
   @Test
+  void manualReindexKeepsPublishedTermsAndEmbeddingMetadata(TestNamespace ns) {
+    assumeFalse(OssTestServer.isExternalMode());
+    final var ontology = createOntology(ns);
+    try {
+      final var query = RankingSupport.uniqueTerm(ns);
+      final var order = createOrder(ontology, query);
+      final var property = createProperty(ontology, order);
+      final var table = createTable(ns);
+      activate(ontology);
+      bind(order, table, List.of(), 0);
+      final var draft = createConcept(ontology, "Unpublished");
+      final var published = rawTerm(order);
+      final var publishedProperty = indexedTermDocument(property).path("_source");
+      final var active = OntologyTermSearch.activeIndex(order.getEntityReference());
+      final var fingerprint =
+          VectorDocBuilder.computeFingerprintForEntity(active.term(), active.embeddingBody());
+      final var search = Entity.getSearchRepository();
+      final var index =
+          search.getIndexMapping(Entity.ONTOLOGY_CONCEPT).getIndexName(search.getClusterAlias());
+      new SearchClient(OssTestServer.defaultHandle())
+          .post(
+              "/" + index + "/_update/" + order.getId() + "?refresh=true",
+              JsonUtils.pojoToJson(
+                  Map.of(
+                      "doc",
+                      Map.of("fingerprint", fingerprint, "textToEmbed", active.embeddingBody()))));
+      editDraft(order);
+      patch("/v1/ontologyProperties/" + property.getId(), "add", "/displayName", "Draft property");
+      final long sequence = indexedTermDocument(property).path("_seq_no").asLong();
+
+      SdkClients.adminClient()
+          .getHttpClient()
+          .execute(
+              HttpMethod.POST,
+              "/v1/search/reindexEntities",
+              List.of(
+                  draft.getEntityReference(),
+                  order.getEntityReference(),
+                  property.getEntityReference()),
+              Void.class);
+
+      await()
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () ->
+                  assertThat(indexedTermDocument(property).path("_seq_no").asLong())
+                      .isGreaterThan(sequence));
+      final var reindexed = indexedTermDocument(order).path("_source");
+      assertThat(reindexed.path("description")).isEqualTo(published.path("description"));
+      assertThat(reindexed.path("boundAssetIds")).isEqualTo(published.path("boundAssetIds"));
+      assertThat(reindexed.path("fingerprint").asText()).isEqualTo(fingerprint);
+      assertThat(reindexed.path("textToEmbed").asText()).isEqualTo(active.embeddingBody());
+      final var reindexedProperty = indexedTermDocument(property).path("_source");
+      assertThat(reindexedProperty.path("displayName"))
+          .isEqualTo(publishedProperty.path("displayName"));
+      assertThat(reindexedProperty.path("domainLabels"))
+          .isEqualTo(publishedProperty.path("domainLabels"));
+      assertThat(reindexedProperty.path("rangeLabels"))
+          .isEqualTo(publishedProperty.path("rangeLabels"));
+      assertThat(find(ALIAS, "Unpublished", draft)).isNull();
+    } finally {
+      deleteOntology(ontology);
+    }
+  }
+
+  @Test
   void keepsBindingNamesPrivateAcrossSearchEndpoints(TestNamespace ns) {
     SearchAccessRulesIT.assumeTheServerTrustsHarnessSignedTokens();
     final var ontology = createOntology(ns);
@@ -240,6 +306,7 @@ class OntologyTermSearchIT {
           .containsExactlyInAnyOrder(
               table.getFullyQualifiedName(), table.getColumns().getFirst().getFullyQualifiedName());
       final var originalColumnFqn = table.getColumns().getFirst().getFullyQualifiedName();
+      final long indexedVersion = indexedTermDocument(order).path("_version").asLong();
       final var columns =
           List.of(new Column().withName("renamed_code").withDataType(ColumnDataType.STRING));
       final var renamed =
@@ -254,6 +321,9 @@ class OntologyTermSearchIT {
               () ->
                   assertThat(boundAssets(query, order))
                       .containsExactly(renamed.getFullyQualifiedName()));
+      assertThat(indexedTermDocument(order).path("_version").asLong())
+          .as("Column names are resolved at read time without rewriting the term document")
+          .isEqualTo(indexedVersion);
       SdkClients.adminClient().tables().delete(table.getId());
       await()
           .atMost(Duration.ofSeconds(20))
@@ -272,8 +342,11 @@ class OntologyTermSearchIT {
       await()
           .atMost(Duration.ofSeconds(20))
           .untilAsserted(
-              () ->
-                  assertThat(boundAssets(query, order)).contains(renamed.getFullyQualifiedName()));
+              () -> {
+                assertThat(boundAssets(query, order)).contains(renamed.getFullyQualifiedName());
+                assertThat(rawTerm(order).path("boundAssetIds").get(0).asText())
+                    .isEqualTo(table.getId().toString());
+              });
     } finally {
       deleteOntology(ontology);
     }
@@ -595,6 +668,16 @@ class OntologyTermSearchIT {
             "/v1/search/get/ontologyConcept/doc/" + concept.getId(),
             null,
             JsonNode.class);
+  }
+
+  private static JsonNode indexedTermDocument(EntityInterface<?> term) {
+    final var search = Entity.getSearchRepository();
+    final var index =
+        search
+            .getIndexMapping(term.getEntityReference().getType())
+            .getIndexName(search.getClusterAlias());
+    return new SearchClient(OssTestServer.defaultHandle())
+        .get("/" + index + "/_doc/" + term.getId());
   }
 
   private static List<String> boundAssets(String query, OntologyConcept term) {

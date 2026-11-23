@@ -1195,6 +1195,12 @@ public class SearchResource {
                         continue;
                       }
 
+                      if (OntologyTermSearch.isTerm(entityType)) {
+                        searchRepository.reindexOntologyTerm(ref);
+                        successCount++;
+                        continue;
+                      }
+
                       String fields =
                           String.join(",", ReindexingUtil.getSearchIndexFields(entityType));
                       EntityInterface<?> entity = Entity.getEntity(ref, fields, Include.ALL);

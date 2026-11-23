@@ -1891,7 +1891,12 @@ public class SearchRepository {
         return;
       }
       if (OntologyTermSearch.isTerm(entityType)) {
-        entities.forEach(this::createEntityIndex);
+        refreshOntologyTerms(
+            entities.stream()
+                .filter(Objects::nonNull)
+                .map(EntityInterface::getEntityReference)
+                .distinct()
+                .toList());
         return;
       }
       Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
@@ -2350,7 +2355,7 @@ public class SearchRepository {
     }
   }
 
-  void reindexOntologyTerm(EntityReference reference) throws IOException {
+  public void reindexOntologyTerm(EntityReference reference) throws IOException {
     if (getIndexMapping(reference.getType()) != null) {
       writeOntologyTerms(List.of(reference));
     }

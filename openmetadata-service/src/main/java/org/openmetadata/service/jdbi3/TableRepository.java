@@ -1851,24 +1851,9 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   @Override
-  protected void postUpdate(Table original, Table updated) {
-    super.postUpdate(original, updated);
-    if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
-        || !bindingColumnFqns(original).equals(bindingColumnFqns(updated))) {
-      refreshOntologyBindings(updated);
-    }
-  }
-
-  @Override
   protected void postRestore(Table table) {
     super.postRestore(table);
     refreshOntologyBindings(table);
-  }
-
-  private Set<String> bindingColumnFqns(Table table) {
-    final List<String> fqns = new ArrayList<>();
-    collectColumnFqns(table.getColumns(), fqns);
-    return new HashSet<>(fqns);
   }
 
   private void refreshOntologyBindings(Table table) {

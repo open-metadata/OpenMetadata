@@ -28,12 +28,16 @@ Activation refreshes the union of the previous and current release members in bo
 Live writes and reindex hold the same term row locks from the active-state read through the search
 write. Embedding calls run outside the locks, and their results are written only while the
 published fingerprint still matches. Ontology owner changes refresh active members. Binding edits
-and table or column identity changes refresh the affected concepts. The shared writer batches release membership, binding rows,
-and table reads, and shares resolved property labels with the embedding builder.
+and table deletion or restoration refresh the affected concepts. Table and column names are resolved
+at query time and do not trigger term writes. Manual entity reindexing uses the same published-term
+writer. Bulk creates pass their terms to that writer together, which batches release membership,
+binding rows, and table reads, and shares resolved property labels with the embedding builder.
 
 Embed the label, synonyms, description, and property domain and range labels. OpenSearch stores
 chunks in `ontology_embeddings_chunks`, and Elasticsearch serves vectors from the term indexes.
-Term writes delete chunks for inactive terms and chunks with a superseded fingerprint. A
+Term writes delete chunks for inactive terms and chunks with a superseded fingerprint. With
+embeddings disabled, reconciliation skips the refresh and deletion when the chunk index is absent,
+but still cleans up an existing index from an earlier configuration. A
 successful ontology reindex also sweeps chunks whose parents are absent from the catalog.
 The data-asset chunk generation tracks the entity types that write to it, including for saved
 reindex configurations with explicit entity lists.

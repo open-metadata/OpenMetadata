@@ -42,8 +42,12 @@ public final class OntologyChunkIndex {
       throws IOException {
     if (client instanceof OpenSearchClient openSearch) {
       final var index = name(clusterAlias);
-      refresh(openSearch, index);
-      deleteStaleChunks(openSearch, index, terms, active);
+      // Disabling embeddings can leave chunks from an earlier configuration.
+      if (Entity.getSearchRepository().isVectorEmbeddingEnabled()
+          || openSearch.getNewClient().indices().exists(r -> r.index(index)).value()) {
+        refresh(openSearch, index);
+        deleteStaleChunks(openSearch, index, terms, active);
+      }
     }
   }
 
