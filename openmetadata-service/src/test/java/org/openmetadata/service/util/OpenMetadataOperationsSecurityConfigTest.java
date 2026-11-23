@@ -175,8 +175,8 @@ class OpenMetadataOperationsSecurityConfigTest {
     try (InputStream stream =
         OpenMetadataOperationsSecurityConfigTest.class.getResourceAsStream(path)) {
       return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
+    } catch (IOException unreadable) {
+      throw new UncheckedIOException(unreadable);
     }
   }
 

@@ -66,6 +66,16 @@ class SamlIdpCertificatePutIT {
   private static final String EXPIRED = resource("/saml/expired-idp.crt");
   private static final String NOT_A_CERTIFICATE =
       "-----BEGIN CERTIFICATE-----\nnot-a-certificate\n-----END CERTIFICATE-----";
+  private static final String PEM_BEGIN = "-----BEGIN CERTIFICATE-----";
+  private static final String PEM_END = "-----END CERTIFICATE-----";
+
+  /** The layouts the server cannot read at startup: one line, or spaces for line breaks. */
+  private static final String OTHER_VALID_SINGLE_LINE =
+      PEM_BEGIN
+          + OTHER_VALID.replace(PEM_BEGIN, "").replace(PEM_END, "").replaceAll("\\s+", "")
+          + PEM_END;
+
+  private static final String OTHER_VALID_SPACED = OTHER_VALID.strip().replace("\n", " ");
 
   private static String original;
 
@@ -87,7 +97,8 @@ class SamlIdpCertificatePutIT {
   void putRefusesAnUnusableCertificateAndWritesNothing() {
     final JsonNode stored = storedAuthentication();
 
-    for (final String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
+    for (final String unusable :
+        new String[] {NOT_A_CERTIFICATE, EXPIRED, OTHER_VALID_SINGLE_LINE, OTHER_VALID_SPACED}) {
       final InvalidRequestException refused =
           assertThrows(InvalidRequestException.class, () -> put(withIdpCertificate(unusable)));
 
@@ -128,7 +139,8 @@ class SamlIdpCertificatePutIT {
   void patchRefusesAnUnusableCertificateAndWritesNothing() {
     final JsonNode stored = storedAuthentication();
 
-    for (final String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
+    for (final String unusable :
+        new String[] {NOT_A_CERTIFICATE, EXPIRED, OTHER_VALID_SINGLE_LINE, OTHER_VALID_SPACED}) {
       final String answer = attempt(() -> patch(replaceCertificate(unusable)));
 
       assertTrue(answer.contains(CERTIFICATE_NAME), answer);
@@ -204,8 +216,8 @@ class SamlIdpCertificatePutIT {
       security.put("wantAssertionsSigned", false);
       security.put("sendSignedAuthRequest", false);
       return MAPPER.writeValueAsString(config);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
+    } catch (IOException unreadable) {
+      throw new UncheckedIOException(unreadable);
     }
   }
 
@@ -254,8 +266,8 @@ class SamlIdpCertificatePutIT {
   private static String resource(final String path) {
     try (InputStream stream = SamlIdpCertificatePutIT.class.getResourceAsStream(path)) {
       return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
+    } catch (IOException unreadable) {
+      throw new UncheckedIOException(unreadable);
     }
   }
 }

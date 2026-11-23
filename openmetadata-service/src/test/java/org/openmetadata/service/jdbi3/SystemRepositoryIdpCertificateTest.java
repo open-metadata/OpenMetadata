@@ -227,8 +227,8 @@ class SystemRepositoryIdpCertificateTest {
   private static String resource(final String path) {
     try (InputStream stream = SystemRepositoryIdpCertificateTest.class.getResourceAsStream(path)) {
       return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
-    } catch (IOException e) {
-      throw new UncheckedIOException(e);
+    } catch (IOException unreadable) {
+      throw new UncheckedIOException(unreadable);
     }
   }
 }
