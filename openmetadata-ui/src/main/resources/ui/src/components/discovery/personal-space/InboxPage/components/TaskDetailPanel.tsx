@@ -733,12 +733,17 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
 
   const handleTransition = useCallback(
     (action: TaskResolveAction) => async () => {
+      if (loadingTransitionId) {
+        return;
+      }
       if (action.requiresComment) {
         setCommentAction(action);
 
         return;
       }
       if (task && action.transition) {
+        // Lock the actions before the lookup so a second click can't race it.
+        setLoadingTransitionId(action.id);
         try {
           // A click can land before the schema loads; wait on the cached
           // lookup rather than fire a transition whose form it has not seen.
@@ -746,18 +751,20 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
           setFormSchema(schema);
           if (getTaskActionInput(task, action, schema).requiresForm) {
             setFormAction(action);
+            setLoadingTransitionId(undefined);
 
             return;
           }
         } catch (error) {
           showErrorToast(error as AxiosError);
+          setLoadingTransitionId(undefined);
 
           return;
         }
       }
       runTransition(action);
     },
-    [runTransition, task]
+    [loadingTransitionId, runTransition, task]
   );
 
   // The form modal collected the transition's required fields; resolve with
