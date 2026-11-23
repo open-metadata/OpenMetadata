@@ -755,6 +755,13 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/public/locales/en-US/Dashboard/Looker.md"
+      ],
+      "projects": ["Ingestion"],
+      "specs": ["playwright/e2e/Flow/ServiceForm.spec.ts"]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Tag/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/InteractiveTargetUtils.ts"
       ],
