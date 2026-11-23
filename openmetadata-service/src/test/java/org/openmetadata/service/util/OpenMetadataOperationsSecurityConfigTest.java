@@ -59,6 +59,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
  * real repository.
  */
 class OpenMetadataOperationsSecurityConfigTest {
+  private static final String CERTIFICATE_FIELD = "samlConfiguration.idp.idpX509Certificate";
   private static final String AUTH = AUTHENTICATION_CONFIGURATION.value();
   private static final String AUTHZ = AUTHORIZER_CONFIGURATION.value();
   private static final String IDP_CERTIFICATE = resource("/saml/mock-idp.crt");
@@ -76,8 +77,8 @@ class OpenMetadataOperationsSecurityConfigTest {
     entityMock = mockStatic(Entity.class);
     migrationMock = mockStatic(MigrationValidationClient.class);
     settingsCacheMock = mockStatic(SettingsCache.class);
-    CollectionDAO collectionDAO = mock(CollectionDAO.class);
-    SystemDAO dao = inMemoryDao();
+    final CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    final SystemDAO dao = inMemoryDao();
     when(collectionDAO.systemDAO()).thenReturn(dao);
     entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
     migrationMock
@@ -100,7 +101,8 @@ class OpenMetadataOperationsSecurityConfigTest {
     OpenMetadataOperations.storeSecurityConfiguration(
         repository, securityFile(OTHER_IDP_CERTIFICATE, "new-admin"));
 
-    SecurityConfiguration stored = repository.getStoredSecurityConfiguration().configuration();
+    final SecurityConfiguration stored =
+        repository.getStoredSecurityConfiguration().configuration();
     assertEquals(
         OTHER_IDP_CERTIFICATE,
         stored
@@ -113,38 +115,37 @@ class OpenMetadataOperationsSecurityConfigTest {
 
   @Test
   void aRefusedIdpCertificateLeavesBothSettingsAsTheyWere() {
-    String authenticationBefore = rows.get(AUTH);
-    String authorizerBefore = rows.get(AUTHZ);
-    SecurityConfiguration file = securityFile(EXPIRED_IDP_CERTIFICATE, "new-admin");
+    final String authenticationBefore = rows.get(AUTH);
+    final String authorizerBefore = rows.get(AUTHZ);
+    final SecurityConfiguration file = securityFile(EXPIRED_IDP_CERTIFICATE, "new-admin");
 
-    BadRequestException refused =
+    final BadRequestException refused =
         assertThrows(
             BadRequestException.class,
             () -> OpenMetadataOperations.storeSecurityConfiguration(repository, file));
 
-    assertTrue(
-        refused.getMessage().contains("samlConfiguration.idp.idpX509Certificate"),
-        refused.getMessage());
+    assertTrue(refused.getMessage().contains(CERTIFICATE_FIELD), refused.getMessage());
     assertEquals(authenticationBefore, rows.get(AUTH));
     assertEquals(authorizerBefore, rows.get(AUTHZ));
   }
 
   @Test
   void writesNothingWhenTheFileHasNoSecuritySettings() {
-    Map<String, String> before = Map.copyOf(rows);
+    final Map<String, String> before = Map.copyOf(rows);
 
     OpenMetadataOperations.storeSecurityConfiguration(repository, new SecurityConfiguration());
 
     assertEquals(before, rows);
   }
 
-  private static SecurityConfiguration securityFile(String idpCertificate, String admin) {
+  private static SecurityConfiguration securityFile(
+      final String idpCertificate, final String admin) {
     return new SecurityConfiguration()
         .withAuthenticationConfiguration(saml(idpCertificate))
         .withAuthorizerConfiguration(authorizer(admin));
   }
 
-  private static AuthenticationConfiguration saml(String idpCertificate) {
+  private static AuthenticationConfiguration saml(final String idpCertificate) {
     return new AuthenticationConfiguration()
         .withProvider(AuthProvider.SAML)
         .withProviderName("SAML")
@@ -162,7 +163,7 @@ class OpenMetadataOperationsSecurityConfigTest {
                         .withCallback("http://localhost:8585/saml/callback")));
   }
 
-  private static AuthorizerConfiguration authorizer(String admin) {
+  private static AuthorizerConfiguration authorizer(final String admin) {
     return new AuthorizerConfiguration()
         .withClassName("org.openmetadata.service.security.DefaultAuthorizer")
         .withContainerRequestFilter("org.openmetadata.service.security.JwtFilter")
@@ -171,7 +172,7 @@ class OpenMetadataOperationsSecurityConfigTest {
         .withEnableSecureSocketConnection(false);
   }
 
-  private static String resource(String path) {
+  private static String resource(final String path) {
     try (InputStream stream =
         OpenMetadataOperationsSecurityConfigTest.class.getResourceAsStream(path)) {
       return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
@@ -181,12 +182,12 @@ class OpenMetadataOperationsSecurityConfigTest {
   }
 
   private SystemDAO inMemoryDao() {
-    SystemDAO dao = mock(SystemDAO.class);
+    final SystemDAO dao = mock(SystemDAO.class);
     when(dao.getConfigJsonWithKey(anyString())).thenAnswer(i -> rows.get(i.<String>getArgument(0)));
     when(dao.getConfigWithKey(anyString()))
         .thenAnswer(
             i -> {
-              String json = rows.get(i.<String>getArgument(0));
+              final String json = rows.get(i.<String>getArgument(0));
               return json == null
                   ? null
                   : CollectionDAO.SettingsRowMapper.getSettings(

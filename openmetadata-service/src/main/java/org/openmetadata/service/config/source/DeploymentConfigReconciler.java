@@ -108,8 +108,8 @@ public final class DeploymentConfigReconciler {
       DeploymentConfig deployment, DeploymentSetting setting, StoredSettingRow row) {
     Optional<DeploymentSnapshot> previous = DeploymentSnapshot.parse(row.snapshot());
     if (previous.filter(this::isFromNewerServer).isEmpty()) {
-      MergeInput input = inputOf(deployment, setting, ConfigSourceMode.ENV, row, previous);
-      MergeResult result = merge.merge(input);
+      final MergeInput input = inputOf(deployment, setting, ConfigSourceMode.ENV, row, previous);
+      final MergeResult result = merge.merge(input);
       if (result.storedChanged()) {
         preparer.prepareReconciled(setting.settingsType(), result.stored(), input.stored());
       }
@@ -181,7 +181,7 @@ public final class DeploymentConfigReconciler {
               + "deployment configuration to it",
           setting.settingsType().value());
     } else {
-      MergeInput input = inputOf(deployment, setting, mode, row, previous);
+      final MergeInput input = inputOf(deployment, setting, mode, row, previous);
       done = store(setting, input, row, previous, merge.merge(input));
     }
     return done;
@@ -230,7 +230,7 @@ public final class DeploymentConfigReconciler {
       Optional<DeploymentSnapshot> previous,
       MergeResult result) {
     SettingsType type = setting.settingsType();
-    ConfigSourceMode mode = input.mode();
+    final ConfigSourceMode mode = input.mode();
     ReconcileLog log =
         ReconcileLog.of(setting, result, previous.map(this::warnedOf).orElse(List.of()));
     DeploymentSnapshot snapshot =
@@ -275,7 +275,7 @@ public final class DeploymentConfigReconciler {
       JsonNode stored,
       MergeResult result,
       DeploymentSnapshot snapshot) {
-    String updatedJson = preparer.prepareReconciled(type, result.stored(), stored);
+    final String updatedJson = preparer.prepareReconciled(type, result.stored(), stored);
     boolean written =
         dao.updateSettingsWithSnapshotIfCurrent(
                 type.value(), row.json(), updatedJson, snapshot.toJson())

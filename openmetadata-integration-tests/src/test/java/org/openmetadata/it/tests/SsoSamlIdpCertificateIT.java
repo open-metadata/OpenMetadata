@@ -57,6 +57,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 @Isolated
 @Execution(ExecutionMode.SAME_THREAD)
 class SsoSamlIdpCertificateIT {
+  private static final String NOT_APPLIED = "could not be applied";
   private static final String IDP_ENTITY_ID = "https://idp.saml-certificate-it.invalid";
   private static final String SP_ENTITY_ID = "openmetadata-saml-certificate-it";
   private static final String CERTIFICATE_FIELD = "samlConfiguration.idp.idpX509Certificate";
@@ -87,10 +88,10 @@ class SsoSamlIdpCertificateIT {
   @Test
   @DisplayName("A PUT with an unusable IdP certificate is refused with a 400 and writes nothing")
   void putRefusesAnUnusableCertificateAndWritesNothing() {
-    JsonNode stored = SecurityConfigSwap.storedConfig();
+    final JsonNode stored = SecurityConfigSwap.storedConfig();
 
-    for (String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
-      Answer answer =
+    for (final String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
+      final Answer answer =
           SecurityConfigSwap.attemptPut(
               withIdpCertificate(securityConfig.baselineCopy(), unusable));
 
@@ -104,7 +105,7 @@ class SsoSamlIdpCertificateIT {
   @DisplayName("A PUT with a usable new IdP certificate stores it")
   void putStoresAUsableCertificate() {
     try {
-      Answer answer =
+      final Answer answer =
           SecurityConfigSwap.attemptPut(
               withIdpCertificate(securityConfig.baselineCopy(), OTHER_VALID));
 
@@ -119,10 +120,11 @@ class SsoSamlIdpCertificateIT {
   @Test
   @DisplayName("A PUT that sends the stored expired IdP certificate back unchanged is accepted")
   void putAcceptsTheStoredExpiredCertificateUnchanged() {
-    SecurityConfiguration expired = withIdpCertificate(securityConfig.baselineCopy(), EXPIRED);
+    final SecurityConfiguration expired =
+        withIdpCertificate(securityConfig.baselineCopy(), EXPIRED);
     storeWithoutChecks(expired);
     try {
-      Answer answer = SecurityConfigSwap.attemptPut(expired);
+      final Answer answer = SecurityConfigSwap.attemptPut(expired);
 
       assertEquals(200, answer.status(), answer.body());
       assertEquals(EXPIRED, SecurityConfigSwap.storedConfig().at(CERTIFICATE_POINTER).asText());
@@ -141,9 +143,9 @@ class SsoSamlIdpCertificateIT {
   void aRefusedSaveOverAStoredExpiredCertificatePutsTheRowsBack(@TempDir Path directory)
       throws IOException {
     storeWithoutChecks(withIdpCertificate(securityConfig.baselineCopy(), EXPIRED));
-    String storedRow = storedAuthenticationRow();
-    Path notAKeyStore = Files.writeString(directory.resolve("saml-sp.jks"), "not a keystore");
-    SecurityConfiguration cannotBeApplied = securityConfig.baselineCopy();
+    final String storedRow = storedAuthenticationRow();
+    final Path notAKeyStore = Files.writeString(directory.resolve("saml-sp.jks"), "not a keystore");
+    final SecurityConfiguration cannotBeApplied = securityConfig.baselineCopy();
     cannotBeApplied
         .getAuthenticationConfiguration()
         .getSamlConfiguration()
@@ -153,10 +155,10 @@ class SsoSamlIdpCertificateIT {
         .withKeyStoreAlias("sp")
         .withKeyStorePassword("keystore-password");
     try {
-      Answer answer = SecurityConfigSwap.attemptPut(cannotBeApplied);
+      final Answer answer = SecurityConfigSwap.attemptPut(cannotBeApplied);
 
       assertEquals(400, answer.status(), answer.body());
-      assertTrue(answer.body().contains("could not be applied"), answer.body());
+      assertTrue(answer.body().contains(NOT_APPLIED), answer.body());
       assertEquals(storedRow, storedAuthenticationRow());
     } finally {
       securityConfig.restoreBaseline();
@@ -166,10 +168,10 @@ class SsoSamlIdpCertificateIT {
   @Test
   @DisplayName("A PATCH with an unusable IdP certificate is refused with a 400 and writes nothing")
   void patchRefusesAnUnusableCertificateAndWritesNothing() {
-    JsonNode stored = SecurityConfigSwap.storedConfig();
+    final JsonNode stored = SecurityConfigSwap.storedConfig();
 
-    for (String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
-      Answer answer = SecurityConfigSwap.attemptPatch(replaceCertificate(unusable));
+    for (final String unusable : new String[] {NOT_A_CERTIFICATE, EXPIRED}) {
+      final Answer answer = SecurityConfigSwap.attemptPatch(replaceCertificate(unusable));
 
       assertEquals(400, answer.status(), answer.body());
       assertTrue(answer.body().contains(CERTIFICATE_FIELD), answer.body());
@@ -181,7 +183,7 @@ class SsoSamlIdpCertificateIT {
   @DisplayName("A PATCH with a usable new IdP certificate stores it")
   void patchStoresAUsableCertificate() {
     try {
-      Answer answer = SecurityConfigSwap.attemptPatch(replaceCertificate(OTHER_VALID));
+      final Answer answer = SecurityConfigSwap.attemptPatch(replaceCertificate(OTHER_VALID));
 
       assertEquals(204, answer.status(), answer.body());
       assertEquals(OTHER_VALID, SecurityConfigSwap.storedConfig().at(CERTIFICATE_POINTER).asText());
@@ -196,7 +198,7 @@ class SsoSamlIdpCertificateIT {
   void patchKeepsTheStoredExpiredCertificate() {
     storeWithoutChecks(withIdpCertificate(securityConfig.baselineCopy(), EXPIRED));
     try {
-      Answer answer =
+      final Answer answer =
           SecurityConfigSwap.attemptPatch(
               "[{\"op\":\"replace\",\"path\":\"/authenticationConfiguration/enableSelfSignup\","
                   + "\"value\":false}]");
@@ -211,8 +213,8 @@ class SsoSamlIdpCertificateIT {
   @Test
   @DisplayName("The generic settings endpoints refuse the authentication configuration")
   void genericSettingsEndpointsRefuseTheAuthenticationConfiguration() {
-    JsonNode stored = SecurityConfigSwap.storedConfig();
-    Settings settings =
+    final JsonNode stored = SecurityConfigSwap.storedConfig();
+    final Settings settings =
         new Settings()
             .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
             .withConfigValue(
@@ -232,7 +234,7 @@ class SsoSamlIdpCertificateIT {
     assertEquals(stored, SecurityConfigSwap.storedConfig());
   }
 
-  private static String replaceCertificate(String idpCertificate) {
+  private static String replaceCertificate(final String idpCertificate) {
     return "[{\"op\":\"replace\",\"path\":\"/authenticationConfiguration/samlConfiguration/idp/"
         + "idpX509Certificate\",\"value\":"
         + JsonUtils.pojoToJson(idpCertificate)
@@ -240,7 +242,7 @@ class SsoSamlIdpCertificateIT {
   }
 
   private static SecurityConfiguration withIdpCertificate(
-      SecurityConfiguration base, String idpCertificate) {
+      final SecurityConfiguration base, final String idpCertificate) {
     return SsoConfigs.saml(base, IDP_ENTITY_ID, idpCertificate, SP_ENTITY_ID);
   }
 
@@ -248,7 +250,7 @@ class SsoSamlIdpCertificateIT {
    * Stands for a certificate that was valid when it was saved and has expired since: the row is
    * written as time would leave it, past the settings write step that refuses a new expired one.
    */
-  private static void storeWithoutChecks(SecurityConfiguration config) {
+  private static void storeWithoutChecks(final SecurityConfiguration config) {
     Entity.getCollectionDAO()
         .systemDAO()
         .insertSettings(
@@ -266,7 +268,7 @@ class SsoSamlIdpCertificateIT {
         .getConfigJsonWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
   }
 
-  private static String resource(String path) {
+  private static String resource(final String path) {
     try (InputStream stream = SsoSamlIdpCertificateIT.class.getResourceAsStream(path)) {
       return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
     } catch (IOException e) {

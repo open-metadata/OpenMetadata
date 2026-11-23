@@ -54,6 +54,9 @@ import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.security.auth.validator.SamlIdpCertificateGate;
 
 class DeploymentConfigReconcilerTest {
+  private static final String NOT_APPLIED_FROM_DEPLOYMENT =
+      "authenticationConfiguration cannot be applied from the deployment";
+  private static final String CERTIFICATE_FIELD = "samlConfiguration.idp.idpX509Certificate";
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
   private static final String AUTH = AUTHENTICATION_CONFIGURATION.value();
@@ -272,7 +275,7 @@ class DeploymentConfigReconcilerTest {
   /** The preparer compares against the stored value the merge used, with its secrets decrypted. */
   @Test
   void thePreparerReceivesTheStoredValueDecrypted() {
-    String withSecret =
+    final String withSecret =
         "{'provider':'custom-oidc','oidcConfiguration':{'id':'om','secret':'s3cret'},%s}";
     reconcile(ConfigSourceMode.AUTO, String.format(withSecret, "'maxActiveSessionsPerUser':5"));
     assertTrue(
@@ -354,16 +357,13 @@ class DeploymentConfigReconcilerTest {
   void envModeStopsTheStartOnAnUnusableCertificateAndNamesIt() {
     storeSaml(IDP_PEM, IDP_PEM, ConfigSourceMode.ENV);
 
-    IllegalStateException stopped =
+    final IllegalStateException stopped =
         assertThrows(
             IllegalStateException.class,
             () -> reconcileSaml(ConfigSourceMode.ENV, saml(NOT_A_CERTIFICATE, true)));
 
-    assertTrue(
-        stopped
-            .getMessage()
-            .startsWith("authenticationConfiguration cannot be applied from the deployment"));
-    assertTrue(stopped.getMessage().contains("samlConfiguration.idp.idpX509Certificate"));
+    assertTrue(stopped.getMessage().startsWith(NOT_APPLIED_FROM_DEPLOYMENT));
+    assertTrue(stopped.getMessage().contains(CERTIFICATE_FIELD));
     assertEquals(IDP_PEM, stored().at(CERTIFICATE_POINTER).asText());
   }
 
@@ -378,12 +378,12 @@ class DeploymentConfigReconcilerTest {
 
   @Test
   void aFirstStartWithAnUnusableCertificateStoresNothingAndStopsTheStart() {
-    BadRequestException stopped =
+    final BadRequestException stopped =
         assertThrows(
             BadRequestException.class,
             () -> seedSaml(ConfigSourceMode.AUTO, saml(NOT_A_CERTIFICATE, true)));
 
-    assertTrue(stopped.getMessage().contains("samlConfiguration.idp.idpX509Certificate"));
+    assertTrue(stopped.getMessage().contains(CERTIFICATE_FIELD));
     assertFalse(rows.containsKey(AUTH));
   }
 
@@ -426,18 +426,19 @@ class DeploymentConfigReconcilerTest {
     new DeploymentConfigReconciler(dao, new TestPreparer(), "2.1.0").reconcileAll(deployment);
   }
 
-  private void reconcileSaml(ConfigSourceMode mode, JsonNode deploymentValue) {
+  private void reconcileSaml(final ConfigSourceMode mode, final JsonNode deploymentValue) {
     new DeploymentConfigReconciler(dao, new TestPreparer(), "2.1.0")
         .reconcileAll(samlDeployment(mode, deploymentValue));
   }
 
-  private void seedSaml(ConfigSourceMode mode, JsonNode deploymentValue) {
+  private void seedSaml(final ConfigSourceMode mode, final JsonNode deploymentValue) {
     new DeploymentConfigReconciler(dao, new TestPreparer(), "2.1.0")
         .seedMissing(samlDeployment(mode, deploymentValue));
   }
 
-  private static DeploymentConfig samlDeployment(ConfigSourceMode mode, JsonNode value) {
-    DeploymentSetting setting =
+  private static DeploymentConfig samlDeployment(
+      final ConfigSourceMode mode, final JsonNode value) {
+    final DeploymentSetting setting =
         new DeploymentSetting(DualSourceSetting.AUTHENTICATION, value, SAML_TEMPLATE);
     return DeploymentConfig.of(
         List.of(setting), new ConfigSourceConfiguration().withSecurity(mode));
@@ -445,8 +446,10 @@ class DeploymentConfigReconcilerTest {
 
   /** A stored SAML configuration and the deployment value a start last applied to it. */
   private void storeSaml(
-      String storedCertificate, String lastAppliedCertificate, ConfigSourceMode mode) {
-    DeploymentSnapshot lastApplied =
+      final String storedCertificate,
+      final String lastAppliedCertificate,
+      final ConfigSourceMode mode) {
+    final DeploymentSnapshot lastApplied =
         new DeploymentSnapshot(
             saml(lastAppliedCertificate, true),
             new DeploymentSnapshot.Meta(mode, "2.1.0", null, List.of(), null));
@@ -455,17 +458,17 @@ class DeploymentConfigReconcilerTest {
     ConfigSources.recordPersistedMode(AUTHENTICATION_CONFIGURATION, mode);
   }
 
-  private static JsonNode saml(String certificate, boolean enableSelfSignup) {
-    ObjectNode value = MAPPER.createObjectNode();
+  private static JsonNode saml(final String certificate, final boolean enableSelfSignup) {
+    final ObjectNode value = MAPPER.createObjectNode();
     value.put("provider", "saml");
     value.put("enableSelfSignup", enableSelfSignup);
-    ObjectNode idp = value.putObject("samlConfiguration").putObject("idp");
+    final ObjectNode idp = value.putObject("samlConfiguration").putObject("idp");
     idp.put("entityId", "https://idp.example.com/metadata");
     idp.put("idpX509Certificate", certificate);
     return value;
   }
 
-  private static String resource(String path) {
+  private static String resource(final String path) {
     try (InputStream stream = DeploymentConfigReconcilerTest.class.getResourceAsStream(path)) {
       return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
     } catch (IOException e) {
@@ -584,7 +587,8 @@ class DeploymentConfigReconcilerTest {
   /** Stores what it is given, secrets encrypted, like the settings repository. */
   private final class TestPreparer implements DeploymentSettingPreparer {
     @Override
-    public String prepareReconciled(SettingsType settingsType, JsonNode value, JsonNode stored) {
+    public String prepareReconciled(
+        final SettingsType settingsType, final JsonNode value, final JsonNode stored) {
       if (rejectNextPreparedValue.getAndSet(false)) {
         throw new BadRequestException("Invalid security configuration");
       }
@@ -602,7 +606,7 @@ class DeploymentConfigReconcilerTest {
       return prepareReconciled(settingsType, value, null);
     }
 
-    private static AuthenticationConfiguration authentication(JsonNode value) {
+    private static AuthenticationConfiguration authentication(final JsonNode value) {
       return value == null
           ? null
           : JsonUtils.convertValue(value, AuthenticationConfiguration.class);

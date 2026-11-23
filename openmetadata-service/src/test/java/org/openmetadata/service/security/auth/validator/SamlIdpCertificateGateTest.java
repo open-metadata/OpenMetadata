@@ -29,6 +29,8 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 
 class SamlIdpCertificateGateTest {
+  private static final String STANDARD_PEM = "standard PEM";
+  private static final String CERTIFICATE_FIELD = "samlConfiguration.idp.idpX509Certificate";
   private static final String VALID = resource("/saml/mock-idp.crt");
   private static final String OTHER_VALID = resource("/saml/other-idp.crt");
   private static final String EXPIRED = resource("/saml/expired-idp.crt");
@@ -42,8 +44,8 @@ class SamlIdpCertificateGateTest {
             BadRequestException.class,
             () -> SamlIdpCertificateGate.requireUsable(saml(NOT_A_CERTIFICATE), null));
 
-    assertTrue(refused.getMessage().contains("samlConfiguration.idp.idpX509Certificate"));
-    assertTrue(refused.getMessage().contains("standard PEM"));
+    assertTrue(refused.getMessage().contains(CERTIFICATE_FIELD));
+    assertTrue(refused.getMessage().contains(STANDARD_PEM));
   }
 
   @Test
