@@ -17,6 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import LimitWrapper from '../../../../hoc/LimitWrapper';
 import { getBots } from '../../../../rest/botsAPI';
@@ -258,5 +259,65 @@ describe('BotListV1', () => {
     expect(nextPageCalls[0][0]).toEqual(
       expect.objectContaining({ include: 'non-deleted' })
     );
+  });
+
+  it('keeps the newest deleted bots when the stale-cursor request resolves last', async () => {
+    let resolveStaleRequest: (value: unknown) => void = jest.fn();
+    mockGetBots.mockImplementation((params) => {
+      if (params?.include === 'deleted' && params?.before) {
+        return new Promise((resolve) => {
+          resolveStaleRequest = resolve as (value: unknown) => void;
+        }) as ReturnType<typeof getBots>;
+      }
+
+      return Promise.resolve({
+        data:
+          params?.include === 'deleted'
+            ? [{ ...MOCK_BOTS[0], displayName: 'DeletedBot', deleted: true }]
+            : MOCK_BOTS,
+        paging: { total: 1 },
+      }) as unknown as ReturnType<typeof getBots>;
+    });
+
+    const BotListWithDeletedToggle = () => {
+      const [showDeleted, setShowDeleted] = useState(false);
+
+      return (
+        <BotListV1
+          {...mockProps}
+          handleShowDeleted={setShowDeleted}
+          showDeleted={showDeleted}
+        />
+      );
+    };
+
+    render(
+      <MemoryRouter
+        initialEntries={[
+          '/?currentPage=1&cursorType=before&cursorValue=prev-cursor',
+        ]}>
+        <BotListWithDeletedToggle />
+      </MemoryRouter>
+    );
+
+    await screen.findByTestId('bot-link-AutoClassificationBot');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('switch-deleted'));
+    });
+
+    expect(
+      await screen.findByTestId('bot-link-DeletedBot')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      resolveStaleRequest({
+        data: [{ ...MOCK_BOTS[1], displayName: 'StaleBot', deleted: true }],
+        paging: { total: 1 },
+      });
+    });
+
+    expect(screen.getByTestId('bot-link-DeletedBot')).toBeInTheDocument();
+    expect(screen.queryByTestId('bot-link-StaleBot')).not.toBeInTheDocument();
   });
 });
