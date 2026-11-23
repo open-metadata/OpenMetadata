@@ -395,7 +395,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
    * ADR:2026-11-12-a-security-configuration-save-applies-in-full-or-is-refused
    */
   public void restoreSecurityConfigurationIfCurrent(
-      StoredSecurityConfiguration restored, StoredSecurityConfiguration written) {
+      final StoredSecurityConfiguration restored, final StoredSecurityConfiguration written) {
     dao.updateSecuritySettingsIfCurrent(
         new SecuritySettingsUpdate(
             SettingsType.AUTHENTICATION_CONFIGURATION.value(),
@@ -426,9 +426,9 @@ public class SystemRepository implements DeploymentSettingPreparer {
             .withConfigValue(configuration.getAuthorizerConfiguration());
     assertDeploymentFieldsUnchanged(authentication);
     assertDeploymentFieldsUnchanged(authorizer);
-    String authenticationJson =
+    final String authenticationJson =
         prepareSettingForUpdate(authentication, storedValueOf(authentication.getConfigType()));
-    String authorizerJson =
+    final String authorizerJson =
         prepareSettingForUpdate(authorizer, storedValueOf(authorizer.getConfigType()));
     dao.insertSettings(SettingsType.AUTHENTICATION_CONFIGURATION.value(), authenticationJson);
     dao.insertSettings(SettingsType.AUTHORIZER_CONFIGURATION.value(), authorizerJson);
@@ -760,10 +760,10 @@ public class SystemRepository implements DeploymentSettingPreparer {
     updateSetting(setting, storedValueOf(setting.getConfigType()));
   }
 
-  private void updateSetting(Settings setting, JsonNode stored) {
+  private void updateSetting(final Settings setting, final JsonNode stored) {
     assertDeploymentFieldsUnchanged(setting);
     try {
-      String updatedJson = prepareSettingForUpdate(setting, stored);
+      final String updatedJson = prepareSettingForUpdate(setting, stored);
       dao.insertSettings(setting.getConfigType().toString(), updatedJson);
       settingUpdated(setting.getConfigType());
     } catch (BadRequestException | WebApplicationException ex) {
@@ -780,7 +780,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
   private void updateSettingIfCurrent(Settings setting, String expectedJson) {
     assertDeploymentFieldsUnchanged(setting);
     try {
-      String updatedJson =
+      final String updatedJson =
           prepareSettingForUpdate(setting, valueOf(setting.getConfigType(), expectedJson));
       int updated =
           dao.updateSettingsIfCurrent(
@@ -823,7 +823,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
    * write replaces with its secrets decrypted, or null when there is none.
    * ADR:2026-11-20-the-stored-saml-idp-certificate-is-standard-pem
    */
-  private String prepareSettingForUpdate(Settings setting, JsonNode stored) {
+  private String prepareSettingForUpdate(final Settings setting, final JsonNode stored) {
     if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
       SmtpSettings emailConfig =
           JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
@@ -884,21 +884,21 @@ public class SystemRepository implements DeploymentSettingPreparer {
   }
 
   /** The stored value of a setting, with its secrets decrypted; null when it is not stored. */
-  private JsonNode storedValueOf(SettingsType type) {
+  private JsonNode storedValueOf(final SettingsType type) {
     return valueOf(type, dao.getConfigJsonWithKey(type.value()));
   }
 
-  private static JsonNode storedValueOf(Settings stored) {
+  private static JsonNode storedValueOf(final Settings stored) {
     return stored == null || stored.getConfigValue() == null
         ? null
         : decryptedValue(stored.getConfigType(), JsonUtils.valueToTree(stored.getConfigValue()));
   }
 
-  private static JsonNode valueOf(SettingsType type, String storedJson) {
+  private static JsonNode valueOf(final SettingsType type, final String storedJson) {
     return storedJson == null ? null : decryptedValue(type, JsonUtils.readTree(storedJson));
   }
 
-  private static JsonNode decryptedValue(SettingsType type, JsonNode value) {
+  private static JsonNode decryptedValue(final SettingsType type, final JsonNode value) {
     return value.isObject() ? SettingsSecrets.decrypted(type, value) : value;
   }
 
@@ -933,7 +933,8 @@ public class SystemRepository implements DeploymentSettingPreparer {
    * setting, without calling the identity provider, and returns the JSON to store.
    */
   @Override
-  public String prepareReconciled(SettingsType type, JsonNode value, JsonNode stored) {
+  public String prepareReconciled(
+      final SettingsType type, final JsonNode value, final JsonNode stored) {
     Settings setting = settingsOf(type, value);
     OpenMetadataBaseUrlValidator.validate(setting);
     if (setting.getConfigValue() instanceof AuthenticationConfiguration authConfig) {

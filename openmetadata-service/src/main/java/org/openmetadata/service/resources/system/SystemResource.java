@@ -1300,10 +1300,10 @@ public class SystemResource {
    * stored.
    */
   private WebApplicationException refusalOf(
-      StoredSecurityConfiguration written,
-      StoredSecurityConfiguration stored,
-      SecurityConfiguration previous,
-      String reason) {
+      final StoredSecurityConfiguration written,
+      final StoredSecurityConfiguration stored,
+      final SecurityConfiguration previous,
+      final String reason) {
     try {
       putBack(written, stored, previous);
     } catch (PreconditionFailedException savedMeanwhile) {
@@ -1341,9 +1341,9 @@ public class SystemResource {
    * any other write is.
    */
   private void putBack(
-      StoredSecurityConfiguration written,
-      StoredSecurityConfiguration stored,
-      SecurityConfiguration previous) {
+      final StoredSecurityConfiguration written,
+      final StoredSecurityConfiguration stored,
+      final SecurityConfiguration previous) {
     if (stored == null) {
       systemRepository.updateSecurityConfigurationIfCurrent(previous, written);
     } else {

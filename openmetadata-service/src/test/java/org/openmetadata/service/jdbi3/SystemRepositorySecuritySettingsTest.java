@@ -282,14 +282,14 @@ class SystemRepositorySecuritySettingsTest {
 
   @Test
   void refusesAReconciledOrSeededIdpCertificateThatASaveWouldRefuse() {
-    JsonNode unusable = JsonUtils.valueToTree(saml(NOT_A_CERTIFICATE));
-    JsonNode usable = JsonUtils.valueToTree(saml(IDP_CERTIFICATE));
+    final JsonNode unusable = JsonUtils.valueToTree(saml(NOT_A_CERTIFICATE));
+    final JsonNode usable = JsonUtils.valueToTree(saml(IDP_CERTIFICATE));
 
-    BadRequestException reconciled =
+    final BadRequestException reconciled =
         assertThrows(
             BadRequestException.class,
             () -> repository.prepareReconciled(AUTHENTICATION_CONFIGURATION, unusable, usable));
-    assertTrue(reconciled.getMessage().contains("samlConfiguration.idp.idpX509Certificate"));
+    assertTrue(reconciled.getMessage().contains(CERTIFICATE_FIELD));
     assertThrows(
         BadRequestException.class,
         () -> repository.prepareSeed(AUTHENTICATION_CONFIGURATION, unusable));
@@ -297,8 +297,8 @@ class SystemRepositorySecuritySettingsTest {
 
   @Test
   void preparesAUsableOrUnchangedIdpCertificate() {
-    JsonNode unusable = JsonUtils.valueToTree(saml(NOT_A_CERTIFICATE));
-    JsonNode usable = JsonUtils.valueToTree(saml(IDP_CERTIFICATE));
+    final JsonNode unusable = JsonUtils.valueToTree(saml(NOT_A_CERTIFICATE));
+    final JsonNode usable = JsonUtils.valueToTree(saml(IDP_CERTIFICATE));
 
     assertDoesNotThrow(() -> repository.prepareSeed(AUTHENTICATION_CONFIGURATION, usable));
     assertDoesNotThrow(
@@ -312,50 +312,64 @@ class SystemRepositorySecuritySettingsTest {
    * They all pass the same step before the database, so they all check the IdP certificate.
    */
   private Map<String, Function<AuthenticationConfiguration, String>> writePaths() {
-    Map<String, Function<AuthenticationConfiguration, String>> paths = new LinkedHashMap<>();
-    paths.put(
-        "createOrUpdate (update-security-config, settings API)",
-        config -> written(() -> repository.createOrUpdate(authenticationSettings(config))));
-    paths.put(
-        "createNewSetting (seeds)",
-        config -> written(() -> repository.createNewSetting(authenticationSettings(config))));
-    paths.put(
-        "updateSetting (seeding, migrations)",
-        config -> written(() -> repository.updateSetting(authenticationSettings(config))));
-    paths.put(
-        "replaceSettingIfCurrent (adopt-deployment-config)",
-        config ->
-            written(
-                () ->
-                    repository.replaceSettingIfCurrent(
-                        authenticationSettings(config), rows.get(AUTH))));
+    final Map<String, Function<AuthenticationConfiguration, String>> paths = new LinkedHashMap<>();
+    paths.put("createOrUpdate (update-security-config, settings API)", this::createOrUpdate);
+    paths.put("createNewSetting (seeds)", this::createNewSetting);
+    paths.put("updateSetting (seeding, migrations)", this::updateSetting);
+    paths.put("replaceSettingIfCurrent (adopt-deployment-config)", this::replaceSettingIfCurrent);
     paths.put(
         "updateSecurityConfigurationIfCurrent (security PUT and PATCH)",
-        config ->
-            written(
-                () ->
-                    repository.updateSecurityConfigurationIfCurrent(
-                        securityWith(config), repository.getStoredSecurityConfiguration())));
+        this::updateSecurityConfigurationIfCurrent);
     paths.put(
         "storeSecurityConfiguration (security PUT and PATCH without a stored row)",
-        config -> written(() -> repository.storeSecurityConfiguration(securityWith(config))));
-    paths.put(
-        "prepareReconciled (deployment reconcile)",
-        config ->
-            repository.prepareReconciled(
-                AUTHENTICATION_CONFIGURATION,
-                JsonUtils.valueToTree(config),
-                SettingsSecrets.decrypted(
-                    AUTHENTICATION_CONFIGURATION, JsonUtils.readTree(rows.get(AUTH)))));
+        this::storeSecurityConfiguration);
+    paths.put("prepareReconciled (deployment reconcile)", this::prepareReconciled);
     return paths;
   }
 
-  private String written(Runnable write) {
+  private String createOrUpdate(final AuthenticationConfiguration config) {
+    return written(() -> repository.createOrUpdate(authenticationSettings(config)));
+  }
+
+  private String createNewSetting(final AuthenticationConfiguration config) {
+    return written(() -> repository.createNewSetting(authenticationSettings(config)));
+  }
+
+  private String updateSetting(final AuthenticationConfiguration config) {
+    return written(() -> repository.updateSetting(authenticationSettings(config)));
+  }
+
+  private String replaceSettingIfCurrent(final AuthenticationConfiguration config) {
+    return written(
+        () -> repository.replaceSettingIfCurrent(authenticationSettings(config), rows.get(AUTH)));
+  }
+
+  private String updateSecurityConfigurationIfCurrent(final AuthenticationConfiguration config) {
+    return written(
+        () ->
+            repository.updateSecurityConfigurationIfCurrent(
+                securityWith(config), repository.getStoredSecurityConfiguration()));
+  }
+
+  private String storeSecurityConfiguration(final AuthenticationConfiguration config) {
+    return written(() -> repository.storeSecurityConfiguration(securityWith(config)));
+  }
+
+  /** The reconciler stores what this returns; it is checked against the decrypted stored row. */
+  private String prepareReconciled(final AuthenticationConfiguration config) {
+    return repository.prepareReconciled(
+        AUTHENTICATION_CONFIGURATION,
+        JsonUtils.valueToTree(config),
+        SettingsSecrets.decrypted(
+            AUTHENTICATION_CONFIGURATION, JsonUtils.readTree(rows.get(AUTH))));
+  }
+
+  private String written(final Runnable write) {
     write.run();
     return rows.get(AUTH);
   }
 
-  private void storeSaml(String idpCertificate) {
+  private void storeSaml(final String idpCertificate) {
     rows.clear();
     rows.put(
         AUTH,
@@ -365,19 +379,19 @@ class SystemRepositorySecuritySettingsTest {
     rows.put(AUTHZ, JsonUtils.pojoToJson(authorizer()));
   }
 
-  private static String certificateIn(String storedJson) {
+  private static String certificateIn(final String storedJson) {
     return JsonUtils.readTree(storedJson).at("/samlConfiguration/idp/idpX509Certificate").asText();
   }
 
   @Test
   void everyWritePathRefusesANewUnusableCertificateAndKeepsTheStoredValue() {
-    for (Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
+    for (final Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
         writePaths().entrySet()) {
-      for (String unusable : List.of(NOT_A_CERTIFICATE, EXPIRED_IDP_CERTIFICATE)) {
+      for (final String unusable : List.of(NOT_A_CERTIFICATE, EXPIRED_IDP_CERTIFICATE)) {
         storeSaml(IDP_CERTIFICATE);
-        String before = rows.get(AUTH);
+        final String before = rows.get(AUTH);
 
-        BadRequestException refused =
+        final BadRequestException refused =
             assertThrows(
                 BadRequestException.class,
                 () -> path.getValue().apply(saml(unusable)),
@@ -395,14 +409,14 @@ class SystemRepositorySecuritySettingsTest {
    */
   @Test
   void everyWritePathRefusesANewCertificateInALayoutTheServerCannotRead() {
-    for (Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
+    for (final Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
         writePaths().entrySet()) {
-      for (String oldLayout :
+      for (final String oldLayout :
           List.of(singleLine(OTHER_IDP_CERTIFICATE), spacesForLineBreaks(OTHER_IDP_CERTIFICATE))) {
         storeSaml(IDP_CERTIFICATE);
-        String before = rows.get(AUTH);
+        final String before = rows.get(AUTH);
 
-        BadRequestException refused =
+        final BadRequestException refused =
             assertThrows(
                 BadRequestException.class,
                 () -> path.getValue().apply(saml(oldLayout)),
@@ -417,11 +431,11 @@ class SystemRepositorySecuritySettingsTest {
 
   @Test
   void everyWritePathAcceptsTheStoredExpiredCertificateUnchanged() {
-    for (Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
+    for (final Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
         writePaths().entrySet()) {
       storeSaml(EXPIRED_IDP_CERTIFICATE);
 
-      String stored = path.getValue().apply(saml(EXPIRED_IDP_CERTIFICATE));
+      final String stored = path.getValue().apply(saml(EXPIRED_IDP_CERTIFICATE));
 
       assertEquals(EXPIRED_IDP_CERTIFICATE, certificateIn(stored), path.getKey());
     }
@@ -429,11 +443,11 @@ class SystemRepositorySecuritySettingsTest {
 
   @Test
   void everyWritePathStoresAUsableNewCertificate() {
-    for (Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
+    for (final Map.Entry<String, Function<AuthenticationConfiguration, String>> path :
         writePaths().entrySet()) {
       storeSaml(IDP_CERTIFICATE);
 
-      String stored = path.getValue().apply(saml(OTHER_IDP_CERTIFICATE));
+      final String stored = path.getValue().apply(saml(OTHER_IDP_CERTIFICATE));
 
       assertEquals(OTHER_IDP_CERTIFICATE, certificateIn(stored), path.getKey());
     }
@@ -442,9 +456,9 @@ class SystemRepositorySecuritySettingsTest {
   /** A first start has nothing stored, so the seed always checks the certificate. */
   @Test
   void aSeedChecksTheCertificate() {
-    JsonNode unusable = JsonUtils.valueToTree(saml(EXPIRED_IDP_CERTIFICATE));
+    final JsonNode unusable = JsonUtils.valueToTree(saml(EXPIRED_IDP_CERTIFICATE));
 
-    BadRequestException refused =
+    final BadRequestException refused =
         assertThrows(
             BadRequestException.class,
             () -> repository.prepareSeed(AUTHENTICATION_CONFIGURATION, unusable));
@@ -499,7 +513,7 @@ class SystemRepositorySecuritySettingsTest {
         .withConfigValue(authentication);
   }
 
-  private static AuthenticationConfiguration saml(String idpCertificate) {
+  private static AuthenticationConfiguration saml(final String idpCertificate) {
     return new AuthenticationConfiguration()
         .withProvider(AuthProvider.SAML)
         .withProviderName("SAML")
@@ -518,17 +532,17 @@ class SystemRepositorySecuritySettingsTest {
   }
 
   /** The PEM markers and body on one line, as the old save check accepted. */
-  private static String singleLine(String pem) {
-    String body = pem.replace(PEM_BEGIN, "").replace(PEM_END, "").replaceAll("\\s+", "");
+  private static String singleLine(final String pem) {
+    final String body = pem.replace(PEM_BEGIN, "").replace(PEM_END, "").replaceAll("\\s+", "");
     return PEM_BEGIN + body + PEM_END;
   }
 
   /** Spaces where the line breaks belong, as a value pasted into a single-line field becomes. */
-  private static String spacesForLineBreaks(String pem) {
+  private static String spacesForLineBreaks(final String pem) {
     return pem.strip().replace("\n", " ");
   }
 
-  private static String resource(String path) {
+  private static String resource(final String path) {
     try (InputStream stream =
         SystemRepositorySecuritySettingsTest.class.getResourceAsStream(path)) {
       return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
@@ -567,7 +581,7 @@ class SystemRepositorySecuritySettingsTest {
     when(dao.getConfigWithKey(anyString()))
         .thenAnswer(
             i -> {
-              String json = rows.get(i.<String>getArgument(0));
+              final String json = rows.get(i.<String>getArgument(0));
               return json == null
                   ? null
                   : CollectionDAO.SettingsRowMapper.getSettings(

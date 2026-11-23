@@ -85,10 +85,10 @@ class SettingsWriteFunnelTest {
   private static ArchCondition<JavaMethod> onlyWriteSettingValuesWhenReviewed() {
     return new ArchCondition<>("write a setting's value only from a reviewed method") {
       @Override
-      public void check(JavaMethod method, ConditionEvents events) {
-        String writer = method.getOwner().getSimpleName() + "." + method.getName();
-        for (JavaMethodCall call : method.getMethodCallsFromSelf()) {
-          boolean writesValue =
+      public void check(final JavaMethod method, final ConditionEvents events) {
+        final String writer = method.getOwner().getSimpleName() + "." + method.getName();
+        for (final JavaMethodCall call : method.getMethodCallsFromSelf()) {
+          final boolean writesValue =
               call.getTargetOwner().isAssignableTo(SystemDAO.class)
                   && VALUE_WRITES.contains(call.getName());
           if (writesValue && !REVIEWED_WRITERS.contains(writer)) {

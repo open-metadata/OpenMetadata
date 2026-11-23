@@ -161,11 +161,11 @@ class SystemResourceSecurityConfigApplyTest {
             SettingsSecrets.encrypted(
                 AUTHENTICATION_CONFIGURATION,
                 JsonUtils.valueToTree(saml(resource("/saml/expired-idp.crt"))))));
-    String authenticationBefore = rows.get(AUTH);
-    String authorizerBefore = rows.get(AUTHZ);
+    final String authenticationBefore = rows.get(AUTH);
+    final String authorizerBefore = rows.get(AUTHZ);
     reloadFails(() -> {});
 
-    WebApplicationException refused = assertThrows(WebApplicationException.class, this::save);
+    final WebApplicationException refused = assertThrows(WebApplicationException.class, this::save);
 
     assertEquals(400, refused.getResponse().getStatus(), refused.getMessage());
     assertEquals(authenticationBefore, rows.get(AUTH));
@@ -208,7 +208,7 @@ class SystemResourceSecurityConfigApplyTest {
         .withClientType(ClientType.PUBLIC);
   }
 
-  private static AuthenticationConfiguration saml(String idpCertificate) {
+  private static AuthenticationConfiguration saml(final String idpCertificate) {
     return new AuthenticationConfiguration()
         .withProvider(AuthProvider.SAML)
         .withProviderName("SAML")
@@ -227,7 +227,7 @@ class SystemResourceSecurityConfigApplyTest {
                         .withSpPrivateKey(resource("/saml/mock-idp-pkcs8.key"))));
   }
 
-  private static String resource(String path) {
+  private static String resource(final String path) {
     try (InputStream stream =
         SystemResourceSecurityConfigApplyTest.class.getResourceAsStream(path)) {
       return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
