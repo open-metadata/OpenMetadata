@@ -100,13 +100,16 @@ def reported_test_names(repo: Path, suite: str) -> list[str]:
 
 
 @pytest.mark.parametrize("suite", ["unit", "integration"])
-@pytest.mark.parametrize("collect", [False, True])
-def test_ci_suite_collects_coverage_only_when_selected(nox_repo: Path, monkeypatch, suite: str, collect: bool) -> None:
+@pytest.mark.parametrize("collect, exit_code", [(False, 0), (True, 0), (True, 1)])
+def test_ci_suite_collects_coverage_only_when_selected(
+    nox_repo: Path, monkeypatch, suite: str, collect: bool, exit_code: int
+) -> None:
     from coverage import CoverageData
 
     test = nox_repo / f"ingestion/tests/{suite}/test_selection.py"
     test.write_text(
-        "from metadata.sample import classify\n\ndef test_selected():\n    assert classify(1) == 'positive'\n"
+        "from metadata.sample import classify\n\ndef test_selected():\n"
+        f"    assert classify(1) == {'positive' if exit_code == 0 else 'other'!r}\n"
     )
     action = yaml.safe_load((REPO_ROOT / ".github/actions/python-suite/action.yml").read_text())
     script = next(step["run"] for step in action["runs"]["steps"] if "run" in step)
@@ -115,7 +118,9 @@ def test_ci_suite_collects_coverage_only_when_selected(nox_repo: Path, monkeypat
     monkeypatch.setenv("COLLECT_COVERAGE", "true" if collect else "false")
 
     assert_success(run("make", "install_test", cwd=nox_repo))
-    assert_success(run("bash", "-eo", "pipefail", "-c", script, cwd=nox_repo))
+    result = run("bash", "-eo", "pipefail", "-c", script, cwd=nox_repo)
+    assert result.returncode == exit_code, result.stdout + result.stderr
+    assert "TOTAL" not in result.stdout
 
     assert reported_test_names(nox_repo, suite) == ["test_selected"]
     coverage_file = nox_repo / "ingestion/.coverage"

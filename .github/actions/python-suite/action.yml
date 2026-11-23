@@ -26,13 +26,15 @@ runs:
         source env/bin/activate
         cd ingestion
         read -r -a args <<< "$NOX_ARGS"
-        if [[ "$COLLECT_COVERAGE" != 'true' ]]; then
+        if [[ "$COLLECT_COVERAGE" == 'true' ]]; then
+          args+=(--cov-report=)
+        else
           args+=(--no-cov)
         fi
         nox --no-venv -s "${SUITE}-tests" -- "${args[@]}" 2>&1 | tee "${SUITE}-test-run.log"
       shell: bash
     - name: Upload coverage artifact
-      if: ${{ inputs.collect-coverage == 'true' && !cancelled() }}
+      if: ${{ inputs.collect-coverage == 'true' && !cancelled() && hashFiles('ingestion/.coverage') != '' }}
       continue-on-error: true
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
