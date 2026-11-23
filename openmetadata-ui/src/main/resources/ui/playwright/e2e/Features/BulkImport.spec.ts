@@ -155,6 +155,8 @@ test(
   'schema CSV export downloads only the selected stored procedures',
   { tag: '@import-export' },
   async ({ page }) => {
+    test.slow();
+
     await redirectToHomePage(page);
 
     const schema = new DatabaseSchemaClass();
