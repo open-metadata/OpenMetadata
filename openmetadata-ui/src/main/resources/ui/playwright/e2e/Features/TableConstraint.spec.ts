@@ -326,7 +326,11 @@ test.describe('Table Constraints', {}, () => {
 
       await compositeTrigger.focus();
 
-      const compositeTooltip = page.getByRole('tooltip');
+      // Scope to this tooltip: another one (e.g. "Request Tags") can still be
+      // open from an earlier hover, and an unscoped role match then hits two.
+      const compositeTooltip = page.getByRole('tooltip', {
+        name: /Composite unique constraint/,
+      });
 
       await expect(compositeTooltip).toContainText(columnName3);
       await expect(compositeTooltip).toContainText(columnName4);

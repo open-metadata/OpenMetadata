@@ -412,7 +412,7 @@ test.describe('SSO Configuration Tests', () => {
       await expect(callbackUrlField).toHaveAttribute('readonly');
     });
 
-    test('should show SAML SP Entity ID and ACS URL as readonly', async ({
+    test('should let the admin edit the SAML SP Entity ID and ACS URL', async ({
       page,
     }) => {
       await selectSSOProvider(page, 'saml');
@@ -422,10 +422,10 @@ test.describe('SSO Configuration Tests', () => {
       );
 
       await expect(spEntityIdField).toBeVisible();
-      await expect(spEntityIdField).toHaveAttribute('readonly');
+      await expect(spEntityIdField).toBeEditable();
 
       const helpTextEntityId = page.getByText(
-        /auto-generated service provider entity id/i
+        /defaults to the application url/i
       );
 
       await expect(helpTextEntityId).toBeVisible();
@@ -435,10 +435,10 @@ test.describe('SSO Configuration Tests', () => {
       );
 
       await expect(acsUrlField).toBeVisible();
-      await expect(acsUrlField).toHaveAttribute('readonly');
+      await expect(acsUrlField).toBeEditable();
 
       const helpTextAcs = page.getByText(
-        /auto-generated assertion consumer service url/i
+        /defaults to the application callback url/i
       );
 
       await expect(helpTextAcs).toBeVisible();
