@@ -225,6 +225,7 @@ jobs:
               - 'pom.xml'
               - 'Makefile'
               - '.github/actions/setup-openmetadata-test-environment/**'
+              - '.github/actions/restore-playwright-test-environment/**'
               - '.github/playwright/**'
               - '.github/scripts/build_playwright_shards.py'
               - '.github/scripts/capture_playwright_server_output.py'
@@ -1534,12 +1535,11 @@ jobs:
       - name: Mark environment setup start
         run: echo "PW_ENVIRONMENT_STARTED_AT=$(date +%s)" >> "$GITHUB_ENV"
 
-      - name: Setup Openmetadata Test Environment
+      - name: Restore Playwright environment
         id: setup-environment
         if: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
-        uses: ./.github/actions/setup-openmetadata-test-environment
+        uses: ./.github/actions/restore-playwright-test-environment
         with:
-          fast-mode: "true"
           fixture-path: ${{ steps.fast-inputs.outputs.fixture }}
           distribution-path: ${{ steps.fast-inputs.outputs.distribution }}
           ingestion-image-path: ${{ steps.fast-inputs.outputs.ingestion_image }}
