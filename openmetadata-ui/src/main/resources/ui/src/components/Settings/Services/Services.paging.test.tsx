@@ -261,3 +261,77 @@ describe('Services search paging', () => {
     );
   });
 });
+
+describe('Services overlapping list requests', () => {
+  afterEach(() => {
+    mockGetServices.mockReset();
+    mockGetServices.mockResolvedValue({
+      data: [
+        {
+          id: 'service-1',
+          name: 'airbyte',
+          fullyQualifiedName: 'airbyte',
+          serviceType: 'Airbyte',
+        },
+      ],
+      paging: { total: 40, after: 'next-cursor' },
+    });
+  });
+
+  it('keeps the newest deleted list when the stale-cursor request resolves last', async () => {
+    let resolveStaleRequest: (value: unknown) => void = jest.fn();
+    mockGetServices.mockImplementation(
+      ({ before, include }: { before?: string; include?: string }) => {
+        if (include === 'deleted' && before) {
+          return new Promise((resolve) => {
+            resolveStaleRequest = resolve;
+          });
+        }
+
+        return Promise.resolve({
+          data: [
+            {
+              id: include === 'deleted' ? 'service-deleted' : 'service-1',
+              name: include === 'deleted' ? 'fivetran' : 'airbyte',
+              fullyQualifiedName:
+                include === 'deleted' ? 'fivetran' : 'airbyte',
+              serviceType: 'Fivetran',
+            },
+          ],
+          paging: { total: 1 },
+        });
+      }
+    );
+
+    await act(async () => {
+      renderServices(
+        '/settings/services/pipelines?currentPage=1&cursorType=before&cursorValue=prev-cursor'
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('show-deleted-switch'));
+    });
+
+    expect(await screen.findByTestId('service-name-fivetran')).toBeVisible();
+
+    await act(async () => {
+      resolveStaleRequest({
+        data: [
+          {
+            id: 'service-stale',
+            name: 'stale-service',
+            fullyQualifiedName: 'stale-service',
+            serviceType: 'Fivetran',
+          },
+        ],
+        paging: { total: 1 },
+      });
+    });
+
+    expect(screen.getByTestId('service-name-fivetran')).toBeVisible();
+    expect(
+      screen.queryByTestId('service-name-stale-service')
+    ).not.toBeInTheDocument();
+  });
+});

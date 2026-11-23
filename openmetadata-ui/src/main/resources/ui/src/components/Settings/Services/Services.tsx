@@ -22,7 +22,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isEmpty, isEqual, map, startCase } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -45,6 +45,7 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Include } from '../../../generated/type/include';
+import { Paging } from '../../../generated/type/paging';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useTableFilters } from '../../../hooks/useTableFilters';
@@ -100,6 +101,7 @@ const Services = ({ serviceName }: ServicesProps) => {
   }, [navigate, serviceName]);
 
   const [isLoading, setIsLoading] = useState(true);
+  const latestServiceRequest = useRef(0);
   const [serviceDetails, setServiceDetails] = useState<ServicesType[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceTypeFilter, setServiceTypeFilter] =
@@ -190,9 +192,11 @@ const Services = ({ serviceName }: ServicesProps) => {
       before?: string;
       queryFilter?: Record<string, unknown>;
     }) => {
+      const requestId = ++latestServiceRequest.current;
       setIsLoading(true);
       try {
         let services = [];
+        let servicePaging: Paging;
         if (isEmpty(queryFilter)) {
           const { data, paging } = await getServices({
             serviceName,
@@ -203,7 +207,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           });
 
           services = data;
-          handlePagingChange(paging);
+          servicePaging = paging;
         } else {
           const {
             hits: { hits, total },
@@ -218,9 +222,14 @@ const Services = ({ serviceName }: ServicesProps) => {
           services = hits.map(
             ({ _source }) => _source as DatabaseServiceSearchSource
           );
-          handlePagingChange({ total: total.value });
+          servicePaging = { total: total.value };
         }
 
+        if (requestId !== latestServiceRequest.current) {
+          return;
+        }
+
+        handlePagingChange(servicePaging);
         setServiceDetails(
           serviceName === ServiceCategory.METADATA_SERVICES
             ? services.filter(
@@ -229,6 +238,9 @@ const Services = ({ serviceName }: ServicesProps) => {
             : services
         );
       } catch (error) {
+        if (requestId !== latestServiceRequest.current) {
+          return;
+        }
         setServiceDetails([]);
         handlePagingChange(pagingObject);
         showErrorToast(
@@ -236,7 +248,9 @@ const Services = ({ serviceName }: ServicesProps) => {
           t('server.entity-fetch-error', { entity: t('label.service-plural') })
         );
       } finally {
-        setIsLoading(false);
+        if (requestId === latestServiceRequest.current) {
+          setIsLoading(false);
+        }
       }
     },
     [searchIndex, serviceName, deleted, pageSize]
