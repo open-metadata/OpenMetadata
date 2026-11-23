@@ -102,7 +102,7 @@ $$section
 - **Why it matters:** This is where SAML responses are posted after login.
 - **Note:**
   - Edit this value to match the ACS URL (also called Reply URL, Callback URL, or Consumer URL) registered in your SAML Identity Provider, for example to point at a public callback that differs from the OpenMetadata URL.
-  - Format defaults to: `{your-domain}/callback`
+  - Format defaults to: `{your-domain}/callback`. The URL must end with `/callback` or `/api/v1/saml/acs`.
   - Must be registered exactly in your IdP configuration
 $$
 
