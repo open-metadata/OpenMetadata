@@ -1855,14 +1855,16 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
       client.execute(
           HttpMethod.PATCH,
           IngestionPipelineResource.COLLECTION_PATH + target,
-          List.of(
-              Map.of(
-                  "op",
-                  "replace",
-                  "path",
-                  "/sourceConfig/config/entityFullyQualifiedName",
-                  "value",
-                  tableFqn)),
+          JsonUtils.getObjectMapper()
+              .valueToTree(
+                  List.of(
+                      Map.of(
+                          "op",
+                          "replace",
+                          "path",
+                          "/sourceConfig/config/entityFullyQualifiedName",
+                          "value",
+                          tableFqn))),
           IngestionPipeline.class);
     }
   }
