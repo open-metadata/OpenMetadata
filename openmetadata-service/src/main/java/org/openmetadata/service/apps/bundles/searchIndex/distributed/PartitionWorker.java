@@ -39,6 +39,7 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.vector.UnrecordedStagedChunkDeleteException;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.util.RestUtil;
@@ -184,7 +185,7 @@ public class PartitionWorker {
       }
     } catch (Exception e) {
       LOG.error("Fatal error processing partition {}", partition.getId(), e);
-      coordinator.failPartition(partition.getId(), e.getMessage());
+      failPartition(partition, e);
       waitForSinkOperations(statsTracker);
       result = counts.result(false);
     }
@@ -827,9 +828,19 @@ public class PartitionWorker {
   public record BatchResult(
       int successCount, int failedCount, int warningsCount, String nextCursor) {}
 
+  // A retry on any node cannot repair a missed staged chunk delete, and the partition's FAILED row
+  // is what keeps the chunk generation from going live, so that failure is final at once.
+  private void failPartition(SearchIndexPartition partition, Exception failure) {
+    if (failure instanceof UnrecordedStagedChunkDeleteException) {
+      coordinator.failPartitionWithoutRetry(partition.getId(), failure.getMessage());
+    } else {
+      coordinator.failPartition(partition.getId(), failure.getMessage());
+    }
+  }
+
   /**
    * A delete this node missed from the run's staged chunk generation, with no flag saved to block
-   * its promotion, fails the partition instead; the coordinator then keeps the old chunks.
+   * its promotion, fails the partition for good instead; the coordinator then keeps the old chunks.
    */
   private static void requireStagedChunkFailuresRecorded(String entityType) {
     SearchRepository searchRepository = Entity.getSearchRepository();

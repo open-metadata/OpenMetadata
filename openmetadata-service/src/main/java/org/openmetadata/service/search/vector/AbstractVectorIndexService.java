@@ -781,11 +781,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     if (generation != null && unflaggedGenerations.contains(generation)) {
       saveMissedDeleteFlagOnce(generation);
       if (unflaggedGenerations.contains(generation)) {
-        throw new IllegalStateException(
-            UNRECORDED_STAGED_DELETE
-                + ": a delete from staged chunk index "
-                + generation
-                + " failed and the flag that blocks its promotion could not be saved");
+        throw new UnrecordedStagedChunkDeleteException(generation);
       }
     }
   }

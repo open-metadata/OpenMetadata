@@ -80,10 +80,13 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   the alias swap and keeps the old chunks live when it is set; the next staged recreate sweeps the
   unpromoted generation. The flag lives on the cluster, so a participant's failure reaches the
   coordinator. A node that cannot save the flag retries it when its partition ends and, if it
-  still cannot, fails the partition with an error that starts with
-  `VectorIndexService.UNRECORDED_STAGED_DELETE`. The coordinator reads that error from the job's
-  failed partitions and counts the partition's type as keeping its live chunks. Keeping live
-  chunks wins over a later promotion of the same type, so no callback can undo it. A delete that
+  still cannot, fails the partition for good, without a retry, with an error that starts with
+  `VectorIndexService.UNRECORDED_STAGED_DELETE`. A retry on another node could not repair the
+  missed delete, and nothing rewrites a FAILED row, so the error stays for the rest of the job.
+  Whenever a type finishes, the coordinator reads that error from the job's failed partitions and
+  counts the type as keeping its live chunks. Keeping live chunks wins over a later promotion of
+  the same type, so no callback can undo it. The type's entity index still promotes its partial
+  data, and the run ends with errors. A delete that
   fails after the coordinator reads the flag misses the generation, and the deleted entity's
   chunks stay in it until the next full recreate.
 - **A live edit refreshes the entity document even when its chunk write fails.** Chunk 0

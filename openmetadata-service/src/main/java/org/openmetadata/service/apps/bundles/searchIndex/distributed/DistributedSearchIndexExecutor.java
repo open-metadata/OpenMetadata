@@ -1393,7 +1393,7 @@ public class DistributedSearchIndexExecutor {
       LOG.debug("No staged index for entity '{}', skipping promotion", entityType);
       return true;
     }
-    entityContext.setStagedChunkDeleteUnrecorded(!success && lostAStagedChunkDelete(entityType));
+    entityContext.setStagedChunkDeleteUnrecorded(lostAStagedChunkDelete(entityType));
 
     boolean promoted = false;
     try {
@@ -1418,7 +1418,9 @@ public class DistributedSearchIndexExecutor {
 
   /**
    * Whether a node failed a partition of {@code entityType} because it missed a delete from the
-   * run's staged chunk generation and could not record it on the cluster.
+   * run's staged chunk generation and could not record it on the cluster. That partition fails
+   * for good without a retry, and nothing rewrites a FAILED row, so its error stays readable here
+   * whatever the type's other partitions did.
    */
   private boolean lostAStagedChunkDelete(String entityType) {
     SearchIndexJob job = currentJob;

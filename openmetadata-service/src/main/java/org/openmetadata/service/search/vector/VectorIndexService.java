@@ -20,8 +20,9 @@ public interface VectorIndexService {
   String VECTOR_EMBEDDING_ALIAS = "dataAssetEmbeddings";
 
   /**
-   * Starts the error of a partition failed by {@link #requireStagedChunkFailuresRecorded}, so the
-   * coordinator can keep the run's chunk generation from going live.
+   * Starts the error of a partition failed for good by {@link
+   * #requireStagedChunkFailuresRecorded}, so the coordinator can keep the run's chunk generation
+   * from going live.
    */
   String UNRECORDED_STAGED_DELETE = "Unrecorded staged chunk delete";
 
@@ -109,8 +110,9 @@ public interface VectorIndexService {
   void clearParticipantStagedTarget();
 
   /**
-   * Throws when this node missed a delete from the run's staged generation and could not record
-   * it, so the caller's partition fails and the generation is not promoted.
+   * Throws {@link UnrecordedStagedChunkDeleteException} when this node missed a delete from the
+   * run's staged generation and could not record it, so the caller's partition fails for good and
+   * the generation is not promoted.
    */
   void requireStagedChunkFailuresRecorded();
 

@@ -686,10 +686,16 @@ class DistributedSearchIndexExecutorTest {
 
     invokePrivate(
         "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "table", false);
+    // The lost delete is read even when the type's run counts as a success, which it does when a
+    // retry of another partition succeeded after an earlier failure.
+    invokePrivate(
+        "promoteEntityIndex", new Class<?>[] {String.class, boolean.class}, "table", true);
 
     ArgumentCaptor<EntityReindexContext> contextCaptor =
         ArgumentCaptor.forClass(EntityReindexContext.class);
     verify(defaultHandler).promoteEntityIndex(contextCaptor.capture(), eq(false));
+    assertTrue(contextCaptor.getValue().isStagedChunkDeleteUnrecorded());
+    verify(defaultHandler).promoteEntityIndex(contextCaptor.capture(), eq(true));
     assertTrue(contextCaptor.getValue().isStagedChunkDeleteUnrecorded());
   }
 
