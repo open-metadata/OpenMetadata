@@ -114,3 +114,58 @@ describe('TablePropertyEdit with 10 columns', () => {
     });
   });
 });
+
+describe('TablePropertyView scroll shadows', () => {
+  const originalResizeObserver = global.ResizeObserver;
+
+  beforeAll(() => {
+    global.ResizeObserver = class {
+      observe = jest.fn();
+      disconnect = jest.fn();
+      unobserve = jest.fn();
+    } as unknown as typeof ResizeObserver;
+    // jsdom has no layout: every div reports 300px visible of 900px content.
+    jest
+      .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+      .mockReturnValue(300);
+    jest
+      .spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
+      .mockReturnValue(900);
+  });
+
+  afterAll(() => {
+    global.ResizeObserver = originalResizeObserver;
+    jest.restoreAllMocks();
+  });
+
+  it('shadows the end edge at rest and both edges once scrolled', () => {
+    const { View } = tablePropertyRenderer;
+
+    render(
+      <View
+        property={TEN_COLUMN_PROPERTY}
+        value={{ columns: TEN_COLUMNS, rows: [TEN_COLUMN_ROW] }}
+      />
+    );
+
+    expect(screen.getByTestId('table-scroll-shadow-end')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('table-scroll-shadow-start')
+    ).not.toBeInTheDocument();
+
+    const scroller = screen.getByTestId('table-type-property-value')
+      .firstElementChild as HTMLElement;
+    scroller.scrollLeft = 300;
+    fireEvent.scroll(scroller);
+
+    expect(screen.getByTestId('table-scroll-shadow-start')).toBeInTheDocument();
+    expect(screen.getByTestId('table-scroll-shadow-end')).toBeInTheDocument();
+
+    scroller.scrollLeft = 600;
+    fireEvent.scroll(scroller);
+
+    expect(
+      screen.queryByTestId('table-scroll-shadow-end')
+    ).not.toBeInTheDocument();
+  });
+});

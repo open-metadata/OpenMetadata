@@ -16,9 +16,10 @@ import {
   ButtonUtility,
   Input,
   Table,
+  useOverflowEdges,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
-import { FormEvent, useRef, useState } from 'react';
+import { FormEvent, ReactNode, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Config } from '../../../../../generated/type/customProperty';
 import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
@@ -36,25 +37,66 @@ const getColumns = (config: unknown): string[] =>
 const getRows = (value: unknown): TableRow[] =>
   (value as { rows?: TableRow[] } | undefined)?.rows ?? [];
 
-// Each column takes a third of the container (`cqw`) so at most three are
-// visible; wider tables scroll horizontally instead of squeezing every column.
+// A column is a third of the container (`cqw`) capped at 12rem, so narrow
+// hosts show at most three and wider tables scroll instead of squeezing.
 const VIEW_COLUMN_CLASS =
-  'tw:min-w-[calc(100cqw/3)] tw:max-w-[calc(100cqw/3)] tw:break-words';
-// 2.5rem is the delete-action column (`tw:w-10`).
+  'tw:w-[min(calc(100cqw/3),12rem)] tw:min-w-[min(calc(100cqw/3),12rem)] tw:max-w-[min(calc(100cqw/3),12rem)] tw:break-words';
+// 2.5rem is the pinned delete-action column (`tw:w-10`).
 const EDIT_COLUMN_CLASS =
-  'tw:min-w-[calc((100cqw-2.5rem)/3)] tw:max-w-[calc((100cqw-2.5rem)/3)] tw:break-words';
+  'tw:w-[min(calc((100cqw-2.5rem)/3),12rem)] tw:min-w-[min(calc((100cqw-2.5rem)/3),12rem)] tw:max-w-[min(calc((100cqw-2.5rem)/3),12rem)] tw:break-words';
+const EDGE_SHADOW_CLASS =
+  'tw:pointer-events-none tw:absolute tw:inset-y-0 tw:w-7 tw:from-black/10 tw:to-transparent tw:dark:from-black/40';
+
+// Same edge shadows as the core card Tabs: the only cue on overlay-scrollbar
+// platforms that columns sit past an edge.
+const ScrollShadowFrame = ({
+  children,
+  hasPinnedEnd = false,
+  testId,
+}: {
+  children: ReactNode;
+  hasPinnedEnd?: boolean;
+  testId?: string;
+}) => {
+  const { ref, edges } = useOverflowEdges(true);
+
+  return (
+    <div
+      className="tw:@container tw:relative tw:w-full tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary"
+      data-testid={testId}>
+      <div className="tw:overflow-x-auto" ref={ref}>
+        {children}
+      </div>
+      {edges.start && (
+        <div
+          aria-hidden="true"
+          className={`${EDGE_SHADOW_CLASS} tw:left-0 tw:bg-linear-to-r`}
+          data-testid="table-scroll-shadow-start"
+        />
+      )}
+      {edges.end && (
+        <div
+          aria-hidden="true"
+          className={`${EDGE_SHADOW_CLASS} tw:bg-linear-to-l ${
+            hasPinnedEnd ? 'tw:right-10' : 'tw:right-0'
+          }`}
+          data-testid="table-scroll-shadow-end"
+        />
+      )}
+    </div>
+  );
+};
 
 const TablePropertyView = ({ property, value }: PropertyViewProps) => {
   const columns = getColumns(property.customPropertyConfig?.config);
   const rows = getRows(value);
 
   return (
-    <div
-      className="tw:@container tw:w-full tw:rounded-lg tw:border tw:border-secondary"
-      data-testid="table-type-property-value">
+    <ScrollShadowFrame testId="table-type-property-value">
       <Table
         aria-label={property.displayName || property.name}
         className="tw:w-max tw:min-w-full"
+        containerClassName="tw:overflow-x-visible"
         size="sm">
         <Table.Header>
           {columns.map((column, index) => (
@@ -81,7 +123,7 @@ const TablePropertyView = ({ property, value }: PropertyViewProps) => {
           ))}
         </Table.Body>
       </Table>
-    </div>
+    </ScrollShadowFrame>
   );
 };
 
@@ -134,7 +176,7 @@ const TablePropertyEdit = ({
   return (
     <form noValidate id={formId} onSubmit={handleSubmit}>
       <Box direction="col" gap={3}>
-        <div className="tw:@container tw:w-full tw:overflow-x-auto tw:rounded-lg tw:border tw:border-secondary">
+        <ScrollShadowFrame hasPinnedEnd>
           <table className="tw:w-max tw:min-w-full tw:text-sm">
             <thead className="tw:bg-secondary">
               <tr>
@@ -188,7 +230,7 @@ const TablePropertyEdit = ({
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollShadowFrame>
         <Box align="center" gap={3}>
           <Button
             color="secondary"
