@@ -14,7 +14,10 @@ import { Bot } from '../../generated/entity/bot';
 import { many, named } from '../../test/browser/fixtures/entities';
 import { describePaginatedList } from '../../test/browser/paginationContract';
 
-const bots: Bot[] = many(40, (i) => named('bot', i));
+const bots: Bot[] = many(40, (i) => ({
+  ...named('bot', i),
+  botUser: { id: named('bot-user', i).id, type: 'user' },
+}));
 
 describePaginatedList({
   name: 'Settings › Bots',
