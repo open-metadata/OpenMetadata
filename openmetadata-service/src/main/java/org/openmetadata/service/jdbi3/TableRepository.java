@@ -126,6 +126,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.databases.TableResource;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.security.Authorizer;
@@ -138,6 +139,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LikeEscape;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.ValidatorUtil;
 
@@ -1865,6 +1867,17 @@ public class TableRepository extends EntityRepository<Table> {
     deleteResidualExecutableTestSuite(table, deletedBy);
   }
 
+  @Override
+  protected void postRestore(Table table) {
+    super.postRestore(table);
+    refreshOntologyBindings(table);
+  }
+
+  private void refreshOntologyBindings(Table table) {
+    PostCommitActionQueue.runOrDefer(
+        () -> OntologyTermSearch.bindingsChanged(table.getEntityReference()));
+  }
+
   /**
    * The profiler purge runs here rather than in {@link #entitySpecificCleanup}, which executes
    * inside the delete transaction: a table with a long profiling history can own millions of
@@ -1878,6 +1891,7 @@ public class TableRepository extends EntityRepository<Table> {
   @Override
   protected void postDelete(Table table, boolean hardDelete) {
     super.postDelete(table, hardDelete);
+    refreshOntologyBindings(table);
     if (hardDelete) {
       long deletedAt = System.currentTimeMillis();
       AsyncService.getInstance()

@@ -142,6 +142,8 @@ class OntologyReleaseDAOTest {
           assertNull(
               storage.releases().getMember(release.getId(), "CONCEPT", member.getMemberId()));
           assertTrue(storage.releases().listMembers(release.getId(), "CONCEPT", "", 10).isEmpty());
+          final var iris = List.of("HTTPS://EXAMPLE.org/客户", "https://example.org/客户");
+          assertTrue(storage.releases().listConceptsByIri(release.getId(), iris).isEmpty());
           sealHeader(release, member);
           assertEquals(
               0, storage.releases().seal(release.getId(), JsonUtils.pojoToJson(release), 2));
@@ -152,6 +154,12 @@ class OntologyReleaseDAOTest {
               0, storage.releases().seal(release.getId(), JsonUtils.pojoToJson(release), 1));
           List<OntologyReleaseMember> captured =
               storage.releases().listMembers(release.getId(), "CONCEPT", "", 10);
+          assertEquals(captured, storage.releases().listConceptsByIri(release.getId(), iris));
+          assertTrue(
+              storage
+                  .releases()
+                  .listConceptsByIri(release.getId(), List.of(iris.getLast()))
+                  .isEmpty());
           assertEquals(release.getContentDigest(), OntologyReleaseManifest.digest(captured));
           assertEquals(
               "HTTPS://EXAMPLE.org/客户", captured.getFirst().getPayload().path("iri").asText());

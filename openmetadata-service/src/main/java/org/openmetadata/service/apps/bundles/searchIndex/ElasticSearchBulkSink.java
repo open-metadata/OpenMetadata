@@ -68,8 +68,10 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 
 /**
@@ -352,6 +354,18 @@ public class ElasticSearchBulkSink implements BulkSink {
                 TARGET_INDEX_KEY, indexMapping.getIndexName(searchRepository.getClusterAlias()));
 
     try {
+      if (searchRepository.writeSpecializedIndexBatch(
+          entityType, entities, indexName, reindexContext)) {
+        int written = entities.size();
+        processSuccess.addAndGet(written);
+        totalSubmitted.addAndGet(written);
+        totalSuccess.addAndGet(written);
+        if (tracker != null) {
+          tracker.recordProcessBatch(written, 0, 0);
+          tracker.recordSinkBatch(written, 0);
+        }
+        return;
+      }
       long processStartNanos = System.nanoTime();
       // Check if these are time series entities
       if (!entities.isEmpty() && entities.get(0) instanceof EntityTimeSeriesInterface) {
@@ -370,6 +384,14 @@ public class ElasticSearchBulkSink implements BulkSink {
 
         boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
 
+        // Per-entity DocBuildContext is prepared by the upstream processor stage (see
+        // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
+        // transport-only: it just looks up each entity's context by id and hands it to
+        // buildSearchIndexDoc, with no awareness of what's inside (lineage today, more later).
+        @SuppressWarnings("unchecked")
+        Map<UUID, DocBuildContext> docBuildContexts =
+            (Map<UUID, DocBuildContext>)
+                contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
         // Pre-fetch cached embeddings for entities whose fingerprint is unchanged so we can splice
         // them into the staged doc instead of regenerating (avoids expensive embedding-provider
         // calls). The doc is always re-indexed via a full index op, so the embedding must be
@@ -386,14 +408,6 @@ public class ElasticSearchBulkSink implements BulkSink {
         }
         Map<String, JsonNode> finalEmbeddingsById = existingEmbeddingsById;
 
-        // Per-entity DocBuildContext is prepared by the upstream processor stage (see
-        // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
-        // transport-only: it just looks up each entity's context by id and hands it to
-        // buildSearchIndexDoc, with no awareness of what's inside (lineage today, more later).
-        @SuppressWarnings("unchecked")
-        Map<UUID, DocBuildContext> docBuildContexts =
-            (Map<UUID, DocBuildContext>)
-                contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
         Map<UUID, Long> relationshipRevisions =
             (Map<UUID, Long>)
                 contextData.getOrDefault(
@@ -477,9 +491,10 @@ public class ElasticSearchBulkSink implements BulkSink {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       String docId = entity.getId().toString();
-      DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
+      final SearchIndex index = Entity.buildSearchIndex(entityType, entity);
+      final DocBuildContext ctx = docBuildContexts.get(entity.getId());
       Map<String, Object> searchIndexDoc =
-          new HashMap<>(Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx));
+          new HashMap<>(index.buildSearchIndexDoc(ctx == null ? DocBuildContext.empty() : ctx));
       Long relationshipRevision = relationshipRevisions.get(entity.getId());
       SearchRepository.applyRelationshipRevision(entity, searchIndexDoc, relationshipRevision);
       String json = JsonUtils.pojoToJson(searchIndexDoc);
@@ -1164,7 +1179,7 @@ public class ElasticSearchBulkSink implements BulkSink {
               ? vectorService.getEmbeddingClient().getDimension()
               : -1;
       JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
-      if (canReuseCachedEmbedding(cached, expectedDimension)) {
+      if (VectorIndexService.canReuseCachedEmbedding(cached, expectedDimension)) {
         // Splice the cached embedding so the full index op carries the vector instead of stripping
         // it; the service-layer pre-filter only admits entries with the current fingerprint.
         doc.setAll((ObjectNode) cached);
@@ -1210,21 +1225,6 @@ public class ElasticSearchBulkSink implements BulkSink {
       LOG.warn("Failed to fetch existing embeddings (canonical index={})", indexName, e);
       return Collections.emptyMap();
     }
-  }
-
-  private static boolean canReuseCachedEmbedding(JsonNode cached, int expectedDimension) {
-    if (cached == null || !cached.isObject()) {
-      return false;
-    }
-    JsonNode embedding = cached.path("embedding");
-    if (!embedding.isArray() || embedding.isEmpty()) {
-      return false;
-    }
-    if (expectedDimension > 0 && embedding.size() != expectedDimension) {
-      return false;
-    }
-    JsonNode fingerprint = cached.path("fingerprint");
-    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
   }
 
   @Override
