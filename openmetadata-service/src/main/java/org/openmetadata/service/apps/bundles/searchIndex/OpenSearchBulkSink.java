@@ -1040,6 +1040,7 @@ public class OpenSearchBulkSink implements BulkSink {
 
   @Override
   public void close() {
+    embeddingEnricher.logMissedChunksSummary();
     try {
       bulkProcessor.flush();
 
@@ -1146,6 +1147,11 @@ public class OpenSearchBulkSink implements BulkSink {
   @Override
   public StepStats getVectorStats() {
     return embeddingEnricher.stats();
+  }
+
+  @Override
+  public void retryMissedChunks(String entityType) {
+    embeddingEnricher.retryMissedChunks(entityType);
   }
 
   @Override

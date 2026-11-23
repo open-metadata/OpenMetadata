@@ -338,6 +338,7 @@ public class PartitionWorker {
     long waitStart = System.currentTimeMillis();
     waitForSinkOperations(statsTracker);
     LOG.debug("waitForSinkOperations took {}ms", System.currentTimeMillis() - waitStart);
+    searchIndexSink.retryMissedChunks(entityType);
 
     // Adjust partition counts to include stage-level failures and warnings.
     // BatchResult.successCount counts entities READ, not entities successfully PROCESSED.
@@ -827,8 +828,8 @@ public class PartitionWorker {
       int successCount, int failedCount, int warningsCount, String nextCursor) {}
 
   /**
-   * A chunk write this node lost into the run's staged chunk generation, with no flag saved to
-   * block its promotion, fails the partition instead; the coordinator then keeps the old chunks.
+   * A delete this node missed from the run's staged chunk generation, with no flag saved to block
+   * its promotion, fails the partition instead; the coordinator then keeps the old chunks.
    */
   private static void requireStagedChunkFailuresRecorded(String entityType) {
     SearchRepository searchRepository = Entity.getSearchRepository();

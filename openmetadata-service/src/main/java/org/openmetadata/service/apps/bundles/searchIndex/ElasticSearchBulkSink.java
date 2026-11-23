@@ -1009,6 +1009,7 @@ public class ElasticSearchBulkSink implements BulkSink {
 
   @Override
   public void close() {
+    embeddingEnricher.logMissedChunksSummary();
     try {
       bulkProcessor.flush();
 
@@ -1120,6 +1121,11 @@ public class ElasticSearchBulkSink implements BulkSink {
   @Override
   public StepStats getVectorStats() {
     return embeddingEnricher.stats();
+  }
+
+  @Override
+  public void retryMissedChunks(String entityType) {
+    embeddingEnricher.retryMissedChunks(entityType);
   }
 
   public static class CustomBulkProcessor {

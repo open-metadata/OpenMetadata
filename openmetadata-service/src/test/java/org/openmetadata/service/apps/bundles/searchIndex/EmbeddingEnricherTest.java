@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -30,6 +31,8 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -87,6 +90,8 @@ class EmbeddingEnricherTest {
     when(searchRepository.getIndexMapping(Entity.TABLE))
         .thenReturn(IndexMapping.builder().indexName(INDEX).build());
     when(vectorService.getEmbeddingClient()).thenReturn(embeddings);
+    when(vectorService.backfillEntityChunks(any(), any())).thenReturn(true);
+    when(vectorService.writeEntityChunks(any(), any(), any())).thenReturn(true);
   }
 
   @Test
@@ -183,7 +188,7 @@ class EmbeddingEnricherTest {
   }
 
   @Test
-  void aProviderOutageIndexesTheEntityWithoutAnEmbedding() {
+  void aProviderOutageIndexesTheEntityWithoutAnEmbeddingAndCountsAVectorFailure() {
     embeddings.available = false;
 
     String enriched = enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, null);
@@ -191,7 +196,85 @@ class EmbeddingEnricherTest {
     assertEquals(ENTITY_JSON, enriched);
     assertEquals(0, embeddings.calls.get());
     verify(vectorService, never()).writeEntityChunks(any(), any(), any());
+    assertVectorStats(0, 1);
+    verify(tracker).recordVector(StatsResult.FAILED);
+  }
+
+  @Test
+  void aMissedChunkWriteIsRetriedOnceAndCountsOneSuccessWhenItRecovers() {
+    when(vectorService.backfillEntityChunks(table, STAGED_CHUNKS)).thenReturn(false, true);
+    theRetryReadsTheTable();
+
+    enricher.enrich(
+        table,
+        ENTITY_JSON,
+        Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")),
+        tracker,
+        recreateOf(Entity.TABLE));
+    assertVectorStats(0, 0);
+    enricher.retryMissedChunks(Entity.TABLE);
+    enricher.retryMissedChunks(Entity.TABLE);
+
+    verify(vectorService, times(2)).backfillEntityChunks(table, STAGED_CHUNKS);
     assertVectorStats(1, 0);
+    verify(tracker).recordVector(StatsResult.SUCCESS);
+    verify(tracker).flush();
+  }
+
+  @Test
+  void aChunkWriteThatStillMissesAfterTheRetryCountsOneFailure() {
+    when(vectorService.writeEntityChunks(any(), any(), any())).thenReturn(false);
+    when(vectorService.backfillEntityChunks(table, STAGED_CHUNKS)).thenReturn(false);
+    theRetryReadsTheTable();
+
+    enricher.enrich(table, ENTITY_JSON, Map.of(), tracker, recreateOf(Entity.TABLE));
+    enricher.retryMissedChunks(Entity.TABLE);
+
+    verify(vectorService).backfillEntityChunks(table, STAGED_CHUNKS);
+    assertVectorStats(0, 1);
+    verify(tracker).recordVector(StatsResult.FAILED);
+  }
+
+  @Test
+  void anOpenCircuitSkipsTheRetryAndCountsAFailure() {
+    when(vectorService.backfillEntityChunks(table, STAGED_CHUNKS)).thenReturn(false);
+    theRetryReadsTheTable();
+
+    enricher.enrich(
+        table,
+        ENTITY_JSON,
+        Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")),
+        tracker,
+        recreateOf(Entity.TABLE));
+    embeddings.available = false;
+    enricher.retryMissedChunks(Entity.TABLE);
+
+    verify(vectorService, times(1)).backfillEntityChunks(table, STAGED_CHUNKS);
+    assertEquals(0, embeddings.calls.get(), "no provider call while the circuit is open");
+    assertVectorStats(0, 1);
+  }
+
+  @Test
+  void aRetryLeavesTheMissesOfOtherEntityTypesPending() {
+    when(vectorService.backfillEntityChunks(table, STAGED_CHUNKS)).thenReturn(false);
+    theRetryReadsTheTable();
+
+    enricher.enrich(
+        table,
+        ENTITY_JSON,
+        Map.of(tableId, storedEmbedding("[0.5,0.6,0.7]")),
+        tracker,
+        recreateOf(Entity.TABLE));
+    enricher.retryMissedChunks(Entity.GLOSSARY_TERM);
+
+    verify(vectorService, times(1)).backfillEntityChunks(table, STAGED_CHUNKS);
+    assertVectorStats(0, 0);
+  }
+
+  private void theRetryReadsTheTable() {
+    entities
+        .when(() -> Entity.getEntity(any(EntityReference.class), eq("*"), eq(Include.NON_DELETED)))
+        .thenReturn(table);
   }
 
   @Test

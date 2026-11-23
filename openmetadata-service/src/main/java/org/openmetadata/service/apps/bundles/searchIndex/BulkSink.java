@@ -66,6 +66,12 @@ public interface BulkSink {
   }
 
   /**
+   * Retries once the chunk documents this sink missed for {@code entityType}, and counts each in
+   * the vector stats. Called before a partition of that type completes.
+   */
+  default void retryMissedChunks(String entityType) {}
+
+  /**
    * Returns the process stage statistics. This tracks document building/transformation
    * separately from the actual sink (bulk indexing) stats.
    *

@@ -176,6 +176,7 @@ class ElasticSearchBulkSinkBehaviorTest {
     when(entity.getId()).thenReturn(entityId);
     VectorIndexService vectorService = mock(VectorIndexService.class);
     when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    when(vectorService.backfillEntityChunks(any(), any())).thenReturn(true);
     JsonNode storedEmbedding =
         new ObjectMapper().readTree("{\"fingerprint\":\"fp\",\"embedding\":[0.1,0.2,0.3]}");
     ReindexContext recreate = new ReindexContext();

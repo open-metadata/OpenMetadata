@@ -29,6 +29,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -49,6 +50,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
@@ -789,7 +791,9 @@ class PartitionWorkerTest {
     assertEquals(
         PartitionStatus.PROCESSING,
         progressCaptor.getAllValues().get(progressCaptor.getAllValues().size() - 1).getStatus());
-    verify(coordinator).completePartition(partition.getId(), 2L, 0L, 0L);
+    InOrder missedChunksFirst = inOrder(bulkSink, coordinator);
+    missedChunksFirst.verify(bulkSink).retryMissedChunks("table");
+    missedChunksFirst.verify(coordinator).completePartition(partition.getId(), 2L, 0L, 0L);
   }
 
   @Test
