@@ -450,11 +450,41 @@ class OntologyTermSearchIT {
   }
 
   @Test
-  void reindexSweepsStaleInactiveAndMissingOntologyChunks(TestNamespace ns) {
+  void termWritesDoNotCreateAChunkIndexWithEmbeddingsDisabled(TestNamespace ns) throws Exception {
     assumeFalse(OssTestServer.isExternalMode());
     assumeTrue(
         Entity.getSearchRepository().getSearchClient()
             instanceof org.openmetadata.service.search.opensearch.OpenSearchClient);
+    assumeFalse(Entity.getSearchRepository().isVectorEmbeddingEnabled());
+    final var client = new SearchClient(OssTestServer.defaultHandle());
+    final var index = OntologyChunkIndex.name();
+    assumeFalse(client.indexExists(index), "Requires an absent ontology chunk index");
+    final var ontology = createOntology(ns);
+    try {
+      final var term = createConcept(ontology, "WithoutChunks");
+      activate(ontology);
+      final var published = indexedTermDocument(term);
+      final long version = published.path("_version").asLong();
+
+      patch("/v1/ontologyConcepts/" + term.getId(), "add", "/description", "A working draft");
+      Entity.getSearchRepository().reindexOntologyTerm(term.getEntityReference());
+
+      assertThat(indexedTermDocument(term).path("_version").asLong()).isGreaterThan(version);
+      assertThat(indexedTermDocument(term).path("_source").path("description"))
+          .isEqualTo(published.path("_source").path("description"));
+      assertThat(client.indexExists(index)).isFalse();
+    } finally {
+      deleteOntology(ontology);
+    }
+  }
+
+  @Test
+  void liveWritesAndReindexCleanChunksWithEmbeddingsDisabled(TestNamespace ns) {
+    assumeFalse(OssTestServer.isExternalMode());
+    assumeTrue(
+        Entity.getSearchRepository().getSearchClient()
+            instanceof org.openmetadata.service.search.opensearch.OpenSearchClient);
+    assumeFalse(Entity.getSearchRepository().isVectorEmbeddingEnabled());
     final var client = new SearchClient(OssTestServer.defaultHandle());
     final var index = OntologyChunkIndex.name();
     final var ontology = createOntology(ns);
@@ -482,6 +512,28 @@ class OntologyTermSearchIT {
       seedChunk(client, index, active.getId(), 1, "old-release");
       seedChunk(client, index, draft.getId(), 0, "unpublished");
       seedChunk(client, index, missing, 0, "missing");
+
+      assertThat(chunkCount(client, index, active.getId())).isEqualTo(2);
+      assertThat(chunkCount(client, index, draft.getId())).isEqualTo(1);
+
+      patch("/v1/ontologyConcepts/" + active.getId(), "add", "/description", "A working draft");
+      patch("/v1/ontologyConcepts/" + draft.getId(), "add", "/description", "An unpublished draft");
+
+      await()
+          .atMost(Duration.ofSeconds(30))
+          .untilAsserted(
+              () -> {
+                assertThat(chunkCount(client, index, active.getId())).isEqualTo(1);
+                assertThat(chunkCount(client, index, draft.getId())).isZero();
+              });
+      assertThat(
+              client
+                  .get("/" + index + "/_doc/" + active.getId() + "_0")
+                  .path("_source")
+                  .path("fingerprint")
+                  .asText())
+          .isEqualTo(fingerprint);
+      assertThat(chunkCount(client, index, missing)).isEqualTo(1);
 
       reindexTerms();
 
