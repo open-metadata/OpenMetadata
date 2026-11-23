@@ -3173,6 +3173,7 @@
     "requested-by": "ขอโดย",
     "requested-on": "ร้องขอเมื่อ",
     "requests": "คำขอ",
+    "require-encrypted-assertions": "กำหนดให้ใช้การยืนยัน SAML ที่เข้ารหัส",
     "required": "จำเป็น",
     "required-field": "ฟิลด์ที่จำเป็น",
     "required-field-plural": "ฟิลด์ที่จำเป็น",
