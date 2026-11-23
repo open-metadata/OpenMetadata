@@ -52,9 +52,14 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.10"
           args: "-m no-ui"
           ingestion_dependency: "mysql,elasticsearch,sample-data"
+
+      - name: Prepare Python environment
+        uses: ./.github/actions/prepare-python-environment
+        with:
+          python-version: "3.10"
+          profile: test
 
       - name: Build Ingestion Operator & Ingest Sample Data
         run: |

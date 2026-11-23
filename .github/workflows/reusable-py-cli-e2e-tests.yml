@@ -85,10 +85,12 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
+          args: -m no-ui -s true
+      - name: Prepare Python environment
+        uses: ./.github/actions/prepare-python-environment
+        with:
           python-version: ${{ inputs.python-version }}
           profile: test-classification
-          resync-python: 'false'
-          args: -m no-ui -s true
       - name: Reclaim unused disk for Exasol
         if: matrix.e2e-test == 'exasol'
         continue-on-error: true

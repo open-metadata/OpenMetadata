@@ -225,9 +225,6 @@ jobs:
               - 'pom.xml'
               - 'Makefile'
               - '.github/actions/setup-openmetadata-test-environment/**'
-              - '.github/actions/prepare-python-environment/**'
-              - '.github/actions/setup-uv/**'
-              - 'scripts/python_tools.py'
               - '.github/playwright/**'
               - '.github/scripts/build_playwright_shards.py'
               - '.github/scripts/capture_playwright_server_output.py'
@@ -286,16 +283,10 @@ jobs:
               - 'openmetadata-ui/src/main/resources/ui/playwright/test-data/**'
               - '.github/workflows/reusable-playwright-e2e.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
-              - '.github/actions/prepare-python-environment/**'
-              - '.github/actions/setup-uv/**'
-              - 'scripts/python_tools.py'
               - '.github/actions/cache-ui-dist/action.yml'
               - '.github/scripts/serve_playwright_ui.cjs'
             rdf:
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
-              - '.github/actions/prepare-python-environment/**'
-              - '.github/actions/setup-uv/**'
-              - 'scripts/python_tools.py'
               - '.github/workflows/reusable-playwright-e2e.yml'
               - 'docker/run_local_docker.sh'
               - 'docker/run_local_docker_common.sh'
@@ -1102,10 +1093,9 @@ jobs:
           STRICT_DAG_VALIDATION: "true"
           VALIDATION_TIMEOUT_SECONDS: "600"
         with:
-          python-version: "3.10"
           args: "-d ${{ inputs.database }} -s true"
           ingestion_dependency: "playwright"
-          lightweight-ingestion: "true"
+          setup-java: "false"
 
       - name: Setup Node.js for fixture state
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
@@ -1549,7 +1539,6 @@ jobs:
         if: ${{ !contains(fromJSON('["visual","rdf"]'), matrix.lane) }}
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.10"
           fast-mode: "true"
           fixture-path: ${{ steps.fast-inputs.outputs.fixture }}
           distribution-path: ${{ steps.fast-inputs.outputs.distribution }}
@@ -1594,21 +1583,17 @@ jobs:
         if: ${{ matrix.lane == 'visual' }}
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.10"
           args: "-d mysql -s true"
           ingestion_dependency: "playwright"
-          profile: dev
 
       - name: Setup the RDF environment
         id: setup-rdf-environment
         if: ${{ matrix.lane == 'rdf' }}
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: "3.10"
           args: "-d postgresql -s true"
           startup-script: "./docker/run_local_docker_rdf.sh"
           ingestion_dependency: "playwright"
-          profile: dev
 
       - name: Wait for Fuseki to be healthy
         if: ${{ matrix.lane == 'rdf' }}

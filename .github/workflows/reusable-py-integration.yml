@@ -80,10 +80,12 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
+          args: ${{ matrix.database.compose-args }}
+      - name: Prepare Python environment
+        uses: ./.github/actions/prepare-python-environment
+        with:
           python-version: ${{ inputs.python-version }}
           profile: test-classification
-          resync-python: 'false'
-          args: ${{ matrix.database.compose-args }}
       - name: Reclaim unused disk for the Exasol shard
         if: matrix.shard.needs-disk
         continue-on-error: true

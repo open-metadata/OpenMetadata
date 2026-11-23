@@ -200,16 +200,10 @@ def test_static_checks_isolate_dependencies_and_catch_application_errors(nox_rep
 
 
 @pytest.mark.parametrize("profile", ["test", "test-classification"])
-def test_ci_server_setup_restores_test_dependencies_after_application_setup(
-    nox_repo: Path, monkeypatch, profile
-) -> None:
+def test_python_preparation_restores_test_dependencies_after_dev_install(nox_repo: Path, monkeypatch, profile) -> None:
     assert_success(run("make", "install_dev", cwd=nox_repo))
-    action = yaml.safe_load((REPO_ROOT / ".github/actions/setup-openmetadata-test-environment/action.yml").read_text())
-    restore = next(
-        step["run"]
-        for step in action["runs"]["steps"]
-        if step.get("name") == "Synchronize test dependencies after server setup"
-    )
+    action = yaml.safe_load((REPO_ROOT / ".github/actions/prepare-python-environment/action.yml").read_text())
+    restore = next(step["run"] for step in action["runs"]["steps"] if "PYTHON_PROFILE" in step.get("env", {}))
     monkeypatch.setenv("PYTHON_PROFILE", profile)
 
     assert_success(run("bash", "-eo", "pipefail", "-c", restore, cwd=nox_repo))

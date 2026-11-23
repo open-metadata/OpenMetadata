@@ -56,9 +56,11 @@ backend and classification preparation. Consumers verify its revision and depend
 before using the existing image preload path. The manual v2 connector workflow shares both backend
 and ingestion builds within its run. Reusable connector callers can retain per-runner builds.
 
-The standard Python integration and legacy connector paths skip post-start profile resynchronization;
-Nox still prepares the selected profile before tests. Custom startup callers retain resynchronization
-by default. Failure diagnostics are collected before the hosted runner is discarded, without
+Stack startup does not prepare or modify host Python environments. Python integration, connector,
+and operator jobs explicitly prepare their locked profile after startup; browser jobs use container
+ingestion without host Python dependencies. Classification models are verified during Python
+preparation. Nox still prepares the selected profile before tests.
+Failure diagnostics are collected before the hosted runner is discarded, without
 explicit Docker teardown or local data deletion. Test results retain JUnit and outcome metadata;
 raw test logs are uploaded for
 unsuccessful tests, and coverage text is rendered once centrally in CI.

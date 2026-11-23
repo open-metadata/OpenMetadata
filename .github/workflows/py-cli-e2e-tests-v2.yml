@@ -117,9 +117,13 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
+          args: -m no-ui -s true
+
+      - name: Prepare Python environment
+        uses: ./.github/actions/prepare-python-environment
+        with:
           python-version: '3.10'
           profile: test-classification
-          args: -m no-ui -s true
 
       - name: Run CLI E2E v2 tests
         id: e2e-v2-test

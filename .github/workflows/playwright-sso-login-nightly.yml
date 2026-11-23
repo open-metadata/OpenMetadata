@@ -330,10 +330,8 @@ jobs:
           PW_E2E_BUILD: 'true'
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          python-version: '3.10'
           args: '-d postgresql -i false'
           ingestion_dependency: 'all'
-          profile: dev
 
       - name: Setup Node.js
         if: env.SKIP_LEG != 'true'
