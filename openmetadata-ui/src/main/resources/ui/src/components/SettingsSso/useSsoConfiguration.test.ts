@@ -77,6 +77,78 @@ const OKTA_CONFIG = {
   },
 } as unknown as SecurityConfiguration;
 
+const SAML_ACS = 'https://om.example.com/api/v1/saml/acs';
+
+const samlConfig = (callback: string) =>
+  ({
+    authenticationConfiguration: {
+      provider: AuthProvider.Saml,
+      providerName: 'SAML',
+      clientType: 'public',
+      authority: 'https://om.example.com/api/v1/saml/login',
+      callbackUrl: callback,
+      publicKeyUrls: ['https://om.example.com/api/v1/system/config/jwks'],
+      jwtPrincipalClaims: ['email'],
+      enableSelfSignup: true,
+      samlConfiguration: {
+        debugMode: false,
+        idp: {
+          entityId: 'https://idp.example.com/metadata',
+          ssoLoginUrl: 'https://idp.example.com/sso',
+          idpX509Certificate: 'IDP_CERT',
+          authorityUrl: 'https://om.example.com/api/v1/saml/login',
+        },
+        sp: {
+          entityId: 'https://om.example.com/api/v1/saml/metadata',
+          acs: SAML_ACS,
+          callback,
+        },
+        security: {
+          strictMode: false,
+          wantAssertionsSigned: false,
+          wantMessagesSigned: false,
+          sendSignedAuthRequest: false,
+        },
+      },
+    },
+    authorizerConfiguration: OKTA_CONFIG.authorizerConfiguration,
+  } as unknown as SecurityConfiguration);
+
+// Saved by an earlier form version that wrote the ACS URL into both browser callback fields.
+const SAML_CONFIG_WITH_ACS_CALLBACK = samlConfig(SAML_ACS);
+
+const OKTA_CONFIDENTIAL_CONFIG = {
+  authenticationConfiguration: {
+    provider: AuthProvider.Okta,
+    providerName: 'Okta',
+    clientType: 'confidential',
+    authority: 'https://test.okta.com',
+    clientId: 'okta-client-id',
+    callbackUrl: 'http://localhost:8585/callback',
+    publicKeyUrls: ['https://test.okta.com/keys'],
+    jwtPrincipalClaims: ['email'],
+    enableSelfSignup: true,
+    oidcConfiguration: {
+      type: 'okta',
+      id: 'okta-client-id',
+      secret: 'okta-secret',
+      discoveryUri: 'https://test.okta.com/.well-known/openid-configuration',
+      callbackUrl: 'http://localhost:8585/callback',
+      serverUrl: 'http://localhost:8585',
+    },
+  },
+  authorizerConfiguration: OKTA_CONFIG.authorizerConfiguration,
+} as unknown as SecurityConfiguration;
+
+const CUSTOM_AUTHORIZER_CONFIG = {
+  ...OKTA_CONFIG,
+  authorizerConfiguration: {
+    ...OKTA_CONFIG.authorizerConfiguration,
+    className: 'com.example.CustomAuthorizer',
+    containerRequestFilter: 'com.example.CustomJwtFilter',
+  },
+} as SecurityConfiguration;
+
 const editClientId = (
   result: { current: ReturnType<typeof useSsoConfiguration> },
   clientId: string
@@ -162,6 +234,54 @@ describe('useSsoConfiguration', () => {
       'message.configuration-save-success'
     );
     expect(replace).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['an OIDC public client', OKTA_CONFIG],
+    ['an OIDC confidential client', OKTA_CONFIDENTIAL_CONFIG],
+    ['a SAML configuration', samlConfig('https://om.example.com/callback')],
+    ['a custom authorizer', CUSTOM_AUTHORIZER_CONFIG],
+  ])(
+    'saves %s left untouched without a PATCH',
+    async (_name, securityConfig) => {
+      const { result } = renderHook(() =>
+        useSsoConfiguration({ securityConfig, forceEditMode: true })
+      );
+      await waitFor(() => expect(result.current.hasExistingConfig).toBe(true));
+
+      await act(() => result.current.handleSave());
+
+      expect(patchSecurityConfiguration).not.toHaveBeenCalled();
+      expect(showSuccessToast).toHaveBeenCalledWith(
+        'message.configuration-save-success'
+      );
+    }
+  );
+
+  it('saves the repaired browser callback of a SAML configuration saved with the ACS URL', async () => {
+    const { result } = renderHook(() =>
+      useSsoConfiguration({
+        securityConfig: SAML_CONFIG_WITH_ACS_CALLBACK,
+        forceEditMode: true,
+      })
+    );
+    await waitFor(() => expect(result.current.hasExistingConfig).toBe(true));
+
+    await act(() => result.current.handleSave());
+
+    // The two callback fields, and nothing else.
+    expect(patchSecurityConfiguration).toHaveBeenCalledWith([
+      {
+        op: 'replace',
+        path: '/authenticationConfiguration/samlConfiguration/sp/callback',
+        value: 'https://om.example.com/callback',
+      },
+      {
+        op: 'replace',
+        path: '/authenticationConfiguration/callbackUrl',
+        value: 'https://om.example.com/callback',
+      },
+    ]);
   });
 
   it('discards edits back to the saved configuration', async () => {
@@ -267,6 +387,9 @@ describe('useSsoConfiguration', () => {
         'authenticationConfiguration.samlConfiguration.security'
       );
 
+    expect(securityUiSchema().wantAssertionEncrypted).toEqual({
+      'ui:title': 'label.require-encrypted-assertions',
+    });
     expect(securityUiSchema().wantMessagesSigned).toEqual({
       'ui:widget': 'hidden',
       'ui:hideError': true,
@@ -295,6 +418,9 @@ describe('useSsoConfiguration', () => {
       } as Parameters<typeof result.current.handleOnChange>[0]);
     });
 
+    expect(securityUiSchema().wantAssertionEncrypted).toEqual({
+      'ui:title': 'label.require-encrypted-assertions',
+    });
     expect(securityUiSchema().wantMessagesSigned).toEqual({
       'ui:title': 'label.want-messages-signed',
     });
@@ -341,18 +467,14 @@ describe('useSsoConfiguration', () => {
       );
       expect(samlUiSchema.idp.nameId['ui:title']).toBe('label.name-id-format');
       expect(samlUiSchema.sp['ui:title']).toBe('label.service-provider-sp');
-      expect(samlUiSchema.sp.entityId['ui:title']).toBe(
-        'label.provider-entity-id {"provider":"SP"}'
-      );
-      expect(samlUiSchema.sp.entityId['ui:help']).toBe(
-        'message.saml-sp-entity-id-auto-generated-help'
-      );
-      expect(samlUiSchema.sp.acs['ui:title']).toBe(
-        'label.assertion-consumer-service-url'
-      );
-      expect(samlUiSchema.sp.acs['ui:help']).toBe(
-        'message.saml-acs-url-auto-generated-help'
-      );
+      expect(samlUiSchema.sp.entityId).toEqual({
+        'ui:title': 'label.provider-entity-id {"provider":"SP"}',
+        'ui:help': 'message.saml-sp-entity-id-help',
+      });
+      expect(samlUiSchema.sp.acs).toEqual({
+        'ui:title': 'label.assertion-consumer-service-url',
+        'ui:help': 'message.saml-acs-url-help',
+      });
       expect(samlUiSchema.sp.spX509Certificate['ui:title']).toBe(
         'label.provider-x509-certificate {"provider":"SP"}'
       );

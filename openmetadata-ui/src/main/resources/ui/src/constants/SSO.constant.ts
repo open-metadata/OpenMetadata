@@ -358,18 +358,16 @@ export const SAML_UI_SCHEMA = {
         get 'ui:title'() {
           return i18next.t('label.provider-entity-id', { provider: 'SP' });
         },
-        'ui:readonly': true,
         get 'ui:help'() {
-          return i18next.t('message.saml-sp-entity-id-auto-generated-help');
+          return i18next.t('message.saml-sp-entity-id-help');
         },
       },
       acs: {
         get 'ui:title'() {
           return i18next.t('label.assertion-consumer-service-url');
         },
-        'ui:readonly': true,
         get 'ui:help'() {
-          return i18next.t('message.saml-acs-url-auto-generated-help');
+          return i18next.t('message.saml-acs-url-help');
         },
       },
       callback: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -424,7 +422,11 @@ export const SAML_UI_SCHEMA = {
       validateXml: { 'ui:widget': 'hidden', 'ui:hideError': true },
       sendEncryptedNameId: { 'ui:widget': 'hidden', 'ui:hideError': true },
       signSpMetadata: { 'ui:widget': 'hidden', 'ui:hideError': true },
-      wantAssertionEncrypted: { 'ui:widget': 'hidden', 'ui:hideError': true },
+      wantAssertionEncrypted: {
+        get 'ui:title'() {
+          return i18next.t('label.require-encrypted-assertions');
+        },
+      },
       keyStoreFilePath: { 'ui:widget': 'hidden', 'ui:hideError': true },
       keyStoreAlias: { 'ui:widget': 'hidden', 'ui:hideError': true },
       keyStorePassword: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -834,7 +836,7 @@ export const COMMON_AUTH_FIELDS_TO_REMOVE = [
   'forceSecureSessionCookie',
 ];
 
-// Hardcoded authorizer values
+// Authorizer values for a configuration that has none
 export const DEFAULT_AUTHORIZER_CLASS_NAME =
   'org.openmetadata.service.security.DefaultAuthorizer';
 export const DEFAULT_CONTAINER_REQUEST_FILTER =
