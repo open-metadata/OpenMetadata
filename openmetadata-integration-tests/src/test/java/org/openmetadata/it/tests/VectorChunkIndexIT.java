@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -54,11 +55,19 @@ class VectorChunkIndexIT {
   /** Returns one vector for any text and counts the texts it is asked to embed. */
   private static final class CountingProvider extends EmbeddingClient {
     private final AtomicInteger textsEmbedded = new AtomicInteger();
+    private volatile boolean failing;
 
     @Override
     protected float[] doEmbed(String text) {
+      if (failing) {
+        throw new IllegalStateException("provider rate limit");
+      }
       textsEmbedded.incrementAndGet();
       return new float[] {0.5f, 0.25f, 0.125f};
+    }
+
+    void failing(boolean failing) {
+      this.failing = failing;
     }
 
     @Override
@@ -115,8 +124,18 @@ class VectorChunkIndexIT {
     }
 
     @Test
-    void aGenerationThatMissedAChunkWriteIsNeverPromoted() {
-      assertAGenerationThatMissedAChunkWriteIsNeverPromoted(service);
+    void aMissedChunkWriteStillPromotesAndTheNextWriteHealsIt() {
+      assertAMissedChunkWriteStillPromotesAndTheNextWriteHealsIt(service);
+    }
+
+    @Test
+    void aProviderOutageOnAFirstRebuildStillPromotes() {
+      assertAProviderOutageOnAFirstRebuildStillPromotes(service, provider);
+    }
+
+    @Test
+    void aFailedDeleteKeepsTheLiveChunks() {
+      assertAFailedDeleteKeepsTheLiveChunks(service);
     }
   }
 
@@ -161,8 +180,18 @@ class VectorChunkIndexIT {
     }
 
     @Test
-    void aGenerationThatMissedAChunkWriteIsNeverPromoted() {
-      assertAGenerationThatMissedAChunkWriteIsNeverPromoted(service);
+    void aMissedChunkWriteStillPromotesAndTheNextWriteHealsIt() {
+      assertAMissedChunkWriteStillPromotesAndTheNextWriteHealsIt(service);
+    }
+
+    @Test
+    void aProviderOutageOnAFirstRebuildStillPromotes() {
+      assertAProviderOutageOnAFirstRebuildStillPromotes(service, provider);
+    }
+
+    @Test
+    void aFailedDeleteKeepsTheLiveChunks() {
+      assertAFailedDeleteKeepsTheLiveChunks(service);
     }
   }
 
@@ -207,40 +236,121 @@ class VectorChunkIndexIT {
   }
 
   /**
-   * The cluster rejects one bulk item while the run's entity types all finalize successfully. The
-   * old chunks stay live, and a clean retry promotes its own generation.
+   * The cluster rejects one entity's chunk bulk while every entity index is promoted. The miss is
+   * reported to the caller, the generation still goes live with the entity indexes, and the
+   * entity's next chunk write gives it its chunks again.
    */
-  private static void assertAGenerationThatMissedAChunkWriteIsNeverPromoted(
+  private static void assertAMissedChunkWriteStillPromotesAndTheNextWriteHealsIt(
       AbstractVectorIndexService service) {
     Table invoices = table("invoices", "Invoices sent");
+    Table payments = table("payments", "Payments received");
     try {
       writeChunks(service, invoices, null);
       refresh(service, service.getChunkIndexName());
-      Set<String> liveBefore = parentsFound(service);
-      assertTrue(liveBefore.contains(id(invoices)), liveBefore::toString);
 
-      String rejected = service.beginStagedChunkRecreate();
-      assertNotNull(rejected, "A reachable embedding provider stages a generation");
-      service.writeEntityChunks(id(invoices), unindexableChunks(service, invoices), rejected);
-      AvailableEntityTypes.SET.forEach(
-          type -> service.markEntityTypeReindexed(type, true, rejected));
-
-      assertEquals(Set.of(), aliasesOf(service, rejected), "The generation is not promoted");
-      assertEquals(liveBefore, parentsFound(service), "Reads keep the old chunks");
-
-      String retry = service.beginStagedChunkRecreate();
-      writeChunks(service, invoices, retry);
-      refresh(service, retry);
-      AvailableEntityTypes.SET.forEach(type -> service.markEntityTypeReindexed(type, true, retry));
+      String staged = service.beginStagedChunkRecreate();
+      assertNotNull(staged, "A reachable embedding provider stages a generation");
+      writeChunks(service, payments, staged);
+      assertFalse(
+          service.writeEntityChunks(id(invoices), unindexableChunks(service, invoices), staged),
+          "The caller is told about the miss");
+      refresh(service, staged);
+      AvailableEntityTypes.SET.forEach(type -> service.markEntityTypeReindexed(type, true, staged));
 
       assertEquals(
-          Set.of(service.getChunkIndexName(), service.getIndexAlias()), aliasesOf(service, retry));
-      assertEquals(Set.of(id(invoices)), parentsFound(service));
+          Set.of(service.getChunkIndexName(), service.getIndexAlias()), aliasesOf(service, staged));
+      assertEquals(Set.of(id(payments)), parentsFound(service));
+
+      writeChunks(service, invoices, null);
+      refresh(service, service.getChunkIndexName());
       assertOnePassage(service, invoices, "Invoices sent");
     } finally {
       service.deleteEntityChunks(id(invoices));
+      service.deleteEntityChunks(id(payments));
       refresh(service, service.getChunkIndexName());
     }
+  }
+
+  /**
+   * A first rebuild on a catalog with no chunks yet: the provider fails for one entity, which had
+   * nothing live to lose, so the generation still goes live with every other entity's chunks.
+   */
+  private static void assertAProviderOutageOnAFirstRebuildStillPromotes(
+      AbstractVectorIndexService service, CountingProvider provider) {
+    Table carriers = table("carriers", "Carriers we ship with");
+    Table shipments = table("shipments", "Shipments in transit");
+    try {
+      String staged = service.beginStagedChunkRecreate();
+      assertNotNull(staged, "A reachable embedding provider stages a generation");
+      writeChunks(service, carriers, staged);
+      provider.failing(true);
+      assertFalse(service.backfillEntityChunks(shipments, staged), "The miss is reported");
+      provider.failing(false);
+      refresh(service, staged);
+      AvailableEntityTypes.SET.forEach(type -> service.markEntityTypeReindexed(type, true, staged));
+
+      assertEquals(
+          Set.of(service.getChunkIndexName(), service.getIndexAlias()), aliasesOf(service, staged));
+      assertEquals(Set.of(id(carriers)), parentsFound(service));
+    } finally {
+      provider.failing(false);
+      service.deleteEntityChunks(id(carriers));
+      service.deleteEntityChunks(id(shipments));
+      refresh(service, service.getChunkIndexName());
+    }
+  }
+
+  /**
+   * An entity is deleted while a rebuild runs, and the delete from the staged generation fails. The
+   * generation would bring the deleted entity's chunks back, so it is flagged and never promoted;
+   * the live chunks, from which the entity is already gone, stay.
+   */
+  private static void assertAFailedDeleteKeepsTheLiveChunks(AbstractVectorIndexService service) {
+    Table orders = table("orders", "Orders placed online");
+    Table refunds = table("refunds", "Refunds issued");
+    String staged = null;
+    try {
+      writeChunks(service, orders, null);
+      writeChunks(service, refunds, null);
+      refresh(service, service.getChunkIndexName());
+      staged = service.beginStagedChunkRecreate();
+      assertNotNull(staged, "A reachable embedding provider stages a generation");
+      writeChunks(service, orders, staged);
+      writeChunks(service, refunds, staged);
+      refresh(service, staged);
+      writeBlock(service, staged, true);
+
+      service.deleteEntityChunks(id(refunds));
+      refresh(service, service.getChunkIndexName());
+      String generation = staged;
+      AvailableEntityTypes.SET.forEach(
+          type -> service.markEntityTypeReindexed(type, true, generation));
+
+      assertEquals(Set.of(), aliasesOf(service, staged), "The generation is not promoted");
+      assertEquals(Set.of(id(orders)), parentsFound(service), "The live chunks stay");
+      assertTrue(missedDeleteFlag(service, staged), "The generation is flagged");
+    } finally {
+      if (staged != null) {
+        writeBlock(service, staged, false);
+      }
+      service.deleteEntityChunks(id(orders));
+      service.deleteEntityChunks(id(refunds));
+      refresh(service, service.getChunkIndexName());
+    }
+  }
+
+  private static void writeBlock(AbstractVectorIndexService service, String index, boolean on) {
+    service.executeGenericRequest(
+        "PUT", "/" + index + "/_settings", "{\"index.blocks.write\":" + on + "}");
+  }
+
+  private static boolean missedDeleteFlag(AbstractVectorIndexService service, String index) {
+    return JsonUtils.readTree(service.executeGenericRequest("GET", "/" + index + "/_mapping", null))
+        .path(index)
+        .path("mappings")
+        .path("_meta")
+        .path("incompleteChunkWrites")
+        .asBoolean(false);
   }
 
   // An integer field holding text fails that bulk item on both engines.

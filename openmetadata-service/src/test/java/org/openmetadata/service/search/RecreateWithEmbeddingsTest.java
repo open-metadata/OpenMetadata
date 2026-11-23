@@ -47,9 +47,9 @@ class RecreateWithEmbeddingsTest {
   }
 
   @Test
-  void finalizingATypeReportsItsOutcomeForTheRunsChunkGeneration() {
+  void finalizingATypeWithNoStagedEntityIndexReportsItAsNotPromoted() {
     when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
-    // Without a staged entity index there is nothing to promote, which leaves only the report.
+    // Without a staged entity index nothing replaces the live one, so the chunks stay live too.
     EntityReindexContext context =
         EntityReindexContext.builder().entityType("table").stagedChunkIndex(STAGED_CHUNKS).build();
 
@@ -58,7 +58,7 @@ class RecreateWithEmbeddingsTest {
       new RecreateWithEmbeddings().finalizeReindex(context, true);
     }
 
-    verify(vectorService).markEntityTypeReindexed("table", true, STAGED_CHUNKS);
+    verify(vectorService).markEntityTypeReindexed("table", false, STAGED_CHUNKS);
   }
 
   @Test

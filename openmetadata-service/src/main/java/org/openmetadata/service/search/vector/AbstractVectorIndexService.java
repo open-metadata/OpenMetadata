@@ -19,7 +19,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -59,6 +61,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
                           && error.getCause() instanceof ClosedSegmentException)
               .build());
   private static final int OVER_FETCH_MULTIPLIER = 2;
+  private static final long UNKNOWN_COUNT = -1L;
   private static final String CHUNK_HEADER_FIELDS =
       "fingerprint,chunkCount,docVersion,"
           + String.join(
@@ -186,27 +189,29 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * must go to the staged generation — chunks written to the live target die at promotion,
    * silently dropping every unchanged entity from vector retrieval. The {@code recreateRun} flag
    * comes from the sink's own ReindexContext, so writers of normal (non-recreate) runs never
-   * consult generation discovery and can never land in a crashed run's orphan.
+   * consult generation discovery and can never land in a crashed run's orphan. A chunk set that
+   * cannot be written, or needs the embedding provider while it is unavailable, is a miss the
+   * caller counts and retries; it never fails the entity, whose own embedding is already spliced.
    */
   @Override
-  public void backfillEntityChunks(EntityInterface<?> entity, String stagedChunkTarget) {
-    if (stagedChunkTarget == null) {
-      backfillChunksToLiveIndex(entity);
-    } else {
-      backfillChunksToStagedGeneration(entity, stagedChunkTarget);
+  public boolean backfillEntityChunks(EntityInterface<?> entity, String stagedChunkTarget) {
+    boolean written;
+    try {
+      String target = stagedChunkTarget == null ? liveChunkWriteTarget() : stagedChunkTarget;
+      written =
+          stagedChunkTarget == null
+              ? writeChunksIfStale(entity, target)
+              : backfillStagedChunks(entity, target);
+    } catch (IOException | RuntimeException e) {
+      LOG.debug("Failed to backfill chunks for {}: {}", entity.getId(), e.getMessage());
+      written = false;
     }
+    return written;
   }
 
-  /**
-   * A chunk index that cannot be written must not fail the caller: the sink has already spliced
-   * the entity document's own embedding, which does not depend on the chunk index.
-   */
-  private void backfillChunksToLiveIndex(EntityInterface<?> entity) {
-    try {
-      updateEntityEmbeddingChunks(entity);
-    } catch (Exception e) {
-      LOG.warn("Failed to backfill chunks for {}: {}", entity.getId(), e.getMessage(), e);
-    }
+  private String liveChunkWriteTarget() {
+    requireChunkIndexForWrite();
+    return getChunkIndexName();
   }
 
   /**
@@ -216,30 +221,38 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * re-embed the whole catalog. Nothing is skipped — the staged generation starts empty, so every
    * entity passes through exactly once ({@code stagedHeader} short-circuits retries).
    */
-  private void backfillChunksToStagedGeneration(EntityInterface<?> entity, String staged) {
-    try {
-      String parentId = entity.getId().toString();
-      String fingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
-      ChunkHeader stagedHeader = getChunkHeader(staged, parentId);
-      if (chunkRefresh(entity, fingerprint, stagedHeader) != ChunkRefresh.NONE) {
-        String live = getChunkIndexName();
-        ChunkHeader liveHeader = getChunkHeader(live, parentId);
-        List<Map<String, Object>> chunkDocs =
-            (liveHeader != null && fingerprint.equals(liveHeader.fingerprint()))
-                ? rebuildChunksReusingEmbeddings(entity, live, parentId, liveHeader)
-                : VectorDocBuilder.fromEntity(entity, embeddingClient);
-        replaceChunks(staged, parentId, chunkDocs, previousCount(stagedHeader));
+  private boolean backfillStagedChunks(EntityInterface<?> entity, String staged)
+      throws IOException {
+    String parentId = entity.getId().toString();
+    String fingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
+    ChunkHeader stagedHeader = getChunkHeader(staged, parentId);
+    boolean written = true;
+    if (chunkRefresh(entity, fingerprint, stagedHeader) != ChunkRefresh.NONE) {
+      Optional<List<Map<String, Object>>> chunkDocs =
+          stagedBackfillChunks(entity, parentId, fingerprint);
+      if (chunkDocs.isPresent()) {
+        replaceChunks(staged, parentId, chunkDocs.get(), previousCount(stagedHeader));
       }
-    } catch (Exception e) {
-      // The entity keeps its spliced embedding; the generation it missed is never promoted.
-      LOG.error(
-          "Failed to backfill chunks for {} into staged {}: {}",
-          entity.getId(),
-          staged,
-          e.getMessage(),
-          e);
-      markStagedGenerationIncomplete(staged);
+      written = chunkDocs.isPresent();
     }
+    return written;
+  }
+
+  /**
+   * The entity's chunk documents, reusing the live generation's vectors when its text is
+   * unchanged, or empty when they need the embedding provider and it is unavailable.
+   */
+  private Optional<List<Map<String, Object>>> stagedBackfillChunks(
+      EntityInterface<?> entity, String parentId, String fingerprint) {
+    String live = getChunkIndexName();
+    ChunkHeader liveHeader = getChunkHeader(live, parentId);
+    Optional<List<Map<String, Object>>> chunkDocs = Optional.empty();
+    if (liveHeader != null && fingerprint.equals(liveHeader.fingerprint())) {
+      chunkDocs = Optional.of(rebuildChunksReusingEmbeddings(entity, live, parentId, liveHeader));
+    } else if (embeddingClient.isAvailable()) {
+      chunkDocs = Optional.of(VectorDocBuilder.fromEntity(entity, embeddingClient));
+    }
+    return chunkDocs;
   }
 
   /**
@@ -346,24 +359,19 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    * run's orphan can never capture anything.
    */
   @Override
-  public void writeEntityChunks(
+  public boolean writeEntityChunks(
       String parentId, List<Map<String, Object>> chunkDocs, String stagedChunkTarget) {
+    boolean written;
     try {
-      String target = stagedChunkTarget;
-      if (target == null) {
-        requireChunkIndexForWrite();
-        target = getChunkIndexName();
-      }
-      ChunkHeader header = getChunkHeader(target, parentId);
-      replaceChunks(target, parentId, chunkDocs, previousCount(header));
-    } catch (Exception e) {
-      // The entity keeps its embedding either way. A live-index gap heals on the entity's next
-      // write; a staged generation with a gap is never promoted.
-      LOG.error("Failed to write chunk docs for {}: {}", parentId, e.getMessage(), e);
-      if (stagedChunkTarget != null) {
-        markStagedGenerationIncomplete(stagedChunkTarget);
-      }
+      String target = stagedChunkTarget == null ? liveChunkWriteTarget() : stagedChunkTarget;
+      replaceChunks(target, parentId, chunkDocs, previousCount(getChunkHeader(target, parentId)));
+      written = true;
+    } catch (IOException | RuntimeException e) {
+      // The entity keeps its embedding either way; the caller counts and retries the miss.
+      LOG.debug("Failed to write chunk docs for {}: {}", parentId, e.getMessage());
+      written = false;
     }
+    return written;
   }
 
   @Override
@@ -375,7 +383,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     // Also delete from an in-flight staged generation so a promoted run does not resurrect them.
     String staged = resolveChunkSinkTarget();
     if (staged != null && !deleteChunksFrom(staged, parentId)) {
-      markStagedGenerationIncomplete(staged);
+      blockPromotionForMissedDelete(staged);
     }
   }
 
@@ -443,10 +451,14 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private volatile String stagedChunkIndex;
   private volatile Set<String> stagedExpectedTypes = Set.of();
   private final Set<String> stagedFinalizedTypes = ConcurrentHashMap.newKeySet();
-  // Generations this JVM failed to flag as incomplete. Holds at most one name per failed run, and
-  // a new staged run or a participant leaving its run clears it.
+  // Types whose entity index kept its live index. Any of them keeps the live chunks too.
+  private final Set<String> stagedKeptLiveTypes = ConcurrentHashMap.newKeySet();
+  // Generations this JVM saved, or failed to save, the missed-delete flag on. A new staged run or
+  // a participant leaving its run clears them.
+  private final Set<String> flaggedGenerations = ConcurrentHashMap.newKeySet();
   private final Set<String> unflaggedGenerations = ConcurrentHashMap.newKeySet();
-  private volatile boolean stagedChunkRunFailed;
+  private final Set<String> warnedMirrorGenerations = ConcurrentHashMap.newKeySet();
+  private volatile boolean stagedDeleteMissed;
   // Run-scoped staged chunk index latched by a non-coordinator participant from its ReindexContext
   // (see latchParticipantStagedTarget). Null on the coordinator, which uses stagedChunkIndex; null
   // on a participant whose reindex thread has not yet latched (startup race). Volatile: set by the
@@ -508,8 +520,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       stagedChunkIndex = generation;
       stagedExpectedTypes = Set.copyOf(AvailableEntityTypes.SET);
       stagedFinalizedTypes.clear();
+      stagedKeptLiveTypes.clear();
+      flaggedGenerations.clear();
       unflaggedGenerations.clear();
-      stagedChunkRunFailed = false;
+      stagedDeleteMissed = false;
       LOG.info(
           "Staged chunk index {} created; chunks stay live at {} until promotion",
           generation,
@@ -547,6 +561,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       if (generation.equals(stagedChunkIndex)) {
         stagedChunkIndex = null;
         stagedFinalizedTypes.clear();
+        stagedKeptLiveTypes.clear();
         LOG.warn(
             "Cleared staged chunk state for {} — its run died before finalization; the "
                 + "generation will be swept by the next staged recreate",
@@ -573,18 +588,17 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   /**
-   * Records one entity type's reindex outcome for an active staged chunk recreate, using the same
-   * aggregate success signal every other index promotes on. A type finalizing with {@code
-   * success=false} marks the run failed, so the staged generation is never promoted and the old
-   * chunks stay live (swept by the next recreate). Once every vector-indexable type finalizes
-   * successfully the staged generation is promoted atomically, unless a chunk write into it failed
-   * on any node. This runs on the coordinator — the
-   * only JVM that finalizes entity types (participant-completed partitions are reconciled to the
-   * coordinator's completion callbacks). No-op when no staged recreate is active or for non-vector
-   * types.
+   * Records whether one entity type's staged entity index replaced its live index, for an active
+   * staged chunk recreate. Once every vector-indexable type has finalized, the chunk generation
+   * goes live with the entity indexes: it is promoted when they all were. A type whose entity index
+   * kept its live index keeps the live chunks too, so its chunks never vanish while its entities
+   * are still served. Missed per-entity chunk writes do not block promotion; they are counted,
+   * retried and heal later. This runs on the coordinator, the only JVM that finalizes entity types.
+   * No-op when no staged recreate is active or for non-vector types.
    */
   @Override
-  public void markEntityTypeReindexed(String entityType, boolean success, String runGeneration) {
+  public void markEntityTypeReindexed(
+      String entityType, boolean entityIndexPromoted, String runGeneration) {
     String normalized = entityType == null ? null : entityType.toLowerCase(Locale.ROOT);
     String generation = stagedChunkIndex;
     if (generation != null && runGeneration != null && !generation.equals(runGeneration)) {
@@ -605,52 +619,81 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     } else if (stagedChunkIndex != null
         && normalized != null
         && stagedExpectedTypes.contains(normalized)) {
-      if (!success) {
-        stagedChunkRunFailed = true;
-        // Never delete mid-run: writers on other nodes may still be flushing into the generation,
-        // and a write against a deleted index auto-creates a junk index. The un-promoted
-        // generation is swept by the next staged recreate.
-        LOG.warn(
-            "Staged chunk recreate: entity type {} failed to reindex — promotion blocked, old "
-                + "chunks stay live; staged index {} will be swept by the next recreate",
-            entityType,
-            stagedChunkIndex);
-      }
-      stagedFinalizedTypes.add(normalized);
-      // A failed run still goes through promote, which blocks the swap, warns and clears the
-      // staged state, so no later live edit mirrors into the abandoned generation.
-      if (stagedFinalizedTypes.containsAll(stagedExpectedTypes)) {
-        promoteStagedChunkIndex();
-      }
+      recordTypeOutcome(normalized, entityIndexPromoted);
+    }
+  }
+
+  // A type finalized twice keeps the live chunks once either call kept them, so a later call can
+  // never undo a run-level reason to keep them.
+  private void recordTypeOutcome(String entityType, boolean entityIndexPromoted) {
+    if (!entityIndexPromoted) {
+      stagedKeptLiveTypes.add(entityType);
+    }
+    stagedFinalizedTypes.add(entityType);
+    if (stagedFinalizedTypes.containsAll(stagedExpectedTypes)) {
+      promoteStagedChunkIndex();
     }
   }
 
   /**
    * Points the read and search aliases at the staged generation and removes the previous target in
    * one atomic {@code _aliases} call — no window where reads see neither or both generations.
+   * Strict like the orphan sweep: a live target that cannot be resolved fails the promotion.
    */
   private void promoteStagedChunkIndex() {
     synchronized (stagedChunkLock) {
       String generation = stagedChunkIndex;
       if (generation != null) {
-        // Re-check the run under the lock: a type may have finalized as failed between the
-        // caller's containsAll check and this swap.
-        if (stagedChunkRunFailed || isStagedGenerationIncomplete(generation)) {
+        String base = getChunkIndexName();
+        String liveTarget = requireResolvedLiveChunkTarget(base);
+        Optional<String> keepLive = reasonToKeepLiveChunks(generation, liveTarget);
+        if (keepLive.isPresent()) {
           LOG.warn(
-              "Staged chunk index {} failed its run or missed chunk writes — promotion blocked; "
-                  + "old chunks stay live and the next staged recreate sweeps it",
-              generation);
+              "Staged chunk index {} is not promoted because {}; the live chunks stay and the "
+                  + "next staged recreate sweeps it",
+              generation,
+              keepLive.get());
         } else {
-          swapInStagedGeneration(generation);
+          swapInStagedGeneration(generation, base, liveTarget);
         }
         stagedChunkIndex = null;
       }
     }
   }
 
-  private void swapInStagedGeneration(String generation) {
-    String base = getChunkIndexName();
-    String oldTarget = requireResolvedLiveChunkTarget(base);
+  private Optional<String> reasonToKeepLiveChunks(String generation, String liveTarget) {
+    Set<String> keptLive = new TreeSet<>(stagedKeptLiveTypes);
+    String reason = null;
+    if (!keptLive.isEmpty()) {
+      reason = "the entity indexes of " + keptLive + " kept their live index";
+    } else if (stagedDeleteMissed || isStagedGenerationIncomplete(generation)) {
+      reason = "a delete of a removed entity's chunks failed";
+    } else if (!stagedCanReplaceLive(generation, liveTarget)) {
+      reason = "it holds no chunks while the live index does, or a count could not be read";
+    }
+    return Optional.ofNullable(reason);
+  }
+
+  /** An empty generation replaces only an empty live index; an unknown count keeps the live one. */
+  private boolean stagedCanReplaceLive(String generation, String liveTarget) {
+    long staged = chunkDocCount(generation);
+    long live = liveTarget == null ? 0 : chunkDocCount(liveTarget);
+    return staged > 0 || (staged == 0 && live == 0);
+  }
+
+  private long chunkDocCount(String indexName) {
+    long count = UNKNOWN_COUNT;
+    try {
+      executeGenericRequest("POST", "/" + indexName + "/_refresh", null);
+      String response = executeGenericRequest("GET", "/" + indexName + "/_count", null);
+      count = MAPPER.readTree(response).path("count").asLong(UNKNOWN_COUNT);
+    } catch (IOException | RuntimeException e) {
+      LOG.warn("Could not count the chunks in {}: {}", indexName, e.getMessage());
+    }
+    return count;
+  }
+
+  private void swapInStagedGeneration(String generation, String base, String oldTarget) {
     try {
       executeGenericRequest(
           "POST",
@@ -664,9 +707,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   /**
-   * Any node whose chunk write into the generation failed flagged it on the index itself (see
-   * {@link #markStagedGenerationIncomplete}), so the coordinator sees participants' failures too.
-   * Strict like the swap: a flag that cannot be read fails the promotion.
+   * Any node whose delete from the generation failed flagged it on the index itself (see {@link
+   * #blockPromotionForMissedDelete}), so the coordinator sees participants' failures too. Strict
+   * like the swap: a flag that cannot be read fails the promotion.
    */
   private boolean isStagedGenerationIncomplete(String generation) {
     boolean incomplete;
@@ -687,17 +730,25 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   }
 
   /**
-   * Records on the staged generation that it lacks a chunk write, so no node promotes it. A chunk
-   * absent from the generation would vanish from retrieval at promotion while the live index still
-   * holds it. The flag is a {@code _meta} entry rather than JVM state because the write may fail on
-   * a participant while the coordinator promotes.
+   * A delete the staged generation missed would bring a removed entity's chunks back at promotion,
+   * so it is the one chunk failure that blocks promotion. The flag is a {@code _meta} entry rather
+   * than JVM state because the delete may fail on a participant while the coordinator promotes.
    */
-  private void markStagedGenerationIncomplete(String generation) {
+  private void blockPromotionForMissedDelete(String generation) {
     if (generation.equals(stagedChunkIndex)) {
-      stagedChunkRunFailed = true;
+      stagedDeleteMissed = true;
     }
-    if (!flagStagedGenerationIncomplete(generation)) {
-      unflaggedGenerations.add(generation);
+    saveMissedDeleteFlagOnce(generation);
+  }
+
+  private void saveMissedDeleteFlagOnce(String generation) {
+    if (!flaggedGenerations.contains(generation)) {
+      if (flagStagedGenerationIncomplete(generation)) {
+        flaggedGenerations.add(generation);
+        unflaggedGenerations.remove(generation);
+      } else {
+        unflaggedGenerations.add(generation);
+      }
     }
   }
 
@@ -710,29 +761,29 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       flagged = true;
     } catch (RuntimeException e) {
       LOG.error(
-          "Could not flag staged chunk index {} as incomplete; this node's partition will fail "
-              + "unless a retry saves the flag",
+          "Could not flag staged chunk index {} as missing a delete; this node's partition will "
+              + "fail unless a retry saves the flag: {}",
           generation,
-          e);
+          e.getMessage());
       flagged = false;
     }
     return flagged;
   }
 
   /**
-   * Fails the caller's partition when this node lost a chunk write into the run's generation and
+   * Fails the caller's partition when this node missed a delete from the run's generation and
    * could not save the flag that blocks its promotion. The failed partition reaches the coordinator
-   * through the job's partition records and fails the entity type, which blocks the swap.
+   * through the job's partition records and keeps the type's live index, which blocks the swap.
    */
   @Override
   public void requireStagedChunkFailuresRecorded() {
     String generation = stagedChunkIndex != null ? stagedChunkIndex : participantStagedTarget;
     if (generation != null && unflaggedGenerations.contains(generation)) {
-      if (flagStagedGenerationIncomplete(generation)) {
-        unflaggedGenerations.remove(generation);
-      } else {
+      saveMissedDeleteFlagOnce(generation);
+      if (unflaggedGenerations.contains(generation)) {
         throw new IllegalStateException(
-            "A chunk write into staged chunk index "
+            UNRECORDED_STAGED_DELETE
+                + ": a delete from staged chunk index "
                 + generation
                 + " failed and the flag that blocks its promotion could not be saved");
       }
@@ -811,6 +862,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   @Override
   public void clearParticipantStagedTarget() {
     participantStagedTarget = null;
+    flaggedGenerations.clear();
     unflaggedGenerations.clear();
   }
 
@@ -1251,24 +1303,37 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   public void updateEntityEmbeddingChunks(EntityInterface<?> entity, String chunkIndexName) {
     try {
-      String parentId = entity.getId().toString();
-      ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
-      String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
-      ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, header);
-      if (refresh == ChunkRefresh.NONE) {
-        LOG.debug("Skipping chunk embedding for {} - content and filters current", parentId);
-      } else {
-        List<Map<String, Object>> chunkDocs =
-            refresh == ChunkRefresh.RESTAMP
-                ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
-                : VectorDocBuilder.fromEntity(entity, embeddingClient);
-        replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
+      if (!writeChunksIfStale(entity, chunkIndexName)) {
+        LOG.debug("Embedding provider unavailable; skipping chunks of {}", entity.getId());
       }
     } catch (EmbeddingUnavailableException unavailable) {
       LOG.debug("Skipping chunk embeddings for {}: {}", entity.getId(), unavailable.getMessage());
     } catch (Exception e) {
       LOG.error("Failed to update chunk embeddings for {}: {}", entity.getId(), e.getMessage(), e);
     }
+  }
+
+  /**
+   * Writes the entity's chunks into {@code chunkIndexName} when they are stale. Returns false,
+   * without calling the provider, when they need re-embedding while the provider is unavailable.
+   */
+  private boolean writeChunksIfStale(EntityInterface<?> entity, String chunkIndexName)
+      throws IOException {
+    String parentId = entity.getId().toString();
+    ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
+    String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
+    ChunkRefresh refresh = chunkRefresh(entity, currentFingerprint, header);
+    boolean written = refresh != ChunkRefresh.REEMBED || embeddingClient.isAvailable();
+    if (refresh == ChunkRefresh.NONE) {
+      LOG.debug("Skipping chunk embedding for {} - content and filters current", parentId);
+    } else if (written) {
+      List<Map<String, Object>> chunkDocs =
+          refresh == ChunkRefresh.RESTAMP
+              ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
+              : VectorDocBuilder.fromEntity(entity, embeddingClient);
+      replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
+    }
+    return written;
   }
 
   /**
@@ -1420,10 +1485,27 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       try {
         replaceChunks(staged, parentId, chunkDocs, previousCount(getChunkHeader(staged, parentId)));
       } catch (IOException | RuntimeException e) {
-        LOG.warn(
-            "Failed to mirror chunks for {} into staged {}: {}", parentId, staged, e.getMessage());
-        markStagedGenerationIncomplete(staged);
+        logMissedMirror(staged, parentId, e);
       }
+    }
+  }
+
+  /**
+   * A missed mirror leaves the generation with the chunks the reindex wrote for the entity, which
+   * the entity's next edit or the next reindex refreshes, so it never blocks promotion. The first
+   * miss per generation on this node is a warning; the rest are debug.
+   */
+  private void logMissedMirror(String staged, String parentId, Exception failure) {
+    if (warnedMirrorGenerations.add(staged)) {
+      LOG.warn(
+          "Could not mirror a live edit of {} into staged chunk index {}: {}. It keeps the chunks "
+              + "the reindex wrote until the entity's next edit or the next reindex; later missed "
+              + "mirrors into it are logged at debug",
+          parentId,
+          staged,
+          failure.getMessage());
+    } else {
+      LOG.debug("Could not mirror {} into staged {}: {}", parentId, staged, failure.getMessage());
     }
   }
 

@@ -19,6 +19,12 @@ public interface VectorIndexService {
 
   String VECTOR_EMBEDDING_ALIAS = "dataAssetEmbeddings";
 
+  /**
+   * Starts the error of a partition failed by {@link #requireStagedChunkFailuresRecorded}, so the
+   * coordinator can keep the run's chunk generation from going live.
+   */
+  String UNRECORDED_STAGED_DELETE = "Unrecorded staged chunk delete";
+
   EmbeddingClient getEmbeddingClient();
 
   Map<String, Object> generateEmbeddingFields(EntityInterface<?> entity);
@@ -51,15 +57,17 @@ public interface VectorIndexService {
   /**
    * Reindex-sink write of prebuilt chunk documents. {@code stagedChunkTarget} is the generation
    * the run staged with {@link #beginStagedChunkRecreate}, or null to write to the live index.
+   * Returns false when the chunks could not be written, a miss the caller counts and retries.
    */
-  void writeEntityChunks(
+  boolean writeEntityChunks(
       String parentId, List<Map<String, Object>> chunkDocs, String stagedChunkTarget);
 
   /**
    * Reindex-sink backfill of chunk documents for an entity whose stored embedding is reused, into
-   * {@code stagedChunkTarget} or, when null, the live index.
+   * {@code stagedChunkTarget} or, when null, the live index. Returns false when the chunks could
+   * not be written, or needed the embedding provider while it was unavailable.
    */
-  void backfillEntityChunks(EntityInterface<?> entity, String stagedChunkTarget);
+  boolean backfillEntityChunks(EntityInterface<?> entity, String stagedChunkTarget);
 
   /**
    * The stored entity-doc embeddings a reindex may reuse, keyed by entity id: those whose stored
@@ -88,10 +96,12 @@ public interface VectorIndexService {
   void clearStagedChunkState(String generation);
 
   /**
-   * Records one entity type's outcome for the run that staged {@code runGeneration}; the staged
-   * generation is promoted once every expected type has succeeded.
+   * Records whether one entity type's staged entity index replaced its live index, for the run
+   * that staged {@code runGeneration}. Once every expected type has finalized, the staged chunk
+   * generation is promoted when all their entity indexes were.
    */
-  void markEntityTypeReindexed(String entityType, boolean success, String runGeneration);
+  void markEntityTypeReindexed(
+      String entityType, boolean entityIndexPromoted, String runGeneration);
 
   /** Routes this participant node's live chunk writes to the run's staged generation as well. */
   void latchParticipantStagedTarget(String staged);
@@ -99,7 +109,7 @@ public interface VectorIndexService {
   void clearParticipantStagedTarget();
 
   /**
-   * Throws when this node lost a chunk write into the run's staged generation without recording
+   * Throws when this node missed a delete from the run's staged generation and could not record
    * it, so the caller's partition fails and the generation is not promoted.
    */
   void requireStagedChunkFailuresRecorded();

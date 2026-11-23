@@ -31,6 +31,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -625,55 +626,192 @@ class ElasticSearchVectorServiceTest {
   }
 
   @Test
-  void aChunkWriteTheCoordinatorLostBlocksPromotionWithAWarning() throws Exception {
+  void aMissedChunkWriteNeverBlocksPromotion() throws Exception {
     when(mockEmbeddingClient.isAvailable()).thenReturn(true);
     when(mockEmbeddingClient.getDimension()).thenReturn(3);
     Table table = orders();
-    answerByEndpointSuffix(
-        Map.of(
-            "/_alias", response(404, "{\"status\":404}"),
-            "/_bulk", response(503, "{\"error\":\"unavailable\"}")));
+    answerByEndpointContaining(
+        freshInstallRules("/_bulk", response(503, "{\"error\":\"unavailable\"}")));
     String staged = vectorService.beginStagedChunkRecreate();
     assertNotNull(staged);
 
-    vectorService.writeEntityChunks(
-        table.getId().toString(), VectorDocBuilder.fromEntity(table, mockEmbeddingClient), staged);
-    AvailableEntityTypes.SET.forEach(
-        type -> vectorService.markEntityTypeReindexed(type, true, staged));
+    boolean written =
+        vectorService.writeEntityChunks(
+            table.getId().toString(),
+            VectorDocBuilder.fromEntity(table, mockEmbeddingClient),
+            staged);
+    promoteEveryEntityIndex(staged);
 
-    JsonNode flag = bodyOf(sentRequest("PUT", "/" + staged + "/_mapping"));
-    assertTrue(flag.path("_meta").path("incompleteChunkWrites").asBoolean());
-    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
-    verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
-    assertTrue(
-        sent.getAllValues().stream().noneMatch(r -> r.getEndpoint().equals("/_aliases")),
-        "no alias swap");
-    assertTrue(logged(Level.WARN, "promotion blocked"), "the blocked promotion is logged");
+    assertFalse(written, "the caller is told about the miss, to count and retry it");
+    assertEquals(0, sentCount("PUT", "/" + staged + "/_mapping"), "a missed write saves no flag");
+    assertEquals(1, sentCount("POST", "/_aliases"), "the generation goes live");
   }
 
   @Test
-  void aParticipantThatCannotSaveTheFlagFailsItsPartitionUntilARetrySavesIt() throws Exception {
+  void aProviderFailureWithNoLiveChunksStillPromotes() throws Exception {
     when(mockEmbeddingClient.isAvailable()).thenReturn(true);
-    when(mockEmbeddingClient.getDimension()).thenReturn(3);
-    Table table = orders();
+    when(mockEmbeddingClient.embed(any(String.class))).thenThrow(new IllegalStateException("429"));
+    answerByEndpointContaining(freshInstallRules(LIVE_DOC, response(404, "{}")));
+    String staged = vectorService.beginStagedChunkRecreate();
+
+    boolean written = vectorService.backfillEntityChunks(orders(), staged);
+    promoteEveryEntityIndex(staged);
+
+    assertFalse(written);
+    assertEquals(0, sentCount("PUT", "/" + staged + "/_mapping"));
+    assertEquals(1, sentCount("POST", "/_aliases"), "the generation goes live");
+  }
+
+  @Test
+  void anOpenCircuitSkipsTheProviderCallAndReportsTheMiss() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(false);
     String staged = vectorService.getChunkIndexName() + "_g1";
     vectorService.latchParticipantStagedTarget(staged);
-    answerByEndpointSuffix(
-        Map.of(
+    answerByEndpointContaining(rules(LIVE_DOC, response(404, "{}")));
+
+    boolean written = vectorService.backfillEntityChunks(orders(), staged);
+
+    assertFalse(written);
+    verify(mockEmbeddingClient, never()).embed(any(String.class));
+  }
+
+  @Test
+  void aFailedDeleteBlocksPromotionAndSavesItsFlagOnce() throws Exception {
+    answerByEndpointContaining(
+        freshInstallRules(
+            "/_bulk", response(503, "{\"error\":\"unavailable\"}"), "/_doc/", chunkHeader()));
+    String staged = vectorService.beginStagedChunkRecreate();
+
+    for (int i = 0; i < 3; i++) {
+      vectorService.deleteEntityChunks(UUID.randomUUID().toString());
+    }
+    promoteEveryEntityIndex(staged);
+
+    JsonNode flag = bodyOf(sentRequest("PUT", "/" + staged + "/_mapping"));
+    assertTrue(flag.path("_meta").path("incompleteChunkWrites").asBoolean());
+    assertEquals(1, sentCount("PUT", "/" + staged + "/_mapping"), "one flag per generation");
+    assertEquals(0, sentCount("POST", "/_aliases"), "no alias swap");
+    assertTrue(logged(Level.WARN, "a delete of a removed entity's chunks failed"));
+  }
+
+  @Test
+  void aParticipantThatCannotSaveTheDeleteFlagFailsItsPartitionUntilARetrySavesIt()
+      throws Exception {
+    String staged = vectorService.getChunkIndexName() + "_g1";
+    vectorService.latchParticipantStagedTarget(staged);
+    answerByEndpointContaining(
+        rules(
             "/_bulk",
             response(503, "{\"error\":\"unavailable\"}"),
             "/" + staged + "/_mapping",
-            response(503, "{\"error\":\"unavailable\"}")));
+            response(503, "{\"error\":\"unavailable\"}"),
+            "/_doc/",
+            chunkHeader()));
 
-    vectorService.writeEntityChunks(
-        table.getId().toString(), VectorDocBuilder.fromEntity(table, mockEmbeddingClient), staged);
+    vectorService.deleteEntityChunks(orders().getId().toString());
 
     assertThrows(IllegalStateException.class, vectorService::requireStagedChunkFailuresRecorded);
 
-    answerByEndpointSuffix(Map.of());
+    answerByEndpointContaining(rules());
     assertDoesNotThrow(vectorService::requireStagedChunkFailuresRecorded);
     JsonNode flag = bodyOf(sentRequest("PUT", "/" + staged + "/_mapping"));
     assertTrue(flag.path("_meta").path("incompleteChunkWrites").asBoolean());
+  }
+
+  @Test
+  void aTypeWhoseEntityIndexStayedLiveKeepsTheLiveChunks() throws Exception {
+    answerByEndpointContaining(freshInstallRules());
+    String staged = vectorService.beginStagedChunkRecreate();
+
+    AvailableEntityTypes.SET.forEach(
+        type -> vectorService.markEntityTypeReindexed(type, !"table".equals(type), staged));
+
+    assertEquals(0, sentCount("POST", "/_aliases"), "no alias swap");
+    assertTrue(logged(Level.WARN, "the entity indexes of [table] kept their live index"));
+  }
+
+  @Test
+  void anEmptyGenerationNeverReplacesANonEmptyLiveOne() throws Exception {
+    String live = vectorService.getChunkIndexName();
+    answerByEndpointContaining(
+        rules(
+            "/_aliases",
+            response(200, "{}"),
+            "/_alias",
+            response(200, "{\"" + live + "\":{\"aliases\":{}}}"),
+            "/" + live + "/_count",
+            response(200, "{\"count\":5}"),
+            "/_count",
+            response(200, "{\"count\":0}")));
+    String staged = vectorService.beginStagedChunkRecreate();
+
+    promoteEveryEntityIndex(staged);
+
+    assertEquals(0, sentCount("POST", "/_aliases"), "the live chunks stay");
+    assertTrue(logged(Level.WARN, "holds no chunks while the live index does"));
+  }
+
+  @Test
+  void aChunkCountThatCannotBeReadKeepsTheLiveChunks() throws Exception {
+    answerByEndpointContaining(
+        freshInstallRules("/_count", response(503, "{\"error\":\"unavailable\"}")));
+    String staged = vectorService.beginStagedChunkRecreate();
+
+    promoteEveryEntityIndex(staged);
+
+    assertEquals(0, sentCount("POST", "/_aliases"), "the live chunks stay");
+  }
+
+  private static final String LIVE_DOC = "/data_asset_embeddings_chunks/_doc/";
+
+  private void promoteEveryEntityIndex(String staged) {
+    AvailableEntityTypes.SET.forEach(
+        type -> vectorService.markEntityTypeReindexed(type, true, staged));
+  }
+
+  /** No chunk index exists yet, and any staged generation counts one chunk. */
+  private static Map<String, Response> freshInstallRules(Object... first) throws Exception {
+    Map<String, Response> rules = rules(first);
+    rules.putIfAbsent("/_aliases", response(200, "{}"));
+    rules.putIfAbsent("/_alias", response(404, "{\"status\":404}"));
+    rules.putIfAbsent("/_count", response(200, "{\"count\":1}"));
+    return rules;
+  }
+
+  private static Map<String, Response> rules(Object... endpointAndResponse) {
+    Map<String, Response> rules = new LinkedHashMap<>();
+    for (int i = 0; i < endpointAndResponse.length; i += 2) {
+      rules.put((String) endpointAndResponse[i], (Response) endpointAndResponse[i + 1]);
+    }
+    return rules;
+  }
+
+  private static Response chunkHeader() throws Exception {
+    return response(200, "{\"found\":true,\"_source\":{\"fingerprint\":\"fp\",\"chunkCount\":1}}");
+  }
+
+  private long sentCount(String method, String endpoint) throws Exception {
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
+    return sent.getAllValues().stream()
+        .filter(request -> method.equals(request.getMethod()))
+        .filter(request -> endpoint.equals(request.getEndpoint()))
+        .count();
+  }
+
+  /** Answers a request from the first rule its endpoint contains, and any other with 200 and {}. */
+  private void answerByEndpointContaining(Map<String, Response> rules) throws Exception {
+    Response ok = response(200, "{}");
+    when(mockRestClient.performRequest(any(Request.class)))
+        .thenAnswer(
+            invocation -> {
+              String endpoint = invocation.<Request>getArgument(0).getEndpoint();
+              return rules.entrySet().stream()
+                  .filter(rule -> endpoint.contains(rule.getKey()))
+                  .map(Map.Entry::getValue)
+                  .findFirst()
+                  .orElse(ok);
+            });
   }
 
   private static Table orders() {
