@@ -12,23 +12,35 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 
 class IngestionPipelineRepositoryTest {
@@ -425,5 +437,114 @@ class IngestionPipelineRepositoryTest {
     pipeline.setService(serviceRef);
 
     return pipeline;
+  }
+
+  private static TestSuite tableSuite(String tableFqn) {
+    return new TestSuite()
+        .withBasic(true)
+        .withBasicEntityReference(
+            new EntityReference().withType(Entity.TABLE).withFullyQualifiedName(tableFqn));
+  }
+
+  @Test
+  void deploymentRequiresMatchingSuiteTable() {
+    final TestSuite suite = tableSuite("warehouse.db.schema.orders");
+    final IngestionPipeline pipeline =
+        suitePipeline(
+            new TestSuitePipeline().withEntityFullyQualifiedName("warehouse.db.schema.items"));
+    final IngestionPipelineRepository deploymentRepository =
+        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+
+    final BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () -> deploymentRepository.deployIngestionPipeline(pipeline, suite));
+
+    assertEquals("TestSuite pipeline table must match its test suite", exception.getMessage());
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("testSuiteConfigurations")
+  void validatesTestSuiteConfiguration(
+      String name, EntityInterface<?> parent, IngestionPipeline pipeline, boolean valid) {
+    if (valid) {
+      assertDoesNotThrow(
+          () -> IngestionPipelineRepository.validateTestSuiteConfig(pipeline, parent));
+    } else {
+      assertThrows(
+          BadRequestException.class,
+          () -> IngestionPipelineRepository.validateTestSuiteConfig(pipeline, parent));
+    }
+  }
+
+  private static Stream<Arguments> testSuiteConfigurations() {
+    final String tableFqn = "warehouse.db.\"schema.name\".orders";
+    final TestSuite suite = tableSuite(tableFqn);
+    final TestSuite logical = new TestSuite().withBasic(false);
+    final TestSuitePipeline matching =
+        new TestSuitePipeline().withEntityFullyQualifiedName(tableFqn);
+    return Stream.of(
+        Arguments.of("matching table", suite, suitePipeline(matching), true),
+        Arguments.of(
+            "matching raw config",
+            suite,
+            suitePipeline(Map.of("type", "TestSuite", "entityFullyQualifiedName", tableFqn)),
+            true),
+        Arguments.of("omitted table", suite, suitePipeline(new TestSuitePipeline()), true),
+        Arguments.of("logical suite", logical, suitePipeline(new TestSuitePipeline()), true),
+        Arguments.of("logical suite with table", logical, suitePipeline(matching), false),
+        Arguments.of(
+            "missing table reference",
+            new TestSuite().withBasic(true),
+            suitePipeline(new TestSuitePipeline()),
+            false),
+        Arguments.of("missing table name", tableSuite(null), suitePipeline(matching), false),
+        Arguments.of(
+            "blank table",
+            suite,
+            suitePipeline(new TestSuitePipeline().withEntityFullyQualifiedName(" ")),
+            false),
+        Arguments.of(
+            "different table",
+            suite,
+            suitePipeline(
+                new TestSuitePipeline().withEntityFullyQualifiedName("other.db.schema.table")),
+            false),
+        Arguments.of(
+            "non-string table",
+            suite,
+            suitePipeline(Map.of("type", "TestSuite", "entityFullyQualifiedName", 42)),
+            false),
+        Arguments.of("database parent", new DatabaseService(), suitePipeline(matching), false),
+        Arguments.of("missing parent", null, suitePipeline(matching), false),
+        Arguments.of(
+            "different source type",
+            suite,
+            suitePipeline(new DatabaseServiceMetadataPipeline()),
+            false),
+        Arguments.of(
+            "other pipeline type with suite parent",
+            suite,
+            suitePipeline(matching).withPipelineType(PipelineType.METADATA),
+            true),
+        Arguments.of(
+            "other pipeline type with suite config",
+            new DatabaseService(),
+            suitePipeline(matching).withPipelineType(PipelineType.METADATA),
+            true),
+        Arguments.of(
+            "metadata pipeline",
+            new DatabaseService(),
+            pipelineWithConfig(new DatabaseServiceMetadataPipeline())
+                .withPipelineType(PipelineType.METADATA),
+            true));
+  }
+
+  private static IngestionPipeline suitePipeline(Object config) {
+    return pipelineWithConfig(config).withPipelineType(PipelineType.TEST_SUITE);
+  }
+
+  private static IngestionPipeline pipelineWithConfig(Object config) {
+    return createBasicPipeline().withSourceConfig(new SourceConfig().withConfig(config));
   }
 }

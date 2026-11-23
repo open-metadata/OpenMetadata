@@ -1565,13 +1565,16 @@ public class IngestionPipelineResource
       UUID id, UriInfo uriInfo, SecurityContext securityContext, String botName) {
     OperationContext operationContext = new OperationContext(entityType, MetadataOperation.TRIGGER);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    Fields fields = getFields(FIELD_OWNERS);
+    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
+    ServiceEntityInterface service =
+        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
+    IngestionPipelineRepository.validateTestSuiteConfig(ingestionPipeline, service);
     if (pipelineServiceClient == null) {
       return new PipelineServiceClientResponse()
           .withCode(200)
           .withReason("Pipeline Client Disabled");
     }
-    Fields fields = getFields(FIELD_OWNERS);
-    IngestionPipeline ingestionPipeline = repository.get(uriInfo, id, fields);
     CreateResourceContext<IngestionPipeline> createResourceContext =
         new CreateResourceContext<>(entityType, ingestionPipeline);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
@@ -1584,8 +1587,6 @@ public class IngestionPipelineResource
           new OpenMetadataConnectionBuilder(openMetadataApplicationConfig, botName).build());
     }
     decryptOrNullify(securityContext, ingestionPipeline, true);
-    ServiceEntityInterface service =
-        Entity.getEntity(ingestionPipeline.getService(), "ingestionRunner", Include.NON_DELETED);
     PipelineServiceClientResponse response =
         pipelineServiceClient.runPipeline(ingestionPipeline, service);
     repository.recordQueuedPipelineStatus(

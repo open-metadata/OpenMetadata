@@ -1215,6 +1215,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     IngestionPipeline pipeline =
         Entity.getEntity(testSuite.getPipelines().get(0), "*", Include.NON_DELETED);
 
+    IngestionPipelineRepository.validateTestSuiteConfig(pipeline, testSuite);
+
     // ensure pipeline is deployed before running
     // we deploy the pipeline during post create
     if (!pipeline.getDeployed()) {

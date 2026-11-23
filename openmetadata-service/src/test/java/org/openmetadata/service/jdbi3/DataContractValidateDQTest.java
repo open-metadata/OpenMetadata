@@ -16,24 +16,37 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.QualityValidation;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.BadRequestException;
 
 /**
  * Regression tests for {@code DataContractRepository.validateDQ}. The method is private and the
@@ -63,6 +76,44 @@ class DataContractValidateDQTest {
 
   private QualityValidation validateDQ(TestSuite testSuite) throws Exception {
     return (QualityValidation) validateDQ.invoke(dataContractRepository, testSuite);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void contractLaunchRequiresConsistentSuiteConfig(boolean deployed) {
+    final EntityReference suiteReference =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEST_SUITE);
+    final EntityReference pipelineReference =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.INGESTION_PIPELINE);
+    final TestSuite suite =
+        new TestSuite().withBasic(false).withPipelines(List.of(pipelineReference));
+    final IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withPipelineType(PipelineType.TEST_SUITE)
+            .withDeployed(deployed)
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(
+                        new TestSuitePipeline()
+                            .withEntityFullyQualifiedName("warehouse.db.schema.orders")));
+    final DataContract contract = new DataContract().withTestSuite(suiteReference);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(() -> Entity.getEntity(suiteReference, "tests,pipelines", Include.NON_DELETED))
+          .thenReturn(suite);
+      entity
+          .when(() -> Entity.getEntity(pipelineReference, "*", Include.NON_DELETED))
+          .thenReturn(pipeline);
+
+      final BadRequestException exception =
+          assertThrows(
+              BadRequestException.class,
+              () -> dataContractRepository.deployAndTriggerDQValidation(contract));
+
+      assertEquals(
+          "Logical test suite pipelines must omit entityFullyQualifiedName",
+          exception.getMessage());
+    }
   }
 
   private EntityReference ref(String fqn) {
