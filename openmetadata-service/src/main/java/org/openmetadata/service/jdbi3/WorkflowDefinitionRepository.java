@@ -115,7 +115,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       } catch (JsonParsingException e) {
         LOG.error(
             "Skipping workflow '{}': this server cannot read its stored definition",
-            JsonUtils.readTree(json).path("fullyQualifiedName").asText(),
+            JsonUtils.readTree(json).path("name").asText(),
             e);
       }
     }
