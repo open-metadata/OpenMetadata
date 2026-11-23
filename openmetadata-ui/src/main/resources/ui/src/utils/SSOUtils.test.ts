@@ -761,6 +761,37 @@ describe('SSOUtils', () => {
       }
     );
 
+    it.each([
+      'https://saml.example.com/api/v1/saml/acs',
+      'https://proxy.example.com/api/v1/saml/acs',
+    ])(
+      'replaces a browser callback an earlier save set to the ACS URL (%s)',
+      (savedCallback) => {
+        const data = getDefaultsForProvider(
+          AuthProvider.Saml,
+          ClientType.Public
+        );
+        const auth = data.authenticationConfiguration;
+        const sp = auth.samlConfiguration?.sp;
+
+        if (!sp) {
+          throw new Error('Missing SAML SP defaults');
+        }
+        auth.callbackUrl = savedCallback;
+        sp.callback = savedCallback;
+        sp.acs = 'https://saml.example.com/api/v1/saml/acs';
+
+        const result = cleanupProviderSpecificFields(data, AuthProvider.Saml);
+        const cleaned = result?.authenticationConfiguration;
+
+        expect(cleaned?.samlConfiguration?.sp?.acs).toBe(sp.acs);
+        expect(cleaned?.samlConfiguration?.sp?.callback).toBe(
+          'https://saml.example.com/callback'
+        );
+        expect(cleaned?.callbackUrl).toBe('https://saml.example.com/callback');
+      }
+    );
+
     it('should handle LDAP trustStore cleanup by format', () => {
       const data: FormData = {
         authenticationConfiguration: {
