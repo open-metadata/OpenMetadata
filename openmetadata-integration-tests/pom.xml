@@ -18,12 +18,14 @@
     <integrationTests.parallelStrategy>dynamic</integrationTests.parallelStrategy>
     <integrationTests.parallelism>4</integrationTests.parallelism>
     <integrationTests.maxPoolSize>16</integrationTests.maxPoolSize>
-    <!-- Failsafe 3.6 lets an explicit <skipITs> win over -DskipTests, so build-only runs
-         (mvn -DskipTests install) would start the whole suite. Default both executions to
-         skipTests; every integrationTests.lane profile sets them explicitly. -->
+    <!-- Failsafe 3.6 (SUREFIRE-823) skips only on -DskipITs. Builds that pass just -DskipTests
+         (sonar, Collate's compatibility build, the Playwright nightly) still mean "no ITs", so
+         skipITs follows skipTests. The lane executions set <skipITs> explicitly, which overrides
+         -DskipITs, so they default to it too; each integrationTests.lane profile sets both. -->
     <skipTests>false</skipTests>
-    <integrationTests.skipIsolated>${skipTests}</integrationTests.skipIsolated>
-    <integrationTests.skipParallel>${skipTests}</integrationTests.skipParallel>
+    <skipITs>${skipTests}</skipITs>
+    <integrationTests.skipIsolated>${skipITs}</integrationTests.skipIsolated>
+    <integrationTests.skipParallel>${skipITs}</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
     <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CsvExportMultiNodeIT,RdfDisabledMarkLifecycleIT</integrationTests.multiNodeTests>
