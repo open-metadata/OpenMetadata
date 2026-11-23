@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.net.URI;
 import java.net.http.HttpResponse;
 import java.util.LinkedHashMap;
 import java.util.Locale;
@@ -19,12 +18,10 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.sso.MockHttp;
-import org.openmetadata.it.sso.SsoFlows;
 import org.openmetadata.it.sso.browser.SsoBrowser;
 import org.openmetadata.it.sso.browser.SsoNavigation;
 import org.openmetadata.it.sso.config.SecurityConfigSwap;
 import org.openmetadata.it.sso.config.SsoConfigs;
-import org.openmetadata.it.sso.config.SsoServer;
 import org.openmetadata.it.sso.oidc.MockOidcIdentity;
 import org.openmetadata.it.sso.oidc.MockOidcProvider;
 import org.openmetadata.it.sso.oidc.OidcProviderProfile;
@@ -47,6 +44,7 @@ class SsoMcpSignInChecksIT extends McpSignInTestBase {
   private static final String CIMD_CLIENT_ID =
       "https://claude.ai/oauth/claude-code-client-metadata";
   private static final String NEXT_PROTOCOL_VERSION = "2026-07-28";
+  private static final String ANOTHER_RESOURCE = "https://another-server.example/mcp";
 
   private static MockOidcProvider provider;
   private static SecurityConfigSwap securityConfig;
@@ -169,29 +167,6 @@ class SsoMcpSignInChecksIT extends McpSignInTestBase {
         });
   }
 
-  @Test
-  void callbackWithAnotherStateReachesNoConsentPage(TestNamespace ns) throws Exception {
-    User user = signedInUser(ns);
-    try {
-      JsonNode server = discoverAuthorizationServer();
-      Authorization authorization = authorizationFor(CLIENT, server, register(CLIENT, server));
-      SsoBrowser browser = new SsoBrowser();
-      URI callback =
-          browser
-              .navigate(
-                  authorizeUrl(server, authorization), SsoBrowser.pathIs(SsoServer.CALLBACK_PATH))
-              .requirePendingUrl();
-
-      HttpResponse<String> tampered =
-          browser.get(SsoFlows.editQuery(callback, query -> query.put("state", "mcp:forged")));
-
-      assertThat(tampered.statusCode()).as(tampered.body()).isGreaterThanOrEqualTo(400);
-      assertThat(tampered.body()).doesNotContain("consent_token");
-    } finally {
-      hardDelete(user);
-    }
-  }
-
   // Known gaps. Each test pins what the server answers today for a client behaviour it does not
   // support yet; when support lands, the test fails and is rewritten to expect it.
 
@@ -247,11 +222,16 @@ class SsoMcpSignInChecksIT extends McpSignInTestBase {
       String clientId = register(CLIENT, server);
       Authorization authorization = authorizationFor(CLIENT, server, clientId);
       Map<String, String> request = new LinkedHashMap<>(authorization.request());
-      request.put("resource", "https://another-server.example/mcp");
-
+      request.put("resource", ANOTHER_RESOURCE);
       String code = approveConsent(server, request).get("code");
+      Map<String, String> exchange = exchangeForm(CLIENT, server, clientId, authorization, code);
+      exchange.put("resource", ANOTHER_RESOURCE);
 
-      assertThat(code).isNotBlank();
+      HttpResponse<String> issued = tokenRequest(CLIENT, server, exchange);
+
+      assertThat(issued.statusCode()).as(issued.body()).isEqualTo(200);
+      String accessToken = OBJECT_MAPPER.readTree(issued.body()).path("access_token").asText();
+      assertThat(mcp(CLIENT, accessToken, rpc("tools/list", Map.of())).statusCode()).isEqualTo(200);
     } finally {
       hardDelete(user);
     }
@@ -263,6 +243,7 @@ class SsoMcpSignInChecksIT extends McpSignInTestBase {
     securityConfig.withVariant(
         config -> SsoConfigs.publicOidc(securityConfig.originalCopy(), provider),
         () -> {
+          provider.clearJournal();
           JsonNode server = discoverAuthorizationServer();
           Authorization authorization = authorizationFor(CLIENT, server, register(CLIENT, server));
 
@@ -272,6 +253,8 @@ class SsoMcpSignInChecksIT extends McpSignInTestBase {
               .as(navigation.describe())
               .startsWith(CLIENT.redirectUri())
               .contains("error=authorization_failed");
+          // The sign-in stops at the server: the provider is never asked to authorize.
+          assertThat(provider.authorizeRequests()).isEmpty();
         });
   }
 

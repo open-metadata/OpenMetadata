@@ -13,11 +13,14 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.AfterAll;
 import org.openmetadata.it.sso.MockHttp;
 import org.openmetadata.it.sso.browser.SsoBrowser;
 import org.openmetadata.it.sso.browser.SsoNavigation;
@@ -25,6 +28,7 @@ import org.openmetadata.it.sso.config.SsoServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.service.Entity;
 
 /**
  * The steps an MCP client and the person using it take to sign in to {@code /mcp}: discovery,
@@ -53,6 +57,7 @@ abstract class McpSignInTestBase extends McpTestBase {
   protected static final String PASSWORD = "Mcp-Client-It-Passw0rd!";
   protected static final SecureRandom RANDOM = new SecureRandom();
   private static final AtomicInteger REGISTRATIONS = new AtomicInteger();
+  private static final List<String> REGISTERED_CLIENTS = new CopyOnWriteArrayList<>();
   private static String clientAddress = "203.0.113.254";
 
   /** How the person signs in once the authorization request is made; returns the callback's parameters. */
@@ -120,6 +125,12 @@ abstract class McpSignInTestBase extends McpTestBase {
     return server;
   }
 
+  @AfterAll
+  static void deleteRegisteredClients() {
+    REGISTERED_CLIENTS.forEach(Entity.getCollectionDAO().oauthClientDAO()::deleteWithGrants);
+    REGISTERED_CLIENTS.clear();
+  }
+
   protected String register(McpClientProfile profile, JsonNode server) throws Exception {
     clientAddress = "203.0.113." + (1 + REGISTRATIONS.getAndIncrement() % 250);
     HttpResponse<String> response =
@@ -133,7 +144,9 @@ abstract class McpSignInTestBase extends McpTestBase {
     assertThat(response.statusCode()).as(response.body()).isEqualTo(201);
     JsonNode client = OBJECT_MAPPER.readTree(response.body());
     assertThat(client.hasNonNull("client_secret")).as("a public client gets no secret").isFalse();
-    return client.path("client_id").asText();
+    String clientId = client.path("client_id").asText();
+    REGISTERED_CLIENTS.add(clientId);
+    return clientId;
   }
 
   protected Grant signIn(

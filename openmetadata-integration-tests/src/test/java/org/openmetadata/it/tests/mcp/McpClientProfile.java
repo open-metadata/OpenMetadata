@@ -9,6 +9,9 @@ import java.util.Map;
  * what is distinct about each: the registration body, the redirect URI, the protocol version and
  * whether it sends the RFC 8707 {@code resource} parameter.
  *
+ * <p>Where a client does not publish the protocol version it sends, the row carries one the server
+ * supports and says so in a comment.
+ *
  * <p>A passing row proves the server accepts the recorded profile, not that today's release of the
  * application works. {@link #source()} and {@link #verifiedOn()} say where a row came from and when,
  * so it can be refreshed.
