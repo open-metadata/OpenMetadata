@@ -3153,8 +3153,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     String timestamp = "updated_at";
     List<Column> columns =
         List.of(new Column().withName(timestamp).withDataType(ColumnDataType.TIMESTAMP));
-    Table source = createTestTable(ns, columns);
-    Table target = createTestTable(ns, columns);
+    Table table = createTestTable(ns, columns);
     OpenMetadataClient client = SdkClients.adminClient();
     ContractSLA freshness =
         new ContractSLA().withRefreshFrequency(minuteFrequency(15)).withColumnName(timestamp);
@@ -3162,9 +3161,10 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         createEntity(
             new CreateDataContract()
                 .withName(ns.prefix("minute_export"))
-                .withEntity(source.getEntityReference())
+                .withEntity(table.getEntityReference())
                 .withSla(freshness));
 
+    JsonNode clearSla = JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/sla\"}]");
     for (String version : ODCSProfiles.supportedVersions()) {
       for (boolean yaml : List.of(false, true)) {
         String route = yaml ? "/odcs/yaml" : "/odcs";
@@ -3175,12 +3175,16 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         assertEquals(List.of(), ODCSProfiles.validate(version, tree));
         assertMinuteFreshnessProperty(version, tree.at("/slaProperties/0"), timestamp);
 
-        DataContract imported = reimportMinuteFreshness(client, target, route, document, yaml);
+        DataContract cleared = client.dataContracts().patch(contract.getId(), clearSla);
+        assertNull(cleared.getSla(), version);
+        DataContract imported = reimportMinuteFreshness(client, table, route, document, yaml);
+        assertEquals(contract.getId(), imported.getId(), version);
+        DataContract stored = client.dataContracts().get(contract.getId().toString(), "sla");
         assertEquals(
-            freshness.getRefreshFrequency(), imported.getSla().getRefreshFrequency(), version);
+            freshness.getRefreshFrequency(), stored.getSla().getRefreshFrequency(), version);
         assertEquals(
-            FullyQualifiedName.add(target.getFullyQualifiedName(), timestamp),
-            imported.getSla().getColumnName(),
+            FullyQualifiedName.add(table.getFullyQualifiedName(), timestamp),
+            stored.getSla().getColumnName(),
             version);
       }
     }
@@ -3202,10 +3206,10 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   private static DataContract reimportMinuteFreshness(
-      OpenMetadataClient client, Table target, String route, String document, boolean yaml) {
+      OpenMetadataClient client, Table table, String route, String document, boolean yaml) {
     RequestOptions options =
         RequestOptions.builder()
-            .queryParam("entityId", target.getId().toString())
+            .queryParam("entityId", table.getId().toString())
             .queryParam("entityType", "table")
             .queryParam("createTestCases", "false")
             .queryParam("mode", "replace")
