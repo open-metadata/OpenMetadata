@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { KEY_HINT } from './GlobalSearch.constants';
 import GlobalSearchFooter, {
   GlobalSearchFooterProps,
 } from './GlobalSearchFooter';
@@ -57,7 +58,7 @@ describe('GlobalSearchFooter', () => {
 
     expect(screen.getByText('label.open')).toBeInTheDocument();
     expect(screen.getByText('Ask AI')).toBeInTheDocument();
-    expect(screen.getByText('⌘')).toBeInTheDocument();
+    expect(screen.getByText(KEY_HINT.mod)).toBeInTheDocument();
     expect(screen.getAllByText('↵')).toHaveLength(2);
     expect(screen.getByText('label.filter-plural')).toBeInTheDocument();
     expect(screen.getByText('label.clear')).toBeInTheDocument();

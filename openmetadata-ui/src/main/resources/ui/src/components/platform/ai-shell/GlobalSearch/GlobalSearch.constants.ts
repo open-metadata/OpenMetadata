@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isAppleDevice } from '@react-aria/utils';
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
 import { TaskStatus, TaskType } from '../../../../generated/entity/tasks/task';
 
@@ -46,13 +47,19 @@ export const DEFAULT_ASSET_SORT = '_score';
 export const TASK_STATUS_OPTIONS = Object.values(TaskStatus);
 export const TASK_TYPE_OPTIONS = Object.values(TaskType);
 
+const IS_APPLE = isAppleDevice();
+
 /** Key glyphs shown in shortcut hints; symbols, not translatable copy. */
 export const KEY_HINT = {
-  mod: '⌘',
+  mod: IS_APPLE ? '⌘' : 'Ctrl',
   enter: '↵',
   tab: 'Tab',
   esc: 'esc',
 } as const;
+
+/** The handler accepts ⌘ or Ctrl; the label names the one this platform uses. */
+export const OPEN_SEARCH_SHORTCUT = IS_APPLE ? '⌘K' : 'Ctrl+K';
+export const OPEN_SCOPED_SEARCH_SHORTCUT = IS_APPLE ? '⌥⌘K' : 'Ctrl+Alt+K';
 
 export const QUERY_ACTION_OPTION_ID = 'global-search-query-action';
 export const RESULTS_LIST_ID = 'global-search-results';

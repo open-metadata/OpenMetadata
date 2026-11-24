@@ -14,9 +14,8 @@ import { Input } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
 import { FocusEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { OPEN_SEARCH_SHORTCUT } from '../GlobalSearch/GlobalSearch.constants';
 import { useGlobalSearchStore } from '../GlobalSearch/useGlobalSearchStore';
-
-const SHORTCUT = '⌘K';
 
 /**
  * The search field at the top of the expanded sidebar. It is only a trigger:
@@ -35,11 +34,11 @@ const SidebarSearchButton = () => {
   return (
     <Input
       isReadOnly
-      aria-label={`${t('label.search')} (${SHORTCUT})`}
+      aria-label={`${t('label.search')} (${OPEN_SEARCH_SHORTCUT})`}
       icon={Search}
       inputDataTestId="ask-nav-item-search"
       placeholder={t('label.search')}
-      shortcut={SHORTCUT}
+      shortcut={OPEN_SEARCH_SHORTCUT}
       size="md"
       // The prototype's resting glow around the field.
       wrapperClassName="tw:shadow-xs tw:outline-4 tw:outline-utility-brand-50"

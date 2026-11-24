@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, render, screen } from '@testing-library/react';
+import { OPEN_SEARCH_SHORTCUT } from '../GlobalSearch/GlobalSearch.constants';
 import { useGlobalSearchStore } from '../GlobalSearch/useGlobalSearchStore';
 import SidebarSearchButton from './SidebarSearchButton';
 
@@ -26,7 +27,7 @@ describe('SidebarSearchButton', () => {
       'placeholder',
       'label.search'
     );
-    expect(screen.getByText('⌘K')).toBeInTheDocument();
+    expect(screen.getByText(OPEN_SEARCH_SHORTCUT)).toBeInTheDocument();
   });
 
   it('opens global search for everything on focus and gives up focus', () => {

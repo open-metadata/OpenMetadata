@@ -28,6 +28,7 @@ import {
   useAppModeSidebarRecentRail,
 } from '../appModeExtensions';
 import { IconComponent } from '../AppModule.types';
+import { OPEN_SEARCH_SHORTCUT } from '../GlobalSearch/GlobalSearch.constants';
 import { useGlobalSearchStore } from '../GlobalSearch/useGlobalSearchStore';
 import MoreNavPopover from './MoreNavPopover';
 import { MainNavItem } from './navConfig';
@@ -184,7 +185,7 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
           item={{
             key: 'search',
             icon: Search,
-            label: `${t('label.search')} (⌘K)`,
+            label: `${t('label.search')} (${OPEN_SEARCH_SHORTCUT})`,
             onClick: () => openSearch('all'),
             isActive: false,
           }}
