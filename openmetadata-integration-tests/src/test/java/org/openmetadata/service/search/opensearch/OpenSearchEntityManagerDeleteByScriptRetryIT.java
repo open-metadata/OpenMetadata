@@ -1,36 +1,30 @@
 package org.openmetadata.service.search.opensearch;
 
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.List;
-import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.tests.search.ScriptedDeleteRetryBase;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.service.search.ScriptedDeleteRetryTestBase;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import os.org.opensearch.client.opensearch._types.BulkByScrollFailure;
 import os.org.opensearch.client.opensearch.core.DeleteByQueryRequest;
 import os.org.opensearch.client.opensearch.core.DeleteByQueryResponse;
 
-@Isolated
-@Testcontainers
-class OpenSearchEntityManagerDeleteByScriptRetryTest extends ScriptedDeleteRetryTestBase {
-  @Container
-  static final GenericContainer<?> ENGINE =
-      new GenericContainer<>("opensearchproject/opensearch:3.4.0")
-          .withEnv("discovery.type", "single-node")
-          .withEnv("DISABLE_SECURITY_PLUGIN", "true")
-          .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
-          .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m")
-          .withExposedPorts(9200)
-          .waitingFor(Wait.forHttp("/_cluster/health").forStatusCode(200))
-          .withStartupTimeout(Duration.ofMinutes(3));
+@Execution(ExecutionMode.CONCURRENT)
+class OpenSearchEntityManagerDeleteByScriptRetryIT extends ScriptedDeleteRetryBase {
+  @BeforeAll
+  static void onlyOnOpenSearch() {
+    assumeTrue(
+        "opensearch".equalsIgnoreCase(System.getProperty("searchType", "elasticsearch")),
+        "needs the opensearch client");
+  }
 
   private OpenSearchClient connection;
   private os.org.opensearch.client.opensearch.OpenSearchClient client;
@@ -38,7 +32,10 @@ class OpenSearchEntityManagerDeleteByScriptRetryTest extends ScriptedDeleteRetry
 
   @Override
   protected String engineUrl() {
-    return "http://" + ENGINE.getHost() + ":" + ENGINE.getMappedPort(9200);
+    return "http://"
+        + TestSuiteBootstrap.getSearchHost()
+        + ":"
+        + TestSuiteBootstrap.getSearchPort();
   }
 
   @Override

@@ -1,4 +1,6 @@
-package org.openmetadata.service.search.dataInsight;
+package org.openmetadata.it.tests.search;
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
@@ -6,26 +8,24 @@ import jakarta.json.stream.JsonGenerator;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchLineChartAggregator;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers(disabledWithoutDocker = true)
-class ElasticSearchCategoricalAxisRealEngineTest extends CategoricalAxisSelectionTestBase {
+@Execution(ExecutionMode.CONCURRENT)
+class ElasticSearchCategoricalAxisRealEngineIT extends CategoricalAxisSelectionBase {
 
-  @Container
-  static final GenericContainer<?> ENGINE =
-      new GenericContainer<>("docker.elastic.co/elasticsearch/elasticsearch:9.3.0")
-          .withEnv("discovery.type", "single-node")
-          .withEnv("xpack.security.enabled", "false")
-          .withEnv("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
-          .withExposedPorts(9200)
-          .waitingFor(Wait.forHttp("/_cluster/health").forStatusCode(200));
+  @BeforeAll
+  static void onlyOnElasticsearch() {
+    assumeTrue(
+        "elasticsearch".equalsIgnoreCase(System.getProperty("searchType", "elasticsearch")),
+        "needs the elasticsearch client");
+  }
 
   private final ElasticSearchLineChartAggregator aggregator =
       new ElasticSearchLineChartAggregator();
@@ -37,7 +37,10 @@ class ElasticSearchCategoricalAxisRealEngineTest extends CategoricalAxisSelectio
 
   @Override
   protected String engineUrl() {
-    return "http://" + ENGINE.getHost() + ":" + ENGINE.getMappedPort(9200);
+    return "http://"
+        + TestSuiteBootstrap.getSearchHost()
+        + ":"
+        + TestSuiteBootstrap.getSearchPort();
   }
 
   @Override

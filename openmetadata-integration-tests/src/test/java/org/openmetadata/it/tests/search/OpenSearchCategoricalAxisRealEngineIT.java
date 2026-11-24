@@ -1,31 +1,31 @@
-package org.openmetadata.service.search.dataInsight;
+package org.openmetadata.it.tests.search;
+
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import jakarta.json.stream.JsonGenerator;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchLineChartAggregator;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 
-@Testcontainers(disabledWithoutDocker = true)
-class OpenSearchCategoricalAxisRealEngineTest extends CategoricalAxisSelectionTestBase {
+@Execution(ExecutionMode.CONCURRENT)
+class OpenSearchCategoricalAxisRealEngineIT extends CategoricalAxisSelectionBase {
 
-  @Container
-  static final GenericContainer<?> ENGINE =
-      new GenericContainer<>("opensearchproject/opensearch:3.4.0")
-          .withEnv("discovery.type", "single-node")
-          .withEnv("DISABLE_SECURITY_PLUGIN", "true")
-          .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms512m -Xmx512m")
-          .withExposedPorts(9200)
-          .waitingFor(Wait.forHttp("/_cluster/health").forStatusCode(200));
+  @BeforeAll
+  static void onlyOnOpenSearch() {
+    assumeTrue(
+        "opensearch".equalsIgnoreCase(System.getProperty("searchType", "elasticsearch")),
+        "needs the opensearch client");
+  }
 
   private final OpenSearchLineChartAggregator aggregator = new OpenSearchLineChartAggregator();
 
@@ -36,7 +36,10 @@ class OpenSearchCategoricalAxisRealEngineTest extends CategoricalAxisSelectionTe
 
   @Override
   protected String engineUrl() {
-    return "http://" + ENGINE.getHost() + ":" + ENGINE.getMappedPort(9200);
+    return "http://"
+        + TestSuiteBootstrap.getSearchHost()
+        + ":"
+        + TestSuiteBootstrap.getSearchPort();
   }
 
   @Override

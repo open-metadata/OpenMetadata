@@ -1,4 +1,4 @@
-package org.openmetadata.service.search;
+package org.openmetadata.it.tests.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 
-public abstract class ScriptedDeleteRetryTestBase {
+public abstract class ScriptedDeleteRetryBase {
   protected static final String SCRIPT =
       "!doc['testCaseFQN.keyword'].empty && params.fqns.contains(doc['testCaseFQN.keyword'].value)";
   protected static final Map<String, Object> PARAMS = Map.of("fqns", List.of("my_test"));

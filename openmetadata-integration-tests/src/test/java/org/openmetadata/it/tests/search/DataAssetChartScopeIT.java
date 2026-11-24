@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.search.opensearch.dataInsightAggregator;
+package org.openmetadata.it.tests.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -21,7 +21,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +29,8 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
@@ -43,10 +44,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
-import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Proves that the "total data assets" summary card and the per-entity-type breakdown below it count
@@ -63,7 +61,8 @@ import org.testcontainers.utility.DockerImageName;
  * <p>The fixture mirrors that shape against a real OpenSearch node and drives the production
  * aggregators end to end through {@link OpenSearchClient#buildDIChart}.
  */
-class DataAssetChartScopeTest {
+@Isolated("replaces the static Entity search repository for the class")
+class DataAssetChartScopeIT {
 
   private static final long TIMESTAMP = 1_700_000_000_000L;
   private static final long ONE_DAY = 24L * 60 * 60 * 1000;
@@ -139,25 +138,21 @@ class DataAssetChartScopeTest {
 
   private static final HttpClient HTTP = HttpClient.newHttpClient();
 
-  private static GenericContainer<?> opensearch;
   private static OpenSearchClient osClient;
   private static String baseUrl;
+  private static SearchRepository previousSearchRepository;
 
   @BeforeAll
   static void startOpenSearch() throws Exception {
-    assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker is required");
-    opensearch =
-        new GenericContainer<>(DockerImageName.parse("opensearchproject/opensearch:2.13.0"))
-            .withEnv("discovery.type", "single-node")
-            .withEnv("DISABLE_SECURITY_PLUGIN", "true")
-            .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
-            .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms1g -Xmx1g")
-            .withExposedPorts(9200)
-            .waitingFor(Wait.forHttp("/").forPort(9200).forStatusCode(200))
-            .withStartupTimeout(Duration.ofMinutes(3));
-    opensearch.start();
+    assumeTrue(
+        "opensearch".equalsIgnoreCase(System.getProperty("searchType", "elasticsearch")),
+        "needs the OpenSearch client");
+    GenericContainer<?> opensearch = TestSuiteBootstrap.dedicatedOpenSearch();
     baseUrl = String.format("http://%s:%d", opensearch.getHost(), opensearch.getMappedPort(9200));
 
+    // The suite's repository prefixes index names with its cluster alias; the fixture indices carry
+    // none.
+    previousSearchRepository = Entity.getSearchRepository();
     SearchRepository searchRepository = mock(SearchRepository.class);
     lenient().when(searchRepository.getClusterAlias()).thenReturn(null);
     Entity.setSearchRepository(searchRepository);
@@ -179,11 +174,11 @@ class DataAssetChartScopeTest {
 
   @AfterAll
   static void stopOpenSearch() {
+    if (previousSearchRepository != null) {
+      Entity.setSearchRepository(previousSearchRepository);
+    }
     if (osClient != null) {
       osClient.close();
-    }
-    if (opensearch != null) {
-      opensearch.stop();
     }
   }
 

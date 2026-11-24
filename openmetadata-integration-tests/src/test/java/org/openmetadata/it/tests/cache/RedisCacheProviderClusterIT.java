@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.cache;
+package org.openmetadata.it.tests.cache;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -34,17 +34,22 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.service.cache.CacheConfig;
+import org.openmetadata.service.cache.RedisCacheProvider;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Multi-key DEL and UNLINK against a cluster-mode Redis, which refuses keys from different slots in
  * one command, and against a standalone Redis, which must keep receiving them in one command so an
  * entity's aliases leave the cache atomically (#33540).
  */
-@Testcontainers(disabledWithoutDocker = true)
-class RedisCacheProviderClusterTest {
+@EnabledIf("org.openmetadata.it.bootstrap.TestSuiteBootstrap#isRedisEnabled")
+@Execution(ExecutionMode.SAME_THREAD)
+class RedisCacheProviderClusterIT {
 
   private static final String KEYSPACE = "om-test";
   private static final int REDIS_PORT = 6379;
@@ -53,15 +58,8 @@ class RedisCacheProviderClusterTest {
   // A single cluster-mode node owns every slot, so plain single-key commands behave as on a
   // standalone server, but a command whose keys hash to different slots fails with CROSSSLOT, as it
   // does on a Redis Cluster or a cluster proxy endpoint.
-  @Container
-  static final GenericContainer<?> CLUSTER =
-      new GenericContainer<>("redis:7-alpine")
-          .withExposedPorts(REDIS_PORT)
-          .withCommand("redis-server", "--cluster-enabled", "yes");
-
-  @Container
-  static final GenericContainer<?> STANDALONE =
-      new GenericContainer<>("redis:7-alpine").withExposedPorts(REDIS_PORT);
+  private static GenericContainer<?> CLUSTER;
+  private static GenericContainer<?> STANDALONE;
 
   private static RedisClient clusterClient;
   private static StatefulRedisConnection<String, String> clusterConnection;
@@ -72,6 +70,8 @@ class RedisCacheProviderClusterTest {
 
   @BeforeAll
   static void connect() {
+    CLUSTER = TestSuiteBootstrap.onDemandRedis("cache-cluster", "--cluster-enabled", "yes");
+    STANDALONE = TestSuiteBootstrap.onDemandRedis("cache-standalone");
     clusterClient = RedisClient.create(uri(CLUSTER));
     clusterConnection = clusterClient.connect();
     cluster = clusterConnection.sync();
