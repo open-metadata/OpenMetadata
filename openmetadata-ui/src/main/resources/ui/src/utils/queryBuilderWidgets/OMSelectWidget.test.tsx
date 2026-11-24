@@ -136,7 +136,10 @@ describe('OMSelectWidget', () => {
         {...baseProps}
         showSearch
         listValues={
-          { missing: undefined, named: 'Named option' } as unknown as SelectWidgetProps['listValues']
+          {
+            missing: undefined,
+            named: 'Named option',
+          } as unknown as SelectWidgetProps['listValues']
         }
       />
     );
