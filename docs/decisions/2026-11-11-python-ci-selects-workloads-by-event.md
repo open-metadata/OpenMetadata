@@ -42,6 +42,9 @@ runs; CI does not preinstall it. Static-check logs are uploaded only for a faile
 with an available log, and upload failures do not alter the check result. Ruff targets Python 3.10
 independently of its host interpreter.
 
+PR and merge-queue Airflow API tests are selected only by changes to the API module or its reusable
+workflow. Shared SDK, schema, backend and tooling changes are covered by the full nightly API run.
+
 `ci-pr.yml`, `ci-merge-queue.yml` and `ci-nightly.yml` own their respective triggers, workload
 selection, Python matrices, dependencies, permissions and required `py-tests-status` check.
 The `py-static-checks` job also stays in the entrypoints. Reusable workflows execute
