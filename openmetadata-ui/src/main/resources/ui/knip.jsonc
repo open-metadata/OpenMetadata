@@ -1,0 +1,43 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["src/index.tsx"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignore": [
+    "src/generated/**",
+    "src/locale/**",
+    "**/*.test.{ts,tsx}",
+    "**/mocks/**",
+    "**/__mocks__/**",
+    // Sibling mock fixtures (X.mock.ts) are test inputs; test files are
+    // knip-ignored, so a fixture used only by tests always false-positives.
+    "**/*.mock.{ts,tsx}",
+    // Compatibility forwards for openmetadata-collate (see each file's docstring);
+    // delete the file and its entry here once Collate repoints its imports.
+    "src/rest/index.ts",
+    "src/styles/index.ts",
+    // Unused here but consumed by openmetadata-collate via the generated
+    // openmetadata-ui mirror — verify downstream before deleting:
+    // DataInsightProvider: collate DashboardChart/DashboardDetails; useLogStream:
+    // collate useAutomationLogs.test.
+    "src/pages/DataInsightPage/DataInsightProvider.tsx",
+    "src/components/common/LogViewerModal/useLogStream.ts",
+    // Shared fixtures used by Collate useNativeOntologyDataGraph.test.tsx.
+    "src/utils/governance/ontology/OntologyNativeDataGraph.mock.ts",
+    // Type-only compat forward: collate CustomizeMyDataPageClassCollate imports
+    // AnnouncementsWidgetProps; the widget component itself was removed.
+    "src/components/MyData/RightSidebar/AnnouncementsWidget.tsx"
+  ],
+  "ignoreDependencies": [".*"]
+}

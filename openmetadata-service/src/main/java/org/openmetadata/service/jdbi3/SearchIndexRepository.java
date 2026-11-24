@@ -53,6 +53,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.searchindex.SearchIndexResource;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -511,7 +512,11 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       // Delete tags related to deleted fields
       deletedFields.forEach(
           deleted ->
-              daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName()));
+              daoCollection
+                  .tagUsageDAO()
+                  .deleteFieldTags(
+                      deleted.getFullyQualifiedName(),
+                      addedFieldMap.containsKey(deleted.getName())));
 
       // Add tags related to newly added fields
       for (SearchIndexField added : addedFields) {
@@ -526,8 +531,7 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
         if (stored == null) { // New field added
           continue;
         }
-        String searchFieldPrefix =
-            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        String searchFieldPrefix = EntityFieldPath.childKey(fieldName, updated.getName());
         updateFieldDescription(searchFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(searchFieldPrefix, stored, updated);
         updateFieldDisplayName(searchFieldPrefix, stored, updated);

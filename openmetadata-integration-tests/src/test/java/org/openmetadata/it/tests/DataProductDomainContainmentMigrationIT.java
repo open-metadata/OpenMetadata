@@ -36,12 +36,12 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.migration.utils.v209.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
 
 /**
  * A data product moved to another domain before 1.12.12 / 1.13.1 kept its old domain in the
  * CONTAINS link the "Data Product Domain Validation" rule reads, so on 2.0 every edit to its assets
- * was rejected. The 2.0.9 migration rewrites CONTAINS to the domain the product shows.
+ * was rejected. The 2.0.8 migration rewrites CONTAINS to the domain the product shows.
  */
 // Sequential: the repairAll test sweeps every data product, so it would repair the stale link the
 // other test plants before that test checks the rejection.

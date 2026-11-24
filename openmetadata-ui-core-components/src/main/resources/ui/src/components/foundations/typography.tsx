@@ -71,7 +71,13 @@ type TypographyWeight = 'regular' | 'medium' | 'semibold' | 'bold';
  * `brand` is link-coloured text; inside a link it keeps a truncated name, and
  * its "…", in the link colour the `prose` wrapper would otherwise reset.
  */
-type TypographyColor = 'secondary' | 'success' | 'warning' | 'danger' | 'brand';
+type TypographyColor =
+  | 'secondary'
+  | 'quaternary'
+  | 'success'
+  | 'warning'
+  | 'danger'
+  | 'brand';
 
 type EllipsisRows = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
@@ -189,6 +195,7 @@ const weightClasses: Record<TypographyWeight, string> = {
 // `className="tw:text-tertiary"` workaround this prop replaces.
 const colorClasses: Record<TypographyColor, string> = {
   secondary: 'tw:text-tertiary',
+  quaternary: 'tw:text-quaternary',
   success: 'tw:text-success-primary',
   warning: 'tw:text-warning-primary',
   danger: 'tw:text-error-primary',

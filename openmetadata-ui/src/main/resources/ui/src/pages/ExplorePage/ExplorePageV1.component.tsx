@@ -36,12 +36,14 @@ import {
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
-import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
+import {
+  COMMON_FILTERS_FOR_DIFFERENT_TABS,
+  SORT_ORDER_OPTIONS,
+} from '../../constants/explore.constants';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -73,12 +75,6 @@ import {
   QueryFilterInterface,
 } from './ExplorePage.interface';
 
-const EXPLORE_PAGE_SIZE_OPTIONS = [
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  PAGE_SIZE_LARGE,
-];
-
 const ExplorePageV1: FC<unknown> = () => {
   const { t } = useTranslation();
   const tabsInfo = searchClassBase.getTabsInfo();
@@ -92,14 +88,14 @@ const ExplorePageV1: FC<unknown> = () => {
   const {
     preferences: { globalPageSize },
   } = useCurrentUserPreferences();
-  const defaultPageSize = EXPLORE_PAGE_SIZE_OPTIONS.includes(globalPageSize)
+  const defaultPageSize = LIST_PAGE_SIZE_OPTIONS.includes(globalPageSize)
     ? globalPageSize
     : PAGE_SIZE_BASE;
   // Handed to usePaging rather than corrected afterwards: correcting wrote the size back to the
   // shared URL, and this page stays mounted in app mode (KeepAliveRoutes), so it overwrote the
   // selection of whichever page the user was actually on.
   const { currentPage, handlePageChange, handlePageSizeChange, pageSize } =
-    usePaging(defaultPageSize, EXPLORE_PAGE_SIZE_OPTIONS);
+    usePaging(defaultPageSize, LIST_PAGE_SIZE_OPTIONS);
 
   const { tab } = useRequiredParams<UrlParams>();
 
@@ -150,7 +146,12 @@ const ExplorePageV1: FC<unknown> = () => {
     [browseFields]
   );
 
-  const handleSortValueChange = (sortVal: string) => {
+  // Field and order land in one navigate: two navigates against the same
+  // memoized parsedSearch would clobber each other.
+  const handleSortChange: ExploreProps['onChangeSort'] = (
+    sortVal,
+    sortOrderVal
+  ) => {
     navigate({
       // When tab is present, build the pathname from the route param rather
       // than the router's current location: a search-only navigate is *relative*
@@ -163,16 +164,6 @@ const ExplorePageV1: FC<unknown> = () => {
         ...parsedSearch,
         currentPage: 1,
         sort: sortVal,
-      }),
-    });
-  };
-
-  const handleSortOrderChange = (sortOrderVal: string) => {
-    navigate({
-      pathname: tab ? getExploreTabPath(tab) : ROUTES.EXPLORE,
-      search: Qs.stringify({
-        ...parsedSearch,
-        currentPage: 1,
         sortOrder: sortOrderVal,
       }),
     });
@@ -291,13 +282,12 @@ const ExplorePageV1: FC<unknown> = () => {
   };
 
   const searchIndex = useMemo(() => {
-    if (!searchQueryParam) {
-      return SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex;
-    }
-
     const tabInfo = Object.entries(tabsInfo).find(
       ([, tabInfo]) => tabInfo.path === tab
     );
+    if (!searchQueryParam) {
+      return SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex;
+    }
     if (searchHitCounts && isNil(tabInfo)) {
       const activeKey = findActiveSearchIndex(
         searchHitCounts,
@@ -329,6 +319,18 @@ const ExplorePageV1: FC<unknown> = () => {
       ? sortValue
       : tabsInfo[searchIndex]?.sortField ?? sortValue;
   }, [tabsInfo, searchIndex, sortValue]);
+
+  // The sort menu only offers some orders per field (Relevance is best-match first only),
+  // and a header search keeps the previous sortOrder in the URL. Normalise it the same way
+  // so the request never sorts in an order the menu does not show.
+  const effectiveSortOrder = useMemo(() => {
+    const options = SORT_ORDER_OPTIONS[effectiveSortValue];
+    if (!options || options.some((option) => option.order === sortOrder)) {
+      return sortOrder;
+    }
+
+    return options[0].order;
+  }, [effectiveSortValue, sortOrder]);
 
   // Use the utility function to generate tab items
   const tabItems = useMemo(() => {
@@ -386,7 +388,7 @@ const ExplorePageV1: FC<unknown> = () => {
       queryFilter,
       searchQueryParam,
       sortValue: effectiveSortValue,
-      sortOrder,
+      sortOrder: effectiveSortOrder,
       showDeleted,
       page: currentPage,
       size: pageSize,
@@ -401,7 +403,7 @@ const ExplorePageV1: FC<unknown> = () => {
     queryFilter,
     searchQueryParam,
     effectiveSortValue,
-    sortOrder,
+    effectiveSortOrder,
     showDeleted,
     currentPage,
     pageSize,
@@ -585,7 +587,7 @@ const ExplorePageV1: FC<unknown> = () => {
         searchIndex,
         showDeleted,
         sortValue: effectiveSortValue,
-        sortOrder,
+        sortOrder: effectiveSortOrder,
         page: currentPage,
         size: pageSize,
         isNLPRequestEnabled,
@@ -618,7 +620,7 @@ const ExplorePageV1: FC<unknown> = () => {
         searchIndex,
         showDeleted,
         sortValue: effectiveSortValue,
-        sortOrder,
+        sortOrder: effectiveSortOrder,
         page: currentPage,
         size: pageSize,
         isNLPRequestEnabled,
@@ -737,7 +739,7 @@ const ExplorePageV1: FC<unknown> = () => {
       searchResults={searchResults}
       showDeleted={showDeleted}
       showRankingDetails={showRankingDetails}
-      sortOrder={sortOrder}
+      sortOrder={effectiveSortOrder}
       sortValue={effectiveSortValue}
       tabItems={tabItems}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}
@@ -746,12 +748,7 @@ const ExplorePageV1: FC<unknown> = () => {
       onChangeSearchIndex={handleSearchIndexChange}
       onChangeShowDeleted={handleShowDeletedChange}
       onChangeShowRankingDetails={setShowRankingDetails}
-      onChangeSortOder={(sortOrderVal) => {
-        handleSortOrderChange(sortOrderVal);
-      }}
-      onChangeSortValue={(sortVal) => {
-        handleSortValueChange(sortVal);
-      }}
+      onChangeSort={handleSortChange}
       onTreeSelect={handleTreeSelect}
     />
   );

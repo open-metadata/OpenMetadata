@@ -25,18 +25,22 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import jakarta.validation.Validator;
+import jakarta.ws.rs.BadRequestException;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.security.interfaces.RSAPublicKey;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -56,7 +60,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.email.SmtpSettings;
@@ -104,6 +107,7 @@ import org.openmetadata.service.config.source.RawConfigCapture;
 import org.openmetadata.service.config.source.SettingsSourceService;
 import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -147,6 +151,7 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.jwt.BotTokenRegenerator;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.session.JdbcSessionStore;
 import org.openmetadata.service.security.session.SessionService;
@@ -186,6 +191,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
   private static final String STATUS_FAILED = "FAILED";
   private static final String STATUS_SKIPPED_DELETED_SERVICE = "SKIPPED - service is soft-deleted";
   private static final int STATUS_COLUMN_INDEX = 3;
+  private static final int EXIT_KEY_MISMATCH = 2;
+  private static final int DEFAULT_CHUNK_SIZE = 20;
+  private static final int DEFAULT_SECONDS_PER_PIPELINE = 30;
 
   private OpenMetadataApplicationConfig config;
   private Jdbi jdbi;
@@ -222,7 +230,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
     LOG.info(
-        "Use 'regenerate-bot-tokens --expiry <value>' to regenerate all bot JWT tokens. "
+        "Use 'regenerate-bot-tokens --expiry <value>' to regenerate the JWT tokens of all bots "
+            + "except revoked ones; add --skip-current to leave the tokens the configured key "
+            + "already signs unchanged. "
             + "Expiry values: OneHour, One (1 day), Seven (7 days), Thirty, Sixty, Ninety, Unlimited (default)");
     return 0;
   }
@@ -813,39 +823,68 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
       LOG.info("Updating security configuration in database...");
 
-      if (securityConfig.getAuthenticationConfiguration() != null) {
-        Settings authenticationSettings =
-            new Settings()
-                .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
-                .withConfigValue(securityConfig.getAuthenticationConfiguration());
-        Entity.getSystemRepository().createOrUpdate(authenticationSettings);
-        LOG.info("Authentication configuration updated.");
+      final int exitCode =
+          updateSecurityConfiguration(Entity.getSystemRepository(), securityConfig);
+      if (exitCode == 0) {
+        LOG.info("Security configuration successfully updated in the database.");
+        LOG.warn("");
+        LOG.warn("========================================================================");
+        LOG.warn("IMPORTANT: You MUST restart the OpenMetadata service now!");
+        LOG.warn("========================================================================");
+        LOG.warn(
+            "The new security configuration will NOT take effect until the service is restarted.");
+        LOG.warn("Run: 'systemctl restart openmetadata' (or equivalent for your deployment)");
+        LOG.warn("========================================================================");
       }
-
-      if (securityConfig.getAuthorizerConfiguration() != null) {
-        Settings authorizerSettings =
-            new Settings()
-                .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
-                .withConfigValue(securityConfig.getAuthorizerConfiguration());
-        Entity.getSystemRepository().createOrUpdate(authorizerSettings);
-        LOG.info("Authorization configuration updated.");
-      }
-
-      LOG.info("Security configuration successfully updated in the database.");
-      LOG.warn("");
-      LOG.warn("========================================================================");
-      LOG.warn("IMPORTANT: You MUST restart the OpenMetadata service now!");
-      LOG.warn("========================================================================");
-      LOG.warn(
-          "The new security configuration will NOT take effect until the service is restarted.");
-      LOG.warn("Run: 'systemctl restart openmetadata' (or equivalent for your deployment)");
-      LOG.warn("========================================================================");
-
-      return 0;
+      return exitCode;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration due to: ", e);
       LOG.error("Please verify that the YAML file is valid and contains all required fields.");
       return 1;
+    }
+  }
+
+  /**
+   * Stores the security settings of a configuration file and answers the command's exit code: 0
+   * when every setting was stored, 1 when a write was refused or failed. The writes stop at the one
+   * that failed, so a setting logged as updated before it stays stored and none after it is written.
+   */
+  static int updateSecurityConfiguration(
+      final SystemRepository repository, final SecurityConfiguration securityConfig) {
+    int exitCode = 0;
+    try {
+      storeSecurityConfiguration(repository, securityConfig);
+    } catch (BadRequestException | CustomExceptionMessage notStored) {
+      LOG.error(
+          "The security configuration was not updated: {}. Only a setting logged as updated above"
+              + " was stored.",
+          notStored.getMessage());
+      exitCode = 1;
+    }
+    return exitCode;
+  }
+
+  /**
+   * Stores the authentication and authorizer configuration of a security configuration file, the
+   * authentication first: a value the settings repository refuses or fails to write, such as a SAML
+   * IdP certificate a save would refuse, stops it before the authorizer is written.
+   */
+  private static void storeSecurityConfiguration(
+      final SystemRepository repository, final SecurityConfiguration securityConfig) {
+    final AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+    if (authConfig != null) {
+      repository.createOrUpdate(
+          new Settings()
+              .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+              .withConfigValue(authConfig));
+      LOG.info("Authentication configuration updated.");
+    }
+    if (securityConfig.getAuthorizerConfiguration() != null) {
+      repository.createOrUpdate(
+          new Settings()
+              .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
+              .withConfigValue(securityConfig.getAuthorizerConfiguration()));
+      LOG.info("Authorization configuration updated.");
     }
   }
 
@@ -2540,7 +2579,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer deployPipelines(
       @Option(
               names = {"--chunk-size"},
-              defaultValue = "20",
+              defaultValue = "" + DEFAULT_CHUNK_SIZE,
               description =
                   "Number of pipelines sent to the bulk deploy endpoint per request. The server "
                       + "deploys them sequentially, so a larger chunk needs a proportionally "
@@ -2548,7 +2587,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           int chunkSize,
       @Option(
               names = {"--seconds-per-pipeline"},
-              defaultValue = "30",
+              defaultValue = "" + DEFAULT_SECONDS_PER_PIPELINE,
               description =
                   "Deploy deadline budgeted for each pipeline in a chunk. The request timeout is "
                       + "this value multiplied by the chunk size.")
@@ -2558,7 +2597,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Deploying Pipelines via API");
       if (isValidDeployOptions(chunkSize, secondsPerPipeline)) {
         parseConfig();
-        exitCode = runPipelineDeployment(chunkSize, secondsPerPipeline);
+        exitCode = runPipelineDeployment(chunkSize, secondsPerPipeline, false);
       }
     } catch (Exception e) {
       LOG.error("Failed to deploy pipelines due to ", e);
@@ -2579,7 +2618,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     return valid;
   }
 
-  private int runPipelineDeployment(final int chunkSize, final int secondsPerPipeline) {
+  private int runPipelineDeployment(
+      final int chunkSize, final int secondsPerPipeline, final boolean onlyDeployed) {
     final IngestionPipelineRepository pipelineRepository =
         (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
     final List<IngestionPipeline> pipelines =
@@ -2589,7 +2629,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.debug("Pipelines size {}", pipelines.size());
     final List<List<String>> pipelineStatuses = new ArrayList<>();
     final List<IngestionPipeline> deployable =
-        skipPipelinesOfDeletedServices(pipelines, pipelineStatuses);
+        skipPipelinesOfDeletedServices(
+            onlyDeployed ? keepDeployed(pipelines) : pipelines, pipelineStatuses);
     if (!deployable.isEmpty()) {
       deployPipelinesViaAPI(deployable, pipelineStatuses, chunkSize, secondsPerPipeline);
     }
@@ -3025,92 +3066,129 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   /**
-   * Unlike most ops commands (e.g. deploy-pipelines) that delegate to the server API, this command
-   * operates directly on the database. This is intentional: when JWT signing keys have been rotated,
-   * all existing bot tokens — including the ingestion-bot token we'd use to authenticate against the
-   * server — are invalid. We must bypass the server to regenerate tokens in this scenario.
+   * Writes bot tokens straight to the database because after a signing-key change the stored
+   * ingestion-bot token no longer authenticates against the server. The server's JWKS is checked
+   * first so a CLI configured with the wrong key cannot sign tokens the servers reject.
    */
   @Command(
       name = "regenerate-bot-tokens",
       description =
-          "Regenerates JWT tokens for all bot users. "
-              + "Use this after rotating JWT signing keys or changing the cluster name.")
+          "Regenerates the JWT tokens of all bot users, then redeploys the deployed ingestion "
+              + "pipelines. Use this after rotating JWT signing keys, after changing the cluster "
+              + "name, or to replace leaked tokens. Revoked tokens stay revoked. With "
+              + "--skip-current, tokens the configured key already signs are left unchanged. Exit "
+              + "codes: 0 done, 1 a bot or pipeline failed, 2 the JWKS of the server at "
+              + "metadataApiEndpoint does not list the configured key or could not be read.")
   public Integer regenerateBotTokens(
       @Option(
               names = {"--expiry"},
               description =
-                  "Token expiry for regenerated tokens (OneHour, One, Seven, Thirty, Sixty, Ninety, Unlimited). "
+                  "Token expiry for the tokens this run replaces (OneHour, One, Seven, Thirty, Sixty, Ninety, Unlimited). "
                       + "Defaults to Unlimited.",
               defaultValue = "Unlimited")
-          JWTTokenExpiry expiry) {
+          JWTTokenExpiry expiry,
+      @Option(
+              names = {"--skip-current"},
+              description =
+                  "Leave the tokens the configured key already signs unchanged, so a re-run during "
+                      + "a key rotation keeps the tokens an earlier run gave.")
+          boolean skipCurrent) {
     try {
       parseConfig();
       initializeCollectionRegistry();
       SettingsCache.initializeWithoutDeploymentSettings(config);
       initializeSecurityConfig();
 
-      JWTTokenGenerator.getInstance()
-          .init(
-              SecurityConfigurationManager.getCurrentAuthConfig(),
-              config.getJwtTokenConfiguration());
+      JWTTokenGenerator generator = JWTTokenGenerator.getInstance();
+      generator.init(
+          SecurityConfigurationManager.getCurrentAuthConfig(), config.getJwtTokenConfiguration());
+
+      String keyMismatch = checkServerJwks(generator);
+      if (keyMismatch != null) {
+        System.err.println("Nothing was changed. " + keyMismatch);
+        return EXIT_KEY_MISMATCH;
+      }
 
       initOrganization();
 
-      BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
-      UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+      BotTokenRegenerator.Scope scope =
+          skipCurrent ? BotTokenRegenerator.Scope.STALE : BotTokenRegenerator.Scope.ALL;
+      List<BotTokenRegenerator.BotResult> results =
+          new BotTokenRegenerator(secretsManager).regenerateAll(expiry, scope);
+      List<List<String>> rows =
+          results.stream()
+              .map(r -> Arrays.asList(r.botName(), r.outcome().name(), r.detail()))
+              .toList();
+      printToAsciiTable(Arrays.asList("Bot", "Outcome", "Details"), rows, "No bots found");
+      boolean botFailed =
+          results.stream().anyMatch(r -> r.outcome() == BotTokenRegenerator.Outcome.FAILED);
 
-      List<Bot> bots =
-          botRepository.listAll(
-              botRepository.getFields("botUser"), new ListFilter(Include.NON_DELETED));
-
-      List<List<String>> rows = new ArrayList<>();
-
-      for (Bot listedBot : bots) {
-        String botName = listedBot.getName();
-        try {
-          // Fetch individually so that setFields populates the botUser relationship
-          Bot bot = botRepository.getByName(null, botName, botRepository.getFields("botUser"));
-
-          if (bot.getBotUser() == null) {
-            rows.add(Arrays.asList(botName, "SKIPPED", "No bot user associated"));
-            continue;
-          }
-
-          User botUser =
-              userRepository.getByName(
-                  null,
-                  bot.getBotUser().getFullyQualifiedName(),
-                  new EntityUtil.Fields(Set.of("authenticationMechanism", "roles")));
-
-          if (botUser.getAuthenticationMechanism() == null
-              || botUser.getAuthenticationMechanism().getAuthType()
-                  != AuthenticationMechanism.AuthType.JWT) {
-            rows.add(Arrays.asList(botName, "SKIPPED", "Not using JWT authentication"));
-            continue;
-          }
-
-          JWTAuthMechanism newJwtAuth =
-              JWTTokenGenerator.getInstance().generateJWTToken(botUser, expiry);
-          botUser.setAuthenticationMechanism(
-              new AuthenticationMechanism()
-                  .withAuthType(AuthenticationMechanism.AuthType.JWT)
-                  .withConfig(newJwtAuth));
-          UserUtil.addOrUpdateUser(botUser);
-
-          rows.add(Arrays.asList(botName, "SUCCESS", "Token regenerated"));
-        } catch (Exception e) {
-          LOG.error("Failed to regenerate token for bot: {}", botName, e);
-          rows.add(Arrays.asList(botName, "FAILED", e.getMessage()));
-        }
+      int pipelineExit = 0;
+      if (Boolean.FALSE.equals(config.getPipelineServiceClientConfiguration().getEnabled())) {
+        LOG.info("Pipeline service client is disabled, pipelines were not redeployed");
+      } else {
+        pipelineExit =
+            runPipelineDeployment(DEFAULT_CHUNK_SIZE, DEFAULT_SECONDS_PER_PIPELINE, true);
       }
-
-      boolean hasFailures = rows.stream().anyMatch(r -> "FAILED".equals(r.get(1)));
-      printToAsciiTable(Arrays.asList("Bot", "Status", "Details"), rows, "No bots found");
-      return hasFailures ? 1 : 0;
+      return botFailed || pipelineExit != 0 ? 1 : 0;
     } catch (Exception e) {
       LOG.error("Failed to regenerate bot tokens due to ", e);
       return 1;
     }
+  }
+
+  /** Returns why the servers' JWKS does not match the configured key, or null when it does. */
+  private String checkServerJwks(JWTTokenGenerator generator) {
+    String serverUrl = getServerApiUrl();
+    if (serverUrl == null) {
+      return "pipelineServiceClientConfiguration.metadataApiEndpoint is not set, so the "
+          + "servers' signing key cannot be checked.";
+    }
+    String jwksUrl = serverUrl + "v1/system/config/jwks";
+    try {
+      HttpResponse<String> response =
+          HttpClient.newBuilder()
+              .connectTimeout(DEPLOY_CONNECT_TIMEOUT)
+              .build()
+              .send(
+                  HttpRequest.newBuilder(URI.create(jwksUrl))
+                      .timeout(DEPLOY_CONNECT_TIMEOUT)
+                      .build(),
+                  HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() != 200) {
+        return "GET " + jwksUrl + " answered " + response.statusCode() + ".";
+      }
+      if (!jwksListsKey(response.body(), generator.getKid(), generator.getPublicKey())) {
+        return "The JWKS at "
+            + jwksUrl
+            + " does not list keyId '"
+            + generator.getKid()
+            + "' with this configuration's public key. Configure this host with the key the "
+            + "servers run.";
+      }
+      return null;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return "Interrupted while reading " + jwksUrl + ".";
+    } catch (Exception e) {
+      return "Could not read " + jwksUrl + ": " + e.getMessage();
+    }
+  }
+
+  /** The JWKS encodes n and e as URL-safe base64 of BigInteger bytes, so compare the numbers. */
+  static boolean jwksListsKey(String jwksJson, String kid, RSAPublicKey key) {
+    for (JsonNode jwk : JsonUtils.readTree(jwksJson).path("keys")) {
+      if (Objects.equals(kid, jwk.path("kid").asText())
+          && key.getModulus().equals(decodeJwkNumber(jwk.path("n").asText()))
+          && key.getPublicExponent().equals(decodeJwkNumber(jwk.path("e").asText()))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static BigInteger decodeJwkNumber(String encoded) {
+    return new BigInteger(1, Base64.getUrlDecoder().decode(encoded));
   }
 
   @Command(
@@ -3309,6 +3387,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
     return timeout;
   }
 
+  // A pipeline that never deployed has nothing running with the old token to repair
+  static List<IngestionPipeline> keepDeployed(final List<IngestionPipeline> pipelines) {
+    return pipelines.stream().filter(p -> Boolean.TRUE.equals(p.getDeployed())).toList();
+  }
+
   // Report pipelines of soft-deleted services as skipped rather than failing the whole run
   static List<IngestionPipeline> skipPipelinesOfDeletedServices(
       final List<IngestionPipeline> pipelines, final List<List<String>> pipelineStatuses) {
@@ -3379,23 +3462,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
         return null;
       }
 
-      // Extract and decrypt the JWT token
-      AuthenticationMechanism authMechanism = botUser.getAuthenticationMechanism();
-      if (authMechanism.getAuthType() != AuthenticationMechanism.AuthType.JWT) {
+      if (botUser.getAuthenticationMechanism().getAuthType()
+          != AuthenticationMechanism.AuthType.JWT) {
         LOG.error("Bot user does not have JWT authentication mechanism");
         return null;
       }
-
-      JWTAuthMechanism jwtAuthMechanism =
-          JsonUtils.convertValue(authMechanism.getConfig(), JWTAuthMechanism.class);
-
-      // Decrypt the JWT token - this is the crucial step that was missing
-      secretsManager.decryptJWTAuthMechanism(jwtAuthMechanism);
-      String token = jwtAuthMechanism.getJWTToken();
-      if (secretsManager.isSecret(token)) {
-        return secretsManager.getSecretValue(token);
-      }
-      return jwtAuthMechanism.getJWTToken();
+      return BotTokenRegenerator.readToken(secretsManager, botUser.getAuthenticationMechanism());
     } catch (Exception e) {
       LOG.error("Failed to retrieve ingestion-bot token", e);
       return null;

@@ -113,12 +113,12 @@ const CustomPropertyRow = ({
             className="tw:min-w-0 tw:max-w-3/5"
             gap={3}
             justify="end">
-            <Box className="tw:min-w-0">{renderValue()}</Box>
+            {!meta.isWide && <Box className="tw:min-w-0">{renderValue()}</Box>}
             {canEdit && (
               <ButtonUtility
                 data-testid={`edit-${property.name}`}
                 icon={Edit01}
-                size="xs"
+                size="lg"
                 tooltip={t('label.edit-entity', { entity: label })}
                 onClick={() => onEdit(property)}
               />
@@ -126,7 +126,8 @@ const CustomPropertyRow = ({
           </Box>
         )}
       </Box>
-      {isEditing && meta.isWide && editor}
+      {/* Wide values take the editor's full-width slot so the view does not jump on edit. */}
+      {meta.isWide && (isEditing ? editor : renderValue())}
       {isEditing && (
         <Box align="center" gap={2} justify="end">
           <Button

@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { ModifiedDestination } from '../../../utils/AlertsClassBase.interface';
 
 export const ALERT_AI_DEFAULT_CONNECTION_TIMEOUT = 10;
-export const ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH = 1;
 export const ALERT_AI_DESCRIPTION_TEXT_AREA_ROWS = 5;
 export const ALERT_AI_DESTINATION_TEXT_AREA_ROWS = 2;
 export const ALERT_AI_OAUTH_TOKEN_URL_PLACEHOLDER =
@@ -37,8 +36,7 @@ export const EMPTY_ALERT_AI_DESTINATION = {} as ModifiedDestination;
 export const ALERT_AI_FORM_CLASS_NAMES = {
   actionButton: 'tw:h-9 tw:w-fit tw:min-w-[112px]',
   advancedConfigHeader: 'tw:flex tw:items-center tw:gap-2',
-  alertDescriptionCard:
-    'tw:rounded-xl tw:border tw:border-secondary tw:p-[18px]',
+  alertDescriptionCard: 'tw:rounded-xl tw:border tw:border-secondary tw:p-4.5',
   autocompleteField:
     'tw:[&_[role=group]>div>span]:min-w-0 tw:[&_[role=group]>div>span]:max-w-full',
   card: 'tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-4 tw:py-3',

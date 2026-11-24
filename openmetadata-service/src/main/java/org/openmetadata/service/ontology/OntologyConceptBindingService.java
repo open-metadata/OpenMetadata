@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -21,9 +22,12 @@ import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyAssetBinding;
+import org.openmetadata.schema.type.OntologyAssetConceptLink;
+import org.openmetadata.schema.type.OntologyAssetConceptLinks;
 import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyBoundColumn;
 import org.openmetadata.schema.type.OntologyColumnBinding;
@@ -37,6 +41,8 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BindingRow;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
+import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
@@ -57,6 +63,7 @@ public final class OntologyConceptBindingService {
   private final OntologyConceptBindingStore store;
   private final Authorizer authorizer;
   private final Function<String, EntityRepository<?>> repositories;
+  private final Consumer<EntityReference> bindingsChanged;
 
   public record Access(UriInfo uriInfo, SecurityContext securityContext) {}
 
@@ -64,9 +71,22 @@ public final class OntologyConceptBindingService {
       final OntologyConceptBindingStore store,
       final Authorizer authorizer,
       final Function<String, EntityRepository<?>> repositories) {
+    this(store, authorizer, repositories, asset -> RdfUpdater.refreshEntities(List.of(asset)));
+  }
+
+  /**
+   * @param bindingsChanged told of each asset whose bindings a committed write may have changed;
+   *     the serving graph projects bindings as part of the bound asset
+   */
+  public OntologyConceptBindingService(
+      final OntologyConceptBindingStore store,
+      final Authorizer authorizer,
+      final Function<String, EntityRepository<?>> repositories,
+      final Consumer<EntityReference> bindingsChanged) {
     this.store = store;
     this.authorizer = authorizer;
     this.repositories = repositories;
+    this.bindingsChanged = bindingsChanged;
   }
 
   public OntologyConceptBindingsResponse get(
@@ -77,6 +97,64 @@ public final class OntologyConceptBindingService {
       store.requireLiveOntology(concept);
       return page(access, concept, store.revision(conceptId), start, limit);
     }
+  }
+
+  /**
+   * The concepts one asset is bound to, for the reader of the asset. A concept the reader cannot
+   * view, or one whose ontology is archived, is left out rather than refused, so the answer never
+   * discloses what the reader may not see.
+   */
+  public OntologyAssetConceptLinks linksForAsset(
+      final Access access, final String assetType, final UUID assetId) {
+    final var type = assetType(assetType);
+    try (final var ignored = FreshReadScope.enter()) {
+      final var asset = authorized(access, type.value(), assetId, MetadataOperation.VIEW_BASIC);
+      final Map<UUID, Optional<OntologyProperty>> properties = new HashMap<>();
+      final List<OntologyAssetConceptLink> links = new ArrayList<>();
+      // Rows are paged by concept id and filtered afterwards, so concepts the reader cannot see
+      // never crowd visible links out of a fixed-size window.
+      UUID after = null;
+      List<BindingRow> rows;
+      do {
+        rows = store.forAssetAfter(assetId, after, MAX_PAGE_SIZE);
+        for (final var row : rows) {
+          if (row.assetType() == type) {
+            link(access, asset, row, properties).ifPresent(links::add);
+          }
+          after = row.conceptId();
+        }
+      } while (rows.size() == MAX_PAGE_SIZE);
+      return new OntologyAssetConceptLinks().withLinks(links);
+    }
+  }
+
+  private Optional<OntologyAssetConceptLink> link(
+      final Access access,
+      final EntityInterface<?> asset,
+      final BindingRow row,
+      final Map<UUID, Optional<OntologyProperty>> properties) {
+    final OntologyConcept concept;
+    try {
+      concept = concept(access, row.conceptId(), MetadataOperation.VIEW_BASIC);
+      store.requireLiveOntology(concept);
+    } catch (final AuthorizationException | EntityNotFoundException unavailable) {
+      LOG.debug("Concept {} is unavailable to the current reader", row.conceptId());
+      return Optional.empty();
+    }
+    final var hydration =
+        new Hydration(
+            access,
+            concept,
+            row.columns().isEmpty() ? Set.of() : store.ancestors(concept),
+            properties);
+    return Optional.of(
+        new OntologyAssetConceptLink()
+            .withConcept(concept.getEntityReference())
+            .withOntology(concept.getOntology())
+            .withColumns(
+                row.columns().stream()
+                    .map(column -> hydrateColumn(hydration, asset, column))
+                    .toList()));
   }
 
   public OntologyConceptBindingsResponse put(
@@ -91,7 +169,18 @@ public final class OntologyConceptBindingService {
         concept,
         (lockedConcept, locked, current) ->
             replace(access, lockedConcept, locked, current, request));
+    notifyChanged(concept, request.getAsset().getAssetType(), request.getAsset().getAssetId());
     return firstPage(access, concept);
+  }
+
+  /**
+   * Cleanup under the lock only removes rows of assets already deleted, whose projection is gone
+   * with every edge into it, so only the written asset needs projecting again.
+   */
+  private void notifyChanged(
+      final OntologyConcept concept, final OntologyBindingAssetType type, final UUID assetId) {
+    OntologyTermSearch.bindingsChanged(concept.getEntityReference());
+    bindingsChanged.accept(new EntityReference().withType(type.value()).withId(assetId));
   }
 
   public OntologyConceptBindingsResponse remove(
@@ -116,6 +205,7 @@ public final class OntologyConceptBindingService {
           locked.remove(lockedConcept.getId(), assetId);
           return next;
         });
+    notifyChanged(concept, type, assetId);
     return firstPage(access, concept);
   }
 

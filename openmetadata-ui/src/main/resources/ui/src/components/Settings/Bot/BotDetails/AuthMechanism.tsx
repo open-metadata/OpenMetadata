@@ -14,16 +14,14 @@
 import {
   Box,
   Button,
-  ButtonUtility,
   Divider,
   PasswordInput,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import { Alert } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconError } from '../../../../assets/svg/error.svg';
 import { PersonalAccessToken } from '../../../../generated/auth/personalAccessToken';
 import { Bot } from '../../../../generated/entity/bot';
 import { AuthenticationMechanism } from '../../../../generated/entity/teams/user';
@@ -31,7 +29,7 @@ import {
   getTokenExpiry,
   getTokenIssuedAtMs,
 } from '../../../../utils/BotsUtils';
-import CopyToClipboardButton from '../../../common/CopyToClipboardButton/CopyToClipboardButton';
+import CopyButton from '../../../common/CopyButton/CopyButton';
 import UserPopOverCard from '../../../common/PopOverCard/UserPopOverCard';
 import './auth-mechanism.less';
 
@@ -90,10 +88,11 @@ const AuthMechanism: FC<Props> = ({
     if (!JWTTokenExpiresAt) {
       return (
         <>
-          <IconError
+          <Alert
             aria-label="warning"
-            className="tw:align-middle tw:size-4 tw:shrink-0"
+            className="tw:align-middle tw:shrink-0 tw:text-utility-gray-500"
             role="img"
+            size={16}
           />
           <Typography className="align-middle">
             {t('message.token-has-no-expiry')}
@@ -127,16 +126,14 @@ const AuthMechanism: FC<Props> = ({
             placeholder="Generate new token..."
             value={JWTToken}
           />
-          {!isSCIMBot ? (
-            <CopyToClipboardButton copyText={JWTToken} />
-          ) : (
-            <ButtonUtility
-              className="tw:mt-2"
-              icon={Copy01}
-              tooltip={t('message.copy-to-clipboard')}
-              onClick={() => navigator.clipboard.writeText(JWTToken)}
-            />
-          )}
+          <CopyButton
+            className={isSCIMBot ? 'tw:mt-2' : undefined}
+            size="sm"
+            testId="copy-secret"
+            tooltip={t('message.copy-to-clipboard')}
+            tooltipPlacement="left"
+            value={JWTToken}
+          />
         </Box>
         {!isSCIMBot && (
           <p className="text-grey-muted" data-testid="token-expiry">

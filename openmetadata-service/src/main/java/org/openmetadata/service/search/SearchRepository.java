@@ -169,6 +169,7 @@ import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -180,6 +181,7 @@ import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
@@ -219,6 +221,14 @@ public class SearchRepository {
   private static final int MAX_PARENT_IDS_PER_TERMS_QUERY = 1024;
 
   private static final int REFERENCE_REINDEX_BATCH_SIZE = 100;
+  private static final String REMOVE_STALE_MEMORY_VECTOR_FIELDS_SCRIPT =
+      """
+      if (!params.preserveCurrent || ctx._source.fingerprint != params.fingerprint) {
+        for (field in params.fieldsToRemove) {
+          ctx._source.remove(field);
+        }
+      }
+      """;
   // Bounds one custom-property cleanup request; more holders are split across requests.
   private static final int MAX_HOLDER_IDS_PER_CLEANUP_REQUEST = 10_000;
 
@@ -1413,6 +1423,10 @@ public class SearchRepository {
       return;
     }
 
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
+      return;
+    }
+
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
@@ -1876,6 +1890,15 @@ public class SearchRepository {
       if (nullOrEmpty(entityType)) {
         return;
       }
+      if (OntologyTermSearch.isTerm(entityType)) {
+        refreshOntologyTerms(
+            entities.stream()
+                .filter(Objects::nonNull)
+                .map(EntityInterface::getEntityReference)
+                .distinct()
+                .toList());
+        return;
+      }
       Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
       try {
         if (!getSearchClient().isClientAvailable()) {
@@ -2096,6 +2119,10 @@ public class SearchRepository {
       return;
     }
 
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
+      return;
+    }
+
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
@@ -2163,7 +2190,7 @@ public class SearchRepository {
           SearchIndex searchIndex =
               searchIndexFactory.buildIndex(
                   entityType, withFieldsLoadedOnWrite(entityType, entity));
-          doc = searchIndex.buildSearchIndexDoc();
+          doc = withRetiredFieldsRemoved(searchIndex, searchIndex.buildSearchIndexDoc());
           doc =
               SearchIndexUtils.stripDocMapIfOversized(
                   doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
@@ -2177,6 +2204,9 @@ public class SearchRepository {
       }
 
       searchClient.updateEntity(getWriteIndexName(indexMapping), entityId, doc, scriptTxt);
+      if (Entity.CONTEXT_MEMORY.equals(entityType)) {
+        invalidateMemoryEmbedding(entity);
+      }
 
       if (Entity.TABLE.equals(entityType)) {
         try {
@@ -2244,6 +2274,19 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * An update merges into the stored document, so a field the index retired is removed rather than
+   * left as an earlier release wrote it.
+   */
+  private static Map<String, Object> withRetiredFieldsRemoved(
+      SearchIndex searchIndex, Map<String, Object> doc) {
+    Set<String> retired = searchIndex.getRetiredFields();
+    if (!retired.isEmpty()) {
+      doc.put(SearchClient.FIELDS_TO_REMOVE, List.copyOf(retired));
+    }
+    return doc;
+  }
+
   public void bulkIndexPipelineExecutions(
       Pipeline pipeline, List<PipelineStatus> pipelineStatuses) {
     try {
@@ -2274,14 +2317,113 @@ public class SearchRepository {
     }
   }
 
+  private boolean refreshIfOntologyTerm(EntityReference reference) {
+    if (!OntologyTermSearch.isTerm(reference.getType())) {
+      return false;
+    }
+    refreshOntologyTerm(reference);
+    return true;
+  }
+
+  public void refreshOntologyTerm(EntityReference reference) {
+    refreshOntologyTerms(List.of(reference));
+  }
+
+  public void refreshOntologyTerms(List<EntityReference> references) {
+    final var pending =
+        references.stream()
+            .filter(ref -> getIndexMapping(ref.getType()) != null)
+            .filter(
+                ref ->
+                    !shouldSkipStreamingIndexing(
+                        ref.getType(),
+                        ref.getId().toString(),
+                        ref.getFullyQualifiedName(),
+                        "refreshOntologyTerm"))
+            .toList();
+    try {
+      writeOntologyTerms(pending);
+    } catch (IOException | RuntimeException failure) {
+      pending.forEach(
+          ref ->
+              SearchIndexRetryQueue.enqueue(
+                  ref.getId().toString(),
+                  ref.getFullyQualifiedName(),
+                  ref.getType(),
+                  SearchIndexRetryQueue.failureReason("refreshOntologyTerm", failure)));
+      LOG.error("Failed to refresh {} ontology search terms", pending.size(), failure);
+    }
+  }
+
+  public void reindexOntologyTerm(EntityReference reference) throws IOException {
+    if (getIndexMapping(reference.getType()) != null) {
+      writeOntologyTerms(List.of(reference));
+    }
+  }
+
+  private void writeOntologyTerms(List<EntityReference> references) throws IOException {
+    final var indexed =
+        OntologyTermBulkWrite.refresh(
+            searchClient,
+            clusterAlias,
+            references,
+            ref -> getWriteFanoutTargets(getIndexMapping(ref.getType()).getIndexName(clusterAlias)),
+            null,
+            null);
+    if (vectorEmbeddingHandler != null) {
+      indexed.forEach(
+          ref ->
+              EntityLifecycleEventDispatcher.getInstance()
+                  .enqueueOntologyEmbedding(
+                      ref, () -> vectorEmbeddingHandler.refreshOntologyEmbedding(ref)));
+    }
+  }
+
+  public boolean writeSpecializedIndexBatch(
+      String entityType, List<?> entities, String target, ReindexContext context)
+      throws IOException {
+    if (!OntologyTermSearch.isTerm(entityType)) {
+      return false;
+    }
+    final var references =
+        entities.stream()
+            .map(entity -> ((EntityInterface<?>) entity).getEntityReference())
+            .toList();
+    final String source =
+        context == null ? target : context.getOriginalIndex(entityType).orElse(target);
+    final var indexed =
+        OntologyTermBulkWrite.refresh(
+            searchClient,
+            clusterAlias,
+            references,
+            ref -> List.of(target),
+            vectorIndexService,
+            source);
+    if (vectorEmbeddingHandler != null) {
+      indexed.forEach(ref -> vectorEmbeddingHandler.refreshOntologyEmbedding(ref, List.of(target)));
+    }
+    return true;
+  }
+
+  void sweepOntologyChunks(String entityType) throws IOException {
+    OntologyChunkIndex.sweep(searchClient, clusterAlias, entityType);
+  }
+
   public void updateEntity(EntityReference entityReference) {
+    updateEntity(entityReference, Include.NON_DELETED);
+  }
+
+  public void updateEntity(EntityReference entityReference, Include include) {
     if (deferSearchWrite(
         new DeferredSearchWrite(
-            () -> updateEntity(entityReference),
+            () -> updateEntity(entityReference, include),
             "updateEntity",
             entityReference.getId() != null ? entityReference.getId().toString() : null,
             entityReference.getFullyQualifiedName(),
             entityReference.getType()))) {
+      return;
+    }
+    if (refreshIfOntologyTerm(entityReference)) {
       return;
     }
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
@@ -2294,9 +2436,38 @@ public class SearchRepository {
         String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
     EntityInterface<?> entity =
         entityRepository.get(
-            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
+            null,
+            entityReference.getId(),
+            entityRepository.getOnlySupportedFields(fields),
+            include,
+            false);
     clearChangeDescriptions(entity);
     updateEntityIndex(entity);
+    if (Entity.CONTEXT_MEMORY.equals(entityReference.getType())
+        && vectorEmbeddingHandler != null
+        && !Boolean.TRUE.equals(entity.getDeleted())) {
+      vectorEmbeddingHandler.updateEmbedding(entity);
+    }
+  }
+
+  private void invalidateMemoryEmbedding(EntityInterface<?> entity) {
+    if (vectorEmbeddingHandler != null) {
+      vectorEmbeddingHandler.invalidateStaleEmbedding(entity);
+    } else {
+      boolean preserveCurrent =
+          !Boolean.TRUE.equals(entity.getDeleted()) && Entity.isVectorEmbeddable(entity);
+      searchClient.updateEntity(
+          getWriteIndexName(getIndexMapping(Entity.CONTEXT_MEMORY)),
+          entity.getId().toString(),
+          Map.of(
+              "preserveCurrent",
+              preserveCurrent,
+              "fingerprint",
+              preserveCurrent ? VectorDocBuilder.computeFingerprintForEntity(entity) : "",
+              SearchClient.FIELDS_TO_REMOVE,
+              List.copyOf(ContextMemoryIndex.VECTOR_FIELDS)),
+          REMOVE_STALE_MEMORY_VECTOR_FIELDS_SCRIPT);
+    }
   }
 
   /**
@@ -2439,6 +2610,9 @@ public class SearchRepository {
         continue;
       }
 
+      if (refreshIfOntologyTerm(entity.getEntityReference())) {
+        continue;
+      }
       String actualType = entity.getEntityReference().getType();
       entitiesByType.computeIfAbsent(actualType, k -> new ArrayList<>()).add(entity);
     }
@@ -3261,6 +3435,21 @@ public class SearchRepository {
   private List<String> filterChildAliasesByCapability(
       IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
     return withClusterAlias(childAliasesWithCapability(indexMapping, includeCapability));
+  }
+
+  private List<String> filterChildWriteTargetsByCapability(
+      IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
+    List<String> childAliases = childAliasesWithCapability(indexMapping, includeCapability);
+    List<String> targets = new ArrayList<>(withClusterAlias(childAliases));
+    // Resolve each child's canonical key: fanning out a short alias would include staged indices
+    // of unrelated types, whose documents may not support this script's deleted field.
+    childAliases.stream()
+        .map(this::canonicalIndexFor)
+        .filter(Objects::nonNull)
+        .map(activeStagedIndices::get)
+        .filter(Objects::nonNull)
+        .forEach(targets::add);
+    return targets;
   }
 
   private List<String> childAliasesWithCapability(
@@ -4158,6 +4347,10 @@ public class SearchRepository {
       return;
     }
 
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
+      return;
+    }
+
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
@@ -4260,6 +4453,10 @@ public class SearchRepository {
   public void softDeleteOrRestoreEntityIndex(EntityInterface<?> entity, boolean delete) {
     if (entity == null) {
       LOG.debug("Entity or EntityReference is null, cannot perform soft delete or restore.");
+      return;
+    }
+
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
       return;
     }
 
@@ -4495,23 +4692,33 @@ public class SearchRepository {
   public void softDeleteOrRestoredChildren(
       EntityReference entityReference, IndexMapping indexMapping, boolean delete)
       throws IOException {
-    // Each childAlias is an entity-type name (per indexMapping.json). Use the typed script's
-    // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
-    SoftDeleteScript script = new SoftDeleteScript(delete);
-    List<String> targets = filterChildAliasesByCapability(indexMapping, script::compatibleWith);
-    if (targets.isEmpty()) {
-      return;
-    }
     String entityType = entityReference.getType();
     // Service entities propagate child deletions through a shared service.id field; everything
     // else uses the entity-type-specific <type>.id. Reuses the canonical SERVICE_ENTITY_SET that
     // updateChildrenForSearchPropagation also relies on, so the contract stays in one place.
     String parentIdField =
         SERVICE_ENTITY_SET.contains(entityType) ? "service.id" : entityType + ".id";
-    searchClient.softDeleteOrRestoreChildren(
-        targets,
-        script.painless(),
-        List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString())));
+    List<Pair<String, String>> parentMatch =
+        List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString()));
+    // Each childAlias is an entity-type name (per indexMapping.json) whose capability names the
+    // field that marks its docs deleted, so one script runs per field and never reaches an index
+    // without one. A cascade writes no search document per descendant, so this update is the only
+    // one: an incident under the parent takes its test case's flag here.
+    for (String deletedField : childDeletedFields(indexMapping)) {
+      SoftDeleteScript script = new SoftDeleteScript(delete, deletedField);
+      List<String> targets =
+          filterChildWriteTargetsByCapability(indexMapping, script::compatibleWith);
+      searchClient.softDeleteOrRestoreChildren(targets, script.painless(), parentMatch);
+    }
+  }
+
+  private List<String> childDeletedFields(IndexMapping indexMapping) {
+    return childAliasesWithCapability(
+            indexMapping, capability -> capability != null && capability.hasFieldDeleted())
+        .stream()
+        .map(alias -> EntityIndexCapabilityRegistry.get(alias).deletedField())
+        .distinct()
+        .toList();
   }
 
   public String getScriptWithParams(

@@ -79,6 +79,31 @@ class OntologyReleaseComparisonTest {
   }
 
   @Test
+  void summaryCountsEveryChangeUnderItsMemberKind() {
+    final OntologyConcept edited = concept();
+    final OntologyProperty deprecated = property("owner", "Customer", "Customer");
+    final var before = Stream.of(edited, deprecated).map(e -> member(BASE_ID, e)).toList();
+    final var after =
+        Stream.of(
+                JsonUtils.deepCopy(edited, OntologyConcept.class).withDescription("Edit"),
+                JsonUtils.deepCopy(deprecated, OntologyProperty.class).withDeprecated(true),
+                concept(),
+                concept(),
+                subclass("Gold", "Customer"))
+            .map(e -> member(RELEASE_ID, e))
+            .toList();
+
+    final var counts = OntologyReleaseComparison.summarize(before, after).getKindCounts();
+
+    assertEquals(3, counts.getConcept());
+    assertEquals(1, counts.getProperty());
+    assertEquals(1, counts.getAxiom());
+    assertEquals(0, counts.getOntology());
+    assertEquals(0, counts.getAssociation());
+    assertEquals(0, counts.getShape());
+  }
+
+  @Test
   void operationalChangesAndReferenceDisplayFieldsDoNotChangeGovernedContent() {
     final var before = concept();
     final var after =

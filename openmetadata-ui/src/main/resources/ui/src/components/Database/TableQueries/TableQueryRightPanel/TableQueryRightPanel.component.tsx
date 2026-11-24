@@ -18,11 +18,10 @@ import {
   Owner,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, User01 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconUser } from '../../../../assets/svg/user.svg';
 import { EntityType } from '../../../../enums/entity.enum';
 import { Query } from '../../../../generated/entity/data/query';
 import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
@@ -228,7 +227,7 @@ const TableQueryRightPanel = ({
                       gap={1}
                       itemClassName="layout-space-item"
                       key={user}>
-                      <IconUser className="tw:size-3.5 tw:shrink-0" />
+                      <User01 className="tw:shrink-0" size={14} />
                       {user}
                     </Box>
                   ))}

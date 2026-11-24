@@ -13,11 +13,13 @@
 
 package org.openmetadata.service.migration.postgres.v209;
 
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v209.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v209.ServiceVersionSecretsMasking;
+import org.openmetadata.service.migration.utils.v209.WorkflowEventTypeRedeployMigration;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -27,10 +29,21 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    // Secrets below some oneOf branches were stored unencrypted; migrate re-saves the current
+    // services, and this masks the plain text copies left in their version history.
     runOnce(
         migrationDAO,
         getVersion(),
-        DataProductDomainContainmentRepair.STEP_NAME,
-        () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
+        ServiceVersionSecretsMasking.STEP_NAME,
+        () -> ServiceVersionSecretsMasking.maskPlainTextSecrets(handle, POSTGRES));
+    // `migrate` runs data migrations before it starts Flowable, and this step deploys workflows.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WorkflowEventTypeRedeployMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          WorkflowEventTypeRedeployMigration.redeploy();
+        });
   }
 }

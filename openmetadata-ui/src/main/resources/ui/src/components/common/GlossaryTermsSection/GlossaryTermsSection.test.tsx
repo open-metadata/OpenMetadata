@@ -72,16 +72,6 @@ jest.mock('../../../assets/svg/close-icon.svg', () => ({
 jest.mock('../../../assets/svg/tick.svg', () => ({
   ReactComponent: () => <div data-testid="tick-icon-svg">Tick</div>,
 }));
-jest.mock('../../../assets/svg/glossary.svg', () => ({
-  ReactComponent: ({ className }: { className?: string }) => (
-    <div className={className} data-testid="glossary-icon">
-      G
-    </div>
-  ),
-}));
-jest.mock('../../../assets/svg/book.svg', () => ({
-  ReactComponent: () => <div data-testid="book-icon">Book</div>,
-}));
 
 jest.mock('../GlossaryTermPicker/GlossaryTermPicker', () => ({
   __esModule: true,

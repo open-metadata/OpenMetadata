@@ -1,10 +1,10 @@
 # BigQuery daily shard families use stable logical tables with recorded execution sources
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-04 (a missed scoped name takes its one case variant)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `test_bigquery_sharding.py`, `test_resolver.py`, `TableShardingIT`, `TableSharding.spec.ts`
-- **Related:** #36867; ADR:2026-11-03-source-lifecycle-merges-earliest-creation-and-latest-activity
+- **Related:** #36867, #37077; ADR:2026-11-03-source-lifecycle-merges-earliest-creation-and-latest-activity
 
 ## Context
 
@@ -80,3 +80,13 @@ physical shard. Profiles describe that representative, not an aggregation of eve
 Switching grouping modes does not migrate history between identities, and replacement plus
 retirement is not atomic. Full inventory and bounded catalog hydration add requests; optimizing
 them must preserve collision detection, authoritative validation and incomplete-scope handling.
+
+## Amendment: a missed scoped name takes its one case variant (v2, 2026-11-04)
+
+BigQuery names are case-sensitive, but query parsers such as `LineageParser` lower-case them, so a
+query reading `crm.Account` looked up `crm.account` and missed the table. A reference scoped to a
+named service that misses its exact name, and resolves to no shard family either, now takes the one
+table that matches it case-insensitively, and none when several do (`Account` and `ACCOUNT` can both
+exist). The family is tried first, as a shard name misses its exact name by design. Guard:
+`test_resolver.py::test_bigquery_lowercased_reference_resolves_to_its_one_case_variant`,
+`test_resolver.py::test_bigquery_reference_matching_two_case_variants_resolves_to_none`.

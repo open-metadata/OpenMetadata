@@ -10,15 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
+import { Box, FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
+import {
+  RefreshCcw01,
+  TestCase as TestCaseIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import { BetaBadge } from '../../../components/common/Badge/Badge.component';
 import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
@@ -37,7 +39,6 @@ import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useIsAiMode } from '../../../hooks/useAppMode';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import {
   DetailsTabItem,
@@ -105,7 +106,7 @@ const IncidentManagerDetailPage = ({
     handleRestore,
     handleOwnerChange,
     getEntityFeedCount,
-    setTestCase,
+    mergeTestCase,
   } = useTestCaseDetailPage({ isVersionPage });
   const incidentHeaderData = useTestCaseIncidentHeader({
     fetchTaskCount: getEntityFeedCount,
@@ -268,12 +269,6 @@ const IncidentManagerDetailPage = ({
     [breadcrumb]
   );
 
-  const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
-
-  const handleCopyEntityUrl = useCallback(async () => {
-    await onCopyToClipBoard(globalThis.location.href);
-  }, [onCopyToClipBoard]);
-
   if (isLoading) {
     return <EntityDetailsPageSkeleton />;
   }
@@ -342,22 +337,16 @@ const IncidentManagerDetailPage = ({
             gap={4}
             wrap="wrap">
             <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
-              <Box
-                align="center"
-                className={classNames(
-                  'tw:relative tw:size-9 tw:shrink-0',
-                  'tw:overflow-hidden tw:rounded-full',
-                  'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                )}
-                justify="center">
-                <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
-              </Box>
+              <FeaturedIcon
+                color="gray"
+                icon={TestCaseIcon}
+                size="md"
+                theme="surface"
+              />
               <TestCaseHeaderTitle
                 deleted={testCase.deleted}
                 displayName={displayName}
-                hasCopied={hasCopied}
                 testCaseName={testCase.name}
-                onCopy={handleCopyEntityUrl}
               />
             </Box>
             <Box align="center" className="tw:shrink-0" gap={2}>
@@ -442,7 +431,7 @@ const IncidentManagerDetailPage = ({
           open={isDimensionEdit}
           testCase={testCase}
           onClose={handleCancelDimension}
-          onUpdate={setTestCase}
+          onUpdate={mergeTestCase}
         />
       )}
     </PageLayoutV1>

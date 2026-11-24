@@ -31,7 +31,7 @@ import {
   AlertSelection,
   AlertSelectionProvider,
 } from '../../../../hooks/useAlertSelection';
-import type { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { ModifiedDestination } from '../../../../utils/AlertsClassBase.interface';
 import DestinationSelectItem from './DestinationSelectItem';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 

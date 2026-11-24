@@ -37,6 +37,10 @@
     "savedAt": {
       "description": "Time the query was last saved, in Unix epoch milliseconds.",
       "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "ontologyId": {
+      "description": "Ontology the query was saved in. Ontology Studio lists a query only in its own ontology; absent for a query saved outside one.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
     }
   },
   "required": ["id", "name", "query", "format", "inference", "savedAt"],

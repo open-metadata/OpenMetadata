@@ -32,12 +32,17 @@ import {
   CacheState,
   PersonaContextStatus,
 } from '../generated/type/personaContextStatus';
-import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getTreeConfig } from './AdvancedSearchUtils';
 import type { TreeNode } from './queryBuilder/url';
-import { withExploreFieldKeys } from './queryBuilder/url';
-import { getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';
+import {
+  getExploreQueryFilterParam,
+  withExploreFieldKeys,
+} from './queryBuilder/url';
+import {
+  getJsonTreeFromQueryFilter,
+  isQueryFilterFullyRepresentable,
+} from './QueryBuilderPureUtils';
 import { getExplorePath } from './RouterUtils';
 import searchClassBase from './SearchClassBase';
 
@@ -125,30 +130,79 @@ export const getRuleFilterTree = (
   }
 };
 
+// False when the editor can show only part of the saved filter (or none of it): a
+// persisted tree is exact, a reconstructed one may have dropped conditions.
+export const isRuleFilterFullyRendered = (
+  filterJsonTree?: string,
+  queryFilter?: string
+): boolean => {
+  if (!queryFilter || parseRuleFilterTree(filterJsonTree)) {
+    return true;
+  }
+  try {
+    const parsedFilter: unknown = JSON.parse(queryFilter);
+
+    return (
+      Boolean(parsedFilter) &&
+      typeof parsedFilter === 'object' &&
+      !Array.isArray(parsedFilter) &&
+      isQueryFilterFullyRepresentable(parsedFilter as QueryFilterInterface)
+    );
+  } catch {
+    return false;
+  }
+};
+
+// The rule's saved Elasticsearch filter is what Explore searches with. A rule saved with only its tree (through the
+// API) still opens as that tree, keyed the way Explore's config keys custom properties.
+const getRuleExploreQueryFilter = (
+  entityType: string,
+  filterJsonTree?: string,
+  queryFilter?: string
+): string | undefined => {
+  try {
+    const parsed = queryFilter ? JSON.parse(queryFilter) : undefined;
+
+    if (parsed?.query) {
+      return getExploreQueryFilterParam(parsed as QueryFilterInterface);
+    }
+  } catch {
+    // Unreadable filter: fall back to the tree.
+  }
+
+  const tree = getRuleFilterTree(filterJsonTree, queryFilter);
+
+  return tree
+    ? JSON.stringify(
+        withExploreFieldKeys(tree as unknown as TreeNode, entityType)
+      )
+    : undefined;
+};
+
 export const getRuleExplorePath = (
   entityType: string,
   filterJsonTree?: string,
   queryFilter?: string
 ): string => {
-  const tree = getRuleFilterTree(filterJsonTree, queryFilter);
-  const searchIndex = searchClassBase.getEntityTypeSearchIndexMapping()[
-    entityType
-  ] as ExploreSearchIndex | undefined;
-  const tab = searchIndex
-    ? searchClassBase.getTabsInfo()[searchIndex]?.path
-    : undefined;
-
-  // Explore validates the deep-linked tree against its own config and silently resets when a field is unknown.
-  const exploreTree = tree
-    ? withExploreFieldKeys(tree as unknown as TreeNode, entityType)
-    : tree;
+  const exploreQueryFilter = getRuleExploreQueryFilter(
+    entityType,
+    filterJsonTree,
+    queryFilter
+  );
 
   return getExplorePath({
-    extraParameters: exploreTree
-      ? { queryFilter: JSON.stringify(exploreTree) }
-      : undefined,
+    extraParameters: {
+      quickFilter: JSON.stringify({
+        query: {
+          bool: {
+            must: [{ bool: { should: [{ term: { entityType } }] } }],
+          },
+        },
+      }),
+      ...(exploreQueryFilter ? { queryFilter: exploreQueryFilter } : {}),
+    },
     isPersistFilters: false,
-    tab,
+    search: '',
   });
 };
 

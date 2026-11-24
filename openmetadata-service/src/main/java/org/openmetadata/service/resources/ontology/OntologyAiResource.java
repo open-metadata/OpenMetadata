@@ -148,8 +148,7 @@ public final class OntologyAiResource {
       @Valid final OntologyDomainDraftRequest request) {
     final OntologyAiService ontologyAiService = service();
     ontologyAiService.requireAvailable();
-    authorizeGlossary(
-        securityContext, request.getGlossary(), MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizeGlossary(securityContext, request.getGlossary(), MetadataOperation.EDIT_ALL);
     return ontologyAiService.generateDomainDraft(request);
   }
 

@@ -150,6 +150,32 @@ export const useTreeSelectSelection = <T = unknown>({
         }
       } else if (node.isParentMutuallyExclusive) {
         const parent = parentNode ?? findParentNode(node.id, treeData);
+        const parentId = parent?.id ?? node.parentId;
+        const hasLockedSibling = Array.from(selectedNodes.values()).some(
+          (selected) => {
+            const selectedParent =
+              selected.parentId ??
+              parentOfSelected.current.get(selected.id) ??
+              findParentNode(selected.id, treeData)?.id;
+            const locked =
+              selected.disabled ||
+              parent?.children?.some(
+                (sibling) => sibling.id === selected.id && sibling.disabled
+              );
+
+            return (
+              selected.id !== node.id &&
+              parentId !== undefined &&
+              selectedParent === parentId &&
+              locked
+            );
+          }
+        );
+        // Replacing a locked radio choice would violate its disabled state;
+        // keeping both choices would violate the group's mutual exclusion.
+        if (!isSelected && hasLockedSibling) {
+          return;
+        }
         parent?.children?.forEach((sibling) => {
           if (sibling.id !== node.id) {
             next.delete(sibling.id);

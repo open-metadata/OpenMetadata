@@ -92,7 +92,7 @@ public class FormatDateHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("formatDate")
         .withDescription("Format timestamp to readable date")
-        .withCursorOffset(14)
+        .withCursorOffset(13)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()

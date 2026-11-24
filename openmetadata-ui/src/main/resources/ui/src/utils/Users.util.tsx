@@ -19,19 +19,19 @@ import {
   Skeleton,
   Tooltip,
 } from '@openmetadata/ui-core-components';
+import { Bot } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { Button as AriaButton } from 'react-aria-components';
 import { Link } from 'react-router-dom';
-import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { ColumnsType } from '../components/common/Table/Table.interface';
-import { TEXT_GREY_MUTED } from '../constants/constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 import { getSettingsLink } from './SettingsModalLinkUtils';
+import { getUserIdentifier } from './UsersPureUtils';
 
 export const userCellRenderer = (user: EntityReference | User) => {
   return user.name ? (
@@ -47,9 +47,9 @@ export const commonUserDetailColumns = (
   isLoading?: boolean
 ): ColumnsType<User> => [
   {
-    title: t('label.username'),
-    dataIndex: 'username',
-    key: 'username',
+    title: t('label.name'),
+    dataIndex: 'name',
+    key: 'name',
     ellipsis: { showTitle: false },
     render: (_, record) => (
       <Box
@@ -64,12 +64,11 @@ export const commonUserDetailColumns = (
             excludeTriggerFromTabOrder
             title={t('label.bot')}
             triggerClassName="tw:inline-flex">
-            <BotIcon
+            <Bot
               aria-label={t('label.bot')}
-              color={TEXT_GREY_MUTED}
+              className="tw:text-utility-gray-500"
               data-testid="bot-icon"
-              height={16}
-              width={16}
+              size={16}
             />
           </Tooltip>
         )}
@@ -78,11 +77,11 @@ export const commonUserDetailColumns = (
     ),
   },
   {
-    title: t('label.name'),
-    dataIndex: 'name',
-    key: 'name',
+    title: t('label.email'),
+    dataIndex: 'email',
+    key: 'email',
     ellipsis: { showTitle: false },
-    render: (_, record) => getEntityName(record),
+    render: (_, record) => getUserIdentifier(record),
   },
   {
     title: t('label.team-plural'),

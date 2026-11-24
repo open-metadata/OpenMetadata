@@ -15,7 +15,11 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Dataflow01, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Dataflow01,
+  Minus,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
   Fragment,
@@ -26,7 +30,6 @@ import {
   useState,
 } from 'react';
 import { Handle, HandleProps, HandleType, Position } from 'reactflow';
-import { ReactComponent as MinusIcon } from '../../../assets/svg/control-minus.svg';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { DataType } from '../../../generated/entity/data/table';
@@ -174,9 +177,9 @@ export const getCollapseHandle = (
       }
       // Playwright targets the glyph by test id, so it stays an element.
       icon={
-        <MinusIcon
+        <Minus
           data-icon
-          className="tw:dark:[&_path]:fill-fg-quaternary"
+          className="tw:dark:[&_path]:fill-fg-quaternary tw:text-utility-gray-500"
           data-testid="minus-icon"
         />
       }

@@ -3,17 +3,22 @@ package org.openmetadata.mcp.server.auth.handlers;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.auth.InvalidRedirectUriException;
@@ -21,6 +26,8 @@ import org.openmetadata.mcp.auth.InvalidScopeException;
 import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.exception.AuthorizeException;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @ExtendWith(MockitoExtension.class)
 class AuthorizationHandlerTest {
@@ -47,6 +54,37 @@ class AuthorizationHandlerTest {
     params.put("state", "state123");
     params.put("redirect_uri", "https://example.com/callback");
     return params;
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "http://127.0.0.1:33418/callback",
+        "cursor://callback",
+        "https://blocked.example/callback"
+      })
+  void policyRejectionNeverReturnsAnErrorCallback(String callback) throws Exception {
+    OAuthClientInformation registered = new OAuthClientInformation();
+    registered.setRedirectUris(List.of(URI.create(callback)));
+    when(provider.getClient("test-client"))
+        .thenReturn(CompletableFuture.completedFuture(registered));
+    when(provider.authorize(eq(registered), any()))
+        .thenThrow(new AuthorizeException("invalid_request", "Redirect rejected by policy"));
+    Map<String, String> params = validParams();
+    params.put("redirect_uri", callback);
+    try (var config = mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(
+              new MCPConfiguration()
+                  .withAllowLoopbackRedirects(false)
+                  .withAllowNativeRedirects(false)
+                  .withAllowedRedirectHosts(Set.of("trusted.example")));
+      var response = handler.handle(params).join();
+      assertThat(response.isRedirect()).isFalse();
+      assertThat(response.getRedirectUrl()).isNull();
+      assertThat(response.getError().getError()).isEqualTo("invalid_request");
+    }
   }
 
   @Test

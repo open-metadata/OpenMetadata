@@ -73,9 +73,11 @@
     border-radius: var(--om-radius-lg);
     margin-bottom: var(--om-space-16);
     cursor: pointer;
+    // Muted step: one below the panel surface in dark, white in light.
+    background-color: var(--tw-background-color-primary_alt);
     &:hover {
       cursor: pointer !important;
-      background-color: var(--tw-background-color-secondary);
+      background-color: var(--tw-background-color-primary_hover);
     }
     .item-name-text {
       color: var(--tw-text-color-primary);

@@ -80,6 +80,8 @@ jest.mock('../../../../../../hooks/useSettingsHash', () => ({
   useHashPagingParams: () => ({
     page: 1,
     pageSize: mockPageSize,
+    resolvedPageSize: mockPageSize ?? 15,
+    savePageSize: jest.fn(),
     cursor: undefined,
     cursorType: undefined,
     setPage: jest.fn(),
@@ -190,7 +192,11 @@ describe('AccessControlAuditLogsPanel', () => {
     );
   });
 
-  it('hides pagination when one default-sized page holds every log', async () => {
+  it('hides pagination when there are no logs', async () => {
+    (getAuditLogs as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
     render(<PanelWithHeader />);
 
     await waitFor(() => expect(getAuditLogs).toHaveBeenCalled());
@@ -200,8 +206,11 @@ describe('AccessControlAuditLogsPanel', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('keeps pagination at a non-default page size so it can be switched back', async () => {
-    mockPageSize = 50;
+  it('shows pagination for a single page of logs at the default page size', async () => {
+    (getAuditLogs as jest.Mock).mockResolvedValue({
+      data: [{ id: 'log-1' }],
+      paging: { total: 1 },
+    });
     render(<PanelWithHeader />);
 
     expect(

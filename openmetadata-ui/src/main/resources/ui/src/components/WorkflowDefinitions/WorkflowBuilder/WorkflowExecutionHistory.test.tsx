@@ -70,6 +70,59 @@ describe('WorkflowExecutionHistory', () => {
     );
   });
 
+  it('shows under each run how its approval steps were decided', async () => {
+    (getWorkflowInstancesByFQN as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          ...mockInstances[0],
+          variables: {
+            approvals: [
+              {
+                id: 'auto',
+                node: 'Approve',
+                decision: 'Approved',
+                automaticReason: 'NoAssignees',
+                decidedBy: [],
+                decidedAt: 2,
+              },
+            ],
+          },
+        },
+        {
+          ...mockInstances[1],
+          variables: {
+            approvals: [
+              {
+                id: 'voted',
+                node: 'Approve',
+                decision: 'Rejected',
+                decidedBy: ['daniel.okafor'],
+                decidedAt: 2,
+              },
+            ],
+          },
+        },
+        mockInstances[2],
+      ],
+      paging: { total: 3 },
+    });
+
+    await act(async () => {
+      render(<WorkflowExecutionHistory />, { wrapper: MemoryRouter });
+    });
+
+    expect(
+      screen.getByTestId('workflow-approval-outcome-instance-0')
+    ).toHaveTextContent('message.workflow-run-auto-approved');
+    expect(
+      screen.getByTestId('workflow-approval-outcome-instance-1')
+    ).toHaveTextContent('message.workflow-run-rejected-by');
+    // A run that recorded no approval, like one decided before outcomes were recorded, shows none.
+    expect(
+      screen.queryByTestId('workflow-approval-outcome-instance-2')
+    ).not.toBeInTheDocument();
+  });
+
   it('renders a row per workflow instance', async () => {
     await renderHistory();
 
