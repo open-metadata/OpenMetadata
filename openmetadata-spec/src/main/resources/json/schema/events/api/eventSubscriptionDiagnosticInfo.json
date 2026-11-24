@@ -6,20 +6,24 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo",
   "properties": {
+    "enabled": {
+      "description": "Whether the alert is enabled. A disabled alert is not running: it reads and sends no events until it is enabled again, and then it starts from the latest event.",
+      "type": "boolean"
+    },
     "latestOffset": {
       "description": "The latest offset of the event in the system.",
       "existingJavaType": "java.lang.Long"
     },
     "currentOffset": {
-      "description": "The current offset of the event subscription.",
+      "description": "The offset the event subscription has read up to, as stored. A disabled alert keeps the offset where it stopped; it does not read from there when enabled again.",
       "existingJavaType": "java.lang.Long"
     },
     "startingOffset": {
-      "description": "The initial offset of the event subscription when it started processing.",
+      "description": "The initial offset of the event subscription when it started processing, as stored.",
       "existingJavaType": "java.lang.Long"
     },
     "hasProcessedAllEvents": {
-      "description": "Indicates whether all events have been processed.",
+      "description": "Whether no events are left that the alert will still process. Always true for a disabled alert.",
       "type": "boolean"
     },
     "successfulEventsCount": {
@@ -31,7 +35,7 @@
       "existingJavaType": "java.lang.Long"
     },
     "relevantUnprocessedEventsCount": {
-      "description": "The number of relevant unprocessed events based on the alert's filtering rules for specific alert.",
+      "description": "The number of unprocessed events the alert will still process and its filtering rules let through. Always 0 for a disabled alert.",
       "existingJavaType": "java.lang.Long"
     },
     "relevantUnprocessedEventsCountIsLowerBound": {
@@ -40,18 +44,18 @@
       "default": false
     },
     "totalUnprocessedEventsCount": {
-      "description": "The total number of unprocessed events.",
+      "description": "The total number of unprocessed events the alert will still read. Always 0 for a disabled alert.",
       "existingJavaType": "java.lang.Long"
     },
     "relevantUnprocessedEventsList": {
-      "description": "A list of relevant unprocessed events based on the alert's filtering criteria.",
+      "description": "A list of relevant unprocessed events based on the alert's filtering criteria. Empty for a disabled alert.",
       "type": "array",
       "items": {
         "$ref": "../../type/changeEvent.json"
       }
     },
     "totalUnprocessedEventsList": {
-      "description": "A list of all unprocessed events.",
+      "description": "A list of all unprocessed events. Empty for a disabled alert.",
       "type": "array",
       "items": {
         "$ref": "../../type/changeEvent.json"
