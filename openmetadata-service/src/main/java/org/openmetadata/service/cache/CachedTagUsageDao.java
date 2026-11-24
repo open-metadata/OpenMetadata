@@ -22,13 +22,16 @@ public class CachedTagUsageDao {
    * Write-through cache: Store tags
    */
   public void putTags(String entityType, UUID entityId, String tagsJson) {
-    if (tagsJson == null || tagsJson.isEmpty() || EntityCacheBypass.isSkipped()) {
+    if (tagsJson == null
+        || tagsJson.isEmpty()
+        || config.tagTtlSeconds <= 0
+        || EntityCacheBypass.isPopulateSkipped()) {
       return;
     }
 
     String cacheKey = keys.tags(entityType, entityId);
     try {
-      cache.set(cacheKey, tagsJson, Duration.ofSeconds(config.entityTtlSeconds));
+      cache.set(cacheKey, tagsJson, Duration.ofSeconds(config.tagTtlSeconds));
       LOG.debug("Write-through cached tags for: {} -> {}", entityType, entityId);
     } catch (Exception e) {
       LOG.warn("Failed to write-through cache tags: {} -> {}", entityType, entityId, e);
@@ -48,7 +51,7 @@ public class CachedTagUsageDao {
    * Get tags from cache
    */
   public List<TagLabel> getTags(String entityType, UUID entityId) {
-    if (EntityCacheBypass.isSkipped()) {
+    if (config.tagTtlSeconds <= 0 || EntityCacheBypass.isSkipped()) {
       return null;
     }
     String cacheKey = keys.tags(entityType, entityId);

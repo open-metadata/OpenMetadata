@@ -93,7 +93,7 @@ public class CachedReadBundle {
         continue;
       }
       try {
-        out.add(JsonUtils.readValue(json.get(), Dto.class));
+        out.add(JsonUtils.readValue(CacheValueCodec.decode(json.get()), Dto.class));
         if (m != null) m.recordLayerHit(layerType);
       } catch (Exception e) {
         // Bad cache entry — evict and treat as miss for this position.
@@ -122,7 +122,7 @@ public class CachedReadBundle {
         if (m != null) m.recordLayerMiss(layerType);
         return null;
       }
-      Dto dto = JsonUtils.readValue(json.get(), Dto.class);
+      Dto dto = JsonUtils.readValue(CacheValueCodec.decode(json.get()), Dto.class);
       if (m != null) m.recordLayerHit(layerType);
       return dto;
     } catch (Exception e) {
@@ -134,13 +134,23 @@ public class CachedReadBundle {
   }
 
   public void put(String entityType, UUID entityId, Dto dto) {
-    if (dto == null || EntityCacheBypass.isSkipped()) {
+    if (dto == null || EntityCacheBypass.isPopulateSkipped()) {
       return;
     }
     String key = keys.bundle(entityType, entityId);
     try {
       String json = JsonUtils.pojoToJson(dto);
-      cache.set(key, json, Duration.ofSeconds(config.entityTtlSeconds));
+      String encoded = CacheValueCodec.encode(json, config.compressionThresholdBytes);
+      if (CacheValueCodec.exceedsMaxEntrySize(encoded, config.maxEntrySizeBytes)) {
+        LOG.debug(
+            "Skipping oversized read bundle: {} {} encodedBytes={} maxEntrySizeBytes={}",
+            entityType,
+            entityId,
+            CacheValueCodec.encodedByteSize(encoded),
+            config.maxEntrySizeBytes);
+        return;
+      }
+      cache.set(key, encoded, Duration.ofSeconds(config.entityTtlSeconds));
       CacheMetrics m = CacheMetrics.getInstance();
       if (m != null) m.recordLayerWrite(bundleType(entityType));
     } catch (Exception e) {

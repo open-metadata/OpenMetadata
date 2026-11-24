@@ -63,7 +63,8 @@ curl http://localhost:8585/api/v1/system/cache/stats \
 Once warmup completes, run your load tests. The cache will serve requests without hitting the database.
 
 ## Cache Keys Structure
-- Entities: `om:env:e:entityType:uuid`
+- Entities: `om:env:e:entityType:uuid` (Hash field `base` holds entity JSON)
+- Entity FQN pointers: `om:env:enid:entityType:fqnHash` (String holding 36-char UUID referencing `:e:`)
 - Relationships: `om:env:rel:entityType:uuid:relType:direction`
 - Tags: `om:env:tags:entityType:uuid`
 - Column tags: `om:env:ctags:entityType:uuid:columnFqn`
