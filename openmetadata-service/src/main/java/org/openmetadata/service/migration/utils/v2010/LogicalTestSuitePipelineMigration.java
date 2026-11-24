@@ -18,6 +18,8 @@ import org.jdbi.v3.core.Handle;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 public final class LogicalTestSuitePipelineMigration {
+  public static final String STEP_NAME = "normalizeLogicalTestSuitePipelines";
+
   private static final String MYSQL_INDEX_EXISTS =
       """
       SELECT COUNT(*) FROM information_schema.statistics
@@ -60,7 +62,7 @@ public final class LogicalTestSuitePipelineMigration {
   private static final String POSTGRES_CLEANUP =
       """
       UPDATE ingestion_pipeline_entity AS pipeline
-      SET json = pipeline.json::jsonb #- '{sourceConfig,config,entityFullyQualifiedName}'
+      SET json = (pipeline.json::jsonb #- '{sourceConfig,config,entityFullyQualifiedName}')::json
       FROM entity_relationship AS relationship
       JOIN test_suite AS suite ON suite.id = relationship.fromId
       WHERE pipeline.id = relationship.toId

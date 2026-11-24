@@ -15,5 +15,3 @@ CREATE TABLE IF NOT EXISTS sso_test_login_session (
     INDEX idx_sso_test_login_session_admin (admin_principal, credentials_submitted_at),
     INDEX idx_sso_test_login_session_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
--- LogicalTestSuitePipelineMigration normalizes suite pipeline settings in the Java data migration.

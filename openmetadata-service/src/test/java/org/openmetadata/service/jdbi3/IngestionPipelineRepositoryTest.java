@@ -674,27 +674,30 @@ class IngestionPipelineRepositoryTest {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {false, true})
-  void testSuiteRunnerRequiresMatchingTable(boolean deploy) {
+  @ValueSource(strings = {"deploy", "run", "toggle"})
+  void testSuiteRunnerRequiresMatchingTable(String action) {
     final TestSuite suite = tableSuite("warehouse.db.schema.orders");
     final IngestionPipeline pipeline =
         pipelineWithConfig(
                 new TestSuitePipeline().withEntityFullyQualifiedName("warehouse.db.schema.items"))
             .withPipelineType(PipelineType.TEST_SUITE);
-    final IngestionPipelineRepository runnerRepository =
-        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+    final PipelineServiceClientInterface runnerClient = mock(PipelineServiceClientInterface.class);
+    final IngestionPipelineRepository runnerRepository = repositoryWithClient(runnerClient);
 
     final BadRequestException exception =
         assertThrows(
             BadRequestException.class,
             () -> {
-              if (deploy) {
-                runnerRepository.deployIngestionPipeline(pipeline, suite);
-              } else {
-                runnerRepository.runIngestionPipeline(null, pipeline, suite, RunOptions.NONE);
+              switch (action) {
+                case "deploy" -> runnerRepository.deployIngestionPipeline(pipeline, suite);
+                case "run" -> runnerRepository.runIngestionPipeline(
+                    null, pipeline, suite, RunOptions.NONE);
+                case "toggle" -> runnerRepository.toggleIngestionPipeline(pipeline, suite);
+                default -> throw new IllegalArgumentException("Unexpected action: " + action);
               }
             });
     assertEquals("TestSuite pipeline table must match its test suite", exception.getMessage());
+    verifyNoInteractions(runnerClient);
   }
 
   private static TestSuite tableSuite(String tableFqn) {

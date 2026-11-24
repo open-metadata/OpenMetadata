@@ -16,5 +16,3 @@ CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_admin
     ON sso_test_login_session (admin_principal, credentials_submitted_at);
 CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_expires
     ON sso_test_login_session (expires_at);
-
--- LogicalTestSuitePipelineMigration normalizes suite pipeline settings in the Java data migration.

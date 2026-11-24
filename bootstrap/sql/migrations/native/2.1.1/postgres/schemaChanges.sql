@@ -1,1 +1,0 @@
--- LogicalTestSuitePipelineMigration normalizes suite pipeline settings in the Java data migration.

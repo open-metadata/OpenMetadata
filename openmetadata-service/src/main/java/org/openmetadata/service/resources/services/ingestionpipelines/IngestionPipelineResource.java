@@ -917,9 +917,10 @@ public class IngestionPipelineResource
     if (pipelineServiceClient == null) {
       return Response.status(200).entity("Pipeline Client Disabled").build();
     }
-    repository.assertOwnsRunnerName(pipeline);
+    ServiceEntityInterface service =
+        Entity.getEntity(pipeline.getService(), "", Include.NON_DELETED);
     decryptOrNullify(securityContext, pipeline, true);
-    pipelineServiceClient.toggleIngestion(pipeline);
+    repository.toggleIngestionPipeline(pipeline, service);
     Response response =
         createOrUpdateAfterPipelineOperation(
             uriInfo, securityContext, pipeline, MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS);

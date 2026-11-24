@@ -3,7 +3,9 @@ package org.openmetadata.service.migration;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -113,11 +115,12 @@ class LogicalTestSuitePipelineMigrationTest {
   }
 
   private static void createTables(final Handle handle, final String dialect) {
-    final String jsonType = MYSQL.equals(dialect) ? "JSON" : "JSONB";
-    for (final String table : List.of("test_suite", "ingestion_pipeline_entity")) {
-      handle.execute(
-          "CREATE TABLE " + table + " (id VARCHAR(36) NOT NULL, json " + jsonType + " NOT NULL)");
-    }
+    final String suiteJsonType = MYSQL.equals(dialect) ? "JSON" : "JSONB";
+    handle.execute(
+        "CREATE TABLE test_suite (id VARCHAR(36) NOT NULL, json " + suiteJsonType + " NOT NULL)");
+    // Matches v001: ingestion_pipeline_entity.json is JSON (not JSONB) on PostgreSQL.
+    handle.execute(
+        "CREATE TABLE ingestion_pipeline_entity (id VARCHAR(36) NOT NULL, json JSON NOT NULL)");
     handle.execute("ALTER TABLE ingestion_pipeline_entity ADD PRIMARY KEY (id)");
     handle.execute(
         """
@@ -368,7 +371,10 @@ class LogicalTestSuitePipelineMigrationTest {
       final String table,
       final String id,
       final JsonNode json) {
-    final String jsonBind = MYSQL.equals(dialect) ? ":json" : "CAST(:json AS JSONB)";
+    final String jsonBind =
+        MYSQL.equals(dialect)
+            ? ":json"
+            : "test_suite".equals(table) ? "CAST(:json AS JSONB)" : "CAST(:json AS JSON)";
     handle
         .createUpdate("INSERT INTO " + table + " (id, json) VALUES (:id, " + jsonBind + ")")
         .bind("id", id)
@@ -415,7 +421,14 @@ class LogicalTestSuitePipelineMigrationTest {
     }
     final MigrationDAO migrationDAO = mock(MigrationDAO.class);
     // Unrelated steps in these release entry points have their own regression suites.
-    when(migrationDAO.getSqlQuery(anyString(), anyString())).thenReturn("already applied");
+    when(migrationDAO.getSqlQuery(anyString(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              final String marker = invocation.getArgument(1, String.class);
+              return marker.endsWith(":" + LogicalTestSuitePipelineMigration.STEP_NAME)
+                  ? null
+                  : "already applied";
+            });
     final MigrationFile file =
         new MigrationFile(
             root.resolve("bootstrap/sql/migrations/native").resolve(version).toFile(),
@@ -435,6 +448,15 @@ class LogicalTestSuitePipelineMigrationTest {
       field.set(migration, entry.getValue());
     }
     migration.runDataMigration();
+    verify(migrationDAO)
+        .upsertServerMigrationSQL(
+            eq(version),
+            anyString(),
+            eq(
+                "data-migration-step:"
+                    + version
+                    + ":"
+                    + LogicalTestSuitePipelineMigration.STEP_NAME));
   }
 
   private record Fixture(

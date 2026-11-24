@@ -2029,6 +2029,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
   }
 
+  public PipelineServiceClientResponse toggleIngestionPipeline(
+      IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
+    validateSourceConfigHasType(ingestionPipeline);
+    validateTestSuiteConfig(ingestionPipeline, service);
+    assertOwnsRunnerName(ingestionPipeline);
+    return pipelineServiceClient.toggleIngestion(ingestionPipeline);
+  }
+
   /**
    * Some runners know a pipeline by its name alone (the Airflow dag_id, the Kubernetes object
    * names), but a name is unique only within its service. A runner call for a pipeline whose name

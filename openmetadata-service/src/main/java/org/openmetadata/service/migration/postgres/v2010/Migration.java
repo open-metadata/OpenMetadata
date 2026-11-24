@@ -29,7 +29,11 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
-    LogicalTestSuitePipelineMigration.migrate(handle, POSTGRES);
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        LogicalTestSuitePipelineMigration.STEP_NAME,
+        () -> LogicalTestSuitePipelineMigration.migrate(handle, POSTGRES));
     runOnce(
         migrationDAO,
         getVersion(),

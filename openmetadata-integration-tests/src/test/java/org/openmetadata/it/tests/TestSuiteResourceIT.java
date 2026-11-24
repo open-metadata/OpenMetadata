@@ -1777,6 +1777,40 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @Test
+  void suitePutKeepsTableAssociation(TestNamespace ns) {
+    final Table table = createTableForBasicTestSuite(ns, "suite_put");
+    final TestSuite basicSuite = createBasicTestSuiteForTable(table);
+    final CreateTestSuite basicUpdate =
+        new CreateTestSuite()
+            .withName(table.getFullyQualifiedName())
+            .withBasicEntityReference(table.getFullyQualifiedName())
+            .withDescription("Updated basic suite");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, getResourcePath() + "basic", basicUpdate, TestSuite.class);
+
+    final TestSuite storedBasic = getEntity(basicSuite.getId().toString());
+    assertEquals(Boolean.TRUE, storedBasic.getBasic());
+    assertEquals(basicSuite.getBasicEntityReference(), storedBasic.getBasicEntityReference());
+    assertEquals("Updated basic suite", storedBasic.getDescription());
+
+    final TestSuite logicalSuite = createEntity(createMinimalRequest(ns));
+    final CreateTestSuite logicalUpdate =
+        new CreateTestSuite()
+            .withName(logicalSuite.getName())
+            .withBasicEntityReference(table.getFullyQualifiedName())
+            .withDescription("Updated logical suite");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, getResourcePath(), logicalUpdate, TestSuite.class);
+
+    final TestSuite storedLogical = getEntity(logicalSuite.getId().toString());
+    assertEquals(Boolean.FALSE, storedLogical.getBasic());
+    assertEquals(null, storedLogical.getBasicEntityReference());
+    assertEquals("Updated logical suite", storedLogical.getDescription());
+  }
+
+  @Test
   void pipelinePatchValidatesRestoredSuite(TestNamespace ns) {
     final TestSuite suite =
         createBasicTestSuiteForTable(createTableForBasicTestSuite(ns, "original_suite"));
