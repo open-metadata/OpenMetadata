@@ -3,8 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-23 (initial)
 - **Deciders:** Adrià Manero, Shreyansh Verma
-- **Guard:** `WorkflowStartupDeployIT`, `WorkflowBpmnStableAcrossJvmsTest`, `MigrationArchitectureTest`
-- **Related:** ADR:2026-11-11-a-data-migration-carries-its-own-logic, ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains, ADR:2026-11-20-suggestion-tasks-fall-back-through-every-owner-to-the-admins
+- **Guard:** `WorkflowStartupDeployIT`, `WorkflowBpmnStableAcrossJvmsTest`
+- **Related:** ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains, ADR:2026-11-20-suggestion-tasks-fall-back-through-every-owner-to-the-admins
 
 ## Context
 

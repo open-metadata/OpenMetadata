@@ -3,8 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-20 (initial) · v2 2026-11-23 (the server, not the migration, deploys the workflow)
 - **Deciders:** Shreyansh Verma
-- **Guard:** `SetApprovalAssigneesImplTest`, `SuggestionTaskOwnerFallbackMigrationTest`, `MigrationArchitectureTest`, `WorkflowTaskAssigneesIT`
-- **Related:** ADR:2026-10-22-agent-glossary-proposals-are-decided-through-the-approval-workflow, ADR:2026-11-11-a-data-migration-carries-its-own-logic, ADR:2026-11-23-a-changed-workflow-is-deployed-when-the-server-starts, #38297, open-metadata/openmetadata-collate#8552
+- **Guard:** `SetApprovalAssigneesImplTest`, `SuggestionTaskOwnerFallbackMigrationTest`, `WorkflowTaskAssigneesIT`
+- **Related:** ADR:2026-10-22-agent-glossary-proposals-are-decided-through-the-approval-workflow, ADR:2026-11-23-a-changed-workflow-is-deployed-when-the-server-starts, #38297, open-metadata/openmetadata-collate#8552
 
 ## Context
 
