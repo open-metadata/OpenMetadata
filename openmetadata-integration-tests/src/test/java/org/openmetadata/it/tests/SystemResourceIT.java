@@ -1768,8 +1768,8 @@ public class SystemResourceIT {
 
   @ParameterizedTest
   @EnumSource(FailedRowsSensitivityScope.class)
-  void test_failedRowsCertificationClassificationCannotHideSensitivity(
-      FailedRowsSensitivityScope scope, TestNamespace ns) throws Exception {
+  void test_failedRowsPiiCertification(FailedRowsSensitivityScope scope, TestNamespace ns)
+      throws Exception {
     OpenMetadataClient admin = SdkClients.adminClient();
     String originalSettings =
         admin
@@ -1885,12 +1885,16 @@ public class SystemResourceIT {
 
   private Table certificationSensitiveTable(TestNamespace ns, FailedRowsSensitivityScope scope) {
     OpenMetadataClient admin = SdkClients.adminClient();
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    DatabaseService service =
+        DatabaseServiceTestFactory.createPostgresWithName(ns.shortPrefix("svc"), ns);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimpleWithName(ns.shortPrefix("schema"), ns, service);
     Table table =
         admin
             .tables()
             .get(
-                TableTestFactory.createSimple(ns, schema.getFullyQualifiedName())
+                TableTestFactory.createSimpleWithName(
+                        ns.shortPrefix("table"), ns, schema.getFullyQualifiedName())
                     .getId()
                     .toString(),
                 "columns,tags");
