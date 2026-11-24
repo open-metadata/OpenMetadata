@@ -110,7 +110,7 @@ def test_connectors_reject_invalid_configuration(defaults, selected):
     assert not result.stdout
 
 
-@pytest.fixture(params=["ci-pr.yml", "ci-merge-queue.yml", "ci-nightly.yml"])
+@pytest.fixture(params=["ci-pr.yml", "ci-merge-queue.yml"])
 def gate(request):
     script = workflow(request.param)["jobs"]["py-tests-status"]["steps"][0]["run"]
 
@@ -150,6 +150,26 @@ def test_gate_rejects_unexpected_results_and_dependencies(gate):
     assert gate({"a": {"result": "success"}}, {}).returncode != 0
     assert gate({}, {}).returncode != 0
     assert gate({"a": {"result": "success"}, "omitted-job": {"result": "failure"}}, {"a": "success"}).returncode != 0
+
+
+def test_nightly_gate_requires_every_dependency_to_succeed():
+    job = workflow("ci-nightly.yml")["jobs"]["py-tests-status"]
+    successful = {name: {"result": "success"} for name in job["needs"]}
+
+    def invoke(needs):
+        return run(
+            "bash",
+            "-eo",
+            "pipefail",
+            "-c",
+            job["steps"][0]["run"],
+            env={**os.environ, "NEEDS_JSON": json.dumps(needs)},
+        )
+
+    result = invoke(successful)
+    assert result.returncode == 0, result.stderr
+    for name, outcome in itertools.product(successful, ["failure", "cancelled", "skipped"]):
+        assert invoke({**successful, name: {"result": outcome}}).returncode != 0, (name, outcome)
 
 
 def test_nightly_artifact_names_are_unique_across_invocations():

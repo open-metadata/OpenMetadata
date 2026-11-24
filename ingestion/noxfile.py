@@ -389,38 +389,42 @@ def integration_tests(session):
 
 @nox.session(name="cli-e2e", python=False, default=False)
 def cli_e2e(session):
-    """Run one connector's CLI tests with parent and subprocess coverage."""
-    if len(session.posargs) != 1:
-        session.error("Pass one connector name after --")
-    connector = session.posargs[0]
+    """Run one connector's CLI tests with optional parent and subprocess coverage."""
+    args = list(session.posargs)
+    collect_coverage = "--no-cov" not in args
+    if not collect_coverage:
+        args.remove("--no-cov")
+    if len(args) != 1:
+        session.error("Pass one connector name and optional --no-cov after --")
+    connector = args[0]
     test = INGESTION_ROOT / "tests/cli_e2e" / f"test_cli_{connector}.py"
     if not test.is_file():
         session.error(f"Unknown CLI E2E connector: {connector}")
     python = prepare(session, "test-classification")
-    site_packages = session.run(
-        str(python), "-c", "import site; print(site.getsitepackages()[0])", silent=True, external=True
-    ).strip()
-    startup = Path(site_packages) / "sitecustomize.py"
-    hook = '\nimport os\nif os.environ.get("COVERAGE_PROCESS_START"):\n    import coverage\n    coverage.process_startup()\n'
-    existing = startup.read_text() if startup.exists() else ""
-    if hook not in existing:
-        startup.write_text(existing + hook)
     environment = {name: value for name, value in {**os.environ, **session.env}.items() if value is not None}
-    coverage_environment = {
-        **environment,
-        "COVERAGE_PROCESS_START": str(INGESTION_ROOT / "pyproject.toml"),
-        "COVERAGE_FILE": str(INGESTION_ROOT / f".coverage.{connector}"),
-    }
+    test_environment = environment
+    command = [str(python), "-m"]
+    commands = []
+    if collect_coverage:
+        site_packages = session.run(
+            str(python), "-c", "import site; print(site.getsitepackages()[0])", silent=True, external=True
+        ).strip()
+        startup = Path(site_packages) / "sitecustomize.py"
+        hook = '\nimport os\nif os.environ.get("COVERAGE_PROCESS_START"):\n    import coverage\n    coverage.process_startup()\n'
+        existing = startup.read_text() if startup.exists() else ""
+        if hook not in existing:
+            startup.write_text(existing + hook)
+        test_environment = {
+            **environment,
+            "COVERAGE_PROCESS_START": str(INGESTION_ROOT / "pyproject.toml"),
+            "COVERAGE_FILE": str(INGESTION_ROOT / f".coverage.{connector}"),
+        }
+        command.extend(["coverage", "run", "--rcfile=pyproject.toml", "--branch", "-m"])
+        commands = ["combine"] if os.environ.get("GITHUB_ACTIONS") == "true" else ["combine", "report"]
     exit_code = run_test_process(
         session,
         [
-            str(python),
-            "-m",
-            "coverage",
-            "run",
-            "--rcfile=pyproject.toml",
-            "--branch",
-            "-m",
+            *command,
             "pytest",
             "-c",
             "pyproject.toml",
@@ -428,9 +432,8 @@ def cli_e2e(session):
             str(test),
         ],
         "cli-e2e",
-        coverage_environment,
+        test_environment,
     )
-    commands = ["combine"] if os.environ.get("GITHUB_ACTIONS") == "true" else ["combine", "report"]
     for command in commands:
         subprocess.run(
             [str(python), "-m", "coverage", command, f"--data-file=.coverage.{connector}", "--rcfile=pyproject.toml"],

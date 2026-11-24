@@ -29,6 +29,10 @@ on:
         description: Load the shared ingestion image instead of building it per connector
         type: boolean
         default: false
+      collect-coverage:
+        description: Collect and upload connector coverage for Sonar
+        type: boolean
+        default: true
 permissions:
   id-token: write
   contents: read
@@ -110,9 +114,14 @@ jobs:
           set -o pipefail
           source env/bin/activate
           cd ingestion
-          nox --no-venv -s cli-e2e -- "$E2E_TEST" 2>&1 | tee cli-e2e-test-run.log
+          args=()
+          if [[ "$COLLECT_COVERAGE" != 'true' ]]; then
+            args+=(--no-cov)
+          fi
+          nox --no-venv -s cli-e2e -- "$E2E_TEST" "${args[@]}" 2>&1 | tee cli-e2e-test-run.log
         env:
           E2E_TEST: ${{ matrix.e2e-test }}
+          COLLECT_COVERAGE: ${{ inputs.collect-coverage }}
           E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
           E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
           E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
@@ -173,7 +182,7 @@ jobs:
           E2E_ATHENA_S3STAGINGDIR: ${{ secrets.E2E_ATHENA_S3STAGINGDIR }}
           E2E_ATHENA_WORKGROUP: ${{ secrets.E2E_ATHENA_WORKGROUP }}
       - name: Upload connector coverage
-        if: ${{ !cancelled() }}
+        if: ${{ inputs.collect-coverage && !cancelled() }}
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:

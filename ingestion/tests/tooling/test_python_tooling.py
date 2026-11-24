@@ -248,7 +248,10 @@ def test_ci_suite_records_pytest_status_and_streams_real_output(nox_repo, monkey
 
 
 @pytest.mark.parametrize("exit_code", [0, 1, 5])
-def test_cli_e2e_preserves_pytest_outcome_and_subprocess_coverage(nox_repo: Path, exit_code: int) -> None:
+@pytest.mark.parametrize("collect", [True, False])
+def test_cli_e2e_preserves_pytest_outcome_and_subprocess_coverage(
+    nox_repo: Path, exit_code: int, collect: bool
+) -> None:
     tests = nox_repo / "ingestion/tests/cli_e2e"
     tests.mkdir()
     (tests / "test_cli_demo.py").write_text(
@@ -261,16 +264,20 @@ def test_cli_e2e_preserves_pytest_outcome_and_subprocess_coverage(nox_repo: Path
         if exit_code != 5
         else "value = 1\n"
     )
-    result = run("nox", "--no-venv", "-s", "cli-e2e", "--", "demo", cwd=nox_repo / "ingestion")
+    args = [] if collect else ["--no-cov"]
+    result = run("nox", "--no-venv", "-s", "cli-e2e", "--", "demo", *args, cwd=nox_repo / "ingestion")
     assert (result.returncode == 0) == (exit_code == 0), result.stdout + result.stderr
     assert (nox_repo / "ingestion/cli-e2e-test-exit-code.txt").read_text().strip() == str(exit_code)
     assert (nox_repo / "ingestion/junit/test-results-demo.xml").is_file()
-    if exit_code != 5:
+    if not collect:
+        assert not list((nox_repo / "ingestion").glob(".coverage*"))
+    elif exit_code != 5:
         from coverage import CoverageData
 
         coverage = CoverageData(str(nox_repo / "ingestion/.coverage.demo"))
         coverage.read()
         assert coverage.lines("src/metadata/sample.py") == [1, 2, 3, 4]
+    if exit_code != 5:
         assert reported_test_names(nox_repo, "demo") == ["test_connector"]
 
 

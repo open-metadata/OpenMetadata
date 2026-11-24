@@ -111,7 +111,7 @@ jobs:
     with:
       python-version: ${{ matrix.python }}
       ref: ${{ needs.plan.outputs.ref }}
-      collect-coverage: ${{ matrix.python == needs.plan.outputs.python-lowest }}
+      collect-coverage: ${{ github.ref == 'refs/heads/main' && matrix.python == needs.plan.outputs.python-lowest }}
 
   python-integration:
     needs:
@@ -126,7 +126,7 @@ jobs:
     with:
       python-version: ${{ matrix.python }}
       ref: ${{ needs.plan.outputs.ref }}
-      collect-coverage: ${{ matrix.python == needs.plan.outputs.python-lowest }}
+      collect-coverage: ${{ github.ref == 'refs/heads/main' && matrix.python == needs.plan.outputs.python-lowest }}
 
   python-cli-e2e:
     needs:
@@ -144,6 +144,7 @@ jobs:
       ref: ${{ needs.plan.outputs.ref }}
       connectors: ${{ needs.plan.outputs.connectors }}
       use-ingestion-image: true
+      collect-coverage: ${{ github.ref == 'refs/heads/main' }}
 
   airflow-apis:
     needs: [plan, backend]
@@ -152,7 +153,7 @@ jobs:
       ref: ${{ needs.plan.outputs.ref }}
       python-version: ${{ needs.plan.outputs.python-lowest }}
       use-backend-image: true
-      collect-coverage: true
+      collect-coverage: ${{ github.ref == 'refs/heads/main' }}
 
   py-tests-status:
     name: py-tests-status
@@ -173,26 +174,8 @@ jobs:
       - name: Verify selected Python workloads
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
-          EXPECTED_RESULTS: |
-            {
-              "plan": "success",
-              "airflow-apis": "success",
-              "py-static-checks": "success",
-              "classification-models": "success",
-              "backend": "success",
-              "ingestion-image": "success",
-              "python-unit": "success",
-              "python-integration": "success",
-              "python-cli-e2e": "success"
-            }
         run: |
-          jq -e -n --argjson needs "$NEEDS_JSON" --argjson expected "$EXPECTED_RESULTS" '
-            $expected | length > 0 and
-            (keys == ($needs | keys)) and
-            all(to_entries[]; . as $job |
-              ($job.value == "success" or $job.value == "skipped") and
-              $needs[$job.key].result == $job.value)
-          '
+          jq -e 'all(.[]; .result == "success")' <<< "$NEEDS_JSON"
         shell: bash
 
   sonar-cloud-coverage-upload:
@@ -224,15 +207,10 @@ jobs:
         with:
           pattern: '*coverage-*'
           path: artifacts
-      - name: Download CLI test results
+      - name: Download test results
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
-          pattern: tests-*
-          path: test-artifacts
-      - name: Download unit and integration test results
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          pattern: py-*-test-results-*
+          pattern: '{tests-*,py-*-test-results-*}'
           path: test-artifacts
       - name: Generate report
         run: |

@@ -96,7 +96,7 @@ and manual nightly failures notify ingestion Slack and mention `onduty-integrati
 or cancelled runs and PR/merge-queue modes stay silent. Preserve unit, integration and connector
 coverage and JUnit results, combining them after the test workflows finish before publishing to Sonar
 on main. Use distinct connector coverage and result names to avoid overwriting other lanes.
-PR and queue suites disable coverage instrumentation. Nightly collects coverage from the lowest
+PR, queue and manual nightly runs outside main disable coverage instrumentation. On main, nightly collects coverage from the lowest
 Python unit runner, the lowest Python MySQL integration shards, and the legacy connector runners;
 the remaining compatibility jobs still publish JUnit results without collecting coverage.
 
