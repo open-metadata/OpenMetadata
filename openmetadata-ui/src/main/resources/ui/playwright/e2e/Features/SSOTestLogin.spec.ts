@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Page, Route } from '@playwright/test';
+import { generateKeyPairSync, sign } from 'crypto';
 import { redirectToHomePage } from '../../utils/common';
 import {
   enableSSOEditMode,
@@ -28,12 +29,6 @@ const CREDENTIALS_URL = `${TEST_LOGIN_URL}/credentials`;
 const RESULT_URL = `${TEST_LOGIN_URL}/result/**`;
 const SECURITY_CONFIG_URL = '**/system/security/config';
 const VALIDATE_URL = '**/system/security/validate';
-
-// Mirrors E2E_INJECTED_ID_TOKEN_KEY in
-// src/components/SettingsSso/SsoTestLogin/useSsoTestLogin.ts. Injecting a token
-// here lets the success/failure round-trip be exercised without a real IdP popup
-// (which cannot run headlessly); the backend response is mocked separately.
-const E2E_ID_TOKEN_KEY = '__OM_E2E_SSO_TEST_ID_TOKEN__';
 
 // Stands in for the identity provider a server-driven test sends its popup to.
 const FAKE_AUTHORIZATION_URL = 'https://idp.e2e.test/authorize';
@@ -95,13 +90,80 @@ const switchToPublicClient = async (page: Page) => {
   await expect(publicRadio).toBeChecked();
 };
 
-const injectTestIdToken = (page: Page) =>
-  page.evaluate((key) => {
-    (window as unknown as Record<string, string>)[key] = 'e2e-fake-id-token';
-  }, E2E_ID_TOKEN_KEY);
-
 const formField = (page: Page, path: string) =>
   page.locator(`[id="root/authenticationConfiguration/${path}"]`);
+
+const mockPublicClientSignIn = async (page: Page) => {
+  const issuer = 'https://idp.e2e.test';
+  const clientId = 'e2e-client-id';
+  const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+  });
+  const signingKey = {
+    ...publicKey.export({ format: 'jwk' }),
+    kid: 'e2e',
+    alg: 'RS256',
+    use: 'sig',
+  };
+
+  await formField(page, 'authority').fill(issuer);
+  await formField(page, 'clientId').fill(clientId);
+  await formField(page, 'callbackUrl').fill(
+    new URL('/callback', page.url()).href
+  );
+
+  await page
+    .context()
+    .route(`${issuer}/.well-known/openid-configuration`, (route) =>
+      route.fulfill({
+        headers: { 'access-control-allow-origin': '*' },
+        json: {
+          issuer,
+          authorization_endpoint: FAKE_AUTHORIZATION_URL,
+          jwks_uri: `${issuer}/keys`,
+        },
+      })
+    );
+  await page.context().route(`${issuer}/keys`, (route) =>
+    route.fulfill({
+      headers: { 'access-control-allow-origin': '*' },
+      json: { keys: [signingKey] },
+    })
+  );
+  // Release builds ignore injected tokens. Exercise the real popup callback and
+  // OIDC validation, with only the external provider replaced by local responses.
+  await page.context().route(`${FAKE_AUTHORIZATION_URL}**`, (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    const now = Math.floor(Date.now() / 1000);
+    const header = Buffer.from(
+      JSON.stringify({ alg: 'RS256', kid: signingKey.kid })
+    ).toString('base64url');
+    const claims = Buffer.from(
+      JSON.stringify({
+        iss: issuer,
+        aud: clientId,
+        sub: 'alice',
+        email: 'alice@example.com',
+        nonce: params.get('nonce'),
+        iat: now,
+        exp: now + 300,
+      })
+    ).toString('base64url');
+    const payload = `${header}.${claims}`;
+    const signature = sign(
+      'RSA-SHA256',
+      new TextEncoder().encode(payload),
+      privateKey
+    ).toString('base64url');
+    const callback = new URL(params.get('redirect_uri')!);
+    callback.hash = new URLSearchParams({
+      state: params.get('state')!,
+      id_token: `${payload}.${signature}`,
+    }).toString();
+
+    return route.fulfill({ status: 302, headers: { location: callback.href } });
+  });
+};
 
 // Tagged so the SSO nightly's Basic leg (`--grep @basic`) enrols this
 // spec — it only needs an authenticated admin (default Basic auth is
@@ -205,11 +267,11 @@ test.describe('SSO Test Login', { tag: ['@sso', '@basic'] }, () => {
 
     await selectSSOProvider(page, 'google');
     await switchToPublicClient(page);
-    await injectTestIdToken(page);
+    await mockPublicClientSignIn(page);
 
     const validateResponse = page.waitForResponse(VALIDATE_TOKEN_URL);
     await page.getByTestId('test-login-sso-configuration').click();
-    await validateResponse;
+    expect((await validateResponse).status()).toBe(200);
 
     const dialog = page.getByRole('dialog');
 
@@ -235,11 +297,11 @@ test.describe('SSO Test Login', { tag: ['@sso', '@basic'] }, () => {
 
     await selectSSOProvider(page, 'google');
     await switchToPublicClient(page);
-    await injectTestIdToken(page);
+    await mockPublicClientSignIn(page);
 
     const validateResponse = page.waitForResponse(VALIDATE_TOKEN_URL);
     await page.getByTestId('test-login-sso-configuration').click();
-    await validateResponse;
+    expect((await validateResponse).status()).toBe(200);
 
     await expect(page.getByRole('dialog')).toContainText(
       /principal-domain rules/i
