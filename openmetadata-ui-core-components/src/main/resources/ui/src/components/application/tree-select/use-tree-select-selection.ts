@@ -153,6 +153,9 @@ export const useTreeSelectSelection = <T = unknown>({
         const parentId = parent?.id ?? node.parentId;
         const hasLockedSibling = Array.from(selectedNodes.values()).some(
           (selected) => {
+            if (selected.displayOnly) {
+              return false;
+            }
             const selectedParent =
               selected.parentId ??
               parentOfSelected.current.get(selected.id) ??
