@@ -29,6 +29,8 @@ import lombok.With;
 @Builder(toBuilder = true)
 @With
 public class SearchIndexPartition {
+  /** Start key of a partition that begins at the first row of its entity type. */
+  public static final String FIRST_ROW = "";
 
   /** Unique identifier for this partition */
   private UUID id;
@@ -47,6 +49,20 @@ public class SearchIndexPartition {
 
   /** Ending offset for this partition (exclusive) */
   private long rangeEnd;
+
+  /**
+   * Keyset cursor this partition reads after, fixed when the job is created so every server reads
+   * the same rows whatever is created or deleted meanwhile. {@link #FIRST_ROW} for the first
+   * partition; null when keys could not be computed (time series, or a failed boundary walk), in
+   * which case the partition reads by offset.
+   */
+  private String startKey;
+
+  /**
+   * Keyset cursor of the last row this partition reads, which is where the next partition starts.
+   * Null when the partition reads to the end of the table, or when keys could not be computed.
+   */
+  private String endKey;
 
   /** Estimated number of entities in this partition */
   private long estimatedCount;
@@ -114,6 +130,11 @@ public class SearchIndexPartition {
   /** Check if this partition can be claimed */
   public boolean isClaimable() {
     return status == PartitionStatus.PENDING;
+  }
+
+  /** Whether this partition reads a fixed key range rather than an offset range. */
+  public boolean hasKeyRange() {
+    return startKey != null;
   }
 
   /** Get remaining entities to process */

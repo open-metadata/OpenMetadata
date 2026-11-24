@@ -16,7 +16,6 @@ package org.openmetadata.service.apps.bundles.searchIndex.distributed;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -256,6 +255,8 @@ class DistributedSearchIndexCoordinatorTest {
             anyInt(),
             anyLong(),
             anyLong(),
+            any(),
+            any(),
             anyLong(),
             anyLong(),
             anyInt(),
@@ -369,6 +370,8 @@ class DistributedSearchIndexCoordinatorTest {
                 0,
                 0,
                 5000,
+                null,
+                null,
                 5000,
                 7500,
                 50,
@@ -449,6 +452,8 @@ class DistributedSearchIndexCoordinatorTest {
                 0,
                 0,
                 5000,
+                null,
+                null,
                 5000,
                 7500,
                 50,
@@ -514,6 +519,8 @@ class DistributedSearchIndexCoordinatorTest {
                 0,
                 0,
                 5000,
+                null,
+                null,
                 5000,
                 7500,
                 50,
@@ -586,6 +593,8 @@ class DistributedSearchIndexCoordinatorTest {
             0,
             0,
             5000,
+            null,
+            null,
             5000,
             7500,
             50,
@@ -676,6 +685,8 @@ class DistributedSearchIndexCoordinatorTest {
             0,
             0,
             5000,
+            null,
+            null,
             5000,
             7500,
             50,
@@ -733,6 +744,8 @@ class DistributedSearchIndexCoordinatorTest {
             0,
             0,
             5000,
+            null,
+            null,
             5000,
             7500,
             50,
@@ -795,6 +808,8 @@ class DistributedSearchIndexCoordinatorTest {
             0,
             0,
             5000,
+            null,
+            null,
             5000,
             7500,
             50,
@@ -884,6 +899,8 @@ class DistributedSearchIndexCoordinatorTest {
             0,
             0,
             5000,
+            null,
+            null,
             5000,
             7500,
             50,
@@ -966,6 +983,8 @@ class DistributedSearchIndexCoordinatorTest {
             0,
             0,
             5000,
+            null,
+            null,
             5000,
             7500,
             50,
@@ -1301,64 +1320,6 @@ class DistributedSearchIndexCoordinatorTest {
             any(),
             anyLong(),
             any());
-  }
-
-  @Test
-  void testCheckAndUpdateJobCompletion_EvictsPartitionStartCursorsCache() throws Exception {
-    UUID jobId = UUID.randomUUID();
-
-    // Seed the per-jobId cursor cache directly. Going through precomputePartitionStartCursors
-    // would require real EntityRepository wiring — testing the eviction contract is the
-    // point here, not the population path.
-    java.lang.reflect.Field cacheField =
-        DistributedSearchIndexCoordinator.class.getDeclaredField("partitionStartCursors");
-    cacheField.setAccessible(true);
-    @SuppressWarnings("unchecked")
-    Map<UUID, Map<String, Map<Long, String>>> cache =
-        (Map<UUID, Map<String, Map<Long, String>>>) cacheField.get(coordinator);
-    Map<String, Map<Long, String>> entityCursors = new HashMap<>();
-    entityCursors.put("table", Map.of(10000L, "encoded-cursor-blob"));
-    cache.put(jobId, entityCursors);
-
-    assertNotNull(
-        coordinator.getPartitionStartCursor(jobId, "table", 10000L),
-        "Cache should hold the seeded cursor before terminal transition");
-
-    // RUNNING job with no remaining partitions — checkAndUpdateJobCompletion should
-    // promote it to COMPLETED and evict the cache entry.
-    EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
-    SearchIndexJobRecord runningJob =
-        new SearchIndexJobRecord(
-            jobId.toString(),
-            IndexJobStatus.RUNNING.name(),
-            JsonUtils.pojoToJson(jobConfig),
-            "staged_",
-            null,
-            100,
-            100,
-            100,
-            0,
-            "{}",
-            "admin",
-            System.currentTimeMillis() - 60000,
-            System.currentTimeMillis() - 50000,
-            null,
-            System.currentTimeMillis(),
-            null,
-            System.currentTimeMillis() - 55000,
-            1);
-    when(jobDAO.findById(jobId.toString())).thenReturn(runningJob);
-    when(partitionDAO.findByJobIdAndStatus(eq(jobId.toString()), anyString()))
-        .thenReturn(List.of());
-    when(partitionDAO.getAggregatedStats(jobId.toString()))
-        .thenReturn(new AggregatedStatsRecord(100, 100, 100, 0, 1, 1, 0, 0, 0));
-
-    coordinator.checkAndUpdateJobCompletion(jobId);
-
-    assertNull(
-        coordinator.getPartitionStartCursor(jobId, "table", 10000L),
-        "Cache should be evicted once the job reaches a terminal state — long-running"
-            + " servers must not retain cursor blobs across many reindex runs.");
   }
 
   @Test
@@ -2045,6 +2006,8 @@ class DistributedSearchIndexCoordinatorTest {
         index,
         index * 5000L,
         (index + 1) * 5000L,
+        null,
+        null,
         5000,
         7500,
         50,
