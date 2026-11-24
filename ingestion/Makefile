@@ -1,5 +1,4 @@
 DIRECTORY_NAME := $(notdir $(CURDIR))
-PY_SOURCE ?= ./src
 
 ifeq (ingestion,$(DIRECTORY_NAME))
     INGESTION_DIR := .

@@ -1,5 +1,4 @@
 .DEFAULT_GOAL := help
-PY_SOURCE ?= ingestion/src
 include ingestion/Makefile
 
 .PHONY: help
