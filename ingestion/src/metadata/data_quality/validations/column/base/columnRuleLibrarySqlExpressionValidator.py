@@ -13,13 +13,19 @@
 Validator for column value rule library SQL expression
 """
 
+from typing import Any
+
 from metadata.data_quality.validations.mixins.rule_library_threshold_mixin import (
     RuleLibraryThresholdMixin,
 )
 from metadata.data_quality.validations.models import (
     RuleLibrarySqlExpressionRuntimeParameters,
 )
-from metadata.data_quality.validations.utils import render_sql_expression
+from metadata.data_quality.validations.utils import (
+    coerce_rule_library_param_value,
+    get_rule_library_param_types,
+    render_sql_expression,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
@@ -48,18 +54,29 @@ class ColumnRuleLibrarySqlExpressionValidator(RuleLibraryThresholdMixin):
 
     runtime_params: RuleLibrarySqlExpressionRuntimeParameters
 
-    def _get_user_params(self) -> dict[str, str]:
+    def _get_param_types(self) -> dict[str, Any]:
+        """Return declared parameter data types from the test definition, if available."""
+        runtime_params = getattr(self, "runtime_params", None)
+        test_definition = getattr(runtime_params, "test_definition", None)
+        return get_rule_library_param_types(test_definition)
+
+    def _get_user_params(self) -> dict[str, Any]:
         """Extract user-defined parameters from test case parameterValues.
 
+        Coerces each parameter value according to its declared TestDataType when available.
+
         Returns:
-            Dict mapping parameter names to their values
+            Dict mapping parameter names to their coerced values
         """
-        params = {}
+        params: dict[str, Any] = {}
+        param_types = self._get_param_types()
         if self.test_case.parameterValues:
             for param in self.test_case.parameterValues:
                 if param.name and param.value and param.name not in RESERVED_PARAMS:  # noqa: SIM102
                     if not param.name.endswith("RuntimeParameters"):
-                        params[param.name] = param.value
+                        params[param.name] = coerce_rule_library_param_value(
+                            param.value, param_types.get(param.name)
+                        )
         return params
 
     def compile_sql_expression(self, column_name: str, table_name: str) -> str:

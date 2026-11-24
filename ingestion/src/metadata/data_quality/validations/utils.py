@@ -5,13 +5,17 @@ Data quality validation utility functions.
 import json
 from ast import literal_eval
 from collections.abc import Callable
+from datetime import date, datetime, time
+from decimal import Decimal, InvalidOperation
 from typing import Any, TypeVar
 from urllib.parse import quote
 
 from jinja2 import StrictUndefined, TemplateSyntaxError, UndefinedError
 from jinja2.exceptions import SecurityError
 from jinja2.sandbox import SandboxedEnvironment
+from sqlalchemy import Boolean, Date, DateTime, Float, Integer, Numeric, String, Time
 from sqlalchemy.engine import URL
+from sqlalchemy.sql.type_api import TypeEngine
 
 from metadata.generated.schema.tests.testCase import TestCaseParameterValue
 from metadata.profiler.orm.registry import is_boolean
@@ -164,3 +168,92 @@ def render_sql_expression(sql_template: str, params: dict[str, str]) -> str:
         raise ValueError(
             f"Undefined variable in SQL expression: {e.message}. Available parameters: {list(params.keys())}"
         ) from e
+
+
+def _normalize_test_data_type(data_type: Any) -> str | None:
+    """Normalize a TestDataType enum or string to its uppercase name."""
+    if data_type is None:
+        return None
+    raw = getattr(data_type, "value", data_type)
+    return raw.upper() if isinstance(raw, str) else None
+
+
+def get_rule_library_param_types(test_definition: Any) -> dict[str, Any]:
+    """Return a mapping of parameter name -> declared TestDataType from a TestDefinition."""
+    param_defs = getattr(test_definition, "parameterDefinition", None)
+    if not isinstance(param_defs, (list, tuple)):
+        return {}
+    return {
+        defn.name: defn.dataType
+        for defn in param_defs
+        if getattr(defn, "name", None) and getattr(defn, "dataType", None) is not None
+    }
+
+
+def coerce_rule_library_param_value(raw_value: str, data_type: Any) -> Any:
+    """Coerce a Rule Library parameter string to the Python type matching its TestDataType."""
+    if not isinstance(raw_value, str):
+        return raw_value
+
+    type_name = _normalize_test_data_type(data_type)
+    if not type_name or type_name in {"STRING", "ARRAY", "MAP", "SET"}:
+        return raw_value
+
+    stripped = raw_value.strip()
+    try:
+        if type_name == "INT":
+            return int(stripped)
+        if type_name in {"FLOAT", "DOUBLE"}:
+            return float(stripped)
+        if type_name == "NUMBER":
+            try:
+                return int(stripped)
+            except ValueError:
+                return float(stripped)
+        if type_name == "DECIMAL":
+            return Decimal(stripped)
+        if type_name == "BOOLEAN":
+            lowered = stripped.lower()
+            if lowered == "true":
+                return True
+            if lowered == "false":
+                return False
+            raise ValueError(f"Invalid boolean literal: {raw_value!r}")
+        if type_name == "DATE":
+            return date.fromisoformat(stripped)
+        if type_name == "TIME":
+            return time.fromisoformat(stripped)
+        if type_name in {"DATETIME", "TIMESTAMP"}:
+            iso = f"{stripped[:-1]}+00:00" if stripped.endswith(("Z", "z")) else stripped
+            return datetime.fromisoformat(iso)
+    except (ValueError, TypeError, InvalidOperation):
+        logger.warning(
+            "Failed to coerce rule library parameter value %r as %s; keeping raw string.",
+            raw_value,
+            type_name,
+        )
+        return raw_value
+
+    return raw_value
+
+
+def get_sqlalchemy_bind_type(data_type: Any) -> TypeEngine | None:
+    """Return the SQLAlchemy TypeEngine corresponding to a TestDataType, if applicable."""
+    type_name = _normalize_test_data_type(data_type)
+    if not type_name:
+        return None
+    mapping: dict[str, Callable[[], TypeEngine]] = {
+        "INT": Integer,
+        "FLOAT": Float,
+        "DOUBLE": Float,
+        "NUMBER": Float,
+        "DECIMAL": Numeric,
+        "BOOLEAN": Boolean,
+        "DATE": Date,
+        "TIME": Time,
+        "DATETIME": DateTime,
+        "TIMESTAMP": DateTime,
+        "STRING": String,
+    }
+    factory = mapping.get(type_name)
+    return factory() if factory else None

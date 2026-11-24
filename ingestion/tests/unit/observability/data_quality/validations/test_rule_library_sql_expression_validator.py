@@ -2,7 +2,8 @@
 Unit tests for RuleLibrarySqlExpressionValidator.compile_sql_expression method
 """
 
-from datetime import datetime
+from datetime import date, datetime, time, timezone
+from decimal import Decimal
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -569,3 +570,96 @@ def test_row_count_error_rolls_back_and_recovers(validator_class):
         physical.metadata.create_all(engine)
         session.execute(physical.insert(), {"amount": 1})
         assert validator._run_row_count() == 1
+
+
+class TestRuleLibraryParamTypeCoercion:
+    """Test parameter type coercion and explicit SQLAlchemy bind types (#38627)."""
+
+    @pytest.mark.parametrize(
+        ("raw_value", "data_type", "expected"),
+        [
+            ("42", "INT", 42),
+            ("3.14", "FLOAT", 3.14),
+            ("2.718", "DOUBLE", 2.718),
+            ("10", "NUMBER", 10),
+            ("10.5", "NUMBER", 10.5),
+            ("99.95", "DECIMAL", Decimal("99.95")),
+            ("true", "BOOLEAN", True),
+            ("FALSE", "BOOLEAN", False),
+            ("2026-11-24", "DATE", date(2026, 11, 24)),
+            ("14:30:00", "TIME", time(14, 30, 0)),
+            (
+                "2026-11-24T14:30:00Z",
+                "TIMESTAMP",
+                datetime(2026, 11, 24, 14, 30, 0, tzinfo=timezone.utc),
+            ),
+            ("hello", "STRING", "hello"),
+            ("not-a-float", "FLOAT", "not-a-float"),
+        ],
+    )
+    def test_coerce_rule_library_param_value(self, raw_value, data_type, expected):
+        from metadata.data_quality.validations.utils import (
+            coerce_rule_library_param_value,
+        )
+
+        result = coerce_rule_library_param_value(raw_value, data_type)
+        assert result == expected
+        assert type(result) is type(expected)
+
+    @pytest.mark.parametrize("validator_class", [SQAValidator, TableSQAValidator])
+    def test_sqa_validator_coerces_and_attaches_typed_bindparams(self, validator_class):
+        from sqlalchemy import Boolean, Float, Integer
+
+        from metadata.generated.schema.tests.testDefinition import TestDataType
+
+        validator = validator_class.__new__(validator_class)
+        session = MagicMock()
+        session.execute.return_value.fetchall.return_value = [(1,)]
+        validator.runner = Mock(_session=session)
+
+        p_float = Mock(name="p_float")
+        p_float.name, p_float.value = "threshold", "3.14"
+        p_int = Mock(name="p_int")
+        p_int.name, p_int.value = "min_rows", "5"
+        p_bool = Mock(name="p_bool")
+        p_bool.name, p_bool.value = "is_active", "true"
+        validator.test_case = Mock(parameterValues=[p_float, p_int, p_bool])
+
+        d_float = Mock()
+        d_float.name, d_float.dataType = "threshold", TestDataType.FLOAT
+        d_int = Mock()
+        d_int.name, d_int.dataType = "min_rows", TestDataType.INT
+        d_bool = Mock()
+        d_bool.name, d_bool.dataType = "is_active", TestDataType.BOOLEAN
+
+        validator.runtime_params = Mock()
+        validator.runtime_params.test_definition.parameterDefinition = [
+            d_float,
+            d_int,
+            d_bool,
+        ]
+        validator.runtime_params.test_definition.sqlExpression = Mock(
+            root=(
+                "SELECT * FROM {{ table_name }} "
+                "WHERE score > {{ threshold }} AND qty >= {{ min_rows }} AND active = {{ is_active }}"
+            )
+        )
+
+        kwargs = {"table_name": "orders"}
+        if validator_class is SQAValidator:
+            kwargs["column_name"] = "score"
+
+        compiled_sql, bind_params = validator.compile_sql_expression(**kwargs)
+        assert bind_params == {"threshold": 3.14, "min_rows": 5, "is_active": True}
+        assert isinstance(bind_params["threshold"], float)
+        assert isinstance(bind_params["min_rows"], int)
+        assert isinstance(bind_params["is_active"], bool)
+
+        count = validator._run_results((compiled_sql, bind_params))
+        assert count == 1
+
+        stmt, passed_params = session.execute.call_args.args
+        assert passed_params == {"threshold": 3.14, "min_rows": 5, "is_active": True}
+        assert isinstance(stmt._bindparams["threshold"].type, Float)
+        assert isinstance(stmt._bindparams["min_rows"].type, Integer)
+        assert isinstance(stmt._bindparams["is_active"].type, Boolean)
