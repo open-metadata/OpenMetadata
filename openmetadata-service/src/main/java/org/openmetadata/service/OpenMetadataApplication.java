@@ -141,6 +141,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityCacheRepair;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.GlossaryTermPendingLabels;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
@@ -542,6 +543,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                 jdbi.onDemand(CollectionDAO.class), Entity.getSearchRepository()));
 
     environment.lifecycle().manage(new ChangeRequestRecoveryScheduler());
+    environment.lifecycle().manage(new GlossaryTermPendingLabels());
 
     // Register Distributed Job Participant for distributed search indexing
     registerDistributedJobParticipant(environment, jdbi);

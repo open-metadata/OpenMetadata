@@ -88,7 +88,8 @@ final class RdfEntityScope {
         .forEachRemaining(
             triple -> {
               if (!owned.contains(triple.getSubject())
-                  && !isEntityTripleInScope(triple, entity, predicates)) {
+                  && !isEntityTripleInScope(triple, entity, predicates)
+                  && !RdfOwnedResources.isIncomingBinding(triple, entity, owned)) {
                 outside.add(triple);
               }
             });
@@ -131,11 +132,13 @@ final class RdfEntityScope {
             : "!isIRI(?o) || ?p IN (" + iris(predicates, ", ") + ")";
     return String.format(
         "GRAPH <%1$s> { VALUES ?entity { %2$s } "
-            + "{ ?entity ?p ?o . BIND(?entity AS ?subject) FILTER(%3$s) } UNION { %4$s } }",
+            + "{ ?entity ?p ?o . BIND(?entity AS ?subject) FILTER(%3$s) } UNION { %4$s } "
+            + "UNION { %5$s } }",
         JenaFusekiStorage.KNOWLEDGE_GRAPH,
         iris(entityUris, " "),
         filter,
-        RdfOwnedResources.ownedTriplesPattern());
+        RdfOwnedResources.ownedTriplesPattern(),
+        RdfOwnedResources.incomingBindingTriplesPattern());
   }
 
   private static String iris(final Iterable<String> iris, final String separator) {

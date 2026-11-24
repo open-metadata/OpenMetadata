@@ -38,6 +38,7 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -478,7 +479,8 @@ public interface KnowledgeAssetDAOs {
       String tagFQN = filter.getQueryParam("tagFQN");
       String tagListCondition =
           "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
-      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
       if (nullOrEmpty(tagFQN)) {
         tagListCondition = "";
         tagFilterCondition = "WHERE";
@@ -530,7 +532,8 @@ public interface KnowledgeAssetDAOs {
       String tagFQN = filter.getQueryParam("tagFQN");
       String tagListCondition =
           "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
-      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
       if (nullOrEmpty(tagFQN)) {
         tagListCondition = "";
         tagFilterCondition = "WHERE";
@@ -586,7 +589,8 @@ public interface KnowledgeAssetDAOs {
       String tagFQN = filter.getQueryParam("tagFQN");
       String tagListCondition =
           "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
-      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
       if (nullOrEmpty(tagFQN)) {
         tagListCondition = "";
         tagFilterCondition = "WHERE";
