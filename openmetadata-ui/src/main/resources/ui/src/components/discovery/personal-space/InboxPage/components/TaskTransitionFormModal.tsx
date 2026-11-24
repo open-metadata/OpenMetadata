@@ -18,7 +18,7 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Task,
@@ -26,8 +26,7 @@ import {
 } from '../../../../../generated/entity/tasks/task';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
 import { TaskPayload } from '../../../../../rest/tasksAPI';
-// eslint-disable-next-line openmetadata-imports/no-lower-layer-page-imports -- shared with TaskTabNew
-import TaskPayloadSchemaFields from '../../../../../pages/TasksPage/shared/TaskPayloadSchemaFields';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import { isDescriptionContentEmpty } from '../../../../../utils/BlockEditorPureUtils';
 import {
   applyTaskFormSchemaDefaults,
@@ -35,6 +34,13 @@ import {
   getTaskTransitionFormSchema,
   getTaskTransitionUiSchema,
 } from '../../../../../utils/TaskFormSchemaUtils';
+
+const TaskPayloadSchemaFields = withSuspenseFallback(
+  lazy(
+    () =>
+      import('../../../../../pages/TasksPage/shared/TaskPayloadSchemaFields')
+  )
+);
 
 export interface TaskTransitionFormModalProps {
   open: boolean;
