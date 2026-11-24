@@ -53,6 +53,18 @@ SHOW_FULL_COLUMNS_ROWS = {
         ("id", "int", "", "NO", "YES", None, "", "", ""),
         ("name", "varchar(50)", "", "YES", "NO", None, "NONE", "", ""),
     ],
+    # UNIQUE KEY(`x,y`, id), with separate non-key columns named x and y
+    "t_uniq_comma": [
+        ("x,y", "int", "", "NO", "YES", None, "", "", ""),
+        ("id", "int", "", "NO", "YES", None, "", "", ""),
+        ("x", "int", "", "YES", "NO", None, "", "", ""),
+        ("y", "int", "", "YES", "NO", None, "", "", ""),
+    ],
+    # UNIQUE KEY(`x,y`)
+    "t_uniq_single_comma": [
+        ("x,y", "int", "", "NO", "YES", None, "", "", ""),
+        ("id", "int", "", "YES", "NO", None, "", "", ""),
+    ],
     # AGGREGATE KEY(dt, site)
     "t_agg": [
         ("dt", "date", "", "NO", "YES", None, "", "", ""),
@@ -82,6 +94,8 @@ SHOW_FULL_COLUMNS_ROWS = {
 TABLE_OPTIONS_ROWS = [
     SimpleNamespace(TABLE_NAME="t_uniq", TABLE_MODEL="UNI", TABLE_MODEL_KEY="region,user_id"),
     SimpleNamespace(TABLE_NAME="t_uniq_single", TABLE_MODEL="UNI", TABLE_MODEL_KEY="id"),
+    SimpleNamespace(TABLE_NAME="t_uniq_comma", TABLE_MODEL="UNI", TABLE_MODEL_KEY="x,y,id"),
+    SimpleNamespace(TABLE_NAME="t_uniq_single_comma", TABLE_MODEL="UNI", TABLE_MODEL_KEY="x,y"),
     SimpleNamespace(TABLE_NAME="t_agg", TABLE_MODEL="AGG", TABLE_MODEL_KEY="dt,site"),
     SimpleNamespace(TABLE_NAME="t_dup", TABLE_MODEL="DUP", TABLE_MODEL_KEY="k_date,k_id"),
     SimpleNamespace(TABLE_NAME="t_pri", TABLE_MODEL="PRI", TABLE_MODEL_KEY="k1,k2"),
@@ -158,6 +172,18 @@ class TestPrimaryKeyConstraints:
                 [],
                 {"id": Constraint.PRIMARY_KEY, "name": Constraint.NULL},
                 id="unique-single-key",
+            ),
+            pytest.param(
+                "t_uniq_comma",
+                [(ConstraintType.PRIMARY_KEY, ["x,y", "id"])],
+                {"x,y": Constraint.NOT_NULL, "id": Constraint.NOT_NULL, "x": Constraint.NULL, "y": Constraint.NULL},
+                id="unique-composite-key-with-comma",
+            ),
+            pytest.param(
+                "t_uniq_single_comma",
+                [],
+                {"x,y": Constraint.PRIMARY_KEY, "id": Constraint.NULL},
+                id="unique-single-key-with-comma",
             ),
             pytest.param(
                 "t_agg",

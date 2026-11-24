@@ -180,9 +180,7 @@ class DorisSource(CommonDbSourceService):
         super().__init__(config, metadata)
         # One entry per schema in progress: each of the `threads` workers ingests its own schema
         self.partitions_cache: LRUCache[dict[str, Row]] = LRUCache(capacity=self.source_config.threads or 1)
-        self.primary_key_columns_cache: LRUCache[dict[str, list[str]]] = LRUCache(
-            capacity=self.source_config.threads or 1
-        )
+        self.table_model_keys_cache: LRUCache[dict[str, str]] = LRUCache(capacity=self.source_config.threads or 1)
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -259,20 +257,16 @@ class DorisSource(CommonDbSourceService):
 
         return table_columns
 
-    def _get_primary_key_columns(self, schema_name: str, table_name: str) -> list[str]:
-        """
-        Key columns of a UNIQUE KEY or AGGREGATE KEY table, read once per schema.
-        The Key flag of SHOW FULL COLUMNS cannot be used: it is also set on the sort
-        columns of a DUPLICATE KEY table and on every column of an external table.
-        """
+    def _get_primary_key_columns(self, schema_name: str, table_name: str, column_names: Iterable[str]) -> list[str]:
+        """Match the table model's key against the full column names in schema order."""
         try:
             # Read once rather than checking for membership first: an eviction by another
             # worker thread between the two calls would raise here
-            primary_keys = self.primary_key_columns_cache.get(schema_name)
+            model_keys = self.table_model_keys_cache.get(schema_name)
         except KeyError:
             try:
-                primary_keys = {
-                    row.TABLE_NAME: row.TABLE_MODEL_KEY.split(",")
+                model_keys = {
+                    row.TABLE_NAME: row.TABLE_MODEL_KEY
                     for row in self.connection.execute(sql.text(DORIS_GET_TABLE_KEY_MODELS), {"schema": schema_name})
                     if row.TABLE_MODEL in PRIMARY_KEY_TABLE_MODELS
                 }
@@ -281,9 +275,24 @@ class DorisSource(CommonDbSourceService):
                 logger.debug(traceback.format_exc())
                 logger.warning("Could not read the table models of schema [%s]: %s", schema_name, exc)
                 self._rollback_failed_statement()
-                primary_keys = {}
-            self.primary_key_columns_cache.put(schema_name, primary_keys)
-        return primary_keys.get(table_name, [])
+                model_keys = {}
+            self.table_model_keys_cache.put(schema_name, model_keys)
+
+        model_key = model_keys.get(table_name)
+        if not model_key:
+            return []
+
+        # Doris requires model key columns to come first in the schema. Match full names
+        # in that order because TABLE_MODEL_KEY joins them with unescaped commas.
+        key_columns = []
+        offset = 0
+        for name in column_names:
+            key_columns.append(name)
+            prefix = f"{name},"
+            if not model_key.startswith(prefix, offset):
+                return key_columns if model_key[offset:] == name else []
+            offset += len(prefix)
+        return []
 
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self,
@@ -303,7 +312,7 @@ class DorisSource(CommonDbSourceService):
         table_constraints = []
         table_columns = []
         columns = self._get_columns(table_name, schema_name)
-        primary_columns = self._get_primary_key_columns(schema_name, table_name)
+        primary_columns = self._get_primary_key_columns(schema_name, table_name, (column["name"] for column in columns))
         if len(primary_columns) > 1:
             table_constraints.append(
                 TableConstraint(constraintType=ConstraintType.PRIMARY_KEY, columns=primary_columns)
