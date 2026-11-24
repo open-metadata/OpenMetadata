@@ -7002,13 +7002,27 @@ public interface CollectionDAO {
 
   @RegisterRowMapper(TagLabelMapper.class)
   interface TagUsageDAO {
+    /**
+     * The stored {@code state} of a glossary term applied before it is Approved: kept, but read by
+     * no tag query until the term is approved. It is a storage state, one past the last {@link
+     * TagLabel.State}, so the API cannot express it.
+     */
+    int PENDING_STATE = 2;
+
+    /** A tag query's condition that leaves out pending labels. */
+    String NOT_PENDING = "state <> " + PENDING_STATE;
+
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT IGNORE INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata)",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata) "
+                + "ON DUPLICATE KEY UPDATE state = IF(state = "
+                + PENDING_STATE
+                + ", VALUES(state), state)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
-            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata :: jsonb) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO NOTHING",
+            "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata :: jsonb) ON CONFLICT (source, tagFQNHash, targetFQNHash) DO UPDATE SET state = EXCLUDED.state WHERE tag_usage.state = "
+                + PENDING_STATE,
         connectionType = POSTGRES)
     void applyTag(
         @Bind("source") int source,
@@ -7093,14 +7107,17 @@ public interface CollectionDAO {
     }
 
     @SqlQuery(
-        "SELECT source, tagFQN,  labelType, state, reason, appliedAt, appliedBy, metadata FROM tag_usage WHERE targetFQNHash = :targetFQNHash ORDER BY tagFQN")
+        "SELECT source, tagFQN,  labelType, state, reason, appliedAt, appliedBy, metadata FROM tag_usage WHERE targetFQNHash = :targetFQNHash AND "
+            + NOT_PENDING
+            + " ORDER BY tagFQN")
     List<TagLabel> getTagsInternal(@BindFQN("targetFQNHash") String targetFQNHash);
 
     @SqlQuery(
         "SELECT targetFQNHash, source, tagFQN, labelType, state, reason, appliedAt, appliedBy, metadata "
             + "FROM tag_usage "
-            + "WHERE targetFQNHash IN (<targetFQNHashes>) "
-            + "ORDER BY targetFQNHash, tagFQN")
+            + "WHERE targetFQNHash IN (<targetFQNHashes>) AND "
+            + NOT_PENDING
+            + " ORDER BY targetFQNHash, tagFQN")
     @UseRowMapper(TagLabelWithFQNHashMapper.class)
     List<TagLabelWithFQNHash> getTagsInternalBatchInternal(
         @BindListFQN("targetFQNHashes") List<String> targetFQNHashes);
@@ -7114,8 +7131,9 @@ public interface CollectionDAO {
             + "FROM tag_usage "
             + "WHERE source = :source "
             + "AND targetFQNHash IN (<targetFQNHashes>) "
-            + "AND tagFQNHash LIKE :tagFQNHashPrefix "
-            + "ORDER BY targetFQNHash, tagFQN")
+            + "AND tagFQNHash LIKE :tagFQNHashPrefix AND "
+            + NOT_PENDING
+            + " ORDER BY targetFQNHash, tagFQN")
     @UseRowMapper(TagLabelWithFQNHashMapper.class)
     List<TagLabelWithFQNHash> getCertTagsInternalBatchInternal(
         @Bind("source") int source,
@@ -7169,7 +7187,8 @@ public interface CollectionDAO {
                 + "FROM tag_usage tu "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash)",
+                + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash) AND tu."
+                + NOT_PENDING,
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
@@ -7181,7 +7200,8 @@ public interface CollectionDAO {
                 + "FROM tag_usage tu "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash)",
+                + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash) AND tu."
+                + NOT_PENDING,
         connectionType = POSTGRES)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
     List<Pair<String, TagLabel>> getTagsInternalByPrefix(
@@ -7199,7 +7219,8 @@ public interface CollectionDAO {
             + "FROM tag_usage tu "
             + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
             + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
-            + "WHERE tu.targetFQNHash IN (<targetFQNHashes>)")
+            + "WHERE tu.targetFQNHash IN (<targetFQNHashes>) AND tu."
+            + NOT_PENDING)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
     List<Pair<String, TagLabel>> getTagsInternalByTargetHashes(
         @BindList("targetFQNHashes") List<String> targetFQNHashes);
@@ -7229,7 +7250,8 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT COUNT(*) FROM tag_usage "
             + "WHERE (tagFQNHash LIKE :concatTagFQNHash OR tagFQNHash = :tagFqnHash) "
-            + "AND source = :source")
+            + "AND source = :source AND "
+            + NOT_PENDING)
     int getTagCount(
         @Bind("source") int source,
         @BindConcat(
@@ -7247,7 +7269,8 @@ public interface CollectionDAO {
         "SELECT tagFQN, count FROM ("
             + "  SELECT ? as tagFQN, COUNT(DISTINCT targetFQNHash) as count "
             + "  FROM tag_usage "
-            + "  WHERE source = ? AND (tagFQNHash = MD5(?) OR tagFQNHash LIKE CONCAT(MD5(?), '.%'))"
+            + "  WHERE source = ? AND (tagFQNHash = MD5(?) OR tagFQNHash LIKE CONCAT(MD5(?), '.%')) AND "
+            + NOT_PENDING
             + ") t WHERE tagFQN IN (<tagFQNs>)")
     @RegisterRowMapper(TagCountMapper.class)
     @Deprecated
@@ -7277,7 +7300,8 @@ public interface CollectionDAO {
         queryBuilder.append(
             "SELECT ? as tagFQN, COUNT(DISTINCT targetFQNHash) as count "
                 + "FROM tag_usage "
-                + "WHERE source = ? AND (tagFQNHash = MD5(?) OR tagFQNHash LIKE CONCAT(MD5(?), '.%'))");
+                + "WHERE source = ? AND (tagFQNHash = MD5(?) OR tagFQNHash LIKE CONCAT(MD5(?), '.%')) AND "
+                + NOT_PENDING);
         params.add(tagFQNs.get(i)); // tagFQN for selection
         params.add(String.valueOf(source)); // source
         params.add(tagFQNs.get(i)); // tagFQN for MD5
@@ -7304,8 +7328,10 @@ public interface CollectionDAO {
         @Bind("tagFQNPrefix") String tagFQNPrefix,
         @BindFQN("targetFQNHash") String targetFQNHash);
 
+    // Clears a target's labels for them to be written again, keeping its pending ones.
     @SqlUpdate(
-        "DELETE FROM tag_usage WHERE targetFQNHash = :targetFQNHash AND NOT (source = :source AND tagFQN LIKE :tagFQNPrefix)")
+        "DELETE FROM tag_usage WHERE targetFQNHash = :targetFQNHash AND NOT (source = :source AND tagFQN LIKE :tagFQNPrefix) AND "
+            + NOT_PENDING)
     void deleteTagsByTargetExcludingPrefix(
         @Bind("source") int source,
         @Bind("tagFQNPrefix") String tagFQNPrefix,
@@ -7316,6 +7342,35 @@ public interface CollectionDAO {
 
     default void deleteTagsByTargets(List<String> targetFQNs) {
       EntityDAO.updateInChunks(targetFQNs, this::deleteTagsByTargetsInternal);
+    }
+
+    /**
+     * Clears the shown labels of targets whose labels are about to be written again. Pending labels
+     * are not part of what a write sends, so they stay until their term is approved or rejected.
+     */
+    @SqlUpdate(
+        "DELETE FROM tag_usage WHERE targetFQNHash IN (<targetFQNHashes>) AND " + NOT_PENDING)
+    void deleteShownTagsByTargetsInternal(@BindListFQN("targetFQNHashes") List<String> targetFQNs);
+
+    default void deleteShownTagsByTargets(List<String> targetFQNs) {
+      EntityDAO.updateInChunks(targetFQNs, this::deleteShownTagsByTargetsInternal);
+    }
+
+    default void deleteShownTagsByTarget(String targetFQN) {
+      deleteShownTagsByTargets(List.of(targetFQN));
+    }
+
+    /**
+     * Clears the labels of a field a write drops. A field re-added under the same name, as a field
+     * whose dataType changed is, is still the same target, so its pending labels stay for the
+     * term's approval and only its shown labels are written again.
+     */
+    default void deleteFieldTags(String fieldFqn, boolean readdedUnderSameName) {
+      if (readdedUnderSameName) {
+        deleteShownTagsByTarget(fieldFqn);
+      } else {
+        deleteTagsByTarget(fieldFqn);
+      }
     }
 
     @SqlUpdate(
@@ -7387,6 +7442,119 @@ public interface CollectionDAO {
     @SqlQuery("SELECT probe.hash FROM (<probes>) probe")
     List<String> listEntityFqnHashes(
         @Define("probes") String probes, @BindMap Map<String, String> bindings);
+
+    /** The targets of a term's pending labels, in hash order after {@code afterTargetHash}. */
+    @SqlQuery(
+        "SELECT targetFQNHash FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash "
+            + "AND state = "
+            + PENDING_STATE
+            + " AND targetFQNHash > :afterTargetHash ORDER BY targetFQNHash LIMIT :limit")
+    List<String> listPendingTargetHashes(
+        @Bind("source") int source,
+        @Bind("tagFQNHash") String tagFQNHash,
+        @Bind("afterTargetHash") String afterTargetHash,
+        @Bind("limit") int limit);
+
+    /** The terms that have pending labels, in FQN order after {@code afterTermFqn}. */
+    @SqlQuery(
+        "SELECT DISTINCT tagFQN FROM tag_usage WHERE source = :source AND state = "
+            + PENDING_STATE
+            + " AND tagFQN > :afterTermFqn ORDER BY tagFQN LIMIT :limit")
+    List<String> listPendingTermFqns(
+        @Bind("source") int source,
+        @Bind("afterTermFqn") String afterTermFqn,
+        @Bind("limit") int limit);
+
+    /**
+     * Drops a term's pending labels at a target and at every field under it, when the term is
+     * removed from that asset.
+     */
+    @SqlUpdate(
+        "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND state = "
+            + PENDING_STATE
+            + " AND (targetFQNHash = :targetFQNHash OR targetFQNHash LIKE :concatTargetFQNHash)")
+    int deletePendingUnder(
+        @Bind("source") int source,
+        @BindFQN("tagFQNHash") String tagFQN,
+        @BindConcat(
+                value = "concatTargetFQNHash",
+                original = "targetFQNHash",
+                parts = {":targetFQNHash", ".%"},
+                hash = true)
+            String targetFQN);
+
+    @SqlUpdate(
+        "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND state = "
+            + PENDING_STATE
+            + " AND targetFQNHash IN (<targetFQNHashes>)")
+    int deletePendingOnTargetsInternal(
+        @Bind("source") int source,
+        @BindFQN("tagFQNHash") String tagFQN,
+        @BindListFQN("targetFQNHashes") List<String> targetFQNs);
+
+    /**
+     * The label type, reason and metadata of each of a term's pending labels on the given targets,
+     * by target hash, so showing the term keeps what was sent with it.
+     */
+    @SqlQuery(
+        "SELECT targetFQNHash, labelType, reason, metadata FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash "
+            + "AND state = "
+            + PENDING_STATE
+            + " AND targetFQNHash IN (<targetFQNHashes>)")
+    @RegisterRowMapper(PendingLabelMapper.class)
+    List<Map.Entry<String, TagLabel>> listPendingLabels(
+        @Bind("source") int source,
+        @Bind("tagFQNHash") String tagFQNHash,
+        @BindList("targetFQNHashes") List<String> targetFQNHashes);
+
+    class PendingLabelMapper implements RowMapper<Map.Entry<String, TagLabel>> {
+      @Override
+      public Map.Entry<String, TagLabel> map(ResultSet rs, StatementContext ctx)
+          throws SQLException {
+        String metadata = rs.getString("metadata");
+        TagLabel label =
+            new TagLabel()
+                .withLabelType(TagLabel.LabelType.values()[rs.getInt("labelType")])
+                .withReason(rs.getString("reason"))
+                .withMetadata(
+                    metadata == null
+                        ? null
+                        : JsonUtils.readValue(metadata, TagLabelMetadata.class));
+        return Map.entry(rs.getString("targetFQNHash"), label);
+      }
+    }
+
+    /** Drops a term's pending labels on exactly the given targets. */
+    default void deletePendingOnTargets(int source, String tagFQN, List<String> targetFQNs) {
+      EntityDAO.updateInChunks(
+          targetFQNs, chunk -> deletePendingOnTargetsInternal(source, tagFQN, chunk));
+    }
+
+    /** Drops a term's pending labels, when the term is rejected. */
+    @SqlUpdate(
+        "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND state = "
+            + PENDING_STATE)
+    int deletePending(@Bind("source") int source, @Bind("tagFQNHash") String tagFQNHash);
+
+    /**
+     * Runs probes over entity tables, each selecting {@code entityType}, {@code id} and {@code
+     * hash}, to find the entities that hold tag targets.
+     */
+    @SqlQuery("SELECT probe.entityType, probe.id, probe.hash FROM (<probes>) probe")
+    @RegisterRowMapper(TargetHolderMapper.class)
+    List<TargetHolder> listTargetHolders(
+        @Define("probes") String probes, @BindMap Map<String, String> bindings);
+
+    /** An entity whose FQN hash is a tag target's hash or one of its prefixes. */
+    record TargetHolder(String entityType, UUID id, String hash) {}
+
+    class TargetHolderMapper implements RowMapper<TargetHolder> {
+      @Override
+      public TargetHolder map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new TargetHolder(
+            rs.getString("entityType"), UUID.fromString(rs.getString("id")), rs.getString("hash"));
+      }
+    }
 
     @Deprecated(since = "Release 1.1")
     @ConnectionAwareSqlUpdate(
@@ -7816,6 +7984,20 @@ public interface CollectionDAO {
      * a target FQN and its associated tags.
      */
     default void applyTagsBatchMultiTarget(Map<String, List<TagLabel>> tagsByTarget) {
+      applyTagsBatchWithState(tagsByTarget, null);
+    }
+
+    /**
+     * Stores held glossary terms as pending labels. Pending is a storage state only this DAO knows:
+     * it is not a {@link TagLabel.State}, so no client can send or receive it.
+     */
+    default void applyPendingTagsBatch(Map<String, List<TagLabel>> tagsByTarget) {
+      applyTagsBatchWithState(tagsByTarget, PENDING_STATE);
+    }
+
+    /** Upserts the labels, storing {@code storedState} instead of each label's own when set. */
+    default void applyTagsBatchWithState(
+        Map<String, List<TagLabel>> tagsByTarget, Integer storedState) {
       if (tagsByTarget == null || tagsByTarget.isEmpty()) {
         return;
       }
@@ -7841,7 +8023,7 @@ public interface CollectionDAO {
                   FullyQualifiedName.buildHash(tagLabel.getTagFQN()),
                   targetFQNHash,
                   tagLabel.getLabelType().ordinal(),
-                  tagLabel.getState().ordinal(),
+                  storedState != null ? storedState : tagLabel.getState().ordinal(),
                   tagLabel.getReason(),
                   tagLabel.getAppliedBy(),
                   JsonUtils.pojoToJson(tagLabel.getMetadata())));
@@ -7903,14 +8085,23 @@ public interface CollectionDAO {
         value =
             "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) "
                 + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata) "
-                + "ON DUPLICATE KEY UPDATE labelType = VALUES(labelType), state = VALUES(state), reason = VALUES(reason), metadata = VALUES(metadata)",
+                + "ON DUPLICATE KEY UPDATE labelType = VALUES(labelType), state = IF(VALUES(state) = "
+                + PENDING_STATE
+                + " AND state <> "
+                + PENDING_STATE
+                + ", state, VALUES(state)), reason = VALUES(reason), metadata = VALUES(metadata)",
         connectionType = MYSQL)
     @ConnectionAwareSqlBatch(
         value =
             "INSERT INTO tag_usage (source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason, appliedBy, metadata) "
                 + "VALUES (:source, :tagFQN, :tagFQNHash, :targetFQNHash, :labelType, :state, :reason, :appliedBy, :metadata :: jsonb) "
                 + "ON CONFLICT (source, tagFQNHash, targetFQNHash) DO UPDATE SET labelType = EXCLUDED.labelType, "
-                + "state = EXCLUDED.state, reason = EXCLUDED.reason, metadata = EXCLUDED.metadata",
+                + "state = CASE WHEN EXCLUDED.state = "
+                + PENDING_STATE
+                + " AND tag_usage.state <> "
+                + PENDING_STATE
+                + " THEN tag_usage.state ELSE EXCLUDED.state END, "
+                + "reason = EXCLUDED.reason, metadata = EXCLUDED.metadata",
         connectionType = POSTGRES)
     void applyTagsBatchInternal(
         @Bind("source") List<Integer> sources,
@@ -16357,7 +16548,8 @@ public interface CollectionDAO {
       String tagFQN = filter.getQueryParam("tagFQN");
       String tagListCondition =
           "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
-      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
       if (nullOrEmpty(tagFQN)) {
         tagListCondition = "";
         tagFilterCondition = "WHERE";
@@ -16409,7 +16601,8 @@ public interface CollectionDAO {
       String tagFQN = filter.getQueryParam("tagFQN");
       String tagListCondition =
           "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
-      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
       if (nullOrEmpty(tagFQN)) {
         tagListCondition = "";
         tagFilterCondition = "WHERE";
@@ -16465,7 +16658,8 @@ public interface CollectionDAO {
       String tagFQN = filter.getQueryParam("tagFQN");
       String tagListCondition =
           "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
-      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
       if (nullOrEmpty(tagFQN)) {
         tagListCondition = "";
         tagFilterCondition = "WHERE";
