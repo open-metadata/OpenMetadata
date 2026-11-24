@@ -77,6 +77,15 @@ public class StageStatsTracker {
     checkFlush();
   }
 
+  /**
+   * Record a Process batch (doc-build) with the wall-clock duration. Duration is the time taken
+   * for the parallel doc-build join — pure CPU/serialization work, no I/O.
+   */
+  public void recordProcessBatch(int successCount, int failedCount, long durationNanos) {
+    process.add(successCount, failedCount, 0, durationNanos);
+    checkFlush();
+  }
+
   public void recordSink(StatsResult result) {
     sink.record(result);
     pendingSinkOps.decrementAndGet();
