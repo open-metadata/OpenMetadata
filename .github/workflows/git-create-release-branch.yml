@@ -10,6 +10,12 @@ on:
         description: "Base Branch for Release Branch"
         required: true
         default: "main"
+        type: choice
+        options:
+          - "main"
+          - "1.13"
+          - "2.0"
+          - "2.1"
 permissions:
   contents: write
 jobs:
@@ -22,6 +28,7 @@ jobs:
       with:
         ref: ${{ inputs.base_branch_name }}
     - name: Install uv
+      if: ${{ hashFiles('.github/actions/setup-uv/action.yml') != '' }}
       uses: ./.github/actions/setup-uv
     - name: Update application versions
       run: |

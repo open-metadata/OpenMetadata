@@ -49,6 +49,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: Install ANTLR CLI
+        run: sudo make install_antlr_cli
+
       - name: Setup OpenMetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:

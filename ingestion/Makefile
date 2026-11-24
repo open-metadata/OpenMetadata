@@ -89,15 +89,17 @@ run_python_tests: python_tools  ## Run all Python tests with coverage
 	$(NOX) -s coverage -- report
 
 .PHONY: sonar_ingestion
-sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
+sonar_ingestion: python_tools  ## Run the Sonar analysis based on the tests results and push it to SonarCloud
+	versions=$$("$(NOX_BOOTSTRAP)/bin/python" "$(ROOT_DIR)/scripts/python_ci.py" versions --project "$(INGESTION_ABS)" --csv) && \
 	docker run \
 		--rm \
 		-e SONAR_HOST_URL="https://sonarcloud.io" \
 		-e SONAR_SCANNER_OPTS="-Xmx1g" \
 		-e SONAR_LOGIN=$(token) \
-		-v ${PWD}/$(INGESTION_DIR):/usr/src \
+		-v "$(INGESTION_ABS):/usr/src" \
 		sonarsource/sonar-scanner-cli \
-		-Dproject.settings=sonar-project.properties
+		-Dproject.settings=sonar-project.properties \
+		-Dsonar.python.version="$$versions"
 
 .PHONY: run_apis_tests
 run_apis_tests:  ## Run the openmetadata airflow apis tests

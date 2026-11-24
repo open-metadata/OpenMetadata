@@ -4,12 +4,18 @@ inputs:
   python-version:
     description: Python interpreter for the locked reporting tools.
     required: true
+  python-versions:
+    description: JSON list of supported Python versions for Sonar analysis.
+    required: true
   ingestion-token:
     description: Sonar token for the ingestion project.
     required: true
   airflow-apis-token:
     description: Sonar token for the Airflow API project when its analysis is enabled.
     default: ''
+  publish-ingestion:
+    description: Combine ingestion coverage and publish ingestion analysis.
+    required: true
   publish-airflow-apis:
     description: Publish Airflow API analysis after its tests succeed.
     default: 'false'
@@ -17,33 +23,35 @@ runs:
   using: composite
   steps:
     - name: Set up Python
+      if: inputs.publish-ingestion == 'true'
       uses: ./.github/actions/setup-python
       with:
         python-version: ${{ inputs.python-version }}
     - name: Prepare Python tools
+      if: inputs.publish-ingestion == 'true'
       run: make python_tools
       shell: bash
-    - name: Read supported Python versions
-      id: versions
-      run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
-      shell: bash
     - name: Download coverage artifacts
+      if: inputs.publish-ingestion == 'true'
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
       with:
         pattern: '*coverage-*'
         path: artifacts
     - name: Download test results
+      if: inputs.publish-ingestion == 'true'
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
       with:
         pattern: '{tests-*,py-*-test-results-*}'
         path: test-artifacts
     - name: Generate report
+      if: inputs.publish-ingestion == 'true'
       run: |
         ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py -s combine-coverage -- \
           --coverage-dir artifacts --results-dir test-artifacts
       shell: bash
     - name: Push Results to Sonar
       id: push-to-sonar
+      if: inputs.publish-ingestion == 'true'
       continue-on-error: true
       uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
       env:
@@ -51,7 +59,7 @@ runs:
         SONAR_TOKEN: ${{ inputs.ingestion-token }}
       with:
         projectBaseDir: ingestion/
-        args: -Dsonar.python.version=${{ join(fromJSON(steps.versions.outputs.versions), ',') }}
+        args: -Dsonar.python.version=${{ join(fromJSON(inputs.python-versions), ',') }}
     - name: Wait to retry Sonar upload
       if: ${{ !cancelled() && steps.push-to-sonar.outcome == 'failure' }}
       run: sleep 20s
@@ -64,7 +72,7 @@ runs:
         SONAR_TOKEN: ${{ inputs.ingestion-token }}
       with:
         projectBaseDir: ingestion/
-        args: -Dsonar.python.version=${{ join(fromJSON(steps.versions.outputs.versions), ',') }}
+        args: -Dsonar.python.version=${{ join(fromJSON(inputs.python-versions), ',') }}
 
     - name: Download Airflow API results
       id: airflow-apis-results
@@ -83,4 +91,4 @@ runs:
         projectBaseDir: openmetadata-airflow-apis/
         args: >-
           -Dproject.settings=openmetadata-airflow-apis/sonar-project.properties
-          -Dsonar.python.version=${{ join(fromJSON(steps.versions.outputs.versions), ',') }}
+          -Dsonar.python.version=${{ join(fromJSON(inputs.python-versions), ',') }}

@@ -53,7 +53,11 @@ def main() -> None:
     commands = parser.add_subparsers(dest="command", required=True)
     interpreters = commands.add_parser("versions")
     interpreters.add_argument("--project", type=Path, default=Path("ingestion"))
-    interpreters.add_argument("--output", type=Path)
+    version_format = interpreters.add_mutually_exclusive_group()
+    version_format.add_argument("--output", type=Path)
+    version_format.add_argument(
+        "--csv", action="store_true", help="Print the supported versions as a comma-separated list."
+    )
     selection = commands.add_parser("connectors")
     selection.add_argument("--output", type=Path)
     args = parser.parse_args()
@@ -63,7 +67,9 @@ def main() -> None:
             if args.command == "versions"
             else connectors(os.environ["DEFAULT_CONNECTORS"], os.environ.get("SELECTED_CONNECTORS", ""))
         )
-        if args.output:
+        if args.command == "versions" and args.csv:
+            sys.stdout.write(",".join(selected["versions"]) + "\n")
+        elif args.output:
             with args.output.open("a") as stream:
                 for key, value in selected.items():
                     rendered = value if isinstance(value, str) else json.dumps(value, separators=(",", ":"))

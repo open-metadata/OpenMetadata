@@ -198,7 +198,9 @@ jobs:
       - python-unit
       - python-integration
       - python-cli-e2e
-    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && contains(fromJSON('["success", "failure"]'), needs.python-unit.result) }}
+    if: >-
+      ${{ !cancelled() && github.ref == 'refs/heads/main' && needs.plan.result == 'success' &&
+          (needs.airflow-apis.result == 'success' || contains(fromJSON('["success", "failure"]'), needs.python-unit.result)) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -212,8 +214,10 @@ jobs:
         uses: ./.github/actions/python-sonar
         with:
           python-version: ${{ needs.plan.outputs.python-highest }}
+          python-versions: ${{ needs.plan.outputs.python-versions }}
           ingestion-token: ${{ secrets.INGESTION_SONAR_SECRET }}
           airflow-apis-token: ${{ secrets.AIRFLOW_APIS_SONAR_TOKEN }}
+          publish-ingestion: ${{ contains(fromJSON('["success", "failure"]'), needs.python-unit.result) }}
           publish-airflow-apis: ${{ needs.airflow-apis.result == 'success' }}
 
   notify:

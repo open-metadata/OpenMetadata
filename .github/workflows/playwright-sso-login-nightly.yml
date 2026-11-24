@@ -313,6 +313,10 @@ jobs:
             [ -f "$image" ] && docker load -i "$image" || true
           done
 
+      - name: Install ANTLR CLI
+        if: env.SKIP_LEG != 'true'
+        run: sudo make install_antlr_cli
+
       - name: Setup OpenMetadata Test Environment
         if: env.SKIP_LEG != 'true'
         # `PW_E2E_BUILD=true` propagates through this composite step into

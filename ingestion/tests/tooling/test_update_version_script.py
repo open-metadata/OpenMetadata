@@ -57,7 +57,17 @@ def checkout(tmp_path: Path, monkeypatch) -> Path:
     apis = tmp_path / "openmetadata-airflow-apis"
     apis.mkdir()
     (apis / "pyproject.toml").write_text(
-        '[project]\nname="openmetadata-managed-apis"\nversion = "2.0.0.0.dev0"\n', encoding="utf-8"
+        '[build-system]\nrequires=["setuptools>=83"]\nbuild-backend="setuptools.build_meta"\n'
+        '[project]\nname="openmetadata_managed_apis"\nversion = "2.0.0.0.dev0"\n'
+        'requires-python=">=3.10"\ndependencies=["openmetadata-ingestion"]\n'
+        '[tool.uv.sources]\nopenmetadata-ingestion={path="../ingestion", editable=true}\n',
+        encoding="utf-8",
+    )
+    subprocess.run(
+        [uv, "lock", "--project", str(apis)],
+        check=True,
+        capture_output=True,
+        text=True,
     )
     scripts = tmp_path / "scripts"
     scripts.mkdir()
@@ -113,7 +123,9 @@ def snapshot(checkout: Path):
 def test_public_make_updates_both_packages_without_changing_dependencies(checkout, monkeypatch):
     monkeypatch.setenv("GITHUB_ACTIONS", "true")
     ingestion = checkout / "ingestion"
+    apis = checkout / "openmetadata-airflow-apis"
     original = read_toml(ingestion / "uv.lock")
+    original_apis = read_toml(apis / "uv.lock")
     result = run_make(checkout, "update_pyproject_version")
     assert result.returncode == 0, result.stdout + result.stderr
     metadata = read_toml(ingestion / "pyproject.toml")
@@ -125,7 +137,11 @@ def test_public_make_updates_both_packages_without_changing_dependencies(checkou
         p for p in updated["package"] if "registry" in p["source"]
     ]
     assert next(p for p in updated["package"] if p["name"] == "openmetadata-ingestion")["version"] == "2.0.1234.0"
-    assert read_toml(checkout / "openmetadata-airflow-apis/pyproject.toml")["project"]["version"] == "2.0.1234.0"
+    assert read_toml(apis / "pyproject.toml")["project"]["version"] == "2.0.1234.0"
+    for package in original_apis["package"]:
+        if package["name"] in {"openmetadata-managed-apis", "openmetadata-ingestion"}:
+            package["version"] = "2.0.1234.0"
+    assert read_toml(apis / "uv.lock") == original_apis
     after = snapshot(checkout)
     result = run_make(checkout, "update_pyproject_version")
     assert result.returncode == 0, result.stdout + result.stderr
@@ -166,15 +182,14 @@ def test_invalid_update_does_not_change_inputs(checkout, broken):
     assert snapshot(checkout) == before
 
 
-def test_make_propagates_update_failure(checkout):
-    (checkout / "scripts/update_version.py").write_text(
-        "import sys\nfrom pathlib import Path\n"
-        "project = sys.argv[sys.argv.index('-f') + 1]\n"
-        "with Path('updates.log').open('a') as log:\n    log.write(project + '\\n')\n"
-        "raise SystemExit(1 if project == 'ingestion/pyproject.toml' else 0)\n"
+def test_make_rejects_a_stale_airflow_lock_before_updating_either_project(checkout):
+    project = checkout / "openmetadata-airflow-apis/pyproject.toml"
+    project.write_text(
+        project.read_text().replace(
+            'dependencies=["openmetadata-ingestion"]', 'dependencies=["openmetadata-ingestion", "packaging<26"]'
+        )
     )
     before = snapshot(checkout)
     result = run_make(checkout, "update_pyproject_version")
     assert result.returncode != 0, result.stdout + result.stderr
-    assert (checkout / "updates.log").read_text().splitlines() == ["ingestion/pyproject.toml"]
     assert snapshot(checkout) == before
