@@ -1141,7 +1141,7 @@ public interface TimeSeriesDAOs {
                 + "  AND eets.timestamp >= :startTs "
                 + "  AND eets.timestamp <= :endTs "
                 + "  <pipelineFqnFilter> "
-                + "  <serviceTypeFilter> "
+                + "  <mysqlServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <mysqlStatusFilter> "
                 + "  <domainFilter> "
@@ -1163,7 +1163,7 @@ public interface TimeSeriesDAOs {
                 + "  AND eets.timestamp >= :startTs "
                 + "  AND eets.timestamp <= :endTs "
                 + "  <pipelineFqnFilter> "
-                + "  <serviceTypeFilter> "
+                + "  <postgresServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <postgresStatusFilter> "
                 + "  <domainFilter> "
@@ -1177,7 +1177,8 @@ public interface TimeSeriesDAOs {
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs,
         @Define("pipelineFqnFilter") String pipelineFqnFilter,
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
@@ -1204,7 +1205,7 @@ public interface TimeSeriesDAOs {
                 + "    AND eets.timestamp >= :startTs "
                 + "    AND eets.timestamp <= :endTs "
                 + "    <pipelineFqnFilter> "
-                + "    <serviceTypeFilter> "
+                + "    <mysqlServiceTypeFilter> "
                 + "    <serviceFilter> "
                 + "    <mysqlStatusFilter> "
                 + "    <domainFilter> "
@@ -1239,7 +1240,7 @@ public interface TimeSeriesDAOs {
                 + "    AND eets.timestamp >= :startTs "
                 + "    AND eets.timestamp <= :endTs "
                 + "    <pipelineFqnFilter> "
-                + "    <serviceTypeFilter> "
+                + "    <postgresServiceTypeFilter> "
                 + "    <serviceFilter> "
                 + "    <postgresStatusFilter> "
                 + "    <domainFilter> "
@@ -1263,7 +1264,8 @@ public interface TimeSeriesDAOs {
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs,
         @Define("pipelineFqnFilter") String pipelineFqnFilter,
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
@@ -1285,7 +1287,7 @@ public interface TimeSeriesDAOs {
                 + "  ON pe.fqnHash = eets.entityFQNHash "
                 + "  AND eets.extension = 'pipeline.pipelineStatus' "
                 + "WHERE pe.deleted = 0 "
-                + "  <serviceTypeFilter> "
+                + "  <mysqlServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <mysqlStatusFilter> "
                 + "  <domainFilter> "
@@ -1305,7 +1307,7 @@ public interface TimeSeriesDAOs {
                 + "  ON pe.fqnHash = eets.entityFQNHash "
                 + "  AND eets.extension = 'pipeline.pipelineStatus' "
                 + "WHERE pe.deleted = false "
-                + "  <serviceTypeFilter> "
+                + "  <postgresServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <postgresStatusFilter> "
                 + "  <domainFilter> "
@@ -1317,7 +1319,8 @@ public interface TimeSeriesDAOs {
         connectionType = POSTGRES)
     @RegisterRowMapper(SharedRowMappers.ServiceBreakdownRowMapper.class)
     List<SharedRowMappers.ServiceBreakdownRow> getServiceBreakdown(
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
@@ -1343,7 +1346,7 @@ public interface TimeSeriesDAOs {
                 + "  ON pe.fqnHash = eets.entityFQNHash "
                 + "  AND eets.extension = 'pipeline.pipelineStatus' "
                 + "WHERE pe.deleted = 0 "
-                + "  <serviceTypeFilter> "
+                + "  <mysqlServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <mysqlStatusFilter> "
                 + "  <domainFilter> "
@@ -1364,7 +1367,7 @@ public interface TimeSeriesDAOs {
                 + "  ON pe.fqnHash = eets.entityFQNHash "
                 + "  AND eets.extension = 'pipeline.pipelineStatus' "
                 + "WHERE pe.deleted = false "
-                + "  <serviceTypeFilter> "
+                + "  <postgresServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <postgresStatusFilter> "
                 + "  <domainFilter> "
@@ -1375,7 +1378,8 @@ public interface TimeSeriesDAOs {
         connectionType = POSTGRES)
     @RegisterRowMapper(SharedRowMappers.PipelineMetricsRowMapper.class)
     SharedRowMappers.PipelineMetricsRow getPipelineMetricsData(
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
