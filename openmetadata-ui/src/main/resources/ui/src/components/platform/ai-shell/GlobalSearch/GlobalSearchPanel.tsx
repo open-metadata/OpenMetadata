@@ -10,30 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Divider } from '@openmetadata/ui-core-components';
 import {
   KeyboardEvent as ReactKeyboardEvent,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { entitySortingFields } from '../../../../constants/explore.constants';
+import { SORT_ORDER } from '../../../../enums/common.enum';
 import { TaskStatus, TaskType } from '../../../../generated/entity/tasks/task';
 import { usePersistentStorage } from '../../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { ExploreQuickFilterField } from '../../../../interface/quickFilter.interface';
 import { addToRecentSearched } from '../../../../utils/RecentActivityUtils';
 import { getExplorePath } from '../../../../utils/RouterUtils';
 import { PERSONAL_SPACE_ROUTES } from '../../../discovery/personal-space/personalSpace.constants';
+import ExploreSortDropdown from '../../../Explore/ExploreSortDropdown/ExploreSortDropdown';
 import {
-  useGlobalSearchAskAi,
+  useGlobalSearchQueryAction,
   useGlobalSearchSources,
 } from '../appModeExtensions';
 import AssetSummaryPanel from './AssetSummaryPanel';
 import {
-  ASSET_SORT_OPTIONS,
-  CATEGORY_LABEL_KEY,
-  CATEGORY_ORDER,
+  ASSETS_CATEGORY,
+  DEFAULT_ASSET_SORT,
+  QUERY_ACTION_OPTION_ID,
+  TASKS_CATEGORY,
 } from './GlobalSearch.constants';
 import {
   GlobalSearchCategory,
@@ -47,19 +54,18 @@ import {
 } from './GlobalSearch.types';
 import {
   clampIndex,
-  countSelectedFacets,
   getActiveOption,
-  getContributedLabelKeys,
   getAdjacentFilter,
+  getContributedLabelKeys,
   getExploreParams,
   getKeyAction,
   getPanelView,
+  getSearchScope,
   getTotalCount,
   getVisibleTabs,
   GlobalSearchKeyAction,
 } from './GlobalSearch.utils';
-import GlobalSearchAskAiRow from './GlobalSearchAskAiRow';
-import GlobalSearchAssetBar from './GlobalSearchAssetBar';
+import GlobalSearchFilterBar from './GlobalSearchFilterBar';
 import GlobalSearchFooter from './GlobalSearchFooter';
 import GlobalSearchInput from './GlobalSearchInput';
 import GlobalSearchResultList from './GlobalSearchResultList';
@@ -68,8 +74,15 @@ import GlobalSearchTaskBar from './GlobalSearchTaskBar';
 import { useGlobalSearchItems } from './useGlobalSearchItems';
 import { useGlobalSearchResults } from './useGlobalSearchResults';
 import { useGlobalSearchStore } from './useGlobalSearchStore';
+import { useSourceRecents } from './useSourceRecents';
 
 const NO_RECENT: never[] = [];
+
+/** Built-in categories; API ones carry their own label, plugins their key. */
+const BUILT_IN_LABEL_KEY: Record<string, string> = {
+  [ASSETS_CATEGORY]: 'label.data-asset-plural',
+  [TASKS_CATEGORY]: 'label.task-plural',
+};
 
 interface FooterActionParams {
   filter: GlobalSearchFilter;
@@ -89,15 +102,15 @@ const getFooterAction = ({
   onExplore,
   onNavigate,
 }: FooterActionParams): GlobalSearchFooterAction | undefined => {
-  if (filter === 'assets') {
+  if (filter === ASSETS_CATEGORY) {
     return {
       label: t('label.open-count-results-in-explore', {
-        count: results.assets?.count ?? 0,
+        count: results[ASSETS_CATEGORY]?.count ?? 0,
       }),
       onPress: onExplore,
     };
   }
-  if (filter === 'tasks') {
+  if (filter === TASKS_CATEGORY) {
     return {
       label: t('label.open-task-inbox'),
       onPress: () => onNavigate(PERSONAL_SPACE_ROUTES.INBOX_TASKS),
@@ -106,20 +119,19 @@ const getFooterAction = ({
   const footer = source?.footer;
 
   return footer
-    ? {
-        label: t(footer.labelKey),
-        onPress: () => onNavigate(footer.path),
-      }
+    ? { label: t(footer.labelKey), onPress: () => onNavigate(footer.path) }
     : undefined;
 };
 
 const GlobalSearchPanel = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
   const entry = useGlobalSearchStore((state) => state.entry);
   const close = useGlobalSearchStore((state) => state.close);
   const sources = useGlobalSearchSources();
-  const askAi = useGlobalSearchAskAi();
+  const queryAction = useGlobalSearchQueryAction();
+  const sourceRecents = useSourceRecents(sources);
   const userName = useApplicationStore((state) => state.currentUser?.name);
   const recentSearches = usePersistentStorage(
     (state) =>
@@ -130,18 +142,17 @@ const GlobalSearchPanel = () => {
       (userName && state.preferences[userName]?.recentlyViewed) || NO_RECENT
   );
 
-  const isChatsOnly = entry === 'chats';
+  const { scopedCategory, isScoped, scopedSources } = getSearchScope(entry);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<GlobalSearchFilter>(entry);
   const [facets, setFacets] = useState<GlobalSearchFacetSelection>({});
-  const [sort, setSort] = useState(ASSET_SORT_OPTIONS[0].value);
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [sort, setSort] = useState(DEFAULT_ASSET_SORT);
+  const [sortOrder, setSortOrder] = useState<SORT_ORDER>(SORT_ORDER.DESC);
   const [taskStatus, setTaskStatus] = useState<TaskStatus>();
   const [taskType, setTaskType] = useState<TaskType>();
   const [activeIndex, setActiveIndex] = useState(0);
   const [previewId, setPreviewId] = useState<string>();
   const [retryKey, setRetryKey] = useState(0);
-  const [recentChats, setRecentChats] = useState<GlobalSearchRow[]>([]);
 
   const trimmed = query.trim();
   const sourceKeys = sources.map((source) => source.key).join();
@@ -151,23 +162,18 @@ const GlobalSearchPanel = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [sourceKeys]
   );
-  const labelFor = useCallback(
-    (key: GlobalSearchCategory) =>
-      t(sourceFor(key)?.labelKey ?? CATEGORY_LABEL_KEY[key] ?? key),
-    [sourceFor, t]
-  );
-  const categories = useMemo<GlobalSearchCategory[]>(
-    () =>
-      isChatsOnly
-        ? ['chats']
-        : CATEGORY_ORDER.filter((key) => key !== 'chats' || sourceFor(key)),
-    [isChatsOnly, sourceFor]
-  );
 
-  const { results, isLoading, isFirstLoad, hasError } = useGlobalSearchResults({
+  const {
+    results,
+    isLoading,
+    isQueryLoading,
+    isListLoading,
+    isCounting,
+    hasError,
+  } = useGlobalSearchResults({
     query,
     filter,
-    categories,
+    scopedSources,
     facets,
     sort,
     sortOrder,
@@ -177,30 +183,34 @@ const GlobalSearchPanel = () => {
     retryKey,
   });
 
-  useEffect(() => {
-    const controller = new AbortController();
-    sourceFor('chats')
-      ?.recent?.(controller.signal)
-      .then(setRecentChats)
-      .catch(() => setRecentChats([]));
+  const labelFor = useCallback(
+    (key: GlobalSearchCategory) => {
+      const labelKey = sourceFor(key)?.labelKey ?? BUILT_IN_LABEL_KEY[key];
 
-    return () => controller.abort();
-  }, [sourceFor]);
+      return labelKey ? t(labelKey) : results[key]?.label ?? key;
+    },
+    [sourceFor, results, t]
+  );
 
   // A type with no hits leaves the bar, so fall back to All rather than
   // strand the user on a tab they can no longer see.
   useEffect(() => {
     const isStranded =
       trimmed && !isLoading && filter !== 'all' && !results[filter]?.count;
-    if (isStranded && !isChatsOnly) {
+    if (isStranded && !isScoped) {
       setFilter('all');
     }
-  }, [trimmed, isLoading, isChatsOnly, filter, results]);
+  }, [trimmed, isLoading, isScoped, filter, results]);
 
   const changeFilter = useCallback((next: GlobalSearchFilter) => {
     setFilter(next);
+    // Filters belong to one type; a new tab starts unfiltered.
+    setFacets({});
     setActiveIndex(0);
     setPreviewId(undefined);
+    // Pressing a tab focuses it after this runs; hand focus back to the input
+    // on the next frame so typing and arrow keys keep working.
+    requestAnimationFrame(() => inputRef.current?.focus());
   }, []);
 
   const changeQuery = useCallback((value: string) => {
@@ -209,14 +219,35 @@ const GlobalSearchPanel = () => {
     setPreviewId(undefined);
   }, []);
 
-  const changeFacet = useCallback((field: string, values: string[]) => {
-    setFacets((previous) => ({ ...previous, [field]: values }));
+  /** Clear starts the search over: text, tab, filters, sort and preview. */
+  const resetSearch = useCallback(() => {
+    setQuery('');
+    setFilter(entry);
+    setFacets({});
+    setSort(DEFAULT_ASSET_SORT);
+    setSortOrder(SORT_ORDER.DESC);
+    setTaskStatus(undefined);
+    setTaskType(undefined);
+    setPreviewId(undefined);
+    setActiveIndex(0);
+    inputRef.current?.focus();
+  }, [entry]);
+
+  const changeFacet = useCallback((field: ExploreQuickFilterField) => {
+    setFacets((previous) => ({ ...previous, [field.key]: field.value ?? [] }));
     setActiveIndex(0);
   }, []);
 
-  const reverseSort = useCallback(
-    () => setSortOrder((current) => (current === 'desc' ? 'asc' : 'desc')),
-    []
+  const changeSort = useCallback((field: string, order: SORT_ORDER) => {
+    setSort(field);
+    setSortOrder(order);
+    setActiveIndex(0);
+  }, []);
+
+  const sortFields = useMemo(
+    () =>
+      entitySortingFields.map((field) => ({ ...field, name: t(field.name) })),
+    [t]
   );
 
   const searchEverything = useCallback(() => {
@@ -225,25 +256,30 @@ const GlobalSearchPanel = () => {
   }, [changeFilter]);
 
   const goTo = useCallback(
-    (path: string, state?: unknown) => {
+    (path: string) => {
       addToRecentSearched(trimmed);
       close();
-      navigate(path, state ? { state } : undefined);
+      navigate(path);
     },
     [trimmed, close, navigate]
   );
 
   const openRow = useCallback(
-    (row: GlobalSearchRow) => (row.href ? goTo(row.href) : close()),
-    [goTo, close]
+    (row: GlobalSearchRow) => {
+      // A row with nowhere to go keeps the search open instead of just closing.
+      if (row.href) {
+        goTo(row.href);
+      }
+    },
+    [goTo]
   );
 
-  const handleAskAi = useCallback(() => {
-    if (askAi && trimmed) {
+  const runQueryAction = useCallback(() => {
+    if (queryAction && trimmed) {
       close();
-      navigate(askAi.getPath(trimmed));
+      navigate(queryAction.getPath(trimmed));
     }
-  }, [askAi, trimmed, close, navigate]);
+  }, [queryAction, trimmed, close, navigate]);
 
   const openInExplore = useCallback(
     () =>
@@ -252,40 +288,33 @@ const GlobalSearchPanel = () => {
           search: trimmed,
           isPersistFilters: false,
           extraParameters: getExploreParams(facets, sort, sortOrder),
-        }),
-        {
-          fromGlobalSearch: {
-            query: trimmed,
-            filterCount: countSelectedFacets(facets),
-          },
-        }
+        })
       ),
     [goTo, trimmed, facets, sort, sortOrder]
   );
 
+  const categoryOrder = useMemo(() => Object.keys(results), [results]);
   const { shown, more } = useMemo(
-    () => getVisibleTabs(results, filter),
-    [results, filter]
+    () => getVisibleTabs(results, filter, categoryOrder),
+    [results, filter, categoryOrder]
   );
   const order = useMemo(() => [...shown, ...more], [shown, more]);
 
   const labelKeys = getContributedLabelKeys({
-    scopedSource: sourceFor('chats'),
-    askAi,
-    filter,
-    isScoped: isChatsOnly,
+    scopedSource: scopedCategory ? sourceFor(scopedCategory) : undefined,
+    queryAction,
+    isScoped,
   });
 
   const items = useGlobalSearchItems({
     query: trimmed,
     filter,
-    isChatsOnly,
+    scopedCategory,
     results,
     order,
     recentSearches,
     recentlyViewed,
-    recentChats,
-    recentChatsLabel: t(labelKeys.recent),
+    sourceRecents,
     previewId,
     labelFor,
     onOpen: openRow,
@@ -301,25 +330,28 @@ const GlobalSearchPanel = () => {
   const view = getPanelView({
     query,
     filter,
-    isChatsOnly,
-    canAskAi: Boolean(askAi),
+    isScoped,
+    hasQueryAction: Boolean(queryAction),
     isLoading,
     hasError,
     rowCount: rows.length,
     isPreviewOpen: Boolean(previewRow),
     order,
   });
-  const { tabOrder, showAskAi: showAi } = view;
   const {
     index: active,
     count: optionCount,
-    offset: aiOffset,
-    isAiActive,
+    offset: actionOffset,
+    isActionActive,
     row: activeRow,
     optionId: activeOptionId,
-  } = getActiveOption(rows, activeIndex, showAi);
+  } = getActiveOption(rows, activeIndex, view.showQueryAction);
 
   useEffect(() => {
+    inputRef.current?.setAttribute(
+      'aria-activedescendant',
+      activeOptionId ?? ''
+    );
     if (activeOptionId) {
       document
         .getElementById(activeOptionId)
@@ -330,13 +362,14 @@ const GlobalSearchPanel = () => {
   const keyActions: Record<GlobalSearchKeyAction, () => void> = {
     next: () => setActiveIndex(clampIndex(active + 1, optionCount)),
     previous: () => setActiveIndex(clampIndex(active - 1, optionCount)),
-    'ask-ai': handleAskAi,
+    'run-action': runQueryAction,
     select: () => activeRow?.onSelect(),
-    'next-tab': () => changeFilter(getAdjacentFilter(tabOrder, filter, false)),
+    'next-tab': () =>
+      changeFilter(getAdjacentFilter(view.tabOrder, filter, false)),
     'previous-tab': () =>
-      changeFilter(getAdjacentFilter(tabOrder, filter, true)),
+      changeFilter(getAdjacentFilter(view.tabOrder, filter, true)),
     'show-all': () => changeFilter('all'),
-    clear: () => changeQuery(''),
+    clear: resetSearch,
     close,
   };
 
@@ -344,9 +377,9 @@ const GlobalSearchPanel = () => {
     const action = getKeyAction(event, {
       query,
       filter,
-      isChatsOnly,
-      isAiActive,
-      tabCount: tabOrder.length,
+      isScoped,
+      isActionActive: isActionActive,
+      tabCount: view.tabOrder.length,
     });
     if (action) {
       event.preventDefault();
@@ -354,41 +387,41 @@ const GlobalSearchPanel = () => {
     }
   };
 
+  const QueryAction = queryAction?.component;
+
   return (
-    <div
-      className="tw:flex tw:h-[min(804px,85vh)] tw:flex-col"
-      data-testid="global-search-modal">
+    <Box
+      className="tw:h-[min(804px,85vh)]"
+      data-testid="global-search-modal"
+      direction="col">
       <GlobalSearchInput
-        activeOptionId={activeOptionId}
-        isLoading={isLoading}
+        inputRef={inputRef}
+        isLoading={isQueryLoading}
         placeholder={t(labelKeys.placeholder)}
         value={query}
         onChange={changeQuery}
+        onClear={resetSearch}
         onClose={close}
         onKeyDown={handleKeyDown}
       />
       <GlobalSearchTabBar
         filter={filter}
-        hideCounts={!trimmed}
-        isChatsOnly={isChatsOnly}
-        isCounting={isFirstLoad}
+        hideCounts={!trimmed || isCounting}
         isVisible={view.showTabBar}
         labelFor={labelFor}
         more={more}
         results={results}
+        scopedCategory={scopedCategory}
         shown={shown}
         totalCount={getTotalCount(results)}
         onChange={changeFilter}
         onSearchEverything={searchEverything}
       />
-      <GlobalSearchAssetBar
+      <GlobalSearchFilterBar
+        category={view.filterBarCategory}
         facets={facets}
-        isVisible={view.showAssetBar}
         query={trimmed}
-        sort={sort}
         onFacetChange={changeFacet}
-        onReverse={reverseSort}
-        onSortChange={setSort}
       />
       <GlobalSearchTaskBar
         isVisible={view.showTaskBar}
@@ -397,59 +430,75 @@ const GlobalSearchPanel = () => {
         onStatusChange={setTaskStatus}
         onTypeChange={setTaskType}
       />
-      <GlobalSearchAskAiRow
-        isActive={isAiActive}
-        isVisible={showAi}
-        label={t(labelKeys.askAi)}
-        query={trimmed}
-        onHover={() => setActiveIndex(0)}
-        onSelect={handleAskAi}
-      />
-      <div className="tw:flex tw:min-h-0 tw:flex-1">
-        <div className="tw:min-w-0 tw:flex-1 tw:overflow-y-auto">
-          <GlobalSearchResultList
-            activeKey={activeRow?.key}
-            emptyHintKey={labelKeys.emptyHint}
-            hasError={hasError}
-            isEmpty={view.isEmpty}
-            isFirstLoad={isFirstLoad}
-            isScoped={isChatsOnly}
-            items={items}
-            previewId={previewId}
-            query={trimmed}
-            scopeLabel={labelFor('chats')}
-            onHover={(key) =>
-              setActiveIndex(
-                rows.findIndex((item) => item.key === key) + aiOffset
-              )
+      {view.showTabBar ? <Divider /> : null}
+      {QueryAction && view.showQueryAction ? (
+        <QueryAction
+          filter={filter}
+          id={QUERY_ACTION_OPTION_ID}
+          isActive={isActionActive}
+          query={trimmed}
+          onHover={() => setActiveIndex(0)}
+          onSelect={runQueryAction}
+        />
+      ) : null}
+      <Box className="tw:min-h-0 tw:flex-1">
+        <Box className="tw:relative tw:min-w-0 tw:flex-1" direction="col">
+          <Box
+            className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:pb-19"
+            direction="col">
+            <GlobalSearchResultList
+              activeKey={activeRow?.key}
+              emptyHintKey={labelKeys.emptyHint}
+              hasError={hasError}
+              isEmpty={view.isEmpty}
+              isFirstLoad={isListLoading}
+              isScoped={isScoped}
+              items={items}
+              previewId={previewId}
+              query={trimmed}
+              scopeLabel={scopedCategory ? labelFor(scopedCategory) : ''}
+              sortControl={
+                <ExploreSortDropdown
+                  fieldList={sortFields}
+                  sortField={sort}
+                  sortOrder={sortOrder}
+                  onChange={changeSort}
+                />
+              }
+              onHover={(key) =>
+                setActiveIndex(
+                  rows.findIndex((item) => item.key === key) + actionOffset
+                )
+              }
+              onRetry={() => setRetryKey((key) => key + 1)}
+              onSearchEverywhere={searchEverything}
+            />
+          </Box>
+          <GlobalSearchFooter
+            action={getFooterAction({
+              filter,
+              results,
+              source: sourceFor(filter),
+              t,
+              onExplore: openInExplore,
+              onNavigate: goTo,
+            })}
+            actionHint={t(labelKeys.actionHint)}
+            enterLabel={
+              isActionActive ? t(labelKeys.actionHint) : activeRow?.enterLabel
             }
-            onRetry={() => setRetryKey((key) => key + 1)}
-            onSearchEverywhere={searchEverything}
+            hasQuery={Boolean(query)}
+            showActionHint={view.showQueryAction}
+            showTabHint={view.showTabHint}
           />
-        </div>
+        </Box>
         <AssetSummaryPanel
           row={previewRow}
           onClose={() => setPreviewId(undefined)}
           onOpen={openRow}
         />
-      </div>
-      <GlobalSearchFooter
-        action={getFooterAction({
-          filter,
-          results,
-          source: sourceFor(filter),
-          t,
-          onExplore: openInExplore,
-          onNavigate: goTo,
-        })}
-        askAiLabel={t(labelKeys.askAiHint)}
-        enterLabel={activeRow?.enterLabel}
-        hasQuery={Boolean(query)}
-        isAskAiActive={isAiActive}
-        showAskAi={showAi}
-        showTabHint={view.showTabHint}
-      />
-    </div>
+      </Box>
+    </Box>
   );
 };
 

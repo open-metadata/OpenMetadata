@@ -10,77 +10,104 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import { ArrowRight } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { KEY_HINT } from './GlobalSearch.constants';
 import { GlobalSearchFooterAction } from './GlobalSearch.types';
-import GlobalSearchKbd from './GlobalSearchKbd';
 
 export interface GlobalSearchFooterProps {
   action?: GlobalSearchFooterAction;
-  /** What Enter does on the highlighted result row, if one is highlighted. */
+  /** What Enter does on the highlighted option, if one is highlighted. */
   enterLabel?: string;
-  isAskAiActive: boolean;
-  /** Short name of the assistant action, shown when it is available. */
-  askAiLabel?: string;
-  showAskAi: boolean;
+  /** Short name of the query action, shown when one is available. */
+  actionHint?: string;
+  showActionHint: boolean;
   showTabHint: boolean;
   hasQuery: boolean;
 }
 
+// The prototype's floating pills; core buttons and cards have no pill shape.
+const PILL_CLASS =
+  'tw:pointer-events-auto tw:flex tw:h-10 tw:items-center tw:rounded-full tw:border tw:border-secondary tw:bg-overlay-surface tw:shadow-lg';
+
+const Hint = ({ label, keys }: { label?: string; keys: string[] }) => (
+  <Box align="center" gap={2}>
+    <Typography color="secondary" size="text-xs" weight="medium">
+      {label}
+    </Typography>
+    <Box gap={1}>
+      {keys.map((key) => (
+        <Badge color="gray" key={key} size="sm" type="modern">
+          {key}
+        </Badge>
+      ))}
+    </Box>
+  </Box>
+);
+
+/**
+ * Floats over the bottom of the result list: the contextual link on the left
+ * and the key hints on the right, over a fade so rows scroll out beneath it.
+ */
 const GlobalSearchFooter = ({
   action,
   enterLabel,
-  isAskAiActive,
-  askAiLabel,
-  showAskAi,
+  actionHint,
+  showActionHint,
   showTabHint,
   hasQuery,
 }: GlobalSearchFooterProps) => {
   const { t } = useTranslation();
-  const enterHint = isAskAiActive ? askAiLabel : enterLabel;
 
   return (
-    <div className="tw:flex tw:items-center tw:gap-4 tw:border-t tw:border-secondary tw:px-4 tw:py-2.5">
-      <span className="tw:flex-1">
+    <Box
+      align="end"
+      className={classNames(
+        'tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-0 tw:z-10 tw:px-3 tw:pt-7 tw:pb-3',
+        'tw:bg-linear-to-b tw:from-transparent tw:via-bg-overlay-surface/90 tw:to-bg-overlay-surface'
+      )}
+      gap={3}
+      justify="between">
+      <Box>
         {action ? (
-          <Button
-            color="link-color"
+          <AriaButton
+            className={classNames(
+              PILL_CLASS,
+              'tw:cursor-pointer tw:gap-1.5 tw:px-3.5 tw:text-brand-secondary',
+              'tw:outline-focus-ring tw:hover:border-utility-brand-300 tw:hover:bg-brand-primary tw:focus-visible:outline-2'
+            )}
             data-testid="global-search-footer-action"
-            iconTrailing={ArrowRight}
-            size="sm"
-            onClick={action.onPress}>
-            {action.label}
-          </Button>
+            onPress={action.onPress}>
+            <Typography
+              as="span"
+              color="brand"
+              size="text-xs"
+              weight="semibold">
+              {action.label}
+            </Typography>
+            <ArrowRight className="tw:size-3.5" />
+          </AriaButton>
         ) : null}
-      </span>
-      <div className="tw:flex tw:items-center tw:gap-4 tw:text-xs tw:text-tertiary">
-        {enterHint ? (
-          <span className="tw:flex tw:items-center tw:gap-1.5">
-            {enterHint}
-            <GlobalSearchKbd>{KEY_HINT.enter}</GlobalSearchKbd>
-          </span>
+      </Box>
+      <Box className={`${PILL_CLASS} tw:pr-2 tw:pl-4`} gap={4}>
+        {enterLabel ? (
+          <Hint keys={[KEY_HINT.enter]} label={enterLabel} />
         ) : null}
-        {showAskAi ? (
-          <span className="tw:flex tw:items-center tw:gap-1.5">
-            {askAiLabel}
-            <GlobalSearchKbd>{KEY_HINT.mod}</GlobalSearchKbd>
-            <GlobalSearchKbd>{KEY_HINT.enter}</GlobalSearchKbd>
-          </span>
+        {showActionHint ? (
+          <Hint keys={[KEY_HINT.mod, KEY_HINT.enter]} label={actionHint} />
         ) : null}
         {showTabHint ? (
-          <span className="tw:flex tw:items-center tw:gap-1.5">
-            {t('label.filter-plural')}
-            <GlobalSearchKbd>{KEY_HINT.tab}</GlobalSearchKbd>
-          </span>
+          <Hint keys={[KEY_HINT.tab]} label={t('label.filter-plural')} />
         ) : null}
-        <span className="tw:flex tw:items-center tw:gap-1.5">
-          {t(hasQuery ? 'label.clear' : 'label.close')}
-          <GlobalSearchKbd>{KEY_HINT.esc}</GlobalSearchKbd>
-        </span>
-      </div>
-    </div>
+        <Hint
+          keys={[KEY_HINT.esc]}
+          label={t(hasQuery ? 'label.clear' : 'label.close')}
+        />
+      </Box>
+    </Box>
   );
 };
 

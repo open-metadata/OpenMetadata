@@ -12,7 +12,7 @@
  */
 
 import { ButtonUtility } from '@openmetadata/ui-core-components';
-import { CollapsePanel, Search } from '@openmetadata/ui-core-components/icons';
+import { CollapsePanel } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -21,12 +21,12 @@ import {
   useAppModeSidebarMainFooter,
   useAppModeSidebarRecent,
 } from '../appModeExtensions';
-import { useGlobalSearchStore } from '../GlobalSearch/useGlobalSearchStore';
 import MoreNavPopover from './MoreNavPopover';
 import { handleNavItemClick, MainNavItem, resolveNavHref } from './navConfig';
 import NavItem from './NavItem';
 import SidebarBrand from './SidebarBrand';
 import { MainNavNode } from './sidebarCustomization';
+import SidebarSearchButton from './SidebarSearchButton';
 import { useActiveNavKey } from './useActiveNavKey';
 import UserProfileCard from './UserProfileCard';
 
@@ -46,7 +46,6 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
   const headerSlots = useAppModeSidebarHeader();
   const footerSlots = useAppModeSidebarMainFooter();
   const recentSlots = useAppModeSidebarRecent();
-  const openSearch = useGlobalSearchStore((state) => state.openSearch);
 
   const handleItemClick = useCallback(
     (item: MainNavItem) => handleNavItemClick({ item, navigate }),
@@ -76,14 +75,9 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
         </div>
       </header>
 
+      <SidebarSearchButton />
+
       <nav className="ask-main-panel__nav" data-testid="ask-main-panel-nav">
-        <NavItem
-          badge="⌘K"
-          dataTestId="ask-nav-item-search"
-          icon={Search}
-          label={t('label.search')}
-          onClick={() => openSearch('all')}
-        />
         {nodes.map((node) => {
           if (node.type === 'more') {
             return (

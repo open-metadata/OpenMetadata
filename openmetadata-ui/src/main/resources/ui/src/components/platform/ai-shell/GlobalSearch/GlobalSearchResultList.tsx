@@ -10,17 +10,28 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Skeleton } from '@openmetadata/ui-core-components';
 import {
-  AlertCircle,
-  RefreshCw01,
-} from '@openmetadata/ui-core-components/icons';
+  Box,
+  Button,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import { RESULTS_LIST_ID } from './GlobalSearch.constants';
 import { GlobalSearchListItem } from './GlobalSearch.types';
 import GlobalSearchResultRow from './GlobalSearchResultRow';
 
-const SKELETON_ROWS = [0, 1, 2, 3, 4, 5];
+/** Title/meta widths of the prototype's loading rows. */
+const SKELETON_ROWS = [
+  [180, 260],
+  [150, 300],
+  [210, 220],
+  [240, 120],
+  [200, 160],
+];
 
 export interface GlobalSearchResultListProps {
   items: GlobalSearchListItem[];
@@ -32,9 +43,11 @@ export interface GlobalSearchResultListProps {
   isEmpty: boolean;
   /** Opened from Recent Chat: the empty state names the type and offers a way out. */
   isScoped: boolean;
-  /** Replaces the default no-results hint, e.g. to point at the assistant. */
+  /** Replaces the default no-results hint, e.g. to point at the query action. */
   emptyHintKey?: string;
   scopeLabel: string;
+  /** Rendered on the section heading flagged `hasSort`. */
+  sortControl?: ReactNode;
   onHover: (key: string) => void;
   onRetry: () => void;
   onSearchEverywhere: () => void;
@@ -51,6 +64,7 @@ const GlobalSearchResultList = ({
   isScoped,
   emptyHintKey,
   scopeLabel,
+  sortControl,
   onHover,
   onRetry,
   onSearchEverywhere,
@@ -59,90 +73,84 @@ const GlobalSearchResultList = ({
 
   if (isFirstLoad) {
     return (
-      <div aria-busy className="tw:flex tw:flex-col tw:px-2">
-        {SKELETON_ROWS.map((index) => (
-          <div
-            className="tw:flex tw:items-center tw:gap-3 tw:px-3 tw:py-2"
-            key={index}>
+      <Box aria-busy className="tw:px-5 tw:pt-3" direction="col" gap={4}>
+        <Skeleton height={10} variant="rounded" width={64} />
+        {SKELETON_ROWS.map(([titleWidth, metaWidth]) => (
+          <Box align="center" gap={3} key={titleWidth}>
             <Skeleton height={32} variant="rounded" width={32} />
-            <div className="tw:flex tw:flex-1 tw:flex-col tw:gap-1">
-              <Skeleton width="40%" />
-              <Skeleton width="65%" />
-            </div>
-          </div>
+            <Box direction="col" gap={2}>
+              <Skeleton height={12} variant="rounded" width={titleWidth} />
+              <Skeleton height={10} variant="rounded" width={metaWidth} />
+            </Box>
+          </Box>
         ))}
-      </div>
+      </Box>
     );
   }
 
   if (hasError) {
     return (
-      <div
-        className="tw:m-4 tw:flex tw:items-center tw:gap-3 tw:rounded-lg tw:border tw:border-secondary tw:p-4"
-        role="alert">
-        <span className="tw:text-fg-warning-primary">
-          <AlertCircle size={20} />
-        </span>
-        <div className="tw:flex tw:flex-1 tw:flex-col">
-          <span className="tw:text-sm tw:font-semibold tw:text-primary">
-            {t('message.global-search-error-title')}
-          </span>
-          <span className="tw:text-sm tw:text-tertiary">
-            {t('message.global-search-error-description')}
-          </span>
-        </div>
-        <Button
-          color="secondary"
-          data-testid="global-search-retry"
-          iconLeading={RefreshCw01}
-          size="sm"
-          onClick={onRetry}>
-          {t('label.try-again')}
-        </Button>
-      </div>
+      <Box className="tw:relative tw:h-80">
+        <SomethingWentWrongPlaceholder
+          description={t('message.global-search-error-description')}
+          title={t('message.global-search-error-title')}
+          onReload={onRetry}
+        />
+      </Box>
     );
   }
 
   if (isEmpty) {
     return (
-      <div
-        className="tw:flex tw:flex-col tw:items-center tw:gap-2 tw:px-6 tw:py-12 tw:text-center"
-        data-testid="global-search-empty">
-        <span className="tw:text-sm tw:font-semibold tw:text-primary">
-          {isScoped
-            ? t('message.global-search-no-type-match', {
-                type: scopeLabel.toLowerCase(),
-                query,
-              })
-            : t('message.global-search-no-result', { query })}
-        </span>
-        <span className="tw:text-sm tw:text-tertiary">
-          {t(emptyHintKey ?? 'message.global-search-no-result-hint')}
-        </span>
-        {isScoped ? (
-          <Button color="secondary" size="sm" onClick={onSearchEverywhere}>
-            {t('label.search-everywhere')}
-          </Button>
-        ) : null}
-      </div>
+      <Box className="tw:relative tw:h-80" data-testid="global-search-empty">
+        <NoSearchResultsPlaceholder
+          actions={
+            isScoped
+              ? [
+                  {
+                    key: 'search-everywhere',
+                    label: t('label.search-everywhere'),
+                    onClick: onSearchEverywhere,
+                  },
+                ]
+              : undefined
+          }
+          description={t(
+            emptyHintKey ?? 'message.global-search-no-result-hint'
+          )}
+          title={
+            isScoped
+              ? t('message.global-search-no-type-match', {
+                  type: scopeLabel.toLowerCase(),
+                  query,
+                })
+              : t('message.global-search-no-result', { query })
+          }
+        />
+      </Box>
     );
   }
 
   return (
-    <div
+    <Box
+      align="stretch"
       aria-label={t('label.result-plural')}
-      className="tw:flex tw:flex-col tw:gap-0.5 tw:px-2 tw:pb-2"
+      className="tw:flex-none tw:pt-1.5"
+      direction="col"
       id={RESULTS_LIST_ID}
       role="listbox">
       {items.map((item) =>
         item.kind === 'section' ? (
-          <div
-            className="tw:flex tw:items-center tw:justify-between tw:px-3 tw:pt-3 tw:pb-1"
+          <Box
+            align="center"
+            className="tw:mt-3 tw:px-5"
+            justify="between"
             key={item.key}
             role="presentation">
-            <span className="tw:text-xs tw:font-medium tw:text-tertiary">
+            <Typography color="quaternary" size="text-xs" weight="medium">
               {item.label}
-            </span>
+            </Typography>
+            {item.hasSort ? sortControl : null}
             {item.seeAll ? (
               <Button
                 color="link-color"
@@ -151,10 +159,9 @@ const GlobalSearchResultList = ({
                 {item.seeAll.label}
               </Button>
             ) : null}
-          </div>
+          </Box>
         ) : (
           <GlobalSearchResultRow
-            enterHint={item.enterLabel}
             id={`global-search-option-${item.key}`}
             isActive={activeKey === item.key}
             isPreviewed={previewId === item.row.id}
@@ -167,7 +174,7 @@ const GlobalSearchResultList = ({
           />
         )
       )}
-    </div>
+    </Box>
   );
 };
 

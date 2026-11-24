@@ -10,15 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FeaturedIcon } from '@openmetadata/ui-core-components';
 import { ClockRewind } from '@openmetadata/ui-core-components/icons';
 import { RecentlySearchedData, RecentlyViewedData } from 'Models';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
 import { setRecentlySearchedData } from '../../../../utils/RecentActivityUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
-import { RECENTLY_VIEWED_LIMIT } from './GlobalSearch.constants';
+import {
+  ASSETS_CATEGORY,
+  RECENTLY_VIEWED_LIMIT,
+  RECENT_SOURCE_ROWS,
+} from './GlobalSearch.constants';
 import {
   GlobalSearchCategory,
   GlobalSearchFilter,
@@ -26,27 +32,35 @@ import {
   GlobalSearchResults,
   GlobalSearchRow,
 } from './GlobalSearch.types';
-
-const RECENT_CHATS_ON_HOME = 2;
+import { getEntityRowMeta, getFqnParents } from './useGlobalSearchResults';
 
 const recentlyViewedRow = (item: RecentlyViewedData): GlobalSearchRow => ({
   id: item.id ?? item.fqn,
   title: item.displayName || item.fqn,
-  icon: searchClassBase.getEntityIcon(item.entityType),
+  icon: searchClassBase.getEntityIconWithBg(
+    item.entityType,
+    EntityIconSize.Size18
+  ),
+  meta: getEntityRowMeta(item.entityType, getFqnParents(item.fqn)),
   href: getEntityLinkFromType(item.fqn, item.entityType as EntityType),
 });
+
+export interface GlobalSearchSourceRecent {
+  key: GlobalSearchCategory;
+  label: string;
+  rows: GlobalSearchRow[];
+}
 
 export interface GlobalSearchItemsParams {
   query: string;
   filter: GlobalSearchFilter;
-  isChatsOnly: boolean;
+  /** Opened scoped to one source: only its recent rows before typing. */
+  scopedCategory?: GlobalSearchCategory;
   results: GlobalSearchResults;
   order: GlobalSearchCategory[];
   recentSearches: RecentlySearchedData[];
   recentlyViewed: RecentlyViewedData[];
-  recentChats: GlobalSearchRow[];
-  /** Heading for `recentChats`, from the contributing source. */
-  recentChatsLabel: string;
+  sourceRecents: GlobalSearchSourceRecent[];
   previewId?: string;
   labelFor: (key: GlobalSearchCategory) => string;
   onOpen: (row: GlobalSearchRow) => void;
@@ -59,13 +73,12 @@ export interface GlobalSearchItemsParams {
 export const useGlobalSearchItems = ({
   query,
   filter,
-  isChatsOnly,
+  scopedCategory,
   results,
   order,
   recentSearches,
   recentlyViewed,
-  recentChats,
-  recentChatsLabel,
+  sourceRecents,
   previewId,
   labelFor,
   onOpen,
@@ -80,8 +93,8 @@ export const useGlobalSearchItems = ({
     const section = (
       key: string,
       label: string,
-      seeAll?: { label: string; onPress: () => void }
-    ) => items.push({ kind: 'section', key, label, seeAll });
+      extra: Partial<Extract<GlobalSearchListItem, { kind: 'section' }>> = {}
+    ) => items.push({ kind: 'section', key, label, ...extra });
     const rows = (prefix: string, list: GlobalSearchRow[]) =>
       list.forEach((row) =>
         items.push({
@@ -93,21 +106,28 @@ export const useGlobalSearchItems = ({
         })
       );
 
-    if (!query && isChatsOnly) {
-      section('recent-chats', recentChatsLabel);
-      rows('chats', recentChats);
-
-      return items;
-    }
-
     if (!query) {
+      if (scopedCategory) {
+        sourceRecents
+          .filter((recent) => recent.key === scopedCategory)
+          .forEach((recent) => {
+            section(`recent-${recent.key}`, recent.label);
+            rows(recent.key, recent.rows);
+          });
+
+        return items;
+      }
       if (recentSearches.length) {
         section('recent-searches', t('label.recent-search-plural'));
         recentSearches.forEach(({ term }) =>
           items.push({
             kind: 'row',
             key: `recent-search-${term}`,
-            row: { id: term, title: term, icon: <ClockRewind size={18} /> },
+            row: {
+              id: term,
+              title: term,
+              icon: <FeaturedIcon color="gray" icon={ClockRewind} size="sm" />,
+            },
             enterLabel: t('label.search-this'),
             onSelect: () => onSearchTerm(term),
             onRemove: () =>
@@ -124,15 +144,19 @@ export const useGlobalSearchItems = ({
           recentlyViewed.slice(0, RECENTLY_VIEWED_LIMIT).map(recentlyViewedRow)
         );
       }
-      if (recentChats.length) {
-        section('recent-chats', recentChatsLabel, {
-          label: t('label.view-all-entity', {
-            entity: labelFor('chats'),
-          }),
-          onPress: () => onShowType('chats'),
+      sourceRecents
+        .filter((recent) => recent.rows.length > 0)
+        .forEach((recent) => {
+          section(`recent-${recent.key}`, recent.label, {
+            seeAll: {
+              label: t('label.view-all-entity', {
+                entity: labelFor(recent.key),
+              }),
+              onPress: () => onShowType(recent.key),
+            },
+          });
+          rows(recent.key, recent.rows.slice(0, RECENT_SOURCE_ROWS));
         });
-        rows('chats', recentChats.slice(0, RECENT_CHATS_ON_HOME));
-      }
 
       return items;
     }
@@ -143,14 +167,15 @@ export const useGlobalSearchItems = ({
         if (!group?.count) {
           return;
         }
-        const seeAll =
-          group.count > group.rows.length
-            ? {
-                label: t('label.see-all-count', { count: group.count }),
-                onPress: () => onShowType(key),
-              }
-            : undefined;
-        section(key, labelFor(key), seeAll);
+        section(key, labelFor(key), {
+          seeAll:
+            group.count > group.rows.length
+              ? {
+                  label: t('label.see-all-count', { count: group.count }),
+                  onPress: () => onShowType(key),
+                }
+              : undefined,
+        });
         rows(key, group.rows);
       });
 
@@ -161,8 +186,10 @@ export const useGlobalSearchItems = ({
     if (!group?.count) {
       return items;
     }
-    section(filter, `${group.count} ${labelFor(filter)}`);
-    if (filter !== 'assets') {
+    section(filter, `${group.count} ${labelFor(filter)}`, {
+      hasSort: filter === ASSETS_CATEGORY,
+    });
+    if (filter !== ASSETS_CATEGORY) {
       rows(filter, group.rows);
 
       return items;
@@ -173,7 +200,7 @@ export const useGlobalSearchItems = ({
       const isPreviewed = previewId === row.id;
       items.push({
         kind: 'row',
-        key: `assets-${row.id}`,
+        key: `${ASSETS_CATEGORY}-${row.id}`,
         row,
         enterLabel: t(isPreviewed ? 'label.open' : 'label.preview'),
         onSelect: () => (isPreviewed ? onOpen(row) : onPreview(row.id)),
@@ -184,13 +211,12 @@ export const useGlobalSearchItems = ({
   }, [
     query,
     filter,
-    isChatsOnly,
+    scopedCategory,
     results,
     order,
     recentSearches,
     recentlyViewed,
-    recentChats,
-    recentChatsLabel,
+    sourceRecents,
     previewId,
     labelFor,
     onOpen,

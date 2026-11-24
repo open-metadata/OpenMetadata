@@ -13,15 +13,15 @@
 import { escapeRegExp } from 'lodash';
 import { getQuickFilterQuery } from '../../../../utils/ExplorePureUtils';
 import {
-  ASK_AI_OPTION_ID,
-  CATEGORY_ORDER,
+  ASSETS_CATEGORY,
   MAX_VISIBLE_TABS,
+  QUERY_ACTION_OPTION_ID,
 } from './GlobalSearch.constants';
 import {
-  GlobalSearchAskAiContribution,
   GlobalSearchCategory,
   GlobalSearchFacetSelection,
   GlobalSearchFilter,
+  GlobalSearchQueryActionContribution,
   GlobalSearchResults,
   GlobalSearchSourceContribution,
 } from './GlobalSearch.types';
@@ -34,20 +34,22 @@ export interface HighlightPart {
 }
 
 /**
- * Tabs for the types the query matched, biggest first. The active type stays
- * listed even at zero so the bar doesn't jump under the cursor mid-typing.
+ * Tabs for the types the query matched, biggest first; ties keep `order` (the
+ * order the API returned them in). The active type stays listed even at zero
+ * so the bar doesn't jump under the cursor mid-typing.
  */
 export const getVisibleTabs = (
   results: GlobalSearchResults,
-  active: GlobalSearchFilter
+  active: GlobalSearchFilter,
+  order: GlobalSearchCategory[]
 ): { shown: GlobalSearchCategory[]; more: GlobalSearchCategory[] } => {
-  const hits = CATEGORY_ORDER.filter(
-    (key) => (results[key]?.count ?? 0) > 0 || key === active
-  ).sort(
-    (a, b) =>
-      (results[b]?.count ?? 0) - (results[a]?.count ?? 0) ||
-      CATEGORY_ORDER.indexOf(a) - CATEGORY_ORDER.indexOf(b)
-  );
+  const hits = order
+    .filter((key) => (results[key]?.count ?? 0) > 0 || key === active)
+    .sort(
+      (a, b) =>
+        (results[b]?.count ?? 0) - (results[a]?.count ?? 0) ||
+        order.indexOf(a) - order.indexOf(b)
+    );
 
   return {
     shown: hits.slice(0, MAX_VISIBLE_TABS),
@@ -100,9 +102,6 @@ export const splitHighlight = (
     });
 };
 
-export const countSelectedFacets = (selection: GlobalSearchFacetSelection) =>
-  Object.values(selection).reduce((sum, values) => sum + values.length, 0);
-
 /** ES query filter in the shape Explore's `quickFilter` URL param expects. */
 export const getFacetQueryFilter = (
   selection: GlobalSearchFacetSelection,
@@ -114,7 +113,7 @@ export const getFacetQueryFilter = (
       .map(([field, values]) => ({
         key: field,
         label: field,
-        value: values.map((value) => ({ key: value, label: value })),
+        value: values,
       }))
   );
 
@@ -141,13 +140,13 @@ export const getPageSize = (
     return sizes.active;
   }
 
-  return category === 'assets' ? sizes.assets : sizes.other;
+  return category === ASSETS_CATEGORY ? sizes.assets : sizes.other;
 };
 
 export type GlobalSearchKeyAction =
   | 'next'
   | 'previous'
-  | 'ask-ai'
+  | 'run-action'
   | 'select'
   | 'next-tab'
   | 'previous-tab'
@@ -158,8 +157,8 @@ export type GlobalSearchKeyAction =
 export interface GlobalSearchKeyContext {
   query: string;
   filter: GlobalSearchFilter;
-  isChatsOnly: boolean;
-  isAiActive: boolean;
+  isScoped: boolean;
+  isActionActive: boolean;
   tabCount: number;
 }
 
@@ -171,7 +170,9 @@ interface KeyInput {
 }
 
 const getEnterAction = (event: KeyInput, context: GlobalSearchKeyContext) =>
-  event.metaKey || event.ctrlKey || context.isAiActive ? 'ask-ai' : 'select';
+  event.metaKey || event.ctrlKey || context.isActionActive
+    ? 'run-action'
+    : 'select';
 
 const getTabAction = (event: KeyInput, context: GlobalSearchKeyContext) => {
   if (!context.query.trim() || context.tabCount < 2) {
@@ -181,13 +182,13 @@ const getTabAction = (event: KeyInput, context: GlobalSearchKeyContext) => {
   return event.shiftKey ? 'previous-tab' : 'next-tab';
 };
 
-// From Recent Chat an empty Backspace leaves search; elsewhere it widens a
+// Opened scoped to one source, an empty Backspace leaves search; elsewhere it widens a
 // scoped tab back to All.
 const getBackspaceAction = (context: GlobalSearchKeyContext) => {
   if (context.query) {
     return undefined;
   }
-  if (context.isChatsOnly) {
+  if (context.isScoped) {
     return 'close';
   }
 
@@ -223,22 +224,22 @@ export const getKeyAction = (
 export const getActiveOption = <T extends { key: string }>(
   rows: T[],
   activeIndex: number,
-  hasAskAi: boolean
+  hasQueryAction: boolean
 ) => {
-  const offset = hasAskAi ? 1 : 0;
+  const offset = hasQueryAction ? 1 : 0;
   const count = rows.length + offset;
   const index = clampIndex(activeIndex, count);
-  const isAiActive = hasAskAi && index === 0;
-  const row = isAiActive ? undefined : rows[index - offset];
+  const isActionActive = hasQueryAction && index === 0;
+  const row = isActionActive ? undefined : rows[index - offset];
 
   return {
     index,
     count,
     offset,
-    isAiActive,
+    isActionActive,
     row,
-    optionId: isAiActive
-      ? ASK_AI_OPTION_ID
+    optionId: isActionActive
+      ? QUERY_ACTION_OPTION_ID
       : row && `global-search-option-${row.key}`,
   };
 };
@@ -246,8 +247,8 @@ export const getActiveOption = <T extends { key: string }>(
 export interface GlobalSearchViewInput {
   query: string;
   filter: GlobalSearchFilter;
-  isChatsOnly: boolean;
-  canAskAi: boolean;
+  isScoped: boolean;
+  hasQueryAction: boolean;
   isLoading: boolean;
   hasError: boolean;
   rowCount: number;
@@ -256,9 +257,10 @@ export interface GlobalSearchViewInput {
 }
 
 const getTabOrder = (
-  isChatsOnly: boolean,
+  isScoped: boolean,
+  filter: GlobalSearchFilter,
   order: GlobalSearchCategory[]
-): GlobalSearchFilter[] => (isChatsOnly ? ['chats'] : ['all', ...order]);
+): GlobalSearchFilter[] => (isScoped ? [filter] : ['all', ...order]);
 
 const isEmptyResult = ({
   isLoading,
@@ -267,44 +269,56 @@ const isEmptyResult = ({
 }: Pick<GlobalSearchViewInput, 'isLoading' | 'hasError' | 'rowCount'>) =>
   !isLoading && !hasError && rowCount === 0;
 
+/** The tab whose own filters show; none on "All" or before typing. */
+const getFilterBarCategory = (hasQuery: boolean, filter: GlobalSearchFilter) =>
+  hasQuery && filter !== 'all' ? filter : undefined;
+
 /** Which parts of the search panel show for the current state. */
 export const getPanelView = (input: GlobalSearchViewInput) => {
-  const { query, filter, isChatsOnly, canAskAi, hasError, isPreviewOpen } =
+  const { query, filter, isScoped, hasQueryAction, hasError, isPreviewOpen } =
     input;
   const hasQuery = query.trim().length > 0;
-  const tabOrder = getTabOrder(isChatsOnly, input.order);
+  const tabOrder = getTabOrder(isScoped, filter, input.order);
 
   return {
     tabOrder,
-    showTabBar: hasQuery || isChatsOnly,
-    showAssetBar: hasQuery && filter === 'assets',
+    showTabBar: hasQuery || isScoped,
     showTaskBar: hasQuery && filter === 'tasks',
-    showAskAi: canAskAi && hasQuery && !hasError,
+    filterBarCategory: getFilterBarCategory(hasQuery, filter),
+    showQueryAction: hasQueryAction && hasQuery && !hasError,
     showTabHint: hasQuery && !isPreviewOpen && tabOrder.length > 1,
     isEmpty: hasQuery && isEmptyResult(input),
   };
 };
 
 /**
- * i18n keys for text the plugins own: the assistant row and hints, and the
- * scoped source's placeholder and "recent" heading. OSS ships only neutral copy.
+ * i18n keys for text the plugins own: the query action's hints and the scoped
+ * source's placeholder and "recent" heading. OSS ships only neutral copy.
  */
 export const getContributedLabelKeys = ({
   scopedSource,
-  askAi,
-  filter,
+  queryAction,
   isScoped,
 }: {
   scopedSource?: GlobalSearchSourceContribution;
-  askAi?: GlobalSearchAskAiContribution;
-  filter: GlobalSearchFilter;
+  queryAction?: GlobalSearchQueryActionContribution;
   isScoped: boolean;
 }) => ({
   placeholder:
     (isScoped && scopedSource?.placeholderKey) ||
     'message.global-search-placeholder',
   recent: scopedSource?.recentLabelKey ?? scopedSource?.labelKey ?? '',
-  askAi: askAi?.labelKeyByFilter?.[filter] ?? askAi?.labelKey ?? '',
-  askAiHint: askAi?.hintLabelKey ?? '',
-  emptyHint: askAi?.emptyHintKey,
+  actionHint: queryAction?.hintLabelKey ?? '',
+  emptyHint: queryAction?.emptyHintKey,
 });
+
+/** Opened from a scoped trigger (e.g. a source's own search button) or not. */
+export const getSearchScope = (entry: GlobalSearchFilter) => {
+  const scopedCategory = entry === 'all' ? undefined : entry;
+
+  return {
+    scopedCategory,
+    isScoped: Boolean(scopedCategory),
+    scopedSources: scopedCategory ? [scopedCategory] : undefined,
+  };
+};

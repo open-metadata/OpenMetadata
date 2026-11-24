@@ -11,17 +11,23 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { usePersistentStorage } from '../../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { searchQuery } from '../../../../rest/searchAPI';
+import {
+  searchEntityTypeCounts,
+  searchQuery,
+} from '../../../../rest/searchAPI';
 import { listTasks } from '../../../../rest/tasksAPI';
-import { GlobalSearchSourceContribution } from './GlobalSearch.types';
+import {
+  GlobalSearchQueryActionProps,
+  GlobalSearchSourceContribution,
+} from './GlobalSearch.types';
 import GlobalSearchModal from './GlobalSearchModal';
 import { useGlobalSearchStore } from './useGlobalSearchStore';
 
 const mockNavigate = jest.fn();
-const mockAskPath = jest.fn((question: string) => `/?prompt=${question}`);
 let mockSources: GlobalSearchSourceContribution[] = [];
 
 jest.mock('react-router-dom', () => ({
@@ -31,9 +37,23 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../appModeExtensions', () => ({
   useGlobalSearchSources: () => mockSources,
-  useGlobalSearchAskAi: () => ({
-    getPath: mockAskPath,
-    labelKey: 'label.ask-assistant-about',
+  useGlobalSearchQueryAction: () => ({
+    component: ({
+      id,
+      query,
+      isActive,
+      onSelect,
+    }: GlobalSearchQueryActionProps) => (
+      <button
+        aria-selected={isActive}
+        data-testid="query-action"
+        id={id}
+        role="option"
+        onClick={onSelect}>
+        {`ask ${query}`}
+      </button>
+    ),
+    getPath: (question: string) => `/?prompt=${question}`,
     hintLabelKey: 'label.ask-assistant',
   }),
 }));
@@ -45,8 +65,13 @@ jest.mock(
   })
 );
 
+jest.mock('../../../Explore/ExploreQuickFilters', () => () => (
+  <div data-testid="explore-quick-filters" />
+));
+
 jest.mock('../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
+  searchEntityTypeCounts: jest.fn(),
 }));
 
 jest.mock('../../../../rest/tasksAPI', () => ({
@@ -59,7 +84,15 @@ const hit = (id: string, name: string, entityType: string) => ({
     name,
     displayName: name,
     entityType,
-    fullyQualifiedName: `svc.db.${name}`,
+    fullyQualifiedName: `svc.db.schema.${name}`,
+  },
+});
+
+const counts = (buckets: [string, number][]) => ({
+  aggregations: {
+    entityType: {
+      buckets: buckets.map(([key, doc_count]) => ({ key, doc_count })),
+    },
   },
 });
 
@@ -68,15 +101,13 @@ const chatsSource: GlobalSearchSourceContribution = {
   labelKey: 'label.chats',
   recentLabelKey: 'label.recent-chats',
   placeholderKey: 'message.search-chats',
+  hasScopeShortcut: true,
   search: jest.fn().mockResolvedValue({ count: 0, rows: [] }),
-  recent: jest.fn().mockResolvedValue([
-    {
-      id: 'c1',
-      title: 'Customer Order Schema',
-      icon: null,
-      href: '/conversations/c1',
-    },
-  ]),
+  recent: jest
+    .fn()
+    .mockResolvedValue([
+      { id: 'c1', title: 'Customer Order Schema', icon: null, href: '/c/c1' },
+    ]),
 };
 
 const renderModal = () =>
@@ -95,6 +126,12 @@ const type = async (value: string) => {
   });
 };
 
+const press = (key: string, init: KeyboardEventInit = {}) =>
+  fireEvent.keyDown(screen.getByTestId('global-search-input'), {
+    key,
+    ...init,
+  });
+
 describe('GlobalSearchModal', () => {
   beforeEach(() => {
     jest.useFakeTimers();
@@ -112,9 +149,20 @@ describe('GlobalSearchModal', () => {
         },
       },
     } as never);
+    (searchEntityTypeCounts as jest.Mock).mockImplementation(
+      ({ searchIndex }: { searchIndex: string[] }) =>
+        Promise.resolve(
+          searchIndex[0] === 'dataAsset'
+            ? counts([['table', 2]])
+            : counts([
+                ['table', 2],
+                ['domain', 1],
+              ])
+        )
+    );
     (searchQuery as jest.Mock).mockImplementation(({ searchIndex }) =>
       Promise.resolve(
-        Array.isArray(searchIndex) && searchIndex.length > 2
+        searchIndex === 'dataAsset'
           ? {
               hits: {
                 total: { value: 2 },
@@ -124,7 +172,12 @@ describe('GlobalSearchModal', () => {
                 ],
               },
             }
-          : { hits: { total: { value: 0 }, hits: [] } }
+          : {
+              hits: {
+                total: { value: 1 },
+                hits: [hit('d1', 'Customer 360', 'domain')],
+              },
+            }
       )
     );
     (listTasks as jest.Mock).mockResolvedValue({
@@ -145,58 +198,68 @@ describe('GlobalSearchModal', () => {
     });
 
     expect(screen.getByTestId('global-search-modal')).toBeInTheDocument();
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
-    expect(screen.getByText('label.recent-search-plural')).toBeInTheDocument();
+    expect(screen.queryByTestId('global-search-tabs')).not.toBeInTheDocument();
     expect(screen.getByText('customer_id')).toBeInTheDocument();
+    expect(screen.getByText('label.recent-chats')).toBeInTheDocument();
     expect(screen.getByText('Customer Order Schema')).toBeInTheDocument();
   });
 
-  it('shows tabs only for types that matched and carries the query to Explore', async () => {
+  it('builds a tab for each type the search API returned', async () => {
     useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
     renderModal();
     await type('customer');
 
+    expect(searchEntityTypeCounts).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId('global-search-tab-all')).toBeInTheDocument();
     expect(screen.getByTestId('global-search-tab-assets')).toBeInTheDocument();
+    expect(screen.getByTestId('global-search-tab-domain')).toBeInTheDocument();
     expect(
       screen.queryByTestId('global-search-tab-tasks')
     ).not.toBeInTheDocument();
+    expect(screen.getByTestId('global-search-row-d1')).toHaveTextContent(
+      'Customer 360'
+    );
+  });
 
-    fireEvent.click(screen.getByTestId('global-search-tab-assets'));
+  it('carries the query, filters and sort to Explore from the assets tab', async () => {
+    useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
+    renderModal();
+    await type('customer');
+
+    press('Tab');
     await act(async () => {
       jest.advanceTimersByTime(400);
     });
+
+    expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
+
     fireEvent.click(screen.getByTestId('global-search-footer-action'));
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      expect.stringContaining('search=customer'),
-      { state: { fromGlobalSearch: { query: 'customer', filterCount: 0 } } }
+      expect.stringContaining('search=customer')
+    );
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.stringContaining('sort=_score')
     );
     expect(useGlobalSearchStore.getState().isOpen).toBe(false);
   });
 
-  it('puts the ask-AI row first and sends the query with ⌘↵', async () => {
+  it('puts the plugin query action first and runs it with ⌘↵', async () => {
     useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
     renderModal();
     await type('customer');
 
-    expect(screen.getByTestId('global-search-ask-ai')).toHaveAttribute(
+    expect(screen.getByTestId('query-action')).toHaveAttribute(
       'aria-selected',
       'true'
     );
-    expect(screen.getByTestId('global-search-ask-ai')).toHaveTextContent(
-      'label.ask-assistant-about'
-    );
 
-    fireEvent.keyDown(screen.getByTestId('global-search-input'), {
-      key: 'Enter',
-      metaKey: true,
-    });
+    press('Enter', { metaKey: true });
 
     expect(mockNavigate).toHaveBeenCalledWith('/?prompt=customer');
   });
 
-  it('scopes to chats from ⌥⌘K and closes on Backspace with an empty query', async () => {
+  it('opens scoped to the source that takes ⌥⌘K and closes on Backspace', async () => {
     renderModal();
 
     await act(async () => {
@@ -213,16 +276,13 @@ describe('GlobalSearchModal', () => {
       'placeholder',
       'message.search-chats'
     );
-    expect(screen.getByText('label.recent-chats')).toBeInTheDocument();
     expect(screen.getByTestId('global-search-tab-chats')).toBeInTheDocument();
     expect(
       screen.queryByTestId('global-search-tab-all')
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('global-search-everything')).toBeInTheDocument();
 
-    fireEvent.keyDown(screen.getByTestId('global-search-input'), {
-      key: 'Backspace',
-    });
+    press('Backspace');
 
     expect(useGlobalSearchStore.getState().isOpen).toBe(false);
   });
@@ -233,13 +293,52 @@ describe('GlobalSearchModal', () => {
     await type('customer');
     const input = screen.getByTestId('global-search-input');
 
-    fireEvent.keyDown(input, { key: 'Escape' });
+    press('Escape');
 
     expect(input).toHaveValue('');
     expect(useGlobalSearchStore.getState().isOpen).toBe(true);
 
-    fireEvent.keyDown(input, { key: 'Escape' });
+    press('Escape');
 
     expect(useGlobalSearchStore.getState().isOpen).toBe(false);
+  });
+
+  it('switches tabs with a click and keeps focus in the input', async () => {
+    useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
+    renderModal();
+    await type('customer');
+    jest.useRealTimers();
+
+    await userEvent.click(screen.getByTestId('global-search-tab-domain'));
+    await act(async () => {
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    });
+
+    expect(screen.getByTestId('global-search-input')).toHaveFocus();
+  });
+
+  it('clears the text, tab and filters together from the clear button', async () => {
+    useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
+    renderModal();
+    await type('customer');
+
+    press('Tab');
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
+
+    expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.clear' }));
+    await type('customer');
+
+    expect(screen.getByTestId('global-search-input')).toHaveValue('customer');
+    expect(
+      screen.queryByTestId('explore-quick-filters')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('global-search-tab-all')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
   });
 });

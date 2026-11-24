@@ -10,18 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { ReactNode } from 'react';
+import type { ComponentType, ReactNode } from 'react';
+import type { SearchDropdownOption } from '../../../../interface/quickFilter.interface';
 import type { SearchSourceAlias } from '../../../../interface/search.interface';
 
-export type GlobalSearchCategory =
-  | 'assets'
-  | 'chats'
-  | 'tasks'
-  | 'glossary'
-  | 'people'
-  | 'domains'
-  | 'products'
-  | 'articles';
+/**
+ * A result type: `assets` (every data asset type rolled up), `tasks`, an
+ * entity type the search API returned (e.g. `glossaryTerm`), or a key a
+ * plugin contributes (e.g. `chats`).
+ */
+export type GlobalSearchCategory = string;
 
 export type GlobalSearchFilter = 'all' | GlobalSearchCategory;
 
@@ -29,9 +27,11 @@ export interface GlobalSearchRow {
   id: string;
   title: string;
   meta?: string;
+  /** Parent breadcrumb, e.g. `service › database › schema`. */
+  path?: string;
   icon: ReactNode;
   badges?: string[];
-  /** Right-aligned trailing content, e.g. a relative time or avatars. */
+  /** Right-aligned trailing text, e.g. a relative time. */
   trailing?: ReactNode;
   href?: string;
   /** Present on data-asset rows; drives the summary panel. */
@@ -41,10 +41,13 @@ export interface GlobalSearchRow {
 export interface GlobalSearchSection {
   count: number;
   rows: GlobalSearchRow[];
+  /** Display name for categories that come from the API. */
+  label?: string;
 }
 
-export type GlobalSearchResults = Partial<
-  Record<GlobalSearchCategory, GlobalSearchSection>
+export type GlobalSearchResults = Record<
+  GlobalSearchCategory,
+  GlobalSearchSection
 >;
 
 /**
@@ -60,31 +63,40 @@ export interface GlobalSearchSourceContribution {
   recentLabelKey?: string;
   /** Input placeholder when search is opened scoped to this type. */
   placeholderKey?: string;
+  /** ⌥⌘K opens search scoped to this source. */
+  hasScopeShortcut?: boolean;
   /** Footer link shown on this type's tab, e.g. "New chat". */
   footer?: { labelKey: string; path: string };
 }
 
+export interface GlobalSearchQueryActionProps {
+  /** DOM id the search input points `aria-activedescendant` at. */
+  id: string;
+  query: string;
+  filter: GlobalSearchFilter;
+  isActive: boolean;
+  onHover: () => void;
+  onSelect: () => void;
+}
+
 /**
- * Hands a question to the AI assistant. Contributed to
- * `EXTENSION_POINTS.APP_MODE_GLOBAL_SEARCH_ASK_AI`; without one the
- * "Ask AI" row is hidden.
+ * An action on the typed query shown above the results (Collate: "Ask Collate
+ * AI"). The plugin owns its row and copy; OSS only places it first in the list,
+ * keeps it keyboard reachable and runs it on ⌘↵. Contributed to
+ * `EXTENSION_POINTS.APP_MODE_GLOBAL_SEARCH_QUERY_ACTION`.
  */
-export interface GlobalSearchAskAiContribution {
-  /** Where the question opens, e.g. a new chat with it prefilled. */
-  getPath: (question: string) => string;
-  /** Row text before the quoted question, e.g. "Ask the assistant about". */
-  labelKey: string;
-  /** Per-tab overrides of `labelKey`, e.g. "Start a new chat about" on chats. */
-  labelKeyByFilter?: Partial<Record<GlobalSearchFilter, string>>;
+export interface GlobalSearchQueryActionContribution {
+  component: ComponentType<GlobalSearchQueryActionProps>;
+  /** Where running the action goes. */
+  getPath: (query: string) => string;
   /** Short name for the footer key hint. */
   hintLabelKey: string;
-  /** No-results hint that points at the assistant. */
+  /** Replaces the default no-results hint. */
   emptyHintKey?: string;
 }
 
-export interface GlobalSearchFacetSelection {
-  [field: string]: string[];
-}
+/** Selected facet values per field, kept with their labels for the triggers. */
+export type GlobalSearchFacetSelection = Record<string, SearchDropdownOption[]>;
 
 export type GlobalSearchListItem =
   | {
@@ -92,6 +104,8 @@ export type GlobalSearchListItem =
       key: string;
       label: string;
       seeAll?: { label: string; onPress: () => void };
+      /** Shows the asset sort control on this heading. */
+      hasSort?: boolean;
     }
   | {
       kind: 'row';

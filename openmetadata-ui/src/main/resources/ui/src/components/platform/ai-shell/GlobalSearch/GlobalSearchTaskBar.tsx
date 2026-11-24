@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, FilterSelect } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Divider,
+  FilterSelect,
+} from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { TaskStatus, TaskType } from '../../../../generated/entity/tasks/task';
 import {
@@ -40,41 +45,47 @@ const GlobalSearchTaskBar = ({
   }
 
   return (
-    <div className="tw:flex tw:items-center tw:gap-1.5 tw:px-4 tw:pb-2">
-      <FilterSelect
-        data-testid="global-search-task-status"
-        label={t('label.status')}
-        options={TASK_STATUS_OPTIONS.map((value) => ({ value, label: value }))}
-        selectedValues={status ? [status] : []}
-        selectionMode="single"
-        size="sm"
-        triggerVariant="chip"
-        onChange={(values) =>
-          onStatusChange(values[0] as TaskStatus | undefined)
-        }
-      />
-      <FilterSelect
-        data-testid="global-search-task-type"
-        label={t('label.type')}
-        options={TASK_TYPE_OPTIONS.map((value) => ({ value, label: value }))}
-        selectedValues={type ? [type] : []}
-        selectionMode="single"
-        size="sm"
-        triggerVariant="chip"
-        onChange={(values) => onTypeChange(values[0] as TaskType | undefined)}
-      />
-      {status || type ? (
-        <Button
-          color="link-gray"
+    <>
+      <Divider />
+      <Box align="center" className="tw:px-4 tw:py-2" gap={2}>
+        <FilterSelect
+          data-testid="global-search-task-status"
+          label={t('label.status')}
+          options={TASK_STATUS_OPTIONS.map((value) => ({
+            value,
+            label: value,
+          }))}
+          selectedValues={status ? [status] : []}
+          selectionMode="single"
           size="sm"
-          onClick={() => {
-            onStatusChange(undefined);
-            onTypeChange(undefined);
-          }}>
-          {t('label.clear-filter-plural')}
-        </Button>
-      ) : null}
-    </div>
+          triggerVariant="chip"
+          onChange={(values) =>
+            onStatusChange(values[0] as TaskStatus | undefined)
+          }
+        />
+        <FilterSelect
+          data-testid="global-search-task-type"
+          label={t('label.type')}
+          options={TASK_TYPE_OPTIONS.map((value) => ({ value, label: value }))}
+          selectedValues={type ? [type] : []}
+          selectionMode="single"
+          size="sm"
+          triggerVariant="chip"
+          onChange={(values) => onTypeChange(values[0] as TaskType | undefined)}
+        />
+        {status || type ? (
+          <Button
+            color="link-gray"
+            size="sm"
+            onClick={() => {
+              onStatusChange(undefined);
+              onTypeChange(undefined);
+            }}>
+            {t('label.clear-filter-plural')}
+          </Button>
+        ) : null}
+      </Box>
+    </>
   );
 };
 

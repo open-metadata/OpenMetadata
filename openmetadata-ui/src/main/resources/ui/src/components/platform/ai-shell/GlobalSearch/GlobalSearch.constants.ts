@@ -11,51 +11,19 @@
  *  limitations under the License.
  */
 import { EntityFields } from '../../../../enums/AdvancedSearch.enum';
-import { SearchIndex } from '../../../../enums/search.enum';
 import { TaskStatus, TaskType } from '../../../../generated/entity/tasks/task';
-import { GlobalSearchCategory } from './GlobalSearch.types';
 
 export const GLOBAL_SEARCH_DEBOUNCE_MS = 300;
 export const MAX_VISIBLE_TABS = 5;
 export const RECENTLY_VIEWED_LIMIT = 3;
+export const RECENT_SOURCE_ROWS = 2;
 export const ACTIVE_TAB_PAGE_SIZE = 25;
 export const ALL_TAB_ASSET_ROWS = 3;
 export const ALL_TAB_OTHER_ROWS = 2;
 
-/** Display order when counts tie, and the order of the "+N more" menu. */
-export const CATEGORY_ORDER: GlobalSearchCategory[] = [
-  'assets',
-  'chats',
-  'tasks',
-  'glossary',
-  'people',
-  'domains',
-  'products',
-  'articles',
-];
-
-/** Labels for built-in types; contributed types bring their own `labelKey`. */
-export const CATEGORY_LABEL_KEY: Partial<Record<GlobalSearchCategory, string>> =
-  {
-    assets: 'label.data-asset-plural',
-    tasks: 'label.task-plural',
-    glossary: 'label.glossary',
-    people: 'label.people',
-    domains: 'label.domain-plural',
-    products: 'label.data-product-plural',
-    articles: 'label.context-center',
-  };
-
-/** Search-index backed categories other than data assets. */
-export const INDEX_CATEGORIES: Partial<
-  Record<GlobalSearchCategory, SearchIndex[]>
-> = {
-  glossary: [SearchIndex.GLOSSARY_TERM],
-  people: [SearchIndex.USER, SearchIndex.TEAM],
-  domains: [SearchIndex.DOMAIN],
-  products: [SearchIndex.DATA_PRODUCT],
-  articles: [SearchIndex.KNOWLEDGE_PAGE_INDEX],
-};
+/** All data asset types roll up into this one category. */
+export const ASSETS_CATEGORY = 'assets';
+export const TASKS_CATEGORY = 'tasks';
 
 export const ASSET_FACETS: { field: string; labelKey: string }[] = [
   {
@@ -73,12 +41,7 @@ export const ASSET_FACETS: { field: string; labelKey: string }[] = [
   { field: EntityFields.ENTITY_STATUS, labelKey: 'label.status' },
 ];
 
-export const ASSET_SORT_OPTIONS = [
-  { value: '_score', labelKey: 'label.relevance' },
-  { value: 'totalVotes', labelKey: 'label.popularity' },
-  { value: 'displayName.keyword', labelKey: 'label.name' },
-  { value: 'updatedAt', labelKey: 'label.last-updated' },
-];
+export const DEFAULT_ASSET_SORT = '_score';
 
 export const TASK_STATUS_OPTIONS = Object.values(TaskStatus);
 export const TASK_TYPE_OPTIONS = Object.values(TaskType);
@@ -91,5 +54,10 @@ export const KEY_HINT = {
   esc: 'esc',
 } as const;
 
-export const ASK_AI_OPTION_ID = 'global-search-ask-ai';
+export const QUERY_ACTION_OPTION_ID = 'global-search-query-action';
 export const RESULTS_LIST_ID = 'global-search-results';
+export const BREADCRUMB_SEPARATOR = ' › ';
+
+/** Shared shape of the tab bar's tabs and its "+N more" trigger. */
+export const TAB_CLASS =
+  'tw:flex tw:h-7.5 tw:min-w-0 tw:max-w-60 tw:cursor-pointer tw:items-center tw:gap-1.5 tw:rounded-lg tw:px-2.5 tw:outline-hidden';

@@ -75,10 +75,10 @@ export const EXTENSION_POINTS = {
   // recent-chats list (expanded panel) and its collapsed-rail popover.
   APP_MODE_SIDEBAR_RECENT: 'app-mode.sidebar.recent',
   APP_MODE_SIDEBAR_RECENT_RAIL: 'app-mode.sidebar.recentRail',
-  // Global search (⌘K) — extra result types (e.g. chats) and the "Ask AI"
-  // hand-off, both owned by the plugin that ships the assistant.
+  // Global search (⌘K) — extra result types a plugin adds, and an action on
+  // the typed query it shows above the results.
   APP_MODE_GLOBAL_SEARCH_SOURCES: 'app-mode.globalSearch.sources',
-  APP_MODE_GLOBAL_SEARCH_ASK_AI: 'app-mode.globalSearch.askAi',
+  APP_MODE_GLOBAL_SEARCH_QUERY_ACTION: 'app-mode.globalSearch.queryAction',
 
   // Inbox task overview — a plugin contributes a task-type-specific detail
   // panel (e.g. a Data Access Request panel) that replaces the generic task

@@ -122,6 +122,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   helperText,
   untitledDropdown = false,
   bordered = false,
+  searchText: searchTextOverride,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -151,9 +152,9 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
 
     return {
       showDeleted: parsed.showDeleted === 'true',
-      searchText: (parsed.search as string) ?? '',
+      searchText: searchTextOverride ?? (parsed.search as string) ?? '',
     };
-  }, [location.search]);
+  }, [location.search, searchTextOverride]);
 
   const hasSelectedFieldValues = useMemo(
     () => fields.some((field) => !isEmpty(field.value)),

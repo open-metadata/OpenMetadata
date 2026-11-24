@@ -10,12 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Button, ButtonUtility } from '@openmetadata/ui-core-components';
-import { ArrowRight, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  Badge,
+  BadgeWithIcon,
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  ArrowRight,
+  Clock,
+  Database01,
+  ShieldTick,
+  Tag01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { get, startCase } from 'lodash';
+import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../../enums/entity.enum';
 import { TagSource } from '../../../../generated/type/tagLabel';
+import { EntityIconSize } from '../../../../utils/EntityIconUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
+import { BREADCRUMB_SEPARATOR } from './GlobalSearch.constants';
 import { GlobalSearchRow } from './GlobalSearch.types';
+import { useAssetSummaryStats } from './useAssetSummaryStats';
+
+const EMPTY_VALUE = '—';
+const ELLIPSIS = { excludeTriggerFromTabOrder: true };
 
 interface NamedRef {
   displayName?: string;
@@ -34,10 +59,14 @@ export interface AssetSummaryPanelProps {
 }
 
 const names = (refs: NamedRef[] = []) =>
-  refs
-    .map((ref) => ref.displayName || ref.name)
-    .filter(Boolean)
-    .join(', ');
+  refs.map((ref) => ref.displayName || ref.name || '').filter(Boolean);
+
+const lastSegment = (fqn: string) => fqn.split('.').pop() ?? fqn;
+
+const isClassification = (tag: TagRef) =>
+  tag.source !== TagSource.Glossary &&
+  !tag.tagFQN.startsWith('Tier.') &&
+  !tag.tagFQN.startsWith('Certification.');
 
 const AssetSummaryPanel = ({
   row,
@@ -45,140 +74,215 @@ const AssetSummaryPanel = ({
   onOpen,
 }: AssetSummaryPanelProps) => {
   const { t } = useTranslation();
+  const counts = useAssetSummaryStats(row?.source);
+
   if (!row) {
     return null;
   }
+
   const source = row.source;
+  const entityType = source?.entityType ?? '';
   const tags: TagRef[] = get(source, 'tags', []);
-  const columnCount = (get(source, 'columns') as unknown[] | undefined)?.length;
+  const tier: string | undefined = get(source, 'tier.tagFQN');
+  const certification: string | undefined = get(
+    source,
+    'certification.tagLabel.tagFQN'
+  );
   const status: string | undefined = get(source, 'entityStatus');
   const description: string = get(source, 'description', '');
-  const isTier = (tag: TagRef) => tag.tagFQN.startsWith('Tier.');
-  const isCertification = (tag: TagRef) =>
-    tag.tagFQN.startsWith('Certification.');
+  const columns = get(source, 'columns') as unknown[] | undefined;
+  const formatCount = (count?: number) =>
+    count === undefined ? EMPTY_VALUE : String(count);
 
-  const stats = [
-    columnCount === undefined
-      ? null
-      : { key: t('label.column-plural'), value: String(columnCount) },
-    get(source, 'dataType')
-      ? { key: t('label.data-type'), value: String(get(source, 'dataType')) }
-      : null,
-    get(source, 'service.displayName') || get(source, 'service.name')
-      ? {
-          key: t('label.service'),
-          value: String(
-            get(source, 'service.displayName') || get(source, 'service.name')
-          ),
-        }
-      : null,
-  ].filter((stat): stat is { key: string; value: string } => stat !== null);
+  const getStats = () => {
+    if (entityType === EntityType.TABLE_COLUMN) {
+      return [
+        {
+          key: t('label.data-type'),
+          value: get(source, 'dataType', EMPTY_VALUE),
+        },
+        {
+          key: t('label.in-table'),
+          value: row.path?.split(BREADCRUMB_SEPARATOR).pop() ?? EMPTY_VALUE,
+        },
+      ];
+    }
+    const lineage = [
+      { key: t('label.upstream'), value: formatCount(counts.upstream) },
+      { key: t('label.downstream'), value: formatCount(counts.downstream) },
+    ];
+
+    return columns
+      ? [
+          { key: t('label.column-plural'), value: String(columns.length) },
+          {
+            key: t('label.incident-plural'),
+            value: formatCount(counts.incidents),
+          },
+          ...lineage,
+        ]
+      : lineage;
+  };
 
   const details = [
-    { key: t('label.owner-plural'), value: names(get(source, 'owners')) },
-    { key: t('label.domain-plural'), value: names(get(source, 'domains')) },
+    { key: t('label.owner-plural'), values: names(get(source, 'owners')) },
+    { key: t('label.domain-plural'), values: names(get(source, 'domains')) },
     {
       key: t('label.tag-plural'),
-      value: tags
-        .filter(
-          (tag) =>
-            tag.source !== TagSource.Glossary &&
-            !isTier(tag) &&
-            !isCertification(tag)
-        )
-        .map((tag) => tag.tagFQN)
-        .join(', '),
+      values: tags.filter(isClassification).map((tag) => tag.tagFQN),
     },
     {
       key: t('label.glossary-term-plural'),
-      value: tags
+      values: tags
         .filter((tag) => tag.source === TagSource.Glossary)
-        .map((tag) => tag.tagFQN)
-        .join(', '),
+        .map((tag) => lastSegment(tag.tagFQN)),
     },
   ];
 
   return (
-    <aside
-      aria-label={t('label.summary')}
-      className="tw:flex tw:w-90 tw:shrink-0 tw:flex-col tw:border-l tw:border-secondary"
-      data-testid="global-search-summary">
-      <div className="tw:flex tw:items-start tw:gap-3 tw:p-4">
-        <span className="tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center">
-          {row.icon}
-        </span>
-        <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-          <span className="tw:truncate tw:text-sm tw:font-semibold tw:text-primary">
-            {row.title}
-          </span>
-          <span className="tw:truncate tw:text-xs tw:text-tertiary">
-            {row.meta}
-          </span>
-        </div>
-        <ButtonUtility
-          color="tertiary"
-          data-testid="global-search-summary-close"
-          icon={XClose}
-          size="xs"
-          tooltip={t('label.close')}
-          onClick={onClose}
-        />
-      </div>
-      <div className="tw:flex tw:flex-1 tw:flex-col tw:gap-4 tw:overflow-y-auto tw:px-4 tw:pb-4">
-        <div className="tw:flex tw:flex-wrap tw:gap-1.5">
-          <Badge size="sm">{startCase(source?.entityType)}</Badge>
-          {row.badges?.map((badge) => (
-            <Badge key={badge} size="sm">
-              {badge}
-            </Badge>
-          ))}
-          {status ? <Badge size="sm">{status}</Badge> : null}
-        </div>
-        <div className="tw:flex tw:flex-col tw:gap-1">
-          <span className="tw:text-xs tw:font-medium tw:text-tertiary">
-            {t('label.description')}
-          </span>
-          <p className="tw:m-0 tw:line-clamp-4 tw:text-sm tw:text-secondary">
-            {description || t('label.no-description')}
-          </p>
-        </div>
-        {stats.length > 0 ? (
-          <dl className="tw:m-0 tw:grid tw:grid-cols-2 tw:gap-3">
-            {stats.map((stat) => (
-              <div className="tw:flex tw:flex-col" key={stat.key}>
-                <dt className="tw:text-xs tw:text-tertiary">{stat.key}</dt>
-                <dd className="tw:m-0 tw:truncate tw:text-sm tw:font-medium tw:text-primary">
-                  {stat.value}
-                </dd>
-              </div>
+    <Box className="tw:w-90 tw:flex-none" data-testid="global-search-summary">
+      <Divider orientation="vertical" />
+      <Box
+        aria-label={t('label.summary')}
+        className="tw:min-w-0 tw:flex-1"
+        direction="col"
+        role="complementary">
+        <Box align="center" className="tw:px-5 tw:py-4" gap={3}>
+          {searchClassBase.getEntityIconWithBg(
+            entityType,
+            EntityIconSize.Size18
+          )}
+          <Box className="tw:min-w-0 tw:flex-1" direction="col">
+            <Typography ellipsis size="text-sm" weight="semibold">
+              {row.title}
+            </Typography>
+            <Box align="center" className="tw:min-w-0" gap={1}>
+              <Database01 size={12} />
+              <Typography color="quaternary" ellipsis={ELLIPSIS} size="text-xs">
+                {row.path}
+              </Typography>
+            </Box>
+          </Box>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="global-search-summary-close"
+            icon={XClose}
+            size="md"
+            tooltip={t('label.close')}
+            onClick={onClose}
+          />
+        </Box>
+        <Divider />
+
+        <Box
+          className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-5 tw:py-4"
+          direction="col"
+          gap={4}>
+          <Box gap={1} wrap="wrap">
+            <BadgeWithIcon
+              color="gray"
+              iconLeading={Database01}
+              size="sm"
+              type="modern">
+              {startCase(entityType)}
+            </BadgeWithIcon>
+            {tier ? (
+              <BadgeWithIcon
+                color="gray"
+                iconLeading={Tag01}
+                size="sm"
+                type="modern">
+                {startCase(lastSegment(tier))}
+              </BadgeWithIcon>
+            ) : null}
+            {certification ? (
+              <BadgeWithIcon
+                color="gray"
+                iconLeading={ShieldTick}
+                size="sm"
+                type="modern">
+                {lastSegment(certification)}
+              </BadgeWithIcon>
+            ) : null}
+            {status ? (
+              <BadgeWithIcon
+                color="gray"
+                iconLeading={Clock}
+                size="sm"
+                type="modern">
+                {status}
+              </BadgeWithIcon>
+            ) : null}
+          </Box>
+
+          <Box direction="col" gap={1}>
+            <Typography color="quaternary" size="text-xs" weight="medium">
+              {t('label.about')}
+            </Typography>
+            <Typography ellipsis={{ rows: 3 }} size="text-xs">
+              {description || t('label.no-description')}
+            </Typography>
+          </Box>
+
+          <Card className="tw:flex-none" size="sm" variant="muted">
+            <Card.Content>
+              <Box align="stretch" gap={3}>
+                {getStats().map((stat, index) => (
+                  <Fragment key={stat.key}>
+                    {index > 0 ? <Divider orientation="vertical" /> : null}
+                    <Box className="tw:min-w-0 tw:flex-1" direction="col">
+                      <Typography ellipsis color="quaternary" size="text-xs">
+                        {stat.key}
+                      </Typography>
+                      <Typography ellipsis size="text-sm" weight="semibold">
+                        {stat.value}
+                      </Typography>
+                    </Box>
+                  </Fragment>
+                ))}
+              </Box>
+            </Card.Content>
+          </Card>
+
+          <Box direction="col" gap={3}>
+            {details.map((detail) => (
+              <Box direction="col" gap={1} key={detail.key}>
+                <Box align="center" gap={1}>
+                  <Typography color="quaternary" size="text-xs" weight="medium">
+                    {detail.key}
+                  </Typography>
+                  {detail.values.length > 0 ? (
+                    <Badge color="gray" size="sm" type="pill-color">
+                      {detail.values.length}
+                    </Badge>
+                  ) : null}
+                </Box>
+                <Typography
+                  ellipsis
+                  color={detail.values.length ? undefined : 'quaternary'}
+                  size="text-xs">
+                  {detail.values.join(', ') ||
+                    t('label.no-entity', { entity: detail.key })}
+                </Typography>
+              </Box>
             ))}
-          </dl>
-        ) : null}
-        <dl className="tw:m-0 tw:flex tw:flex-col tw:divide-y tw:divide-secondary">
-          {details.map((detail) => (
-            <div
-              className="tw:flex tw:flex-col tw:gap-0.5 tw:py-2"
-              key={detail.key}>
-              <dt className="tw:text-xs tw:text-tertiary">{detail.key}</dt>
-              <dd className="tw:m-0 tw:truncate tw:text-sm tw:text-primary">
-                {detail.value || '--'}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-      <div className="tw:border-t tw:border-secondary tw:p-3">
-        <Button
-          className="tw:w-full"
-          color="secondary"
-          data-testid="global-search-summary-open"
-          iconTrailing={ArrowRight}
-          size="sm"
-          onClick={() => onOpen(row)}>
-          {t('label.open')}
-        </Button>
-      </div>
-    </aside>
+          </Box>
+        </Box>
+
+        <Divider />
+        <Box className="tw:px-5 tw:py-4">
+          <Button
+            className="tw:w-full"
+            color="primary"
+            data-testid="global-search-summary-open"
+            iconTrailing={ArrowRight}
+            size="md"
+            onClick={() => onOpen(row)}>
+            {t('label.open-entity', { entity: startCase(entityType) })}
+          </Button>
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

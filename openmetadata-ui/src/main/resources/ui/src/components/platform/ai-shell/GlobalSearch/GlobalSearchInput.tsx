@@ -10,80 +10,77 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
 import {
-  Loading01,
-  Search,
-  XClose,
-} from '@openmetadata/ui-core-components/icons';
-import { KeyboardEvent, useEffect, useRef } from 'react';
+  Box,
+  Button,
+  ButtonLoadingIcon,
+  ButtonUtility,
+  Divider,
+  Input,
+} from '@openmetadata/ui-core-components';
+import { Search, XClose } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import { KeyboardEvent, RefObject, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RESULTS_LIST_ID } from './GlobalSearch.constants';
 
 export interface GlobalSearchInputProps {
+  inputRef: RefObject<HTMLInputElement>;
   value: string;
   placeholder: string;
+  /** A search is in flight: spinner in place of the icon, a line under the field. */
   isLoading: boolean;
-  activeOptionId?: string;
   onChange: (value: string) => void;
+  /** Clears the text and everything that narrows the results. */
+  onClear: () => void;
   onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   onClose: () => void;
 }
 
 /**
- * The search field with its progress affordances: a spinner in place of the
- * search icon and a line under the field while results are refreshing.
+ * Core's button spinner in the brand colour. The input's icon slot sizes and
+ * colours the outer element; the spinner sets its own colour inside it.
  */
+const LoadingIcon = ({ className }: { className?: string }) => (
+  <Box className={className}>
+    <ButtonLoadingIcon className="tw:size-full tw:text-fg-brand-primary" />
+  </Box>
+);
+
 const GlobalSearchInput = ({
+  inputRef,
   value,
   placeholder,
   isLoading,
-  activeOptionId,
   onChange,
+  onClear,
   onKeyDown,
   onClose,
 }: GlobalSearchInputProps) => {
   const { t } = useTranslation();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const Icon = isLoading ? Loading01 : Search;
 
   useEffect(() => {
     inputRef.current?.focus();
-  }, []);
+  }, [inputRef]);
 
   return (
     <>
-      <div className="tw:flex tw:items-center tw:gap-3 tw:px-4 tw:py-3">
-        <span className="tw:flex tw:text-fg-quaternary">
-          <Icon
-            className={isLoading ? 'tw:motion-safe:animate-spin' : undefined}
-            size={20}
-          />
-        </span>
-        <input
-          aria-expanded
-          aria-activedescendant={activeOptionId}
-          aria-autocomplete="list"
-          aria-controls={RESULTS_LIST_ID}
+      <Box align="center" className="tw:px-4 tw:py-2" gap={2}>
+        <Input
+          borderless
           aria-label={t('label.search')}
-          autoComplete="off"
-          className="tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:text-md tw:text-primary tw:outline-hidden tw:placeholder:text-placeholder"
-          data-testid="global-search-input"
+          className="tw:flex-1"
+          fontSize="md"
+          icon={isLoading ? LoadingIcon : Search}
+          inputDataTestId="global-search-input"
           placeholder={placeholder}
           ref={inputRef}
-          role="combobox"
+          size="md"
           value={value}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={onChange}
           onKeyDown={onKeyDown}
         />
         {value ? (
-          <Button
-            color="link-gray"
-            size="sm"
-            onClick={() => {
-              onChange('');
-              inputRef.current?.focus();
-            }}>
+          <Button color="tertiary" size="xs" onClick={onClear}>
             {t('label.clear')}
           </Button>
         ) : null}
@@ -91,21 +88,26 @@ const GlobalSearchInput = ({
           color="tertiary"
           data-testid="global-search-close"
           icon={XClose}
-          size="sm"
+          size="lg"
           tooltip={t('label.close')}
           onClick={onClose}
         />
-      </div>
-      <div className="tw:h-0.5 tw:w-full tw:overflow-hidden">
-        <div
-          className={
-            isLoading
-              ? 'tw:h-full tw:w-full tw:bg-brand-solid tw:motion-safe:animate-pulse'
-              : 'tw:w-full tw:border-t tw:border-secondary'
-          }
+      </Box>
+      {isLoading ? (
+        // The header's bottom edge turns into a sweeping line while loading,
+        // reusing core's skeleton-wave keyframes.
+        <Box
+          className={classNames(
+            'tw:h-0.5 tw:w-full tw:flex-none tw:bg-size-[200%_100%]',
+            'tw:bg-linear-to-r tw:from-transparent tw:via-bg-brand-solid tw:to-transparent',
+            'tw:motion-safe:animate-[skeleton-wave_1.5s_ease-in-out_infinite]'
+          )}
           data-testid="global-search-progress"
+          role="progressbar"
         />
-      </div>
+      ) : (
+        <Divider />
+      )}
     </>
   );
 };

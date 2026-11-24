@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
@@ -24,19 +29,24 @@ export interface GlobalSearchResultRowProps {
   query: string;
   isActive: boolean;
   isPreviewed?: boolean;
-  enterHint?: string;
   onHover: () => void;
   onSelect: () => void;
   onRemove?: () => void;
 }
 
+const ELLIPSIS = { excludeTriggerFromTabOrder: true };
+
+/**
+ * A result option. Core has no list-option component, so the row is a `Box`
+ * whose only own styling is the background for the highlighted (keyboard or
+ * hover) and previewed states, as in the prototype.
+ */
 const GlobalSearchResultRow = ({
   id,
   row,
   query,
   isActive,
   isPreviewed,
-  enterHint,
   onHover,
   onSelect,
   onRemove,
@@ -44,77 +54,75 @@ const GlobalSearchResultRow = ({
   const { t } = useTranslation();
 
   return (
-    <div
+    <Box
+      align="center"
       aria-selected={isActive}
       className={classNames(
-        'tw:group tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:pr-2',
-        isPreviewed ? 'tw:bg-brand-primary' : isActive && 'tw:bg-primary_hover'
+        'tw:mx-2 tw:mt-1 tw:cursor-pointer tw:rounded-lg tw:px-3 tw:py-2',
+        {
+          'tw:bg-brand-primary': isPreviewed,
+          'tw:bg-secondary_hover': isActive && !isPreviewed,
+        }
       )}
       data-active={isActive}
       data-testid={`global-search-row-${row.id}`}
+      gap={3}
       id={id}
       role="option"
       tabIndex={-1}
+      onClick={onSelect}
       onMouseMove={onHover}>
-      <button
-        className="tw:flex tw:min-w-0 tw:flex-1 tw:cursor-pointer tw:items-center tw:gap-3 tw:border-0 tw:bg-transparent tw:px-3 tw:py-2 tw:text-left"
-        tabIndex={-1}
-        type="button"
-        onClick={onSelect}>
-        <span className="tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-md tw:text-fg-quaternary">
-          {row.icon}
-        </span>
-        <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
-          <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-1.5">
-            <span className="tw:truncate tw:text-sm tw:font-medium tw:text-primary">
-              {splitHighlight(row.title, query).map((part) =>
-                part.isMatch ? (
-                  <mark
-                    className="tw:rounded-xs tw:bg-utility-yellow-100 tw:text-primary"
-                    key={part.offset}>
-                    {part.text}
-                  </mark>
-                ) : (
-                  <span key={part.offset}>{part.text}</span>
-                )
-              )}
-            </span>
-            {row.badges?.map((badge) => (
-              <Badge key={badge} size="sm">
-                {badge}
-              </Badge>
-            ))}
-          </span>
-          {row.meta ? (
-            <span className="tw:truncate tw:text-xs tw:text-tertiary">
-              {row.meta}
-            </span>
-          ) : null}
-        </span>
-        {row.trailing ? (
-          <span className="tw:shrink-0 tw:text-xs tw:text-tertiary">
-            {row.trailing}
-          </span>
+      {row.icon}
+      <Box className="tw:min-w-0 tw:flex-1" direction="col">
+        <Box align="center" className="tw:min-w-0" gap={2}>
+          <Typography ellipsis={ELLIPSIS} size="text-sm" weight="medium">
+            {splitHighlight(row.title, query).map((part) =>
+              part.isMatch ? (
+                <Typography
+                  as="span"
+                  color="brand"
+                  key={part.offset}
+                  weight="semibold">
+                  {part.text}
+                </Typography>
+              ) : (
+                part.text
+              )
+            )}
+          </Typography>
+          {row.badges?.map((badge) => (
+            <Badge color="gray" key={badge} size="sm" type="color">
+              {badge}
+            </Badge>
+          ))}
+        </Box>
+        {row.meta ? (
+          <Typography color="quaternary" ellipsis={ELLIPSIS} size="text-xs">
+            {row.meta}
+          </Typography>
         ) : null}
-        {isActive && enterHint ? (
-          <kbd
-            aria-hidden
-            className="tw:shrink-0 tw:rounded tw:border tw:border-secondary tw:px-1.5 tw:text-xs tw:text-tertiary">
-            {KEY_HINT.enter}
-          </kbd>
-        ) : null}
-      </button>
+      </Box>
+      {row.trailing ? (
+        <Typography color="quaternary" size="text-xs">
+          {row.trailing}
+        </Typography>
+      ) : null}
+      {isActive && !onRemove && !isPreviewed ? (
+        <Badge color="gray" size="sm" type="modern">
+          {KEY_HINT.enter}
+        </Badge>
+      ) : null}
       {onRemove ? (
         <ButtonUtility
           color="tertiary"
           data-testid="global-search-remove-recent"
           icon={XClose}
-          size="xs"
+          size="md"
           tooltip={t('label.remove-from-recent-search-plural')}
           onClick={onRemove}
         />
       ) : null}
-    </div>
+    </Box>
   );
 };
 

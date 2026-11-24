@@ -18,8 +18,8 @@ import GlobalSearchPanel from './GlobalSearchPanel';
 import { useGlobalSearchStore } from './useGlobalSearchStore';
 
 /**
- * AI-mode global search. ⌘K opens it across everything, ⌥⌘K opens it on
- * chats; both are ignored while it is already open. Mounted once by the
+ * AI-mode global search. ⌘K opens it across everything, ⌥⌘K scoped to the
+ * source that opts in (`hasScopeShortcut`); both are ignored while it is open. Mounted once by the
  * app shell; anything else opens it through `useGlobalSearchStore`.
  */
 const GlobalSearchModal = () => {
@@ -27,9 +27,9 @@ const GlobalSearchModal = () => {
   const isOpen = useGlobalSearchStore((state) => state.isOpen);
   const close = useGlobalSearchStore((state) => state.close);
   const openSearch = useGlobalSearchStore((state) => state.openSearch);
-  const hasChats = useGlobalSearchSources().some(
-    (source) => source.key === 'chats'
-  );
+  const scopeShortcutKey = useGlobalSearchSources().find(
+    (source) => source.hasScopeShortcut
+  )?.key;
 
   useEffect(() => {
     const handleShortcut = (event: KeyboardEvent) => {
@@ -39,13 +39,13 @@ const GlobalSearchModal = () => {
       }
       event.preventDefault();
       if (!useGlobalSearchStore.getState().isOpen) {
-        openSearch(event.altKey && hasChats ? 'chats' : 'all');
+        openSearch(event.altKey && scopeShortcutKey ? scopeShortcutKey : 'all');
       }
     };
     window.addEventListener('keydown', handleShortcut);
 
     return () => window.removeEventListener('keydown', handleShortcut);
-  }, [openSearch, hasChats]);
+  }, [openSearch, scopeShortcutKey]);
 
   // The panel owns Escape (clear the query first, then close), so the
   // overlay's own Escape dismissal is turned off.

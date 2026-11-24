@@ -38,4 +38,7 @@ export interface ExploreQuickFiltersProps {
   untitledDropdown?: boolean;
   // Draw a visible border around each filter trigger instead of the borderless look.
   bordered?: boolean;
+  // Query the facet counts narrow to, for hosts outside Explore whose URL
+  // carries no `search` param (e.g. the AI-mode global search).
+  searchText?: string;
 }

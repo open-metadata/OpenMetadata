@@ -18,7 +18,7 @@ import {
 } from '../../../utils/ExtensionPointTypes';
 import { useApplicationsProvider } from '../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import {
-  GlobalSearchAskAiContribution,
+  GlobalSearchQueryActionContribution,
   GlobalSearchSourceContribution,
 } from './GlobalSearch/GlobalSearch.types';
 
@@ -129,13 +129,13 @@ export const useGlobalSearchSources = (): GlobalSearchSourceContribution[] => {
   );
 };
 
-export const useGlobalSearchAskAi = ():
-  | GlobalSearchAskAiContribution
+export const useGlobalSearchQueryAction = ():
+  | GlobalSearchQueryActionContribution
   | undefined => {
   const { extensionRegistry } = useApplicationsProvider();
   const handlers =
-    extensionRegistry.getContributions<GlobalSearchAskAiContribution>(
-      EXTENSION_POINTS.APP_MODE_GLOBAL_SEARCH_ASK_AI
+    extensionRegistry.getContributions<GlobalSearchQueryActionContribution>(
+      EXTENSION_POINTS.APP_MODE_GLOBAL_SEARCH_QUERY_ACTION
     );
 
   return handlers[handlers.length - 1];
