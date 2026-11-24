@@ -622,8 +622,9 @@ const compareCaseInsensitive = (x: string, y: string): number => {
 
 /**
  * Page (1-based) of the server-paginated column list that holds `targetFqn`, or of its
- * top-level ancestor when the target is nested. The ordering mirrors the backend's
- * TableRepository.columnComparator so the computed page matches what the API returns.
+ * top-level ancestor when the target is nested. The ordering must stay in lockstep with the
+ * backend's TableRepository.columnComparator so the computed page matches what the API returns.
+ * ADR:2026-11-24-column-deep-link-page-mirrors-server-column-sort
  */
 export const getColumnPageForFqn = <
   T extends {
