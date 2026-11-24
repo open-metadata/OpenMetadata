@@ -790,6 +790,36 @@ describe('getHtmlStringFromMarkdownString: CommonMark lists', () => {
     expect(doc.querySelector('code')?.textContent).toContain('  - Child');
   });
 
+  it.each(['main.py', 'customer.id', 'orders.io'])(
+    'does not turn the dotted name %s into a link',
+    (content) => {
+      const doc = new DOMParser().parseFromString(
+        getHtmlStringFromMarkdownString(content),
+        'text/html'
+      );
+
+      expect(doc.querySelector('a')).toBeNull();
+      expect(doc.body.textContent).toBe(content);
+    }
+  );
+
+  it('still autolinks explicit URLs, www hosts, and email addresses', () => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString(
+        'https://example.com www.example.com/path?q=1. admin@example.com'
+      ),
+      'text/html'
+    );
+
+    expect(
+      Array.from(doc.querySelectorAll('a'), (link) => link.getAttribute('href'))
+    ).toEqual([
+      'https://example.com',
+      'http://www.example.com/path?q=1',
+      'mailto:admin@example.com',
+    ]);
+  });
+
   it('preserves supported inline formatting and links', () => {
     const html = getHtmlStringFromMarkdownString(
       '**bold** __underline__ ~~deleted~~ :smile: https://example.com'

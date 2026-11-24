@@ -187,6 +187,16 @@ const markdownConverter = new MarkdownIt({
   linkify: true,
 }).use(emoji, { shortcuts: {} });
 
+// Dotted column/file names are not URLs; keep the legacy www-only shorthand.
+markdownConverter.linkify.set({ fuzzyLink: false }).add('www.', {
+  validate: new RegExp(
+    `^${markdownConverter.linkify.re.src_host_port_strict}${markdownConverter.linkify.re.src_path}`
+  ),
+  normalize: (match) => {
+    match.url = `http://${match.url}`;
+  },
+});
+
 // Existing descriptions use double underscores for underline rather than bold.
 markdownConverter.renderer.rules.strong_open = (tokens, index) =>
   tokens[index].markup === '__' ? '<u>' : '<strong>';
@@ -198,7 +208,7 @@ markdownConverter.renderer.rules.link_open = (
   tokens,
   index,
   options,
-  env,
+  _env,
   self
 ) => {
   tokens[index].attrSet('target', '_blank');

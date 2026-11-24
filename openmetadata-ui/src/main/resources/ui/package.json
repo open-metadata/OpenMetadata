@@ -243,7 +243,7 @@
     "@types/lodash": "^4.17.27",
     "@types/lodash-es": "^4.17.12",
     "@types/luxon": "^3.7.6",
-    "@types/markdown-it": "14.1.2",
+    "@types/markdown-it": "14.2.0",
     "@types/markdown-it-emoji": "3.0.1",
     "@types/node": "^22.0.0",
     "@types/pako": "^2.0.0",
