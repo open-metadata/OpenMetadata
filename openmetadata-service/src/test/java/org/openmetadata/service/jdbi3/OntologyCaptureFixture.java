@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrate;
 import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
+import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withRepositories;
 
 import java.net.URI;
 import java.time.Clock;
@@ -20,7 +21,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseCapture;
@@ -33,22 +33,12 @@ final class OntologyCaptureFixture {
         dialect,
         handle -> {
           migrate(handle, dialect);
-          CollectionDAO previous = Entity.getCollectionDAO();
-          SystemRepository previousSettings = Entity.getSystemRepository();
-          EntityRelationshipRepository previousRelationships =
-              Entity.getEntityRelationshipRepository();
-          Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
-          Entity.setEntityRelationshipRepository(
-              new EntityRelationshipRepository(Entity.getCollectionDAO()));
-          try {
-            new SystemRepository();
-            new TaskRepository();
-            assertion.accept(new Fixture(handle));
-          } finally {
-            Entity.setCollectionDAO(previous);
-            Entity.setSystemRepository(previousSettings);
-            Entity.setEntityRelationshipRepository(previousRelationships);
-          }
+          withRepositories(
+              handle,
+              () -> {
+                new TaskRepository();
+                assertion.accept(new Fixture(handle));
+              });
         });
   }
 

@@ -17,12 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.jdbi3.OntologyTestDatabase.PASSWORD;
 import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrate;
 import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrateRepositoryTables;
 import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
+import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withRepositories;
 
 import java.net.URI;
 import java.sql.SQLException;
@@ -43,6 +45,7 @@ import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -51,6 +54,7 @@ import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -82,6 +86,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReview;
 import org.openmetadata.service.tasks.TaskReviewVotes;
 
+@Isolated
 class OntologyEntityDAOTest {
   private static final URI NAMESPACE = URI.create("https://example.org/sales/");
 
@@ -319,25 +324,23 @@ class OntologyEntityDAOTest {
           assertTrue(dao.listJsonWithInstalledPacks(2, ids.get(3).toString()).isEmpty());
 
           migrateRepositoryTables(handle, dialect);
-          final CollectionDAO previous = Entity.getCollectionDAO();
-          Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
-          try {
-            final OntologyRepository repository = new OntologyRepository();
-            assertEquals(
-                ids.subList(2, 4),
-                repository
-                    .listWithInstalledPacks(
-                        2,
-                        page ->
-                            page.stream()
-                                .filter(ontology -> !ids.subList(0, 2).contains(ontology.getId()))
-                                .toList())
-                    .stream()
-                    .map(Ontology::getId)
-                    .toList());
-          } finally {
-            Entity.setCollectionDAO(previous);
-          }
+          withRepositories(
+              handle,
+              () ->
+                  assertEquals(
+                      ids.subList(2, 4),
+                      new OntologyRepository()
+                              .listWithInstalledPacks(
+                                  2,
+                                  page ->
+                                      page.stream()
+                                          .filter(
+                                              ontology ->
+                                                  !ids.subList(0, 2).contains(ontology.getId()))
+                                          .toList())
+                              .stream()
+                              .map(Ontology::getId)
+                              .toList()));
         });
   }
 
@@ -347,6 +350,21 @@ class OntologyEntityDAOTest {
       names = {"MYSQL", "POSTGRES"})
   void existingWorkflowEngineCountsDistinctVotesAndFailsClosed(ConnectionType dialect) {
     withDatabase(dialect, handle -> assertWorkflowVoting(handle, dialect));
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void closingTheReviewFixtureRestoresTheTaskRepository(ConnectionType dialect) {
+    EntityRepository<?> previous = registeredTaskRepository();
+    withReviewRepositories(
+        dialect, fixture -> assertSame(fixture.tasks(), registeredTaskRepository()));
+    assertSame(previous, registeredTaskRepository());
+  }
+
+  private static EntityRepository<?> registeredTaskRepository() {
+    return Entity.hasEntityRepository(Entity.TASK) ? Entity.getEntityRepository(Entity.TASK) : null;
   }
 
   @ParameterizedTest
@@ -590,24 +608,13 @@ class OntologyEntityDAOTest {
         handle -> {
           migrate(handle, dialect);
           migrateRepositoryTables(handle, dialect);
-          CollectionDAO previous = Entity.getCollectionDAO();
-          SystemRepository previousSettings = Entity.getSystemRepository();
-          EntityRelationshipRepository previousRelationships =
-              Entity.getEntityRelationshipRepository();
-          Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
-          Entity.setEntityRelationshipRepository(
-              new EntityRelationshipRepository(Entity.getCollectionDAO()));
-          try {
-            new SystemRepository();
-            new WorkflowDefinitionRepository();
-            new OntologyRepository();
-            new OntologyReleaseRepository();
-            assertion.accept(handle, reviewFixture(new TaskRepository()));
-          } finally {
-            Entity.setCollectionDAO(previous);
-            Entity.setSystemRepository(previousSettings);
-            Entity.setEntityRelationshipRepository(previousRelationships);
-          }
+          withRepositories(
+              handle,
+              () -> {
+                new OntologyRepository();
+                new OntologyReleaseRepository();
+                assertion.accept(handle, reviewFixture(new TaskRepository()));
+              });
         });
   }
 
@@ -664,12 +671,16 @@ class OntologyEntityDAOTest {
 
   private static void assertWorkflowVoting(Handle handle, ConnectionType dialect) {
     migrateRepositoryTables(handle, dialect);
-    CollectionDAO previousDao = Entity.getCollectionDAO();
-    SystemRepository previousSettings = Entity.getSystemRepository();
-    Entity.setCollectionDAO(handle.attach(CollectionDAO.class));
-    new SystemRepository();
+    withRepositories(handle, () -> assertWorkflowVoting(workflowConfig(handle, dialect)));
+  }
+
+  private static void assertWorkflowVoting(OpenMetadataApplicationConfig config) {
+    new UserRepository();
+    new TaskRepository();
+    createVoter("alice");
+    createVoter("bob");
     try {
-      WorkflowHandler.initialize(workflowConfig(handle, dialect), true);
+      WorkflowHandler.initialize(config, true);
       WorkflowHandler workflow = WorkflowHandler.getInstance();
       ProcessEngineConfiguration engine = workflow.getProcessEngineConfiguration();
       engine
@@ -677,7 +688,7 @@ class OntologyEntityDAOTest {
           .createDeployment()
           .addString("ontology-vote-test.bpmn20.xml", votingProcess())
           .deploy();
-      UUID taskId = UUID.randomUUID();
+      UUID taskId = createVotingTask();
       engine
           .getRuntimeService()
           .startProcessInstanceByKey(
@@ -717,9 +728,62 @@ class OntologyEntityDAOTest {
       assertDecisionSurvivesAsyncCompletion(workflow, engine);
     } finally {
       WorkflowHandler.shutDown();
-      Entity.setCollectionDAO(previousDao);
-      Entity.setSystemRepository(previousSettings);
     }
+  }
+
+  private static void createVoter(String name) {
+    var users = Entity.getCollectionDAO().userDAO();
+    if (users.findEntityByNames(List.of(name), Include.NON_DELETED).isEmpty()) {
+      users.insert(
+          new User()
+              .withId(UUID.randomUUID())
+              .withName(name)
+              .withFullyQualifiedName(name)
+              .withEmail(name + "@example.org")
+              .withIsBot(false)
+              .withVersion(0.1)
+              .withUpdatedAt(1L)
+              .withUpdatedBy("admin"),
+          name);
+    }
+  }
+
+  private static UUID createVotingTask() {
+    TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    UUID taskId = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withName("Vote" + taskId)
+            .withTaskId("TASK-" + taskId.toString().substring(0, 8))
+            .withType(TaskEntityType.RequestApproval)
+            .withCategory(TaskCategory.Approval)
+            .withStatus(TaskEntityStatus.Open)
+            .withVersion(0.1)
+            .withCreatedAt(1L)
+            .withUpdatedAt(1L)
+            .withUpdatedBy("admin");
+    tasks.setFullyQualifiedName(task);
+    Entity.getCollectionDAO()
+        .taskDAO()
+        .insertTask(taskId.toString(), JsonUtils.pojoToJson(task), task.getFullyQualifiedName());
+    for (String name : List.of("alice", "bob")) {
+      User voter = Entity.getCollectionDAO().userDAO().findEntityByName(name);
+      tasks.addRelationship(
+          voter.getId(), taskId, Entity.USER, Entity.TASK, Relationship.ASSIGNED_TO);
+    }
+    return taskId;
+  }
+
+  private static Set<String> persistedAssignees(UUID taskId) {
+    TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    return Set.copyOf(
+        tasks
+            .get(null, taskId, tasks.getFields("assignees"), Include.NON_DELETED, false)
+            .getAssignees()
+            .stream()
+            .map(EntityReference::getName)
+            .toList());
   }
 
   private static void assertDecisionSurvivesAsyncCompletion(
@@ -736,7 +800,7 @@ class OntologyEntityDAOTest {
         .createDeployment()
         .addString("ontology-async-review.bpmn20.xml", process)
         .deploy();
-    UUID taskId = UUID.randomUUID();
+    UUID taskId = createVotingTask();
     OntologyWorkflowDecision decision =
         new OntologyWorkflowDecision(
             taskId,
@@ -761,8 +825,15 @@ class OntologyEntityDAOTest {
     Map<String, Object> firstVote = vote("alice");
     firstVote.put(
         TaskReviewVotes.variable(taskId), durableVote("alice", "Original first comment", 1L));
+    assertEquals(Set.of("alice", "bob"), persistedAssignees(taskId));
     assertEquals(
         TaskResolutionOutcome.WAITING_FOR_VOTES, workflow.resolveTaskOutcome(taskId, firstVote));
+    assertEquals(Set.of("bob"), persistedAssignees(taskId));
+    assertEquals(
+        List.of("Original first comment"),
+        workflow.recordedReviewVotes(processId, taskId).stream()
+            .map(TaskReviewVote::getComment)
+            .toList());
     Map<String, Object> variables = vote("bob");
     variables.put(TaskReviewVotes.variable(taskId), durableVote("bob", "Final comment", 2L));
     variables.put(OntologyWorkflowDecision.VARIABLE, JsonUtils.pojoToJson(decision));
@@ -875,7 +946,7 @@ class OntologyEntityDAOTest {
   private static void assertLegacyApprovalCompletesWhenTheProcessFails(
       WorkflowHandler workflow, ProcessEngineConfiguration engine) {
     for (int threshold : List.of(1, 2)) {
-      UUID taskId = UUID.randomUUID();
+      UUID taskId = createVotingTask();
       String processId =
           engine
               .getRuntimeService()
@@ -993,59 +1064,53 @@ class OntologyEntityDAOTest {
   private static void assertRepositoryContract(
       Handle handle, ConnectionType dialect, CollectionDAO dao) {
     migrateRepositoryTables(handle, dialect);
-    CollectionDAO previous = Entity.getCollectionDAO();
-    EntityRelationshipRepository previousRelationships = Entity.getEntityRelationshipRepository();
-    Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
-    Entity.setEntityRelationshipRepository(
-        new EntityRelationshipRepository(Entity.getCollectionDAO()));
-    try {
-      OntologyRepository repository = new OntologyRepository();
-      Ontology created =
-          repository.create(null, ontology().withName("GovernedSales").withVersion(0.1));
-      assertNull(created.getEntityStatus());
-      assertEquals(1L, dao.ontologyStateDAO().get(created.getId()).getWorkingRevision());
-      Ontology original =
-          repository.get(null, created.getId(), repository.getFields("owners,reviewers"));
-      Ontology edited =
-          JsonUtils.deepCopy(original, Ontology.class).withDescription("Reviewed definition");
-      repository.update(null, original, edited, "admin");
-      assertEquals(2L, dao.ontologyStateDAO().get(created.getId()).getWorkingRevision());
-      assertThrows(
-          PreconditionFailedException.class,
-          () ->
-              repository.update(
-                  null,
-                  original,
-                  JsonUtils.deepCopy(original, Ontology.class).withDescription("Stale overwrite"),
-                  "admin"));
-      Ontology current =
-          repository.get(null, created.getId(), repository.getFields("owners,reviewers"));
-      assertEquals(
-          "Reviewed definition",
-          dao.ontologyEntityDAO().findEntityById(created.getId()).getDescription());
-      assertThrows(
-          IllegalStateException.class,
-          () ->
-              repository.executeInTransaction(
-                  () -> {
-                    Ontology updated =
-                        JsonUtils.deepCopy(current, Ontology.class).withDescription("Rolled back");
-                    repository.update(null, current, updated, "admin");
-                    throw new IllegalStateException("Roll back the approval transaction");
-                  }));
-      assertEquals(
-          "Reviewed definition",
-          dao.ontologyEntityDAO().findEntityById(created.getId()).getDescription());
-      assertPropertyValidation(created);
-      assertEquals(2L, dao.ontologyStateDAO().get(created.getId()).getWorkingRevision());
-      OntologyConceptRepository concepts = new OntologyConceptRepository();
-      assertThrows(
-          BadRequestException.class,
-          () -> concepts.validateDefinition(concept(created).withConceptType(null)));
-    } finally {
-      Entity.setCollectionDAO(previous);
-      Entity.setEntityRelationshipRepository(previousRelationships);
-    }
+    withRepositories(handle, () -> assertRepositoryContract(dao));
+  }
+
+  private static void assertRepositoryContract(CollectionDAO dao) {
+    OntologyRepository repository = new OntologyRepository();
+    Ontology created =
+        repository.create(null, ontology().withName("GovernedSales").withVersion(0.1));
+    assertNull(created.getEntityStatus());
+    assertEquals(1L, dao.ontologyStateDAO().get(created.getId()).getWorkingRevision());
+    Ontology original =
+        repository.get(null, created.getId(), repository.getFields("owners,reviewers"));
+    Ontology edited =
+        JsonUtils.deepCopy(original, Ontology.class).withDescription("Reviewed definition");
+    repository.update(null, original, edited, "admin");
+    assertEquals(2L, dao.ontologyStateDAO().get(created.getId()).getWorkingRevision());
+    assertThrows(
+        PreconditionFailedException.class,
+        () ->
+            repository.update(
+                null,
+                original,
+                JsonUtils.deepCopy(original, Ontology.class).withDescription("Stale overwrite"),
+                "admin"));
+    Ontology current =
+        repository.get(null, created.getId(), repository.getFields("owners,reviewers"));
+    assertEquals(
+        "Reviewed definition",
+        dao.ontologyEntityDAO().findEntityById(created.getId()).getDescription());
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repository.executeInTransaction(
+                () -> {
+                  Ontology updated =
+                      JsonUtils.deepCopy(current, Ontology.class).withDescription("Rolled back");
+                  repository.update(null, current, updated, "admin");
+                  throw new IllegalStateException("Roll back the approval transaction");
+                }));
+    assertEquals(
+        "Reviewed definition",
+        dao.ontologyEntityDAO().findEntityById(created.getId()).getDescription());
+    assertPropertyValidation(created);
+    assertEquals(2L, dao.ontologyStateDAO().get(created.getId()).getWorkingRevision());
+    OntologyConceptRepository concepts = new OntologyConceptRepository();
+    assertThrows(
+        BadRequestException.class,
+        () -> concepts.validateDefinition(concept(created).withConceptType(null)));
   }
 
   private static void assertPropertyValidation(Ontology ontology) {

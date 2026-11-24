@@ -13,16 +13,20 @@
 
 package org.openmetadata.service.jdbi3;
 
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.function.Consumer;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
@@ -49,6 +53,44 @@ final class OntologyTestDatabase {
       try (Handle handle = connect(database, dialect)) {
         assertion.accept(handle);
       }
+    }
+  }
+
+  static void withRepositories(Handle handle, Runnable assertion) {
+    Jdbi previousJdbi = Entity.getJdbi();
+    CollectionDAO previousDao = Entity.getCollectionDAO();
+    SystemRepository previousSettings = Entity.getSystemRepository();
+    EntityRelationshipRepository previousRelationships = Entity.getEntityRelationshipRepository();
+    Map<String, EntityRepository<?>> repositories = registeredRepositories();
+    Map<String, EntityRepository<?>> previousRepositories = Map.copyOf(repositories);
+    try (OntologyFixtureWork work = new OntologyFixtureWork()) {
+      Entity.setJdbi(handle.getJdbi());
+      Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
+      Entity.setEntityRelationshipRepository(
+          new EntityRelationshipRepository(Entity.getCollectionDAO()));
+      new SystemRepository();
+      new WorkflowDefinitionRepository();
+      GovernanceApprovalRegistry.invalidate();
+      assertion.run();
+    } finally {
+      GovernanceApprovalRegistry.invalidate();
+      Entity.setJdbi(previousJdbi);
+      Entity.setCollectionDAO(previousDao);
+      Entity.setSystemRepository(previousSettings);
+      Entity.setEntityRelationshipRepository(previousRelationships);
+      repositories.clear();
+      repositories.putAll(previousRepositories);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static Map<String, EntityRepository<?>> registeredRepositories() {
+    try {
+      Field registry = Entity.class.getDeclaredField("ENTITY_REPOSITORY_MAP");
+      registry.setAccessible(true);
+      return (Map<String, EntityRepository<?>>) registry.get(null);
+    } catch (ReflectiveOperationException e) {
+      throw new AssertionError("Cannot preserve ontology fixture repositories", e);
     }
   }
 

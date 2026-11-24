@@ -21,6 +21,7 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.api.data.ConceptMapping;
@@ -47,8 +48,44 @@ import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 import org.openmetadata.service.rdf.BoundAssetLinks;
 import org.openmetadata.service.rdf.OntologyExportFormat;
 import org.openmetadata.service.rdf.OntologyReleaseExporter;
+import org.openmetadata.service.util.AsyncService;
 
+@Isolated
 class OntologyReleaseCaptureTest {
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void reportsFailureFromNestedFixtureWorkBeforeClosingTheDatabase(ConnectionType dialect) {
+    var expected = new IllegalStateException("Expected background test failure");
+    AssertionError failure =
+        assertThrows(
+            AssertionError.class,
+            () ->
+                withCapture(
+                    dialect,
+                    fixture ->
+                        AsyncService.getInstance()
+                            .execute(
+                                () ->
+                                    AsyncService.getInstance()
+                                        .execute(
+                                            () -> {
+                                              assertSame(
+                                                  fixture.ontologies,
+                                                  Entity.getEntityRepository(Entity.ONTOLOGY));
+                                              assertEquals(
+                                                  fixture.ontology.getId(),
+                                                  fixture
+                                                      .ontologies
+                                                      .getDao()
+                                                      .findEntityById(fixture.ontology.getId())
+                                                      .getId());
+                                              throw expected;
+                                            }))));
+    assertSame(expected, failure.getCause());
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ConnectionType.class,
