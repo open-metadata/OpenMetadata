@@ -258,8 +258,8 @@
     "@typescript-eslint/eslint-plugin": "^8.73.0",
     "@typescript-eslint/parser": "^8.73.0",
     "@vitejs/plugin-react-swc": "^4.1.0",
-    "@vitest/browser-playwright": "4.1.11",
-    "@vitest/coverage-istanbul": "4.1.11",
+    "@vitest/browser-playwright": "4.1.12",
+    "@vitest/coverage-istanbul": "4.1.12",
     "babel-eslint": "^10.1.0",
     "babel-jest": "^29.7.0",
     "dotenv": "^18.0.10",
@@ -309,7 +309,7 @@
     "vite-plugin-style-import": "^2.0.0",
     "vite-plugin-svgr": "^3.3.0",
     "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "4.1.11",
+    "vitest": "4.1.12",
     "vitest-browser-react": "2.3.0"
   },
   "resolutions": {
