@@ -282,17 +282,19 @@ class TestGetBucketRegion:
 
         assert source.get_aws_bucket_region("bucket") == "eu-west-1"
 
-    def test_falls_back_to_config_region(self):
+    def test_null_location_constraint_is_us_east_1(self):
         source = _make_s3_source()
+        source.service_connection.awsConfig.awsRegion = "eu-central-1"
         source.s3_client.get_bucket_location.return_value = {"LocationConstraint": None}
 
         assert source.get_aws_bucket_region("bucket") == "us-east-1"
 
-    def test_falls_back_on_error(self):
+    def test_falls_back_to_config_region_on_error(self):
         source = _make_s3_source()
+        source.service_connection.awsConfig.awsRegion = "eu-central-1"
         source.s3_client.get_bucket_location.side_effect = Exception("Denied")
 
-        assert source.get_aws_bucket_region("bucket") == "us-east-1"
+        assert source.get_aws_bucket_region("bucket") == "eu-central-1"
 
 
 class TestFetchBuckets:
@@ -680,48 +682,68 @@ class TestGenerateUnstructuredContainers:
 
 
 class TestSourceUrls:
-    """S3Source URL generation methods."""
+    """S3Source console link generation for buckets and prefixes."""
 
-    def _bind(self):
+    def _bind(self, endpoint_url=None, console_url=None):
         source = _make_s3_source()
         source._get_bucket_source_url = S3Source._get_bucket_source_url.__get__(source)
         source._get_object_source_url = S3Source._get_object_source_url.__get__(source)
-        source.get_aws_bucket_region = Mock(return_value="us-east-1")
+        source.get_aws_bucket_region = Mock(return_value="eu-west-1")
+        source.service_connection.awsConfig.endPointURL = endpoint_url
+        source.service_connection.consoleEndpointURL = console_url
         return source
 
-    def test_bucket_url_aws(self):
+    def test_aws_bucket_url(self):
         source = self._bind()
-        source.service_connection.awsConfig.endPointURL = None
-        source.service_connection.consoleEndpointURL = None
 
-        url = source._get_bucket_source_url("my-bucket")
+        assert (
+            source._get_bucket_source_url("my-bucket")
+            == "https://s3.console.aws.amazon.com/s3/buckets/my-bucket?region=eu-west-1&tab=objects"
+        )
 
-        assert url is not None
-        url_str = url.root if hasattr(url, "root") else str(url)
-        assert "my-bucket" in url_str
-        assert "us-east-1" in url_str
-
-    def test_bucket_url_custom_endpoint(self):
+    def test_aws_object_url(self):
         source = self._bind()
-        source.service_connection.awsConfig.endPointURL = "http://minio:9000"
-        source.service_connection.consoleEndpointURL = "http://minio-console:9001"
 
-        url = source._get_bucket_source_url("my-bucket")
+        assert source._get_object_source_url("my-bucket", "data/events") == (
+            "https://s3.console.aws.amazon.com/s3/buckets/my-bucket"
+            "?region=eu-west-1&prefix=data/events/&showversions=false"
+        )
 
-        assert url is not None
-        url_str = url.root if hasattr(url, "root") else str(url)
-        assert "minio-console" in url_str
-
-    def test_object_url_aws(self):
+    def test_aws_object_url_encodes_prefix(self):
         source = self._bind()
-        source.service_connection.awsConfig.endPointURL = None
-        source.service_connection.consoleEndpointURL = None
 
-        url = source._get_object_source_url("my-bucket", "data/events")
+        assert source._get_object_source_url("my-bucket", "raw/a&b #1") == (
+            "https://s3.console.aws.amazon.com/s3/buckets/my-bucket"
+            "?region=eu-west-1&prefix=raw/a%26b%20%231/&showversions=false"
+        )
 
-        assert url is not None
-        url_str = url.root if hasattr(url, "root") else str(url)
-        assert "my-bucket" in url_str
+    def test_console_bucket_url(self):
+        source = self._bind(endpoint_url="http://minio:9000", console_url="http://minio-console:9001/browser/")
+
+        assert source._get_bucket_source_url("my-bucket") == "http://minio-console:9001/browser/my-bucket/"
+
+    def test_console_object_url_encodes_prefix(self):
+        source = self._bind(endpoint_url="http://minio:9000", console_url="http://minio-console:9001/browser")
+
+        assert (
+            source._get_object_source_url("my-bucket", "data/my events")
+            == "http://minio-console:9001/browser/my-bucket/data/my%20events/"
+        )
+
+    def test_custom_endpoint_without_console_has_no_url(self):
+        source = self._bind(endpoint_url="http://fakes3:4567")
+
+        assert source._get_bucket_source_url("my-bucket") is None
+        assert source._get_object_source_url("my-bucket", "data/events") is None
+        source.get_aws_bucket_region.assert_not_called()
+
+    def test_alternate_aws_endpoint_keeps_aws_console_url(self):
+        source = self._bind(endpoint_url="https://bucket.vpce-0a1b2c3d-x.s3.eu-west-1.vpce.amazonaws.com")
+
+        assert (
+            source._get_bucket_source_url("my-bucket")
+            == "https://s3.console.aws.amazon.com/s3/buckets/my-bucket?region=eu-west-1&tab=objects"
+        )
 
 
 class TestLoadMetadataFile:

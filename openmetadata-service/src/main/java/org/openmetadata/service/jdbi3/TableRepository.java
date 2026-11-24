@@ -1545,7 +1545,7 @@ public class TableRepository extends EntityRepository<Table> {
       daoCollection.tagUsageDAO().deleteShownTagsByTargets(updatedColumnFqns);
     }
     applyColumnTags(table.getColumns());
-    dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
+    dao.update(table.getId(), table.getFullyQualifiedName(), serializeForStorage(table));
     storePendingGlossaryTerms(heldTerms, updatedBy);
     // addDataModel bypasses the EntityRepository.update() path, so invalidateCachesAfterStore
     // never runs. Drop every cached variant manually so the next GET rebuilds with the freshly

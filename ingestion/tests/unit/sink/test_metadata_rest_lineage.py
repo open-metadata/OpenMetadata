@@ -129,3 +129,18 @@ class TestDeleteLineageBySource:
         sink = self._run(EntityReference(id=TO_ID, type="table"))
 
         assert (sink.status.records, sink.status.failures) == ([], [])
+
+
+def test_delete_lineage_by_source_clears_the_view_lineage_of_the_entity():
+    """A view that reads no table any more has no edge to carry the override delete (#37091)."""
+    sink = make_sink(None)
+
+    sink.run(
+        OMetaDeleteLineageBySource(entity=EntityReference(id=TO_ID, type="table"), source=LineageSource.ViewLineage)
+    )
+
+    sink.metadata.delete_lineage_by_source.assert_called_once_with(
+        entity_type="table", entity_id=TO_ID, source="ViewLineage"
+    )
+    # Nothing is ingested, so the run summary counts nothing
+    assert (sink.status.records, sink.status.failures) == ([], [])

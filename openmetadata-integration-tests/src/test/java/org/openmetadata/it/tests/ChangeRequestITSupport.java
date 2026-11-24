@@ -312,10 +312,17 @@ final class ChangeRequestITSupport {
   static HttpResponse<String> sendAsAdmin(
       String method, String path, String contentType, String body)
       throws IOException, InterruptedException {
+    return sendWithToken(SdkClients.getAdminToken(), method, path, contentType, body);
+  }
+
+  /** {@link #sendAsAdmin}, as the user the token belongs to. */
+  static HttpResponse<String> sendWithToken(
+      String token, String method, String path, String contentType, String body)
+      throws IOException, InterruptedException {
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(SdkClients.getServerUrl() + path))
-            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Authorization", "Bearer " + token)
             .header("Content-Type", contentType)
             .method(method, HttpRequest.BodyPublishers.ofString(body))
             .build();
