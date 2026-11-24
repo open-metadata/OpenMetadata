@@ -262,19 +262,8 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
-    for (Pair<String, String> p : fieldAndValue) {
-      boolQueryBuilder.must(
-          Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
-    }
-
     DeleteByQueryResponse response =
-        client.deleteByQuery(
-            d ->
-                d.index(indexNames)
-                    .query(q -> q.bool(boolQueryBuilder.build()))
-                    .conflicts(Conflicts.Proceed)
-                    .refresh(true));
+        client.deleteByQuery(buildDeleteByFieldsRequest(indexNames, fieldAndValue));
 
     LOG.info(
         "DeleteByQuery response From ES - Deleted: {}, Failures: {}",
@@ -296,6 +285,25 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               .collect(Collectors.joining("; "));
       LOG.error("DeleteByQuery encountered failures: {}", failureDetails);
     }
+  }
+
+  /**
+   * A reindex can rewrite matched child docs between the scroll and the delete; with the default
+   * conflicts=abort the whole cleanup failed with 409, so conflicted docs are skipped instead.
+   */
+  DeleteByQueryRequest buildDeleteByFieldsRequest(
+      List<String> indexNames, List<Pair<String, String>> fieldAndValue) {
+    BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+    for (Pair<String, String> p : fieldAndValue) {
+      boolQueryBuilder.must(
+          Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
+    }
+    return DeleteByQueryRequest.of(
+        d ->
+            d.index(indexNames)
+                .query(q -> q.bool(boolQueryBuilder.build()))
+                .conflicts(Conflicts.Proceed)
+                .refresh(true));
   }
 
   @Override
