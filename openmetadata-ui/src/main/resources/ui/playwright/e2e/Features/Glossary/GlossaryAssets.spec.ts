@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
-import { DataType } from '../../../../src/generated/entity/data/table';
+import { DataType, Table } from '../../../../src/generated/entity/data/table';
 import { SidebarItem } from '../../../constant/sidebar';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
 import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
+import { okJson } from '../../../utils/apiResponse';
 import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
 import {
   addAssetToGlossaryTerm,
@@ -545,9 +546,24 @@ test.describe('Glossary Asset Operations', () => {
           )
       ).toEqual([columnFqn]);
 
-      await expect(
-        page.getByTestId('assets').getByTestId('filter-count')
-      ).toContainText('1');
+      const table = await okJson<Table>(
+        await apiContext.get(
+          `/api/v1/tables/name/${encodeURIComponent(
+            tableFqn ?? ''
+          )}?fields=columns,tags`
+        ),
+        'Table with the assigned columns'
+      );
+      const assignedColumns = table.columns
+        .filter(({ tags }) =>
+          tags?.some(
+            ({ tagFQN }) =>
+              tagFQN === glossaryTerm.responseData.fullyQualifiedName
+          )
+        )
+        .map(({ name }) => name);
+
+      expect(assignedColumns).toEqual([columnName]);
     } finally {
       await glossary.delete(apiContext);
       await tableEntity.delete(apiContext);
