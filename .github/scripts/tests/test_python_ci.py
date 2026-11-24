@@ -317,7 +317,7 @@ def test_backend_image_load_checks_revision_and_prepares_compose_tags(
     monkeypatch.setenv("IMAGE_REVISION", revision if matching_revision else "other-source")
     environment = tmp_path / "environment"
     monkeypatch.setenv("GITHUB_ENV", str(environment))
-    result = run("bash", ROOT / ".github/scripts/python_ci_backend_image.sh", "load", archive)
+    result = run("bash", ROOT / ".github/scripts/ci_backend_image.sh", "load", archive)
     commands = [json.loads(line) for line in docker_commands.read_text().splitlines()]
     tags = [command[-1] for command in commands if command[:2] == ["image", "tag"]]
     if matching_revision:

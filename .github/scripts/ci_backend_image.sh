@@ -3,7 +3,7 @@ set -euo pipefail
 
 operation="$1"
 archive="$2"
-image='python-ci-backend:local'
+image='ci-backend:local'
 revision="$(git rev-parse HEAD)"
 
 case "$operation" in
@@ -30,7 +30,7 @@ case "$operation" in
     rm -f "$archive"
     ;;
   *)
-    echo 'Usage: python_ci_backend_image.sh build|load ARCHIVE' >&2
+    echo 'Usage: ci_backend_image.sh build|load ARCHIVE' >&2
     exit 2
     ;;
 esac

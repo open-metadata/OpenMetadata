@@ -54,13 +54,13 @@ jobs:
           mvn "${args[@]}"
         shell: bash
       - name: Build and pack backend image
-        run: bash .github/scripts/python_ci_backend_image.sh build "$RUNNER_TEMP/python-ci-backend.tar.zst"
+        run: bash .github/scripts/ci_backend_image.sh build "$RUNNER_TEMP/ci-backend.tar.zst"
         shell: bash
       - name: Upload backend image
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: python-ci-backend-image
-          path: ${{ runner.temp }}/python-ci-backend.tar.zst
+          name: ci-backend-image
+          path: ${{ runner.temp }}/ci-backend.tar.zst
           if-no-files-found: error
           compression-level: 0
           retention-days: 1

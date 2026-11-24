@@ -80,7 +80,7 @@ before the final classification profile synchronization and verification. Local 
 reuses the runner's installed uv.
 
 Build one backend image per selected integration/nightly run. Integration, API and connector
-runners load the same `python-ci-backend-image` artifact, verify its source revision, and reuse
+runners load the same `ci-backend-image` artifact, verify its source revision, and reuse
 it for both migration and server containers. Server startup skips Maven and backend image builds.
 Unit tests run once per selected interpreter, independently of the integration database matrix.
 Static checks run once on the minimum interpreter.
