@@ -54,7 +54,7 @@ For connector-specific development, see [skills/README.md](skills/README.md).
 2. /tdd               — Write Jest test for the component
 3.                       Implement the component
 4.                       yarn lint:fix
-5. /test-enforcement   — Verify Jest coverage + Playwright E2E if user-facing
+5. /test-enforcement   — Verify Jest coverage + browser tests (page behaviour) / Playwright E2E (journeys) if user-facing
 6. /verification       — Show lint + test output
 7. /code-review        — Run frontend-reviewer agent
 8. /ui-pr-recording    — When creating a UI feature/task PR: run Docker, record the feature, upload
@@ -101,7 +101,7 @@ For local setup and test commands, see [Python commands](#locked-local-python-en
 |---------|-------------|-------------|
 | `/planning` | Starting any non-trivial task | Brainstorm approaches, get approval, create step-by-step plan |
 | `/tdd` | Implementing any feature or fix | Guides RED-GREEN-REFACTOR cycle for Java/Python/TypeScript |
-| `/test-enforcement` | Before creating a PR | Checks 90% coverage, integration tests, Playwright E2E |
+| `/test-enforcement` | Before creating a PR | Checks 90% coverage, integration tests, browser tests for page behaviour + Playwright E2E |
 | `/verification` | Before claiming "done" | Requires actual test output as evidence |
 | `/code-review` | Before or during PR review | Two-stage review: spec compliance then code quality |
 | `/systematic-debugging` | Bug with unclear root cause | 4-phase: gather evidence, hypothesize, verify, fix |
@@ -122,7 +122,7 @@ The `openmetadata-workflow` meta-skill (loaded at session start) routes tasks au
 | Bug fix | `/systematic-debugging` -> `/tdd` -> `/verification` |
 | New API endpoint | `/planning` -> `/tdd` -> `/test-enforcement` (must include IT) |
 | New connector | `/connector-standards` -> `/scaffold-connector` -> `/test-enforcement` |
-| UI component | `/tdd` -> `/test-enforcement` (Jest + Playwright) |
+| UI component | `/tdd` -> `/test-enforcement` (Jest + browser test or Playwright) |
 | PR review | `/code-review` -> `/test-enforcement` |
 
 ---
