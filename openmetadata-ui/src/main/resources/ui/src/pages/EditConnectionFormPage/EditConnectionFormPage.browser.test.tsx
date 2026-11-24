@@ -126,13 +126,12 @@ describe('Edit connection form secret masking', () => {
       );
 
       await expect
-        .poll(() => secretInput(secretFieldId), { timeout: scaled(60_000) })
-        .not.toBeNull();
+        .poll(() => secretInput(secretFieldId)?.value, {
+          timeout: scaled(60_000),
+        })
+        .toBe(MASKED);
 
-      const secret = secretInput(secretFieldId) as HTMLInputElement;
-
-      expect(secret.type).toBe('password');
-      expect(secret.value).toBe(MASKED);
+      expect(secretInput(secretFieldId)?.type).toBe('password');
       await expect
         .element(page.getByTestId('test-connection-btn'))
         .toBeVisible();
