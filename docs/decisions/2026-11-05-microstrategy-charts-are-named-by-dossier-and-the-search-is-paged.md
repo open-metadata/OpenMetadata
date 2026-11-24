@@ -182,8 +182,8 @@ warehouse columns a metric reads; neither maps generated `WJXBFSn` aliases by po
   way, on their own column alias, whether or not the dataset holds them: `% Revenue` never takes
   `Revenue`'s `REVENUE`.
   - The column alias comes from the metric's definition, so it needs Architect privileges. Without
-    them each metric is matched on its name alone, which a column alias set on another metric of
-    the dataset can make wrong; that is the cost of linking metrics without the privilege.
+    them no metric gets a column edge: a name alone cannot tell a metric's projection from one a
+    column alias set on another metric names, and a missing edge is better than a wrong one.
   - A metric outside the dataset, referenced by none of its metrics' definitions, can still project
     under a dataset metric's name; the claims cover only what the dataset and those definitions
     reach.
