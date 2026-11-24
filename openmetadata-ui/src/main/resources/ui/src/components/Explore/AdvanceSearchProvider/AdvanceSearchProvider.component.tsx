@@ -156,22 +156,20 @@ export const AdvanceSearchProvider = ({
     [location.search]
   );
 
-  const urlFilter = useMemo(() => {
-    const parsed = parseExploreQueryFilterParam(parsedSearch.queryFilter);
-
-    if (
-      parsed.tree &&
-      !QbUtils.isValidTree(QbUtils.loadTree(parsed.tree), config)
-    ) {
-      return {};
-    }
-
-    return parsed;
-  }, [parsedSearch]);
+  // Keyed on the filter param alone: paging, sorting or a quick filter must not re-apply the Advanced Search
+  // (rebuilding the tree and repeating its warning).
+  const rawQueryFilter = parsedSearch.queryFilter;
+  const urlFilter = useMemo(
+    () => parseExploreQueryFilterParam(rawQueryFilter),
+    [rawQueryFilter]
+  );
+  // A tree from an older link that names a field this config does not have is ignored.
+  const isValidUrlTree = (tree: OldJsonTree, treeConfig: Config) =>
+    QbUtils.isValidTree(QbUtils.loadTree(tree), treeConfig);
 
   const [showModal, setShowModal] = useState(false);
-  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(
-    urlFilter.tree
+  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(() =>
+    urlFilter.tree && isValidUrlTree(urlFilter.tree, config)
       ? QbUtils.Validation.sanitizeTree(
           QbUtils.loadTree(urlFilter.tree),
           config
@@ -334,7 +332,7 @@ export const AdvanceSearchProvider = ({
   }, [searchOutputType, searchIndex]);
 
   const applyUrlFilter = () => {
-    if (urlFilter.tree) {
+    if (urlFilter.tree && isValidUrlTree(urlFilter.tree, config)) {
       loadTree(urlFilter.tree);
 
       return;

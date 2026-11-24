@@ -521,6 +521,33 @@ describe('AdvanceSearchProvider — the advanced search in the URL', () => {
     );
   });
 
+  it('warns about a partly shown link once, not again when paging through its results', async () => {
+    const partlyReadable = {
+      query: {
+        bool: {
+          must: [{ bool: { must: [{ prefix: { 'name.keyword': 'dim_' } }] } }],
+        },
+      },
+    };
+    const queryFilter = JSON.stringify(partlyReadable);
+    mockLocationSearch = new URLSearchParams({ queryFilter }).toString();
+    let rerender!: (ui: React.ReactElement) => void;
+    await act(async () => {
+      ({ rerender } = render(<ProbeWithProvider />));
+    });
+
+    mockLocationSearch = new URLSearchParams({
+      queryFilter,
+      currentPage: '2',
+    }).toString();
+    await act(async () => {
+      rerender(<ProbeWithProvider />);
+    });
+
+    expect(showWarningToast).toHaveBeenCalledTimes(1);
+    expect(readJson('query-filter')).toEqual(partlyReadable);
+  });
+
   it('does not warn when the whole link can be shown', async () => {
     await renderWithSearch({ queryFilter: twoGroupFilter });
 
