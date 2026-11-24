@@ -414,8 +414,9 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         throw new CustomExceptionMessage(
             INTERNAL_SERVER_ERROR, MULTIPLE_EMAIL_ENTRIES, MULTIPLE_EMAIL_ENTRIES);
       } else {
-        // An unknown user must get the same answer as a wrong password, or the status code tells a
-        // caller which accounts exist.
+        // An unknown user must get the same answer as a wrong password, lockout included, or the
+        // response tells a caller which accounts exist. No notice is sent: there is no user.
+        LoginAttemptCache.getInstance().recordFailedLogin(email);
         throw new CustomExceptionMessage(
             UNAUTHORIZED, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
       }
