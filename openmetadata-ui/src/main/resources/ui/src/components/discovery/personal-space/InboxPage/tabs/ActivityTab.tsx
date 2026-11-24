@@ -40,13 +40,13 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import { TaskMentionCard } from '../../../../NotificationBox/TaskMentionCard';
 import {
   ActivityScope,
   getActivityScopeKey,
   INBOX_SCOPE,
   SCOPE_FILTERS,
 } from '../activityScope';
-import { TaskMentionCard } from '../../../../NotificationBox/TaskMentionCard';
 import ActivityFeedItem from '../components/ActivityFeedItem';
 import { ACTIVITY_CARD_CLASS } from '../components/ActivityFeedItem.constants';
 import ActivitySkeleton from '../components/ActivitySkeleton';
