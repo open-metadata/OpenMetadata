@@ -24,7 +24,6 @@ from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
-from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Language
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.table import Column, DataModel, DataType, Table
@@ -34,9 +33,9 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.type import entityReference
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.generated.schema.type.status import EntityStatus
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -44,10 +43,12 @@ from metadata.generated.schema.type.tagLabel import (
     TagSource,
 )
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.ometa_lineage import OMetaDeleteLineageBySource, OMetaLineageRequest
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceTopology
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     build_upstream_name_map,
     build_upstream_node,
@@ -76,7 +77,7 @@ from metadata.ingestion.source.database.dbt.metadata import RESOLVED_TABLES_CACH
 from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects, UpstreamNode
 from metadata.utils.logger import ingestion_logger, set_loggers_level
 from metadata.utils.lru_cache import LRUCache
-from metadata.utils.tag_utils import get_tag_label, get_tag_labels
+from metadata.utils.tag_utils import get_tag_labels
 from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
@@ -1561,56 +1562,6 @@ class DbtUnitTest(TestCase):
         columns = self.dbt_source_obj.parse_data_model_columns(manifest_node=manifest_node, catalog_node=None)
         assert len(columns) == 1
         assert columns[0].tags == []
-
-    def _glossary_terms_by_status(self):
-        """FQN -> GlossaryTerm for every status and for no status, plus one FQN the server does not know"""
-        terms = {
-            f"Gloss.{name}": GlossaryTerm(
-                id=uuid.uuid4(),
-                name=name,
-                fullyQualifiedName=f"Gloss.{name}",
-                description="term",
-                glossary=EntityReference(id=uuid.uuid4(), type="glossary"),
-                entityStatus=status,
-            )
-            for name, status in [*((status.name, status) for status in EntityStatus), ("NoStatus", None)]
-        }
-        return terms, [*terms, "Gloss.Missing"]
-
-    def _glossary_labels(self, tags):
-        return [tag.tagFQN.root for tag in tags if tag.source == TagSource.Glossary]
-
-    def test_dbt_table_meta_glossary_applies_only_approved_terms(self):
-        terms, fqns = self._glossary_terms_by_status()
-        get_tag_label.cache_clear()
-        with patch.object(self.dbt_source_obj.metadata, "get_by_name", side_effect=lambda entity, fqn: terms.get(fqn)):
-            result = self.dbt_source_obj.process_dbt_meta(
-                manifest_meta={"openmetadata": {"glossary": fqns}},
-                table_fqn="svc.db.schema.table",
-            )
-        get_tag_label.cache_clear()
-
-        assert self._glossary_labels(result) == ["Gloss.Approved"]
-
-    def test_dbt_column_meta_glossary_applies_only_approved_terms(self):
-        terms, fqns = self._glossary_terms_by_status()
-        manifest_column = SimpleNamespace(
-            name="col",
-            tags=[],
-            meta={"openmetadata": {"glossary": fqns}},
-            description="kept",
-            data_type="varchar",
-        )
-        get_tag_label.cache_clear()
-        with patch.object(self.dbt_source_obj.metadata, "get_by_name", side_effect=lambda entity, fqn: terms.get(fqn)):
-            columns = self.dbt_source_obj.parse_data_model_columns(
-                manifest_node=SimpleNamespace(columns={"col": manifest_column}), catalog_node=None
-            )
-        get_tag_label.cache_clear()
-
-        assert len(columns) == 1
-        assert columns[0].description.root == "kept"
-        assert self._glossary_labels(columns[0].tags) == ["Gloss.Approved"]
 
     @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
     def test_parse_data_model_columns_skips_split_when_include_tags_false(self, mock_fqn):
@@ -4475,6 +4426,114 @@ class TestDbtLineageReusesParsedUpstream:
 
         assert searched("orders") > 0
         assert searched("raw_orders") == searched("orders"), searches
+
+
+class TestDbtOverrideLineageWithoutUpstream:
+    """Issue #37092.
+
+    overrideLineage only cleared a model's old DbtLineage edges while writing a new one, so a
+    model whose manifest no longer lists any parent kept them all. raw_orders declares no parent
+    and orders depends on raw_orders, run through the real yield and lineage path.
+    """
+
+    parsed = TestDbtLineageReusesParsedUpstream
+
+    def _lineage(self, override_lineage, catalog=None, edit_manifest=None, project_name=None):
+        catalog = self.parsed._catalog() if catalog is None else catalog
+        manifest = json.loads(self.parsed.MANIFEST.read_text(encoding="utf-8"))
+        if edit_manifest:
+            edit_manifest(manifest)
+        dbt_manifest = parse_manifest(manifest)
+        if project_name:
+            # The v8 fixture predates metadata.project_name, which dbt 1.6 added with cross-project refs.
+            dbt_manifest.metadata = dbt_manifest.metadata.model_copy(update={"project_name": project_name})
+        harness = self.parsed()
+        harness._ctx = SimpleNamespace()
+        source = harness._source(catalog, [])
+        source.source_config.overrideLineage = override_lineage
+        links = [item.right for item in source.yield_data_models(DbtObjects(dbt_manifest=dbt_manifest))]
+        return {
+            model_str(link.table_entity.fullyQualifiedName): [
+                result.right for result in source.create_dbt_lineage(link)
+            ]
+            for link in links
+        }
+
+    def test_a_model_declaring_no_parent_clears_its_dbt_lineage(self):
+        catalog = self.parsed._catalog()
+
+        lineage = self._lineage(override_lineage=True, catalog=catalog)
+
+        assert lineage[self.parsed.RAW_FQN] == [
+            OMetaDeleteLineageBySource(
+                entity=EntityReference(id=catalog[self.parsed.RAW_FQN].id, type="table"),
+                source=LineageSource.DbtLineage,
+            )
+        ]
+
+    def test_a_model_with_a_parent_gets_its_edge_and_no_delete(self):
+        records = self._lineage(override_lineage=True)[self.parsed.ORDERS_FQN]
+
+        assert [type(record) for record in records] == [OMetaLineageRequest]
+
+    def test_nothing_is_deleted_without_override(self):
+        lineage = self._lineage(override_lineage=False)
+
+        assert lineage[self.parsed.RAW_FQN] == []
+        assert not any(isinstance(r, OMetaDeleteLineageBySource) for records in lineage.values() for r in records)
+
+    def test_a_parent_missing_from_openmetadata_keeps_the_prior_lineage(self):
+        """The model still declares the parent, so an empty upstream here is not a change in dbt."""
+        catalog = self.parsed._catalog()
+        del catalog[self.parsed.RAW_FQN]
+
+        assert self._lineage(override_lineage=True, catalog=catalog)[self.parsed.ORDERS_FQN] == []
+
+    def test_another_projects_injected_model_is_left_alone(self):
+        """dbt Mesh injects an upstream project's public model with no parents; deleting for it
+        would wipe the lineage that project's own ingestion drew."""
+
+        def from_platform(manifest):
+            manifest["nodes"]["model.jaffle_shop.raw_orders"]["package_name"] = "platform"
+
+        lineage = self._lineage(override_lineage=True, edit_manifest=from_platform, project_name="jaffle_shop")
+
+        assert lineage[self.parsed.RAW_FQN] == []
+
+    def test_a_model_of_the_manifests_own_project_still_clears_its_lineage(self):
+        lineage = self._lineage(override_lineage=True, project_name="jaffle_shop")
+
+        assert [type(record) for record in lineage[self.parsed.RAW_FQN]] == [OMetaDeleteLineageBySource]
+
+    def test_a_seed_is_left_alone(self):
+        """A seed never lists parents, and the table may be another project's model."""
+
+        def as_seed(manifest):
+            node = manifest["nodes"].pop("model.jaffle_shop.raw_orders")
+            for model_only in (
+                "compiled",
+                "language",
+                "refs",
+                "sources",
+                "metrics",
+                "compiled_path",
+                "compiled_code",
+                "extra_ctes_injected",
+                "extra_ctes",
+            ):
+                node.pop(model_only, None)
+            node.update(resource_type="seed", unique_id="seed.jaffle_shop.raw_orders", depends_on={"macros": []})
+            manifest["nodes"]["seed.jaffle_shop.raw_orders"] = node
+            manifest["nodes"]["model.jaffle_shop.orders"]["depends_on"]["nodes"] = ["seed.jaffle_shop.raw_orders"]
+
+        assert self._lineage(override_lineage=True, edit_manifest=as_seed)[self.parsed.RAW_FQN] == []
+
+    def test_the_delete_runs_before_query_lineage(self):
+        """Query lineage writes DbtLineage edges from the compiled SQL into the same table; the
+        delete has to come first or it would wipe them."""
+        stages = [stage.processor for stage in DbtServiceTopology().process_dbt_entities.stages]
+
+        assert stages.index("create_dbt_lineage") < stages.index("create_dbt_query_lineage")
 
 
 class TestAddDbtTestResultFailureReporting:

@@ -155,6 +155,40 @@ public class IncidentTaskNotificationIT {
     }
   }
 
+  @Test
+  void testResolutionCommentMentionTriggersNotification(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String userName = "resolution" + UUID.randomUUID().toString().substring(0, 8);
+    client.users().create(new CreateUser().withName(userName).withEmail(userName + "@test.om.org"));
+    EventSubscription alert = createTaskMentionAlert(ns, client, userName);
+    try {
+      TestCase testCase = createTestCase(client, ns, "incident-resolution-mention");
+      createFailedTestResult(client, testCase);
+      Task incident = awaitIncidentTaskForTestCase(client, testCase);
+      long processedBefore = processedEventsCount(client, alert);
+      String comment = "Fixed upstream, please verify <#E::user::" + userName + ">";
+
+      client
+          .tasks()
+          .resolve(incident.getId().toString(), incidentResolution().withComment(comment));
+
+      Task resolved = client.tasks().get(incident.getId().toString(), "comments,resolution");
+      assertEquals(comment, resolved.getResolution().getComment());
+      assertEquals(1, resolved.getComments().size());
+      assertEquals(comment, resolved.getComments().getFirst().getMessage());
+      assertEquals(
+          resolved.getResolution().getResolvedBy().getId(),
+          resolved.getComments().getFirst().getAuthor().getId());
+      await("resolution mention notification is delivered")
+          .atMost(ALERT_TIMEOUT)
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> assertEquals(processedBefore + 1, processedEventsCount(client, alert)));
+    } finally {
+      client.eventSubscriptions().delete(alert.getId().toString());
+    }
+  }
+
   private ResolveTask incidentResolution() {
     return new ResolveTask()
         .withTransitionId("resolve")
