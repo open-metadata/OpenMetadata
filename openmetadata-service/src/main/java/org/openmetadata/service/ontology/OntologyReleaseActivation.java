@@ -13,12 +13,15 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyReleaseEvent;
 import org.openmetadata.schema.type.OntologyState;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
 import org.openmetadata.service.rdf.OntologyActiveGraph;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.util.FreshReadScope;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 /** Commits the active pointer, audit evidence and projection outbox as one module transaction. */
 public final class OntologyReleaseActivation {
@@ -136,7 +139,16 @@ public final class OntologyReleaseActivation {
                 .withPreviousReleaseId(previous.getActiveReleaseId()));
     // The enqueue fence is acquired last so its order matches the activation commit order.
     enqueue.accept(previous.getOntologyId());
+    PostCommitActionQueue.runOrDefer(
+        () -> refreshSearch(previous.getActiveReleaseId(), active.getActiveReleaseId()));
     return active;
+  }
+
+  private static void refreshSearch(UUID previous, UUID active) {
+    final var search = Entity.getSearchRepository();
+    if (search != null) {
+      search.refreshOntologyTerms(OntologyTermSearch.releaseTerms(previous, active));
+    }
   }
 
   private static void requireExpectedRevision(

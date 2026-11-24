@@ -44,7 +44,6 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
   private final int batchSize;
   private final String entityType;
   private final List<String> fields;
-  private final List<String> readerErrors = new ArrayList<>();
   private final StepStats stats = new StepStats();
   private final ListFilter filter;
   private final int cachedTotalCount;
@@ -370,12 +369,6 @@ public class PaginatedEntitiesSource implements Source<ResultList<? extends Enti
       }
     }
     return cursors;
-  }
-
-  @Override
-  public void reset() {
-    cursor.set(null);
-    isDone.set(Boolean.FALSE);
   }
 
   @Override

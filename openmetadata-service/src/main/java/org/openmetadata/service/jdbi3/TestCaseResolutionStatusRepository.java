@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestCaseResolutionStatusTimeSeriesDAO.IncidentGroupPage;
+import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -183,6 +185,28 @@ public class TestCaseResolutionStatusRepository
         Entity.getCollectionDAO().testCaseResolutionStatusTimeSeriesDao(),
         TestCaseResolutionStatus.class,
         Entity.TEST_CASE_RESOLUTION_STATUS);
+  }
+
+  /** The graph carries a test case's open incident, so every status change refreshes it. */
+  @Override
+  protected void postCreate(TestCaseResolutionStatus status) {
+    super.postCreate(status);
+    refreshTestCaseProjection(status);
+  }
+
+  @Override
+  protected void postUpdate(TestCaseResolutionStatus status) {
+    super.postUpdate(status);
+    refreshTestCaseProjection(status);
+  }
+
+  private static void refreshTestCaseProjection(TestCaseResolutionStatus status) {
+    Optional.ofNullable(status.getTestCaseReference())
+        .map(EntityReference::getId)
+        .ifPresent(
+            id ->
+                RdfUpdater.refreshEntities(
+                    List.of(new EntityReference().withType(Entity.TEST_CASE).withId(id))));
   }
 
   @Override
