@@ -177,6 +177,7 @@ describe('TaskTransitionFormModal', () => {
         onConfirm={jest.fn()}
       />
     );
+    await screen.findByTestId('task-transition-form-confirm');
 
     expect(
       screen.getByTestId('task-transition-form-modal')
@@ -185,15 +186,15 @@ describe('TaskTransitionFormModal', () => {
       'data-title',
       'Approve'
     );
-    expect(
-      await screen.findByRole('textbox', { name: /Target Field/ })
-    ).toHaveValue('description');
+    expect(screen.getByRole('textbox', { name: /Target Field/ })).toHaveValue(
+      'description'
+    );
     expect(screen.getByRole('textbox', { name: /Proposed Text/ })).toHaveValue(
       ''
     );
   });
 
-  it('disables confirm and shows the required hint while a required field is missing', () => {
+  it('disables confirm and shows the required hint while a required field is missing', async () => {
     render(
       <TaskTransitionFormModal
         open
@@ -206,6 +207,7 @@ describe('TaskTransitionFormModal', () => {
         onConfirm={jest.fn()}
       />
     );
+    await screen.findByTestId('task-transition-form-confirm');
 
     expect(screen.getByTestId('task-transition-form-confirm')).toBeDisabled();
     expect(
@@ -227,13 +229,11 @@ describe('TaskTransitionFormModal', () => {
         onConfirm={onConfirm}
       />
     );
+    await screen.findByTestId('task-transition-form-confirm');
 
-    fireEvent.change(
-      await screen.findByRole('textbox', { name: /Proposed Text/ }),
-      {
-        target: { value: 'new description' },
-      }
-    );
+    fireEvent.change(screen.getByRole('textbox', { name: /Proposed Text/ }), {
+      target: { value: 'new description' },
+    });
 
     expect(
       screen.getByTestId('task-transition-form-confirm')
@@ -281,13 +281,11 @@ describe('TaskTransitionFormModal', () => {
         onConfirm={onConfirm}
       />
     );
+    await screen.findByTestId('task-transition-form-confirm');
 
-    fireEvent.change(
-      await screen.findByRole('textbox', { name: /Proposed Text/ }),
-      {
-        target: { value: 'new description' },
-      }
-    );
+    fireEvent.change(screen.getByRole('textbox', { name: /Proposed Text/ }), {
+      target: { value: 'new description' },
+    });
 
     expect(screen.getByTestId('task-transition-form-confirm')).toBeDisabled();
 
@@ -305,7 +303,7 @@ describe('TaskTransitionFormModal', () => {
 
   // A required boolean field set to `false` is a valid answer, not a missing
   // one — confirm must stay enabled so the resolver can submit `false`.
-  it('does not block confirm for a required boolean field set to false', () => {
+  it('does not block confirm for a required boolean field set to false', async () => {
     const onConfirm = jest.fn();
     const booleanSchema: TaskFormSchema = {
       ...SCHEMA,
@@ -339,6 +337,7 @@ describe('TaskTransitionFormModal', () => {
         onConfirm={onConfirm}
       />
     );
+    await screen.findByTestId('task-transition-form-confirm');
 
     expect(
       screen.getByTestId('task-transition-form-confirm')
@@ -353,7 +352,7 @@ describe('TaskTransitionFormModal', () => {
   });
 
   // A required number field set to `0` is a valid answer, not a missing one.
-  it('does not block confirm for a required number field set to 0', () => {
+  it('does not block confirm for a required number field set to 0', async () => {
     const onConfirm = jest.fn();
     const numberSchema: TaskFormSchema = {
       ...SCHEMA,
@@ -387,6 +386,7 @@ describe('TaskTransitionFormModal', () => {
         onConfirm={onConfirm}
       />
     );
+    await screen.findByTestId('task-transition-form-confirm');
 
     expect(
       screen.getByTestId('task-transition-form-confirm')
@@ -412,19 +412,17 @@ describe('TaskTransitionFormModal', () => {
         onConfirm={onConfirm}
       />
     );
+    await screen.findByTestId('task-transition-form-confirm');
 
-    fireEvent.change(
-      await screen.findByRole('textbox', { name: /Proposed Text/ }),
-      {
-        target: { value: 'new description' },
-      }
-    );
+    fireEvent.change(screen.getByRole('textbox', { name: /Proposed Text/ }), {
+      target: { value: 'new description' },
+    });
     fireEvent.click(screen.getByTestId('task-transition-form-confirm'));
 
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  it('calls onCancel when the cancel button is pressed', () => {
+  it('calls onCancel when the cancel button is pressed', async () => {
     const onCancel = jest.fn();
     render(
       <TaskTransitionFormModal
@@ -438,13 +436,14 @@ describe('TaskTransitionFormModal', () => {
         onConfirm={jest.fn()}
       />
     );
+    await screen.findByTestId('task-transition-form-confirm');
 
     fireEvent.click(screen.getByTestId('task-transition-form-cancel'));
 
     expect(onCancel).toHaveBeenCalled();
   });
 
-  it('calls onCancel when the overlay is dismissed', () => {
+  it('calls onCancel when the overlay is dismissed', async () => {
     const onCancel = jest.fn();
     render(
       <TaskTransitionFormModal
@@ -458,6 +457,7 @@ describe('TaskTransitionFormModal', () => {
         onConfirm={jest.fn()}
       />
     );
+    await screen.findByTestId('task-transition-form-confirm');
 
     fireEvent.click(screen.getByTestId('overlay-dismiss'));
 
