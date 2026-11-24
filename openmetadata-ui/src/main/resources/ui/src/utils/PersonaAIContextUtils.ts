@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import type { BadgeColors } from '@openmetadata/ui-core-components';
-import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/ui';
+import {
+  JsonRule,
+  JsonTree,
+  OldJsonItem,
+  OldJsonTree,
+  Utils as QbUtils,
+} from '@react-awesome-query-builder/ui';
 import { cloneDeep, isEqual, omit } from 'lodash';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
@@ -177,37 +183,206 @@ export const getRuleExplorePath = (
   });
 };
 
-export const getRuleConditionCount = (
-  filterJsonTree?: string,
-  queryFilter?: string
-): number => {
-  const tree = getRuleFilterTree(filterJsonTree, queryFilter);
-  if (!tree) {
+const countRules = (node: unknown): number => {
+  if (!node || typeof node !== 'object' || Array.isArray(node)) {
     return 0;
   }
 
-  const countRules = (node: unknown): number => {
-    if (!node || typeof node !== 'object' || Array.isArray(node)) {
-      return 0;
-    }
+  const treeNode = node as Record<string, unknown>;
+  if (treeNode.type === 'rule') {
+    return 1;
+  }
+  const children = treeNode.children1;
+  if (!children || typeof children !== 'object') {
+    return 0;
+  }
 
-    const treeNode = node as Record<string, unknown>;
-    if (treeNode.type === 'rule') {
-      return 1;
-    }
-    const children = treeNode.children1;
-    if (!children || typeof children !== 'object') {
-      return 0;
-    }
-
-    return Object.values(children).reduce(
-      (total, child) => total + countRules(child),
-      0
-    );
-  };
-
-  return countRules(tree);
+  return Object.values(children).reduce(
+    (total, child) => total + countRules(child),
+    0
+  );
 };
+
+export const getRuleConditionCount = (
+  filterJsonTree?: string,
+  queryFilter?: string
+): number => countRules(getRuleFilterTree(filterJsonTree, queryFilter));
+
+export interface RuleCondition {
+  field: string;
+  operator: string;
+  value?: string;
+}
+
+/** What a rule's filter selects, shaped for the `field op value` chips on a rule card. */
+export type RuleQuery =
+  | { kind: 'all' }
+  | { kind: 'conditions'; conjunction: string; conditions: RuleCondition[] }
+  | { kind: 'count'; count: number };
+
+const OPERATOR_SYMBOLS: Record<string, string> = {
+  between: 'between',
+  equal: '=',
+  greater: '>',
+  greater_or_equal: '>=',
+  is_not_null: 'is not null',
+  is_null: 'is null',
+  less: '<',
+  less_or_equal: '<=',
+  like: 'contains',
+  not_equal: '!=',
+  not_like: 'not contains',
+  regexp: 'matches',
+  select_any_in: 'in',
+  select_equals: '=',
+  select_not_any_in: 'not in',
+  select_not_equals: '!=',
+};
+
+const NEGATED_OPERATORS: Record<string, string> = {
+  equal: 'not_equal',
+  is_not_null: 'is_null',
+  is_null: 'is_not_null',
+  like: 'not_like',
+  not_equal: 'equal',
+  not_like: 'like',
+  select_any_in: 'select_not_any_in',
+  select_equals: 'select_not_equals',
+  select_not_any_in: 'select_any_in',
+  select_not_equals: 'select_equals',
+};
+
+const humanize = (key: string) =>
+  key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/^./, (first) => first.toUpperCase());
+
+// Search field keys name an index path (`owners.displayName.keyword`); the card shows the
+// attribute (`Owners`), or the property name for a custom property (`extension.<type>.<name>`).
+const fieldLabel = (field: string) => {
+  const path = field.split('.').filter((part) => part !== 'keyword');
+
+  return humanize(
+    (path[0] === 'extension' ? path[path.length - 1] : path[0]) ?? field
+  );
+};
+
+const valueText = (value: unknown): string | undefined => {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    const parts = value.map(valueText).filter(Boolean);
+
+    return parts.length ? parts.join(', ') : undefined;
+  }
+
+  return String(value);
+};
+
+interface FlatConditions {
+  conjunction?: string;
+  conditions: RuleCondition[];
+}
+
+const toCondition = (
+  node: JsonRule,
+  negated: boolean
+): RuleCondition | undefined => {
+  const { field, operator, value } = node.properties ?? {};
+  if (typeof field !== 'string' || !field || typeof operator !== 'string') {
+    return undefined;
+  }
+  const effective = negated ? NEGATED_OPERATORS[operator] : operator;
+  if (typeof effective !== 'string') {
+    return undefined;
+  }
+
+  const symbol = OPERATOR_SYMBOLS[effective];
+
+  return {
+    field: fieldLabel(field),
+    operator:
+      typeof symbol === 'string' ? symbol : effective.replace(/_/g, ' '),
+    value: valueText(value),
+  };
+};
+
+const flattenGroup = (
+  children: (FlatConditions | undefined)[],
+  conjunction: string
+): FlatConditions | undefined => {
+  if (conjunction !== 'AND' && conjunction !== 'OR') {
+    return undefined;
+  }
+  const conditions: RuleCondition[] = [];
+  for (const flat of children) {
+    if (
+      !flat ||
+      (flat.conditions.length > 1 && flat.conjunction !== conjunction)
+    ) {
+      return undefined;
+    }
+    conditions.push(...flat.conditions);
+  }
+
+  return { conditions, conjunction };
+};
+
+/**
+ * Flattens the filter into one conjunction of conditions. A group with a single child only
+ * wraps it, and a negated single condition takes the opposite operator. Anything richer
+ * (mixed AND / OR, a negated group) returns undefined and is shown as a condition count.
+ */
+const flattenConditions = (
+  node: OldJsonItem | OldJsonTree,
+  negated = false
+): FlatConditions | undefined => {
+  if (node?.type === 'rule') {
+    const condition = toCondition(node, negated);
+
+    return condition ? { conditions: [condition] } : undefined;
+  }
+  if (node?.type !== 'group') {
+    return undefined;
+  }
+  const children = Object.values(node.children1 ?? {});
+  const isNegated = negated !== Boolean(node.properties?.not);
+  if (children.length === 1) {
+    return flattenConditions(children[0], isNegated);
+  }
+  if (isNegated) {
+    return undefined;
+  }
+
+  return flattenGroup(
+    children.map((child) => flattenConditions(child)),
+    String(node.properties?.conjunction ?? 'AND').toUpperCase()
+  );
+};
+
+export const getRuleQuery = (
+  rule: Pick<ContextRule, 'filterJsonTree' | 'queryFilter'>
+): RuleQuery => {
+  const tree = getRuleFilterTree(rule.filterJsonTree, rule.queryFilter);
+  const count = countRules(tree);
+  if (!tree || count === 0) {
+    return { kind: 'all' };
+  }
+  const flat = flattenConditions(tree);
+
+  return flat?.conditions.length
+    ? {
+        conditions: flat.conditions,
+        conjunction: flat.conjunction ?? 'AND',
+        kind: 'conditions',
+      }
+    : { count, kind: 'count' };
+};
+
+export const ruleConditionText = ({ field, operator, value }: RuleCondition) =>
+  [field, operator, value].filter(Boolean).join(' ');
 
 export const getRuleConditionSummary = (
   rule: ContextRule

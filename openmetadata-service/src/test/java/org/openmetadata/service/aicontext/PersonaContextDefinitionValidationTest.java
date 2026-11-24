@@ -17,11 +17,33 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.PersonaContextDefinition;
+import org.openmetadata.schema.type.personaContext.ContextRule;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.PersonaRepository;
 
 class PersonaContextDefinitionValidationTest {
+  @Test
+  void enforcesTwentyFiveRulesForAuthoredDefinitions() {
+    var rules =
+        IntStream.rangeClosed(1, 26)
+            .mapToObj(
+                index -> new ContextRule().withName("Rule " + index).withEntityType(Entity.TABLE))
+            .toList();
+    PersonaRepository.validateContextDefinition(
+        new PersonaContextDefinition().withRules(rules.subList(0, 25)));
+    var failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                PersonaRepository.validateContextDefinition(
+                    new PersonaContextDefinition().withRules(rules)));
+
+    assertEquals("Persona context supports at most 25 rules", failure.getMessage());
+  }
+
   @Test
   void trimsThePromptAndTreatsBlankAsUnset() {
     PersonaContextDefinition written =

@@ -30,7 +30,7 @@ import {
   Table,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
-import { FC, useMemo, useState } from 'react';
+import { FC, ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
@@ -44,16 +44,29 @@ import { ContextRule } from '../../../../generated/type/personaContextDefinition
 import {
   getRuleConditionCount,
   getRuleConditionParts,
+  getRuleQuery,
   isSearchScopedRule,
+  RuleQuery,
 } from '../../../../utils/PersonaAIContextUtils';
 import { DeleteModal } from '../../../common/DeleteModal/DeleteModal';
 
-interface ContextRuleCardProps {
-  canEdit: boolean;
-  matched?: number;
-  rule: ContextRule;
-  onDelete: () => void;
+interface RuleActions {
   onEdit: () => void;
+  onDelete: () => void;
+}
+
+export interface ContextRuleCardProps extends RuleActions {
+  canEdit: boolean;
+  changeBadge?: ReactNode;
+  inherited?: boolean;
+  matched?: number;
+  renderActions?: (actions: RuleActions) => ReactNode;
+  renderQuery?: (query: RuleQuery) => ReactNode;
+  renderVersionValue?: (
+    field: 'name' | 'description',
+    value?: string
+  ) => ReactNode;
+  rule: ContextRule;
 }
 
 const MAX_VISIBLE_SECTIONS = 5;
@@ -65,17 +78,28 @@ const ENTITY_TYPE_ICONS: Record<string, FC<{ className?: string }>> = {
 };
 
 interface RuleConditionSummaryProps {
-  conditionParts: ReturnType<typeof getRuleConditionParts>;
-  conditionCount: number;
   entityLabelPlural: string;
+  renderQuery?: ContextRuleCardProps['renderQuery'];
+  rule: ContextRule;
 }
 
 const RuleConditionSummary = ({
-  conditionParts,
-  conditionCount,
   entityLabelPlural,
+  renderQuery,
+  rule,
 }: RuleConditionSummaryProps) => {
   const { t } = useTranslation();
+  const conditionParts = useMemo(
+    () => (renderQuery ? undefined : getRuleConditionParts(rule)),
+    [renderQuery, rule]
+  );
+  if (renderQuery) {
+    return <>{renderQuery(getRuleQuery(rule))}</>;
+  }
+  const conditionCount = getRuleConditionCount(
+    rule.filterJsonTree,
+    rule.queryFilter
+  );
 
   const renderSummary = () => {
     if (conditionParts) {
@@ -219,6 +243,7 @@ interface RuleCardActionsProps {
   matchedCount?: number;
   canEdit: boolean;
   entityLabelPlural: string;
+  renderActions?: ContextRuleCardProps['renderActions'];
   onEdit: () => void;
   onDeleteClick: () => void;
 }
@@ -227,6 +252,7 @@ const RuleCardActions = ({
   matchedCount,
   canEdit,
   entityLabelPlural,
+  renderActions,
   onEdit,
   onDeleteClick,
 }: RuleCardActionsProps) => {
@@ -248,56 +274,101 @@ const RuleCardActions = ({
       )}
       {canEdit && (
         <Box align="center" className="tw:mt-auto tw:gap-1.5">
-          <ButtonUtility
-            data-testid="edit-context-rule"
-            icon={Edit01}
-            size="lg"
-            tooltip={t('label.edit')}
-            onClick={onEdit}
-          />
-          <ButtonUtility
-            color="tertiary-destructive"
-            data-testid="delete-context-rule"
-            icon={Trash01}
-            size="lg"
-            tooltip={t('label.delete')}
-            onClick={onDeleteClick}
-          />
+          {renderActions ? (
+            renderActions({ onEdit, onDelete: onDeleteClick })
+          ) : (
+            <>
+              <ButtonUtility
+                data-testid="edit-context-rule"
+                icon={Edit01}
+                size="lg"
+                tooltip={t('label.edit')}
+                onClick={onEdit}
+              />
+              <ButtonUtility
+                color="tertiary-destructive"
+                data-testid="delete-context-rule"
+                icon={Trash01}
+                size="lg"
+                tooltip={t('label.delete')}
+                onClick={onDeleteClick}
+              />
+            </>
+          )}
         </Box>
       )}
     </Box>
   );
 };
 
+const RuleCardHeader = ({
+  changeBadge,
+  inherited,
+  renderVersionValue,
+  rule,
+}: Pick<
+  ContextRuleCardProps,
+  'changeBadge' | 'inherited' | 'renderVersionValue' | 'rule'
+>) => {
+  const { t } = useTranslation();
+  const entityLabel = t(
+    PERSONA_CONTEXT_ENTITY_LABEL_KEYS[rule.entityType] ?? 'label.entity'
+  );
+  const EntityIcon = ENTITY_TYPE_ICONS[rule.entityType] ?? Hexagon01;
+
+  return (
+    <Box align="center" className="tw:gap-2.5" wrap="wrap">
+      <Typography
+        as="span"
+        className="tw:text-[15px] tw:text-primary"
+        weight="semibold">
+        {renderVersionValue ? renderVersionValue('name', rule.name) : rule.name}
+      </Typography>
+      {changeBadge}
+      {inherited && (
+        <Badge color="gray" size="sm">
+          {t('label.inherited')}
+        </Badge>
+      )}
+      {rule.enabled === false && (
+        <Badge color="gray" size="sm">
+          {t('label.disabled')}
+        </Badge>
+      )}
+      <BadgeWithIcon color="gray" iconLeading={EntityIcon} size="sm">
+        {entityLabel}
+      </BadgeWithIcon>
+    </Box>
+  );
+};
+
 export const ContextRuleCard = ({
   canEdit,
+  changeBadge,
+  inherited,
   matched,
+  renderActions,
+  renderQuery,
+  renderVersionValue,
   rule,
   onDelete,
   onEdit,
 }: ContextRuleCardProps) => {
   const { t } = useTranslation();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const canEditRule = canEdit && !inherited;
+  const description = renderVersionValue?.('description', rule.description);
 
-  const conditionParts = useMemo(() => getRuleConditionParts(rule), [rule]);
   // Not rule.filteredInSearch: the server ignores that flag on knowledge rules, so trusting it here
   // would badge a rule as scoping search while the server preloads it.
   const isScoped = isSearchScopedRule(rule);
   const isEnabled = rule.enabled !== false;
-  const conditionCount = getRuleConditionCount(
-    rule.filterJsonTree,
-    rule.queryFilter
-  );
   const matchedCount = matched ?? rule.matchedCount;
 
-  const entityLabel = t(
-    PERSONA_CONTEXT_ENTITY_LABEL_KEYS[rule.entityType] ?? 'label.entity'
-  );
   const entityLabelPlural = t(
     PERSONA_CONTEXT_ENTITY_PLURAL_LABEL_KEYS[rule.entityType] ??
       'label.entity-plural'
   );
-  const EntityIcon = ENTITY_TYPE_ICONS[rule.entityType] ?? Hexagon01;
   const sections = rule.sections ?? [];
   const visibleSections = sections.slice(0, MAX_VISIBLE_SECTIONS);
   const extraSections = sections.length - visibleSections.length;
@@ -312,28 +383,24 @@ export const ContextRuleCard = ({
       className="tw:flex tw:gap-4 tw:rounded-[10px] tw:px-4.5 tw:py-4 tw:shadow-xs"
       data-testid="context-rule-card">
       <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={3}>
-        <Box align="center" className="tw:gap-2.5" wrap="wrap">
-          <Typography
-            as="span"
-            className="tw:text-[15px] tw:text-primary"
-            weight="semibold">
-            {rule.name}
-          </Typography>
-          {!isEnabled && (
-            <Badge color="gray" size="sm">
-              {t('label.disabled')}
-            </Badge>
-          )}
-          <BadgeWithIcon color="gray" iconLeading={EntityIcon} size="sm">
-            {entityLabel}
-          </BadgeWithIcon>
-        </Box>
+        <RuleCardHeader
+          changeBadge={changeBadge}
+          inherited={inherited}
+          renderVersionValue={renderVersionValue}
+          rule={rule}
+        />
 
         <RuleConditionSummary
-          conditionCount={conditionCount}
-          conditionParts={conditionParts}
           entityLabelPlural={entityLabelPlural}
+          renderQuery={renderQuery}
+          rule={rule}
         />
+
+        {description && (
+          <Typography as="p" className="tw:whitespace-pre-wrap" size="text-sm">
+            {description}
+          </Typography>
+        )}
 
         <RuleSections
           alwaysInContext={rule.alwaysInContext}
@@ -358,16 +425,17 @@ export const ContextRuleCard = ({
       </Box>
 
       <RuleCardActions
-        canEdit={canEdit}
+        canEdit={canEditRule}
         entityLabelPlural={entityLabelPlural}
         matchedCount={matchedCount}
+        renderActions={renderActions}
         onDeleteClick={() => setConfirmOpen(true)}
         onEdit={onEdit}
       />
       <DeleteModal
         entityTitle={rule.name}
         message={t('message.delete-persona-context-rule-confirmation')}
-        open={confirmOpen}
+        open={canEditRule && confirmOpen}
         onCancel={() => setConfirmOpen(false)}
         onDelete={handleConfirmDelete}
       />

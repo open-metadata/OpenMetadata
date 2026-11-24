@@ -13,6 +13,7 @@
 package org.openmetadata.it.tests.mcp;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -261,6 +263,48 @@ class PersonaAIContextIT extends McpTestBase {
       deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
       deleteResponse("users/" + direct.getId() + "?hardDelete=true", authToken);
       deleteResponse("users/" + inherited.getId() + "?hardDelete=true", authToken);
+    }
+  }
+
+  @Test
+  void projectsMergedRulesAndKeepsTheAuthoredLimit() throws Exception {
+    Persona owned =
+        post(
+            "personas",
+            new CreatePersona().withName("projected_context_" + shortId()),
+            Persona.class);
+    String path = "personas/" + owned.getId();
+    PersonaRepository repository = (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
+    List<ContextRule> rules =
+        IntStream.rangeClosed(1, 51).mapToObj(index -> tableRule("Rule " + index)).toList();
+    try {
+      assertThatThrownBy(
+              () ->
+                  repository.patchProjectedContext(owned.getId(), settings(true).withRules(rules)))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessageContaining("at most 50 rules");
+      repository.patchProjectedContext(
+          owned.getId(), settings(true).withRules(rules.subList(0, 50)));
+
+      patch(
+          path,
+          """
+          [{"op":"add","path":"/description","value":"Still editable"}]
+          """);
+      assertThatThrownBy(
+              () ->
+                  patch(
+                      path,
+                      """
+                  [{"op":"replace","path":"/contextDefinition/rules/0/name","value":"Changed rule"}]
+                  """))
+          .hasMessageContaining("at most 25 rules");
+      Persona stored = get(path + "?fields=contextDefinition", Persona.class);
+      assertThat(stored.getDescription()).isEqualTo("Still editable");
+      assertThat(stored.getContextDefinition().getRules()).hasSize(50);
+      assertThat(stored.getContextDefinition().getRules().getFirst().getName()).isEqualTo("Rule 1");
+    } finally {
+      deleteResponse(path + "?hardDelete=true", authToken);
     }
   }
 

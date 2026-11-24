@@ -13,6 +13,7 @@
 package org.openmetadata.service.aicontext;
 
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.function.Supplier;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -36,14 +37,40 @@ public final class PersonaContextAccess {
     if (refresh) {
       authorizeRefresh(securityContext);
     }
+    return materializeVisibleContext(authorizer, securityContext, persona, refresh);
+  }
+
+  /** Only the caller's active persona or a server-provided shared context can resolve /me. */
+  public static PersonaContextCache.CachedResult materializeActive(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      boolean refresh,
+      Supplier<Persona> fallback) {
+    Persona persona = findActivePersona(securityContext);
+    if (persona != null) {
+      return materialize(authorizer, securityContext, persona, refresh);
+    }
+    if (fallback == null) {
+      throw noActivePersona();
+    }
+    if (refresh) {
+      authorizeRefresh(securityContext);
+    }
+    Persona shared = fallback.get();
+    if (shared == null) {
+      throw noActivePersona();
+    }
+    return materializeVisibleContext(authorizer, securityContext, shared, refresh);
+  }
+
+  private static PersonaContextCache.CachedResult materializeVisibleContext(
+      Authorizer authorizer, SecurityContext securityContext, Persona persona, boolean refresh) {
+    PersonaContextCache cache = PersonaContextCache.getInstance();
     PersonaContextCache.CachedResult result;
     if (isAdminOrBot(securityContext)) {
-      result =
-          refresh
-              ? PersonaContextCache.getInstance().refresh(persona)
-              : PersonaContextCache.getInstance().get(persona, false);
+      result = refresh ? cache.refresh(persona) : cache.get(persona, false);
     } else {
-      result = PersonaContextCache.getInstance().getForCaller(persona, authorizer, securityContext);
+      result = cache.getForCaller(persona, authorizer, securityContext);
     }
     return result;
   }
@@ -66,18 +93,25 @@ public final class PersonaContextAccess {
   }
 
   public static Persona activePersona(SecurityContext securityContext) {
+    Persona persona = findActivePersona(securityContext);
+    if (persona == null) {
+      throw noActivePersona();
+    }
+    return persona;
+  }
+
+  private static EntityNotFoundException noActivePersona() {
+    return EntityNotFoundException.byMessage("No active persona is configured for this user");
+  }
+
+  private static Persona findActivePersona(SecurityContext securityContext) {
     SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
     Persona persona = loadPersona(subject.getActivePersona());
     if (persona != null) {
       return persona;
     }
     UserRepository users = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    EntityReference personaReference = users.getDefaultPersona(subject.user());
-    persona = loadPersona(personaReference);
-    if (persona == null) {
-      throw EntityNotFoundException.byMessage("No active persona is configured for this user");
-    }
-    return persona;
+    return loadPersona(users.getDefaultPersona(subject.user()));
   }
 
   private static Persona loadPersona(EntityReference personaReference) {
