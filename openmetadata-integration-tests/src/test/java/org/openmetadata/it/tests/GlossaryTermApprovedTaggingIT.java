@@ -36,6 +36,7 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.DriveServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.factories.MlModelServiceTestFactory;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
@@ -52,19 +53,24 @@ import org.openmetadata.schema.api.data.CreateFile;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateMetric;
+import org.openmetadata.schema.api.data.CreateMlModel;
+import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.UpdateColumn;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
+import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.DriveService;
+import org.openmetadata.schema.entity.services.MlModelService;
 import org.openmetadata.schema.entity.services.StorageService;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.type.APIRequestMethod;
@@ -78,12 +84,15 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.MlFeature;
+import org.openmetadata.schema.type.MlFeatureDataType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.services.teams.TeamService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -387,6 +396,128 @@ public class GlossaryTermApprovedTaggingIT {
 
     assertEquals(
         List.of(FullyQualifiedName.buildHash(moved.getFullyQualifiedName())), pendingTargets(term));
+  }
+
+  /** Listing knowledge pages by a term skips a page the term is only pending on. */
+  @Test
+  void listingPagesByATermSkipsPagesItIsOnlyPendingOn(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = deprecatedTerm(client, ns);
+    CreatePage request =
+        new CreatePage()
+            .withName(ns.shortPrefix("held_page"))
+            .withPageType(PageType.ARTICLE)
+            .withDescription("Page holding a term")
+            .withPage(new Article())
+            .withRelatedEntities(
+                List.of(
+                    new TeamService(client.getHttpClient())
+                        .getByName("Organization", null)
+                        .getEntityReference()))
+            .withTags(List.of(label(term)));
+    JsonNode page =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.POST, "/v1/contextCenter/pages", request, JsonNode.class);
+    assertEquals(1, pendingTargets(term).size());
+
+    JsonNode listed =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/contextCenter/pages?limit=100&tagFQN=%s"
+                    .formatted(URLEncoder.encode(term.getFullyQualifiedName(), UTF_8)),
+                null,
+                JsonNode.class);
+
+    List<String> ids = new ArrayList<>();
+    listed.get("data").forEach(entry -> ids.add(entry.get("id").asText()));
+    assertFalse(ids.contains(page.get("id").asText()), listed::toString);
+    assertEquals(0, listed.path("paging").path("total").asInt(), listed::toString);
+  }
+
+  /**
+   * Adding a term that is no longer Approved to an asset that already shows it leaves that label as
+   * it is, with its own type and reason.
+   */
+  @Test
+  void addingAnUnapprovedTermAnAssetAlreadyShowsKeepsItsLabel(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = approvedTerm(client, ns);
+    CreateTable request = tableRequest(ns, schema(ns), "shown_kept");
+    request.setTags(
+        List.of(label(term).withLabelType(TagLabel.LabelType.AUTOMATED).withReason("synced")));
+    Table table = client.tables().create(request);
+    deprecate(client, term);
+
+    client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/glossaryTerms/%s/assets/add".formatted(term.getId()),
+            new AddGlossaryToAssetsRequest()
+                .withDryRun(false)
+                .withAssets(List.of(table.getEntityReference())),
+            BulkOperationResult.class);
+
+    TagLabel shown =
+        reread(client, table).getTags().stream()
+            .filter(tag -> term.getFullyQualifiedName().equals(tag.getTagFQN()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(TagLabel.LabelType.AUTOMATED, shown.getLabelType());
+    assertEquals("synced", shown.getReason());
+    assertTrue(pendingTargets(term).isEmpty());
+  }
+
+  /** A removed ML feature takes the term held on it along, so a later namesake does not get it. */
+  @Test
+  void removingAnMlFeatureDropsTheTermHeldOnIt(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = deprecatedTerm(client, ns);
+    MlModelService service = MlModelServiceTestFactory.createMlflow(ns);
+    CreateMlModel request =
+        new CreateMlModel()
+            .withName(ns.shortPrefix("held_model"))
+            .withService(service.getFullyQualifiedName())
+            .withAlgorithm("Random Forest")
+            .withMlFeatures(
+                List.of(
+                    new MlFeature()
+                        .withName("held_feature")
+                        .withDataType(MlFeatureDataType.Numerical)
+                        .withTags(List.of(label(term)))));
+    client.mlModels().create(request);
+    assertEquals(1, pendingTargets(term).size());
+
+    client
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/mlmodels", request.withMlFeatures(List.of()), JsonNode.class);
+
+    assertTrue(pendingTargets(term).isEmpty(), () -> pendingTargets(term).toString());
+  }
+
+  /**
+   * A term deprecated and approved again by the same user is one consolidated edit, so its status
+   * looks unchanged against the version before; the term held in between is still shown.
+   */
+  @Test
+  void approvingAgainInTheSameSessionShowsTheTermHeldMeanwhile(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = deprecate(client, approvedTerm(client, ns));
+    Table table = client.tables().create(tableRequest(ns, schema(ns), "reapproved"));
+    Table fetched = reread(client, table);
+    fetched.setTags(List.of(label(term)));
+    client.tables().update(table.getId().toString(), fetched);
+    assertHeld(term, 1, reread(client, table));
+
+    setStatus(client, term, EntityStatus.APPROVED);
+
+    Awaitility.await("held term shown once approved again")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(() -> hasTerm(reread(client, table).getTags(), term));
   }
 
   private static CreateContainer containerRequest(

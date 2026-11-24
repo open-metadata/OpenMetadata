@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -561,6 +562,24 @@ public class MlModelRepository extends EntityRepository<MlModel> {
                 EntityUtil.getFieldName("mlFeatures", updatedFeature.getName(), Entity.FIELD_TAGS),
                 storedFeature.getTags(),
                 updatedFeature.getTags()));
+      }
+      dropTagsOfRemovedFeatures(origModel, updatedModel);
+    }
+
+    /**
+     * A removed feature's rows, pending ones included, would otherwise pass to a later feature of
+     * the same name. Membership is by name: recordListChange compares whole features, so one whose
+     * tags merely changed shows up as both removed and added.
+     */
+    private void dropTagsOfRemovedFeatures(MlModel origModel, MlModel updatedModel) {
+      Set<String> updatedNames =
+          listOrEmpty(updatedModel.getMlFeatures()).stream()
+              .map(MlFeature::getName)
+              .collect(Collectors.toSet());
+      for (MlFeature feature : listOrEmpty(origModel.getMlFeatures())) {
+        if (!updatedNames.contains(feature.getName())) {
+          daoCollection.tagUsageDAO().deleteTagsByTarget(feature.getFullyQualifiedName());
+        }
       }
     }
 

@@ -21,6 +21,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -64,6 +65,7 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -1259,9 +1261,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       return new TermAssignment(label, held, appliedBy);
     }
 
+    // A target that already shows the term keeps its label as it is: holding the term there too
+    // would rewrite that label's type, reason and metadata with the pending one.
     void write(EntityRepository<?> repository, List<TagLabel> targetTags, String targetFqn) {
       if (held) {
-        repository.storePendingGlossaryTerms(List.of(new HeldTerm(targetFqn, label)), appliedBy);
+        if (!TagLabelUtil.appliedGlossaryTermFqns(targetTags).contains(label.getTagFQN())) {
+          repository.storePendingGlossaryTerms(List.of(new HeldTerm(targetFqn, label)), appliedBy);
+        }
       } else {
         List<TagLabel> tags = new ArrayList<>(listOrEmpty(targetTags));
         tags.add(label);
@@ -1587,13 +1593,25 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
    */
   private static void showOrDropPendingLabels(GlossaryTerm original, GlossaryTerm updated) {
     EntityStatus to = updated.getEntityStatus();
-    if (to != null && to != original.getEntityStatus()) {
+    if (to != null && (to != original.getEntityStatus() || requestChangedStatus(updated))) {
       if (to == EntityStatus.APPROVED) {
         PostCommitActionQueue.runOrDefer(() -> GlossaryTermPendingLabels.showWhenApproved(updated));
       } else if (to == EntityStatus.REJECTED) {
         GlossaryTermPendingLabels.dropRejected(updated);
       }
     }
+  }
+
+  // Session consolidation rebases `original` onto the version before the session, so a term
+  // deprecated and approved again by the same user compares Approved with Approved. The request's
+  // own change still records the status it set.
+  private static boolean requestChangedStatus(GlossaryTerm updated) {
+    ChangeDescription change = updated.getIncrementalChangeDescription();
+    return change != null
+        && Stream.concat(
+                listOrEmpty(change.getFieldsUpdated()).stream(),
+                listOrEmpty(change.getFieldsAdded()).stream())
+            .anyMatch(field -> FIELD_ENTITY_STATUS.equals(field.getName()));
   }
 
   @Override

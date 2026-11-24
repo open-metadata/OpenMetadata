@@ -16548,7 +16548,8 @@ public interface CollectionDAO {
       String tagFQN = filter.getQueryParam("tagFQN");
       String tagListCondition =
           "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
-      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
       if (nullOrEmpty(tagFQN)) {
         tagListCondition = "";
         tagFilterCondition = "WHERE";
@@ -16600,7 +16601,8 @@ public interface CollectionDAO {
       String tagFQN = filter.getQueryParam("tagFQN");
       String tagListCondition =
           "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
-      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
       if (nullOrEmpty(tagFQN)) {
         tagListCondition = "";
         tagFilterCondition = "WHERE";
@@ -16656,7 +16658,8 @@ public interface CollectionDAO {
       String tagFQN = filter.getQueryParam("tagFQN");
       String tagListCondition =
           "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
-      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
       if (nullOrEmpty(tagFQN)) {
         tagListCondition = "";
         tagFilterCondition = "WHERE";
