@@ -140,6 +140,8 @@ class DremioSource(DatabaseServiceSource):
         # get_database_schema_names and dropped when the next database starts.
         self._folder_ids: dict[str, str] = {}
         self._datasets: dict[str, list[DremioDataset]] = {}
+        # The folders of the current database that could not be listed
+        self._unread_folders: list[str] = []
 
         with close_on_failure(self._connection):
             self.test_connection()
@@ -212,12 +214,14 @@ class DremioSource(DatabaseServiceSource):
         """
         self._folder_ids = {}
         self._datasets = defaultdict(list)
+        self._unread_folders = []
         folders: list[list[str]] = [[]]
         while folders:
             folder = folders.pop()
             try:
                 children = get_children(self.client, [namespace, *folder])
             except (RequestException, ValueError) as exc:
+                self._unread_folders.append("/".join([namespace, *folder]))
                 self.status.failed(
                     StackTraceError(
                         name="/".join([namespace, *folder]),
@@ -244,6 +248,19 @@ class DremioSource(DatabaseServiceSource):
     def get_database_schema_names(self) -> Iterable[str]:
         self._read_namespace(self.context.get().database)
         yield from self._get_filtered_schema_names()
+
+    def mark_schemas_as_deleted(self) -> Iterable[Either]:
+        """
+        The schemas below a folder that could not be listed are missing from the
+        walk, but not from Dremio: do not mark them as deleted.
+        """
+        if self._unread_folders:
+            logger.warning(
+                f"Not marking the schemas of the Dremio database {self.context.get().database} as deleted:"
+                f" these folders could not be listed: {', '.join(self._unread_folders)}"
+            )
+            return
+        yield from super().mark_schemas_as_deleted()
 
     def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         schema_request = CreateDatabaseSchemaRequest(

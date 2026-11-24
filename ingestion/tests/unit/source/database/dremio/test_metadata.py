@@ -12,6 +12,8 @@
 The Dremio metadata source, on a fake REST API
 """
 
+from unittest.mock import patch
+
 import pytest
 import requests
 
@@ -121,6 +123,50 @@ TOTALS = {
     "sql": "SELECT name FROM lake.customers",
     "fields": [{"name": "name", "type": {"name": "VARCHAR"}}],
 }
+
+
+class TestDeletion:
+    """A schema missing because its folder could not be read is not a deleted schema"""
+
+    @pytest.mark.parametrize("failing", ["/catalog/by-path/reporting", "/catalog/by-path/reporting/deep"])
+    def test_schemas_are_not_marked_deleted_after_an_incomplete_walk(self, make_source, failing):
+        source = make_source({**CATALOG, failing: requests.ConnectionError("down")}, source_config=DELETE_SCHEMAS)
+        schemas_of(source, "reporting")
+
+        with patch(DELETE_FROM_SOURCE) as delete_entity_from_source:
+            assert list(source.mark_schemas_as_deleted()) == []
+
+        delete_entity_from_source.assert_not_called()
+
+    def test_schemas_are_marked_deleted_after_a_complete_walk(self, make_source):
+        source = make_source(CATALOG, source_config=DELETE_SCHEMAS)
+        schemas_of(source, "reporting")
+
+        with patch(DELETE_FROM_SOURCE, return_value=iter(())) as delete_entity_from_source:
+            list(source.mark_schemas_as_deleted())
+
+        delete_entity_from_source.assert_called_once()
+
+    def test_a_complete_walk_of_the_next_database_deletes_again(self, make_source):
+        source = make_source(
+            {
+                **CATALOG,
+                "/catalog/by-path/reporting/deep": requests.ConnectionError("down"),
+                "/catalog/by-path/lake": {"children": [dataset("lake", "customers")]},
+            },
+            source_config=DELETE_SCHEMAS,
+        )
+        schemas_of(source, "reporting")
+        schemas_of(source, "lake")
+
+        with patch(DELETE_FROM_SOURCE, return_value=iter(())) as delete_entity_from_source:
+            list(source.mark_schemas_as_deleted())
+
+        delete_entity_from_source.assert_called_once()
+
+
+DELETE_SCHEMAS = {"markDeletedSchemas": True}
+DELETE_FROM_SOURCE = "metadata.ingestion.source.database.database_service.delete_entity_from_source"
 
 
 class TestTable:
