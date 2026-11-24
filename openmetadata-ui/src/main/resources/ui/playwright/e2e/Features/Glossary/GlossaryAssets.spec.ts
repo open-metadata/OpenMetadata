@@ -11,17 +11,20 @@
  *  limitations under the License.
  */
 import test, { expect } from '@playwright/test';
+import { DataType } from '../../../../src/generated/entity/data/table';
 import { SidebarItem } from '../../../constant/sidebar';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
+import { TableClass } from '../../../support/entity/TableClass';
 import { TopicClass } from '../../../support/entity/TopicClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
 import {
   addAssetToGlossaryTerm,
   goToAssetsTab,
   selectActiveGlossary,
 } from '../../../utils/glossary';
+import { waitForSearchIndexed } from '../../../utils/polling';
 import { sidebarClick } from '../../../utils/sidebar';
 
 test.use({
@@ -463,6 +466,91 @@ test.describe('Glossary Asset Operations', () => {
     } finally {
       await glossary.delete(apiContext);
       await topicEntity.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('should only assign the columns with the exact name when exact name is on', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
+    const tableEntity = new TableClass();
+    const columnName = `pw_exact_${uuid()}`;
+    const similarColumnName = `${columnName}_adjusted`;
+    tableEntity.entity.columns.push(
+      ...[columnName, similarColumnName].map((name) => ({
+        name,
+        dataType: DataType.Int,
+        dataTypeDisplay: 'int',
+      }))
+    );
+
+    try {
+      await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
+      await tableEntity.create(apiContext);
+
+      const tableFqn = tableEntity.entityResponseData.fullyQualifiedName;
+      const columnFqn = `${tableFqn}.${columnName}`;
+      const similarColumnFqn = `${tableFqn}.${similarColumnName}`;
+      await waitForSearchIndexed(apiContext, columnFqn, 'tableColumn');
+      await waitForSearchIndexed(apiContext, similarColumnFqn, 'tableColumn');
+
+      await redirectToHomePage(page);
+      await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
+      await goToAssetsTab(page, glossaryTerm.data.displayName);
+
+      await page.getByTestId('glossary-term-add-button-menu').click();
+      await page.getByRole('menuitem', { name: 'Assets' }).click();
+
+      const modal = page.getByTestId('asset-selection-modal');
+      const column = modal.getByTestId(`table-data-card_${columnFqn}`);
+      const similarColumn = modal.getByTestId(
+        `table-data-card_${similarColumnFqn}`
+      );
+
+      await modal.getByTestId('searchbar').fill(columnName);
+
+      await expect(column).toBeVisible();
+      await expect(similarColumn).toBeVisible();
+
+      await modal.getByTestId('exact-name-toggle').click();
+
+      await expect(similarColumn).toBeHidden();
+      await expect(column).toBeVisible();
+
+      const selectAll = modal.getByRole('checkbox', { name: 'Select All' });
+      await modal.getByText('Select All').click();
+
+      await expect(selectAll).toBeChecked();
+
+      const addAssetsResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/assets/add') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByTestId('save-btn').click();
+      const response = await addAssetsResponse;
+
+      expect(response.status()).toBe(200);
+      expect(
+        response
+          .request()
+          .postDataJSON()
+          .assets.map(
+            (asset: { fullyQualifiedName: string }) => asset.fullyQualifiedName
+          )
+      ).toEqual([columnFqn]);
+
+      await expect(
+        page.getByTestId('assets').getByTestId('filter-count')
+      ).toContainText('1');
+    } finally {
+      await glossary.delete(apiContext);
+      await tableEntity.delete(apiContext);
       await afterAction();
     }
   });
