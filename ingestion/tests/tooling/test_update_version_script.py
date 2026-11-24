@@ -29,7 +29,9 @@ ROOT = Path(__file__).resolve().parents[3]
 
 @pytest.fixture
 def checkout(tmp_path: Path, monkeypatch) -> Path:
-    uv = str(runpy.run_path(str(ROOT / "scripts/python_tools.py"))["ensure_uv"]())
+    tools = runpy.run_path(str(ROOT / "scripts/python_tools.py"))
+    uv = str(tools["ensure_uv"]())
+    uv_version = tools["required_version"]()
     monkeypatch.setenv("OM_UV_EXECUTABLE", uv)
     ingestion = tmp_path / "ingestion"
     ingestion.mkdir()
@@ -38,7 +40,7 @@ def checkout(tmp_path: Path, monkeypatch) -> Path:
         '[project]\nname="openmetadata-ingestion"\nversion = "2.0.0.0.dev0"\n'
         'requires-python=">=3.10"\ndynamic=["dependencies"]\n'
         '[dependency-groups]\nnox=["nox", "tomli; python_version < \'3.11\'"]\n'
-        '[tool.uv]\nrequired-version="==0.13.4"\ndefault-groups=[]\n'
+        f'[tool.uv]\nrequired-version="=={uv_version}"\ndefault-groups=[]\n'
         '[[tool.uv.dependency-metadata]]\nname="sqlalchemy-ibmi"\nversion = "0.9.3"\n'
         'requires-dist=["pyodbc>=4.0", "sqlalchemy>=2.0,<2.1"]\n',
         encoding="utf-8",
@@ -66,14 +68,14 @@ def checkout(tmp_path: Path, monkeypatch) -> Path:
     return tmp_path
 
 
-def run_update(checkout: Path, version: str, project="ingestion"):
+def run_update(checkout: Path, version: str):
     return subprocess.run(
         [
             sys.executable,
             "scripts/update_version.py",
             "update_pyproject_version",
             "--file-path",
-            f"{project}/pyproject.toml",
+            "ingestion/pyproject.toml",
             "--version",
             version,
         ],
@@ -82,6 +84,17 @@ def run_update(checkout: Path, version: str, project="ingestion"):
         text=True,
         check=False,
         timeout=120,
+    )
+
+
+def run_make(checkout: Path, target: str):
+    return subprocess.run(
+        ["make", target, "RELEASE_VERSION=2.0.1234"],
+        cwd=checkout,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=180,
     )
 
 
@@ -97,10 +110,11 @@ def snapshot(checkout: Path):
     }
 
 
-def test_version_update_preserves_metadata_and_third_party_records(checkout):
+def test_public_make_updates_both_packages_without_changing_dependencies(checkout, monkeypatch):
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
     ingestion = checkout / "ingestion"
     original = read_toml(ingestion / "uv.lock")
-    result = run_update(checkout, "2.0.1234")
+    result = run_make(checkout, "update_pyproject_version")
     assert result.returncode == 0, result.stdout + result.stderr
     metadata = read_toml(ingestion / "pyproject.toml")
     assert metadata["project"]["version"] == "2.0.1234.0"
@@ -111,25 +125,11 @@ def test_version_update_preserves_metadata_and_third_party_records(checkout):
         p for p in updated["package"] if "registry" in p["source"]
     ]
     assert next(p for p in updated["package"] if p["name"] == "openmetadata-ingestion")["version"] == "2.0.1234.0"
+    assert read_toml(checkout / "openmetadata-airflow-apis/pyproject.toml")["project"]["version"] == "2.0.1234.0"
     after = snapshot(checkout)
-    result = run_update(checkout, "2.0.1234")
+    result = run_make(checkout, "update_pyproject_version")
     assert result.returncode == 0, result.stdout + result.stderr
     assert snapshot(checkout) == after
-
-
-def test_public_make_updates_sdk_and_apis(checkout, monkeypatch):
-    monkeypatch.setenv("GITHUB_ACTIONS", "true")
-    result = subprocess.run(
-        ["make", "update_pyproject_version", "RELEASE_VERSION=2.0.1234"],
-        cwd=checkout,
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=180,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert read_toml(checkout / "ingestion/pyproject.toml")["project"]["version"] == "2.0.1234.0"
-    assert read_toml(checkout / "openmetadata-airflow-apis/pyproject.toml")["project"]["version"] == "2.0.1234.0"
     assert not (checkout / "env").exists()
     assert not (checkout / "ingestion/.nox/bootstrap/bin/uv").exists()
 
@@ -138,19 +138,17 @@ def test_release_stops_after_an_update_failure(checkout, monkeypatch):
     commands = checkout / "commands"
     commands.mkdir()
     maven = commands / "mvn"
-    maven.write_text("#!/bin/sh\nexit 1\n")
+    maven.write_text(
+        f"#!{sys.executable}\nfrom pathlib import Path\nPath('maven-called').touch()\nraise SystemExit(1)\n"
+    )
     maven.chmod(0o755)
+    (checkout / "scripts/update_version.py").write_text("from pathlib import Path\nPath('later-update').touch()\n")
     monkeypatch.setenv("PATH", str(commands) + os.pathsep + os.environ["PATH"])
     before = snapshot(checkout)
-    result = subprocess.run(
-        ["make", "update_all", "RELEASE_VERSION=2.0.1234"],
-        cwd=checkout,
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=30,
-    )
-    assert result.returncode != 0
+    result = run_make(checkout, "update_all")
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert (checkout / "maven-called").is_file()
+    assert not (checkout / "later-update").exists()
     assert snapshot(checkout) == before
 
 
@@ -169,18 +167,14 @@ def test_invalid_update_does_not_change_inputs(checkout, broken):
 
 
 def test_make_propagates_update_failure(checkout):
-    metadata = checkout / "ingestion/pyproject.toml"
-    metadata.write_text(
-        metadata.read_text(encoding="utf-8").replace('version = "2.0.0.0.dev0"', 'version = "invalid"'),
-        encoding="utf-8",
+    (checkout / "scripts/update_version.py").write_text(
+        "import sys\nfrom pathlib import Path\n"
+        "project = sys.argv[sys.argv.index('-f') + 1]\n"
+        "with Path('updates.log').open('a') as log:\n    log.write(project + '\\n')\n"
+        "raise SystemExit(1 if project == 'ingestion/pyproject.toml' else 0)\n"
     )
-    result = subprocess.run(
-        ["make", "update_pyproject_version", "RELEASE_VERSION=2.0.1234"],
-        cwd=checkout,
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=180,
-    )
-    assert result.returncode != 0
-    assert read_toml(checkout / "openmetadata-airflow-apis/pyproject.toml")["project"]["version"] == "2.0.0.0.dev0"
+    before = snapshot(checkout)
+    result = run_make(checkout, "update_pyproject_version")
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert (checkout / "updates.log").read_text().splitlines() == ["ingestion/pyproject.toml"]
+    assert snapshot(checkout) == before
