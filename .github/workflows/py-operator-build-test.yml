@@ -49,6 +49,9 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+      - name: Read Python versions
+        id: versions
+        run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
@@ -58,7 +61,7 @@ jobs:
       - name: Prepare Python environment
         uses: ./.github/actions/prepare-python-environment
         with:
-          python-version: "3.10"
+          python-version: ${{ steps.versions.outputs.highest }}
           profile: test
 
       - name: Build Ingestion Operator & Ingest Sample Data
