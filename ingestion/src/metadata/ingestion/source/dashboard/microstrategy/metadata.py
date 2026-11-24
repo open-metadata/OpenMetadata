@@ -505,7 +505,8 @@ class MicrostrategySource(DashboardServiceSource):
         for available_object in objects.values():
             claim = available_object.name
             if available_object.type == "metric" and not data_import:
-                claim = self._metric_sql_name(project_id, available_object) or claim
+                sql_name = self.client.get_metric_sql_name(project_id, available_object.id, claim or "")
+                claim = sql_name or claim
             if claim and (key := normalized(claim)):
                 owners[key].add(available_object.id)
         names = Counter((available_object.name or "").casefold() for available_object in objects.values())
@@ -587,7 +588,9 @@ class MicrostrategySource(DashboardServiceSource):
             key = normalized(sql_name)
             return bool(key) and key in alias_reads and owners.get(key, {object_id}) == {object_id}
 
-        sql_name = self._metric_sql_name(project_id, metric)
+        # Unread, a metric's column alias is unknown, so its projection cannot be told apart from
+        # another's: without modeling privileges metrics get no column edge.
+        sql_name = self.client.get_metric_sql_name(project_id, metric.id, metric.name or "")
         if sql_name and owns(metric.id, sql_name):
             return {column for table, column in alias_reads[normalized(sql_name)] & reads}
         parts = self.client.get_metric_parts(project_id, metric.id, known=owns)
@@ -608,17 +611,6 @@ class MicrostrategySource(DashboardServiceSource):
                 if fact_column == column and same_table(table, fact_table)
             )
         return columns
-
-    def _metric_sql_name(self, project_id: str, metric: MstrAvailableObject) -> str | None:
-        """
-        The name the SQL gives a schema metric's projection, from its definition. Without modeling
-        privileges no column alias can be read, so the metric's name stands in for it; a metric that
-        cannot be read otherwise, such as one derived in a dossier, is projected under no name.
-        """
-        sql_name = self.client.get_metric_sql_name(project_id, metric.id, metric.name or "")
-        if sql_name is None and self.client.modeling_denied:
-            return metric.name
-        return sql_name
 
     def _data_model_columns(self, dataset: MstrDataset, datamodel_entity: DashboardDataModel) -> dict[str, str]:
         """

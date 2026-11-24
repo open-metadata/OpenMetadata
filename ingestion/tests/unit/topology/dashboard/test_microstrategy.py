@@ -1623,7 +1623,9 @@ class TestColumnLineage:
         assert parts.facts == set()
         assert len(server.requests_to("/model/metrics/")) == 2
 
-    def test_without_modeling_privileges_a_metric_still_maps_to_its_named_projection(self, server, client, caplog):
+    def test_without_modeling_privileges_a_metric_gets_no_column_lineage(self, server, client, caplog):
+        # Revenue Rank's projection is named after it, but unread, its column alias is unknown, so the
+        # projection may be another metric's.
         server.overrides[f"/objects/{SCHEMA_CUBE}"] = lambda: (200, {"type": 3, "subtype": 776})
         server.overrides["/model/metrics/M_TX"] = lambda: (
             403,
@@ -1648,7 +1650,7 @@ class TestColumnLineage:
             alias_reads=aliases,
         )
 
-        assert _pairs(lineage) == [(["revenue"], f"{SCHEMA_CUBE}.Revenue Rank")]
+        assert lineage == []
         assert client.modeling_denied
         assert caplog.text.count("column-level lineage needs the service account") == 1
 
