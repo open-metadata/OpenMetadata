@@ -33,6 +33,7 @@ runs:
         # Google's Central mirror first: repo1 throttles shared CI IPs with 429s (see Makefile install_antlr_cli).
         for base in https://maven-central.storage-download.googleapis.com/maven2 https://repo1.maven.org/maven2; do
           curl --fail --location --silent --show-error --retry 3 --retry-all-errors \
+            --connect-timeout 15 --max-time 60 \
             --output "$jar" "$base/org/antlr/antlr4/4.9.2/antlr4-4.9.2-complete.jar" \
             && echo "$sum" | sha256sum --check && break
         done
