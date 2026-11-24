@@ -44,12 +44,13 @@ def workflow(name):
     return yaml.load((ROOT / ".github/workflows" / name).read_text(), Loader=yaml.BaseLoader)
 
 
-def test_generation_inputs_select_python_workloads():
+@pytest.mark.parametrize("lane", ["python", "airflow-apis"])
+def test_generation_inputs_select_consuming_workloads(lane):
     generation = runpy.run_path(str(ROOT / "scripts/check_generated_models.py"))
-    rules = yaml.safe_load((ROOT / ".github/python-ci/paths.yml").read_text())["python"]
+    rules = yaml.safe_load((ROOT / ".github/python-ci/paths.yml").read_text())[lane]
     changed = [path.relative_to(ROOT).as_posix() for path in generation["input_paths"]()]
     omitted = [path for path in changed if not any(fnmatch.fnmatchcase(path, pattern) for pattern in rules)]
-    assert not omitted, f"Generation inputs would skip Python CI: {omitted}"
+    assert not omitted, f"Generation inputs would skip {lane}: {omitted}"
 
 
 @pytest.mark.parametrize("output_file", [False, True])

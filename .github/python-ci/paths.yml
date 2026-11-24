@@ -1,4 +1,15 @@
 python:
+  - '**/pom.xml'
+  - openmetadata-dist/src/main/assembly/**
+  - bin/**
+  - bootstrap/**
+  - conf/**
+  - docker/run_local_docker.sh
+  - docker/run_local_docker_common.sh
+  - docker/development/docker-compose.yml
+  - docker/development/Dockerfile
+  - docker/development/Dockerfile.dockerignore
+  - docker/mysql/**
   - ingestion/**
   - scripts/check_generated_models.py
   - scripts/datamodel_generation.py
@@ -6,9 +17,6 @@ python:
   - scripts/prepare_classification_models.py
   - .github/actions/prepare-classification-models/**
   - .github/actions/prepare-classification-model/**
-  - .github/workflows/warm-classification-models.yml
-  - .github/workflows/py-cli-e2e-tests-v2.yml
-  - .github/workflows/reusable-py-cli-e2e-tests.yml
   - .github/actions/prepare-python-environment/**
   - .github/actions/prepare-python-build/**
   - .github/actions/setup-openmetadata-test-environment/action.yml
@@ -17,12 +25,12 @@ python:
   - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java
   - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java
   - openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java
-  - .github/workflows/ci-*.yml
+  - .github/workflows/ci-pr.yml
+  - .github/workflows/ci-merge-queue.yml
   - .github/workflows/reusable-py-unit.yml
   - .github/workflows/reusable-py-integration.yml
   - .github/python-ci/**
   - .github/workflows/reusable-build-backend.yml
-  - .github/workflows/reusable-build-ingestion.yml
   - .github/actions/python-*/**
   - .github/actions/report-test-results/**
   - .github/actions/setup-uv/**
@@ -30,11 +38,23 @@ python:
   - scripts/python_ci.py
   - scripts/python_tools.py
   - .github/scripts/python_ci_diagnostics.sh
-  - .github/scripts/python_ci_ingestion_image.sh
+  - .github/scripts/configure_docker_storage.sh
+  - docker/development/docker-compose-postgres.yml
+  - docker/validate_compose.py
   - .github/scripts/classify_test_outcome.py
-  - .github/scripts/tests/test_python_ci.py
   - Makefile
 airflow-apis:
+  - '**/pom.xml'
+  - openmetadata-dist/src/main/assembly/**
+  - bin/**
+  - bootstrap/**
+  - conf/**
+  - docker/run_local_docker.sh
+  - docker/run_local_docker_common.sh
+  - docker/development/docker-compose.yml
+  - docker/development/Dockerfile
+  - docker/development/Dockerfile.dockerignore
+  - docker/mysql/**
   - openmetadata-airflow-apis/**
   - .github/workflows/reusable-py-airflow-apis.yml
   - .github/actions/report-test-results/**
@@ -42,7 +62,8 @@ airflow-apis:
   - .github/actions/setup-uv/**
   - .github/actions/setup-openmetadata-test-environment/**
   - .github/python-ci/**
-  - .github/workflows/ci-*.yml
+  - .github/workflows/ci-pr.yml
+  - .github/workflows/ci-merge-queue.yml
   - scripts/python_tools.py
   - scripts/generate_ingestion_models.py
   - scripts/check_generated_models.py
@@ -52,3 +73,10 @@ airflow-apis:
   - ingestion/pyproject.toml
   - ingestion/setup.py
   - openmetadata-spec/**
+  - ingestion/Makefile
+  - ingestion/uv.lock
+  - .github/scripts/classify_test_outcome.py
+  - .github/workflows/reusable-build-backend.yml
+static:
+  - scripts/update_version.py
+  - .github/scripts/tests/test_python_ci.py
