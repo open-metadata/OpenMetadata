@@ -27,6 +27,7 @@ from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig 
     QueryParserType,
 )
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.parser import LineageParser
@@ -34,7 +35,7 @@ from metadata.ingestion.lineage.sql_lineage import (
     get_lineage_by_query,
     get_lineage_via_table_entity,
 )
-from metadata.ingestion.models.ometa_lineage import LineageRequest
+from metadata.ingestion.models.ometa_lineage import LineageRequest, OMetaDeleteLineageBySource
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
@@ -68,10 +69,12 @@ def get_view_lineage(
     parser_type: QueryParserType,
     extension: ViewLineageExtension | None = None,
     parser_factory: ViewLineageParserFactory | None = None,
-) -> Iterable[Either[LineageRequest]]:
+) -> Iterable[Either[LineageRequest] | Either[OMetaDeleteLineageBySource]]:
     """
     Method to generate view lineage
     Now supports cross-database lineage by accepting a list of service names.
+    A view the parser read and found reading no table yields an `OMetaDeleteLineageBySource`
+    for its view lineage instead of edges.
 
     `extension` lets a connector contribute the edges its dialect expresses outside of
     the query the parsers see -- see `LineageSource.get_view_lineage_extension`.
@@ -187,13 +190,34 @@ def get_view_lineage(
                 or []
             )
 
+        extension_contributed = False
         if extension:
-            yield from extension(
+            for lineage in extension(
                 metadata=metadata,
                 view=view,
                 view_entity=table_entity,
                 service_names=service_names,
                 masked_query=lineage_parser.masked_query,
+            ):
+                extension_contributed = True
+                yield lineage
+
+        if (
+            lineage_parser.parser
+            and not lineage_parser.used_fallback_parser
+            and not lineage_parser.source_tables
+            and not extension_contributed
+        ):
+            # No edge is left to carry the override delete, so ask for it explicitly. Every other
+            # empty outcome (no definition, unreadable SQL, upstream not ingested yet) keeps the
+            # stored lineage, and the caller only applies this under `overrideViewLineage`.
+            # ADR:2026-11-09-override-view-lineage-deletes-only-for-a-provably-tableless-view
+            yield Either(
+                left=None,
+                right=OMetaDeleteLineageBySource(
+                    entity=EntityReference(id=table_entity.id, type="table"),
+                    source=LineageSource.ViewLineage,
+                ),
             )
     except Exception as exc:
         logger.debug(traceback.format_exc())

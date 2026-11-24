@@ -4731,6 +4731,7 @@
         "playwright/e2e/Features/AIMode/InboxTaskMatrix.spec.ts",
         "playwright/e2e/Features/AIMode/InboxTasks.spec.ts",
         "playwright/e2e/Features/ActivityFeedFieldPath.spec.ts",
+        "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileDetails.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileUserDetail.spec.ts"
       ]
@@ -8715,10 +8716,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/SearchedData/SearchEmptyState/SearchEmptyState.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/ExploreUrlState.spec.ts",
-        "playwright/e2e/Flow/ConnectionConfigLayout.spec.ts",
-        "playwright/e2e/Flow/CredentialFileUpload.spec.ts",
-        "playwright/e2e/Flow/ServiceForm.spec.ts"
+        "playwright/e2e/Features/ExploreUrlState.spec.ts"
       ]
     },
     {
@@ -10840,6 +10838,14 @@
       ],
       "specs": [
         "playwright/e2e/Features/IncidentManager.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskTransitionFormModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Tasks/TaskCustomFormWorkflow.spec.ts"
       ]
     },
     {
