@@ -79,6 +79,9 @@ class SsoSamlIdpCertificateIT {
 
   private static final String OTHER_VALID_SPACED = OTHER_VALID.strip().replace("\n", " ");
 
+  /** Whitespace only: the startup reader tries to read it and fails, so a save must refuse it. */
+  private static final String WHITESPACE_ONLY = "  \n\t ";
+
   private static SecurityConfigSwap securityConfig;
 
   @BeforeAll
@@ -103,7 +106,9 @@ class SsoSamlIdpCertificateIT {
     final JsonNode stored = SecurityConfigSwap.storedConfig();
 
     for (final String unusable :
-        new String[] {NOT_A_CERTIFICATE, EXPIRED, OTHER_VALID_SINGLE_LINE, OTHER_VALID_SPACED}) {
+        new String[] {
+          NOT_A_CERTIFICATE, EXPIRED, OTHER_VALID_SINGLE_LINE, OTHER_VALID_SPACED, WHITESPACE_ONLY
+        }) {
       final Answer answer =
           SecurityConfigSwap.attemptPut(
               withIdpCertificate(securityConfig.baselineCopy(), unusable));
@@ -186,7 +191,9 @@ class SsoSamlIdpCertificateIT {
     final JsonNode stored = SecurityConfigSwap.storedConfig();
 
     for (final String unusable :
-        new String[] {NOT_A_CERTIFICATE, EXPIRED, OTHER_VALID_SINGLE_LINE, OTHER_VALID_SPACED}) {
+        new String[] {
+          NOT_A_CERTIFICATE, EXPIRED, OTHER_VALID_SINGLE_LINE, OTHER_VALID_SPACED, WHITESPACE_ONLY
+        }) {
       final Answer answer = SecurityConfigSwap.attemptPatch(replaceCertificate(unusable));
 
       assertEquals(400, answer.status(), answer.body());

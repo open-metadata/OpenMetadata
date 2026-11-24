@@ -17,6 +17,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from datetime import datetime, timedelta
 from enum import Enum
+from urllib.parse import quote, urlparse
 
 from pydantic import ValidationError
 
@@ -88,6 +89,11 @@ WILD_CARD = "*"
 class S3Metric(Enum):
     NUMBER_OF_OBJECTS = "NumberOfObjects"
     BUCKET_SIZE_BYTES = "BucketSizeBytes"
+
+
+def _is_aws_endpoint(endpoint_url: str) -> bool:
+    hostname = urlparse(endpoint_url).hostname or ""
+    return hostname.endswith(".amazonaws.com")
 
 
 class S3Source(StorageServiceSource):
@@ -803,62 +809,46 @@ class S3Source(StorageServiceSource):
         """
         Method to fetch the bucket region
         """
-        region = None
         try:
             region_resp = self.s3_client.get_bucket_location(Bucket=bucket_name)
-            region = region_resp.get("LocationConstraint")
+            # AWS reports buckets in us-east-1 with a null LocationConstraint
+            return region_resp.get("LocationConstraint") or "us-east-1"
         except Exception:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get the region for bucket: {bucket_name}")
-        return region or self.service_connection.awsConfig.awsRegion
+        return self.service_connection.awsConfig.awsRegion
 
     def _get_bucket_source_url(self, bucket_name: str) -> str | None:
+        return self._get_object_source_url(bucket_name=bucket_name)
+
+    def _get_object_source_url(self, bucket_name: str, prefix: str | None = None) -> str | None:
         """
-        Method to get the source url of s3 bucket
-        """
-        try:
-            # Check if custom console endpoint URL is configured (for external S3-compatible storage)
-            console_endpoint_url = getattr(self.service_connection, "consoleEndpointURL", None)
+        Link to the bucket (or prefix) in the storage provider's web console.
 
-            # If no custom console endpoint, use AWS S3 console with region
-            if not console_endpoint_url:
-                region = self.get_aws_bucket_region(bucket_name=bucket_name)
-                return f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}?region={region}&tab=objects"
-
-            # For external S3-compatible storage, user provides the full base path
-            # (e.g., http://localhost:9001/browser/ for MinIO)
-            # We just append the bucket name
-            base_url = str(console_endpoint_url).rstrip("/")
-            return f"{base_url}/{bucket_name}/"  # noqa: TRY300
-
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.error(f"Unable to get source url: {exc}")
-        return None
-
-    def _get_object_source_url(self, bucket_name: str, prefix: str) -> str | None:
-        """
-        Method to get the source url of s3 bucket
+        S3-compatible services get `{consoleEndpointURL}/{bucket}/{prefix}/`. When such a
+        service is configured through a non-AWS `endPointURL` without a console URL there
+        is no console to link to, so no URL is generated rather than a dead AWS console
+        link. Alternate AWS endpoints (PrivateLink, FIPS) still get the AWS console.
         """
         try:
-            # Check if custom console endpoint URL is configured (for external S3-compatible storage)
-            console_endpoint_url = getattr(self.service_connection, "consoleEndpointURL", None)
+            console_endpoint_url = self.service_connection.consoleEndpointURL
+            encoded_prefix = quote(prefix) if prefix else None
 
-            # If no custom console endpoint, use AWS S3 console with region
-            if not console_endpoint_url:
-                region = self.get_aws_bucket_region(bucket_name=bucket_name)
-                return (
-                    f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}"
-                    f"?region={region}&prefix={prefix}/"
-                    f"&showversions=false"
-                )
+            if console_endpoint_url:
+                base_url = str(console_endpoint_url).rstrip("/")
+                if encoded_prefix:
+                    return f"{base_url}/{bucket_name}/{encoded_prefix}/"
+                return f"{base_url}/{bucket_name}/"
 
-            # For external S3-compatible storage, user provides the full base path
-            # (e.g., http://localhost:9001/browser/ for MinIO)
-            # We just append the bucket name and prefix
-            base_url = str(console_endpoint_url).rstrip("/")
-            return f"{base_url}/{bucket_name}/{prefix}/"  # noqa: TRY300
+            endpoint_url = self.service_connection.awsConfig.endPointURL
+            if endpoint_url and not _is_aws_endpoint(str(endpoint_url)):
+                return None
 
+            region = self.get_aws_bucket_region(bucket_name=bucket_name)
+            base_url = f"https://s3.console.aws.amazon.com/s3/buckets/{bucket_name}?region={region}"
+            if encoded_prefix:
+                return f"{base_url}&prefix={encoded_prefix}/&showversions=false"
+            return f"{base_url}&tab=objects"  # noqa: TRY300
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get source url: {exc}")
