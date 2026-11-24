@@ -21,6 +21,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_CREATED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
+import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -2224,13 +2225,25 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   protected void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
     super.postUpdate(original, updated);
     EntityStatus to = updated.getEntityStatus();
-    if (to != null && to != original.getEntityStatus()) {
+    if (to != null && (to != original.getEntityStatus() || changesStatus(updated))) {
       if (to == EntityStatus.APPROVED) {
         PostCommitActionQueue.runOrDefer(() -> GlossaryTermPendingLabels.showWhenApproved(updated));
       } else if (to == EntityStatus.REJECTED) {
         GlossaryTermPendingLabels.dropRejected(updated);
       }
     }
+  }
+
+  // Edits by one user within a session are consolidated into one version, and `original` is then
+  // the version before the session: a term deprecated and approved again in that session looks
+  // unchanged against it. The request's own change still records the status it moved from.
+  private static boolean changesStatus(GlossaryTerm updated) {
+    ChangeDescription requestChange = updated.getIncrementalChangeDescription();
+    return requestChange != null
+        && Stream.concat(
+                listOrEmpty(requestChange.getFieldsUpdated()).stream(),
+                listOrEmpty(requestChange.getFieldsAdded()).stream())
+            .anyMatch(field -> FIELD_ENTITY_STATUS.equals(field.getName()));
   }
 
   @Override
