@@ -250,35 +250,34 @@ def test_separate_sampler_pins_physical_sql_and_keeps_logical_entity():
     )
 
 
-def test_family_lifecycle_reduces_source_activity_without_changing_representative():
-    from datetime import datetime
+def test_family_lifecycle_takes_earliest_creation_and_representative_last_write():
+    class TableInventory(Inventory):
+        def get_table(self, name):
+            assert name == "demo_project.demo_dataset.events_20260102"
+            table = BigQueryTable(name)
+            table._properties["lastModifiedTime"] = str(
+                int(datetime(2026, 2, 1, tzinfo=timezone.utc).timestamp() * 1000)
+            )
+            return table
 
     source = source_for(["events_20260101", "events_20260102"])
+    source.client = TableInventory(["events_20260101", "events_20260102"])
+    source._table_obj_cache = LRUCache(10)
     iterator = source.get_tables_name_and_type()
     assert next(iterator) == ("events_20260102", TableType.Sharded)
     context = source.context.get()
     context.table = "events_yyyymmdd"
     rows = [
-        {
-            "table_name": "events_20260101",
-            "table_type": "BASE TABLE",
-            "created_at": datetime(2026, 1, 3),
-            "updated_at": datetime(2026, 2, 1),
-        },
-        {
-            "table_name": "events_20260102",
-            "table_type": "BASE TABLE",
-            "created_at": datetime(2026, 1, 2),
-            "updated_at": None,
-        },
+        {"table_name": "events_20260101", "table_type": "BASE TABLE", "created_at": datetime(2026, 1, 3)},
+        {"table_name": "events_20260102", "table_type": "BASE TABLE", "created_at": datetime(2026, 1, 2)},
     ]
     source.engine = MagicMock()
     source.engine.connect.return_value.__enter__.return_value.execute.return_value = [
         SimpleNamespace(_asdict=lambda row=row: row) for row in rows
     ]
-    lifecycle = source.life_cycle_query_dict("select metadata")["events_yyyymmdd"]
+    lifecycle = source.life_cycle_query_dict(lifecycle_query())["events_yyyymmdd"]
     assert lifecycle.created_at == datetime(2026, 1, 2)
-    assert lifecycle.updated_at == datetime(2026, 2, 1)
+    assert lifecycle.updated_at == datetime(2026, 2, 1, tzinfo=timezone.utc)
     assert context.shard_family.representative.tableName == "events_20260102"
 
 
@@ -380,6 +379,8 @@ def test_metadata_batches_isolate_datasets_and_support_out_of_order_reads(metada
 
 def test_family_lifecycle_and_representative_ddl_coexist_with_ordinary_batches(metadata_batches):
     source, queries = metadata_batches
+    source.client.get_table = BigQueryTable
+    source._table_obj_cache = LRUCache(10)
     context = source.context.get()
     assert source.get_schema_definition(TableType.Regular, "ordinary_0000", "demo_dataset", None) == (
         "CREATE TABLE demo_dataset.ordinary_0000 (id INT64)"
