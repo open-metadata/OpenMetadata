@@ -147,6 +147,7 @@ import org.openmetadata.service.search.fitness.FitnessVerdict;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -1853,8 +1854,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
               processedCounts,
               failedCounts);
 
-      for (String entityType :
-          org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+      for (String entityType : EmbeddedEntityTypes.ALL) {
         int totalRecords = entityTotals.getOrDefault(entityType, 0);
         int batches = calculateReembedNumberOfBatches(totalRecords, batchSize);
         if (batches == 0) {
@@ -1906,8 +1906,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       signalReembedConsumersToStop(finalConsumerThreads, taskQueue);
       consumerLatch.await();
 
-      for (String entityType :
-          org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+      for (String entityType : EmbeddedEntityTypes.ALL) {
         int processed =
             processedCounts
                 .getOrDefault(entityType, new java.util.concurrent.atomic.AtomicInteger(0))
@@ -2060,8 +2059,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
   private int calculateReembedTotalBatches(int batchSize, Map<String, Integer> entityTotals) {
     int totalBatches = 0;
-    for (String entityType :
-        org.openmetadata.service.search.vector.utils.AvailableEntityTypes.LIST) {
+    for (String entityType : EmbeddedEntityTypes.ALL) {
       try {
         int totalRecords = Entity.getEntityRepository(entityType).getDao().listTotalCount();
         entityTotals.put(entityType, totalRecords);

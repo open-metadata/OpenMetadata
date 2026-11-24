@@ -72,7 +72,7 @@ import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorIndexService;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 
 /**
  * Elasticsearch implementation using new Java API client with custom bulk handler
@@ -1147,7 +1147,7 @@ public class ElasticSearchBulkSink implements BulkSink {
   boolean isVectorEmbeddingEnabledForEntity(String entityType) {
     return searchRepository.isVectorEmbeddingEnabled()
         && ElasticSearchVectorService.getInstance() != null
-        && AvailableEntityTypes.isVectorIndexable(entityType)
+        && EmbeddedEntityTypes.isEmbedded(entityType)
         && searchRepository.getIndexMapping(entityType) != null;
   }
 

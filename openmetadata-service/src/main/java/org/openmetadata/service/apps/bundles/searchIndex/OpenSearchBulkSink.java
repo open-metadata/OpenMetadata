@@ -64,7 +64,7 @@ import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorIndexService;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
@@ -1170,7 +1170,7 @@ public class OpenSearchBulkSink implements BulkSink {
   boolean isVectorEmbeddingEnabledForEntity(String entityType) {
     return searchRepository.isVectorEmbeddingEnabled()
         && OpenSearchVectorService.getInstance() != null
-        && AvailableEntityTypes.isVectorIndexable(entityType)
+        && EmbeddedEntityTypes.isEmbedded(entityType)
         && searchRepository.getIndexMapping(entityType) != null;
   }
 

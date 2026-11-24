@@ -4,7 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 
 @Slf4j
 public final class VectorSearchUtils {
@@ -20,7 +20,7 @@ public final class VectorSearchUtils {
     if (!Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
       return;
     }
-    if (!AvailableEntityTypes.isVectorIndexable(entityType)) {
+    if (!EmbeddedEntityTypes.isEmbedded(entityType)) {
       return;
     }
     OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();

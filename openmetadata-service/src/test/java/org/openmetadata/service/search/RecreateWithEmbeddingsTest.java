@@ -13,23 +13,23 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
+import org.openmetadata.service.search.vector.utils.EmbeddedEntityTypes;
 
 class RecreateWithEmbeddingsTest {
 
   @Test
   void coversAllVectorTypes_matchesCanonicalCamelCaseNames() {
     // Regression: the reindex job carries canonical camelCase entity names ("glossaryTerm"),
-    // while AvailableEntityTypes.SET is lowercased — a case-sensitive containsAll never matched,
-    // so the chunk-index recreate silently never fired on a full run.
-    Set<String> canonicalNames = new HashSet<>(AvailableEntityTypes.LIST);
+    // while the chunk types used to be compared lowercased. A case-sensitive containsAll never
+    // matched, so the chunk-index recreate silently never fired on a full run.
+    Set<String> canonicalNames = new HashSet<>(EmbeddedEntityTypes.ALL);
     assertTrue(RecreateWithEmbeddings.coversAllVectorTypes(canonicalNames));
   }
 
   @Test
   void coversAllVectorTypes_matchesLowercasedNames() {
     Set<String> lowercased =
-        AvailableEntityTypes.LIST.stream()
+        EmbeddedEntityTypes.ALL.stream()
             .map(s -> s.toLowerCase(Locale.ROOT))
             .collect(Collectors.toSet());
     assertTrue(RecreateWithEmbeddings.coversAllVectorTypes(lowercased));
@@ -37,7 +37,7 @@ class RecreateWithEmbeddingsTest {
 
   @Test
   void stagesAssetChunksForExistingSavedEntityLists() {
-    Set<String> saved = new HashSet<>(AvailableEntityTypes.LIST);
+    Set<String> saved = new HashSet<>(EmbeddedEntityTypes.ALL);
     saved.remove("ontologyConcept");
     saved.remove("ontologyProperty");
     assertTrue(RecreateWithEmbeddings.shouldStageChunkRecreate(new EventPublisherJob(), saved));
@@ -45,7 +45,7 @@ class RecreateWithEmbeddingsTest {
 
   @Test
   void coversAllVectorTypes_falseWhenAnyTypeMissing() {
-    Set<String> missingOne = new HashSet<>(AvailableEntityTypes.LIST);
+    Set<String> missingOne = new HashSet<>(EmbeddedEntityTypes.ALL);
     missingOne.remove("glossaryTerm");
     assertFalse(
         RecreateWithEmbeddings.coversAllVectorTypes(missingOne),
@@ -53,8 +53,18 @@ class RecreateWithEmbeddingsTest {
   }
 
   @Test
+  void coversAllVectorTypes_countsATypeInTwoCasingsOnce() {
+    Set<String> missingOne = new HashSet<>(EmbeddedEntityTypes.DATA_ASSETS);
+    missingOne.remove("table");
+    missingOne.add("glossaryterm");
+    assertFalse(
+        RecreateWithEmbeddings.coversAllVectorTypes(missingOne),
+        "a type named in two casings must not stand in for a missing type");
+  }
+
+  @Test
   void coversAllVectorTypes_trueForSupersets() {
-    Set<String> superset = new HashSet<>(AvailableEntityTypes.LIST);
+    Set<String> superset = new HashSet<>(EmbeddedEntityTypes.ALL);
     superset.add("user");
     superset.add("team");
     assertTrue(RecreateWithEmbeddings.coversAllVectorTypes(superset));
@@ -70,7 +80,7 @@ class RecreateWithEmbeddingsTest {
     assertNull(jobData.getRecreateIndex(), "sanitizer-shaped config carries no recreateIndex");
     assertTrue(
         RecreateWithEmbeddings.shouldStageChunkRecreate(
-            jobData, new HashSet<>(AvailableEntityTypes.LIST)));
+            jobData, new HashSet<>(EmbeddedEntityTypes.ALL)));
   }
 
   @Test
@@ -78,12 +88,12 @@ class RecreateWithEmbeddingsTest {
     // The jobless ops-CLI createIndexes path must never stage a chunk sweep.
     assertFalse(
         RecreateWithEmbeddings.shouldStageChunkRecreate(
-            null, new HashSet<>(AvailableEntityTypes.LIST)));
+            null, new HashSet<>(EmbeddedEntityTypes.ALL)));
   }
 
   @Test
   void shouldStageChunkRecreate_falseForPartialCoverage() {
-    Set<String> missingOne = new HashSet<>(AvailableEntityTypes.LIST);
+    Set<String> missingOne = new HashSet<>(EmbeddedEntityTypes.ALL);
     missingOne.remove("table");
     assertFalse(
         RecreateWithEmbeddings.shouldStageChunkRecreate(new EventPublisherJob(), missingOne));
