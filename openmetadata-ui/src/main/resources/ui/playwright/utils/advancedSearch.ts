@@ -260,10 +260,10 @@ export const selectOption = async (
   const isPopupOpen =
     (await page.locator(`[aria-controls="${listboxId}"]`).count()) > 0;
   if (isPopupOpen) {
-    await control.blur();
-    // Best effort: a focus-trapping modal can pull focus straight back and
-    // keep the popup open, so asserting it closed flakes (seen in an antd
-    // ConfirmationModal under load).
+    // Best effort: a re-render can replace the control after the count, and a
+    // focus-trapping modal can pull focus straight back and keep the popup
+    // open, so asserting it closed flakes (seen in an antd ConfirmationModal).
+    await control.blur({ timeout: 1000 }).catch(() => undefined);
     await page
       .locator(`[role="listbox"][id="${listboxId}"]`)
       .waitFor({ state: 'hidden', timeout: 2000 })
