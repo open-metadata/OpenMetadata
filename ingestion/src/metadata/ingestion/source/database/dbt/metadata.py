@@ -17,11 +17,11 @@ DBT source methods.
 import contextlib
 import re
 import traceback
-from collections.abc import Iterable
 from copy import deepcopy
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
 from functools import cached_property
-from typing import Any
+from typing import Any, Dict, Iterable, List, Optional, Union  # noqa: UP035
 
 from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.table_binding import TableLookup
@@ -32,6 +32,7 @@ from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseReq
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
+
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import (
@@ -42,7 +43,6 @@ from metadata.generated.schema.entity.data.metric import (
     MetricFilter,
     MetricGranularity,
     MetricMeasure,
-    UnitOfMeasurement,
 )
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -50,7 +50,6 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
-from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -68,9 +67,10 @@ from metadata.generated.schema.tests.testDefinition import (
     TestDefinition,
     TestPlatform,
 )
+from metadata.generated.schema.type.assetCertification import AssetCertification
 from metadata.generated.schema.type.basic import (
-    EntityExtension,
     FullyQualifiedEntityName,
+    Markdown,
     SqlQuery,
     Timestamp,
     Uuid,
@@ -83,15 +83,12 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import (
-    LineageRequest,
-    OMetaDeleteLineageBySource,
-    OMetaLineageRequest,
-)
+from metadata.ingestion.models.ometa_lineage import LineageRequest, OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.client import APIError
@@ -140,7 +137,6 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_snapshot_effective_schema_and_database,
     get_source_physical_name,
     is_compiled_only_result,
-    is_dbt_sql_node,
     map_dbt_metric_type,
     order_metrics_by_dependency,
     validate_custom_property_value,
@@ -151,13 +147,10 @@ from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.filters import filter_by_tag
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels, get_tag_label
 from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
-
-RESOLVED_TABLES_CACHE_SIZE = LRU_CACHE_SIZE
 
 
 class InvalidServiceException(Exception):  # noqa: N818
@@ -180,19 +173,13 @@ class DbtSource(DbtServiceSource):
             self.source_config.dbtClassificationName if self.source_config.dbtClassificationName else "dbtTags"
         )
         self.omd_custom_properties = {}
-        self.omd_metric_custom_properties = {}
         self.extracted_custom_properties = {}
         self.extracted_domains = {}
-        self.extracted_data_products = {}
         # Upstream nodes already reported as unresolved, so a dbt project whose source
         # database was never ingested reports each missing upstream once instead of once
         # per referencing model. Bounded by the number of distinct upstream nodes in the
         # project and reset per project in yield_data_models.
         self.reported_unresolved_upstreams: set[str] = set()
-        # Tables found so far, keyed by how the manifest names them. A table is met once as
-        # its own model and again for every model and test that depends on it. Reset per
-        # project in yield_data_models.
-        self.resolved_tables: LRUCache[Table] = LRUCache(RESOLVED_TABLES_CACHE_SIZE)
         self._load_omd_custom_properties()
 
     @cached_property
@@ -222,7 +209,7 @@ class DbtSource(DbtServiceSource):
         )
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         return cls(config, metadata)
 
@@ -238,25 +225,22 @@ class DbtSource(DbtServiceSource):
 
     def _load_omd_custom_properties(self):
         """
-        Loads custom properties definitions for the entity types dbt writes them to
+        Loads custom properties definitions for tables
         """
-        self.omd_custom_properties = self._fetch_custom_property_definitions("table")
-        self.omd_metric_custom_properties = self._fetch_custom_property_definitions("metric")
-
-    def _fetch_custom_property_definitions(self, entity_type: str) -> dict[str, Any]:
-        definitions: dict[str, Any] = {}
         try:
-            response = self.metadata.client.get(f"/metadata/types/name/{entity_type}?fields=customProperties")
+            response = self.metadata.client.get(
+                f"/metadata/types/name/table?fields=customProperties"  # noqa: F541
+            )
 
-            for prop in (response or {}).get("customProperties") or []:
-                definitions[prop["name"]] = prop
+            if response and "customProperties" in response:
+                for prop in response["customProperties"]:
+                    self.omd_custom_properties[prop["name"]] = prop
 
-            logger.debug("Loaded %d custom properties for %s", len(definitions), entity_type)
+            logger.debug(f"Loaded {len(self.omd_custom_properties)} custom properties for tables")
         except Exception as exc:
-            logger.warning("Error loading custom properties for %s: %s", entity_type, exc)
-        return definitions
+            logger.warning(f"Error loading custom properties: {exc}")
 
-    def get_dbt_domain(self, manifest_node: Any) -> EntityReference | None:
+    def get_dbt_domain(self, manifest_node: Any) -> Optional[EntityReference]:  # noqa: UP045
         """
         Extracts domain from meta.openmetadata.domain and returns EntityReference
         """
@@ -282,8 +266,34 @@ class DbtSource(DbtServiceSource):
             logger.warning(f"Unable to ingest domain from DBT due to: {exc}")
 
         return None
+    
+    def get_dbt_certification(self, manifest_node: Any, catalog_node: Optional[Any]) -> Optional[AssetCertification]:
+        """
+        Extracts certification from meta.openmetadata.certification and returns AssetCertification.
+        Sets the expiry date to the implicit default which is also applied when using the OpenMetadata UI (+3 months)
+        """
+        try:
+            if not manifest_node or not hasattr(manifest_node, "meta")or not manifest_node.meta:
+                return None
+            
+            dbt_meta_info = DbtMeta(**manifest_node.meta)
+            if dbt_meta_info.openmetadata:
+                certification = manifest_node.meta.get("openmetadata",{}).get("certification")
+                if certification:
+                    tag_label = get_tag_label(
+                        metadata=self.metadata,
+                        tag_name=certification.split(fqn.FQN_SEPARATOR)[-1],
+                        classification_name="Certification"                
+                    )
+                    expiry_date = datetime.now() + relativedelta(months=3)
+                    asset_certification = AssetCertification(tagLabel=tag_label, appliedDate=int(datetime.today().timestamp()), expiryDate=int(expiry_date.timestamp()))
+                    return asset_certification
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to ingest certification from DBT due to: {exc}")
+        return None
 
-    def get_dbt_owner(self, manifest_node: Any, catalog_node: Any | None) -> EntityReferenceList | None:  # noqa: C901
+    def get_dbt_owner(self, manifest_node: Any, catalog_node: Optional[Any]) -> Optional[EntityReferenceList]:  # noqa: C901, UP045
         """
         Returns dbt owner with priority:
         1. manifest_node.meta.openmetadata.owner (OpenMetadata docs format - HIGHEST PRIORITY)
@@ -405,7 +415,7 @@ class DbtSource(DbtServiceSource):
                     else:
                         logger.warning(f"Unable to find the node or columns in the catalog file for dbt node: {key}")
 
-    def filter_tags(self, tags: list[str]) -> list[str]:
+    def filter_tags(self, tags: List[str]) -> List[str]:  # noqa: UP006
         """
         Filter tags based on tag filter pattern if configured
         """
@@ -460,52 +470,6 @@ class DbtSource(DbtServiceSource):
             logger.warning(f"Failed to update dbt domain for {table_fqn}: {exc}")
             logger.debug(traceback.format_exc())
 
-    def process_dbt_data_products(self, data_model_link: DataModelLink):
-        """
-        Attach the table to every Data Product listed in
-        meta.openmetadata.dataProducts. Products are resolved through the
-        OpenMetadata API; unknown products are reported as warnings and never
-        created implicitly. Re-running is idempotent because the assets/add
-        endpoint only adds the relationship when it is missing.
-        """
-        table_entity: Table = data_model_link.table_entity
-
-        if not table_entity:
-            return
-
-        table_fqn = model_str(table_entity.fullyQualifiedName)
-        product_names = self.extracted_data_products.get(table_fqn)
-
-        if not product_names:
-            return
-
-        asset_ref = EntityReference(id=table_entity.id, type="table")
-
-        for product_name in product_names:
-            try:
-                data_product = self.metadata.get_by_name(entity=DataProduct, fqn=product_name)
-
-                if not data_product:
-                    logger.warning(
-                        "Data Product '%s' not found in OpenMetadata for table %s; skipping assignment",
-                        product_name,
-                        table_fqn,
-                    )
-                    continue
-
-                self.metadata.add_assets_to_data_product(model_str(data_product.fullyQualifiedName), [asset_ref])
-                logger.info("Added table %s to Data Product '%s'", table_fqn, product_name)
-
-            except Exception as exc:  # pylint: disable=broad-except
-                logger.warning(
-                    "Failed to assign Data Product '%s' to %s: %s. If this is a domain validation "
-                    "error, ensure the table's domain matches the Data Product's domain.",
-                    product_name,
-                    table_fqn,
-                    exc,
-                )
-                logger.debug(traceback.format_exc())
-
     def process_dbt_custom_properties(self, data_model_link: DataModelLink):
         """
         Method to process DBT custom properties using new patch_custom_properties method
@@ -554,23 +518,8 @@ class DbtSource(DbtServiceSource):
     def _validate_custom_properties(
         self,
         table_entity: Table,
-        custom_properties: dict[str, Any],
-    ) -> dict[str, Any] | None:
-        """
-        Validates and converts a table's custom properties against the table definitions
-        """
-        return self._validate_custom_properties_against(
-            definitions=self.omd_custom_properties,
-            custom_properties=custom_properties,
-            entity_label=f"Table {model_str(table_entity.fullyQualifiedName)}",
-        )
-
-    def _validate_custom_properties_against(
-        self,
-        definitions: dict[str, Any],
-        custom_properties: dict[str, Any],
-        entity_label: str,
-    ) -> dict[str, Any] | None:
+        custom_properties: Dict[str, Any],  # noqa: UP006
+    ) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
         """
         Validates and converts custom properties with comprehensive type checking.
 
@@ -580,30 +529,30 @@ class DbtSource(DbtServiceSource):
         3. Format validation - Does the value meet format requirements?
 
         Args:
-            definitions: Custom property definitions registered for the target entity type
+            table_entity: The table entity being processed
             custom_properties: Dictionary of custom property names to values from DBT
-            entity_label: Entity being processed, used in the validation log messages
 
         Returns:
             Dictionary of validated and converted custom properties, or None if no valid properties
         """
         valid_custom_properties = {}
         validation_errors = []
+        table_fqn = table_entity.fullyQualifiedName.root
 
-        logger.debug("Validating %d custom properties for %s", len(custom_properties), entity_label)
+        logger.debug(f"Validating {len(custom_properties)} custom properties for table {table_fqn}")
 
         for field_name, field_value in custom_properties.items():
             # Step 1: Check if property exists in OpenMetadata
-            if field_name not in definitions:
+            if field_name not in self.omd_custom_properties:
                 error_msg = (
                     f"Custom property '{field_name}' not found in OpenMetadata. "
                     f"Please create it in the OpenMetadata UI before ingesting."
                 )
-                logger.warning("%s: %s", entity_label, error_msg)
+                logger.warning(f"Table {table_fqn}: {error_msg}")
                 validation_errors.append(f"{field_name}: Property not defined")
                 continue
 
-            custom_property = definitions[field_name]
+            custom_property = self.omd_custom_properties[field_name]
             property_type = custom_property["propertyType"]["name"]
 
             # Extract property configuration (format, enum values, etc.)
@@ -629,7 +578,7 @@ class DbtSource(DbtServiceSource):
                     value=field_value,
                     error_detail=error_detail,
                 )
-                logger.warning("%s: %s", entity_label, error_msg)
+                logger.warning(f"Table {table_fqn}: {error_msg}")
                 validation_errors.append(f"{field_name}: {error_detail}")
                 continue
 
@@ -638,51 +587,38 @@ class DbtSource(DbtServiceSource):
                 error_msg = (
                     f"Failed to convert custom property '{field_name}' (type: {property_type}, value: {field_value})"
                 )
-                logger.warning("%s: %s", entity_label, error_msg)
+                logger.warning(f"Table {table_fqn}: {error_msg}")
                 validation_errors.append(f"{field_name}: Conversion failed")
                 continue
 
             # Log if enum values were filtered
             if property_type == "enum" and converted_value != field_value:
                 logger.debug(
-                    "%s: Filtered enum property '%s' from %s to %s",
-                    entity_label,
-                    field_name,
-                    field_value,
-                    converted_value,
+                    f"Table {table_fqn}: Filtered enum property '{field_name}' from {field_value} to {converted_value}"
                 )
 
             # Successfully validated and converted
             valid_custom_properties[field_name] = converted_value
             logger.debug(
-                "✓ Validated custom property '%s' for %s: %s → %s (type: %s)",
-                field_name,
-                entity_label,
-                field_value,
-                converted_value,
-                property_type,
+                f"✓ Validated custom property '{field_name}' for table {table_fqn}: "
+                f"{field_value} → {converted_value} (type: {property_type})"
             )
 
         # Log validation summary
         if validation_errors:
             logger.warning(
-                "Custom property validation errors for %s:\n%s",
-                entity_label,
-                "\n".join(f"  • {err}" for err in validation_errors),
+                f"Custom property validation errors for table {table_fqn}:\n"
+                + "\n".join(f"  • {err}" for err in validation_errors)
             )
 
         if valid_custom_properties:
             logger.debug(
-                "Successfully validated %d/%d custom properties for %s",
-                len(valid_custom_properties),
-                len(custom_properties),
-                entity_label,
+                f"Successfully validated {len(valid_custom_properties)}/{len(custom_properties)} "
+                f"custom properties for table {table_fqn}"
             )
         else:
             logger.warning(
-                "No valid custom properties found for %s (attempted: %d)",
-                entity_label,
-                len(custom_properties),
+                f"No valid custom properties found for table {table_fqn} (attempted: {len(custom_properties)})"
             )
 
         return valid_custom_properties if valid_custom_properties else None
@@ -780,13 +716,7 @@ class DbtSource(DbtServiceSource):
                         try:
                             return datetime.strptime(completed, DBT_RUN_RESULT_DATE_FORMAT)
                         except ValueError:
-                            dot = completed.rfind(".")
-                            if dot != -1:
-                                completed = completed[: dot + 7] + "Z"
-                            try:
-                                return datetime.strptime(completed, DBT_RUN_RESULT_DATE_FORMAT)
-                            except ValueError:
-                                return None
+                            return None
                     return completed
             return None
 
@@ -840,12 +770,13 @@ class DbtSource(DbtServiceSource):
         # A freshness check tests the source table itself. Sources are graph roots with no
         # depends_on, so resolving upstreams the way a dbt test node does always yields an
         # empty list and leaves the test case with no table to attach to.
-        table_entity = self._resolve_table(
-            get_corrected_name(manifest_node.database),
-            get_corrected_name(manifest_node.schema_),
-            get_source_physical_name(manifest_node),
+        source_fqn = self._build_table_fqn(
+            database_name=get_corrected_name(manifest_node.database),
+            schema_name=get_corrected_name(manifest_node.schema_),
+            table_name=get_source_physical_name(manifest_node),
             literal_table_name=True,
         )
+        table_entity = self._get_table_entity(table_fqn=source_fqn, literal_table_name=True) if source_fqn else None
         if not table_entity:
             logger.warning(f"Table entity not found for dbt source {key}, skipping its freshness test")
             return
@@ -982,38 +913,12 @@ class DbtSource(DbtServiceSource):
 
         return None
 
-    def _resolve_table(
-        self,
-        database_name: str | None,
-        schema_name: str | None,
-        table_name: str,
-        *,
-        literal_table_name: bool = False,
-    ) -> Table | None:
-        key = (database_name, schema_name, table_name, literal_table_name)
-        if key in self.resolved_tables:
-            return self.resolved_tables.get(key)
-        table_fqn = self._build_table_fqn(
-            database_name=database_name,
-            schema_name=schema_name,
-            table_name=table_name,
-            literal_table_name=literal_table_name,
-        )
-        table_entity = (
-            self._get_table_entity(table_fqn=table_fqn, literal_table_name=literal_table_name) if table_fqn else None
-        )
-        # Misses are not kept: _get_table_entity returns None for a failed lookup as well.
-        if table_entity:
-            self.resolved_tables.put(key, table_entity)
-        return table_entity
-
     # pylint: disable=too-many-locals, too-many-branches
     def yield_data_models(self, dbt_objects: DbtObjects) -> Iterable[Either[DataModelLink]]:  # noqa: C901
         """
         Yield the data models
         """
         self.reported_unresolved_upstreams.clear()
-        self.resolved_tables.clear()
         if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest:
             logger.debug("Parsing DBT Data Models")
             manifest_entities = {
@@ -1125,19 +1030,33 @@ class DbtSource(DbtServiceSource):
                             )
                             or []
                         )
+                    table_fqn = self._build_table_fqn(
+                        database_name=get_corrected_name(node_database),
+                        schema_name=get_corrected_name(node_schema),
+                        table_name=model_name,
+                        literal_table_name=resource_type == DbtCommonEnum.SOURCE.value,
+                    )
+
                     dbt_compiled_query = get_dbt_compiled_query(manifest_node)
                     dbt_raw_query = get_dbt_raw_query(manifest_node)
 
-                    if table_entity := self._resolve_table(
-                        get_corrected_name(node_database),
-                        get_corrected_name(node_schema),
-                        model_name,
+                    if table_entity := self._get_table_entity(
+                        table_fqn=table_fqn,
                         literal_table_name=resource_type == DbtCommonEnum.SOURCE.value,
                     ):
                         logger.debug(
                             f"Using Table Entity for datamodel: {table_entity.fullyQualifiedName.root}"
                             f"with id {table_entity.id}"
                         )
+                        # Update certification if needed
+                        if manifest_node.meta:
+                            new_asset_certification = self.get_dbt_certification(manifest_node,catalog_node)
+                            if new_asset_certification:
+                                if table_entity.certification == None or (table_entity.certification != None and new_asset_certification.tagLabel.tagFQN != table_entity.certification.tagLabel.tagFQN):
+                                    table_entity_modified = deepcopy(table_entity)
+                                    table_entity_modified.certification=new_asset_certification
+                                    self.metadata.patch(Table,table_entity,table_entity_modified)
+
                         # catalogMapping and searchAcrossDatabases can resolve the table under another
                         # database or service, and the domain, data products and custom properties
                         # read from meta are applied by the FQN of the table that was found
@@ -1149,17 +1068,6 @@ class DbtSource(DbtServiceSource):
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
                             upstream_table_ids={node.fqn: node.table_id for node in upstream_nodes if node.table_id},
-                            parse_query_lineage=is_dbt_sql_node(manifest_node),
-                            # Sources and seeds never list parents, and dbt Mesh injects another
-                            # project's public models with no parents, so only this project's
-                            # models and snapshots qualify.
-                            # ADR:2026-11-09-dbt-override-lineage-deletes-when-the-manifest-declares-no-parent
-                            declared_no_upstream=resource_type in ("model", "snapshot")
-                            and (
-                                dbt_project_name is None
-                                or getattr(manifest_node, "package_name", None) == dbt_project_name
-                            )
-                            and not getattr(getattr(manifest_node, "depends_on", None), "nodes", None),
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
                                 resourceType=resource_type,
@@ -1266,16 +1174,25 @@ class DbtSource(DbtServiceSource):
                     if check_ephemeral_node(parent_node):
                         upstream_nodes.extend(self.parse_upstream_nodes_with_names(manifest_entities, parent_node))
                     else:
-                        # check if the parent table exists in OM before adding it to the upstream list
-                        table_entity = self._resolve_table(
-                            get_corrected_name(parent_database),
-                            get_corrected_name(parent_schema),
-                            table_name,
+                        parent_fqn = self._build_table_fqn(
+                            database_name=get_corrected_name(parent_database),
+                            schema_name=get_corrected_name(parent_schema),
+                            table_name=table_name,
                             literal_table_name=parent_resource_type == DbtCommonEnum.SOURCE.value,
+                        )
+
+                        # check if the parent table exists in OM before adding it to the upstream list
+                        table_entity = (
+                            self._get_table_entity(
+                                table_fqn=parent_fqn,
+                                literal_table_name=parent_resource_type == DbtCommonEnum.SOURCE.value,
+                            )
+                            if parent_fqn
+                            else None
                         )
                         # catalogMapping and searchAcrossDatabases can resolve the parent under another
                         # database or service, so lineage and tests follow the table that was found
-                        if table_entity:
+                        if parent_fqn and table_entity:
                             upstream_nodes.append(
                                 build_upstream_node(
                                     parent_node,
@@ -1290,7 +1207,7 @@ class DbtSource(DbtServiceSource):
 
         return upstream_nodes
 
-    def parse_data_model_columns(self, manifest_node: Any, catalog_node: Any) -> list[Column]:
+    def parse_data_model_columns(self, manifest_node: Any, catalog_node: Any) -> List[Column]:  # noqa: UP006
         """
         Method to parse the DBT columns
         """
@@ -1382,7 +1299,7 @@ class DbtSource(DbtServiceSource):
 
         return columns
 
-    def parse_exposure_node(self, exposure_spec) -> Any | None:
+    def parse_exposure_node(self, exposure_spec) -> Optional[Any]:  # noqa: UP045
         """
         Parses the exposure node verifying if it's type is supported and if provided label matches FQN of
         Open Metadata entity. Returns entity object if both conditions are met.
@@ -1515,25 +1432,10 @@ class DbtSource(DbtServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Failed to parse the node {upstream_node} to capture lineage: {exc}")
 
-        if self.source_config.overrideLineage and data_model_link.declared_no_upstream:
-            yield Either(
-                right=OMetaDeleteLineageBySource(
-                    entity=EntityReference(id=to_entity.id, type="table"),
-                    source=LineageSource.DbtLineage,
-                )
-            )
-
     def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[LineageRequest]]:
         """
         Method to process DBT lineage from queries
         """
-        if data_model_link.datamodel.sql and not data_model_link.parse_query_lineage:
-            logger.debug(
-                "Skipping query lineage for %s: its dbt code is not SQL, so its lineage comes from the dbt"
-                " dependencies only",
-                model_str(data_model_link.table_entity.fullyQualifiedName),
-            )
-            return
         if data_model_link.datamodel.sql:
             to_entity: Table = data_model_link.table_entity
             logger.debug(f"Processing DBT Query lineage for: {to_entity.fullyQualifiedName.root}")
@@ -1594,7 +1496,7 @@ class DbtSource(DbtServiceSource):
                     entity_type=Table,
                     fqn_search_string=upstream_node,
                 )
-                from_entity: Table | list[Table] | None = get_entity_from_es_result(
+                from_entity: Optional[Union[Table, List[Table]]] = get_entity_from_es_result(  # noqa: UP006, UP007, UP045
                     entity_list=from_es_result, fetch_multiple_entities=False
                 )
                 if from_entity and to_entity:
@@ -1660,47 +1562,6 @@ class DbtSource(DbtServiceSource):
 
             tags = self._extract_metric_tags(metric_node)
 
-            # Governance metadata lives in the node-level meta (dbt copies config.meta: onto
-            # manifest_node.meta while parsing). Tables already ingest owners/domain/tier/
-            # glossary/custom properties from there; metrics must too.
-            dbt_meta = None
-            raw_meta = getattr(metric_node, "meta", None)
-            if raw_meta:
-                dbt_meta = DbtMeta(**raw_meta)
-                # Tier/glossary/tags flow through the tag channel; owner/domain/custom
-                # properties/unit of measurement are read directly below. process_dbt_meta also
-                # records table-level domain and custom-property side effects, so only feed it
-                # meta that needs the tag channel.
-                om_meta = raw_meta.get("openmetadata") if isinstance(raw_meta, dict) else None
-                if isinstance(om_meta, dict) and any(om_meta.get(k) for k in ("tier", "glossary", "tags")):
-                    tag_meta = {"openmetadata": {k: om_meta[k] for k in ("tier", "glossary", "tags") if om_meta.get(k)}}
-                    tags = (tags or []) + (self.process_dbt_meta(tag_meta, metric_name) or [])
-
-            owners = self.get_dbt_owner(metric_node, None)
-            domain_ref = self.get_dbt_domain(metric_node)
-            unit_of_measurement = None
-            custom_unit = None
-            if dbt_meta and dbt_meta.openmetadata and dbt_meta.openmetadata.unit:
-                unit_value = dbt_meta.openmetadata.unit.upper()
-                if unit_value in set(UnitOfMeasurement.__members__) and unit_value != UnitOfMeasurement.OTHER.value:
-                    unit_of_measurement = UnitOfMeasurement(unit_value)
-                else:
-                    # MetricRepository.validateCustomUnitOfMeasurement nulls customUnitOfMeasurement
-                    # unless unitOfMeasurement is OTHER, and rejects OTHER without one - so a
-                    # free-form dbt unit only survives when both are sent together.
-                    unit_of_measurement = UnitOfMeasurement.OTHER
-                    custom_unit = dbt_meta.openmetadata.unit
-            extension = None
-            if dbt_meta and dbt_meta.openmetadata and dbt_meta.openmetadata.customProperties:
-                # EntityRepository.validateExtension rejects the whole create request when a field
-                # is not registered for the metric type, which would cost the metric itself and the
-                # rest of its governance metadata - so drop unknown fields like the table path does.
-                valid_properties = self._validate_custom_properties_against(
-                    definitions=self.omd_metric_custom_properties,
-                    custom_properties=dict(dbt_meta.openmetadata.customProperties),
-                    entity_label=f"Metric {metric_name}",
-                )
-                extension = EntityExtension(root=valid_properties) if valid_properties else None
             create_metric = CreateMetricRequest(
                 name=metric_name,
                 displayName=label or metric_name,
@@ -1713,11 +1574,6 @@ class DbtSource(DbtServiceSource):
                 measures=measures or None,
                 filters=filters or None,
                 tags=tags or None,
-                owners=owners,
-                domains=[domain_ref.fullyQualifiedName] if domain_ref and domain_ref.fullyQualifiedName else None,
-                unitOfMeasurement=unit_of_measurement,
-                customUnitOfMeasurement=custom_unit,
-                extension=extension,
             )
 
             yield Either(right=create_metric)
@@ -2167,9 +2023,6 @@ class DbtSource(DbtServiceSource):
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.domain:
                 self.extracted_domains[table_fqn] = dbt_meta_info.openmetadata.domain
 
-            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.dataProducts:
-                self.extracted_data_products[table_fqn] = dbt_meta_info.openmetadata.dataProducts
-
             if self.source_config.includeTags and dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tags:
                 for tag_fqn in dbt_meta_info.openmetadata.tags:
                     if not tag_fqn:
@@ -2303,10 +2156,11 @@ class DbtSource(DbtServiceSource):
                 # entityLink shapes), so its description is only set on creation and
                 # never patched from an individual node.
                 if not check_test_definition_exists:
+                    test_description = get_dbt_test_description(manifest_node)
                     yield Either(
                         right=CreateTestDefinitionRequest(
                             name=test_definition_name,
-                            description=get_dbt_test_description(manifest_node),
+                            description=Markdown(test_description) if test_description else None,
                             entityType=entity_type,
                             testPlatforms=[TestPlatform.dbt],
                             parameterDefinition=create_test_case_parameter_definitions(manifest_node),
@@ -2356,7 +2210,7 @@ class DbtSource(DbtServiceSource):
                         yield Either(
                             right=CreateTestCaseRequest(
                                 name=manifest_node.name,
-                                description=description,
+                                description=Markdown(description) if description else None,
                                 testDefinition=FullyQualifiedEntityName(test_definition_name),
                                 entityLink=entity_link_str,
                                 parameterValues=create_test_case_parameter_values(dbt_test),
@@ -2376,7 +2230,7 @@ class DbtSource(DbtServiceSource):
                 )
             )
 
-    def patch_dbt_test_case_description(self, test_case: TestCase, description: str | None) -> None:
+    def patch_dbt_test_case_description(self, test_case: TestCase, description: Optional[str]) -> None:  # noqa: UP045
         """
         Keep the description of an already ingested test case in sync with dbt.
 
@@ -2407,7 +2261,7 @@ class DbtSource(DbtServiceSource):
             return TestCaseStatus.Failed, 0
         return TestCaseStatus.Aborted, 0
 
-    def _resolve_dbt_test_timestamp(self, dbt_test_result, fallback_generate_time) -> datetime | None:
+    def _resolve_dbt_test_timestamp(self, dbt_test_result, fallback_generate_time) -> Optional[datetime]:  # noqa: UP045
         """
         Resolve when a dbt result was produced.
 
@@ -2440,7 +2294,7 @@ class DbtSource(DbtServiceSource):
         return dbt_timestamp if isinstance(dbt_timestamp, datetime) else None
 
     @staticmethod
-    def _get_freshness_result_details(dbt_test_result) -> str | None:
+    def _get_freshness_result_details(dbt_test_result) -> Optional[str]:  # noqa: UP045
         """
         Build the result detail of a source freshness check.
 
@@ -2467,7 +2321,7 @@ class DbtSource(DbtServiceSource):
 
         return "; ".join(details) or None
 
-    def _build_freshness_test_case_result(self, manifest_node, dbt_test_result) -> TestCaseResult | None:
+    def _build_freshness_test_case_result(self, manifest_node, dbt_test_result) -> Optional[TestCaseResult]:  # noqa: UP045
         """
         Build the test case result of a `dbt source freshness` run.
 
@@ -2501,7 +2355,7 @@ class DbtSource(DbtServiceSource):
             ),
         )
 
-    def _build_run_result_test_case_result(self, manifest_node, dbt_test_result) -> TestCaseResult | None:
+    def _build_run_result_test_case_result(self, manifest_node, dbt_test_result) -> Optional[TestCaseResult]:  # noqa: UP045
         """
         Build the test case result of a dbt test recorded in run_results.json
         """
