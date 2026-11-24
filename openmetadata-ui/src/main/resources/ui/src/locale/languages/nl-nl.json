@@ -2796,6 +2796,7 @@
     "update-request-tag-plural": "Updateverzoek tags",
     "updated": "Geüpdatet",
     "updated-at": "Bijgewerkt op",
+    "updated-at-source": "Bijgewerkt bij bron",
     "updated-by": "Geüpdatet door",
     "updated-by-user-time-ago": "Bijgewerkt door {{user}} {{time}}",
     "updated-field-for-lowercase": "bijgewerkt {{field}}",

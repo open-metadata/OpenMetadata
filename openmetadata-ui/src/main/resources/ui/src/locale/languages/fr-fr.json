@@ -2796,6 +2796,7 @@
     "update-request-tag-plural": "Mettre à Jour la Demande de Tags",
     "updated": "Mis à Jour",
     "updated-at": "Mis à jour à",
+    "updated-at-source": "Mis à jour à la source",
     "updated-by": "Mis à Jour par",
     "updated-by-user-time-ago": "Mis à jour par {{user}} {{time}}",
     "updated-field-for-lowercase": "mis à jour {{field}}",

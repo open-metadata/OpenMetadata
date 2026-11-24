@@ -2796,6 +2796,7 @@
     "update-request-tag-plural": "Etiket İsteklerini Güncelle",
     "updated": "Güncellendi",
     "updated-at": "Güncelleme tarihi",
+    "updated-at-source": "Kaynakta güncellendi",
     "updated-by": "Güncelleyen",
     "updated-by-user-time-ago": "{{user}} tarafından {{time}} güncellendi",
     "updated-field-for-lowercase": "güncellendi {{field}}",

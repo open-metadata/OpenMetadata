@@ -2796,6 +2796,7 @@
     "update-request-tag-plural": "更新請求標籤",
     "updated": "已更新",
     "updated-at": "更新時間",
+    "updated-at-source": "來源端更新於",
     "updated-by": "更新者",
     "updated-by-user-time-ago": "由 {{user}} 於 {{time}} 更新",
     "updated-field-for-lowercase": "已更新 {{field}}",

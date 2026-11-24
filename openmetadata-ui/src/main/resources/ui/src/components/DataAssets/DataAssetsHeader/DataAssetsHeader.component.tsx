@@ -61,6 +61,7 @@ import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { LifeCycle } from '../../../generated/type/lifeCycle';
 import { Style } from '../../../generated/type/schema';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -75,10 +76,16 @@ import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
+  ExtraInfoLabel,
   getDataAssetsHeaderInfo,
   HeaderDotSeparator,
+  isRecordedLifeCycleTimestamp,
 } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
@@ -698,6 +705,27 @@ export const DataAssetsHeader = ({
 
   const hasDisplayName = !isEmpty(dataAsset.displayName);
 
+  const renderSourceUpdatedAt = () => {
+    const sourceUpdatedAt = (dataAsset as { lifeCycle?: LifeCycle }).lifeCycle
+      ?.updated?.timestamp;
+
+    if (!isRecordedLifeCycleTimestamp(sourceUpdatedAt)) {
+      return null;
+    }
+
+    return (
+      <>
+        <HeaderDotSeparator />
+        <ExtraInfoLabel
+          dataTestId="source-updated-at"
+          label={t('label.updated-at-source')}
+          tooltip={formatDateTime(sourceUpdatedAt)}
+          value={getRelativeTime(sourceUpdatedAt)}
+        />
+      </>
+    );
+  };
+
   return (
     <>
       <div
@@ -1114,6 +1142,7 @@ export const DataAssetsHeader = ({
           )}
 
           {extraInfo}
+          {renderSourceUpdatedAt()}
         </div>
       </div>
 

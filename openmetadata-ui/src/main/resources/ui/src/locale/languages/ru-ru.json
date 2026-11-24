@@ -2796,6 +2796,7 @@
     "update-request-tag-plural": "Обновить теги",
     "updated": "Обновлено",
     "updated-at": "Обновлено в",
+    "updated-at-source": "Обновлено в источнике",
     "updated-by": "Обновлено",
     "updated-by-user-time-ago": "Обновлено пользователем {{user}} {{time}}",
     "updated-field-for-lowercase": "обновил {{field}}",

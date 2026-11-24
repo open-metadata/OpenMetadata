@@ -2796,6 +2796,7 @@
     "update-request-tag-plural": "リクエストタグを更新",
     "updated": "更新済み",
     "updated-at": "更新日時",
+    "updated-at-source": "ソースでの更新日時",
     "updated-by": "更新者",
     "updated-by-user-time-ago": "{{user}} が {{time}} に更新",
     "updated-field-for-lowercase": "{{field}} を更新",

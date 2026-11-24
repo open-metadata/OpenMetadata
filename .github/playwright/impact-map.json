@@ -104,6 +104,26 @@
       "specs": ["playwright/e2e/Pages/DataInsight.spec.ts"]
     },
     {
+      "_comment": "Jest file beside the data asset header. The generated map routes only the component (by testId), so a test-only change would otherwise escalate the PR to the full suite. The spec reads the header's source update time.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/DataAssetsHeader/*.test.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Pages/SourceUpdatedTime.spec.ts"]
+    },
+    {
+      "_comment": "The header info builders and ExtraInfoLabel render the metadata row on every entity page header. Entity.spec.ts checks that row per entity type; SourceUpdatedTime.spec.ts reads its Updated at source field.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataAssetsHeader.utils.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/utils/DataAssetsHeader.utils.test.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/Entity.spec.ts",
+        "playwright/e2e/Pages/SourceUpdatedTime.spec.ts"
+      ]
+    },
+    {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/ActivityFeed/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/FeedUtils.ts",
