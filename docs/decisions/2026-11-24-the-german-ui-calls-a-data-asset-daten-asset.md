@@ -10,7 +10,7 @@
 `de-de.json` rendered the English "data asset" with seven different words: "Daten-Asset",
 "Datenasset", "Datenvermögenswert", "Datenobjekt", "Datenressource", "Datenbestand" and
 "Datenanlage". The plain "asset" was
-mostly "Asset", but 14 keys said "Vermögenswert", which in German is a balance-sheet term
+mostly "Asset", but 15 keys said "Vermögenswert", which in German is a balance-sheet term
 (a financial asset), not a catalog entry.
 
 ## Decision
