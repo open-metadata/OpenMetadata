@@ -175,7 +175,8 @@ warehouse columns a metric reads; neither maps generated `WJXBFSn` aliases by po
   projections of that alias read, in every SELECT of every pass; a projection over a derived table
   reads none. Names are compared normalized (`normalized`). Every object of the dataset first claims
   the name it is projected under (a metric its column alias, else its name; an attribute its name),
-  and an alias is a metric's only when no other object, by id, claims it. A display name alone is
+  and an alias is a metric's only when no other object, by id, claims it. A metric whose definition
+  cannot be read claims its name, so it blocks a projection that may be its own without taking it. A display name alone is
   never trusted: a metric named `Revenue` and aliased `NETAMOUNT` does not take the `REVENUE`
   projection of a metric aliased `REVENUE`. The metrics a definition references are matched the same
   way, on their own column alias, whether or not the dataset holds them: `% Revenue` never takes
