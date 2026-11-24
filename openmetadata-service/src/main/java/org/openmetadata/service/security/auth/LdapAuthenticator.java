@@ -344,7 +344,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
 
     throw new CustomExceptionMessage(
-        INTERNAL_SERVER_ERROR, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
+        UNAUTHORIZED, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
   }
 
   private record LdapUserInfo(String userDn, String email, String displayName) {}
@@ -414,8 +414,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         throw new CustomExceptionMessage(
             INTERNAL_SERVER_ERROR, MULTIPLE_EMAIL_ENTRIES, MULTIPLE_EMAIL_ENTRIES);
       } else {
+        // An unknown user must get the same answer as a wrong password, or the status code tells a
+        // caller which accounts exist.
         throw new CustomExceptionMessage(
-            INTERNAL_SERVER_ERROR, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
+            UNAUTHORIZED, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
       }
     } catch (LDAPException ex) {
       ResultCode resultCode = ex.getResultCode();
