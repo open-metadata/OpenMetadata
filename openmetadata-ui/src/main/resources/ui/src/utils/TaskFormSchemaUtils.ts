@@ -90,6 +90,18 @@ export interface TaskFormSchemaResolution {
    * `mapSuggestionTypeToSchema`. Ignored for non-Suggestion task types.
    */
   payload?: TaskPayload;
+  /**
+   * When `false`, a failed lookup (HTTP error, deleted schema by id) rejects
+   * instead of falling back to the built-in default, and a server-confirmed
+   * "no configured schema" resolves to `undefined` instead of the default.
+   * Callers that gate a workflow action on the schema (the inbox's transition
+   * guard) use this to distinguish "fetch failed" from "no form to collect" —
+   * falling back to the default on a failure would let a transition whose
+   * `transitionForms` declares required fields fire with no modal and no
+   * payload. Callers that only need *a* schema to build a resolve body leave
+   * this unset (the default fallback is correct for them).
+   */
+  allowFallback?: boolean;
 }
 
 const normalizeSuggestionKey = (payload?: TaskPayload): string => {
@@ -112,12 +124,16 @@ export const getResolvedTaskFormSchema = async (
   // rendering tag suggestions with the description widget/label.
   const cacheKey = `${taskType}::${taskCategory}::${
     resolution?.taskFormSchemaId ?? ''
-  }::${normalizeSuggestionKey(resolution?.payload)}`;
+  }::${normalizeSuggestionKey(resolution?.payload)}${
+    resolution?.allowFallback === false ? '::strict' : ''
+  }`;
   const existing = taskFormSchemaCache.get(cacheKey);
 
   if (existing) {
     return cloneDeep(await existing);
   }
+
+  const allowFallback = resolution?.allowFallback ?? true;
 
   const resolverPromise = (async () => {
     try {
@@ -143,8 +159,24 @@ export const getResolvedTaskFormSchema = async (
         resolution?.payload
       );
 
-      return resolvedSchema ?? getDefaultTaskFormSchema(taskType, taskCategory);
-    } catch {
+      if (resolvedSchema) {
+        return resolvedSchema;
+      }
+
+      // The server confirmed there is no configured schema. With
+      // `allowFallback: false` this resolves to `undefined` so a workflow
+      // guard reads "no form to collect" (fires straight through); otherwise
+      // the built-in default still produces a correct legacy resolve body.
+      if (!allowFallback) {
+        return undefined;
+      }
+
+      return getDefaultTaskFormSchema(taskType, taskCategory);
+    } catch (error) {
+      if (!allowFallback) {
+        throw error;
+      }
+
       return getDefaultTaskFormSchema(taskType, taskCategory);
     }
   })();
@@ -156,6 +188,13 @@ export const getResolvedTaskFormSchema = async (
     }
   }
   taskFormSchemaCache.set(cacheKey, resolverPromise);
+  // A rejected lookup must not poison the cache for the next caller: evict it
+  // so a retry re-fetches instead of re-throwing the stale failure.
+  resolverPromise.catch(() => {
+    if (taskFormSchemaCache.get(cacheKey) === resolverPromise) {
+      taskFormSchemaCache.delete(cacheKey);
+    }
+  });
 
   return cloneDeep(await resolverPromise);
 };
@@ -295,6 +334,20 @@ export const hasTaskFormFields = (schema?: JsonSchemaObject) => {
       typeof properties === 'object' &&
       Object.keys(properties).length > 0
   );
+};
+
+/**
+ * Whether a form schema declares any `required` fields. The inbox's transition
+ * guard uses this to decide whether a workflow transition must open a form
+ * modal (the resolver has to supply the required inputs) before it can fire —
+ * mirroring `TaskTabNew`'s form-modal guard without forcing a modal for
+ * transitions whose form only carries optional fields (e.g. a DAR `approve`
+ * with an optional comment), which keep firing straight through.
+ */
+export const hasRequiredTaskFormFields = (schema?: JsonSchemaObject) => {
+  const required = schema?.required;
+
+  return Array.isArray(required) && required.length > 0;
 };
 
 const DEFAULT_APPROVAL_VALUES = {

@@ -1449,15 +1449,32 @@ public class TableRepository extends EntityRepository<Table> {
     return tagsByTarget;
   }
 
+  /**
+   * The whole stored row, with the fields {@link #addDataModel} merges into set on it. addDataModel
+   * writes the entire row back with {@code dao.update}, so it cannot start from {@code get()}: that
+   * nulls every field not requested, and the write then deleted them, schemaDefinition among them.
+   */
+  private Table getWholeStoredTable(UUID tableId) {
+    final Fields fields =
+        getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD));
+    final Table table = setFieldsInternal(find(tableId, NON_DELETED, false), fields);
+    setInheritedFields(table, fields);
+    return table;
+  }
+
+  /**
+   * addDataModel used to drop schemaDefinition while the row kept the sourceHash of the request
+   * that carried it. Such a row takes the full update, so the next ingestion run writes it back.
+   */
+  @Override
+  protected boolean hasLostSourceFields(Table stored, Table incoming) {
+    return !nullOrEmpty(incoming.getSchemaDefinition())
+        && nullOrEmpty(stored.getSchemaDefinition());
+  }
+
   @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel, String updatedBy) {
-    Table table =
-        get(
-            null,
-            tableId,
-            getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD)),
-            NON_DELETED,
-            false);
+    Table table = getWholeStoredTable(tableId);
     List<HeldTerm> heldTerms = holdUnapprovedModelTerms(table, dataModel);
 
     // Update the sql fields only if correct value is present
