@@ -499,13 +499,13 @@ class MicrostrategySource(DashboardServiceSource):
         keys = Counter(normalized(available_object.name or "") for available_object in objects.values())
         ambiguous = {key for key, count in keys.items() if count > 1}
         # Every object claims the SQL name it is projected under, before any metric is matched: a
-        # metric's column alias can name another metric's projection.
+        # metric's column alias can name another metric's projection. A metric that cannot be read
+        # still claims its name, so no other metric takes a projection that may be its own.
         owners: dict[str, set[str]] = defaultdict(set)
         for available_object in objects.values():
+            claim = available_object.name
             if available_object.type == "metric" and not data_import:
-                claim = self._metric_sql_name(project_id, available_object)
-            else:
-                claim = available_object.name
+                claim = self._metric_sql_name(project_id, available_object) or claim
             if claim and (key := normalized(claim)):
                 owners[key].add(available_object.id)
         names = Counter((available_object.name or "").casefold() for available_object in objects.values())
