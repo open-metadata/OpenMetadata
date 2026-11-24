@@ -1265,36 +1265,38 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
         })
     );
 
-    const { rerender } = render(<WrapperComponent />);
+    try {
+      const { rerender } = render(<WrapperComponent />);
 
-    await act(async () => {
-      await Promise.resolve();
-    });
+      await act(async () => {
+        await Promise.resolve();
+      });
 
-    useCustomLocationMock.mockImplementation(() => ({
-      pathname: '/signin',
-      search: '',
-    }));
+      useCustomLocationMock.mockImplementation(() => ({
+        pathname: '/signin',
+        search: '',
+      }));
 
-    await act(async () => {
-      rerender(<WrapperComponent />);
-    });
+      await act(async () => {
+        rerender(<WrapperComponent />);
+      });
 
-    await act(async () => {
-      resolveToken?.('');
-    });
+      await act(async () => {
+        resolveToken?.('');
+      });
 
-    expect(mockCookieSetItem).toHaveBeenCalledWith(
-      REDIRECT_PATHNAME,
-      '/table/sample.ecommerce.shopify.orders?tab=schema',
-      expect.anything()
-    );
-
-    useCustomLocationMock.mockImplementation(() => ({
-      pathname: 'pathname',
-      search: '',
-    }));
-    mockGetOidcToken.mockResolvedValue('');
+      expect(mockCookieSetItem).toHaveBeenCalledWith(
+        REDIRECT_PATHNAME,
+        '/table/sample.ecommerce.shopify.orders?tab=schema',
+        expect.anything()
+      );
+    } finally {
+      useCustomLocationMock.mockImplementation(() => ({
+        pathname: 'pathname',
+        search: '',
+      }));
+      mockGetOidcToken.mockResolvedValue('');
+    }
   });
 
   it('disposes the interceptor and event subscriptions on unmount', async () => {
