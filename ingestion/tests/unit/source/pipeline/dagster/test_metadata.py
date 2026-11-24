@@ -67,3 +67,48 @@ def test_no_lookback_keeps_all_runs():
         list(source.yield_pipeline_status(MagicMock()))
 
     assert source._get_task_status.call_count == 2
+
+
+def _statuses(source, run):
+    with patch(f"{METADATA_MODULE}.fqn.build", return_value="svc.pipeline"):
+        return list(source._get_task_status(run=run, task_name="op1"))
+
+
+def test_skipped_step_without_start_time_uses_end_time():
+    """A step Dagster skipped has no startTime; it must not fail the record."""
+    from metadata.generated.schema.entity.data.pipeline import StatusType
+    from metadata.ingestion.source.pipeline.dagster.models import RunStepStats
+
+    source = _make_source(lookback=None)
+    run = RunStepStats(runId="run-1", startTime=None, endTime=1700000000.5, status="SKIPPED")
+
+    [either] = _statuses(source, run)
+
+    assert either.left is None
+    status = either.right.pipeline_status
+    assert status.timestamp.root == 1700000000500
+    assert status.executionStatus == StatusType.Skipped
+    assert status.taskStatus[0].executionStatus == StatusType.Skipped
+    assert status.taskStatus[0].startTime is None
+
+
+def test_step_without_any_time_is_skipped_not_an_error():
+    from metadata.ingestion.source.pipeline.dagster.models import RunStepStats
+
+    source = _make_source(lookback=None)
+    run = RunStepStats(runId="run-2", startTime=None, endTime=None, status="SKIPPED")
+
+    assert _statuses(source, run) == []
+
+
+def test_started_step_keeps_its_start_time():
+    from metadata.generated.schema.entity.data.pipeline import StatusType
+    from metadata.ingestion.source.pipeline.dagster.models import RunStepStats
+
+    source = _make_source(lookback=None)
+    run = RunStepStats(runId="run-3", startTime=1700000000.0, endTime=1700000060.0, status="SUCCESS")
+
+    [either] = _statuses(source, run)
+
+    assert either.right.pipeline_status.timestamp.root == 1700000000000
+    assert either.right.pipeline_status.executionStatus == StatusType.Successful
