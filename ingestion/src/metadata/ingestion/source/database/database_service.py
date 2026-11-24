@@ -94,6 +94,9 @@ class DataModelLink(BaseModel):
         default=True,
         description="False when datamodel.sql is not SQL, e.g. the code of a dbt Python model",
     )
+    # The manifest itself lists no parents. An empty upstream alone cannot tell this apart from
+    # parents that were filtered out or are not in OpenMetadata yet, whose lineage must survive.
+    declared_no_upstream: bool = False
 
 
 class DatabaseServiceTopology(ServiceTopology):
