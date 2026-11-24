@@ -34,6 +34,8 @@ jobs:
           ref: ${{ inputs.ref }}
           persist-credentials: false
           fetch-depth: 1
+      # TODO: Centralize CI JDK versions in .java-version using java-version-file.
+      # Preserve publishing options and conditional installation in each caller.
       - name: Setup JDK 21
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
