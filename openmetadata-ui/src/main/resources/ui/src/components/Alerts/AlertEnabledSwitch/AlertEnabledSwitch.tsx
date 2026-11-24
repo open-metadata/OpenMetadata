@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Card,
-  Toggle,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Card, Toggle } from '@openmetadata/ui-core-components';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -40,23 +35,8 @@ const AlertEnabledSwitch = ({
 
   return (
     <Card data-testid="alert-enabled-row">
-      <Card.Content>
-        <Box align="center" gap={4} justify="between">
-          <Box direction="col" gap={1}>
-            <Typography className="tw:text-primary" weight="semibold">
-              {t('label.enabled')}
-            </Typography>
-            <div
-              aria-live="polite"
-              data-testid="alert-enabled-description"
-              id={descriptionId}>
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {isEnabled
-                  ? t('message.alert-enabled-description')
-                  : t('message.alert-disabled-description')}
-              </Typography>
-            </div>
-          </Box>
+      <Card.Header
+        extra={
           <Toggle
             aria-describedby={descriptionId}
             aria-label={t('label.enabled')}
@@ -65,8 +45,20 @@ const AlertEnabledSwitch = ({
             isSelected={isEnabled}
             onChange={onChange}
           />
-        </Box>
-      </Card.Content>
+        }
+        hasDivider={false}
+        subtitle={
+          <span
+            aria-live="polite"
+            data-testid="alert-enabled-description"
+            id={descriptionId}>
+            {isEnabled
+              ? t('message.alert-enabled-description')
+              : t('message.alert-disabled-description')}
+          </span>
+        }
+        title={t('label.enabled')}
+      />
     </Card>
   );
 };

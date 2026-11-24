@@ -18,7 +18,10 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useAlertSelection } from '../../../../../../hooks/useAlertSelection';
+import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import AlertAiForm from '../../../../../observability/Alerts/AlertAiForm.component';
 import NotificationAlertForm from './NotificationAlertForm';
 
@@ -119,9 +122,19 @@ jest.mock(
   })
 );
 
-const mockUseEntityPermissions = jest
-  .fn()
-  .mockReturnValue({ canEditAll: true });
+const mockUseEntityPermissions = jest.fn();
+
+// Mock the hook, run the real derivation over a minimal permission object.
+const setMockPermissions = (overrides: Partial<OperationPermission> = {}) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
 
 jest.mock(
   '../../../../../../hooks/useEntityPermissions/useEntityPermissions',
@@ -130,14 +143,6 @@ jest.mock(
       mockUseEntityPermissions(...args),
   })
 );
-
-jest.mock('../../../../../../utils/PermissionDerivation', () => ({
-  getDerivedPermissionFlags: jest.fn().mockReturnValue({ canViewAll: false }),
-}));
-
-jest.mock('../../../../../../utils/PermissionsUtils', () => ({
-  DEFAULT_ENTITY_PERMISSION: {},
-}));
 
 jest.mock('../../../../../../constants/constants', () => ({
   PAGE_SIZE_LARGE: 50,
@@ -172,6 +177,7 @@ describe('NotificationAlertForm', () => {
   const mockOnNavigate = jest.fn();
 
   beforeEach(() => {
+    setMockPermissions({ [Operation.EditAll]: true });
     (useAlertSelection as jest.Mock).mockReturnValue({
       support: {},
       ready: true,
@@ -214,7 +220,7 @@ describe('NotificationAlertForm', () => {
   });
 
   it('lets only someone who can edit the alert switch it off or on', async () => {
-    mockUseEntityPermissions.mockReturnValue({ canEditAll: false });
+    setMockPermissions({ [Operation.EditAll]: false });
 
     await act(async () => {
       render(
@@ -234,7 +240,6 @@ describe('NotificationAlertForm', () => {
         expect.anything()
       );
     });
-    mockUseEntityPermissions.mockReturnValue({ canEditAll: true });
   });
 
   it('should render AlertAiForm after loading', async () => {

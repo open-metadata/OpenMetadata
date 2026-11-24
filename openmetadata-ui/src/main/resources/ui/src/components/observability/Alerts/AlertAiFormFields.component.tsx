@@ -39,6 +39,7 @@ import {
   getAlertAiResources,
   getAlertAiSectionInputs,
   getAlertAiSectionVisibility,
+  getAlertFieldAccess,
   updateAlertAiValue,
 } from './AlertAiFormFieldsPureUtils';
 import AlertAiRuleSection from './AlertAiRuleSection.component';
@@ -90,25 +91,6 @@ const ReadOnlyRulesNotice = ({
 };
 
 /** Coordinates the AI alert form sections for add/edit and read-only configuration views. */
-/**
- * A disabled alert's fields stay read-only until it is switched back on; the switch itself and
- * Save/Cancel stay active. A view-only form is read-only whatever the alert's state.
- */
-const getAlertFieldAccess = (
-  isViewOnly: boolean | undefined,
-  value: AlertAiFormFieldsProps['value'],
-  alert: AlertAiFormFieldsProps['alert']
-) => {
-  const isAlertEnabled = value.enabled !== false;
-  const isFieldDisabled = Boolean(isViewOnly) || !isAlertEnabled;
-
-  return {
-    isAlertEnabled,
-    isFieldDisabled,
-    areRulesReadOnly: isFieldDisabled || alert?.hasRulesWithoutSelections,
-  };
-};
-
 function AlertAiFormFields({
   alert,
   canEditEnabled = true,

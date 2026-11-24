@@ -19,6 +19,8 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { Operation } from '../../../generated/entity/policies/policy';
 import {
   AlertType,
   ProviderType,
@@ -29,6 +31,7 @@ import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from '../../../utils/AlertsClassBase.interface';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import AlertEditModal from './AlertEditModal.component';
 
 const mockUseAlertFormData = jest.fn();
@@ -42,9 +45,19 @@ jest.mock('../../../components/common/Loader/Loader', () => ({
   default: () => <div data-testid="loader" />,
 }));
 
-const mockUseEntityPermissions = jest
-  .fn()
-  .mockReturnValue({ canEditAll: true });
+const mockUseEntityPermissions = jest.fn();
+
+// Mock the hook, run the real derivation over a minimal permission object.
+const setMockPermissions = (overrides: Partial<OperationPermission> = {}) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
 
 jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
   useEntityPermissions: (...args: unknown[]) =>
@@ -141,7 +154,7 @@ const getHookState = (overrides = {}) => ({
 
 describe('AlertEditModal', () => {
   beforeEach(() => {
-    mockUseEntityPermissions.mockReturnValue({ canEditAll: true });
+    setMockPermissions({ [Operation.EditAll]: true });
     jest.clearAllMocks();
     mockUseAlertFormData.mockReturnValue(getHookState());
   });
@@ -289,7 +302,7 @@ describe('AlertEditModal', () => {
   });
 
   it('lets only someone who can edit the alert switch it off or on', () => {
-    mockUseEntityPermissions.mockReturnValue({ canEditAll: false });
+    setMockPermissions({ [Operation.EditAll]: false });
 
     render(
       <AlertEditModal

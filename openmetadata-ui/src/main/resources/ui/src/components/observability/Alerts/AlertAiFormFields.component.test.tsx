@@ -359,6 +359,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   Card.Content = ({ children }: MockCoreProps) => <div>{children}</div>;
+  Card.Header = ({
+    title,
+    subtitle,
+    extra,
+  }: {
+    title?: ReactNode;
+    subtitle?: ReactNode;
+    extra?: ReactNode;
+  }) => (
+    <div>
+      {title}
+      {subtitle}
+      {extra}
+    </div>
+  );
 
   return {
     Accordion: ({ children }: MockCoreProps) => <div>{children}</div>,

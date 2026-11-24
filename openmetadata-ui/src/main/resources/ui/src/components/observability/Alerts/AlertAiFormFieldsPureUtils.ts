@@ -198,6 +198,25 @@ export const getAlertAiSectionVisibility = ({
 });
 
 /**
+ * A disabled alert's fields stay read-only until it is switched back on; the switch itself and
+ * Save/Cancel stay active. A view-only form is read-only whatever the alert's state.
+ */
+export const getAlertFieldAccess = (
+  isViewOnly: boolean | undefined,
+  value: AlertAiFormValue,
+  alert?: ModifiedEventSubscription
+) => {
+  const isAlertEnabled = value.enabled !== false;
+  const isFieldDisabled = Boolean(isViewOnly) || !isAlertEnabled;
+
+  return {
+    isAlertEnabled,
+    isFieldDisabled,
+    areRulesReadOnly: isFieldDisabled || alert?.hasRulesWithoutSelections,
+  };
+};
+
+/**
  * Returns a copy of `source` with `path` set to `nextValue`, cloning only the nodes along the path
  * and sharing every off-path branch by reference — a cheaper immutable update than deep-cloning the
  * whole form value on each keystroke. (It does not reduce re-renders: the destination rows are

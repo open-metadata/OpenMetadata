@@ -21,11 +21,15 @@ import {
   SubscriptionType,
   Type,
 } from '../../../generated/events/eventSubscription';
-import { ModifiedDestination } from '../../../utils/AlertsClassBase.interface';
+import {
+  ModifiedDestination,
+  ModifiedEventSubscription,
+} from '../../../utils/AlertsClassBase.interface';
 import { AlertAiFormValue } from './AlertAiFormFields.interface';
 import {
   getAlertAiSectionInputs,
   getAlertAiSectionVisibility,
+  getAlertFieldAccess,
   getDestinationTypeUpdate,
   getDestinationWithNotifyDownstream,
   getRuleItems,
@@ -72,6 +76,47 @@ describe('AlertAiFormFieldsPureUtils', () => {
       shouldRenderActionsSection: true,
       shouldRenderFiltersSection: true,
       shouldRenderSourceSection: true,
+    });
+  });
+
+  describe('getAlertFieldAccess', () => {
+    const value = (enabled?: boolean) => ({ enabled } as AlertAiFormValue);
+
+    it('leaves an enabled alert editable', () => {
+      expect(getAlertFieldAccess(false, value(true))).toEqual({
+        isAlertEnabled: true,
+        isFieldDisabled: false,
+        areRulesReadOnly: undefined,
+      });
+    });
+
+    it('treats an alert with no enabled flag as enabled', () => {
+      expect(getAlertFieldAccess(false, value()).isFieldDisabled).toBe(false);
+    });
+
+    it('makes a disabled alert read-only', () => {
+      expect(getAlertFieldAccess(false, value(false))).toEqual({
+        isAlertEnabled: false,
+        isFieldDisabled: true,
+        areRulesReadOnly: true,
+      });
+    });
+
+    it('makes a view-only form read-only whatever the alert state', () => {
+      expect(getAlertFieldAccess(true, value(true))).toEqual({
+        isAlertEnabled: true,
+        isFieldDisabled: true,
+        areRulesReadOnly: true,
+      });
+    });
+
+    it('keeps rules read-only when the alert has rules without selections', () => {
+      const access = getAlertFieldAccess(false, value(true), {
+        hasRulesWithoutSelections: true,
+      } as ModifiedEventSubscription);
+
+      expect(access.isFieldDisabled).toBe(false);
+      expect(access.areRulesReadOnly).toBe(true);
     });
   });
 
