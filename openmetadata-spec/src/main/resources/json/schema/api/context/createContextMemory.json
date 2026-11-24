@@ -42,7 +42,7 @@
       "$ref": "../../entity/context/contextMemory.json#/definitions/memoryScope"
     },
     "entityStatus": {
-      "description": "Lifecycle stage the memory starts in. When omitted, the memory starts Unprocessed and is excluded from grounding until Approved. Superseded and legacy Deprecated memories require supersededBy.",
+      "description": "Lifecycle stage the memory starts in. When omitted, OSS starts it Approved. Distributions that require review start it Unprocessed and restrict approval to authorized reviewers. Superseded and legacy Deprecated memories require supersededBy.",
       "$ref": "../../entity/context/contextMemoryStatus.json"
     },
     "shareConfig": {

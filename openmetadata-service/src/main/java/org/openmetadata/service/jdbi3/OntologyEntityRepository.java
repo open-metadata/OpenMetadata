@@ -5,6 +5,7 @@ import jakarta.json.JsonPatch;
 import java.net.URI;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.OntologyDefinition;
@@ -18,6 +19,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.OntologyIriMinter;
+import org.openmetadata.service.ontology.OntologyPropertyRules;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -25,6 +27,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 /** Common persistence and lifecycle invariants for independent ontology definitions. */
 public abstract class OntologyEntityRepository<T extends OntologyDefinition>
     extends EntityRepository<T> {
+  private static final ThreadLocal<Boolean> RECREATING = ThreadLocal.withInitial(() -> false);
   private final List<String> definitionFields;
   protected final OntologyWorkingState workingState;
 
@@ -77,8 +80,9 @@ public abstract class OntologyEntityRepository<T extends OntologyDefinition>
   protected abstract void validateDefinition(T entity);
 
   protected static void requireAbsoluteIri(final URI iri, final String field) {
-    if (iri == null || !iri.isAbsolute()) {
-      throw new BadRequestException("Ontology " + field + " must be an absolute IRI");
+    final String message = OntologyPropertyRules.relativeIriMessage(iri, field);
+    if (message != null) {
+      throw new BadRequestException(message);
     }
   }
 
@@ -129,6 +133,40 @@ public abstract class OntologyEntityRepository<T extends OntologyDefinition>
 
   @Override
   public void clearFields(final T entity, final Fields fields) {}
+
+  /**
+   * A name held only by a soft-deleted definition is not taken: creating it again restores that
+   * row and applies the new values, keeping its id so the Studio's Undo of the delete still finds
+   * it. Only the row returns; children deleted with it stay deleted until an explicit restore.
+   */
+  @Override
+  protected T createNewEntity(final T entity) {
+    final T archived = findByNameOrNull(entity.getFullyQualifiedName(), Include.DELETED);
+    return archived == null
+        ? super.createNewEntity(entity)
+        : recreating(
+            () ->
+                update(null, archived, entity, entity.getUpdatedBy(), entity.getImpersonatedBy())
+                    .getEntity());
+  }
+
+  /** Runs a write that restores a soft-deleted definition without its soft-deleted children. */
+  public <R> R recreating(final Supplier<R> work) {
+    final boolean enclosing = RECREATING.get();
+    RECREATING.set(true);
+    try {
+      return work.get();
+    } finally {
+      RECREATING.set(enclosing);
+    }
+  }
+
+  @Override
+  protected void restoreChildren(final UUID id, final String updatedBy) {
+    if (!RECREATING.get()) {
+      super.restoreChildren(id, updatedBy);
+    }
+  }
 
   @Override
   public void storeEntity(final T entity, final boolean update) {
@@ -182,6 +220,11 @@ public abstract class OntologyEntityRepository<T extends OntologyDefinition>
     if (operation.isPut() && Boolean.TRUE.equals(original.getDeleted())) {
       useRestoredRevision(original);
     }
+    return newUpdater(original, updated, operation, source);
+  }
+
+  protected OntologyUpdater newUpdater(
+      final T original, final T updated, final Operation operation, final ChangeSource source) {
     return new OntologyUpdater(original, updated, operation, source);
   }
 

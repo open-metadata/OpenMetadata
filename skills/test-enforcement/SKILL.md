@@ -15,6 +15,14 @@ Ensure every code change has comprehensive tests — 90% line coverage for servi
 - When reviewing a PR to check test completeness
 - When the `/tdd` skill was not used during implementation
 
+## Scope and evidence reuse
+
+Apply AGENTS.md's completion boundary. Check coverage and test gaps for changed behavior;
+do not treat each skill as a separate execution requirement. Reuse applicable results. For
+implementation, push or PR creation run focused checks and list broader coverage as outstanding;
+full impacted runs are required for merge-readiness tasks. An infrastructure blocker is a
+reported limitation, not permission to retry indefinitely or dispatch new workflows.
+
 ## Workflow
 
 ### Step 1: Identify Changed Files
@@ -40,7 +48,7 @@ Classify each changed file:
 | `openmetadata-spec/src/main/resources/json/schema/` | Schema | Regeneration verification + downstream tests |
 | `openmetadata-integration-tests/` | Integration tests | Self — verify they pass |
 | `ingestion/src/metadata/` | Python ingestion | pytest unit tests (90% coverage) |
-| `openmetadata-ui/.../ui/src/` | React frontend | Jest unit tests + Playwright E2E |
+| `openmetadata-ui/.../ui/src/` | React frontend | Jest unit tests + browser tests for page behaviour + Playwright only for cross-feature journeys (`.claude/rules/frontend-browser-tests.md`) |
 | `bootstrap/sql/migrations/` | Database | Integration tests verifying migration |
 
 ### Step 2: Check Java Service Coverage
@@ -197,6 +205,10 @@ ls openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/
 
 #### 4c. Determine if new Playwright tests are needed
 
+**First decide the layer** (`.claude/rules/frontend-browser-tests.md`): a page's own behaviour (paging,
+forms, pickers, permission-driven controls, empty/error states) gets a Vitest browser test
+(`*.browser.test.tsx`), not a Playwright test. The rest of this step is for real journeys.
+
 **New Playwright tests ARE needed when:**
 - A new page or major UI section was added
 - User-facing workflow was changed (e.g., entity creation flow)
@@ -315,6 +327,7 @@ Produce a summary for the PR:
 openmetadata-service/src/test/java/org/openmetadata/         # Java unit tests
 openmetadata-integration-tests/src/test/java/org/openmetadata/it/  # Integration tests
 openmetadata-ui/.../ui/src/**/*.test.{ts,tsx}                 # Jest unit tests
+openmetadata-ui/.../ui/src/**/*.browser.test.tsx               # Vitest browser tests (page behaviour)
 openmetadata-ui/.../ui/playwright/e2e/                        # Playwright E2E
 ingestion/tests/unit/                                         # Python unit tests
 ingestion/tests/integration/                                  # Python integration tests

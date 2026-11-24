@@ -23,7 +23,7 @@ import {
 import validator from '@rjsf/validator-ajv8';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEmpty } from 'lodash';
+import { cloneDeep, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -37,6 +37,7 @@ import {
   VALIDATION_STATUS,
 } from '../../constants/SSO.constant';
 import { User } from '../../generated/entity/teams/user';
+import { SamlSSOClientConfig } from '../../generated/security/client/samlSSOClientConfig';
 import { AuthProvider, ClientType } from '../../generated/settings/settings';
 import { Status as TestLoginStatus } from '../../generated/system/testLoginResult';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -113,6 +114,28 @@ const SAML_METADATA_POINTERS = [
   '/samlConfiguration/idp/idpX509Certificate',
 ];
 
+const HIDDEN_FIELD = { 'ui:widget': 'hidden', 'ui:hideError': true };
+
+/**
+ * java-saml applies Want Messages Signed and Want Assertions Signed only in strict mode, so the
+ * form offers them only while Strict Mode is on
+ * (ADR:2026-11-10-saml-security-settings-mean-what-the-form-shows).
+ */
+const withSamlSigningSwitchesForStrictMode = (
+  samlUiSchema: UISchemaObject,
+  isStrictMode: boolean
+): UISchemaObject =>
+  isStrictMode
+    ? samlUiSchema
+    : {
+        ...samlUiSchema,
+        security: {
+          ...(samlUiSchema.security as UISchemaObject),
+          wantAssertionsSigned: HIDDEN_FIELD,
+          wantMessagesSigned: HIDDEN_FIELD,
+        },
+      };
+
 /** What the deployment configuration leaves the admin free to change on this form. */
 const getFormLocks = (
   managedPaths: SecurityManagedPaths | undefined,
@@ -148,7 +171,7 @@ export const useSsoConfiguration = ({
   managedPaths,
   isReadOnly = false,
   scrollContainer = '.resizable-first-panel > .overflow-y-auto',
-  errorSelector = '.field-error.has-error, .ant-form-item-explain-error',
+  errorSelector = '.field-error.has-error, .form-field-error',
 }: UseSsoConfigurationOptions) => {
   const { t } = useTranslation();
   const { setIsAuthenticated, setCurrentUser } = useApplicationStore();
@@ -200,17 +223,19 @@ export const useSsoConfiguration = ({
       setHasExistingConfig(true);
       setCurrentProvider(config.authenticationConfiguration.provider);
 
-      const configData = {
+      const configData = cloneDeep({
         authenticationConfiguration: config.authenticationConfiguration,
         authorizerConfiguration: config.authorizerConfiguration,
-      };
+      });
 
       if (config.authenticationConfiguration.provider === AuthProvider.Saml) {
         applySamlConfiguration(configData);
       }
 
+      // The saved snapshot is what a save compares against, so the form gets
+      // its own copy and nothing done to the form can change the snapshot.
       setSavedData(configData);
-      setInternalData(configData);
+      setInternalData(cloneDeep(configData));
       setShowForm(true);
 
       if (forceEditMode) {
@@ -566,6 +591,12 @@ export const useSsoConfiguration = ({
     canUploadSamlMetadata,
   } = getFormLocks(managedPaths, isReadOnly);
 
+  const currentSamlConfiguration = internalData?.authenticationConfiguration
+    ?.samlConfiguration as SamlSSOClientConfig | undefined;
+  const isSamlStrictMode = Boolean(
+    currentSamlConfiguration?.security?.strictMode
+  );
+
   const providerUiSchema = useMemo(() => {
     if (!currentProvider) {
       return {};
@@ -643,6 +674,13 @@ export const useSsoConfiguration = ({
       }
     }
 
+    if (currentProvider === AuthProvider.Saml) {
+      authConfig.samlConfiguration = withSamlSigningSwitchesForStrictMode(
+        authConfig.samlConfiguration as UISchemaObject,
+        isSamlStrictMode
+      );
+    }
+
     const finalSchema = {
       ...baseSchema,
       authenticationConfiguration: {
@@ -662,6 +700,7 @@ export const useSsoConfiguration = ({
     internalData?.authenticationConfiguration?.clientType,
     hasExistingConfig,
     savedData,
+    isSamlStrictMode,
   ]);
 
   // Fields the deployment configuration owns are shown but cannot be edited: a change to one
@@ -1137,6 +1176,7 @@ export const useSsoConfiguration = ({
     isInitializing,
     internalData,
     savedData,
+    comparableFormData,
     currentProvider,
     showProviderSelector,
     hasExistingConfig,

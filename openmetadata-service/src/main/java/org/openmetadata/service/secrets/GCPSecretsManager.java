@@ -21,6 +21,7 @@ import org.openmetadata.service.exception.SecretsManagerUpdateException;
 
 public class GCPSecretsManager extends ExternalSecretsManager {
   private static final String FIXED_VERSION_ID = "latest";
+  private static final int MAX_SECRET_ID_LENGTH = 255;
   public static final String PROJECT_ID_NAME = "projectId";
   private static GCPSecretsManager instance = null;
   private final String projectId;
@@ -40,6 +41,11 @@ public class GCPSecretsManager extends ExternalSecretsManager {
   @Override
   protected SecretsIdConfig builSecretsIdConfig() {
     return new SecretsIdConfig("_", Boolean.FALSE, "", Pattern.compile("[^A-Za-z0-9_]"));
+  }
+
+  @Override
+  protected int maxSecretIdLength() {
+    return MAX_SECRET_ID_LENGTH;
   }
 
   @Override

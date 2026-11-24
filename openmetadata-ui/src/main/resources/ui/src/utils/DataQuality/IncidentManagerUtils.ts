@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EntityType } from '../../enums/entity.enum';
 import { CreateTestCaseResolutionStatus } from '../../generated/api/tests/createTestCaseResolutionStatus';
 import { TestCaseFailureReasonType } from '../../generated/tests/resolved';
 import {
@@ -44,7 +43,9 @@ const getLatestIncident = async (
     return undefined;
   }
 
-  const { data } = await getListTestCaseIncidentByStateId(stateId);
+  const { data } = await getListTestCaseIncidentByStateId(stateId, {
+    limit: 1,
+  });
 
   return data?.[0];
 };
@@ -53,23 +54,6 @@ const getReopenStatusDetails = (
   targetStatus: TestCaseResolutionStatusTypes,
   details?: ReopenIncidentParams['details']
 ): CreateTestCaseResolutionStatus['testCaseResolutionStatusDetails'] => {
-  if (
-    targetStatus === TestCaseResolutionStatusTypes.Assigned &&
-    details?.assignee
-  ) {
-    const { assignee } = details;
-
-    return {
-      assignee: {
-        id: assignee.id,
-        type: assignee.type ?? EntityType.USER,
-        name: assignee.name,
-        fullyQualifiedName: assignee.fullyQualifiedName ?? assignee.name,
-        displayName: assignee.displayName,
-      },
-    };
-  }
-
   if (targetStatus === TestCaseResolutionStatusTypes.Resolved) {
     return {
       testCaseFailureReason: details?.reason,
@@ -81,10 +65,9 @@ const getReopenStatusDetails = (
 };
 
 /**
- * Reopen a resolved test-case incident. Shared by every incident-status surface so they
- * behave identically. `New` starts a fresh incident (a new task); `Ack`/`Assigned`/`Resolved`
- * reopen the existing incident (the backend reuses the stateId and restarts its task).
- * Returns the latest resolution-status record for the caller to pass to its onSubmit.
+ * Shared by incident-status surfaces: `New` starts a fresh incident (a new task), while
+ * `Resolved` updates the existing incident's resolution details. The backend rejects Ack and
+ * Assigned for a resolved incident. Returns the latest resolution-status record for onSubmit.
  */
 export const reopenResolvedIncident = async ({
   testCaseFqn,

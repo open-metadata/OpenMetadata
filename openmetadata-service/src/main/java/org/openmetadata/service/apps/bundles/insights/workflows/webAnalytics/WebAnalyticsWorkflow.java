@@ -243,7 +243,7 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
       error = Optional.of(String.format("Failed Processing Entity View Data: %s", ex.getMessage()));
       workflowStats.addFailure(error.get());
     } finally {
-      updateWorkflowStats(
+      accumulateWorkflowStats(
           createReportDataProcessor.getName(), createReportDataProcessor.getStats());
     }
 
@@ -261,7 +261,7 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
         error = Optional.of(String.format("Failed Sinking Entity View Data: %s", ex.getMessage()));
         workflowStats.addFailure(error.get());
       } finally {
-        updateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
+        accumulateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
       }
     }
 
@@ -285,7 +285,7 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
           Optional.of(String.format("Failed Aggregating User Activity Data: %s", ex.getMessage()));
       workflowStats.addFailure(error.get());
     } finally {
-      updateWorkflowStats(
+      accumulateWorkflowStats(
           webAnalyticsUserActivityAggregator.getName(),
           webAnalyticsUserActivityAggregator.getStats());
     }
@@ -310,7 +310,7 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
               String.format("Failed Processing User Activity Report Data: %s", ex.getMessage()));
       workflowStats.addFailure(error.get());
     } finally {
-      updateWorkflowStats(
+      accumulateWorkflowStats(
           createReportdataProcessor.getName(), createReportdataProcessor.getStats());
     }
 
@@ -328,7 +328,7 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
                 String.format("Failed Sinking User Activity Report Data: %s", ex.getMessage()));
         workflowStats.addFailure(error.get());
       } finally {
-        updateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
+        accumulateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
       }
     }
 
@@ -352,6 +352,12 @@ public class WebAnalyticsWorkflow implements DataInsightsWorkflow {
               eventType,
               TimestampUtils.subtractDays(endTimestamp, WEB_ANALYTIC_EVENTS_RETENTION_DAYS));
     }
+  }
+
+  private void accumulateWorkflowStats(String stepName, StepStats completedStepStats) {
+    workflowStats.accumulateWorkflowStepStats(stepName, completedStepStats);
+    workflowStats.updateWorkflowStats(
+        completedStepStats.getSuccessRecords(), completedStepStats.getFailedRecords());
   }
 
   private void updateWorkflowStats(String stepName, StepStats newStepStats) {

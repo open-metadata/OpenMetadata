@@ -13,8 +13,8 @@
  */
 
 /**
- * Integrity check: every var(--om-*) referenced by a component style or a spec
- * file must be defined in tokens.css. Fails (exit 1) on any undefined token
+ * Integrity check: every statically named --om-* reference in styles, JS/TS,
+ * or a spec var() example must be defined in tokens.css. Fails (exit 1) on an undefined token
  * reference — catches a migration or a hand-written spec that points at a token
  * that does not exist. (Upstream globals.css tokens like var(--color-*) are the
  * Layer 1 source and are not defined here, so they are not checked.)
@@ -57,43 +57,64 @@ function definedTokens(css) {
   return set;
 }
 
-function main() {
-  const defined = definedTokens(fs.readFileSync(TOKENS, 'utf8'));
-  const files = [
-    ...walk(SRC, ['.less', '.css'], []),
-    ...walk(SPECS, ['.md'], []),
-  ].filter((f) => f !== TOKENS);
-
+function findMissingTokens(files, defined) {
   const missing = new Map(); // token -> Set(files)
   // Only count complete references: the token must be immediately followed by
   // `)`, `,`, or whitespace. This skips doc-prose placeholders such as
   // `var(--om-space-<n>, ...)` or `var(--om-radius-*, ...)`.
-  const re = /var\(\s*(--om-[\w-]+)\s*(?=[),\s])/g;
+  // Tailwind's custom-property shorthand and CSSOM getters also keep tokens live.
+  const styleReference = /var\(\s*(--om-[\w-]+)\s*(?=[),\s])/g;
+  const codeReference =
+    /var\(\s*(--om-[\w-]+)\s*(?=[),\s])|[("'`]\s*(--om-[\w-]+)\s*(?=[)"'`])/g;
   for (const file of files) {
     const text = fs.readFileSync(file, 'utf8');
+    // A bare name in Markdown documents a token; it is not a runtime consumer.
+    const re = path.extname(file) === '.md' ? styleReference : codeReference;
     let m;
     while ((m = re.exec(text))) {
-      if (!defined.has(m[1])) {
+      const token = m[1] || m[2];
+      if (!defined.has(token)) {
         const rel = path.relative(UI, file);
-        if (!missing.has(m[1])) {
-          missing.set(m[1], new Set());
+        if (!missing.has(token)) {
+          missing.set(token, new Set());
         }
-        missing.get(m[1]).add(rel);
+        missing.get(token).add(rel);
       }
     }
   }
+
+  return missing;
+}
+
+function main() {
+  const defined = definedTokens(fs.readFileSync(TOKENS, 'utf8'));
+  const files = [
+    ...walk(SRC, ['.less', '.css', '.js', '.jsx', '.ts', '.tsx'], []),
+    ...walk(SPECS, ['.md'], []),
+  ].filter((f) => f !== TOKENS);
+  const missing = findMissingTokens(files, defined);
 
   process.stdout.write(
     `Defined tokens: ${defined.size} | files scanned: ${files.length}\n`
   );
   if (missing.size) {
-    process.stdout.write(`\n\x1b[31mUndefined token references: ${missing.size}\x1b[0m\n`);
+    process.stdout.write(
+      `\n\x1b[31mUndefined token references: ${missing.size}\x1b[0m\n`
+    );
     for (const [tok, set] of missing) {
-      process.stdout.write(`  ${tok}\n    ${[...set].slice(0, 5).join('\n    ')}\n`);
+      process.stdout.write(
+        `  ${tok}\n    ${[...set].slice(0, 5).join('\n    ')}\n`
+      );
     }
     process.exit(1);
   }
-  process.stdout.write('\x1b[32m✔ Every var(--om-*) reference is defined in tokens.css.\x1b[0m\n');
+  process.stdout.write(
+    '\x1b[32m✔ Every var(--om-*) reference is defined in tokens.css.\x1b[0m\n'
+  );
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = { findMissingTokens };

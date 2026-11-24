@@ -717,17 +717,26 @@ export const removeTier = async (page: Page, endpoint: string) => {
 
 // The certification picker loads 50 at a time; searching reaches any certification.
 export const searchCertification = async (page: Page, name: string) => {
-  const searchResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=tag&') &&
-      !response.url().includes('q=&')
-  );
+  // A previous debounced query can finish after fill(). URLSearchParams has
+  // already decoded URI encoding, leaving the query's Elasticsearch escapes.
+  const query = `*${escapeESReservedCharacters(name)}*`;
+  const searchResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname === '/api/v1/search/query' &&
+      url.searchParams.get('index') === 'tag' &&
+      url.searchParams.get('q') === query
+    );
+  });
   await page
     .getByTestId('drop-down-menu')
     .getByTestId('search-input')
     .fill(name);
-  expect((await searchResponse).status()).toBe(200);
+  const response = await searchResponse;
+  expect(response.status()).toBe(200);
+
+  return response;
 };
 
 export const assignCertification = async (
@@ -747,7 +756,17 @@ export const assignCertification = async (
 
   const certificationMenu = page.getByTestId('drop-down-menu');
   await certificationMenu.waitFor({ state: 'visible' });
-  await searchCertification(page, certification.responseData.name);
+  const searchResponse = await searchCertification(
+    page,
+    certification.responseData.name
+  );
+  const hits: { _source: { fullyQualifiedName: string } }[] = (
+    await searchResponse.json()
+  ).hits.hits;
+  expect(
+    hits.map((hit) => hit._source.fullyQualifiedName),
+    'Certification search did not return the requested tag'
+  ).toContain(certification.responseData.fullyQualifiedName);
 
   const patchRequest = page.waitForResponse(
     (response) =>
@@ -932,11 +951,9 @@ export const updateDescriptionForChildren = async (
       page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
     ).toContainText('No Description', { timeout: 10000 });
   } else {
+    // Compact schema rows can render plain text instead of a Markdown paragraph.
     await expect(
-      page
-        .locator(`[${rowSelector}="${rowId}"]`)
-        .getByTestId('viewer-container')
-        .getByRole('paragraph')
+      page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
     ).toContainText(description);
   }
 };
@@ -1552,11 +1569,12 @@ const expectFollowButtonState = async (page: Page, expectedText: string) => {
 // screen. The nudge below resolves the scroller from this root at call time.
 const LANDING_PAGE_SCROLL_CONTAINER = '[data-testid="home-landing-page"]';
 // The standalone Following widget was folded into "Yours and followed", which
-// renders the owned and the followed assets as two columns of one card.
+// shows either the owned or the followed assets, picked by a pill above the list.
 const FOLLOWING_WIDGET_KEY = 'KnowledgePanel.YoursAndFollowed';
 const FOLLOWING_WIDGET_BODY_SKELETON = 'topic-body-skeleton-yoursAndFollowed';
 const FOLLOWED_ASSET_LIST = 'followed-assets';
 const FOLLOWING_WIDGET_CARD = 'topic-card-yoursAndFollowed';
+const FOLLOWING_FILTER_PILL = 'yours-and-followed-filter-following';
 
 const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   const followingWidgetPanel = page.getByTestId(FOLLOWING_WIDGET_KEY);
@@ -1599,9 +1617,8 @@ const revealFollowingWidget = async (page: Page): Promise<Locator> => {
   return followingWidgetPanel;
 };
 
-// Returns the followed-assets column, not the whole card: the owned column can
-// hold the same asset (following something you own is normal), and a card-wide
-// locator would then resolve to two nodes and fail strict mode on click.
+// Returns the followed-assets list, not the whole card, so callers resolve the
+// asset in the followed list specifically.
 const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await redirectToHomePage(page, false);
   await waitForAllLoadersToDisappear(page).catch(() => undefined);
@@ -1614,6 +1631,14 @@ const loadFollowingWidget = async (page: Page): Promise<Locator> => {
   await expect(
     followingWidgetPanel.getByTestId(FOLLOWING_WIDGET_BODY_SKELETON)
   ).toBeHidden({ timeout: 60_000 });
+
+  // The pills are absent on the empty state (nothing owned or followed), which
+  // is a valid answer for the unfollow case; once the skeleton is gone the body
+  // has settled, so checking presence here does not race the render.
+  const followingPill = followingWidgetPanel.getByTestId(FOLLOWING_FILTER_PILL);
+  if (await followingPill.isVisible()) {
+    await followingPill.click();
+  }
 
   return followingWidgetPanel.getByTestId(FOLLOWED_ASSET_LIST);
 };
@@ -1750,76 +1775,6 @@ export const createAnnouncement = async (
   await expect(page.getByTestId(announcementContainerTestId)).toContainText(
     data.description
   );
-};
-
-export const replyAnnouncement = async (page: Page) => {
-  await page
-    .locator('[data-testid="entity-header-announcements"]')
-    .getByTestId('announcement-title-btn')
-    .click();
-
-  await page.hover(
-    '[data-testid="announcement-thread-body"] [data-testid="announcement-card"] [data-testid="main-message"]'
-  );
-
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-
-  await expect(page.getByTestId('add-reply')).toBeVisible();
-
-  await page.getByTestId('add-reply').click();
-
-  await expect(page.locator('.ql-editor')).toBeVisible();
-
-  await expect(page.locator('[data-testid="send-button"]')).toBeDisabled();
-
-  await page.fill('[data-testid="editor-wrapper"] .ql-editor', 'Reply message');
-  await page.click('[data-testid="send-button"]');
-
-  await expect(
-    page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
-  ).toHaveText('Reply message');
-  await expect(page.locator('[data-testid="show-reply-thread"]')).toHaveText(
-    '1 replies'
-  );
-
-  await page.hover('[data-testid="replies"] > [data-testid="main-message"]');
-  await page.locator('.ant-popover').first().waitFor({ state: 'visible' });
-  await page.click('[data-testid="edit-message"]');
-
-  // With the edit box open there are two Quill editors on the page: the reply's
-  // edit box and the drawer's reply composer. A page-level
-  // `[data-testid="editor-wrapper"] .ql-editor` binds to whichever mounted
-  // first, so the text can land in the composer instead. The edit box then
-  // saves unchanged content, the client sends no PATCH at all, and the final
-  // assertion times out on stale text. `.is_edit_post` is set only on the edit
-  // box (FeedCardBody passes it as `editorClass`), so scope to it — and no
-  // `.first()`, so strict mode fails loudly if it ever stops being unique.
-  const replyEditor = page.locator(
-    '[data-testid="editor-wrapper"] .is_edit_post .ql-editor'
-  );
-
-  // Pre-populated with the current reply, which proves the editor is mounted
-  // and that we are addressing the edit box rather than the empty composer.
-  await expect(replyEditor).toHaveText('Reply message');
-
-  await replyEditor.fill('Reply message edited');
-  await expect(replyEditor).toHaveText('Reply message edited');
-
-  const updatedPostResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/feed/') &&
-      response.request().method() === 'PATCH'
-  );
-
-  await page.click('[data-testid="save-button"]');
-  await updatedPostResponse;
-
-  await expect(
-    page.locator('[data-testid="replies"] [data-testid="viewer-container"]')
-  ).toHaveText('Reply message edited');
-
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await waitForAllLoadersToDisappear(page);
 };
 
 export const deleteAnnouncement = async (page: Page) => {
@@ -2336,7 +2291,7 @@ export const softDeleteEntity = async (
   page: Page,
   entityName: string,
   endPoint: EntityTypeEndpoint,
-  displayName: string
+  _displayName: string
 ) => {
   await deletedEntityCommonChecks({
     page,
@@ -2430,7 +2385,7 @@ export const softDeleteEntity = async (
 
 export const hardDeleteEntity = async (
   page: Page,
-  entityName: string,
+  _entityName: string,
   endPoint: EntityTypeEndpoint
 ) => {
   await clickOutside(page);
@@ -2724,34 +2679,40 @@ export const copyAndGetClipboardText = async (
   page: Page,
   locator: Locator
 ): Promise<string> => {
-  // Hover and click the copy button
-  await locator.hover();
-  // eslint-disable-next-line playwright/no-force-option -- copy button may be obscured by tooltip overlay after hover
-  await locator.click({ force: true });
+  // The real OS clipboard is unreliable in headless CI: writeText rejects while the
+  // page is re-rendering and the execCommand fallback then fails, so a paste-back reads ''.
+  // Capture the text the app hands to navigator.clipboard instead. Installed on the live
+  // page (not via addInitScript) so the caller's page state is kept.
+  await page.evaluate(() => {
+    const store = window as unknown as { __pwCopiedText?: string };
+    store.__pwCopiedText = '';
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      configurable: true,
+    });
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: async (text: string) => {
+          store.__pwCopiedText = text;
+        },
+        readText: async () => store.__pwCopiedText ?? '',
+      },
+      configurable: true,
+    });
+  });
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- clipboard write completion delay
-  await page.waitForTimeout(300);
+  // No force: actionability checks retry until the button actually receives the click.
+  await locator.click();
 
-  // Read clipboard using paste method (works reliably in all environments)
-  const textareaId = '__clipboard_reader__';
+  const readCopiedText = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { __pwCopiedText?: string }).__pwCopiedText ?? ''
+    );
 
-  await page.evaluate((id) => {
-    const textarea = document.createElement('textarea');
-    textarea.id = id;
-    textarea.style.cssText = 'position:fixed;left:-9999px;top:0;';
-    document.body.appendChild(textarea);
-  }, textareaId);
+  await expect.poll(readCopiedText).not.toBe('');
 
-  await page.locator(`#${textareaId}`).focus();
-  await page.keyboard.press('ControlOrMeta+V');
-
-  const clipboardText = await page.locator(`#${textareaId}`).inputValue();
-
-  await page.evaluate((id) => {
-    document.getElementById(id)?.remove();
-  }, textareaId);
-
-  return clipboardText;
+  return readCopiedText();
 };
 
 /**

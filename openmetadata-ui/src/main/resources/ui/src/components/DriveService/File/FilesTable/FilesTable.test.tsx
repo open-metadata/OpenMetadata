@@ -28,6 +28,7 @@ import {
 } from '../../../../generated/type/tagLabel';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import Table from '../../../common/Table/TableV2';
 import FilesTable from './FilesTable';
 import { FilesTableProps } from './FilesTable.interface';
 
@@ -161,6 +162,9 @@ const mockPaging: UsePagingInterface = {
 };
 
 const defaultProps: FilesTableProps = {
+  setFiles: jest.fn(),
+  setIsLoading: jest.fn(),
+  serviceFqn: 'drive-service',
   showDeleted: false,
   handleShowDeleted: jest.fn(),
   paging: mockPaging,
@@ -418,5 +422,22 @@ describe('FilesTable', () => {
     });
 
     expect(screen.getByTestId('files-table')).toBeInTheDocument();
+  });
+
+  describe('column-visibility preference key isolation', () => {
+    it('passes a unique entityType to TableV2 so column-visibility preferences do not collide with other tables', () => {
+      renderFilesTable();
+
+      const TableV2Mock = Table as jest.MockedFunction<typeof Table>;
+
+      expect(TableV2Mock).toHaveBeenCalled();
+
+      const passedProps = TableV2Mock.mock.calls[0][0] as {
+        entityType?: string;
+      };
+
+      expect(passedProps.entityType).toBe('driveFilesTable');
+      expect(passedProps.entityType).not.toBe('dashboardDataModelTable');
+    });
   });
 });

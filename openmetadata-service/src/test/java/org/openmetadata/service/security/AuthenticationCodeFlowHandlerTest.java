@@ -27,12 +27,15 @@ import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import com.nimbusds.common.contenttype.ContentType;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.PlainJWT;
+import com.nimbusds.oauth2.sdk.AuthorizationCode;
 import com.nimbusds.oauth2.sdk.TokenRequest;
 import com.nimbusds.oauth2.sdk.auth.ClientSecretBasic;
 import com.nimbusds.oauth2.sdk.auth.Secret;
 import com.nimbusds.oauth2.sdk.http.HTTPResponse;
 import com.nimbusds.oauth2.sdk.id.ClientID;
+import com.nimbusds.oauth2.sdk.id.State;
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken;
+import com.nimbusds.openid.connect.sdk.AuthenticationSuccessResponse;
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
@@ -209,28 +212,126 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
-  void handleCallback_nonSilentAuthError_writesErrorResponse() throws Exception {
-    UserSession pendingSession =
-        UserSession.builder().id("pending-session").state("state-abc").build();
-    when(sessionService.getPendingSession(request, response))
-        .thenReturn(Optional.of(pendingSession));
-    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
-    when(request.getParameterMap())
-        .thenReturn(
-            Map.of(
-                "state", new String[] {"state-abc"},
-                "error", new String[] {"server_error"}));
-
+  void handleCallback_providerRefusal_returnsToSignInWithTheReason() throws Exception {
     AuthenticationCodeFlowHandler handler =
-        createHandlerWithMockedInternals(sessionService, oidcClient);
-    setField(handler, "serverUrl", TEST_SERVER_URL);
+        handlerAnsweringProviderError(TEST_SERVER_URL + "/auth/callback", "access_denied");
+
+    handler.handleCallback(request, response);
+
+    verify(response).sendRedirect(TEST_SERVER_URL + "/signin?error=provider_refused");
+    verify(response, never()).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    assertTrue(captureOutputStream.getCapturedOutput().isEmpty(), "no detail in the response");
+  }
+
+  @Test
+  void handleCallback_failedMcpSignIn_keepsTheErrorStatusItsCallbackReads() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        handlerAnsweringProviderError(TEST_SERVER_URL + MCP_CALLBACK, "server_error");
 
     handler.handleCallback(request, response);
 
     verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-    String body = captureOutputStream.getCapturedOutput();
-    assertTrue(body.contains("Bad authentication response"));
     verify(response, never()).sendRedirect(anyString());
+  }
+
+  @Test
+  void handleCallback_failedMcpSignIn_tellsItsCallbackWhy() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        handlerAnsweringProviderError(TEST_SERVER_URL + MCP_CALLBACK, "server_error");
+
+    handler.handleCallback(request, response);
+
+    verify(request)
+        .setAttribute(
+            AuthenticationCodeFlowHandler.SIGN_IN_FAILURE_ATTRIBUTE,
+            SignInFailure.PROVIDER_REFUSED);
+  }
+
+  @Test
+  void handleCallback_refusedCodeExchange_returnsToSignInWithTheReason() throws Exception {
+    try (FakeOidcProvider provider = FakeOidcProvider.start()) {
+      provider.rejectTokenRequests(401, "invalid_client", "client authentication failed");
+      AuthenticationCodeFlowHandler handler =
+          new AuthenticationCodeFlowHandler(
+              FakeOidcProvider.securityConfigFor(provider.confidentialClient())
+                  .getAuthenticationConfiguration(),
+              new AuthorizerConfiguration(),
+              sessionService);
+      UserSession pendingSession =
+          UserSession.builder()
+              .id("pending-session")
+              .state("state-abc")
+              .redirectUri("http://localhost:8585/auth/callback")
+              .build();
+      when(sessionService.getPendingSession(request, response))
+          .thenReturn(Optional.of(pendingSession));
+      when(request.getParameterMap())
+          .thenReturn(Map.of("state", new String[] {"state-abc"}, "code", new String[] {"code-1"}));
+
+      handler.handleCallback(request, response);
+
+      verify(response).sendRedirect("http://localhost:8585/signin?error=token_exchange_failed");
+      verify(sessionService, never())
+          .activatePendingSession(any(), any(), any(), any(), any(), any());
+    }
+  }
+
+  @Test
+  void unusableClientAuthentication_namesOnlyTheMethodsTheServerCannotPerform() {
+    assertTrue(AuthenticationCodeFlowHandler.unusableClientAuthentication(null).isEmpty());
+    for (OidcClientConfig.ClientAuthenticationMethod method :
+        OidcClientConfig.ClientAuthenticationMethod.values()) {
+      boolean isUsable =
+          method == OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_BASIC
+              || method == OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_POST;
+      Optional<String> reason =
+          AuthenticationCodeFlowHandler.unusableClientAuthentication(
+              new OidcClientConfig().withClientAuthenticationMethod(method));
+      assertEquals(isUsable, reason.isEmpty(), method.value());
+      reason.ifPresent(text -> assertTrue(text.contains(method.value()), text));
+    }
+  }
+
+  @Test
+  void validateConfig_refusesAClientAuthenticationMethodTheServerCannotPerform() {
+    AuthenticationConfiguration authConfig =
+        new AuthenticationConfiguration()
+            .withOidcConfiguration(
+                new OidcClientConfig()
+                    .withId("om-client")
+                    .withSecret("om-secret")
+                    .withCallbackUrl(TEST_SERVER_URL + "/callback")
+                    .withServerUrl(TEST_SERVER_URL)
+                    .withClientAuthenticationMethod(
+                        OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_JWT));
+
+    IllegalArgumentException refused =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                AuthenticationCodeFlowHandler.validateConfig(
+                    authConfig, new AuthorizerConfiguration()));
+
+    assertTrue(refused.getMessage().contains("client_secret_jwt"), refused.getMessage());
+  }
+
+  private AuthenticationCodeFlowHandler handlerAnsweringProviderError(
+      String loginRedirectUri, String error) throws Exception {
+    UserSession pendingSession =
+        UserSession.builder()
+            .id("pending-session")
+            .state("state-abc")
+            .redirectUri(loginRedirectUri)
+            .build();
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(pendingSession));
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(request.getParameterMap())
+        .thenReturn(Map.of("state", new String[] {"state-abc"}, "error", new String[] {error}));
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+    return handler;
   }
 
   @Test
@@ -2005,6 +2106,36 @@ class AuthenticationCodeFlowHandlerTest {
   @Test
   void handleCallback_codeFlowFrontChannelTokenWithoutCode_rejectedWithoutActivatingSession()
       throws Exception {
+    assertCodelessCallbackRejectedWithoutActivatingSession("code");
+  }
+
+  @Test
+  void handleCallback_implicitResponseTypeWithoutCode_rejectedWithoutActivatingSession()
+      throws Exception {
+    assertCodelessCallbackRejectedWithoutActivatingSession("id_token");
+  }
+
+  @Test
+  void buildCredentials_keepsOnlyTheAuthorizationCode() {
+    AuthenticationSuccessResponse callback =
+        new AuthenticationSuccessResponse(
+            URI.create(TEST_SERVER_URL + "/callback"),
+            new AuthorizationCode("authorization-code-1"),
+            new PlainJWT(new JWTClaimsSet.Builder().subject("admin").build()),
+            new BearerAccessToken("front-channel-access-token"),
+            new State("state-abc"),
+            null,
+            null);
+
+    OidcCredentials credentials = AuthenticationCodeFlowHandler.buildCredentials(callback);
+
+    assertEquals("authorization-code-1", credentials.getCode());
+    assertNull(credentials.getIdToken());
+    assertNull(credentials.toAccessToken());
+  }
+
+  private void assertCodelessCallbackRejectedWithoutActivatingSession(String responseType)
+      throws Exception {
     UserSession pendingSession =
         UserSession.builder()
             .id("pending-session")
@@ -2016,7 +2147,7 @@ class AuthenticationCodeFlowHandlerTest {
     when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
     when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
     when(oidcConfiguration.isWithState()).thenReturn(false);
-    when(oidcConfiguration.getResponseType()).thenReturn("code");
+    when(oidcConfiguration.getResponseType()).thenReturn(responseType);
     OIDCProviderMetadata metadata = mock(OIDCProviderMetadata.class);
     when(metadata.supportsAuthorizationResponseIssuerParam()).thenReturn(false);
     IOidcOpMetadataResolver metadataResolver = mock(IOidcOpMetadataResolver.class);
@@ -2045,28 +2176,6 @@ class AuthenticationCodeFlowHandlerTest {
     assertTrue(captureOutputStream.getCapturedOutput().contains("Authorization code is required"));
     verify(sessionService, never())
         .activatePendingSession(any(), any(), any(), any(), any(), any());
-  }
-
-  @Test
-  void expectsAuthorizationCode_trueForCodeAndHybridAndDefault_falseForImplicit() throws Exception {
-    when(oidcClient.getConfiguration()).thenReturn(oidcConfiguration);
-    AuthenticationCodeFlowHandler handler =
-        createHandlerWithMockedInternals(sessionService, oidcClient);
-    Method expectsCode =
-        AuthenticationCodeFlowHandler.class.getDeclaredMethod("expectsAuthorizationCode");
-    expectsCode.setAccessible(true);
-
-    when(oidcConfiguration.getResponseType()).thenReturn("code");
-    assertEquals(Boolean.TRUE, expectsCode.invoke(handler));
-
-    when(oidcConfiguration.getResponseType()).thenReturn("code id_token");
-    assertEquals(Boolean.TRUE, expectsCode.invoke(handler));
-
-    when(oidcConfiguration.getResponseType()).thenReturn(null);
-    assertEquals(Boolean.TRUE, expectsCode.invoke(handler));
-
-    when(oidcConfiguration.getResponseType()).thenReturn("id_token");
-    assertEquals(Boolean.FALSE, expectsCode.invoke(handler));
   }
 
   private AuthenticationCodeFlowHandler createHandlerWithMockedInternals(

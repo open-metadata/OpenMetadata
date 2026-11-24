@@ -218,7 +218,7 @@ describe('IncidentList', () => {
       'label.assigned'
     );
     expect(within(row).getByTestId('incident-severity')).toHaveTextContent(
-      'Severity 1'
+      'label.severity 1'
     );
     expect(within(row).getByTestId('incident-assignee')).toHaveTextContent(
       'Tomas Montiel'
@@ -227,6 +227,26 @@ describe('IncidentList', () => {
     expect(
       within(within(row).getByTestId('incident-severity')).queryByRole('button')
     ).not.toBeInTheDocument();
+  });
+
+  it('shows the assignee after a different user resolves the incident', () => {
+    renderList([
+      {
+        ...assigned,
+        testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Resolved,
+        testCaseResolutionStatusDetails: {
+          ...assigned.testCaseResolutionStatusDetails,
+          resolvedBy: { id: 'user-2', type: 'user', name: 'resolver' },
+        },
+      },
+    ]);
+
+    expect(screen.getByTestId('incident-status')).toHaveTextContent(
+      'label.resolved'
+    );
+    expect(screen.getByTestId('incident-assignee')).toHaveTextContent(
+      'Tomas Montiel'
+    );
   });
 
   it('should show the last update as a short date over its time', () => {

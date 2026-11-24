@@ -183,12 +183,14 @@ class TeradataConnection(BaseConnection[TeradataConnectionConfig, Engine]):
         url += f"?user={quote_plus(connection.username)}"
         if connection.password:
             url += f"&password={quote_plus(connection.password.get_secret_value())}"
+        if connection.logdata:
+            url += f"&logdata={quote_plus(connection.logdata.get_secret_value())}"
 
         # add standard options
         params = "&".join(
             [
                 f"{key}={quote_plus(str(getattr(connection, key) if not isinstance(getattr(connection, key), enum.Enum) else getattr(connection, key).value))}"
-                for key in ["account", "logdata", "logmech", "tmode"]
+                for key in ["account", "logmech", "tmode"]
                 if getattr(connection, key, None)
             ]
         )

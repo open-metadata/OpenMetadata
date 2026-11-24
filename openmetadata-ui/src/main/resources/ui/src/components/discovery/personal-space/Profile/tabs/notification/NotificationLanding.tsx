@@ -88,7 +88,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
                 onNavigate(card.view);
               }
             }}>
-            <Card.Content>
+            <Card.Content className="tw:px-3">
               <Box
                 align="start"
                 data-testid={`notification-card-${card.id}`}
@@ -96,7 +96,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
                 gap={4}>
                 <Box
                   align="center"
-                  className={`tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
+                  className={`tw:mt-1 tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
                     index
                   )}`}
                   justify="center">
@@ -111,7 +111,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
                       {card.title}
                     </Typography>
                     {card.isBeta && (
-                      <Badge color="gray" size="sm" type="pill-color">
+                      <Badge color="brand" size="sm" type="pill-color">
                         {t('label.beta')}
                       </Badge>
                     )}

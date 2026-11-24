@@ -37,6 +37,7 @@ import {
   isEdgeInViewport,
   setupCanvas,
 } from '../utils/CanvasUtils';
+import { isEdgeOnDraggedNode } from '../utils/EdgeMidpointUtils';
 import {
   computeEdgeStyle,
   computeEdgeVisualState,
@@ -427,6 +428,7 @@ export function useCanvasEdgeRenderer({
     const visibleEdges = edges.filter(
       (edge) =>
         computeEdgeVisualState(edge, tracedNodes, tracedColumns) !== 'hidden' &&
+        !isEdgeOnDraggedNode(edge, getNode) &&
         (isEdgeTraced(edge, tracedColumns) ||
           isEdgeInViewport(
             edge,
@@ -582,15 +584,22 @@ export function useCanvasEdgeRenderer({
     edgePathCacheRef.current = new WeakMap();
   }, [edges, nodes, columnsInCurrentPages, isRepositioning]);
 
-  useEffect(() => {
-    scheduleRedraw();
-
-    return () => {
+  // A scheduled frame draws the latest state through drawAllEdgesRef, so a
+  // dependency change must not cancel it. React Flow's auto-pan changes the
+  // viewport from its own animation frame, just before ours: cancelling and
+  // rescheduling there would postpone the draw for as long as the pan runs.
+  useEffect(
+    () => () => {
       if (rafIdRef.current) {
         isDirtyRef.current = false;
         cancelAnimationFrame(rafIdRef.current);
       }
-    };
+    },
+    []
+  );
+
+  useEffect(() => {
+    scheduleRedraw();
   }, [
     edges,
     nodes,

@@ -11,20 +11,25 @@
  *  limitations under the License.
  */
 /**
- * Append-only evidence committed with an ontology release capture, completed approval
- * workflow decision, or activation.
+ * Append-only evidence committed with an ontology release capture, review request or
+ * withdrawal, completed approval decision, or activation.
  */
 export interface OntologyReleaseEvent {
     /**
      * The new activation revision committed with an ACTIVATED event, including rollback.
      */
     activationRevision?: number;
-    contentDigest:       string;
-    createdAt:           number;
-    createdBy:           string;
-    eventType:           EventType;
-    id:                  string;
-    ontologyId:          string;
+    /**
+     * Recorded on an APPROVED event: whether reviewers decided the release or the ontology had
+     * none.
+     */
+    approvalBasis?: ApprovalBasis;
+    contentDigest:  string;
+    createdAt:      number;
+    createdBy:      string;
+    eventType:      EventType;
+    id:             string;
+    ontologyId:     string;
     /**
      * Previously active release, absent for the first activation.
      */
@@ -41,11 +46,26 @@ export interface OntologyReleaseEvent {
     workflowInstanceId?:   string;
 }
 
+/**
+ * Recorded on an APPROVED event: whether reviewers decided the release or the ontology had
+ * none.
+ *
+ * Why this release was approved. REVIEWED means the ontology's reviewers decided it;
+ * NO_REVIEWERS_CONFIGURED means the ontology had no reviewers when an author published it
+ * directly. Absent on releases approved before this field existed, which were all reviewed.
+ */
+export enum ApprovalBasis {
+    NoReviewersConfigured = "NO_REVIEWERS_CONFIGURED",
+    Reviewed = "REVIEWED",
+}
+
 export enum EventType {
     Activated = "ACTIVATED",
     Approved = "APPROVED",
     Captured = "CAPTURED",
     Rejected = "REJECTED",
+    ReviewRequested = "REVIEW_REQUESTED",
+    ReviewWithdrawn = "REVIEW_WITHDRAWN",
 }
 
 /**
@@ -145,7 +165,12 @@ export enum ResolutionType {
  * Server-captured immutable ontology release reviewed by an existing approval workflow task.
  */
 export interface OntologyReviewTarget {
-    author: string;
+    /**
+     * Approval rule frozen when the review was requested. Reviews requested before the rule
+     * existed decide on the first approval.
+     */
+    approvalRule?: OntologyApprovalRule;
+    author:        string;
     /**
      * SHA-256 of the ontology-review-v3 sealed release identity.
      */
@@ -159,4 +184,17 @@ export interface OntologyReviewTarget {
      * Owning ontology ID used to serialize release review decisions.
      */
     ontologyId: string;
+}
+
+/**
+ * Approval rule frozen when the review was requested. Reviews requested before the rule
+ * existed decide on the first approval.
+ *
+ * How many of an ontology's reviewers must approve a release review. AnyReviewer decides on
+ * the first approval. AllReviewers waits for every reviewer entry; a reviewer team counts
+ * once and any member covers it. Frozen into the review task when a review is requested.
+ */
+export enum OntologyApprovalRule {
+    AllReviewers = "AllReviewers",
+    AnyReviewer = "AnyReviewer",
 }

@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.csv.CsvUtil.addDomains;
 import static org.openmetadata.csv.CsvUtil.addField;
@@ -65,6 +64,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.drives.WorksheetResource;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -350,10 +350,13 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
     List<TagLabel> allTags = new ArrayList<>();
     Worksheet worksheet = (Worksheet) entity;
     EntityUtil.mergeTags(allTags, worksheet.getTags());
-    for (Column column : listOrEmpty(worksheet.getColumns())) {
-      EntityUtil.mergeTags(allTags, column.getTags());
-    }
+    EntityUtil.mergeColumnTags(allTags, worksheet.getColumns());
     return allTags;
+  }
+
+  @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,columns");
   }
 
   private EntityReference getSpreadsheet(Worksheet worksheet) {

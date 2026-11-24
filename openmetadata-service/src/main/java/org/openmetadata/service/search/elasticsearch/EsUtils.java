@@ -42,7 +42,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.lineage.MissingLineageEntityException;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
+import org.openmetadata.service.util.LineageUtil;
 
 @Slf4j
 public class EsUtils {
@@ -320,6 +322,9 @@ public class EsUtils {
             1,
             fieldsToInclude,
             fieldsToRemove);
+    if (result.isEmpty()) {
+      throw new MissingLineageEntityException(hasToFqnPair.getRight());
+    }
     if (result.size() == 1) {
       return (Map<String, Object>) result.get(hasToFqnPair.getRight());
     } else {
@@ -427,6 +432,7 @@ public class EsUtils {
       }
     }
 
+    LineageUtil.rejectTimedOutSearch(searchResponse.timedOut(), indexAlias);
     for (Hit<JsonData> hit : searchResponse.hits().hits()) {
       if (hit.source() != null) {
         Map<String, Object> esDoc = jsonDataToMap(hit.source());

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
   FilterFunnel01,
@@ -233,8 +238,12 @@ export const TaskQueueEmptyState = ({
 export interface TaskQueueBodyProps {
   // Status, search and filter controls, heading the list column.
   toolbar: ReactNode;
-  // Shown in place of the detail when no task matches.
+  // Shown when no task matches: in place of the detail, or in the list while a
+  // kept selection holds the detail pane.
   emptyState?: ReactNode;
+  // The empty state is a search or filter matching nothing, so it belongs
+  // beside the controls that cause it, in the list.
+  isNoMatch?: boolean;
   // A failed load with nothing listed leaves nothing to filter, so the
   // placeholder takes the whole body.
   isLoadFailed?: boolean;
@@ -243,6 +252,12 @@ export interface TaskQueueBodyProps {
   tasks: Task[];
   // Set when grouped by type; the list renders these instead of `tasks`.
   groups?: TaskTypeGroup[];
+  // Pages are still unread, so a group's count is only a floor.
+  isPartial?: boolean;
+  // The last page failed. Neither the read-ahead nor a list too short to
+  // scroll would ask again, so the list offers its own retry.
+  isLoadMoreError?: boolean;
+  onRetryLoadMore: () => void;
   selectedTaskId?: string;
   scrollRef: RefObject<HTMLDivElement>;
   sentinelRef: RefObject<HTMLDivElement>;
@@ -254,6 +269,7 @@ export interface TaskQueueBodyProps {
   handleCommentsChanged: (updated: Task) => void;
   handleResolved: (resolved: Task) => void;
   handleTaskUpdated: () => void;
+  handleTaskLoaded: (loaded: Task) => void;
 }
 
 type TaskQueueDetailPaneProps = Pick<
@@ -265,6 +281,7 @@ type TaskQueueDetailPaneProps = Pick<
   | 'handleCommentsChanged'
   | 'handleResolved'
   | 'handleTaskUpdated'
+  | 'handleTaskLoaded'
 >;
 
 // The selected task beside the list, or why there is none.
@@ -276,6 +293,7 @@ const TaskQueueDetailPane = ({
   handleCommentsChanged,
   handleResolved,
   handleTaskUpdated,
+  handleTaskLoaded,
 }: TaskQueueDetailPaneProps) => {
   const { t } = useTranslation();
 
@@ -285,6 +303,7 @@ const TaskQueueDetailPane = ({
       key={selectedTaskId}
       taskId={selectedTaskId}
       onCommentsChanged={handleCommentsChanged}
+      onLoaded={handleTaskLoaded}
       onResolved={handleResolved}
       onTaskUpdated={handleTaskUpdated}
     />
@@ -296,11 +315,63 @@ const TaskQueueDetailPane = ({
     </Box>
   );
 
+  // A kept selection (e.g. a deep-linked task held past the loaded page) owns
+  // the detail pane, so the empty placeholder only shows here when no task is
+  // selected — the list column carries it otherwise.
+  let detailPane: ReactNode;
+  if (isLoading) {
+    detailPane = <TaskDetailSkeleton />;
+  } else if (selectedTaskId) {
+    detailPane = detailContent;
+  } else {
+    detailPane = emptyState;
+  }
+
   return (
     <Box className="tw:relative tw:min-h-0 tw:w-full" direction="col">
-      {isLoading ? <TaskDetailSkeleton /> : emptyState ?? detailContent}
+      {detailPane}
     </Box>
   );
+};
+
+// Without a free detail pane — none in the list-only layout, or a kept
+// selection holding it — the list is where "nothing here" shows, so its
+// "Clear all", "Load more" and retry stay reachable. A no-match shows there
+// too, under the search and filters it answers.
+const getListEmptyState = (
+  emptyState: ReactNode,
+  onOpenTask: TaskQueueBodyProps['onOpenTask'],
+  selectedTaskId: TaskQueueBodyProps['selectedTaskId'],
+  isNoMatch: boolean
+): ReactNode =>
+  onOpenTask || selectedTaskId || isNoMatch ? emptyState : undefined;
+
+// A failed later page, with a way to ask for it again.
+const LoadMoreRetry = ({
+  isLoadMoreError,
+  isLoadingMore,
+  onRetry,
+}: {
+  isLoadMoreError?: boolean;
+  isLoadingMore: boolean;
+  onRetry: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  return isLoadMoreError && !isLoadingMore ? (
+    <Box
+      align="center"
+      className="tw:justify-center tw:py-4"
+      data-testid="inbox-tasks-load-more-error"
+      gap={3}>
+      <Typography className="tw:text-tertiary" size="text-sm">
+        {t('server.entity-fetch-error', { entity: t('label.task-plural') })}
+      </Typography>
+      <Button color="secondary" size="xs" onClick={onRetry}>
+        {t('label.retry')}
+      </Button>
+    </Box>
+  ) : null;
 };
 
 // The two panes: the list column (its controls over the grouped rows) and the
@@ -308,11 +379,15 @@ const TaskQueueDetailPane = ({
 const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
   toolbar,
   emptyState,
+  isNoMatch = false,
   isLoadFailed = false,
   isLoading,
   isLoadingMore,
   tasks,
   groups,
+  isPartial = false,
+  isLoadMoreError,
+  onRetryLoadMore,
   selectedTaskId,
   scrollRef,
   sentinelRef,
@@ -322,6 +397,7 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
   handleCommentsChanged,
   handleResolved,
   handleTaskUpdated,
+  handleTaskLoaded,
 }) => {
   const { t } = useTranslation();
   const { isScrolled: isListScrolled, onScroll: onListScroll } =
@@ -347,7 +423,7 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
     );
 
   // Grouping covers the pages loaded so far: the server paginates by cursor,
-  // not by type, so a later page can reopen a group that already appeared.
+  // not by type, so a grouped list reads on to its scan cap (see useTaskQueue).
   const groupedList = groups?.map((group) => {
     // Every task in a group reads the same, so its first one names it.
     const badge = getTaskTypeBadge(group.items[0], t);
@@ -372,7 +448,7 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
             {badge.label}
           </Typography>
           <Typography className="tw:text-tertiary" size="text-xs">
-            {group.count}
+            {isPartial ? `${group.count}+` : group.count}
           </Typography>
         </Box>
         {group.items.map(renderRow)}
@@ -399,8 +475,12 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
           <InboxTaskListSkeleton />
         ) : (
           <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:pb-3">
-            {/* Without a detail pane, the list is where "nothing here" shows. */}
-            {(onOpenTask && emptyState) ||
+            {getListEmptyState(
+              emptyState,
+              onOpenTask,
+              selectedTaskId,
+              isNoMatch
+            ) ||
               (groupedList ?? tasks.map(renderRow))}
           </div>
         )}
@@ -411,6 +491,11 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
             <Loader />
           </div>
         )}
+        <LoadMoreRetry
+          isLoadMoreError={isLoadMoreError}
+          isLoadingMore={isLoadingMore}
+          onRetry={onRetryLoadMore}
+        />
       </div>
     </Box>
   );
@@ -439,9 +524,10 @@ const TaskQueueBody: React.FC<TaskQueueBodyProps> = ({
       </Box>
 
       <TaskQueueDetailPane
-        emptyState={emptyState}
+        emptyState={isNoMatch ? undefined : emptyState}
         handleCommentsChanged={handleCommentsChanged}
         handleResolved={handleResolved}
+        handleTaskLoaded={handleTaskLoaded}
         handleTaskUpdated={handleTaskUpdated}
         isLoading={isLoading}
         selectedTaskId={selectedTaskId}

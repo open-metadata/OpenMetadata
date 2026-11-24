@@ -22,6 +22,7 @@ from collections.abc import Iterable
 from pathlib import Path
 
 from metadata.config.common import ConfigModel
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -137,7 +138,7 @@ class TableUsageStage(Stage):
             ]
 
     def _handle_table_usage(self, parsed_data: ParsedData, table: str) -> Iterable[Either[str]]:
-        table_joins = parsed_data.joins.get(table)
+        table_joins = (parsed_data.joins or {}).get(table)
         try:
             self._add_sql_query(record=parsed_data, table=table)
             table_usage_count = self.table_usage.get((table, parsed_data.date))
@@ -202,8 +203,9 @@ class TableUsageStage(Stage):
         for parsed_data in record.parsedData:
             if parsed_data is None:
                 continue
-            for table in parsed_data.tables:
-                yield from self._handle_table_usage(parsed_data=parsed_data, table=table)
+            usage_data = get_table_binding_resolution(self.metadata, parsed_data.serviceName).prepare_usage(parsed_data)
+            for table in usage_data.tables:
+                yield from self._handle_table_usage(parsed_data=usage_data, table=table)
             self._handle_query_cost(parsed_data)
         self.dump_data_to_file()
 

@@ -11,16 +11,14 @@
  *  limitations under the License.
  */
 
-import { ButtonUtility } from '@openmetadata/ui-core-components';
 import CodeMirror from '@uiw/react-codemirror';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/ic-duplicate.svg';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import { useCodeMirrorEditor } from '../../../hooks/useCodeMirrorEditor';
 import { CodeMirrorOptions } from '../../../interface/codemirror.interface';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import './schema-editor.less';
 import { SchemaEditorProps } from './SchemaEditor.interface';
 
@@ -71,7 +69,6 @@ const SchemaEditor = ({
     extensions,
     onChange,
   });
-  const { onCopyToClipBoard, hasCopied } = useClipboard(internalValue);
 
   return (
     <div
@@ -79,13 +76,10 @@ const SchemaEditor = ({
       data-testid="code-mirror-container">
       {showCopyButton && (
         <div className={classNames('query-editor-button', copyButtonClassName)}>
-          <ButtonUtility
-            data-testid="query-copy-button"
-            icon={<CopyIcon height={16} width={16} />}
-            tooltip={
-              hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
-            }
-            onClick={() => onCopyToClipBoard(internalValue)}
+          <CopyButton
+            testId="query-copy-button"
+            tooltip={t('message.copy-to-clipboard')}
+            value={internalValue}
           />
         </div>
       )}

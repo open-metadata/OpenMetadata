@@ -22,7 +22,7 @@ export interface TabProps {
 }
 
 export interface TabsLabelProps {
-  name: string;
+  name: React.ReactNode;
   id: string;
   // A string carries a formatted count, e.g. `219+` for a lower bound.
   count?: number | string;

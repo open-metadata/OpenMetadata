@@ -42,6 +42,6 @@ public class NotHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{not }}")
-                    .withExample("{{#if (not hasErrors)}}All tests passed{{/if}}")));
+                    .withExample("{{#if (not entity.deleted)}}Entity is active{{/if}}")));
   }
 }

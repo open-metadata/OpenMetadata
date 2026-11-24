@@ -17,14 +17,14 @@ import {
   Dropdown,
   PaginationCardWithControls,
 } from '@openmetadata/ui-core-components';
-import { Download01, Upload01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  Upload01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Table from '../../../../../common/Table/TableV2';
 import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
@@ -60,7 +60,7 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
         dataSource={filteredTeamUsers}
         extraTableFilters={
           <Box align="center" direction="row" gap={2}>
-            {canEditAll && !team.deleted && (
+            {isGroupType && canEditAll && !team.deleted && (
               <UserTeamSelectableList
                 hasPermission
                 multiple={{ user: true, team: false }}
@@ -117,6 +117,7 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
                   'message.adding-new-entity-is-easy-just-give-it-a-spin',
                   { entity: t('label.user') }
                 )}
+                icon={<User01 />}
                 title={t('label.no-entity-found', {
                   entity: t('label.user-plural'),
                 })}
@@ -135,12 +136,13 @@ const MembersUsersTab: FC<MembersUsersTabProps> = ({
           typingInterval: 500,
         }}
         size="small"
+        variant="muted"
       />
       {showUsersPagination && (
         <PaginationCardWithControls
           page={usersPage}
           pageSize={usersPageSize}
-          pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+          pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
           total={Math.max(
             1,
             Math.ceil((usersPaging.total ?? 0) / usersPageSize)

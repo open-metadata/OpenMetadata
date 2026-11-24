@@ -78,6 +78,13 @@ export interface RDFConfiguration {
      */
     federation?: Federation;
     /**
+     * Largest RDF-Thrift request, in bytes, used to replace a whole named graph such as an
+     * active ontology release. A graph above it is uploaded in chunks into staging graphs and
+     * moved into place in one SPARQL update. Keep it at or below the Fuseki upload limit
+     * (OPENMETADATA_MAX_UPLOAD_BYTES).
+     */
+    graphReplaceChunkBytes?: number;
+    /**
      * Compress streamed insert-only request bodies with gzip. The backend reads the request
      * body inside its single-writer transaction, so on network-constrained links compression
      * directly shortens writer-lock hold time. Off by default; enable after verifying
@@ -128,6 +135,13 @@ export interface RDFConfiguration {
      */
     requestTimeoutMs?:    number;
     shaclValidationMode?: ShaclValidationMode;
+    /**
+     * Automatic maintenance of the RDF store. Apache Jena TDB2 keeps every page a write
+     * transaction replaces until the dataset is compacted, so a store that only receives live
+     * writes grows until its disk is full. Maintenance compacts the serving dataset on a
+     * schedule, with writes to it paused so none is lost or dead-lettered.
+     */
+    storageMaintenance?: StorageMaintenance;
     /**
      * Type of RDF storage backend
      */
@@ -200,6 +214,37 @@ export enum ShaclValidationMode {
     EnforceImports = "ENFORCE_IMPORTS",
     Off = "OFF",
     Report = "REPORT",
+}
+
+/**
+ * Automatic maintenance of the RDF store. Apache Jena TDB2 keeps every page a write
+ * transaction replaces until the dataset is compacted, so a store that only receives live
+ * writes grows until its disk is full. Maintenance compacts the serving dataset on a
+ * schedule, with writes to it paused so none is lost or dead-lettered.
+ */
+export interface StorageMaintenance {
+    /**
+     * Longest time between compactions of a dataset that receives writes. Fuseki blocks writers
+     * for the whole compaction, which copies only the live data.
+     */
+    compactionIntervalHours?: number;
+    /**
+     * Compact the serving dataset automatically.
+     */
+    enabled?: boolean;
+    /**
+     * Longest a compaction or the clear that starts an in-place rebuild may take before the run
+     * reports it as unfinished. Writes to the dataset stay paused meanwhile.
+     */
+    maxDurationMinutes?: number;
+    /**
+     * Compact without waiting for the interval once the store reports less free space than this
+     * share of its volume, or reports that its write guard is refusing writes. When a
+     * compaction cannot bring the store back above this share, urgent compactions wait for the
+     * next scheduled compaction. Only stores that report their volume, such as OpenMetadata's
+     * Fuseki images, are checked.
+     */
+    urgentFreeSpacePercent?: number;
 }
 
 /**

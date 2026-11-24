@@ -1,7 +1,7 @@
 # Ant Design imports are frozen by ESLint suppressions and migrated components cannot return
 
-- **Status:** Accepted
-- **Revisions:** v1 2026-10-11 (initial)
+- **Status:** Superseded by ADR:2026-10-28-antd-global-styles-live-on-in-legacy-base-css
+- **Revisions:** v1 2026-10-11 (initial) · v2 2026-10-28 (rules retired with the antd package)
 - **Deciders:** Harshit Shah
 - **Guard:** `openmetadata-ui/src/main/resources/ui/eslint-rules/openmetadata-antd.test.mjs`
 - **Related:** open-metadata/openmetadata-collate#6884, open-metadata/openmetadata-collate#6890
@@ -29,3 +29,8 @@ A PR that removes antd usage must prune the suppressions and lower the pinned to
 per file and per rule, so replacing one antd symbol with another in the same file is not caught
 unless the new symbol belongs to a migrated component. To retire the mechanism, delete both rules
 once `no-antd-import` has no suppressions left.
+
+## Amendment
+v2 2026-10-28: `no-antd-import` reached zero suppressions and the `antd` package was removed, so
+both rules and their test were deleted, as Consequences anticipated. An antd import now fails to
+resolve at build time.

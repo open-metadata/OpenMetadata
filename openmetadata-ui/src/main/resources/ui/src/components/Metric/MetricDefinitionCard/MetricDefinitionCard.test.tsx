@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   Language,
@@ -97,9 +103,10 @@ describe('MetricDefinitionCard', () => {
     expect(screen.getByTestId('metric-expression-code')).toHaveClass(
       'tw:bg-secondary'
     );
+    // Columns follow the card's width (auto-fit), not viewport breakpoints.
     expect(screen.getByTestId('metric-definition-fields')).toHaveClass(
       'tw:grid',
-      'tw:lg:grid-cols-3'
+      'tw:grid-cols-[repeat(auto-fit,minmax(--spacing(40),1fr))]'
     );
     expect(screen.getByTestId('metric-definition-type')).toHaveTextContent(
       'label.ratio'
@@ -193,16 +200,13 @@ describe('MetricDefinitionCard', () => {
     );
   });
 
-  it('requires an expression before saving', async () => {
-    const onUpdate = jest.fn();
+  it('saves definition changes on a metric without an expression', async () => {
+    const onUpdate = jest.fn().mockResolvedValue(undefined);
     render(
       <MemoryRouter>
         <MetricDefinitionCard
           canEdit
-          metric={{
-            ...metric,
-            metricExpression: { language: Language.SQL, code: '' },
-          }}
+          metric={{ ...metric, metricExpression: undefined }}
           onUpdate={onUpdate}
         />
       </MemoryRouter>
@@ -211,12 +215,16 @@ describe('MetricDefinitionCard', () => {
     fireEvent.click(screen.getByTestId('metric-definition-edit'));
     fireEvent.click(screen.getByTestId('metric-definition-save'));
 
-    expect(await screen.findByText('label.field-required')).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /label.code/ })).toHaveAttribute(
-      'aria-invalid',
-      'true'
+    await waitFor(() =>
+      expect(onUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          granularity: MetricGranularity.Day,
+          metricExpression: undefined,
+        })
+      )
     );
-    expect(onUpdate).not.toHaveBeenCalled();
+
+    expect(screen.queryByText('label.field-required')).not.toBeInTheDocument();
   });
 
   it('requires a custom unit when Unit is Other', async () => {
@@ -376,5 +384,60 @@ describe('MetricDefinitionCard', () => {
       expect(unitSlot).toHaveTextContent(UnitOfMeasurement.Dollars);
       expect(unitSlot).not.toHaveTextContent('Leads');
     });
+  });
+
+  it('shows the expression code diff on a version that changed it', () => {
+    render(
+      <MemoryRouter>
+        <MetricDefinitionCard
+          changeDescription={{
+            fieldsAdded: [],
+            fieldsDeleted: [],
+            fieldsUpdated: [
+              {
+                name: 'metricExpression',
+                oldValue: { code: 'SUM(revenue)', language: Language.SQL },
+                newValue: metric.metricExpression,
+              },
+            ],
+          }}
+          metric={metric}
+        />
+      </MemoryRouter>
+    );
+
+    const code = screen.getByTestId('metric-expression-code');
+
+    expect(within(code).getByTestId('diff-removed')).toHaveTextContent(
+      'revenue'
+    );
+    expect(within(code).getByTestId('diff-added')).toHaveTextContent('profit');
+  });
+
+  it('keeps the expression language of an ingested metric with no formula', async () => {
+    const onUpdate = jest.fn().mockResolvedValue(undefined);
+    render(
+      <MemoryRouter>
+        <MetricDefinitionCard
+          canEdit
+          metric={{
+            ...metric,
+            metricExpression: { language: Language.External },
+          }}
+          onUpdate={onUpdate}
+        />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('metric-definition-edit'));
+    fireEvent.click(screen.getByTestId('metric-definition-save'));
+
+    await waitFor(() =>
+      expect(onUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metricExpression: { language: Language.External, code: undefined },
+        })
+      )
+    );
   });
 });

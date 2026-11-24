@@ -5,10 +5,14 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheStats;
 import com.google.common.cache.RemovalCause;
 import com.google.common.cache.RemovalListener;
+import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * Guava-based implementation of LineageGraphCache.
@@ -34,7 +38,15 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 @Slf4j
 public class GuavaLineageGraphCache implements LineageGraphCache {
 
-  private final Cache<LineageCacheKey, SearchLineageResult> cache;
+  /**
+   * A graph is stored serialized and read back as a new object on every hit, so no caller ever
+   * holds the stored graph: each request filters its own copy for its caller
+   * (ADR:2026-10-30-search-lineage-returns-only-assets-the-caller-can-view). The FQNs the graph
+   * references are kept beside it so invalidation does not have to read the graph back.
+   */
+  private record CachedGraph(byte[] json, int nodeCount, Set<String> fqns) {}
+
+  private final Cache<LineageCacheKey, CachedGraph> cache;
   private final LineageGraphConfiguration config;
 
   /**
@@ -52,7 +64,7 @@ public class GuavaLineageGraphCache implements LineageGraphCache {
             .expireAfterWrite(config.getCacheTTLSeconds(), TimeUnit.SECONDS)
             .recordStats() // Enable statistics collection
             .removalListener(
-                (RemovalListener<LineageCacheKey, SearchLineageResult>)
+                (RemovalListener<LineageCacheKey, CachedGraph>)
                     notification -> {
                       // Log evictions for monitoring
                       if (notification.getCause() == RemovalCause.SIZE) {
@@ -81,11 +93,13 @@ public class GuavaLineageGraphCache implements LineageGraphCache {
       return Optional.empty();
     }
 
-    SearchLineageResult result = cache.getIfPresent(key);
+    CachedGraph cached = cache.getIfPresent(key);
 
-    if (result != null) {
-      LOG.debug("Cache HIT: key={}, size={} nodes", key, result.getNodes().size());
-      return Optional.of(result);
+    if (cached != null) {
+      LOG.debug("Cache HIT: key={}, size={} nodes", key, cached.nodeCount());
+      return Optional.of(
+          JsonUtils.readValue(
+              new String(cached.json(), StandardCharsets.UTF_8), SearchLineageResult.class));
     } else {
       LOG.debug("Cache MISS: key={}", key);
       return Optional.empty();
@@ -111,7 +125,12 @@ public class GuavaLineageGraphCache implements LineageGraphCache {
       return;
     }
 
-    cache.put(key, result);
+    cache.put(
+        key,
+        new CachedGraph(
+            JsonUtils.pojoToJson(result).getBytes(StandardCharsets.UTF_8),
+            nodeCount,
+            referencedFqns(result)));
     LOG.debug("Cache PUT: key={}, size={} nodes", key, nodeCount);
   }
 
@@ -135,9 +154,8 @@ public class GuavaLineageGraphCache implements LineageGraphCache {
       return;
     }
     java.util.List<LineageCacheKey> toEvict = new java.util.ArrayList<>();
-    for (java.util.Map.Entry<LineageCacheKey, SearchLineageResult> entry :
-        cache.asMap().entrySet()) {
-      if (graphReferencesFqn(entry.getKey(), entry.getValue(), fqn)) {
+    for (java.util.Map.Entry<LineageCacheKey, CachedGraph> entry : cache.asMap().entrySet()) {
+      if (fqn.equals(entry.getKey().getFqn()) || entry.getValue().fqns().contains(fqn)) {
         toEvict.add(entry.getKey());
       }
     }
@@ -147,35 +165,30 @@ public class GuavaLineageGraphCache implements LineageGraphCache {
     }
   }
 
-  private boolean graphReferencesFqn(LineageCacheKey key, SearchLineageResult result, String fqn) {
-    if (fqn.equals(key.getFqn())) {
-      return true;
+  private static Set<String> referencedFqns(SearchLineageResult result) {
+    Set<String> fqns = new HashSet<>();
+    if (result.getNodes() != null) {
+      fqns.addAll(result.getNodes().keySet());
     }
-    if (result == null) {
-      return false;
-    }
-    if (result.getNodes() != null && result.getNodes().containsKey(fqn)) {
-      return true;
-    }
-    return edgeMapReferencesFqn(result.getUpstreamEdges(), fqn)
-        || edgeMapReferencesFqn(result.getDownstreamEdges(), fqn);
+    addEdgeEndpoints(result.getUpstreamEdges(), fqns);
+    addEdgeEndpoints(result.getDownstreamEdges(), fqns);
+    return Set.copyOf(fqns);
   }
 
-  private boolean edgeMapReferencesFqn(
-      java.util.Map<String, org.openmetadata.schema.api.lineage.EsLineageData> edges, String fqn) {
-    if (edges == null || edges.isEmpty()) {
-      return false;
+  private static void addEdgeEndpoints(
+      java.util.Map<String, org.openmetadata.schema.api.lineage.EsLineageData> edges,
+      Set<String> fqns) {
+    if (edges == null) {
+      return;
     }
     for (org.openmetadata.schema.api.lineage.EsLineageData edge : edges.values()) {
-      if (edge.getFromEntity() != null
-          && fqn.equals(edge.getFromEntity().getFullyQualifiedName())) {
-        return true;
+      if (edge.getFromEntity() != null && edge.getFromEntity().getFullyQualifiedName() != null) {
+        fqns.add(edge.getFromEntity().getFullyQualifiedName());
       }
-      if (edge.getToEntity() != null && fqn.equals(edge.getToEntity().getFullyQualifiedName())) {
-        return true;
+      if (edge.getToEntity() != null && edge.getToEntity().getFullyQualifiedName() != null) {
+        fqns.add(edge.getToEntity().getFullyQualifiedName());
       }
     }
-    return false;
   }
 
   @Override

@@ -127,6 +127,7 @@ const ActivityFeedTasks: React.FC<ActivityFeedTasksProps> = ({
           <FilterSelect
             bordered
             data-testid="activity-feed-task-type"
+            hideCounts={queue.hasMore}
             label={t('label.type')}
             options={typeOptions}
             selectedValues={queue.typeFilter}
@@ -167,10 +168,14 @@ const ActivityFeedTasks: React.FC<ActivityFeedTasksProps> = ({
         groups={queue.taskGroups}
         handleCommentsChanged={queue.handleCommentsChanged}
         handleResolved={queue.handleResolved}
+        handleTaskLoaded={queue.handleTaskLoaded}
         handleTaskUpdated={queue.handleTaskUpdated}
         isLoadFailed={queue.isLoadFailed}
+        isLoadMoreError={queue.isLoadMoreError}
         isLoading={queue.isLoading}
         isLoadingMore={queue.isLoadingMore}
+        isNoMatch={queue.isNoMatch}
+        isPartial={queue.hasMore}
         scrollRef={queue.scrollRef}
         selectedTaskId={queue.selectedTaskId}
         sentinelRef={queue.sentinelRef}
@@ -191,6 +196,7 @@ const ActivityFeedTasks: React.FC<ActivityFeedTasksProps> = ({
             />
           </Box>
         }
+        onRetryLoadMore={queue.handleRetryLoadMore}
       />
     </Box>
   );

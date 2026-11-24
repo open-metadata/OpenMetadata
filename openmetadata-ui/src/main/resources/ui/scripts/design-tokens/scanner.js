@@ -88,7 +88,12 @@ const DURATION_PROPS = new Set([
 ]);
 
 // Files that legitimately hold raw values (token definitions) or are vendored.
-const EXEMPT_BASENAMES = new Set(['tokens.css', 'variables.less', 'quill-emoji.css']);
+const EXEMPT_BASENAMES = new Set([
+  'tokens.css',
+  'variables.less',
+  'quill-emoji.css',
+  'legacy-base.css',
+]);
 
 function isExempt(relOrAbsPath) {
   return EXEMPT_BASENAMES.has(path.basename(relOrAbsPath));

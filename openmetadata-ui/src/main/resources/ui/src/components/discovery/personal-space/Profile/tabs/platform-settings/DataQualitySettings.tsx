@@ -27,6 +27,7 @@ import {
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 import { DataQualityDimension } from '../../../../../../generated/tests/dataQualityDimension';
 import { deleteDataQualityDimension } from '../../../../../../rest/dataQualityDimensionAPI';
 import {
@@ -44,7 +45,6 @@ import {
   DimensionNameCell,
   DimensionTypeCell,
 } from './DimensionCells';
-import DimensionDeleteDialog from './DimensionDeleteDialog';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
 import { useSettingsFetch } from './useSettingsFetch';
@@ -56,8 +56,6 @@ const DataQualitySettings = ({
   const { t } = useTranslation();
   const { data, isLoading, reload } = useSettingsFetch(fetchDimensionList);
   const [searchTerm, setSearchTerm] = useState('');
-  const [deleting, setDeleting] = useState<DataQualityDimension>();
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const dimensions = useMemo(
     () => filterDimensions(data?.dimensions ?? [], searchTerm),
@@ -100,24 +98,24 @@ const DataQualitySettings = ({
     [t]
   );
 
-  const handleDelete = async () => {
-    if (!deleting?.id) {
-      return;
+  const handleDelete = async (dimension: DataQualityDimension) => {
+    if (!dimension.id) {
+      return false;
     }
-    setIsDeleting(true);
     try {
-      await deleteDataQualityDimension(deleting.id);
+      await deleteDataQualityDimension(dimension.id);
       showSuccessToast(
         t('server.entity-deleted-successfully', {
           entity: t('label.dimension'),
         })
       );
-      setDeleting(undefined);
-      await reload();
+      void reload();
+
+      return true;
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setIsDeleting(false);
+
+      return false;
     }
   };
 
@@ -128,7 +126,7 @@ const DataQualitySettings = ({
       case 'description':
         return (
           <Typography className="tw:text-secondary" size="text-sm">
-            {dimension.description || '--'}
+            {dimension.description || NO_DATA_PLACEHOLDER}
           </Typography>
         );
       case 'type':
@@ -140,7 +138,12 @@ const DataQualitySettings = ({
         return (
           <DimensionActionsCell
             dimension={dimension}
-            onDelete={setDeleting}
+            testCaseCount={countFor(data?.testCaseCounts, dimension)}
+            testDefinitionCount={countFor(
+              data?.testDefinitionCounts,
+              dimension
+            )}
+            onDelete={handleDelete}
             onEdit={(item) =>
               onNavigate({
                 type: 'page',
@@ -160,9 +163,10 @@ const DataQualitySettings = ({
 
   return (
     <Box data-testid="data-quality-settings" direction="col" gap={4}>
-      <TableCard.Root size="compact">
+      <TableCard.Root size="compact" variant="muted">
         <Box className="tw:border-b tw:border-secondary tw:px-4 tw:py-3">
           <Input
+            autoComplete="off"
             className="tw:max-w-xs"
             data-testid="search-dimensions"
             icon={Search}
@@ -218,15 +222,6 @@ const DataQualitySettings = ({
           </Table.Body>
         </Table>
       </TableCard.Root>
-
-      <DimensionDeleteDialog
-        dimension={deleting}
-        isDeleting={isDeleting}
-        testCaseCount={countFor(data?.testCaseCounts, deleting)}
-        testDefinitionCount={countFor(data?.testDefinitionCounts, deleting)}
-        onCancel={() => setDeleting(undefined)}
-        onConfirm={handleDelete}
-      />
     </Box>
   );
 };

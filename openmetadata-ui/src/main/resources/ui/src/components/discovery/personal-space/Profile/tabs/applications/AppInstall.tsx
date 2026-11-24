@@ -120,11 +120,11 @@ const AppInstallDetailsStep: FC<{
             justify="center">
             <Icon className="tw:size-8 tw:text-fg-secondary" />
           </Box>
-          <Box
-            align="center"
-            className="tw:w-24 tw:border-t tw:border-dashed tw:border-secondary"
-            justify="center">
-            <CheckCircle className="tw:-mt-2.5 tw:size-5 tw:bg-primary tw:text-fg-success-primary" />
+          {/* The dashed connector stops either side of the tick, so the tick needs no background to mask it. */}
+          <Box align="center" className="tw:w-24" direction="row" gap={1}>
+            <span className="tw:flex-1 tw:border-t tw:border-dashed tw:border-secondary" />
+            <CheckCircle className="tw:size-5 tw:shrink-0 tw:text-fg-success-primary" />
+            <span className="tw:flex-1 tw:border-t tw:border-dashed tw:border-secondary" />
           </Box>
           <Box
             align="center"
@@ -143,7 +143,11 @@ const AppInstallDetailsStep: FC<{
         </Typography>
       </Box>
 
-      <Card className="tw:mt-4" data-testid="authorize-card" size="md">
+      <Card
+        className="tw:mt-4"
+        data-testid="authorize-card"
+        size="md"
+        variant="muted">
         <Card.Content>
           <Box align="center" direction="row" gap={3}>
             <UserPopOverCard
@@ -454,7 +458,10 @@ const AppInstall: FC<AppInstallProps> = ({
       }
       case 'schedule':
         return (
-          <Box direction="col">
+          <Box
+            className="tw:mx-auto tw:w-full tw:max-w-[50%]"
+            data-testid="install-schedule-step"
+            direction="col">
             <ScheduleInterval
               defaultSchedule={defaultCron}
               includePeriodOptions={initialOptions}

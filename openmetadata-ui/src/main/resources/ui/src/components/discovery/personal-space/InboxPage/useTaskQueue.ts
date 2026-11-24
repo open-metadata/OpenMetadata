@@ -13,8 +13,9 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { debounce, uniqBy } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SORT_ORDER } from '../../../../enums/common.enum';
 import { MY_TASKS_QUERY_KEY } from '../../../../hooks/useMyTasks';
 import { Task, TaskStatusGroup } from '../../../../rest/tasksAPI';
 import {
@@ -53,6 +54,14 @@ const TASK_LIMIT = 25;
 // list scans at most this many tasks; a server-side type/status filter lifts it.
 const MAX_NARROWED_SCAN = 200;
 const SEARCH_DEBOUNCE_MS = 300;
+
+// Reading ahead stops at the server's last page, at the scan cap, or once a
+// page fails.
+const isReadAheadDone = (
+  hasMore: boolean,
+  loadedCount: number,
+  isLoadMoreError: boolean
+) => !hasMore || loadedCount >= MAX_NARROWED_SCAN || isLoadMoreError;
 // `resolution` so the panel's outcome rows render from the list row instead of
 // flashing empty until its own fetch lands.
 const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
@@ -113,6 +122,12 @@ export const useTaskQueue = ({
   const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(
     linkedTaskId
   );
+  // A new link followed while the queue stays mounted opens its task too.
+  useEffect(() => {
+    if (linkedTaskId) {
+      setSelectedTaskId(linkedTaskId);
+    }
+  }, [linkedTaskId]);
   // Land on Open by default: it's the actionable set, and its total feeds the
   // Tasks tab count so the badge matches the sidebar's open-task red bubble.
   const [status, setStatus] = useState<TaskStatusFilter>(initialStatus);
@@ -126,6 +141,7 @@ export const useTaskQueue = ({
   // stays responsive while the request trails it.
   const [searchQuery, setSearchQuery] = useState('');
   const [grouping, setGrouping] = useState<InboxTaskGrouping>('type');
+  const [sortOrder, setSortOrder] = useState(SORT_ORDER.DESC);
   // Kinds as getTaskTypeKey names them, so types sharing a label filter as one.
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   // Narrows the active tab; nothing chosen shows all of it.
@@ -144,6 +160,25 @@ export const useTaskQueue = ({
       onStatusChange?.(next);
     },
     [onStatusChange]
+  );
+
+  // A link to a closed task lands on the Closed tab, where its row is listed.
+  // Only each link's first load decides: the viewer may then move to any tab.
+  // ADR:2026-11-16-a-link-to-a-closed-inbox-task-opens-the-closed-tab
+  const settledLinkedTaskIdRef = useRef<string>();
+  const handleTaskLoaded = useCallback(
+    (loaded: Task) => {
+      const isFirstLinkedLoad =
+        loaded.id === linkedTaskId &&
+        settledLinkedTaskIdRef.current !== linkedTaskId;
+      if (isFirstLinkedLoad) {
+        settledLinkedTaskIdRef.current = linkedTaskId;
+        if (status === 'open' && !isTaskOpen(loaded)) {
+          handleStatusChange('closed');
+        }
+      }
+    },
+    [linkedTaskId, status, handleStatusChange]
   );
 
   const scopeKey = getTaskScopeKey(scope);
@@ -191,11 +226,12 @@ export const useTaskQueue = ({
         limit: TASK_LIMIT,
         after,
         q: titleSearch.text || undefined,
+        sortOrder,
       };
 
       return listScopedTasks(scope, params);
     },
-    [status, scope, titleSearch.text]
+    [status, scope, titleSearch.text, sortOrder]
   );
 
   // A short narrowed list keeps the scroll sentinel in view, which would page
@@ -233,8 +269,10 @@ export const useTaskQueue = ({
     sentinelRef,
     setItems,
     setTotal,
+    loadMore,
+    isLoadMoreError,
   } = useInboxInfiniteList<Task>(
-    [TASK_LIST_QUERY_KEY, scopeKey, status, titleSearch.text],
+    [TASK_LIST_QUERY_KEY, scopeKey, status, titleSearch.text, sortOrder],
     fetchPage,
     canLoadMore
   );
@@ -243,6 +281,22 @@ export const useTaskQueue = ({
   // (say, assigned to the user after it loaded as one they created) can land
   // on two of them.
   const tasks = useMemo(() => uniqBy(loadedTasks, 'id'), [loadedTasks]);
+
+  // Type groups sort by urgency, so one built from the newest page alone hides
+  // an older incident until the list is scrolled to its end. A grouped list
+  // reads on by itself, as far as a narrowed scan would
+  // (ADR:2026-11-16-a-grouped-inbox-task-list-reads-ahead-to-the-scan-cap). A
+  // failed page stops it; scrolling to the end retries.
+  const isGroupScanDone = isReadAheadDone(
+    hasMore,
+    tasks.length,
+    isLoadMoreError
+  );
+  useEffect(() => {
+    if (grouping === 'type' && !isGroupScanDone) {
+      loadMore();
+    }
+  }, [grouping, isGroupScanDone, loadMore]);
 
   // Measured from what is loaded, not from the last cap: tasks paged in before
   // the narrowing already exceed it, and a fixed step would leave the click
@@ -305,8 +359,8 @@ export const useTaskQueue = ({
     () => (grouping === 'type' ? groupTasksByType(visibleTasks) : undefined),
     [grouping, visibleTasks]
   );
-  // The top row as displayed; grouping reorders the server's newest-first
-  // list, so its first task can sit anywhere in the grouped view.
+  // The top row as displayed; grouping reorders the server's list, so its
+  // first task can sit anywhere in the grouped view.
   const firstTaskId = taskGroups
     ? taskGroups[0]?.items[0]?.id
     : visibleTasks[0]?.id;
@@ -421,6 +475,8 @@ export const useTaskQueue = ({
     handleClearFilters,
     grouping,
     setGrouping,
+    sortOrder,
+    setSortOrder,
     typeFilter,
     setTypeFilter,
     statusFilter,
@@ -433,14 +489,20 @@ export const useTaskQueue = ({
     isLoading,
     isLoadingMore,
     hasMore,
+    isLoadMoreError,
+    handleRetryLoadMore: loadMore,
     scrollRef,
     sentinelRef,
     handleScanFurther,
     handleResolved,
     handleTaskUpdated,
     handleCommentsChanged,
+    handleTaskLoaded,
     isNarrowed,
     showEmptyState,
+    // The empty state is a search or filter matching nothing, so it belongs
+    // beside the controls that cause it, in the list.
+    isNoMatch: showEmptyState && isNarrowed,
     error,
     // A failed load with nothing listed leaves nothing to filter.
     isLoadFailed: isWholeTabLoadFailed(error, tasks, isNarrowed),

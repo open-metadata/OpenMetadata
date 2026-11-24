@@ -328,9 +328,7 @@ export class DatabaseClass extends EntityClass implements ParentNode {
       .getByTestId('explore-left-panel')
       .getByRole('tab', { name: 'Tables' });
 
-    await waitForSearchResult(page, searchTerm, ownerLink, tableTab, {
-      owners: [owner],
-    });
+    await waitForSearchResult(page, searchTerm, ownerLink, tableTab);
     await expect(ownerLink).toBeVisible();
   }
 
@@ -345,9 +343,7 @@ export class DatabaseClass extends EntityClass implements ParentNode {
       const domainLink = entityCard
         .getByTestId('domain-link')
         .filter({ hasText: domain.displayName });
-      await waitForSearchResult(page, searchTerm, domainLink, tableTab, {
-        domains: [domain.fullyQualifiedName ?? domain.name],
-      });
+      await waitForSearchResult(page, searchTerm, domainLink, tableTab);
       await verifyDomainLinkInCard(entityCard, domain);
     }
 

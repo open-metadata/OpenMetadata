@@ -13,6 +13,7 @@
 import { AxiosHeaders, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { SORT_ORDER } from '../enums/common.enum';
 import {
   CreateTask,
   TaskCategory,
@@ -84,6 +85,8 @@ interface TaskScopedListParams {
   startTs?: number;
   endTs?: number;
   include?: Include;
+  /** Creation-time order; the server defaults to newest first. */
+  sortOrder?: SORT_ORDER;
 }
 
 export interface ListTasksParams {
@@ -103,6 +106,9 @@ export interface ListTasksParams {
   approver?: string;
   approverId?: string;
   mentionedUser?: string;
+  /** Inclusive lower bound on the last update time, in epoch milliseconds. */
+  updatedSince?: number;
+  sortBy?: 'createdAt' | 'updatedAt';
   /** Free-text search across the task name, request reason and about-entity. */
   q?: string;
   limit?: number;
@@ -111,6 +117,8 @@ export interface ListTasksParams {
   startTs?: number;
   endTs?: number;
   include?: Include;
+  /** The server defaults to newest first. */
+  sortOrder?: SORT_ORDER;
 }
 
 export interface ListDataAccessRequestsParams {

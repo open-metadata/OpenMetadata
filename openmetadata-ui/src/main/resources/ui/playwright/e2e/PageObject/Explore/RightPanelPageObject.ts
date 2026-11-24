@@ -21,13 +21,13 @@ import { LineagePageObject } from './LineagePageObject';
 import { OverviewPageObject } from './OverviewPageObject';
 import { SchemaPageObject } from './SchemaPageObject';
 
-/** Tab names for data-driven visibility and content assertions. Must match UI labels (e.g. "Custom Property"). */
+/** Tab names for data-driven visibility and content assertions. Must match UI labels (e.g. "Custom Properties"). */
 export const RIGHT_PANEL_TAB = {
   OVERVIEW: 'overview',
   SCHEMA: 'schema',
   LINEAGE: 'lineage',
   DATA_QUALITY: 'data quality',
-  CUSTOM_PROPERTIES: 'custom property',
+  CUSTOM_PROPERTIES: 'custom properties',
 } as const;
 
 /** All right-panel tab names; used to assert which tabs must not be visible per asset type. */

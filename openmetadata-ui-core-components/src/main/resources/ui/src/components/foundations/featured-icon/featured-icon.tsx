@@ -126,6 +126,25 @@ const styles = sortCx({
     },
   },
 
+  // Entity page headers (metric, glossary, classification, …): a neutral
+  // bordered circle; md (36px) sits level with a one- or two-line title.
+  surface: {
+    base: 'tw:overflow-hidden tw:rounded-full tw:border tw:border-border-secondary tw:bg-surface tw:shadow-xs-skeumorphic',
+    sizes: {
+      sm: 'tw:size-8',
+      md: 'tw:size-9',
+      lg: 'tw:size-12',
+      xl: 'tw:size-14',
+    },
+    colors: {
+      brand: 'tw:text-utility-brand-700',
+      gray: 'tw:text-fg-secondary',
+      error: 'tw:text-utility-error-700',
+      warning: 'tw:text-utility-warning-700',
+      success: 'tw:text-utility-success-700',
+    },
+  },
+
   outline: {
     base: 'tw:before:absolute tw:before:rounded-full tw:before:border-2 tw:after:absolute tw:after:rounded-full tw:after:border-2',
     sizes: {
@@ -155,7 +174,14 @@ interface FeaturedIconProps {
   icon?: FC<{ className?: string }> | ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   color: FeaturedIconColor;
-  theme?: 'light' | 'gradient' | 'dark' | 'outline' | 'modern' | 'modern-neue';
+  theme?:
+    | 'light'
+    | 'gradient'
+    | 'dark'
+    | 'outline'
+    | 'modern'
+    | 'modern-neue'
+    | 'surface';
   /** 'square' overrides the circular shape of the light theme with a rounded rectangle */
   shape?: 'circle' | 'square';
   /** Corner radius applied when shape='square'; ignored for circle */

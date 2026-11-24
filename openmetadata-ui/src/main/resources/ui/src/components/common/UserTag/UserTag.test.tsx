@@ -71,4 +71,16 @@ describe('UserTag Component', () => {
     // Check if the onRemove callback is called
     expect(userTagProps.onRemove).toHaveBeenCalledTimes(1);
   });
+
+  it('truncates the name only when truncateName is set', () => {
+    const { rerender } = render(<UserTag id="123" name="John Doe" />);
+
+    expect(screen.getByText('John Doe')).not.toHaveClass('tw:truncate');
+    expect(screen.getByTestId('user-tag')).not.toHaveClass('tw:min-w-0');
+
+    rerender(<UserTag truncateName id="123" name="John Doe" />);
+
+    expect(screen.getByText('John Doe')).toHaveClass('tw:truncate');
+    expect(screen.getByTestId('user-tag')).toHaveClass('tw:min-w-0');
+  });
 });

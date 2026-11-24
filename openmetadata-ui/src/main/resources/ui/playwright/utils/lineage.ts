@@ -578,13 +578,16 @@ export const addLineageViaMenu = async (
       .getByRole('button')
       .click();
     await page.locator(`[role="listbox"]:visible [data-key="${toId}"]`).click();
-    await popover
-      .getByTestId('add-lineage-column-select')
-      .getByRole('button')
-      .click();
-    await page
-      .locator(`[role="listbox"]:visible [data-key="${columnFqn}"]`)
-      .click();
+    // A metric is its own column endpoint, so there is no column to pick.
+    if (columnFqn !== get(toEntity, 'entityResponseData.fullyQualifiedName')) {
+      await popover
+        .getByTestId('add-lineage-column-select')
+        .getByRole('button')
+        .click();
+      await page
+        .locator(`[role="listbox"]:visible [data-key="${columnFqn}"]`)
+        .click();
+    }
   } else {
     // Type rows carry their search index as test id, which is
     // locale-independent where the option labels are not.
@@ -645,17 +648,17 @@ export const connectEdgeBetweenNodes = async (
 
 export const connectEntityEdgeBetweenNodesViaAPI = (
   apiContext: APIRequestContext,
-  fromNode: EntityClass,
-  toNode: EntityClass
+  fromNode: EntityClass & { entityResponseData: Pick<ResponseDataType, 'id'> },
+  toNode: EntityClass & { entityResponseData: Pick<ResponseDataType, 'id'> }
 ) => {
   return connectEdgeBetweenNodesViaAPI(
     apiContext,
     {
-      id: get(fromNode, 'entityResponseData.id'),
+      id: fromNode.entityResponseData.id,
       type: getEntityTypeSearchIndexMapping(fromNode.type),
     },
     {
-      id: get(toNode, 'entityResponseData.id'),
+      id: toNode.entityResponseData.id,
       type: getEntityTypeSearchIndexMapping(toNode.type),
     }
   );
@@ -1000,7 +1003,7 @@ export const addColumnLineage = async (
   page: Page,
   fromColumnFqn: string,
   toColumnFqn: string,
-  toEntity: TableClass | DashboardDataModelClass,
+  toEntity: TableClass | DashboardDataModelClass | MetricClass,
   fromOwnerFqn?: string
 ) => {
   const fromColumn = await revealColumn(page, fromColumnFqn, fromOwnerFqn);
@@ -1484,14 +1487,15 @@ export const connectEdgeBetweenNodesViaAPI = (
   apiContext: APIRequestContext,
   fromEntity: { id: string; type: string },
   toEntity: { id: string; type: string },
-  columnsLineage?: Array<{ fromColumns: string[]; toColumn: string }>
+  columnsLineage?: Array<{ fromColumns: string[]; toColumn: string }>,
+  lineageDetails: Record<string, unknown> = {}
 ) => {
   return apiContext.put('/api/v1/lineage/', {
     data: {
       edge: {
         fromEntity,
         toEntity,
-        lineageDetails: { columnsLineage, description: '' },
+        lineageDetails: { columnsLineage, description: '', ...lineageDetails },
       },
     },
     headers: {

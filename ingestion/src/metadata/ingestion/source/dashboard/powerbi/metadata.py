@@ -16,7 +16,7 @@ from collections import Counter
 from collections.abc import Callable, Iterable
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TypeVar
 
 from pydantic import EmailStr
 from pydantic_core import PydanticCustomError
@@ -60,6 +60,7 @@ from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.api.delete import SourceListing
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import Dialect
@@ -75,6 +76,7 @@ from metadata.ingestion.source.dashboard.powerbi.constants import (
     BIGQUERY_QUERY_EXPRESSION_KW,
     DATABRICKS_QUERY_EXPRESSION_KW,
     DEFAULT_REPORTS_PREFIX,
+    M_TEXT_LITERAL_OR_COMMENT_PATTERN,
     MAX_PROJECT_FILTER_SIZE,
     OWNER_ACCESS_RIGHTS_KEYWORDS,
     RDL_REPORT_FORMAT,
@@ -122,6 +124,8 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+ListedItemT = TypeVar("ListedItemT")
+
 
 @dataclass(frozen=True)
 class LineageTargetSpec:
@@ -168,6 +172,18 @@ class PowerbiSource(DashboardServiceSource):
                 "Enable includeDataModels to ingest metrics."
             )
 
+    def _mark_workspace_listing_failed(self) -> None:
+        """A workspace that could not be read hides both its dashboards and its data models."""
+        self.dashboard_listing.mark_failed()
+        self.datamodel_listing.mark_failed()
+
+    @staticmethod
+    def _listed_items(items: list[ListedItemT] | None, listing: SourceListing) -> list[ListedItemT]:
+        """The API client returns `None` for a failed fetch and a list, possibly empty, otherwise."""
+        if items is None:
+            listing.mark_failed()
+        return items or []
+
     def get_org_workspace_data(self) -> Iterable[Group | None]:
         """
         fetch all the workspace data for non-admin users
@@ -181,14 +197,21 @@ class PowerbiSource(DashboardServiceSource):
             )
         workspace_total = 0
         for filter_pattern in paginated_filter_patterns:
-            workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
+            workspaces = self.client.api_client.fetch_all_workspaces(
+                filter_pattern, on_incomplete=self._mark_workspace_listing_failed
+            )
+            if workspaces is None:
+                self._mark_workspace_listing_failed()
             if workspaces:
                 workspace_total += len(workspaces)
                 self.progress_tracking.manual.set_total("Workspaces", workspace_total)
                 for workspace in workspaces:
                     # add the dashboards to the workspace
                     workspace.dashboards.extend(
-                        self.client.api_client.fetch_all_org_dashboards(group_id=workspace.id) or []
+                        self._listed_items(
+                            self.client.api_client.fetch_all_org_dashboards(group_id=workspace.id),
+                            self.dashboard_listing,
+                        )
                     )
                     for dashboard in workspace.dashboards:
                         # add the tiles to the dashboards
@@ -198,11 +221,19 @@ class PowerbiSource(DashboardServiceSource):
                         )
 
                     # add the reports to the workspaces
-                    workspace.reports.extend(self.client.api_client.fetch_all_org_reports(group_id=workspace.id) or [])
+                    workspace.reports.extend(
+                        self._listed_items(
+                            self.client.api_client.fetch_all_org_reports(group_id=workspace.id),
+                            self.dashboard_listing,
+                        )
+                    )
 
                     # add the datasets to the workspaces
                     workspace.datasets.extend(
-                        self.client.api_client.fetch_all_org_datasets(group_id=workspace.id) or []
+                        self._listed_items(
+                            self.client.api_client.fetch_all_org_datasets(group_id=workspace.id),
+                            self.datamodel_listing,
+                        )
                     )
                     for dataset in workspace.datasets:
                         # add the tables to the datasets
@@ -254,7 +285,11 @@ class PowerbiSource(DashboardServiceSource):
             )
         active_workspace_total = 0
         for filter_pattern in paginated_filter_patterns:
-            workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
+            workspaces = self.client.api_client.fetch_all_workspaces(
+                filter_pattern, on_incomplete=self._mark_workspace_listing_failed
+            )
+            if workspaces is None:
+                self._mark_workspace_listing_failed()
             if workspaces:
                 workspace_id_list = [workspace.id for workspace in workspaces]
                 workspace_name_by_id = {workspace.id: workspace.name for workspace in workspaces}
@@ -272,6 +307,7 @@ class PowerbiSource(DashboardServiceSource):
                         logger.error(
                             f"Error initiating workspace scan for ids:{str(workspace_ids_chunk)}\n moving to next set of workspaces"  # noqa: RUF010
                         )
+                        self._mark_workspace_listing_failed()
                         count += 1
                         continue
 
@@ -281,6 +317,7 @@ class PowerbiSource(DashboardServiceSource):
                         logger.error(
                             f"Max poll hit to scan status for scan_id: {workspace_scan.id}, moving to next set of workspaces"
                         )
+                        self._mark_workspace_listing_failed()
                         count += 1
                         continue
 
@@ -288,6 +325,7 @@ class PowerbiSource(DashboardServiceSource):
                     response = self.client.api_client.fetch_workspace_scan_result(scan_id=workspace_scan.id)
                     if not response:
                         logger.error(f"Error getting workspace scan result for scan_id: {workspace_scan.id}")
+                        self._mark_workspace_listing_failed()
                         count += 1
                         continue
                     active_workspaces = []
@@ -300,6 +338,8 @@ class PowerbiSource(DashboardServiceSource):
                         else:
                             skipped_by_state[workspace.state or "<missing>"] += 1
                     missing_from_scan = set(workspace_ids_chunk) - scan_workspace_ids
+                    if missing_from_scan:
+                        self._mark_workspace_listing_failed()
                     logger.info(
                         "PowerBI workspace scan summary: requested=%s, returned=%s, active=%s, skippedByState=%s, missingFromScan=%s",
                         len(workspace_ids_chunk),
@@ -362,6 +402,7 @@ class PowerbiSource(DashboardServiceSource):
         Method to iterate through dashboard lists filter dashboards & yield dashboard details
         """
         self._declare_progress_groups("Workspaces", None)
+        workspaces_read = 0
         for workspace in self._prepare_workspace_data():
             workspace_name = str(getattr(workspace, "name", None) or getattr(workspace, "id", "<unknown>"))
             opened = False
@@ -377,10 +418,12 @@ class PowerbiSource(DashboardServiceSource):
                             workspace.name,  # pyright: ignore[reportOptionalMemberAccess]
                         )
                         continue
+                    self.dashboard_listing.count_listed()
                     if filter_by_dashboard(
                         self.source_config.dashboardFilterPattern,
                         dashboard_name,
                     ):
+                        self.dashboard_listing.count_filtered()
                         self.status.filter(
                             dashboard_name,
                             "Dashboard Filtered Out",
@@ -396,8 +439,10 @@ class PowerbiSource(DashboardServiceSource):
                     },
                 )
                 opened = True
+                workspaces_read += 1
                 yield workspace
             except Exception as exc:  # pylint: disable=broad-except
+                self._mark_workspace_listing_failed()
                 ws_name = getattr(workspace, "name", None) or getattr(workspace, "id", "<unknown>")
                 logger.warning("Failed to process PowerBI workspace '%s': %s", ws_name, exc)
                 self.status.failed(
@@ -411,6 +456,11 @@ class PowerbiSource(DashboardServiceSource):
                 if opened:
                     self._close_group_progress(workspace_name)
                 self.state.exit()
+        # Zero workspaces is never a confirmation: the non-admin API lists only the workspaces
+        # the principal can access, so lost access looks the same as an empty tenant.
+        if workspaces_read:
+            self.dashboard_listing.mark_complete()
+            self.datamodel_listing.mark_complete()
 
     def get_dashboards_list(
         self,
@@ -861,7 +911,9 @@ class PowerbiSource(DashboardServiceSource):
                     dataset.id,
                 )
                 continue
+            self.datamodel_listing.count_listed()
             if filter_by_datamodel(self.source_config.dataModelFilterPattern, dataset.name):
+                self.datamodel_listing.count_filtered()
                 self.status.filter(dataset.name, "Data model filtered out.")
                 continue
             filtered.append(dataset)
@@ -877,6 +929,7 @@ class PowerbiSource(DashboardServiceSource):
         try:
             datasets = self._filtered_datamodels()
         except Exception as exc:
+            self.datamodel_listing.mark_failed()
             yield Either(
                 left=StackTraceError(
                     name="datamodels",
@@ -1195,9 +1248,13 @@ class PowerbiSource(DashboardServiceSource):
             "SELECT ... FROM `dataset.table` ...", null, [EnableFolding=true])
         """
         try:
-            # Strip M language block comments (/* ... */) and line comments (//)
-            cleaned_expression = re.sub(r"/\*.*?\*/", "", source_expression, flags=re.DOTALL)
-            cleaned_expression = re.sub(SQL_LINE_COMMENT_PATTERN, "", cleaned_expression)
+            # Strip M comments (/* ... */ and //) outside M text literals: the SQL is one of those literals
+            cleaned_expression = re.sub(
+                M_TEXT_LITERAL_OR_COMMENT_PATTERN,
+                lambda match: match.group(1) or "",
+                source_expression,
+                flags=re.DOTALL,
+            )
 
             # Extract the project from BillingProject parameter
             billing_match = re.search(r'BillingProject="([^"]+)"', cleaned_expression)
@@ -1214,12 +1271,11 @@ class PowerbiSource(DashboardServiceSource):
                 logger.debug("SQL query not found in BigQuery NativeQuery expression")
                 return None
 
+            # SQL comments are left to LineageParser, which knows where a string literal ends. Line
+            # breaks are kept so that a -- or # comment ends at its line.
             sql_query = sql_match.group(1).replace('""', '"')
             sql_query = sql_query.replace("#(lf)", "\n")
-            sql_query = sql_query.replace("#(tab)", "\t")
-            sql_query = re.sub(r"--[^\n]*", "", sql_query)
-            sql_query = re.sub(SQL_LINE_COMMENT_PATTERN, "", sql_query)
-            sql_query = re.sub(r"\s+", " ", sql_query).strip()
+            sql_query = sql_query.replace("#(tab)", "\t").strip()
 
             logger.debug(f"Extracted BigQuery SQL query: {sql_query[:200]}")
 
@@ -2042,7 +2098,8 @@ class PowerbiSource(DashboardServiceSource):
             cleaned_sql = sql_query.replace("#(lf)", "\n")
             cleaned_sql = cleaned_sql.replace("#(tab)", "\t")
             cleaned_sql = cleaned_sql.replace('""', '"')
-            cleaned_sql = re.sub(r"\s+", " ", cleaned_sql).strip()
+            # Line breaks are kept so that a -- comment ends at its line
+            cleaned_sql = cleaned_sql.strip()
 
             if not cleaned_sql:
                 return None

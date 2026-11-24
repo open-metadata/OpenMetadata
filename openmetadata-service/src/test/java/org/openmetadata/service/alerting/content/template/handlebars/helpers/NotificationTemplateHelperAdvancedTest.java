@@ -21,7 +21,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 
-import com.github.jknack.handlebars.Handlebars;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +43,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelper;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.alerting.content.template.sandbox.TemplateSandbox;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.util.email.DefaultTemplateProvider;
@@ -335,13 +335,10 @@ class NotificationTemplateHelperAdvancedTest {
     };
   }
 
-  private static String render(String template, Object context, HandlebarsHelper... helpers)
+  private static String render(
+      String template, Map<String, Object> context, HandlebarsHelper... helpers)
       throws IOException {
-    Handlebars handlebars = new Handlebars();
-    for (HandlebarsHelper helper : helpers) {
-      helper.register(handlebars);
-    }
-    return handlebars.compileInline(template).apply(context);
+    return new TemplateSandbox(List.of(helpers)).render(template, context);
   }
 
   private static String compact(String text) {

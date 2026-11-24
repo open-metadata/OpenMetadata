@@ -53,9 +53,11 @@ const UserDetailTabContent: FC<UserDetailTabContentProps> = ({
     case 'tasks':
       return <TasksTab user={user} onOpenTask={onOpenTask} />;
     case 'owned-assets':
-      return <UserAssetsView kind="owned" user={user} />;
+      return <UserAssetsView cardVariant="muted" kind="owned" user={user} />;
     case 'following':
-      return <UserAssetsView kind="following" user={user} />;
+      return (
+        <UserAssetsView cardVariant="muted" kind="following" user={user} />
+      );
     case 'custom-properties':
       return (
         <UserCustomPropertiesList

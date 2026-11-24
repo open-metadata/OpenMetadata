@@ -16,6 +16,11 @@ public class Workflow {
   // that the gate raises when it holds a change. The trigger filter reads it to evaluate the fields
   // and the proposed entity for exactly that edit, rather than the requester's accumulated hold.
   public static final String PENDING_HELD_CHANGE_VARIABLE = "pendingHeldChange";
+  // The entity version the triggering event produced. Its change, read from the entity's history,
+  // is the edit the run judges, even when a later edit has replaced the entity's current change.
+  public static final String TRIGGERING_VERSION_VARIABLE = "triggeringVersion";
+  // The type of the change event that started the run. Only a create may carry no change to judge.
+  public static final String TRIGGERING_EVENT_TYPE_VARIABLE = "triggeringEventType";
   public static final String ENTITY_LIST_VARIABLE = "entityList";
   public static final String BATCH_SINK_PROCESSED_VARIABLE = "batchSinkProcessed";
   public static final String TRIGGERING_OBJECT_ID_VARIABLE = "triggeringObjectId";
@@ -48,6 +53,10 @@ public class Workflow {
   // WorkflowInstance record, so this string stays fixed for the whitelist match.
   public static final String TERMINATED_BY_ADMIN =
       "Workflow instance terminated by an administrator";
+  // Cause string passed to deleteProcessInstance when a user closes the task the process waits on.
+  // Whitelisted in WorkflowFailureListener so PROCESS_CANCELLED stays silent for it.
+  public static final String TASK_CLOSED_BY_USER =
+      "Workflow process ended because its task was closed";
   public static final String APPROVE_CONDITION = "approve";
   public static final String REJECT_CONDITION = "reject";
   public static final String LEGACY_APPROVE_CONDITION = "true";

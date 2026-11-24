@@ -107,10 +107,14 @@ const TasksTab: React.FC<TasksTabProps> = ({
         groups={queue.taskGroups}
         handleCommentsChanged={queue.handleCommentsChanged}
         handleResolved={queue.handleResolved}
+        handleTaskLoaded={queue.handleTaskLoaded}
         handleTaskUpdated={queue.handleTaskUpdated}
         isLoadFailed={queue.isLoadFailed}
+        isLoadMoreError={queue.isLoadMoreError}
         isLoading={queue.isLoading}
         isLoadingMore={queue.isLoadingMore}
+        isNoMatch={queue.isNoMatch}
+        isPartial={queue.hasMore}
         scrollRef={queue.scrollRef}
         selectedTaskId={queue.selectedTaskId}
         sentinelRef={queue.sentinelRef}
@@ -121,7 +125,9 @@ const TasksTab: React.FC<TasksTabProps> = ({
           <InboxTaskListToolbar
             grouping={queue.grouping}
             inline={Boolean(onOpenTask)}
+            isPartial={queue.hasMore}
             search={queue.search}
+            sortOrder={queue.sortOrder}
             statusFilter={queue.statusFilter}
             statusOptions={STATUS_OPTIONS_BY_TAB[queue.status]}
             statusTabs={statusTabs}
@@ -129,11 +135,13 @@ const TasksTab: React.FC<TasksTabProps> = ({
             typeFilter={queue.typeFilter}
             onGroupingChange={queue.setGrouping}
             onSearchChange={queue.handleSearchChange}
+            onSortOrderChange={queue.setSortOrder}
             onStatusFilterChange={queue.setStatusFilter}
             onTypeFilterChange={queue.setTypeFilter}
           />
         }
         onOpenTask={onOpenTask}
+        onRetryLoadMore={queue.handleRetryLoadMore}
       />
     </Box>
   );

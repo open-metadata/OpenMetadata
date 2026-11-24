@@ -31,6 +31,23 @@ class TestNamespaceTest {
   }
 
   @Test
+  void shortPrefixesStayDistinctAcrossInvocationsOfTheSameMethod() {
+    final int invocations = 65_536;
+    final Set<String> prefixes = ConcurrentHashMap.newKeySet(invocations);
+
+    IntStream.range(0, invocations)
+        .parallel()
+        .forEach(
+            ignored -> {
+              final TestNamespace namespace = new TestNamespace("TestNamespaceTest");
+              namespace.setMethodId("parameterizedMethod");
+              prefixes.add(namespace.shortPrefix());
+            });
+
+    assertEquals(invocations, prefixes.size());
+  }
+
+  @Test
   void uniqueShortIdsDisperseTheCounterAcrossEverySuffixPosition() {
     final TestNamespace namespace = new TestNamespace("TestNamespaceTest");
     final List<String> identifiers =

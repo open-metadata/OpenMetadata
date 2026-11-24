@@ -24,18 +24,22 @@ import {
 } from '../../../generated/api/lineage/lineageScene';
 import {
   buildLineagePathHighlightIndex,
+  getBoxNearestPoint,
   getBreadcrumbSceneRequest,
   getConnectedFieldLineagePathHighlight,
   getConnectedLineagePathHighlight,
   getDeleteKeyAction,
   getDrillBand,
   getDrilledRootBreadcrumb,
+  getLensChangeRequest,
+  getLensLabelKey,
   getLensRootLabelKey,
   getLineageMapEmptyState,
   getParentSceneRequest,
   getRailDrillFallbackNode,
   getRailStop,
   getRailStopLabelKey,
+  getSceneCountLabel,
   getSceneFocus,
   getSceneLandingViewport,
   getSceneLevelLabelKey,
@@ -46,6 +50,8 @@ import {
   getSceneSearch,
   getScreenFill,
   getSemanticZoomDirection,
+  isSceneEmpty,
+  isSceneNodeDrillableWithChildren,
   type SceneLayoutBox,
 } from './LineageMap.utils';
 
@@ -478,6 +484,17 @@ describe('LineageMap utils', () => {
       ).toBe('full');
     });
 
+    it('treats an empty or non-expandable node as no unaimed drill target', () => {
+      expect(isSceneNodeDrillableWithChildren(service('full', 64))).toBe(true);
+      expect(isSceneNodeDrillableWithChildren(service('empty', 0))).toBe(false);
+      expect(
+        isSceneNodeDrillableWithChildren({
+          ...service('ghost', 5),
+          isExpandable: false,
+        })
+      ).toBe(false);
+    });
+
     it('falls back to the first drillable node when none report children', () => {
       expect(
         getRailDrillFallbackNode([
@@ -510,6 +527,12 @@ describe('LineageMap utils', () => {
     expect(getLensRootLabelKey(LineageLens.DataProduct)).toBe(
       'label.all-data-product-plural'
     );
+  });
+
+  it('names each lens with a translated label', () => {
+    expect(getLensLabelKey(LineageLens.Service)).toBe('label.service');
+    expect(getLensLabelKey(LineageLens.Domain)).toBe('label.domain');
+    expect(getLensLabelKey(LineageLens.DataProduct)).toBe('label.data-product');
   });
 
   it('maps root breadcrumb clicks to the layer scene', () => {
@@ -572,6 +595,19 @@ describe('LineageMap utils', () => {
     expect(highlight?.nodeIds).toEqual(
       new Set(['asset-b', 'asset-a', 'asset-c', 'asset-d'])
     );
+  });
+
+  it('leaves a sibling input of a downstream node off the hovered path', () => {
+    const index = buildLineagePathHighlightIndex([
+      { id: 'product-to-orders', source: 'product', target: 'orders' },
+      { id: 'enriched-to-orders', source: 'enriched', target: 'orders' },
+      { id: 'raw-to-enriched', source: 'raw', target: 'enriched' },
+    ]);
+
+    const highlight = getConnectedLineagePathHighlight('product', index);
+
+    expect(highlight?.edgeIds).toEqual(new Set(['product-to-orders']));
+    expect(highlight?.nodeIds).toEqual(new Set(['product', 'orders']));
   });
 
   it('does not build a path highlight without a hovered node', () => {
@@ -809,6 +845,26 @@ describe('getDeleteKeyAction', () => {
   });
 });
 
+describe('box nearest a point', () => {
+  it('measures to box centres, not edges', () => {
+    const wide = { id: 'wide', x: 0, y: 0, width: 400, height: 40 };
+    const small = { id: 'small', x: 0, y: 60, width: 40, height: 40 };
+
+    // (20, 30) lies inside wide, 180 from its centre (200, 20), but only 50
+    // from small's centre (20, 80).
+    expect(getBoxNearestPoint([wide, small], { x: 20, y: 30 })?.id).toBe(
+      'small'
+    );
+    expect(getBoxNearestPoint([wide, small], { x: 200, y: 30 })?.id).toBe(
+      'wide'
+    );
+  });
+
+  it('returns undefined without boxes', () => {
+    expect(getBoxNearestPoint([], { x: 0, y: 0 })).toBeUndefined();
+  });
+});
+
 describe('semantic zoom by screen fill', () => {
   const screen = { width: 1200, height: 800 };
   const card = { width: 400, height: 0 };
@@ -861,11 +917,12 @@ describe('semantic zoom by screen fill', () => {
     ).toBe('out');
   });
 
-  it('goes down a level only once a card fills most of the screen', () => {
+  it('goes down a level only once a card fills 35% of the screen', () => {
+    // 1.0 zoom: 400 of 1200 wide, just under 35%.
     expect(
       getSemanticZoomDirection({
-        previousZoom: 1,
-        zoom: 1.5,
+        previousZoom: 0.9,
+        zoom: 1,
         graph: bigGraph,
         card,
         screen,
@@ -873,10 +930,11 @@ describe('semantic zoom by screen fill', () => {
         maxZoom: 10,
       })
     ).toBeUndefined();
+    // 1.1 zoom: 440 of 1200 wide, past 35%.
     expect(
       getSemanticZoomDirection({
-        previousZoom: 1.5,
-        zoom: 1.9,
+        previousZoom: 1,
+        zoom: 1.1,
         graph: bigGraph,
         card,
         screen,
@@ -1023,6 +1081,23 @@ describe('scene landing viewport', () => {
     expect(12 * viewport.zoom + viewport.y).toBeCloseTo(canvas.height * inset);
   });
 
+  it('keeps the top of a focus taller than the canvas below the fit inset', () => {
+    const fields = Array.from({ length: 30 }, (_, index) =>
+      box(1452, 1200 + index * 131, { isFocus: true })
+    );
+
+    const viewport = getSceneLandingViewport(
+      [...schemaScene, ...fields],
+      canvas,
+      minZoom,
+      padding
+    ) as Viewport;
+
+    expect(1200 * viewport.zoom + viewport.y).toBeCloseTo(
+      canvas.height * inset
+    );
+  });
+
   it('centres the origin node of a scene too big to fit, and the focus node over it', () => {
     const origin = box(2412, 2600, { isOrigin: true });
     const focus = box(1452, 1200, { isFocus: true });
@@ -1113,5 +1188,155 @@ describe('getLineageMapEmptyState', () => {
     expect(getLineageMapEmptyState({ loading: false, hasError: false })).toBe(
       'empty'
     );
+  });
+});
+
+describe('scene status helpers', () => {
+  it('keeps a lone service, domain or data product card on screen', () => {
+    const loneDomain = createScene(LineageBand.Layer, [
+      LineageLevelKind.Domain,
+    ]);
+    loneDomain.nodes[0].isFocus = true;
+
+    expect(isSceneEmpty(loneDomain)).toBe(false);
+  });
+
+  it('treats a scene holding only its focus card as empty', () => {
+    const focusOnly = createScene(LineageBand.Asset, [LineageLevelKind.Table]);
+    focusOnly.nodes[0].isFocus = true;
+
+    expect(isSceneEmpty(createScene(LineageBand.Asset, []))).toBe(true);
+    expect(isSceneEmpty(focusOnly)).toBe(true);
+    expect(
+      isSceneEmpty(
+        createScene(LineageBand.Asset, [
+          LineageLevelKind.Table,
+          LineageLevelKind.Table,
+        ])
+      )
+    ).toBe(false);
+  });
+
+  it('counts a scene of one kind by that kind, and a mixed scene as assets', () => {
+    expect(
+      getSceneCountLabel(
+        t,
+        createScene(LineageBand.Layer, [
+          LineageLevelKind.Service,
+          LineageLevelKind.Service,
+        ]),
+        2
+      )
+    ).toBe('label.service-plural');
+    expect(
+      getSceneCountLabel(
+        t,
+        createScene(LineageBand.Asset, [
+          LineageLevelKind.Table,
+          LineageLevelKind.Topic,
+        ]),
+        2
+      )
+    ).toBe('assets');
+  });
+});
+
+describe('getSceneRequestFromSearch', () => {
+  const domain = { focusFqn: 'Sales', entityType: 'domain' };
+
+  it('opens a domain page as the domain card on the Domain lens', () => {
+    expect(getSceneRequestFromSearch('', domain, true)).toEqual({
+      lens: LineageLens.Domain,
+      band: LineageBand.Layer,
+      focusFqn: 'Sales',
+      entityType: 'domain',
+    });
+  });
+
+  it('opens a data product page on the Data Product lens', () => {
+    expect(
+      getSceneRequestFromSearch(
+        '',
+        { focusFqn: 'Sales.orders', entityType: 'dataProduct' },
+        true
+      )
+    ).toMatchObject({ lens: LineageLens.DataProduct, band: LineageBand.Layer });
+  });
+
+  it('leaves a domain page for the root once the map writes a band', () => {
+    expect(
+      getSceneRequestFromSearch(
+        '?lineageLens=domain&lineageBand=LAYER',
+        domain,
+        true
+      )
+    ).toEqual({ lens: LineageLens.Domain, band: LineageBand.Layer });
+  });
+
+  it('still opens a table page on its Data Assets', () => {
+    expect(
+      getSceneRequestFromSearch(
+        '',
+        { focusFqn: 'svc.db.schema.orders', entityType: 'table' },
+        true
+      )
+    ).toEqual({
+      lens: LineageLens.Service,
+      band: LineageBand.Asset,
+      focusFqn: 'svc.db.schema.orders',
+      entityType: 'table',
+    });
+  });
+
+  it('keeps an asset tab on its own focus, whatever the entity', () => {
+    expect(getSceneRequestFromSearch('', domain, false)).toMatchObject({
+      lens: LineageLens.Service,
+      band: LineageBand.Asset,
+      focusFqn: 'Sales',
+    });
+  });
+});
+
+describe('getLensChangeRequest', () => {
+  it('opens the new lens root when the focus is a domain', () => {
+    expect(
+      getLensChangeRequest(
+        {
+          lens: LineageLens.Domain,
+          band: LineageBand.Layer,
+          focusFqn: 'Sales',
+          entityType: 'domain',
+        },
+        LineageLens.DataProduct
+      )
+    ).toEqual({ lens: LineageLens.DataProduct, band: LineageBand.Layer });
+  });
+
+  it('opens the new lens root when the focus is a service', () => {
+    expect(
+      getLensChangeRequest(
+        {
+          lens: LineageLens.Service,
+          band: LineageBand.Asset,
+          focusFqn: 'sample_data',
+          entityType: 'databaseService',
+        },
+        LineageLens.Domain
+      )
+    ).toEqual({ lens: LineageLens.Domain, band: LineageBand.Layer });
+  });
+
+  it('keeps an asset in focus, seen through the new lens', () => {
+    const request = {
+      lens: LineageLens.Service,
+      band: LineageBand.Asset,
+      focusFqn: 'svc.db.schema.orders',
+      entityType: 'table',
+    };
+
+    expect(getLensChangeRequest(request, LineageLens.Domain)).toEqual({
+      ...request,
+      lens: LineageLens.Domain,
+    });
   });
 });

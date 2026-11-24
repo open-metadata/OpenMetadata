@@ -1,14 +1,17 @@
 # A column's search entry carries only what ColumnSearchIndex builds
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-08 (initial)
+- **Revisions:** v1 2026-10-08 (initial); v2 2026-11-03 (`policyTags` for search access control)
 - **Deciders:** Mohit Yadav, Teddy Crépineau, Adrià Manero
 - **Guard:** `SearchRepositoryBehaviorTest` (`propagateInheritedFieldsToChildrenKeepsTableClassificationTagsOffColumnEntries`,
   `propagateInheritedFieldsToChildrenSendsColumnEntriesOnlyTheTermsTheyInherit`);
   `AssetsTabSearchEntriesIT` (`tableClassificationTags_reachTestCasesNotColumnEntries`,
-  `tableTerms_reachTestCases_andColumnEntriesOnlyAsInherited`)
+  `tableTerms_reachTestCases_andColumnEntriesOnlyAsInherited`);
+  `SearchRepositoryBehaviorTest.tableTagOnlyChangeRebuildsColumnDocsUnderSearchAccessControl`,
+  `SearchAccessRulesIT.aColumnIsHiddenWhenATagOnAnotherColumnDeniesItsTable`
 - **Related:** collate #1526;
-  ADR:2026-10-13-inherited-field-terms-are-derived-and-propagated-stays-lineage
+  ADR:2026-10-13-inherited-field-terms-are-derived-and-propagated-stays-lineage;
+  ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads
 
 ## Context
 
@@ -29,6 +32,11 @@ glossary term they do not carry.
   and the tags propagation carries it only the inherited terms
   (`PropagationDescriptor.inheritedTermsOnlyFor`). Child indexes that take a change differently are
   updated by requests of their own.
+- A column entry also carries `policyTags`, which only search access control reads: every tag
+  its table's endpoints decide on (the table's, its columns', its data model's), so a tag rule on
+  the table covers its columns as their endpoints do. `tags` stays as above. While access control
+  is on, a table's tags-only change rebuilds the entries so `policyTags` stays current; otherwise
+  it is refreshed at the next rebuild.
 - Test cases keep inheriting the table's tags. Their entries are built from the test case itself,
   never from column entries, so this record does not change them.
 

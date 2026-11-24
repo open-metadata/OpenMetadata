@@ -41,6 +41,8 @@ jest.mock('./useCurrentUserIds', () => ({
   useCurrentUserIds: () => new Set(),
 }));
 
+const mockLoadMore = jest.fn();
+
 jest.mock('./useInboxInfiniteList', () => ({
   useInboxInfiniteList: (
     queryKey: unknown[],
@@ -61,6 +63,8 @@ jest.mock('./useInboxInfiniteList', () => ({
       sentinelRef: { current: null },
       setItems: jest.fn(),
       setTotal: jest.fn(),
+      loadMore: mockLoadMore,
+      isLoadMoreError: false,
     };
   },
 }));

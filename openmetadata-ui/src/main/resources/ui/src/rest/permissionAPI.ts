@@ -33,11 +33,13 @@ export const getLoggedInUserPermissions = async () => {
 
 export const getEntityPermissionById = async (
   resource: ResourceEntity,
-  entityId: string
+  entityId: string,
+  signal?: AbortSignal
 ) => {
-  const response = await APIClient.get<ResourcePermission>(
-    `/permissions/${resource}/${entityId}`
-  );
+  const path = `/permissions/${resource}/${entityId}`;
+  const response = signal
+    ? await APIClient.get<ResourcePermission>(path, { signal })
+    : await APIClient.get<ResourcePermission>(path);
 
   return response.data;
 };

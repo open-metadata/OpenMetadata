@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import type { AxiosError } from 'axios';
+import type { Operation } from 'fast-json-patch';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, omitBy, trim } from 'lodash';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
@@ -61,6 +62,30 @@ export interface AddAlertFormWidgetProps {
   isViewMode?: boolean;
   templateResourcePermission?: OperationPermission;
 }
+
+const DESTINATIONS_PATH = '/destinations';
+
+/**
+ * The diff of a destination list pairs the destination at each index with the one now beside it,
+ * and a destination's secrets read only as the mask, so removing the first of two keeps the
+ * removed one's configuration under the surviving one's id, which the server refuses. A list
+ * whose members carry their own identity is replaced in one whole-list move instead.
+ */
+export const destinationsAsAWholeListReplace = (
+  jsonPatch: Operation[],
+  destinations: EventSubscription['destinations']
+): Operation[] => {
+  const touchesDestinations = (op: Operation) =>
+    op.path.startsWith(DESTINATIONS_PATH);
+  if (!jsonPatch.some(touchesDestinations)) {
+    return jsonPatch;
+  }
+
+  return [
+    ...jsonPatch.filter((op) => !touchesDestinations(op)),
+    { op: 'replace', path: DESTINATIONS_PATH, value: destinations },
+  ];
+};
 
 /** Props for the notification template section of the AI alert form. */
 export interface AlertAiTemplateSectionProps {
@@ -170,6 +195,7 @@ class AlertsClassBase {
 
       return {
         ...(initialDestination ?? {}),
+        id: d.id,
         type: d.type,
         config: {
           ...d.config,
@@ -269,18 +295,19 @@ class AlertsClassBase {
     setInlineAlertDetails,
     currentUser,
   }: HandleAlertSaveProps) {
+    const action = fqn && !isUndefined(initialData) ? 'update' : 'create';
     try {
       let alertDetails;
 
-      if (fqn && !isUndefined(initialData)) {
+      if (action === 'update' && initialData) {
         const newAlertData: EventSubscription = this.getAlertUpdateData(
           data,
           initialData
         );
 
-        const jsonPatch = compare(
-          omitBy(initialData, isUndefined),
-          newAlertData
+        const jsonPatch = destinationsAsAWholeListReplace(
+          compare(omitBy(initialData, isUndefined), newAlertData),
+          newAlertData.destinations
         );
 
         alertDetails = await updateAlertAPI(initialData.id, jsonPatch);
@@ -294,7 +321,6 @@ class AlertsClassBase {
         alertDetails = await createAlertAPI(finalData);
       }
 
-      const action = fqn && !isUndefined(initialData) ? 'update' : 'create';
       showSuccessToast(
         t(`server.${action}-entity-success`, {
           entity: t('label.alert-plural'),
@@ -309,7 +335,7 @@ class AlertsClassBase {
         entityLowercasePlural: t('label.alert-lowercase-plural'),
         setInlineAlertDetails,
         name: data.name,
-        defaultErrorType: 'create',
+        defaultErrorType: action,
       });
     }
   }
@@ -321,10 +347,10 @@ class AlertsClassBase {
       ...alertData,
       input: getAlertInputForForm(alertData),
       hasRulesWithoutSelections: hasRulesWithoutSelections(alertData),
-      timeout: alertData.destinations[0].timeout ?? 10,
+      timeout: alertData.destinations?.[0]?.timeout ?? 10,
       readTimeout:
-        alertData.destinations[0].readTimeout ?? DEFAULT_READ_TIMEOUT,
-      destinations: alertData.destinations.map((destination) => {
+        alertData.destinations?.[0]?.readTimeout ?? DEFAULT_READ_TIMEOUT,
+      destinations: (alertData.destinations ?? []).map((destination) => {
         const isExternalDestination =
           destination.category === SubscriptionCategory.External;
 
