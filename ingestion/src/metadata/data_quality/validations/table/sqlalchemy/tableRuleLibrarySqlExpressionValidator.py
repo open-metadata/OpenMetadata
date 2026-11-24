@@ -11,10 +11,10 @@
 
 """SQLAlchemy validator for table rule library SQL expression tests"""
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from jinja2.sandbox import SandboxedEnvironment
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
@@ -22,6 +22,7 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
 from metadata.data_quality.validations.table.base.tableRuleLibrarySqlExpressionValidator import (
     TableRuleLibrarySqlExpressionValidator as BaseValidator,
 )
+from metadata.data_quality.validations.utils import build_typed_text_clause
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_utils import escape_identifier_for_text_clause
@@ -39,7 +40,7 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
         """Use the same physical table and bind as the rule's row-count query."""
         return cast("QueryRunner", self.runner).get_table_reference()
 
-    def compile_sql_expression(self, table_name: str) -> tuple[str, dict[str, str]]:
+    def compile_sql_expression(self, table_name: str) -> tuple[str, dict[str, Any]]:
         """Compile SQL expression with SQLAlchemy bind parameters."""
         sql_template = self.runtime_params.test_definition.sqlExpression
         if not sql_template:
@@ -57,15 +58,16 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
 
         return compiled_sql, user_params
 
-    def _run_results(self, sql_expression: tuple[str, dict[str, str]]) -> int:
+    def _run_results(self, sql_expression: tuple[str, dict[str, Any]]) -> int:
         """Execute the compiled SQL and return the row count."""
         compiled_sql, bind_params = sql_expression
 
         if not is_safe_sql_query(compiled_sql):
             raise RuntimeError(f"SQL expression is not safe\n\n{compiled_sql}")
 
+        stmt = build_typed_text_clause(compiled_sql, bind_params, self._get_parameter_types())
         try:
-            result = self.runner._session.execute(text(compiled_sql), bind_params)
+            result = self.runner._session.execute(stmt, bind_params)
             return len(result.fetchall())
         except Exception as exc:
             self.runner._session.rollback()
