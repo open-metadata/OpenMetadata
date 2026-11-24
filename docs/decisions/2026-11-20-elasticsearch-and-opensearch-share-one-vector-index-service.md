@@ -162,5 +162,6 @@ the engine's kNN clause, usable inside `bool` and `function_score`, built by the
 threshold - 1`. A caller composes its own hybrid request around it. Fusing the keyword and the
 semantic leg is the caller's concern and stays out of OpenMetadata
 (ADR:2026-11-23-elasticsearch-vector-fields-pin-their-index-options records the index options
-that make the two engines' kNN legs comparable). The OpenSearch RRF search pipeline has left
-OpenMetadata (ADR:2026-11-23-the-hybrid-rrf-pipeline-leaves-openmetadata).
+that make the two engines' kNN legs comparable). The OpenSearch RRF search pipeline remains until
+its callers stop using it, and then leaves OpenMetadata
+(ADR:2026-11-23-the-hybrid-rrf-pipeline-leaves-openmetadata).
