@@ -88,6 +88,9 @@ openmetadata-ui/src/main/resources/ui/playwright/tsconfig.tsbuildinfo
 /ingestion/tests/e2e/artifacts/*
 openmetadata-ui/src/main/resources/ui/src/test/unit/coverage
 openmetadata-ui/src/main/resources/ui/src/test/browser/coverage
+openmetadata-ui/src/main/resources/ui/src/test/browser/junit.xml
+openmetadata-ui/src/main/resources/ui/.vitest-reports
+openmetadata-ui/src/main/resources/ui/.impact
 openmetadata-ui/src/main/resources/ui/.vitest-attachments/
 # Vitest failure screenshots; committed visual baselines end in -<browser>-<os>.png
 openmetadata-ui/src/main/resources/ui/src/**/__screenshots__/**/*.png

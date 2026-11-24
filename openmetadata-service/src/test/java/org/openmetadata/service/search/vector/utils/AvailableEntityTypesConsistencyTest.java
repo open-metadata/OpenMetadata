@@ -57,6 +57,7 @@ class AvailableEntityTypesConsistencyTest {
   @Test
   void vectorIndexableTypesMatchTheEmbeddingsAliasExactly() {
     Set<String> declared = new TreeSet<>(AvailableEntityTypes.SET);
+    declared.removeAll(Set.of("ontologyconcept", "ontologyproperty"));
     Set<String> aliasMembers = new TreeSet<>();
     for (Map.Entry<String, IndexMapping> entry : indexMappings().entrySet()) {
       List<String> parents = entry.getValue().getParentAliases(null);
@@ -74,6 +75,26 @@ class AvailableEntityTypesConsistencyTest {
             + difference(declared, aliasMembers)
             + "; types in the alias but never embedded: "
             + difference(aliasMembers, declared));
+  }
+
+  @Test
+  void ontologyTermsAreVectorIndexableOnlyThroughTheirOwnSearchAlias() throws IOException {
+    for (String type : List.of("ontologyConcept", "ontologyProperty")) {
+      IndexMapping mapping = indexMappings().get(type);
+      assertTrue(mapping != null, type + " has no mapping");
+      assertEquals(List.of("ontologyTerms"), mapping.getParentAliases(null));
+      assertTrue(AvailableEntityTypes.isVectorIndexable(type), type);
+      for (String language : LANGUAGES) {
+        try (InputStream stream =
+            getClass().getResourceAsStream("/" + mapping.getIndexMappingFile(language))) {
+          assertTrue(stream != null, type + " has no " + language + " mapping");
+          JsonNode properties = MAPPER.readTree(stream).path("mappings").path("properties");
+          for (String field : EMBEDDING_FIELDS) {
+            assertTrue(properties.has(field), type + " " + language + " lacks " + field);
+          }
+        }
+      }
+    }
   }
 
   @Test

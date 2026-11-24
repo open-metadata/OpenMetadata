@@ -106,7 +106,7 @@ Now review the implementation quality.
 - [ ] 90% line coverage on changed Java classes
 - [ ] Integration tests for new/changed API endpoints
 - [ ] Jest tests for new/changed React components
-- [ ] Playwright E2E tests for new user-facing features
+- [ ] Browser tests for new UI page behaviour; Playwright E2E for cross-feature journeys (`.claude/rules/frontend-browser-tests.md`)
 - [ ] Tests verify behavior, not implementation
 
 **Security:**
