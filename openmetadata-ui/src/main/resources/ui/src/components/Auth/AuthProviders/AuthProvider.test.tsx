@@ -1249,10 +1249,9 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
   });
 
   it('stores the deep link an unauthenticated user opened even after the router has moved to /signin', async () => {
-    const useCustomLocationMock = jest.requireMock(
+    const useCustomLocationMock = jest.requireMock<jest.Mock>(
       '../../../hooks/useCustomLocation/useCustomLocation'
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ) as any;
+    );
     useCustomLocationMock.mockImplementation(() => ({
       pathname: '/table/sample.ecommerce.shopify.orders',
       search: '?tab=schema',
