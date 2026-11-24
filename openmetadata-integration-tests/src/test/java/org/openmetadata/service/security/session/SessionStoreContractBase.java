@@ -34,7 +34,7 @@ import org.junit.jupiter.api.Test;
  * <i>not</i> asserted here — JDBC supports it and Redis intentionally returns empty lists (TTL
  * handles cleanup automatically) — backend-specific behavior lives in the subclass.
  */
-public abstract class SessionStoreContractTest {
+public abstract class SessionStoreContractBase {
 
   protected SessionStore store;
 

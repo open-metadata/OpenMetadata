@@ -46,25 +46,26 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Writes the provider could not deliver must not leave Redis serving the value from before them.
  * The provider used to drop writes silently while its circuit breaker was open, then serve the
  * pre-outage copy for up to the entity TTL once Redis recovered.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class RedisCacheProviderUnconfirmedWritesTest {
+@EnabledIf("org.openmetadata.it.bootstrap.TestSuiteBootstrap#isRedisEnabled")
+@Execution(ExecutionMode.SAME_THREAD)
+class RedisCacheProviderUnconfirmedWritesIT {
   private static final Duration TTL = Duration.ofMinutes(5);
   private static final int FAILURES_TO_OPEN_BREAKER = 5;
   private static final int MAX_HEALTH_CHECKS = 10;
   private static final int RECOVERY_HEALTH_CHECKS = 3;
 
-  @Container
-  static final GenericContainer<?> REDIS =
-      new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
+  private static GenericContainer<?> REDIS;
 
   private static RedisClient client;
   private static StatefulRedisConnection<String, String> connection;
@@ -74,6 +75,7 @@ class RedisCacheProviderUnconfirmedWritesTest {
 
   @BeforeAll
   static void connect() {
+    REDIS = TestSuiteBootstrap.onDemandRedis("cache-pausable");
     client =
         RedisClient.create(
             RedisURI.builder()

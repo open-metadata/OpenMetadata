@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.search;
+package org.openmetadata.it.tests.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -22,17 +22,18 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import org.junit.jupiter.api.AfterAll;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.service.search.SearchFieldLimits;
+import org.openmetadata.service.search.SearchIndexSettings;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Reproduces the production "immense term" reindex failures (SPG-DEV / crocs) against a real
@@ -50,36 +51,31 @@ import org.testcontainers.utility.DockerImageName;
  * The end-to-end test loads the real table mapping, hardens it, transforms it for OpenSearch and
  * confirms the oversized document is accepted.
  */
-class ImmenseTermReproTest {
+class ImmenseTermReproIT {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ImmenseTermReproTest.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ImmenseTermReproIT.class);
 
   private static final String OVERSIZED = "a".repeat(70000); // > 32766 byte Lucene term limit
   private static final HttpClient HTTP = HttpClient.newHttpClient();
 
-  private static GenericContainer<?> opensearch;
   private static String baseUrl;
 
+  private final String suffix = "_" + UUID.randomUUID().toString().replace("-", "");
+  private final List<String> created = new ArrayList<>();
+
   @BeforeAll
-  static void startOpenSearch() {
-    assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker is required");
-    opensearch =
-        new GenericContainer<>(DockerImageName.parse("opensearchproject/opensearch:2.13.0"))
-            .withEnv("discovery.type", "single-node")
-            .withEnv("DISABLE_SECURITY_PLUGIN", "true")
-            .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
-            .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms1g -Xmx1g")
-            .withExposedPorts(9200)
-            .waitingFor(Wait.forHttp("/").forPort(9200).forStatusCode(200))
-            .withStartupTimeout(Duration.ofMinutes(3));
-    opensearch.start();
-    baseUrl = "http://" + opensearch.getHost() + ":" + opensearch.getMappedPort(9200);
+  static void useOpenSearch() {
+    assumeTrue(
+        "opensearch".equalsIgnoreCase(System.getProperty("searchType", "elasticsearch")),
+        "needs the OpenSearch client");
+    baseUrl =
+        "http://" + TestSuiteBootstrap.getSearchHost() + ":" + TestSuiteBootstrap.getSearchPort();
   }
 
-  @AfterAll
-  static void stopOpenSearch() {
-    if (opensearch != null) {
-      opensearch.stop();
+  @AfterEach
+  void dropIndices() throws Exception {
+    for (String index : created) {
+      send("DELETE", "/" + index, null);
     }
   }
 
@@ -148,17 +144,26 @@ class ImmenseTermReproTest {
         "rejection must be the Lucene immense-term error, got: " + response.body());
   }
 
-  private HttpResponse<String> indexInto(String index, String mapping, String doc)
-      throws Exception {
+  private HttpResponse<String> indexInto(String name, String mapping, String doc) throws Exception {
+    String index = name + suffix;
+    created.add(index);
     assertEquals(200, put("/" + index, mapping).statusCode(), "index " + index + " should create");
     return put("/" + index + "/_doc/1?refresh=true", doc);
   }
 
   private HttpResponse<String> put(String path, String body) throws Exception {
+    return send("PUT", path, body);
+  }
+
+  private HttpResponse<String> send(String method, String path, String body) throws Exception {
     HttpRequest request =
         HttpRequest.newBuilder(URI.create(baseUrl + path))
             .header("Content-Type", "application/json")
-            .PUT(HttpRequest.BodyPublishers.ofString(body))
+            .method(
+                method,
+                body == null
+                    ? HttpRequest.BodyPublishers.noBody()
+                    : HttpRequest.BodyPublishers.ofString(body))
             .build();
     return HTTP.send(request, HttpResponse.BodyHandlers.ofString());
   }

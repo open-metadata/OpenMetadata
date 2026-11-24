@@ -1,9 +1,7 @@
-package org.openmetadata.service.search.dataInsight;
+package org.openmetadata.it.tests.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,16 +17,15 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.dataInsight.custom.Function;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
-import org.openmetadata.service.search.SearchRepository;
 
 /**
  * Runs the request a line chart aggregator actually builds against a real engine.
@@ -45,9 +42,8 @@ import org.openmetadata.service.search.SearchRepository;
  * service. A terms axis built over every document and ordered by raw document count therefore fills
  * all {@value #AXIS_SIZE} slots with dashboard services and drops every service the chart is about.
  */
-public abstract class CategoricalAxisSelectionTestBase {
+public abstract class CategoricalAxisSelectionBase {
 
-  protected static final String INDEX = "di-categorical-axis-test";
   protected static final String X_AXIS_FIELD = "service.name.keyword";
   protected static final String TABLE_FILTER =
       "{\"query\":{\"term\":{\"entityType.keyword\":\"table\"}}}";
@@ -70,25 +66,23 @@ public abstract class CategoricalAxisSelectionTestBase {
   private static final HttpClient HTTP =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
+  protected final String index = "di-categorical-axis-" + UUID.randomUUID();
+
   /** Base URL of the running engine, e.g. {@code http://localhost:32769}. */
   protected abstract String engineUrl();
 
   /** The request the aggregator under test builds for this chart, serialized as it is sent. */
   protected abstract String requestFor(LineChart lineChart);
 
-  @BeforeAll
-  static void stubTheSearchRepository() {
-    // DataInsightSystemChartRepository reads the cluster alias when it names an index, and its
-    // static initializer needs a repository present before the aggregator touches it.
-    SearchRepository searchRepository = mock(SearchRepository.class);
-    lenient().when(searchRepository.getClusterAlias()).thenReturn(null);
-    Entity.setSearchRepository(searchRepository);
+  @AfterEach
+  void dropIndex() throws Exception {
+    delete(index);
   }
 
   protected void seed() throws Exception {
-    delete(INDEX);
+    delete(index);
     put(
-        INDEX,
+        index,
         "{\"settings\":{\"number_of_shards\":3,\"number_of_replicas\":0},"
             + "\"mappings\":{\"properties\":{"
             + "\"id\":{\"type\":\"text\",\"fields\":{\"keyword\":{\"type\":\"keyword\"}}},"
@@ -111,7 +105,7 @@ public abstract class CategoricalAxisSelectionTestBase {
   private void appendDocs(StringBuilder bulk, String service, String entityType, int count) {
     for (int doc = 0; doc < count; doc++) {
       bulk.append("{\"index\":{\"_index\":\"")
-          .append(INDEX)
+          .append(index)
           .append("\"}}\n")
           .append("{\"id\":\"")
           .append(service)
@@ -256,7 +250,7 @@ public abstract class CategoricalAxisSelectionTestBase {
 
   private static Set<String> dataServices() {
     return IntStream.range(0, DATA_SERVICES)
-        .mapToObj(CategoricalAxisSelectionTestBase::dataService)
+        .mapToObj(CategoricalAxisSelectionBase::dataService)
         .collect(Collectors.toCollection(TreeSet::new));
   }
 
@@ -316,7 +310,7 @@ public abstract class CategoricalAxisSelectionTestBase {
   }
 
   private JsonNode aggregationsOf(String body) throws Exception {
-    JsonNode response = MAPPER.readTree(post(INDEX + "/_search", body));
+    JsonNode response = MAPPER.readTree(post(index + "/_search", body));
     assertEquals(0, response.path("_shards").path("failed").asInt(), "shard failures: " + response);
     return response.path("aggregations");
   }

@@ -10,53 +10,56 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.attachments;
+package org.openmetadata.it.tests.attachments;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.service.attachments.S3AssetService;
 import org.openmetadata.service.config.S3Configuration;
-import org.testcontainers.containers.localstack.LocalStackContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.BucketAlreadyOwnedByYouException;
 
 /**
- * End-to-end test of {@link S3AssetService} against a real S3 backend emulated by LocalStack in a
- * Testcontainer, exercising the actual AWS SDK upload/read/delete path rather than Mockito stand-
- * ins. Skipped automatically when Docker is not available.
+ * End-to-end test of {@link S3AssetService} against a real S3 API served by the suite's object
+ * storage container, exercising the actual AWS SDK upload/read/delete path rather than Mockito
+ * stand-ins.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class S3AssetServiceLocalStackTest {
-
-  private static final DockerImageName LOCALSTACK_IMAGE =
-      DockerImageName.parse("localstack/localstack:3.8.1");
+@Execution(ExecutionMode.CONCURRENT)
+class S3AssetServiceLocalStackIT {
 
   private static final String BUCKET_NAME = "openmetadata-assets-it";
-
-  @Container
-  static final LocalStackContainer LOCALSTACK =
-      new LocalStackContainer(LOCALSTACK_IMAGE).withServices(LocalStackContainer.Service.S3);
+  private static final String ACCESS_KEY = "accesskey";
+  private static final String SECRET_KEY = "secretkey";
+  private static final String REGION = "us-east-1";
 
   private S3AssetService assetService;
 
   @BeforeAll
   static void createBucket() {
+    TestSuiteBootstrap.setupObjectStorage();
     try (S3Client bootstrap = newRawClient()) {
-      bootstrap.createBucket(builder -> builder.bucket(BUCKET_NAME));
+      try {
+        bootstrap.createBucket(builder -> builder.bucket(BUCKET_NAME));
+      } catch (BucketAlreadyOwnedByYouException alreadyCreated) {
+        // another class of this JVM created it first
+      }
     }
   }
 
@@ -136,20 +139,19 @@ class S3AssetServiceLocalStackTest {
   private static S3Configuration localStackConfig() {
     S3Configuration config = new S3Configuration();
     config.setBucketName(BUCKET_NAME);
-    config.setRegion(LOCALSTACK.getRegion());
-    config.setAccessKey(LOCALSTACK.getAccessKey());
-    config.setSecretKey(LOCALSTACK.getSecretKey());
-    config.setEndpoint(LOCALSTACK.getEndpoint().toString());
+    config.setRegion(REGION);
+    config.setAccessKey(ACCESS_KEY);
+    config.setSecretKey(SECRET_KEY);
+    config.setEndpoint(TestSuiteBootstrap.getObjectStorageEndpoint());
     return config;
   }
 
   private static S3Client newRawClient() {
     return S3Client.builder()
-        .endpointOverride(LOCALSTACK.getEndpoint())
-        .region(Region.of(LOCALSTACK.getRegion()))
+        .endpointOverride(URI.create(TestSuiteBootstrap.getObjectStorageEndpoint()))
+        .region(Region.of(REGION))
         .credentialsProvider(
-            StaticCredentialsProvider.create(
-                AwsBasicCredentials.create(LOCALSTACK.getAccessKey(), LOCALSTACK.getSecretKey())))
+            StaticCredentialsProvider.create(AwsBasicCredentials.create(ACCESS_KEY, SECRET_KEY)))
         .forcePathStyle(true)
         .build();
   }

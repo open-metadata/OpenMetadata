@@ -25,14 +25,12 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.service.fernet.Fernet;
-import org.testcontainers.containers.localstack.LocalStackContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
@@ -40,27 +38,26 @@ import software.amazon.awssdk.services.ssm.SsmClient;
 
 /**
  * End-to-end test of {@link AWSSSMSecretsManager} against a real AWS SSM Parameter Store backend
- * emulated by LocalStack in a Testcontainer. Exercises the create/update/read/exist/delete paths
- * through the real AWS SDK and the rate limiter. Skipped automatically when Docker is unavailable.
+ * emulated by the suite's LocalStack. Exercises the create/update/read/exist/delete paths
+ * through the real AWS SDK and the rate limiter.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class AWSSSMSecretsManagerLocalStackTest {
-
-  private static final DockerImageName LOCALSTACK_IMAGE =
-      DockerImageName.parse("localstack/localstack:3.8.1");
+@Isolated("resets the static secrets-manager singleton")
+class AWSSSMSecretsManagerLocalStackIT {
 
   private static final String FERNET_KEY = "jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=";
-
-  @Container
-  static final LocalStackContainer LOCALSTACK =
-      new LocalStackContainer(LOCALSTACK_IMAGE).withServices(LocalStackContainer.Service.SSM);
 
   private AWSSSMSecretsManager secretsManager;
   private SsmClient rawClient;
 
+  private boolean borrowedFernetKey;
+
   @BeforeEach
   void setUp() throws Exception {
-    Fernet.getInstance().setFernetKey(FERNET_KEY);
+    // The server may already hold a key that encrypted data of other tests; only borrow one.
+    borrowedFernetKey = !Fernet.getInstance().isKeyDefined();
+    if (borrowedFernetKey) {
+      Fernet.getInstance().setFernetKey(FERNET_KEY);
+    }
     resetSingleton();
     rawClient = newSsmClient();
     secretsManager = AWSSSMSecretsManager.getInstance(localStackConfig());
@@ -69,6 +66,9 @@ class AWSSSMSecretsManagerLocalStackTest {
 
   @AfterEach
   void tearDown() throws Exception {
+    if (borrowedFernetKey) {
+      Fernet.getInstance().setFernetKey((String) null);
+    }
     if (rawClient != null) {
       rawClient.close();
     }
@@ -167,20 +167,22 @@ class AWSSSMSecretsManagerLocalStackTest {
 
   private SecretsManager.SecretsConfig localStackConfig() {
     Parameters parameters = new Parameters();
-    parameters.setAdditionalProperty("region", LOCALSTACK.getRegion());
-    parameters.setAdditionalProperty("accessKeyId", LOCALSTACK.getAccessKey());
-    parameters.setAdditionalProperty("secretAccessKey", LOCALSTACK.getSecretKey());
+    parameters.setAdditionalProperty("region", TestSuiteBootstrap.LOCALSTACK_REGION);
+    parameters.setAdditionalProperty("accessKeyId", TestSuiteBootstrap.LOCALSTACK_ACCESS_KEY);
+    parameters.setAdditionalProperty("secretAccessKey", TestSuiteBootstrap.LOCALSTACK_SECRET_KEY);
     return new SecretsManager.SecretsConfig(
         "openmetadata", "prefix", List.of("managed-by:openmetadata"), parameters);
   }
 
   private static SsmClient newSsmClient() {
     return SsmClient.builder()
-        .endpointOverride(LOCALSTACK.getEndpoint())
-        .region(Region.of(LOCALSTACK.getRegion()))
+        .endpointOverride(TestSuiteBootstrap.localStackEndpoint())
+        .region(Region.of(TestSuiteBootstrap.LOCALSTACK_REGION))
         .credentialsProvider(
             StaticCredentialsProvider.create(
-                AwsBasicCredentials.create(LOCALSTACK.getAccessKey(), LOCALSTACK.getSecretKey())))
+                AwsBasicCredentials.create(
+                    TestSuiteBootstrap.LOCALSTACK_ACCESS_KEY,
+                    TestSuiteBootstrap.LOCALSTACK_SECRET_KEY)))
         .build();
   }
 

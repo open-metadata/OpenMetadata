@@ -25,11 +25,8 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.utility.DockerImageName;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryRequest;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
@@ -45,30 +42,21 @@ import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
  * immediately instead of holding the socket open for the whole scan — and the propagation still
  * lands (the async task's {@code refresh=true} makes the children visible).
  */
-class UpdateChildrenAsyncPropagationTest {
+class UpdateChildrenAsyncPropagationIT {
 
   private static final int CHILD_COUNT = 50;
 
-  private static GenericContainer<?> opensearch;
   private static OpenSearchClient osClient;
 
   @BeforeAll
   static void startOpenSearch() {
-    assumeTrue(DockerClientFactory.instance().isDockerAvailable(), "Docker is required");
-    opensearch =
-        new GenericContainer<>(DockerImageName.parse("opensearchproject/opensearch:2.13.0"))
-            .withEnv("discovery.type", "single-node")
-            .withEnv("DISABLE_SECURITY_PLUGIN", "true")
-            .withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true")
-            .withEnv("OPENSEARCH_JAVA_OPTS", "-Xms1g -Xmx1g")
-            .withExposedPorts(9200)
-            .waitingFor(Wait.forHttp("/").forPort(9200).forStatusCode(200))
-            .withStartupTimeout(Duration.ofMinutes(3));
-    opensearch.start();
+    assumeTrue(
+        "opensearch".equalsIgnoreCase(System.getProperty("searchType", "elasticsearch")),
+        "needs the OpenSearch client");
     ElasticSearchConfiguration cfg =
         new ElasticSearchConfiguration()
-            .withHost(opensearch.getHost())
-            .withPort(opensearch.getMappedPort(9200))
+            .withHost(TestSuiteBootstrap.getSearchHost())
+            .withPort(TestSuiteBootstrap.getSearchPort())
             .withScheme("http")
             .withConnectionTimeoutSecs(10)
             .withSocketTimeoutSecs(60)
@@ -83,15 +71,12 @@ class UpdateChildrenAsyncPropagationTest {
     if (osClient != null) {
       osClient.close();
     }
-    if (opensearch != null) {
-      opensearch.stop();
-    }
   }
 
   @Test
   void updateChildrenSubmitsAsyncTaskAndPropagates() throws Exception {
     var lowLevel = osClient.getNewClient();
-    String index = "repro_children";
+    String index = "repro_children_" + UUID.randomUUID();
     String parentId = UUID.randomUUID().toString();
     String ownerId = UUID.randomUUID().toString();
 

@@ -29,26 +29,25 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * Concrete {@link SessionStoreContractTest} subclass that runs the shared session-store contract
+ * Concrete {@link SessionStoreContractBase} subclass that runs the shared session-store contract
  * against a real Redis instance launched in a Testcontainer. Verifies that the Lua CAS, ZSET
  * secondary indexes, and TTL behavior all produce the same observable semantics as the JDBC store.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class RedisSessionStoreTest extends SessionStoreContractTest {
+@EnabledIf("org.openmetadata.it.bootstrap.TestSuiteBootstrap#isRedisEnabled")
+@Execution(ExecutionMode.SAME_THREAD)
+class RedisSessionStoreIT extends SessionStoreContractBase {
 
   // A single cluster-mode node owns every slot, so plain single-key commands behave as on a
   // standalone server, but a command whose keys hash to different slots fails with CROSSSLOT, as it
   // does on a Redis Cluster or a cluster proxy endpoint.
-  @Container
-  static final GenericContainer<?> REDIS =
-      new GenericContainer<>("redis:7-alpine")
-          .withExposedPorts(6379)
-          .withCommand("redis-server", "--cluster-enabled", "yes");
+  private static GenericContainer<?> REDIS;
 
   private static RedisClient client;
   private static StatefulRedisConnection<String, String> connection;
@@ -56,6 +55,7 @@ class RedisSessionStoreTest extends SessionStoreContractTest {
 
   @BeforeAll
   static void connect() {
+    REDIS = TestSuiteBootstrap.onDemandRedis("session-cluster", "--cluster-enabled", "yes");
     RedisURI uri =
         RedisURI.builder().withHost(REDIS.getHost()).withPort(REDIS.getMappedPort(6379)).build();
     client = RedisClient.create(uri);
