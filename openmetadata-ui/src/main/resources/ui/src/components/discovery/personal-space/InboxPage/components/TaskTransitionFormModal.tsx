@@ -18,7 +18,7 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import React, { lazy, useEffect, useMemo, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Task,
@@ -26,7 +26,6 @@ import {
 } from '../../../../../generated/entity/tasks/task';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
 import { TaskPayload } from '../../../../../rest/tasksAPI';
-import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import { isDescriptionContentEmpty } from '../../../../../utils/BlockEditorPureUtils';
 import {
   applyTaskFormSchemaDefaults,
@@ -34,12 +33,10 @@ import {
   getTaskTransitionFormSchema,
   getTaskTransitionUiSchema,
 } from '../../../../../utils/TaskFormSchemaUtils';
+import Loader from '../../../../common/Loader/Loader';
 
-const TaskPayloadSchemaFields = withSuspenseFallback(
-  lazy(
-    () =>
-      import('../../../../../pages/TasksPage/shared/TaskPayloadSchemaFields')
-  )
+const TaskPayloadSchemaFields = lazy(
+  () => import('../../../../../pages/TasksPage/shared/TaskPayloadSchemaFields')
 );
 
 export interface TaskTransitionFormModalProps {
@@ -163,41 +160,43 @@ const TaskTransitionFormModal: React.FC<TaskTransitionFormModalProps> = ({
           title={title}
           width={768}
           onClose={handleClose}>
-          <Dialog.Content>
-            <TaskPayloadSchemaFields
-              payload={payload}
-              schema={transitionFormSchema}
-              uiSchema={transitionUiSchema}
-              onChange={setPayload}
-            />
-            {isMissingRequired && (
-              <Typography
-                color="danger"
-                data-testid="task-transition-form-required-hint"
-                size="text-sm">
-                {t('message.field-text-is-required', {
-                  fieldText: t('label.required-field-plural'),
-                })}
-              </Typography>
-            )}
-          </Dialog.Content>
-          <Dialog.Footer>
-            <Button
-              color="secondary"
-              data-testid="task-transition-form-cancel"
-              isDisabled={isLoading}
-              onPress={handleClose}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              color="primary"
-              data-testid="task-transition-form-confirm"
-              isDisabled={isMissingRequired}
-              isLoading={isLoading}
-              onPress={handleConfirm}>
-              {actionLabel}
-            </Button>
-          </Dialog.Footer>
+          <Suspense fallback={<Loader />}>
+            <Dialog.Content>
+              <TaskPayloadSchemaFields
+                payload={payload}
+                schema={transitionFormSchema}
+                uiSchema={transitionUiSchema}
+                onChange={setPayload}
+              />
+              {isMissingRequired && (
+                <Typography
+                  color="danger"
+                  data-testid="task-transition-form-required-hint"
+                  size="text-sm">
+                  {t('message.field-text-is-required', {
+                    fieldText: t('label.required-field-plural'),
+                  })}
+                </Typography>
+              )}
+            </Dialog.Content>
+            <Dialog.Footer>
+              <Button
+                color="secondary"
+                data-testid="task-transition-form-cancel"
+                isDisabled={isLoading}
+                onPress={handleClose}>
+                {t('label.cancel')}
+              </Button>
+              <Button
+                color="primary"
+                data-testid="task-transition-form-confirm"
+                isDisabled={isMissingRequired}
+                isLoading={isLoading}
+                onPress={handleConfirm}>
+                {actionLabel}
+              </Button>
+            </Dialog.Footer>
+          </Suspense>
         </Dialog>
       </Modal>
     </ModalOverlay>
