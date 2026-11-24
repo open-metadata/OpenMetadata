@@ -75,7 +75,8 @@ test('the suppressions baseline matches its recorded state exactly', () => {
     // DomainIsolationIT removes one more, and deleting the unused antd
     // reply-announcement helper removes two more. Moving Ontology Studio to
     // Collate drops the navigation spec's Studio sidebar check, one more.
-    'om-playwright/no-positional-locator': 529,
+    // The incident spec targets the resolution editor by its accessible name.
+    'om-playwright/no-positional-locator': 524,
     'om-playwright/require-assertion-per-test': 1,
     'playwright/no-skipped-test': 1,
     'playwright/no-wait-for-selector': 14,

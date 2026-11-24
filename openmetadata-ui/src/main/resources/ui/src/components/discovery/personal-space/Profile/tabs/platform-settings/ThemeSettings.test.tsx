@@ -42,6 +42,11 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
+const mockImageCheck = jest.fn();
+jest.mock('./useImageCheck', () => ({
+  useImageCheck: (url?: string) => mockImageCheck(url),
+}));
+
 jest.mock('../../../../../common/BrandImage/BrandImage', () =>
   jest.fn(({ dataTestId, src }) => (
     <img alt="" data-testid={dataTestId} src={src} />
@@ -87,9 +92,13 @@ describe('Theme settings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (updateSettingsConfig as jest.Mock).mockResolvedValue({ data: {} });
+    mockImageCheck.mockImplementation((url?: string) => ({
+      status: url ? 'loaded' : 'idle',
+      isHardToSeeOnDark: false,
+    }));
   });
 
-  it('shows the live logo URLs and colours, with "Not set" for blanks', () => {
+  it('previews set logos without their URL, with "Not set" for blanks', () => {
     render(
       <ThemeSettings
         onNavigate={onNavigate}
@@ -97,7 +106,11 @@ describe('Theme settings', () => {
       />
     );
 
-    expect(screen.getByTestId('customLogoUrlPath-value')).toHaveTextContent(
+    expect(
+      screen.queryByTestId('customLogoUrlPath-value')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('customLogoUrlPath-preview')).toHaveAttribute(
+      'src',
       'https://cdn.example.com/logo.svg'
     );
     expect(screen.getByTestId('customMonogramUrlPath-value')).toHaveTextContent(
@@ -163,7 +176,7 @@ describe('Theme settings', () => {
       await screen.findByText('message.hex-color-validation')
     ).toBeInTheDocument();
     expect(
-      screen.getByText('message.entity-is-not-valid-url')
+      screen.getByText('message.enter-full-url-starting-with-https')
     ).toBeInTheDocument();
     expect(updateSettingsConfig).not.toHaveBeenCalled();
   });
@@ -189,5 +202,134 @@ describe('Theme settings', () => {
       page: 'theme',
       isEditing: false,
     });
+  });
+
+  it('previews the dark logo, falling back to the light one when unset', () => {
+    render(
+      <ThemeSettings
+        onNavigate={onNavigate}
+        onSetHeaderActions={onSetHeaderActions}
+      />
+    );
+
+    expect(screen.getByTestId('customLogoDarkUrlPath-preview')).toHaveAttribute(
+      'src',
+      'https://cdn.example.com/logo.svg'
+    );
+    expect(
+      screen.getByTestId('customMonogramDarkUrlPath-preview')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('customFaviconDarkUrlPath-preview')
+    ).not.toBeInTheDocument();
+  });
+
+  it('adds a dark logo URL, saves it, and Remove clears it', async () => {
+    render(<ThemeSettingsForm showHint={false} onNavigate={onNavigate} />);
+
+    expect(
+      screen.queryByTestId('customLogoDarkUrlPath')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('customLogoDarkUrlPath-add'));
+    fireEvent.change(
+      screen
+        .getByTestId('customLogoDarkUrlPath')
+        .querySelector('input') as HTMLInputElement,
+      { target: { value: 'https://cdn.example.com/logo-dark.svg' } }
+    );
+
+    expect(screen.getByTestId('customLogoDarkUrlPath-preview')).toHaveAttribute(
+      'src',
+      'https://cdn.example.com/logo-dark.svg'
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(
+      (updateSettingsConfig as jest.Mock).mock.calls[0][0].config_value
+        .customLogoConfig.customLogoDarkUrlPath
+    ).toBe('https://cdn.example.com/logo-dark.svg');
+
+    fireEvent.click(screen.getByTestId('customLogoDarkUrlPath-remove'));
+
+    expect(
+      screen.queryByTestId('customLogoDarkUrlPath')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('customLogoDarkUrlPath-add')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['error', 'message.image-url-load-error'],
+    ['invalid', 'message.enter-full-url-starting-with-https'],
+  ])(
+    'shows the %s message live and blocks saving an edited URL',
+    async (status, message) => {
+      const editedUrl = 'https://cdn.example.com/new-logo.svg';
+      mockImageCheck.mockImplementation((url?: string) => ({
+        status: url === editedUrl ? status : 'loaded',
+        isHardToSeeOnDark: false,
+      }));
+
+      render(<ThemeSettingsForm showHint={false} onNavigate={onNavigate} />);
+
+      expect(screen.getByTestId('save-button')).toBeEnabled();
+
+      fireEvent.change(
+        screen
+          .getByTestId('customLogoUrlPath')
+          .querySelector('input') as HTMLInputElement,
+        { target: { value: editedUrl } }
+      );
+
+      expect(screen.getByTestId('customLogoUrlPath-error')).toHaveTextContent(
+        message
+      );
+
+      await waitFor(() =>
+        expect(screen.getByTestId('save-button')).toBeDisabled()
+      );
+    }
+  );
+
+  it('does not block saving on a saved logo URL that fails to load', () => {
+    mockImageCheck.mockImplementation((url?: string) => ({
+      status: url ? 'error' : 'idle',
+      isHardToSeeOnDark: false,
+    }));
+
+    render(<ThemeSettingsForm showHint={false} onNavigate={onNavigate} />);
+
+    expect(screen.getByTestId('customLogoUrlPath-error')).toHaveTextContent(
+      'message.image-url-load-error'
+    );
+    expect(screen.getByTestId('save-button')).toBeEnabled();
+  });
+
+  it('warns when the logo is hard to see in dark mode and no dark version is set', () => {
+    mockImageCheck.mockImplementation((url?: string) => ({
+      status: url ? 'loaded' : 'idle',
+      isHardToSeeOnDark: Boolean(url),
+    }));
+
+    render(<ThemeSettingsForm showHint={false} onNavigate={onNavigate} />);
+
+    expect(screen.getByTestId('customLogoUrlPath-warning')).toHaveTextContent(
+      'message.logo-hard-to-see-in-dark-mode'
+    );
+
+    fireEvent.click(screen.getByTestId('customLogoDarkUrlPath-add'));
+    fireEvent.change(
+      screen
+        .getByTestId('customLogoDarkUrlPath')
+        .querySelector('input') as HTMLInputElement,
+      { target: { value: 'https://cdn.example.com/logo-dark.svg' } }
+    );
+
+    expect(
+      screen.queryByTestId('customLogoUrlPath-warning')
+    ).not.toBeInTheDocument();
   });
 });

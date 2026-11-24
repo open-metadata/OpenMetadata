@@ -13,22 +13,22 @@
 s3 utils module
 """
 
-import traceback
 from collections.abc import Iterable
-
-from metadata.utils.logger import utils_logger
-
-logger = utils_logger()
 
 
 def list_s3_objects(client, **kwargs) -> Iterable:
+    """List S3 object keys using pagination, letting botocore errors propagate.
+
+    Previously this helper wrapped the entire generator body in a bare
+    ``except Exception`` that only logged a warning and then terminated the
+    generator. Because the function is a generator, the ``try`` also covered
+    the ``yield``-driven pull loop: an error raised by ``paginate()`` *after*
+    the first page was consumed stopped iteration, but every page already
+    yielded kept its content — callers saw a truncated or empty listing and the
+    workflow reported success. Mirrors
+    ``metadata.ingestion.source.database.dbt.dbt_config._iter_s3_object_keys``
+    which was introduced to work around this behaviour.
     """
-    Method to get list of s3 objects using pagination
-    """
-    try:
-        paginator = client.get_paginator("list_objects_v2")
-        for page in paginator.paginate(**kwargs):
-            yield from page.get("Contents", [])
-    except Exception as exc:
-        logger.debug(traceback.format_exc())
-        logger.warning(f"Unexpected exception to yield s3 object: {exc}")
+    paginator = client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(**kwargs):
+        yield from page.get("Contents", [])

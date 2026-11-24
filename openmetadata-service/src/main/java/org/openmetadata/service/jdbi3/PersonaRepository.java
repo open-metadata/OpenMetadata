@@ -48,6 +48,7 @@ import org.openmetadata.service.resources.teams.PersonaResource;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 @Slf4j
 public class PersonaRepository extends EntityRepository<Persona> {
@@ -58,6 +59,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
   private static final String FIELD_USER_COUNT = "userCount";
   private static final int DEFAULT_MAX_ASSETS = 200;
   private static final int MAX_RULES = 25;
+  private static final int MAX_PROJECTED_RULES = 2 * MAX_RULES;
   private static final int MIN_CHARACTER_BUDGET = 10_000;
   private static final int MAX_CHARACTER_BUDGET = 2_000_000;
   private static final int MIN_CACHE_TTL_MINUTES = 1;
@@ -98,6 +100,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
           ContextSection.RELATED_TERMS,
           ContextSection.TAGS,
           ContextSection.RELATED_ASSETS);
+  private final ThreadLocal<UUID> projectedContextPatch = new ThreadLocal<>();
 
   public PersonaRepository() {
     super(
@@ -131,11 +134,53 @@ public class PersonaRepository extends EntityRepository<Persona> {
   public void prepare(Persona persona, boolean update) {
     persona.setUserCount(null);
     validateUsers(persona.getUsers());
-    validateContextDefinition(persona.getContextDefinition());
+    validateContextDefinition(persona.getContextDefinition(), contextRuleLimit(persona, update));
     validateChangedFilters(persona, update);
     if (Boolean.TRUE.equals(persona.getDefault())) {
       unsetExistingDefaultPersona(persona.getId().toString());
     }
+  }
+
+  /** Persists a server-composed definition through the normal persona PATCH pipeline. */
+  public PatchResponse<Persona> patchProjectedContext(
+      UUID id, PersonaContextDefinition definition) {
+    var patch = JsonUtils.getJsonPatch(Map.of(), Map.of(FIELD_CONTEXT_DEFINITION, definition));
+    UUID previous = projectedContextPatch.get();
+    PatchResponse<Persona> response;
+    projectedContextPatch.set(id);
+    try {
+      response = patch(null, id, Entity.INGESTION_BOT_NAME, patch, ChangeSource.AUTOMATED);
+    } finally {
+      if (previous == null) {
+        projectedContextPatch.remove();
+      } else {
+        projectedContextPatch.set(previous);
+      }
+    }
+    storeChangeEventForAsyncOperation(
+        response.entity(), response.changeType(), false, Entity.INGESTION_BOT_NAME);
+    return response;
+  }
+
+  private int contextRuleLimit(Persona persona, boolean update) {
+    PersonaContextDefinition context = persona.getContextDefinition();
+    if (!update || context == null || listOrEmpty(context.getRules()).size() <= MAX_RULES) {
+      return MAX_RULES;
+    }
+    if (persona.getId().equals(projectedContextPatch.get())) {
+      return MAX_PROJECTED_RULES;
+    }
+    // Allow metadata updates on personas whose rule list already came from a projection. Look the
+    // stored persona up by name: a PUT builds the incoming persona with a new id.
+    String fqn =
+        persona.getFullyQualifiedName() != null
+            ? persona.getFullyQualifiedName()
+            : persona.getName();
+    Persona existing = findByNameOrNull(fqn, Include.ALL);
+    PersonaContextDefinition stored = existing == null ? null : existing.getContextDefinition();
+    boolean keepsStoredRules =
+        stored != null && Objects.equals(stored.getRules(), context.getRules());
+    return keepsStoredRules ? MAX_PROJECTED_RULES : MAX_RULES;
   }
 
   private void validateChangedFilters(Persona persona, boolean update) {
@@ -302,7 +347,13 @@ public class PersonaRepository extends EntityRepository<Persona> {
     return null;
   }
 
-  static void validateContextDefinition(PersonaContextDefinition definition) {
+  /** Validates and normalizes a persona context definition in place for this repository and Collate. */
+  public static void validateContextDefinition(PersonaContextDefinition definition) {
+    validateContextDefinition(definition, MAX_RULES);
+  }
+
+  private static void validateContextDefinition(
+      PersonaContextDefinition definition, int ruleLimit) {
     if (definition == null) {
       return;
     }
@@ -322,8 +373,9 @@ public class PersonaRepository extends EntityRepository<Persona> {
       throw new IllegalArgumentException(
           "Persona context cacheTtlMinutes must be between 1 and 1440");
     }
-    if (listOrEmpty(definition.getRules()).size() > MAX_RULES) {
-      throw new IllegalArgumentException("Persona context supports at most 25 rules");
+    if (listOrEmpty(definition.getRules()).size() > ruleLimit) {
+      throw new IllegalArgumentException(
+          "Persona context supports at most " + ruleLimit + " rules");
     }
     Set<UUID> ruleIds = new HashSet<>();
     Set<String> ruleNames = new HashSet<>();
