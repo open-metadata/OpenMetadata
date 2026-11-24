@@ -12,6 +12,9 @@ inputs:
     description: Arguments passed to the server startup script
     required: false
     default: "-m no-ui -d mysql"  # Use "-d postgresql" for postgres and Opensearch
+  maven-args:
+    description: Additional Maven arguments used when building the server
+    default: ""
   startup-script:
     description: Startup script used to launch the local OpenMetadata test environment
     required: false
@@ -68,6 +71,7 @@ runs:
       uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4
       env:
         INGESTION_DEPENDENCY: ${{ inputs.ingestion_dependency }}
+        MAVEN_ARGS: ${{ inputs.maven-args }}
         # Container startup must not synchronize the caller's host Python environment.
         VIRTUAL_ENV: ""
       with:

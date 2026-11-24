@@ -31,11 +31,20 @@ jobs:
           ref: ${{ inputs.ref }}
           persist-credentials: false
           fetch-depth: 1
+      - name: Restore Maven dependencies
+        if: ${{ !inputs.use-backend-image }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
       - name: Start test environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           use-backend-image: ${{ inputs.use-backend-image }}
           args: -m no-ui -i false -s ${{ inputs.use-backend-image }}
+          maven-args: -Dmaven.test.skip=true
       - uses: ./.github/actions/setup-python
         with:
           python-version: ${{ inputs.python-version }}
