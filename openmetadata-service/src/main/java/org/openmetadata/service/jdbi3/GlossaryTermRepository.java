@@ -144,6 +144,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.GlossaryTermAs
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.search.PropagationDescriptor;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -173,6 +174,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String ONTOLOGY_EDGE_ID_NAMESPACE = "ontology:";
   private static final int ONTOLOGY_RELATION_CANDIDATE_MULTIPLIER = 5;
   private static final int MAX_ONTOLOGY_RELATION_CANDIDATES = 2500;
+  private static final String REFRESH_RELATED_TERM_SEARCH_DOCS = "refreshRelatedTermSearchDocs";
   private static final Comparator<TermRelation> TERM_RELATION_ORDER =
       Comparator.comparing((TermRelation relation) -> relation.getTerm().getFullyQualifiedName())
           .thenComparing(TermRelation::getRelationType);
@@ -2179,8 +2181,18 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   protected Runnable preparePostDeleteCleanup(List<GlossaryTerm> entities) {
-    List<EntityReference> peerRefs = collectRelatedPeersBeforeDelete(entities);
+    Set<UUID> termIds =
+        listOrEmpty(entities).stream()
+            .map(GlossaryTerm::getId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    List<EntityReference> peerRefs = findExternalRelatedTermPeers(termIds);
     return () -> refreshRelatedTermSearchDocs(peerRefs);
+  }
+
+  @Override
+  protected void postBulkSoftDelete(List<GlossaryTerm> entities) {
+    refreshRelatedTermSearchDocs(relatedTermPeers(entities));
   }
 
   @Override
@@ -2210,47 +2222,56 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (nullOrEmpty(peerRefs) || searchRepository == null) {
       return;
     }
+    // The batch reload queues each peer by ID if a failure happens before indexing starts.
     searchRepository.deferIfFlushScopeActive(
-        () -> searchRepository.updateEntitiesByReference(peerRefs),
-        "refreshRelatedTermSearchDocs",
+        () -> updateRelatedTermSearchDocs(peerRefs),
+        REFRESH_RELATED_TERM_SEARCH_DOCS,
         null,
         null,
         GLOSSARY_TERM);
   }
 
-  private List<EntityReference> collectRelatedPeersBeforeDelete(List<GlossaryTerm> entities) {
-    Set<UUID> deletingIds =
-        listOrEmpty(entities).stream()
-            .map(GlossaryTerm::getId)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toSet());
-    if (deletingIds.isEmpty()) {
+  private void updateRelatedTermSearchDocs(List<EntityReference> peerRefs) {
+    try {
+      searchRepository.updateEntitiesByReference(peerRefs);
+    } catch (RuntimeException failure) {
+      LOG.warn("Failed to refresh search documents for {} related terms", peerRefs.size(), failure);
+      String reason =
+          SearchIndexRetryQueue.failureReason(REFRESH_RELATED_TERM_SEARCH_DOCS, failure);
+      peerRefs.forEach(
+          peer ->
+              SearchIndexRetryQueue.enqueue(peer.getId().toString(), null, GLOSSARY_TERM, reason));
+    }
+  }
+
+  void refreshRenamedDescendantPeers(List<EntityDAO.EntityIdFqnPair> descendants) {
+    Set<UUID> termIds = descendants.stream().map(term -> term.id).collect(Collectors.toSet());
+    refreshRelatedTermSearchDocs(findExternalRelatedTermPeers(termIds));
+  }
+
+  private List<EntityReference> findExternalRelatedTermPeers(Set<UUID> termIds) {
+    if (termIds.isEmpty()) {
       return List.of();
     }
-    Set<String> idStrings = deletingIds.stream().map(UUID::toString).collect(Collectors.toSet());
+    Set<String> idStrings = termIds.stream().map(UUID::toString).collect(Collectors.toSet());
     Set<UUID> peerIds = new LinkedHashSet<>();
     for (CollectionDAO.EntityRelationshipObject rec :
         findFromRecordsBatch(idStrings, GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM)) {
-      addSurvivingPeer(peerIds, rec.getFromId(), rec.getToId(), deletingIds);
+      addExternalPeer(peerIds, rec.getFromId(), termIds);
     }
     for (CollectionDAO.EntityRelationshipObject rec :
         findToRecordsBatch(idStrings, GLOSSARY_TERM, Relationship.RELATED_TO, GLOSSARY_TERM)) {
-      addSurvivingPeer(peerIds, rec.getFromId(), rec.getToId(), deletingIds);
+      addExternalPeer(peerIds, rec.getToId(), termIds);
     }
     return peerIds.stream()
         .map(id -> new EntityReference().withId(id).withType(GLOSSARY_TERM))
         .toList();
   }
 
-  private static void addSurvivingPeer(
-      Set<UUID> peerIds, String fromId, String toId, Set<UUID> deletingIds) {
-    UUID from = UUID.fromString(fromId);
-    UUID to = UUID.fromString(toId);
-    if (!deletingIds.contains(from)) {
-      peerIds.add(from);
-    }
-    if (!deletingIds.contains(to)) {
-      peerIds.add(to);
+  private static void addExternalPeer(Set<UUID> peerIds, String peerId, Set<UUID> termIds) {
+    UUID id = UUID.fromString(peerId);
+    if (!termIds.contains(id)) {
+      peerIds.add(id);
     }
   }
 
@@ -3043,6 +3064,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
       reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
+      refreshRenamedDescendantPeers(renamedTerms);
     }
 
     /**
@@ -3110,6 +3132,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
       reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
+      refreshRenamedDescendantPeers(renamedTerms);
     }
 
     private void validateParent() {

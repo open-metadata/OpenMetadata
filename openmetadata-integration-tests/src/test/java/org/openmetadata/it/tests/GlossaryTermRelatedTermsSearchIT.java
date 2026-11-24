@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * End-to-end search verification for typed glossary {@code relatedTerms} edges: nested per-edge
@@ -232,12 +233,98 @@ public class GlossaryTermRelatedTermsSearchIT {
         doc -> doc.path("relatedTerms").isArray() && doc.path("relatedTerms").isEmpty());
   }
 
+  @Test
+  void parentRenameUpdatesDescendantRelationInPeerSearchDoc() throws Exception {
+    GlossaryTerm parent = createTerm("OriginalParent");
+    GlossaryTerm descendant = createTerm("Descendant", glossary, parent);
+    GlossaryTerm peer = createTerm("Peer");
+    linkPeerToDescendant(peer, descendant);
+
+    GlossaryTerm renamed =
+        client.glossaryTerms().update(parent.getId(), parent.withName("RenamedParent"));
+
+    assertPeerFqnChanged(peer, descendant, renamed.getFullyQualifiedName());
+  }
+
+  @Test
+  void glossaryRenameUpdatesDescendantRelationInExternalPeerSearchDoc(TestNamespace ns)
+      throws Exception {
+    Glossary otherGlossary = GlossaryTestFactory.createWithName(ns, "originalGlossary");
+    GlossaryTerm descendant = createTerm("Descendant", otherGlossary, null);
+    GlossaryTerm peer = createTerm("Peer");
+    linkPeerToDescendant(peer, descendant);
+
+    Glossary renamed =
+        client
+            .glossaries()
+            .update(otherGlossary.getId(), otherGlossary.withName(ns.prefix("renamed")));
+
+    assertPeerFqnChanged(peer, descendant, renamed.getFullyQualifiedName());
+  }
+
+  @Test
+  void recursiveSoftDeleteUpdatesDescendantRelationInSurvivingPeerSearchDoc() throws Exception {
+    GlossaryTerm parent = createTerm("Parent");
+    GlossaryTerm descendant = createTerm("Descendant", glossary, parent);
+    GlossaryTerm peer = createTerm("Peer");
+    linkPeerToDescendant(peer, descendant);
+    awaitPeerTargetDeleted(peer, descendant, false);
+
+    HttpResponse<String> response =
+        send(
+            "DELETE",
+            SdkClients.getServerUrl() + "/v1/glossaryTerms/" + parent.getId() + "?recursive=true",
+            "");
+    assertEquals(200, response.statusCode(), response.body());
+
+    awaitPeerTargetDeleted(peer, descendant, true);
+  }
+
+  private void linkPeerToDescendant(GlossaryTerm peer, GlossaryTerm descendant) throws Exception {
+    postRelation(
+        peer.getId(),
+        descendant.getId(),
+        "relatedTo",
+        RelationProvenance.MANUAL,
+        EntityStatus.APPROVED);
+    awaitSearchHits(
+        targetFqnFilter(descendant.getFullyQualifiedName()), Set.of(peer.getId().toString()));
+  }
+
+  private void assertPeerFqnChanged(GlossaryTerm peer, GlossaryTerm descendant, String newParentFqn)
+      throws Exception {
+    String newFqn = FullyQualifiedName.add(newParentFqn, descendant.getName());
+    awaitSearchHits(targetFqnFilter(newFqn), Set.of(peer.getId().toString()));
+    awaitSearchHits(targetFqnFilter(descendant.getFullyQualifiedName()), Set.of());
+  }
+
+  private String targetFqnFilter(String fqn) throws Exception {
+    return nestedFilter(Map.of("relatedTerms.term.fullyQualifiedName", fqn));
+  }
+
+  private void awaitPeerTargetDeleted(GlossaryTerm peer, GlossaryTerm target, boolean deleted) {
+    awaitDoc(
+        GLOSSARY_TERM_INDEX,
+        peer.getId(),
+        doc -> {
+          JsonNode term = doc.path("relatedTerms").path(0).path("term");
+          return target.getId().toString().equals(term.path("id").asText())
+              && term.path("deleted").isBoolean()
+              && term.path("deleted").asBoolean() == deleted;
+        });
+  }
+
   private GlossaryTerm createTerm(String name) {
+    return createTerm(name, glossary, null);
+  }
+
+  private GlossaryTerm createTerm(String name, Glossary glossary, GlossaryTerm parent) {
     return client
         .glossaryTerms()
         .create(
             new CreateGlossaryTerm()
                 .withGlossary(glossary.getFullyQualifiedName())
+                .withParent(parent == null ? null : parent.getFullyQualifiedName())
                 .withName(name)
                 .withDescription("Description for " + name));
   }

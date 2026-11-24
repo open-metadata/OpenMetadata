@@ -736,6 +736,11 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       updateAssetIndexes(original, updated);
 
       finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      if (!renamedTerms.isEmpty()) {
+        GlossaryTermRepository terms =
+            (GlossaryTermRepository) Entity.getEntityRepository(GLOSSARY_TERM);
+        terms.refreshRenamedDescendantPeers(renamedTerms);
+      }
     }
 
     public void invalidateGlossary(UUID classificationId) {

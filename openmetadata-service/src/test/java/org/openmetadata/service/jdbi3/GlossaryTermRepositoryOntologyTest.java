@@ -17,6 +17,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Map;
@@ -32,9 +43,13 @@ import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.type.TermRelationMetadata;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.OntologyDAO.OntologyLineageRow;
 import org.openmetadata.service.jdbi3.OntologyDAO.OntologyRelationRow;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexRetryQueueDAO;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.GlossaryTermAssetBucket;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.openmetadata.service.search.SearchRepository;
 
 class GlossaryTermRepositoryOntologyTest {
 
@@ -173,6 +188,48 @@ class GlossaryTermRepositoryOntologyTest {
     List<EntityReference> peers = GlossaryTermRepository.relatedTermPeers(relations, selfId);
 
     assertEquals(List.of(peerA, peerB), peers.stream().map(EntityReference::getId).toList());
+  }
+
+  @Test
+  void failedPeerReloadQueuesEveryAffectedTerm() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    SearchIndexRetryQueueDAO retryQueue = mock(SearchIndexRetryQueueDAO.class);
+    SearchRepository search = mock(SearchRepository.class);
+    when(collectionDAO.searchIndexRetryQueueDAO()).thenReturn(retryQueue);
+    doCallRealMethod()
+        .when(search)
+        .deferIfFlushScopeActive(any(), anyString(), isNull(), isNull(), anyString());
+    doThrow(new IllegalStateException("peer lookup failed"))
+        .when(search)
+        .updateEntitiesByReference(anyList());
+
+    UUID firstPeer = UUID.randomUUID();
+    UUID secondPeer = UUID.randomUUID();
+    GlossaryTerm source =
+        term("DeletedTerm")
+            .withDeleted(true)
+            .withRelatedTerms(
+                List.of(
+                    termRelation(
+                        firstPeer, "broader", RelationProvenance.MANUAL, EntityStatus.APPROVED),
+                    termRelation(
+                        secondPeer, "synonym", RelationProvenance.MANUAL, EntityStatus.APPROVED)));
+
+    try (var entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      entity.when(Entity::getSearchRepository).thenReturn(search);
+      new GlossaryTermRepository(false).postBulkSoftDelete(List.of(source));
+    }
+
+    for (UUID peerId : List.of(firstPeer, secondPeer)) {
+      verify(retryQueue)
+          .upsert(
+              peerId.toString(),
+              "",
+              "refreshRelatedTermSearchDocs: peer lookup failed",
+              SearchIndexRetryQueue.STATUS_PENDING,
+              Entity.GLOSSARY_TERM);
+    }
   }
 
   @Test

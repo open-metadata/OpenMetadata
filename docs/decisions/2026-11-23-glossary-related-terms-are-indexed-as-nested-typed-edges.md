@@ -43,7 +43,8 @@ in search and failed to clear `relatedTerms` when the last edge was removed.
   `TermRelation` instances during storage, write an explicit empty list `[]` when a term's last
   relation is removed so `DEFAULT_UPDATE_SCRIPT` clears `ctx._source.relatedTerms`, and refresh
   affected peer glossary terms via `searchRepository.updateEntitiesByReference` on create, update,
-  rename, soft/hard delete, and restore.
+  rename, soft/hard delete, and restore. Cascade renames and soft deletes also refresh peers of
+  affected descendants. If the batch cannot reload the peer documents, queue a retry for each peer.
 
 ## Consequences
 
