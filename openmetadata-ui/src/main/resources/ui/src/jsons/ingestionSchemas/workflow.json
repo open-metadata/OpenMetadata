@@ -15145,7 +15145,7 @@
                                 "sslConfig": {
                                   "title": "SSL Config",
                                   "description": "The CA certificate that signed the certificate of the Dremio server. Used when Verify SSL is 'validate'.",
-                                  "$ref": "#/definitions/source/properties/sourceConfig/properties/config/oneOf/14/definitions/serviceConnections/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
+                                  "$ref": "#/definitions/source/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
                                 }
                               },
                               "additionalProperties": false,
