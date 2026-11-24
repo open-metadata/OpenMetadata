@@ -16,14 +16,14 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
-import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.session.SessionProviders;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
@@ -66,9 +66,18 @@ public class WebSocketManager {
   // default).
   private volatile WebSocketRelay relay = new NoopWebSocketRelay();
 
-  private WebSocketManager(EngineIoServerOptions eiOptions) {
+  /**
+   * The provider the handshake filter validates under: what a socket's provider is judged against.
+   * A reload publishes its configuration before it initializes the new authenticator and rolls back
+   * if that fails, so this follows the filter, which only a reload that succeeded replaces.
+   */
+  private final Supplier<AuthProvider> appliedProvider;
+
+  private WebSocketManager(
+      EngineIoServerOptions eiOptions, Supplier<AuthProvider> appliedProvider) {
     engineIoServer = new EngineIoServer(eiOptions);
     socketIoServer = new SocketIoServer(engineIoServer);
+    this.appliedProvider = appliedProvider;
     initializeHandlers();
   }
 
@@ -145,23 +154,22 @@ public class WebSocketManager {
    * The handshake is validated on the upgrade, but the socket registers here one round trip later,
    * when the client's CONNECT arrives. A provider switch landing between the two would miss it: the
    * reload closes only registered sockets, and the sweep skips a socket without a session. The
-   * socket is registered before this check, and the configuration is swapped before the reload
+   * socket is registered before this check, and the reload rebuilds the handshake filter before it
    * closes sockets, so whichever runs second catches it.
    * ADR:2026-10-20-a-refresh-ends-sessions-issued-by-a-provider-no-longer-configured
    */
   private void disconnectIfValidatedUnderAnotherProvider(
       UUID userId, SocketIoSocket socket, String validatedProvider) {
-    AuthenticationConfiguration current = SecurityConfigurationManager.getCurrentAuthConfig();
-    if (current == null
-        || !SessionProviders.isFromAnotherProvider(validatedProvider, current.getProvider())) {
+    AuthProvider applied = appliedProvider.get();
+    if (!SessionProviders.isFromAnotherProvider(validatedProvider, applied)) {
       return;
     }
     LOG.info(
-        "Closing socket for user {}: its handshake was validated under provider {}, but {} is"
-            + " configured now",
+        "Closing socket for user {}: its handshake was validated under provider {}, but the push"
+            + " feed validates under {} now",
         userId,
         validatedProvider,
-        current.getProvider().value());
+        applied.value());
     disconnectSocket(userId, socket);
     activityFeedEndpoints.computeIfPresent(
         userId, (key, connections) -> connections.isEmpty() ? null : connections);
@@ -302,6 +310,7 @@ public class WebSocketManager {
       return;
     }
     long now = System.currentTimeMillis();
+    AuthProvider applied = appliedProvider.get();
     activityFeedEndpoints.forEach(
         (userId, sockets) -> {
           List<SocketIoSocket> socketsToDisconnect = new ArrayList<>();
@@ -310,7 +319,7 @@ public class WebSocketManager {
                 String sessionId = socketSessionIds.get(socketId);
                 if (sessionId != null
                     && isSessionRevalidationDue(socketId, now, sessionRevalidationIntervalMillis)) {
-                  if (isSessionActiveForUser(sessionService, sessionId, userId)) {
+                  if (isSessionActiveForUser(sessionService, sessionId, userId, applied)) {
                     socketSessionValidatedAt.put(socketId, now);
                   } else {
                     socketsToDisconnect.add(socket);
@@ -336,7 +345,7 @@ public class WebSocketManager {
   }
 
   private boolean isSessionActiveForUser(
-      SessionService sessionService, String sessionId, UUID expectedUserId) {
+      SessionService sessionService, String sessionId, UUID expectedUserId, AuthProvider applied) {
     return sessionService
         .getFreshSessionById(sessionId)
         .filter(
@@ -344,7 +353,7 @@ public class WebSocketManager {
                 session.getStatus() == SessionStatus.ACTIVE
                     && !session.isExpired(System.currentTimeMillis())
                     && expectedUserId.toString().equals(session.getUserId())
-                    && !sessionService.isFromAnotherProvider(session))
+                    && !SessionProviders.isFromAnotherProvider(session.getProvider(), applied))
         .isPresent();
   }
 
@@ -370,8 +379,14 @@ public class WebSocketManager {
   public static class WebSocketManagerBuilder {
     private WebSocketManagerBuilder() {}
 
+    /** No provider is applied: a socket is never closed for its provider at registration or sweep. */
     public static void build(EngineIoServerOptions eiOptions) {
-      instance = new WebSocketManager(eiOptions);
+      build(eiOptions, () -> null);
+    }
+
+    public static void build(
+        EngineIoServerOptions eiOptions, Supplier<AuthProvider> appliedProvider) {
+      instance = new WebSocketManager(eiOptions, appliedProvider);
     }
   }
 }

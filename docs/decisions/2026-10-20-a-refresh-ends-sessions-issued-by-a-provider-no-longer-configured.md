@@ -8,12 +8,16 @@
   `SessionProvidersTest`; `BasicAuthServletHandlerTest` and `LdapAuthServletHandlerTest`
   (`handleRefresh_revokedSession_answersSessionRevoked`); `SsoTokenRenewalIT` (RN-16);
   `SocketAddressFilterTest` (`cookieHandshakeIsRejectedWhenItsSessionsProviderIsNoLongerConfigured`,
-  `handshakeIsStampedWithTheProviderOfTheFilterThatValidatedIt`);
+  `handshakeIsStampedWithTheProviderOfTheFilterThatValidatedIt`,
+  `validatingProviderNamesTheProviderTheFilterValidatesUnder`);
   `WebSocketManagerTest` (`disconnectInactiveSessions_closesSocketsWhoseSessionProviderIsNoLongerConfigured`,
+  `disconnectInactiveSessions_keepsSocketsWhileAReloadHasNotAppliedItsProvider`,
   `disconnectAll_closesSessionBoundAndSessionlessSockets`,
-  `onConnection_closesASocketValidatedUnderTheOldProviderThatRegistersAfterTheSwitch`); `OpenMetadataApplicationAuthReloadTest`
+  `onConnection_closesASocketValidatedUnderTheOldProviderThatRegistersAfterTheSwitch`,
+  `onConnection_keepsASocketThatRegisteredDuringAReloadThatFailed`); `OpenMetadataApplicationAuthReloadTest`
   (`closeSocketsOnProviderSwitch_closesOnlyOnAProviderSwitch`,
-  `pushFeedReloadListener_closesSocketsOnlyWhenAReloadChangesTheProvider`); `SessionMultiNodeIT`
+  `pushFeedReloadListener_closesSocketsOnlyWhenAReloadChangesTheProvider`,
+  `buildPushFeedSockets_sweepsAgainstTheProviderTheHandshakeFilterValidatesUnder`); `SessionMultiNodeIT`
   (`pushFeedHandshakeRejectsASessionIssuedByAProviderNoLongerConfigured`)
 - **Related:** EPIC #34298
 
@@ -52,12 +56,18 @@ longer configured (401), and the socket sweep closes such sockets at its next pa
 revoke the session, as `JwtFilter` does not, so a pod still on the old configuration cannot end
 sessions the new provider issued. `SessionProviders.isFromAnotherProvider` is the one predicate.
 `JwtFilter` passes its own configured provider; `SessionService.isFromAnotherProvider` passes this
-server's current one for refresh, the handshake and the sweep; and the reload compares the previous
-provider with the new one.
+server's current one for refresh and the handshake; the sweep passes the provider the push-feed
+handshake filter validates under; and the reload compares the previous provider with the new one.
 
 A socket registers one round trip after its handshake, when the client's CONNECT arrives, so a
 handshake validated just before a switch can register after the reload has closed every socket.
 The handshake therefore stamps the provider of the filter that validated it, and registration
-compares that stamp with the configured provider, closing the socket on a mismatch. The socket is
-registered before the comparison and the configuration is swapped before the reload closes sockets,
-so whichever runs second catches it.
+compares that stamp with the provider the filter validates under now, closing the socket on a
+mismatch. The socket is registered before the comparison and the reload rebuilds the filter before
+it closes sockets, so whichever runs second catches it.
+
+Registration and the sweep read the filter, not the published configuration or `SessionService`'s.
+A reload publishes the new configuration and hands it to `SessionService` before it initializes the
+new authenticator, and rolls everything back if that fails (an unreachable LDAP server, say). The
+filter is rebuilt only by the reload listener, which runs only for a reload that succeeded, so a
+failed reload closes no socket; the UI does not reconnect after a server close.

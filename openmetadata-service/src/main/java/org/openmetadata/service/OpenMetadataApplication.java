@@ -1482,7 +1482,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
     eioOptions.setAllowedCorsOrigins(null);
     eioOptions.setMaxTimeoutThreadPoolSize(8);
-    WebSocketManager.WebSocketManagerBuilder.build(eioOptions);
+    buildPushFeedSockets(eioOptions, websocketFilter);
     initializeWebSocketRelay(catalogConfig, environment);
     FilterHolder socketAddressFilterHolder = new FilterHolder();
     socketAddressFilterHolder.setFilter(socketAddressFilter);
@@ -1534,6 +1534,18 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       AuthProvider current = authConfig.getProvider();
       closeSocketsOnProviderSwitch(appliedProvider.getAndSet(current), current, sockets.get());
     };
+  }
+
+  /**
+   * The manager judges a registering or swept socket's provider against the one this filter
+   * validates under, not the published configuration: a reload publishes before it initializes the
+   * new authenticator and rolls back if that fails, while only a reload that succeeded rebuilds the
+   * filter. ADR:2026-10-20-a-refresh-ends-sessions-issued-by-a-provider-no-longer-configured
+   */
+  @VisibleForTesting
+  static void buildPushFeedSockets(
+      EngineIoServerOptions options, SocketAddressFilter websocketFilter) {
+    WebSocketManager.WebSocketManagerBuilder.build(options, websocketFilter::validatingProvider);
   }
 
   /**

@@ -30,6 +30,7 @@ import io.socket.engineio.server.EngineIoServerOptions;
 import io.socket.socketio.server.SocketIoSocket;
 import java.lang.reflect.Field;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
@@ -43,6 +44,11 @@ import org.openmetadata.service.security.AuthServeletHandler;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager.ConfigurationChangeListener;
+import org.openmetadata.service.security.session.SessionService;
+import org.openmetadata.service.security.session.SessionStatus;
+import org.openmetadata.service.security.session.SessionStore;
+import org.openmetadata.service.security.session.UserSession;
+import org.openmetadata.service.socket.PushFeedFilters;
 import org.openmetadata.service.socket.SocketAddressFilter;
 import org.openmetadata.service.socket.WebSocketManager;
 
@@ -144,6 +150,49 @@ class OpenMetadataApplicationAuthReloadTest {
     reloadWith(listener, AuthProvider.AZURE);
 
     verify(openedUnderAzure, never()).disconnect(anyBoolean());
+  }
+
+  /**
+   * initializeWebsockets builds the manager this way. A reload hands SessionService the new provider
+   * before its authenticator can fail to initialize, so the sweep follows the handshake filter,
+   * which only a reload that succeeded rebuilds.
+   */
+  @Test
+  void buildPushFeedSockets_sweepsAgainstTheProviderTheHandshakeFilterValidatesUnder()
+      throws Exception {
+    SocketAddressFilter handshakeFilter = PushFeedFilters.validatingUnder(AuthProvider.GOOGLE);
+    OpenMetadataApplication.buildPushFeedSockets(
+        EngineIoServerOptions.newFromDefault(), handshakeFilter);
+    WebSocketManager sockets = WebSocketManager.getInstance();
+    UUID userId = UUID.randomUUID();
+    SessionStore store = mock(SessionStore.class);
+    when(store.findById("session-g")).thenReturn(Optional.of(googleSession("session-g", userId)));
+    SessionService handedLdap =
+        new SessionService(PushFeedFilters.authenticationFor(AuthProvider.LDAP), store);
+    SocketIoSocket socket = openSocket(sockets, userId, "socket-session");
+    trackedSessionIds(sockets).put("socket-session", "session-g");
+
+    sockets.disconnectInactiveSessions(handedLdap, 0L);
+
+    verify(socket, never()).disconnect(anyBoolean());
+
+    PushFeedFilters.applyReload(handshakeFilter, AuthProvider.AZURE);
+    sockets.disconnectInactiveSessions(handedLdap, 0L);
+
+    verify(socket).disconnect(true);
+    assertEquals(Map.of(), sockets.getActivityFeedEndpoints());
+  }
+
+  private static UserSession googleSession(String sessionId, UUID userId) {
+    long now = System.currentTimeMillis();
+    return UserSession.builder()
+        .id(sessionId)
+        .userId(userId.toString())
+        .provider(AuthProvider.GOOGLE.value())
+        .status(SessionStatus.ACTIVE)
+        .expiresAt(now + 60_000)
+        .idleExpiresAt(now + 60_000)
+        .build();
   }
 
   private static void reloadWith(ConfigurationChangeListener listener, AuthProvider provider) {

@@ -1,6 +1,7 @@
 package org.openmetadata.service.socket;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -221,6 +222,22 @@ class SocketAddressFilterTest {
     HttpServletRequest wrappedRequest = (HttpServletRequest) requestCaptor.getValue();
     assertEquals(
         List.of("google"), java.util.Collections.list(wrappedRequest.getHeaders("AuthProvider")));
+  }
+
+  /**
+   * WebSocketManager judges a registering or swept socket against this, so it names the provider
+   * of the configuration the filter validates under, and none when it has no configuration.
+   */
+  @Test
+  void validatingProviderNamesTheProviderTheFilterValidatesUnder() {
+    when(jwtFilter.getProviderType()).thenReturn(AuthProvider.GOOGLE);
+
+    assertEquals(AuthProvider.GOOGLE, filter.validatingProvider());
+
+    filter.updateConfiguration(authConfig, null);
+
+    assertNull(filter.validatingProvider());
+    assertNull(new SocketAddressFilter().validatingProvider());
   }
 
   @Test

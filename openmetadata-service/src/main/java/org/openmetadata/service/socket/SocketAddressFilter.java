@@ -28,6 +28,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
@@ -85,6 +86,16 @@ public class SocketAddressFilter implements Filter {
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizerConfiguration authorizerConf) {
     this.jwtFilter = jwtFilterFor(authenticationConfiguration, authorizerConf);
+  }
+
+  /**
+   * The provider handshakes are validated under now; null when there is no configuration to
+   * validate a token with. Only the reload listener replaces it, and only for a reload that
+   * succeeded, so a provider a reload published and then rolled back never shows here.
+   */
+  public AuthProvider validatingProvider() {
+    JwtFilter validator = jwtFilter;
+    return validator != null ? validator.getProviderType() : null;
   }
 
   /**
