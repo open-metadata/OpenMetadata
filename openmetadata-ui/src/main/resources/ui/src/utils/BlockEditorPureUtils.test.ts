@@ -817,6 +817,44 @@ describe('getHtmlStringFromMarkdownString: CommonMark lists', () => {
     ]);
   });
 
+  it.each(['range ~10-~20 rows', '~5~ ms', 'PROGRA~1\\foo~2'])(
+    'keeps single tildes literal in %s',
+    (content) => {
+      const doc = new DOMParser().parseFromString(
+        getHtmlStringFromMarkdownString(content),
+        'text/html'
+      );
+
+      expect(doc.querySelector('del')).toBeNull();
+      expect(doc.body.textContent).toBe(content);
+    }
+  );
+
+  it('parses nested formatting while keeping single tildes literal', () => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString(
+        '~**approximately**~ and ~~**deleted**~~'
+      ),
+      'text/html'
+    );
+
+    expect(doc.body.textContent).toBe('~approximately~ and deleted');
+    expect(doc.querySelectorAll('del')).toHaveLength(1);
+    expect(doc.querySelector('del > strong')?.textContent).toBe('deleted');
+    expect(doc.querySelector('p > strong')?.textContent).toBe('approximately');
+  });
+
+  it('preserves escaped HTML surrounded by single tildes', () => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString('~\\<img src=x onerror=alert(1)>~'),
+      'text/html'
+    );
+
+    expect(doc.querySelector('img')).toBeNull();
+    expect(doc.querySelector('del')).toBeNull();
+    expect(doc.body.textContent).toBe('~<img src=x onerror=alert(1)>~');
+  });
+
   it('preserves nested formatting inside underline', () => {
     expect(
       getHtmlStringFromMarkdownString('__underline with **bold**__')

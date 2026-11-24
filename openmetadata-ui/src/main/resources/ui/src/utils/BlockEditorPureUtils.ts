@@ -191,6 +191,13 @@ const defaultMarkdownRenderer = new Renderer();
 const markdownConverter = new Marked({
   gfm: true,
   breaks: true,
+  tokenizer: {
+    del(source) {
+      // Single tildes are literal in existing descriptions; false delegates
+      // double tildes to Marked's built-in strikethrough rule.
+      return source.startsWith('~~') ? false : undefined;
+    },
+  },
   renderer: {
     // Preview truncation depends on the newline text following each break.
     br: () => '<br>\n',
