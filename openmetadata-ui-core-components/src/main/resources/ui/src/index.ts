@@ -23,6 +23,9 @@ export * from './components';
 // Utilities
 export * from './utils';
 
+// Hooks
+export { useOverflowEdges } from './hooks/use-overflow-edges';
+
 // Types (kept at root for convenience)
 export * from './types';
 

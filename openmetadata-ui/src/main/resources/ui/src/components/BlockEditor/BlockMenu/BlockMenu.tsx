@@ -164,27 +164,32 @@ export const BlockMenu = (props: BlockMenuProps) => {
     };
   }, [handleClickDragHandle, handleKeyDown]);
 
+  // tippy moves menuRef's node into its popper. React must only ever remove the
+  // wrapper, which stays put; removing the moved node throws NotFoundError when
+  // the menu unmounts while the editor stays mounted (editable flips to false).
   return (
-    <div className="block-menu" data-testid="menu-container" ref={menuRef}>
-      <button
-        className="action"
-        data-testid="delete-btn"
-        onClick={handleDelete}>
-        <div className="action-icon-container">
-          <Trash01 size={16} />
-        </div>
-        <div className="action-name">{t('label.delete')}</div>
-      </button>
+    <div>
+      <div className="block-menu" data-testid="menu-container" ref={menuRef}>
+        <button
+          className="action"
+          data-testid="delete-btn"
+          onClick={handleDelete}>
+          <div className="action-icon-container">
+            <Trash01 size={16} />
+          </div>
+          <div className="action-name">{t('label.delete')}</div>
+        </button>
 
-      <button
-        className="action"
-        data-testid="duplicate-btn"
-        onClick={handleDuplicate}>
-        <div className="action-icon-container">
-          <Copy01 size={16} />
-        </div>
-        <div className="action-name">{t('label.duplicate')}</div>
-      </button>
+        <button
+          className="action"
+          data-testid="duplicate-btn"
+          onClick={handleDuplicate}>
+          <div className="action-icon-container">
+            <Copy01 size={16} />
+          </div>
+          <div className="action-name">{t('label.duplicate')}</div>
+        </button>
+      </div>
     </div>
   );
 };
