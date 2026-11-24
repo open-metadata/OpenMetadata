@@ -243,7 +243,6 @@ const NotificationListPage = () => {
   const onPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        fetchAlerts({ [cursorType]: paging[cursorType] });
         handlePageChange(
           currentPage,
           {

@@ -87,7 +87,11 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
-from metadata.ingestion.models.ometa_lineage import LineageRequest, OMetaLineageRequest
+from metadata.ingestion.models.ometa_lineage import (
+    LineageRequest,
+    OMetaDeleteLineageBySource,
+    OMetaLineageRequest,
+)
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.models.table_metadata import ColumnDescription
 from metadata.ingestion.ometa.client import APIError
@@ -136,6 +140,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_snapshot_effective_schema_and_database,
     get_source_physical_name,
     is_compiled_only_result,
+    is_dbt_sql_node,
     map_dbt_metric_type,
     order_metrics_by_dependency,
     validate_custom_property_value,
@@ -1117,6 +1122,17 @@ class DbtSource(DbtServiceSource):
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
                             upstream_table_ids={node.fqn: node.table_id for node in upstream_nodes if node.table_id},
+                            parse_query_lineage=is_dbt_sql_node(manifest_node),
+                            # Sources and seeds never list parents, and dbt Mesh injects another
+                            # project's public models with no parents, so only this project's
+                            # models and snapshots qualify.
+                            # ADR:2026-11-09-dbt-override-lineage-deletes-when-the-manifest-declares-no-parent
+                            declared_no_upstream=resource_type in ("model", "snapshot")
+                            and (
+                                dbt_project_name is None
+                                or getattr(manifest_node, "package_name", None) == dbt_project_name
+                            )
+                            and not getattr(getattr(manifest_node, "depends_on", None), "nodes", None),
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
                                 resourceType=resource_type,
@@ -1481,10 +1497,25 @@ class DbtSource(DbtServiceSource):
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Failed to parse the node {upstream_node} to capture lineage: {exc}")
 
+        if self.source_config.overrideLineage and data_model_link.declared_no_upstream:
+            yield Either(
+                right=OMetaDeleteLineageBySource(
+                    entity=EntityReference(id=to_entity.id, type="table"),
+                    source=LineageSource.DbtLineage,
+                )
+            )
+
     def create_dbt_query_lineage(self, data_model_link: DataModelLink) -> Iterable[Either[LineageRequest]]:
         """
         Method to process DBT lineage from queries
         """
+        if data_model_link.datamodel.sql and not data_model_link.parse_query_lineage:
+            logger.debug(
+                "Skipping query lineage for %s: its dbt code is not SQL, so its lineage comes from the dbt"
+                " dependencies only",
+                model_str(data_model_link.table_entity.fullyQualifiedName),
+            )
+            return
         if data_model_link.datamodel.sql:
             to_entity: Table = data_model_link.table_entity
             logger.debug(f"Processing DBT Query lineage for: {to_entity.fullyQualifiedName.root}")
