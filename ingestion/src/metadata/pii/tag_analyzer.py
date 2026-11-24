@@ -36,7 +36,7 @@ from metadata.pii.algorithms.presidio_recognizer_factory import (
 )
 from metadata.pii.algorithms.presidio_utils import (
     explain_recognition_results,
-    load_nlp_engine,
+    load_nlp_engine_for_language,
 )
 from metadata.utils.entity_link import (
     get_entity_link,  # pyright: ignore[reportUnknownVariableType]
@@ -255,10 +255,10 @@ class TagAnalyzer:
             lang_recognizers = list(group)
             if lang == ClassificationLanguage.any.value:
                 effective_lang = ClassificationLanguage.en.value
-                effective_nlp = load_nlp_engine(classification_language=ClassificationLanguage.en)
+                effective_nlp = load_nlp_engine_for_language(ClassificationLanguage.en)
             else:
                 effective_lang = lang
-                effective_nlp = load_nlp_engine(classification_language=ClassificationLanguage(lang))
+                effective_nlp = load_nlp_engine_for_language(ClassificationLanguage(lang))
 
             analyzer = self.build_analyzer_with(
                 lang_recognizers,

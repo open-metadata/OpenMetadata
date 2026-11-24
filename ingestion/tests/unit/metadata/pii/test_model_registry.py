@@ -19,6 +19,7 @@ from metadata.pii.model_registry import (
     ClassificationLanguageSelectionError,
     example_language_for_model,
     get_model_for_language,
+    get_model_override_for_language,
     get_model_specification,
     languages_by_model,
     parse_classification_languages,
@@ -81,3 +82,16 @@ class TestClassificationLanguageSelection:
         assert languages_by_model([ClassificationLanguage.en, ClassificationLanguage.any]) == {
             "en_core_web_md": ["en", "any"]
         }
+
+    def test_runtime_override_does_not_change_release_pinned_provisioning(self, monkeypatch):
+        monkeypatch.setenv("OM_PII_SPACY_MODEL_EN", "company_en_ner")
+
+        assert get_model_override_for_language(ClassificationLanguage.en) == "company_en_ner"
+        assert get_model_for_language(ClassificationLanguage.en) == "en_core_web_md"
+        assert resolve_model_specifications([ClassificationLanguage.en])[0].name == "en_core_web_md"
+
+    def test_empty_runtime_override_uses_release_pinned_model(self, monkeypatch):
+        monkeypatch.setenv("OM_PII_SPACY_MODEL_ANY", "  ")
+
+        assert get_model_override_for_language(ClassificationLanguage.any) is None
+        assert get_model_for_language(ClassificationLanguage.any) == "en_core_web_md"

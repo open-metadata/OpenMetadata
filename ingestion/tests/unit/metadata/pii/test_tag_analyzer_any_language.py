@@ -489,19 +489,19 @@ def test_secondary_language_model_failure_propagates_after_healthy_language(
     monkeypatch,
 ):
     from metadata.pii import tag_analyzer
-    from metadata.pii.algorithms.presidio_utils import load_nlp_engine
+    from metadata.pii.algorithms.presidio_utils import load_nlp_engine, load_nlp_engine_for_language
     from metadata.pii.model_loading import ClassificationModelLoadError
 
     languages = []
     failure = ClassificationModelLoadError("fr_core_news_md", "fr", "fr", "local_load")
 
-    def load_language(*, classification_language):
+    def load_language(classification_language):
         languages.append(classification_language)
         if classification_language == ClassificationLanguage.fr:
             raise failure
-        return load_nlp_engine(classification_language=classification_language)
+        return load_nlp_engine_for_language(classification_language)
 
-    monkeypatch.setattr(tag_analyzer, "load_nlp_engine", load_language)
+    monkeypatch.setattr(tag_analyzer, "load_nlp_engine_for_language", load_language)
     analyzer = TagAnalyzer(
         tag=_make_en_tag(pii_classification),
         column=column,
