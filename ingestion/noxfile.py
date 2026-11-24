@@ -30,13 +30,6 @@ try:
 except ImportError:
     import tomli as tomllib
 
-# NOTE: This is still a work in progress! We still need to:
-#    - Fix ignored unit tests
-#    - Add integration tests
-#    - Address the TODOs in the code
-
-# TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
-
 with (Path(__file__).resolve().parent / "pyproject.toml").open("rb") as configuration:
     PYTHON_ENVIRONMENTS = tomllib.load(configuration)["tool"]["openmetadata"]["python-environments"]
 
@@ -173,19 +166,19 @@ def coverage(session):
 
 @nox.session(name="precommit-install", reuse_venv=True, venv_backend="uv|venv", default=False)
 def precommit_install(session):
-    python = prepare(session, "dev")
+    python = prepare(session, "hooks")
     session.run(str(python.parent / "pre-commit"), "install")
 
 
 @nox.session(name="generate-settings-docs", reuse_venv=True, venv_backend="uv|venv", default=False)
 def generate_settings_docs(session):
-    python = prepare(session, "dev")
+    python = prepare(session, "runtime")
     session.run(str(python), str(INGESTION_ROOT / "scripts/generate_settings_docs.py"))
 
 
 @nox.session(name="check-import-layers", reuse_venv=True, venv_backend="uv|venv", default=False)
 def check_import_layers(session):
-    python = prepare(session, "dev")
+    python = prepare(session, "imports")
     session.run(str(python.parent / "lint-imports"))
 
 
@@ -415,17 +408,8 @@ def cli_e2e(session):
     command = [str(python), "-m"]
     commands = []
     if collect_coverage:
-        site_packages = session.run(
-            str(python), "-c", "import site; print(site.getsitepackages()[0])", silent=True, external=True
-        ).strip()
-        startup = Path(site_packages) / "sitecustomize.py"
-        hook = '\nimport os\nif os.environ.get("COVERAGE_PROCESS_START"):\n    import coverage\n    coverage.process_startup()\n'
-        existing = startup.read_text() if startup.exists() else ""
-        if hook not in existing:
-            startup.write_text(existing + hook)
         test_environment = {
             **environment,
-            "COVERAGE_PROCESS_START": str(INGESTION_ROOT / "pyproject.toml"),
             "COVERAGE_FILE": str(INGESTION_ROOT / f".coverage.{connector}"),
         }
         command.extend(["coverage", "run", "--rcfile=pyproject.toml", "--branch", "-m"])
@@ -466,25 +450,19 @@ def combine_coverage(session):
     parser.add_argument("--results-dir", type=Path)
     args = parser.parse_args(session.posargs)
     python = prepare(session, "coverage")
+    files = []
     if args.coverage_dir:
         directory = Path(session.invoked_from) / args.coverage_dir
         files = sorted(path for path in directory.rglob(".coverage*") if path.is_file())
         if not files:
             session.error("No Python coverage artifacts were downloaded")
-        for index, path in enumerate(files):
-            shutil.copyfile(path, INGESTION_ROOT / f".coverage.download-{index}")
     if args.results_dir:
         directory = Path(session.invoked_from) / args.results_dir
         junit = INGESTION_ROOT / "junit"
         junit.mkdir(exist_ok=True)
         for index, path in enumerate(sorted(directory.rglob("test-results*.xml"))):
             shutil.copyfile(path, junit / f"test-results-{index}.xml")
-    session.run(str(python.parent / "coverage"), "combine", "--rcfile=pyproject.toml", "--keep")
-    session.run(
-        str(python.parent / "coverage"),
-        "report",
-        "--rcfile=pyproject.toml",
-    )
+    session.run(str(python.parent / "coverage"), "combine", "--rcfile=pyproject.toml", "--keep", *map(str, files))
     session.run(
         str(python.parent / "coverage"),
         "xml",

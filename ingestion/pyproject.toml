@@ -28,6 +28,10 @@ style = [
     "ruff~=0.15.12",
 ]
 
+hooks = [{ include-group = "bootstrap" }, "pre-commit"]
+
+imports = [{ include-group = "bootstrap" }, "import-linter~=2.13"]
+
 typing = [
     { include-group = "bootstrap" },
     "boto3-stubs",
@@ -44,9 +48,9 @@ dev = [
     { include-group = "style" },
     { include-group = "generation" },
     { include-group = "typing" },
+    { include-group = "hooks" },
+    { include-group = "imports" },
     "nox",
-    "pre-commit",
-    "import-linter~=2.13",
     "twine",
     "build",
 ]
@@ -155,6 +159,16 @@ groups = ["style"]
 extras = []
 install-project = false
 
+[tool.openmetadata.python-environments.profiles.hooks]
+groups = ["hooks"]
+extras = []
+install-project = false
+
+[tool.openmetadata.python-environments.profiles.imports]
+groups = ["imports"]
+extras = []
+install-project = true
+
 [tool.openmetadata.python-environments.profiles.generation]
 groups = ["generation"]
 extras = []
@@ -206,6 +220,7 @@ provider_info = "airflow_provider_openmetadata:get_provider_config"
 
 [tool.coverage.run]
 source = ["metadata"]
+patch = ["subprocess"]
 relative_files = true
 branch = true
 parallel = true

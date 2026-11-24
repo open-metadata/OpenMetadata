@@ -108,7 +108,9 @@ def test_ci_suite_collects_coverage_only_when_selected(
 
     test = nox_repo / f"ingestion/tests/{suite}/test_selection.py"
     test.write_text(
-        "from metadata.sample import classify\n\ndef test_selected():\n"
+        "import subprocess, sys\nfrom metadata.sample import classify\n\ndef test_selected():\n"
+        "    subprocess.run([sys.executable, '-c', "
+        "\"from metadata.sample import classify; assert classify(-1) == 'other'\"], check=True)\n"
         f"    assert classify(1) == {'positive' if exit_code == 0 else 'other'!r}\n"
     )
     action = yaml.safe_load((REPO_ROOT / ".github/actions/python-suite/action.yml").read_text())
@@ -129,7 +131,9 @@ def test_ci_suite_collects_coverage_only_when_selected(
         data = CoverageData(str(coverage_file))
         data.read()
         assert data.has_arcs()
-        assert data.lines("src/metadata/sample.py") == [1, 2, 3]
+        assert data.lines("src/metadata/sample.py") == [1, 2, 3, 4]
+        assert (2, 3) in data.arcs("src/metadata/sample.py")
+        assert (2, 4) in data.arcs("src/metadata/sample.py")
 
 
 @pytest.mark.parametrize("profile", ["dev", "test", "types", "style"])
@@ -294,6 +298,8 @@ def test_cli_e2e_preserves_pytest_outcome_and_subprocess_coverage(
 
 @pytest.mark.parametrize("connector, workers", [("bigquery", "6"), ("snowflake", "4")])
 def test_cli_v2_runs_contracts_with_connector_worker_counts(nox_repo, connector, workers):
+    from coverage import CoverageData
+
     tests = nox_repo / "ingestion/tests/cli_e2e_v2" / connector
     tests.mkdir(parents=True)
     (tests / "conftest.py").write_text(
@@ -303,7 +309,11 @@ def test_cli_v2_runs_contracts_with_connector_worker_counts(nox_repo, connector,
         "    assert config.getoption('--e2e-contract-check')\n"
     )
     (tests / "test_workers.py").write_text(
-        f"import os\ndef test_workers():\n    assert os.environ['PYTEST_XDIST_WORKER_COUNT'] == {workers!r}\n"
+        "import os, subprocess, sys\nfrom metadata.sample import classify\n"
+        f"def test_workers():\n    assert os.environ['PYTEST_XDIST_WORKER_COUNT'] == {workers!r}\n"
+        "    assert classify(1) == 'positive'\n"
+        "    subprocess.run([sys.executable, '-c', "
+        "\"from metadata.sample import classify; assert classify(-1) == 'other'\"], check=True)\n"
     )
     result = run(
         "nox",
@@ -314,11 +324,15 @@ def test_cli_v2_runs_contracts_with_connector_worker_counts(nox_repo, connector,
         connector,
         "--suite",
         "v2",
-        "--no-cov",
         cwd=nox_repo / "ingestion",
     )
     assert_success(result)
     assert reported_test_names(nox_repo, f"v2-{connector}") == ["test_workers"]
+    data = CoverageData(str(nox_repo / f"ingestion/.coverage.{connector}"))
+    data.read()
+    assert data.lines("src/metadata/sample.py") == [1, 2, 3, 4]
+    assert (2, 3) in data.arcs("src/metadata/sample.py")
+    assert (2, 4) in data.arcs("src/metadata/sample.py")
 
 
 @pytest.mark.parametrize("entrypoint, workers", [("nox", "2"), ("nox", "0"), ("nox", "auto"), ("make", "2")])

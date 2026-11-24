@@ -10048,6 +10048,17 @@ generation = [
     { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "uvloop" },
 ]
+hooks = [
+    { name = "pip" },
+    { name = "pre-commit", version = "4.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "pre-commit", version = "4.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+]
+imports = [
+    { name = "import-linter" },
+    { name = "pip" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+]
 nox = [
     { name = "nox" },
     { name = "pip" },
@@ -11153,6 +11164,16 @@ generation = [
     { name = "ruff", specifier = "~=0.15.12" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
     { name = "uvloop", specifier = "==0.21.0" },
+]
+hooks = [
+    { name = "pip" },
+    { name = "pre-commit" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
+]
+imports = [
+    { name = "import-linter", specifier = "~=2.13" },
+    { name = "pip" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
 ]
 nox = [
     { name = "nox" },
