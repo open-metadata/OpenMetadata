@@ -15,7 +15,7 @@ Common NoSQL source methods.
 import traceback
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
@@ -65,6 +65,9 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.schema_inference import InferenceLimits, InferenceReport
 from metadata.utils.ssl_manager import check_ssl_and_init
 
+if TYPE_CHECKING:
+    from pandas import DataFrame
+
 logger = ingestion_logger()
 
 
@@ -80,7 +83,7 @@ class NoSQLDataFrameColumnParser(GenericDataFrameColumnParser):
     """
 
     @classmethod
-    def fetch_col_types(cls, data_frame, column_name):
+    def fetch_col_types(cls, data_frame: "DataFrame", column_name: str) -> DataType:
         non_null = data_frame[column_name].dropna()
         if len(non_null) and non_null.dtype.name == "object":
             values = non_null.values[:SAMPLE_SIZE]

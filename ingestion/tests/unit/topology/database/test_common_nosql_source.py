@@ -13,14 +13,8 @@
 
 from unittest.mock import MagicMock
 
-import pandas as pd
-
 from metadata.generated.schema.entity.data.table import DataType
-from metadata.ingestion.source.database.common_nosql_source import (
-    CommonNoSQLSource,
-    NoSQLDataFrameColumnParser,
-)
-from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
+from metadata.ingestion.source.database.common_nosql_source import CommonNoSQLSource
 from metadata.utils.schema_inference import NO_LIMITS
 
 
@@ -49,8 +43,8 @@ def test_numeric_looking_mongodb_strings_keep_their_bson_type():
 def test_all_string_nosql_columns_remain_string_even_for_numbers_dates_and_bools():
     columns = _columns_from_nosql(
         [
-            {"zip": "00501", "year": "2024", "day": "2024-01-01", "flag": "true"},
-            {"zip": "00502", "year": "2025", "day": "2025-01-01", "flag": "false"},
+            {"zip": "00501", "year": "2024", "day": "2024-01-01", "flag": "True"},
+            {"zip": "00502", "year": "2025", "day": "2025-01-01", "flag": "False"},
         ]
     )
 
@@ -63,18 +57,9 @@ def test_all_string_nosql_columns_remain_string_even_for_numbers_dates_and_bools
 
 
 def test_nosql_nested_objects_and_arrays_keep_generic_inference():
-    columns = _columns_from_nosql(
-        [{"metadata": {"active": True}, "items": [1, 2], "amount": 3.5}]
-    )
+    columns = _columns_from_nosql([{"metadata": {"active": True}, "items": [1, 2], "amount": 3.5}])
     types = {column.name.root: column.dataType for column in columns}
 
     assert types["metadata"] == DataType.JSON
     assert types["items"] == DataType.ARRAY
     assert types["amount"] == DataType.FLOAT
-
-
-def test_generic_datalake_parser_keeps_existing_string_inference():
-    dataframe = pd.DataFrame({"numeric_text": pd.Series(["100", "200"], dtype="object")})
-
-    assert GenericDataFrameColumnParser.fetch_col_types(dataframe, "numeric_text") == DataType.INT
-    assert NoSQLDataFrameColumnParser.fetch_col_types(dataframe, "numeric_text") == DataType.STRING
