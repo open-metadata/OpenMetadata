@@ -57,7 +57,7 @@ from metadata.generated.schema.entity.services.messagingService import Messaging
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import SqlFunction
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SqlFunction
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
     EntitiesEdge,
@@ -907,8 +907,8 @@ class OpenlineageSource(PipelineServiceSource):
         for (output_table, input_table, output_column, function), input_columns in columns_by_function.items():
             result[output_table][input_table].append(
                 ColumnLineage(
-                    toColumn=output_column,
-                    fromColumns=input_columns,
+                    toColumn=FullyQualifiedEntityName(output_column),
+                    fromColumns=[FullyQualifiedEntityName(column) for column in input_columns],
                     function=SqlFunction(function) if function else None,
                 )
             )
