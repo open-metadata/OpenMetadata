@@ -29,7 +29,7 @@ import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v2010.LogicalTestSuitePipelineMigration;
+import org.openmetadata.service.migration.utils.v211.LogicalTestSuitePipelineMigration;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -41,7 +41,7 @@ class LogicalTestSuitePipelineMigrationTest {
   private static final String DATABASE = "suite_pipeline_migration";
   private static final String PASSWORD = "suite-pipeline-test";
   private static final String TABLE_FIELD = "entityFullyQualifiedName";
-  private static final List<String> VERSIONS = List.of("2.0.10", "2.1.1");
+  private static final List<String> VERSIONS = List.of("2.1.1");
 
   @ParameterizedTest
   @ValueSource(strings = {MYSQL, "postgres"})

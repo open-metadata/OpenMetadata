@@ -18,7 +18,7 @@ import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.openmetadata.service.migration.utils.v2010.LogicalTestSuitePipelineMigration;
+import org.openmetadata.service.migration.utils.v211.LogicalTestSuitePipelineMigration;
 import org.openmetadata.service.migration.utils.v211.SuggestionTaskOwnerFallbackMigration;
 
 public class Migration extends MigrationProcessImpl {
