@@ -1570,6 +1570,35 @@ class TestColumnLineage:
         # Both are matched on their projections, so no fact is read.
         assert server.requests_to("/model/facts/") == []
 
+    def test_a_metric_that_cannot_be_read_still_keeps_its_name_from_other_metrics(self, server, client):
+        # Margin cannot be read, so its column alias is unknown: the MARGIN projection may be its own,
+        # and % Margin is followed to its fact instead of taking it.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        server.overrides["/model/metrics/M_BROKEN"] = lambda: (500, {"code": "ERR001", "message": "Internal error"})
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "M_BROKEN", "name": "Margin", "type": "metric"},
+                {"id": "M_PCT_QTY", "name": "% Margin", "type": "metric"},
+            ],
+        )
+        cube_reads, aliases = read_projections(
+            "select sum(a11.revenue) MARGIN, sum(a11.quantity) WJXBFS1 from `project-x`.`sales`.`order_items` a11",
+            Dialect.BIGQUERY,
+        )
+
+        lineage = source._column_lineage(
+            "P",
+            dataset,
+            cube_reads,
+            _table("order_items", ["quantity", "revenue"]),
+            _data_model(source, dataset),
+            alias_reads=aliases,
+        )
+
+        assert _pairs(lineage) == [(["quantity"], f"{SCHEMA_CUBE}.% Margin")]
+
     def test_a_metric_without_a_schema_definition_is_warned_about_once(self, server, client, caplog):
         _model_routes(server, {SCHEMA_CUBE: 776})
         for metric in ("M_D1", "M_D2"):
