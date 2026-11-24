@@ -187,6 +187,43 @@ export const getSchemaProperties = (
     return {};
   }
 
+  /**
+   * Counts the stored keys a branch declares, nested objects included.
+   *
+   * Branches often share their top-level keys -- every Datalake/PowerBI file source has a
+   * `securityConfig`, AWS in one branch and GCP in another -- so matching only the top level
+   * picks the first branch, and a secret declared in the stored branch loses its
+   * `format: password` marker one level down.
+   */
+  const getBranchMatchScore = (
+    properties: Record<string, unknown>,
+    branchValue: unknown,
+    branchDepth: number
+  ): number => {
+    if (!isRecord(branchValue) || branchDepth >= MAX_SCHEMA_RESOLUTION_DEPTH) {
+      return 0;
+    }
+
+    return Object.keys(branchValue)
+      .filter((key) => key in properties)
+      .reduce(
+        (score, key) =>
+          score +
+          1 +
+          getBranchMatchScore(
+            getSchemaProperties(
+              properties[key],
+              branchValue[key],
+              schema,
+              branchDepth + 1
+            ),
+            branchValue[key],
+            branchDepth + 1
+          ),
+        0
+      );
+  };
+
   let merged: Record<string, unknown> = {};
   let bestMatch: Record<string, unknown> = {};
   let bestScore = 0;
@@ -194,8 +231,7 @@ export const getSchemaProperties = (
   branches.forEach((branch) => {
     const properties = getSchemaProperties(branch, value, schema, depth + 1);
     merged = { ...properties, ...merged };
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define -- mutually recursive with getSchemaProperties
-    const score = getBranchMatchScore(properties, value, schema, depth + 1);
+    const score = getBranchMatchScore(properties, value, depth + 1);
     if (score > bestScore) {
       bestScore = score;
       bestMatch = properties;
@@ -203,40 +239,6 @@ export const getSchemaProperties = (
   });
 
   return { ...merged, ...bestMatch };
-};
-
-/**
- * Counts the stored keys a branch declares, nested objects included.
- *
- * Branches often share their top-level keys -- every Datalake/PowerBI file source has a
- * `securityConfig`, AWS in one branch and GCP in another -- so matching only the top level
- * picks the first branch, and a secret declared in the stored branch loses its
- * `format: password` marker one level down.
- */
-const getBranchMatchScore = (
-  properties: Record<string, unknown>,
-  value: unknown,
-  schema: Record<string, unknown>,
-  depth: number
-): number => {
-  if (!isRecord(value) || depth >= MAX_SCHEMA_RESOLUTION_DEPTH) {
-    return 0;
-  }
-
-  return Object.keys(value)
-    .filter((key) => key in properties)
-    .reduce(
-      (score, key) =>
-        score +
-        1 +
-        getBranchMatchScore(
-          getSchemaProperties(properties[key], value[key], schema, depth + 1),
-          value[key],
-          schema,
-          depth + 1
-        ),
-      0
-    );
 };
 
 export const getKeyValues = ({
