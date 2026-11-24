@@ -175,7 +175,7 @@ test.describe('Domains', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await domain.delete(apiContext);
@@ -3194,7 +3194,7 @@ test.describe('Domain Tree View Functionality', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await domain.delete(apiContext);

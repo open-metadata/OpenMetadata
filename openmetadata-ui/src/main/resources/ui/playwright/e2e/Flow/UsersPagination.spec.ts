@@ -52,7 +52,7 @@ test.describe('Soft Delete User Pagination', () => {
   });
 
   test.afterAll('Permanently deleting users', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await createNewPage(browser);
     for (const testUser of users) {

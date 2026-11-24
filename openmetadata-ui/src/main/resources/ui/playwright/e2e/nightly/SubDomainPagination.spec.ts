@@ -61,7 +61,7 @@ test.describe('SubDomain Pagination', () => {
   });
 
   test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow();
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await createNewPage(browser);
     await domain.delete(apiContext);

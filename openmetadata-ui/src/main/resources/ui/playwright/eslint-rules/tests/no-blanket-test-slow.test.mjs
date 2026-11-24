@@ -31,8 +31,10 @@ ruleTester.run('no-blanket-test-slow', rule, {
     `test('x', async ({ page }) => { if (isCI) { test.slow(); } });`,
     // The fix for a slow beforeAll: extend the hook's own slot.
     `test.beforeAll(async () => { test.setTimeout(test.info().timeout * 3); });`,
-    // afterEach runs on its own timeout slot, not any test's.
+    // afterEach's slot is max(project timeout, test timeout), so a slow test
+    // has already tripled it.
     `test.afterEach(async () => { test.slow(); });`,
+    `test.afterAll(async () => { test.setTimeout(test.info().timeout * 3); });`,
     // test.step's callback runs once per test, same as the test body itself.
     `test('a', async () => { await test.step('step1', async () => { test.slow(); }); });`,
   ],
@@ -74,19 +76,26 @@ ruleTester.run('no-blanket-test-slow', rule, {
       // test's own test.slow().
       code: `test.beforeAll(async () => { test.slow(); });`,
       output: `test.beforeAll(async () => { test.setTimeout(test.info().timeout * 3); });`,
-      errors: [{ messageId: 'slowInBeforeAll' }],
+      errors: [{ messageId: 'slowInAllHook' }],
     },
     {
       // Same on an aliased test object, and for slow(true).
       code: `const base = test.extend({}); base.beforeAll(async () => { base.slow(true); }); base('a', async () => {});`,
       output: `const base = test.extend({}); base.beforeAll(async () => { base.setTimeout(base.info().timeout * 3); }); base('a', async () => {});`,
-      errors: [{ messageId: 'slowInBeforeAll' }],
+      errors: [{ messageId: 'slowInAllHook' }],
+    },
+    {
+      // afterAll runs with the last test's TestInfo; once that test called
+      // slow(), this slow() does nothing and the hook keeps the base timeout.
+      code: `test.afterAll(async () => { test.slow(); });`,
+      output: `test.afterAll(async () => { test.setTimeout(test.info().timeout * 3); });`,
+      errors: [{ messageId: 'slowInAllHook' }],
     },
     {
       // A condition needs a human decision, so it is reported without a fix.
       code: `test.beforeAll(async () => { test.slow(isCI, 'seeds a lot'); });`,
       output: null,
-      errors: [{ messageId: 'slowInBeforeAll' }],
+      errors: [{ messageId: 'slowInAllHook' }],
     },
   ],
 });

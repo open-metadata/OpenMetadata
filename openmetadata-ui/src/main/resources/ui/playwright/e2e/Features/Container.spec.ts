@@ -72,7 +72,7 @@ test.describe('Container entity specific tests ', () => {
   });
 
   test.afterAll('Clean up', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { afterAction, apiContext } = await getDefaultAdminAPIContext(
       browser
@@ -372,7 +372,7 @@ test.describe('Deeply nested container navigation', () => {
   });
 
   test.afterAll('Clean up deeply nested containers', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
     const { afterAction, apiContext } = await getDefaultAdminAPIContext(
       browser
     );
