@@ -160,18 +160,20 @@ def test_real_missing_model_with_unavailable_download_is_typed(tmp_path, monkeyp
     assert isinstance(failure.value.__cause__, ConnectionError)
 
 
-def test_configured_model_override_loads_a_local_spacy_model_without_download(tmp_path, monkeypatch):
+@pytest.mark.parametrize("language", [ClassificationLanguage.en, ClassificationLanguage.any])
+def test_configured_model_override_loads_a_local_spacy_model_without_download(tmp_path, monkeypatch, language):
     import spacy
 
     model_path = tmp_path / "company_en_ner"
     model = spacy.blank("en")
     model.add_pipe("ner")
     model.to_disk(model_path)
+    monkeypatch.delenv("OM_PII_SPACY_MODEL_ANY", raising=False)
     monkeypatch.setenv("OM_PII_SPACY_MODEL_EN", str(model_path))
     monkeypatch.setattr(presidio_utils, "download", Mock(side_effect=AssertionError("must stay local")))
     monkeypatch.setattr(SpacyNlpEngine, "_download_spacy_model_if_needed", staticmethod(lambda _: None))
 
-    engine = presidio_utils.load_nlp_engine_for_language(ClassificationLanguage.en)
+    engine = presidio_utils.load_nlp_engine_for_language(language)
 
     assert engine.is_loaded()
     assert engine.get_supported_languages() == ["en"]

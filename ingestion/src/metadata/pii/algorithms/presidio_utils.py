@@ -148,7 +148,7 @@ def load_nlp_engine(
             override = get_model_override_for_language(classification_language)
             model_name = override or get_model_for_language(classification_language)
             allow_model_download = allow_model_download and override is None
-        supported_language = classification_language.value
+        supported_language = supported_language or classification_language.value
     else:
         model_name = model_name or SPACY_EN_MODEL
         supported_language = supported_language or SUPPORTED_LANG
@@ -184,25 +184,30 @@ def build_analyzer_engine(
 
     Release-pinned models are downloaded when absent. Configured overrides must already be local.
     """
-    supported_language = language.value
     nlp_engine = load_nlp_engine_for_language(language)
+    supported_languages = nlp_engine.get_supported_languages()
     recognizer_registry = RecognizerRegistry(
         recognizers=list(_get_all_pattern_recognizers()),
-        supported_languages=[supported_language],
+        supported_languages=supported_languages,
     )
     return AnalyzerEngine(
         nlp_engine=nlp_engine,
-        supported_languages=[supported_language],
+        supported_languages=supported_languages,
         registry=recognizer_registry,
     )
 
 
 def load_nlp_engine_for_language(language: ClassificationLanguage) -> SpacyNlpEngine:
     """Load a language model while keeping local overrides out of provisioning and download paths."""
+    # Presidio needs a concrete language code even for language-independent recognizers.
+    supported_language = ClassificationLanguage.en if language is ClassificationLanguage.any else language
     override = get_model_override_for_language(language)
+    if override is None and language is ClassificationLanguage.any:
+        language = supported_language
+        override = get_model_override_for_language(language)
     return load_nlp_engine(
         model_name=override or get_model_for_language(language),
-        supported_language=language.value,
+        supported_language=supported_language.value,
         classification_language=language,
         allow_model_download=override is None,
     )

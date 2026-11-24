@@ -160,6 +160,7 @@ class TestAnalyzerEngine:
         """Test building analyzer engine"""
         # Mock NLP engine
         mock_nlp_engine = Mock(spec=SpacyNlpEngine)
+        mock_nlp_engine.get_supported_languages.return_value = [SUPPORTED_LANG]
         mock_load_nlp_for_language.return_value = mock_nlp_engine
 
         mock_registry = Mock(spec=RecognizerRegistry)
@@ -187,6 +188,7 @@ class TestAnalyzerEngine:
     def test_build_analyzer_engine_default_model(self, mock_load_nlp_for_language, mock_get_recognizers):
         """Test building analyzer engine with default model"""
         mock_nlp_engine = Mock(spec=SpacyNlpEngine)
+        mock_nlp_engine.get_supported_languages.return_value = [SUPPORTED_LANG]
         mock_load_nlp_for_language.return_value = mock_nlp_engine
         mock_get_recognizers.return_value = []
 

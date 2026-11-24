@@ -253,12 +253,8 @@ class TagAnalyzer:
         sorted_recs = sorted(recognizers, key=lambda r: r.supported_language)
         for lang, group in groupby(sorted_recs, key=lambda r: r.supported_language):
             lang_recognizers = list(group)
-            if lang == ClassificationLanguage.any.value:
-                effective_lang = ClassificationLanguage.en.value
-                effective_nlp = load_nlp_engine_for_language(ClassificationLanguage.en)
-            else:
-                effective_lang = lang
-                effective_nlp = load_nlp_engine_for_language(ClassificationLanguage(lang))
+            effective_nlp = load_nlp_engine_for_language(ClassificationLanguage(lang))
+            effective_lang = effective_nlp.get_supported_languages()[0]
 
             analyzer = self.build_analyzer_with(
                 lang_recognizers,
