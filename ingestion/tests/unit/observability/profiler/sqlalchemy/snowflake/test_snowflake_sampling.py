@@ -167,7 +167,7 @@ class SampleTest(TestCase):
         query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
         expected_query = (
             'WITH "9bc65c2abec141778ffaa729489f3e87_rnd" AS \n(SELECT users_1.id AS id '
-            "\nFROM users AS users_1 TABLESAMPLE ROW(50.0 ROWS))\n "
+            "\nFROM users AS users_1 TABLESAMPLE ROW(50 ROWS))\n "
             'SELECT "9bc65c2abec141778ffaa729489f3e87_rnd".id \nFROM "9bc65c2abec141778ffaa729489f3e87_rnd"'
         )
         assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
