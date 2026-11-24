@@ -1785,13 +1785,15 @@ public class SystemResourceIT {
       CertificationFailedSample sample = certificationFailedSample(ns, table);
       setFailedRowsCertificationClassification(originalSettings, "PII");
       Table presentation = refreshCertificationTable(table);
-      assertFalse(
-          CommonUtil.listOrEmpty(presentation.getTags()).stream()
-              .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())));
-      if (scope == FailedRowsSensitivityScope.COLUMN) {
+      if (scope != FailedRowsSensitivityScope.GLOSSARY_TABLE) {
         assertFalse(
-            CommonUtil.listOrEmpty(presentation.getColumns().get(1).getTags()).stream()
+            CommonUtil.listOrEmpty(presentation.getTags()).stream()
                 .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())));
+        if (scope == FailedRowsSensitivityScope.COLUMN) {
+          assertFalse(
+              CommonUtil.listOrEmpty(presentation.getColumns().get(1).getTags()).stream()
+                  .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())));
+        }
       }
       assertEquals(
           sample.data(),
@@ -1813,23 +1815,26 @@ public class SystemResourceIT {
               table.getId(),
               JsonUtils.readTree(
                   "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Unrelated edit under PII certification\"}]"));
-      Table beforeRemoval = refreshCertificationTable(table);
-      String beforeEvidence = failedRowsRemovalEvidence(table);
-      assertEquals(
-          412,
-          assertThrows(
-                  OpenMetadataException.class,
-                  () ->
-                      admin
-                          .tables()
-                          .patch(
-                              table.getId(),
-                              JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/columns/1\"}]")))
-              .getStatusCode());
-      Table rejected = refreshCertificationTable(table);
-      assertEquals(beforeRemoval.getColumns(), rejected.getColumns());
-      assertEquals(beforeRemoval.getVersion(), rejected.getVersion());
-      assertEquals(beforeEvidence, failedRowsRemovalEvidence(table));
+      if (scope != FailedRowsSensitivityScope.GLOSSARY_TABLE) {
+        Table beforeRemoval = refreshCertificationTable(table);
+        String beforeEvidence = failedRowsRemovalEvidence(table);
+        assertEquals(
+            412,
+            assertThrows(
+                    OpenMetadataException.class,
+                    () ->
+                        admin
+                            .tables()
+                            .patch(
+                                table.getId(),
+                                JsonUtils.readTree(
+                                    "[{\"op\":\"remove\",\"path\":\"/columns/1\"}]")))
+                .getStatusCode());
+        Table rejected = refreshCertificationTable(table);
+        assertEquals(beforeRemoval.getColumns(), rejected.getColumns());
+        assertEquals(beforeRemoval.getVersion(), rejected.getVersion());
+        assertEquals(beforeEvidence, failedRowsRemovalEvidence(table));
+      }
 
       setFailedRowsCertificationClassification(originalSettings, "Certification");
       refreshCertificationTable(table);

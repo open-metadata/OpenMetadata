@@ -1,18 +1,22 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.jdbi3.TableRepository.FAILED_ROWS_COLUMN_REMOVALS_EXTENSION;
+import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.security.mask.FailedRowsSamplePolicy;
 import org.openmetadata.service.security.mask.FailedRowsSamplePolicy.RemovalRecord;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Transaction-local persistence for failed-row source associations and removal evidence. */
 final class FailedRowsSampleStore {
@@ -28,8 +32,14 @@ final class FailedRowsSampleStore {
       throw new EntityNotFoundException("Failed-row source table not found: " + id);
     }
     Table table = JsonUtils.readValue(json, Table.class);
-    populateEntityFieldTags(TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
-    table.setTags(Entity.getEntityRepository(TABLE).getTags(table.getFullyQualifiedName()));
+    // Certification presentation filters must not hide labels from the private masking policy.
+    Map<String, List<TagLabel>> shownTags =
+        dao.tagUsageDAO().getTagsByPrefix(table.getFullyQualifiedName(), "%", true);
+    populateEntityFieldTags(table.getColumns(), table.getFullyQualifiedName(), true, shownTags);
+    table.setTags(
+        addDerivedTagsGracefully(
+            listOrEmpty(
+                shownTags.get(FullyQualifiedName.buildHash(table.getFullyQualifiedName())))));
     return table;
   }
 
