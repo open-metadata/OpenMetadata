@@ -68,7 +68,8 @@
       },
       {
         "tests": [
-          "org/openmetadata/it/tests/search/scale/**"
+          "org/openmetadata/it/tests/search/scale/**",
+          "org/openmetadata/it/tests/dataquality/scale/**"
         ],
         "where": "nightly: openmetadata-nightly k8s-java-it (scale-it)"
       }
@@ -867,6 +868,8 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/dqtests/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/entityProfiles/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestCase*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/IncidentGroup*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/IncidentOpenInterval*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestSuite*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TestDefinition*",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/EntityProfile*",

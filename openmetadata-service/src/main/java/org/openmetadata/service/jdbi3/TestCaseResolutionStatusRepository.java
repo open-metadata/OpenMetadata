@@ -1,6 +1,5 @@
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
@@ -17,7 +16,6 @@ import java.beans.PropertyDescriptor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,7 +37,6 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
 import org.openmetadata.schema.tests.type.IncidentStatusCount;
-import org.openmetadata.schema.tests.type.IncidentTrendDirection;
 import org.openmetadata.schema.tests.type.Metric;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
@@ -58,6 +55,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestCaseResolutionStatusTimeSeriesDAO.IncidentGroupPage;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
@@ -94,7 +92,6 @@ public class TestCaseResolutionStatusRepository
   private static final String SEVERITY_WORST_FIRST = "MIN(i.severity) IS NULL, MIN(i.severity) ASC";
   private static final String SEVERITY_MILDEST_FIRST =
       "MIN(i.severity) IS NOT NULL, MIN(i.severity) DESC";
-  private static final int TREND_BUCKET_COUNT = 8;
   // ADR:2026-10-28-incident-history-uses-bounded-keyset-pages
   private static final int ORPHAN_HISTORY_BATCH_SIZE = 100;
   // A record range that holds every record, for listings whose range applies to the incidents.
@@ -505,6 +502,8 @@ public class TestCaseResolutionStatusRepository
 
     TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
     rejectReopeningResolvedIncident(recordEntity, lastIncident, recordFQN);
+    // A new stateId must follow the previous incident on this test case, including a resolved one.
+    // orderIncidentWrite separately serializes concurrent writes within the same stateId.
     long lastTimestamp =
         lastIncident != null && lastIncident.getTimestamp() != null
             ? lastIncident.getTimestamp()
@@ -621,30 +620,64 @@ public class TestCaseResolutionStatusRepository
   }
 
   private void persistRecord(String recordFQN, TestCaseResolutionStatus recordEntity) {
-    EntityReference testCaseReference = recordEntity.getTestCaseReference();
-    recordEntity.withTestCaseReference(null);
-    String recordJson = JsonUtils.pojoToJson(recordEntity);
-    recordEntity.withTestCaseReference(testCaseReference);
     DeadlockRetry.execute(
         () ->
             Entity.getJdbi()
                 .inTransaction(
                     handle -> {
-                      timeSeriesDao.insert(recordFQN, entityType, recordJson);
-                      ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
-                          .upsertIncident(
-                              recordEntity.getStateId().toString(),
-                              recordFQN,
-                              recordEntity.getTestCaseResolutionStatusType().value(),
-                              extractAssigneeName(recordEntity),
-                              recordEntity.getSeverity() != null
-                                  ? recordEntity.getSeverity().value()
-                                  : null,
-                              recordEntity.getTimestamp(),
-                              recordEntity.getId().toString());
+                      var dao =
+                          handle.attach(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
+                      orderIncidentWrite(dao, recordFQN, recordEntity);
+                      dao.insert(recordFQN, entityType, serializeIncident(recordEntity));
+                      dao.upsertIncident(
+                          recordEntity.getStateId().toString(),
+                          recordFQN,
+                          recordEntity.getTestCaseResolutionStatusType().value(),
+                          extractAssigneeName(recordEntity),
+                          recordEntity.getSeverity() != null
+                              ? recordEntity.getSeverity().value()
+                              : null,
+                          recordEntity.getTimestamp(),
+                          recordEntity.getId().toString(),
+                          WorkflowHandler.isMigrationContext());
                       storeRelationship(recordEntity);
                       return null;
                     }));
+  }
+
+  private void orderIncidentWrite(
+      CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO dao,
+      String recordFQN,
+      TestCaseResolutionStatus record) {
+    long timestamp =
+        dao.nextIncidentTimestamp(
+            record.getStateId().toString(),
+            recordFQN,
+            record.getTestCaseResolutionStatusType().value(),
+            record.getTimestamp(),
+            record.getId().toString());
+    long adjustment = timestamp - record.getTimestamp();
+    record.setTimestamp(timestamp);
+    record.setUpdatedAt(
+        Math.max(record.getUpdatedAt() == null ? timestamp : record.getUpdatedAt(), timestamp));
+    if (adjustment > 0 && record.getMetrics() != null) {
+      record.getMetrics().stream()
+          .filter(
+              metric ->
+                  TIME_TO_RESPONSE.equals(metric.getName())
+                      || TIME_TO_RESOLUTION.equals(metric.getName()))
+          .forEach(metric -> metric.setValue(metric.getValue() + adjustment));
+    }
+  }
+
+  private String serializeIncident(TestCaseResolutionStatus record) {
+    EntityReference reference = record.getTestCaseReference();
+    record.setTestCaseReference(null);
+    try {
+      return JsonUtils.pojoToJson(record);
+    } finally {
+      record.setTestCaseReference(reference);
+    }
   }
 
   // The PARENT_OF relationship is written inside persistRecord's transaction. The base
@@ -1093,6 +1126,8 @@ public class TestCaseResolutionStatusRepository
     }
 
     TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
+    // A new stateId must follow the previous incident on this test case, including a resolved one.
+    // orderIncidentWrite separately serializes concurrent writes within the same stateId.
     long lastTimestamp =
         lastIncident != null && lastIncident.getTimestamp() != null
             ? lastIncident.getTimestamp()
@@ -1242,8 +1277,18 @@ public class TestCaseResolutionStatusRepository
         ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
             .listIncidentGroups(
                 groupBy, filter, incidentGroupOrderBy(sortField, sortType), limit, offsetInt);
+    IncidentGroupTrend window = IncidentGroupTrend.endingAt(System.currentTimeMillis());
+    Map<String, List<Integer>> trends =
+        ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
+            .incidentGroupTrends(
+                groupBy,
+                filter,
+                page.counts().stream()
+                    .map(CollectionDAO.TestCaseIncidentGroupCount::groupKey)
+                    .toList(),
+                window);
     return new ResultList<>(
-        toIncidentGroups(groupBy, page),
+        toIncidentGroups(groupBy, page, trends, window),
         getBeforeOffset(offsetInt, limit),
         getAfterOffset(offsetInt, limit, page.total()),
         page.total());
@@ -1263,7 +1308,10 @@ public class TestCaseResolutionStatusRepository
   }
 
   private static List<TestCaseIncidentGroup> toIncidentGroups(
-      IncidentGroupBy groupBy, IncidentGroupPage page) {
+      IncidentGroupBy groupBy,
+      IncidentGroupPage page,
+      Map<String, List<Integer>> trends,
+      IncidentGroupTrend window) {
     IncidentGroupReferences references = resolveIncidentGroupReferences(page);
     return page.counts().stream()
         .map(
@@ -1272,8 +1320,9 @@ public class TestCaseResolutionStatusRepository
                     toIncidentGroup(
                         groupBy,
                         count,
-                        parseIncidentCreatedAt(count),
-                        references.groups().get(count.groupKey())),
+                        trends.get(count.groupKey()),
+                        references.groups().get(count.groupKey()),
+                        window),
                     count,
                     page,
                     references))
@@ -1338,8 +1387,9 @@ public class TestCaseResolutionStatusRepository
   private static TestCaseIncidentGroup toIncidentGroup(
       IncidentGroupBy groupBy,
       CollectionDAO.TestCaseIncidentGroupCount count,
-      List<Long> incidentCreatedAt,
-      EntityReference reference) {
+      List<Integer> trend,
+      EntityReference reference,
+      IncidentGroupTrend window) {
     TestCaseIncidentGroup group =
         new TestCaseIncidentGroup()
             .withGroupBy(groupBy)
@@ -1356,7 +1406,11 @@ public class TestCaseResolutionStatusRepository
     if (!assignees.isEmpty()) {
       group.withAssignees(assignees);
     }
-    setIncidentTrend(group, incidentCreatedAt);
+    group
+        .withTrend(trend)
+        .withTrendDirection(IncidentGroupTrend.direction(trend))
+        .withTrendStart(window.start())
+        .withTrendEnd(window.end());
     if (reference != null) {
       group
           .withId(reference.getId())
@@ -1381,14 +1435,6 @@ public class TestCaseResolutionStatusRepository
     return result;
   }
 
-  private static List<Long> parseIncidentCreatedAt(CollectionDAO.TestCaseIncidentGroupCount count) {
-    List<Long> result = List.of();
-    if (!nullOrEmpty(count.incidentCreatedAt())) {
-      result = Arrays.asList(JsonUtils.readValue(count.incidentCreatedAt(), Long[].class));
-    }
-    return result;
-  }
-
   // The group's open incidents split across the statuses they currently sit in, ordered the way
   // the triage order ranks them. A status no incident is in is left out rather than reported as a
   // zero, so the breakdown only ever names statuses that are actually occupied.
@@ -1409,42 +1455,6 @@ public class TestCaseResolutionStatusRepository
   private static TestCaseResolutionStatusTypes statusFromRank(int statusRank) {
     int index = Math.min(Math.max(statusRank, 1), STATUS_TRIAGE_ORDER.size()) - 1;
     return STATUS_TRIAGE_ORDER.get(index);
-  }
-
-  private static void setIncidentTrend(TestCaseIncidentGroup group, List<Long> incidentCreatedAt) {
-    List<Long> timestamps = listOrEmpty(incidentCreatedAt);
-    if (!timestamps.isEmpty()) {
-      long min = Collections.min(timestamps);
-      long max = Collections.max(timestamps);
-      List<Integer> buckets = bucketIncidentCreatedAt(timestamps, min, max);
-      group.withTrend(buckets).withTrendDirection(trendDirection(buckets, max > min));
-    }
-  }
-
-  private static List<Integer> bucketIncidentCreatedAt(List<Long> timestamps, long min, long max) {
-    int[] buckets = new int[TREND_BUCKET_COUNT];
-    long span = max - min;
-    for (long timestamp : timestamps) {
-      int bucket = span == 0 ? 0 : (int) ((timestamp - min) * TREND_BUCKET_COUNT / span);
-      buckets[Math.min(bucket, TREND_BUCKET_COUNT - 1)]++;
-    }
-    return Arrays.stream(buckets).boxed().toList();
-  }
-
-  private static IncidentTrendDirection trendDirection(List<Integer> buckets, boolean hasSpan) {
-    IncidentTrendDirection result = IncidentTrendDirection.Steady;
-    if (hasSpan) {
-      int half = TREND_BUCKET_COUNT / 2;
-      int firstHalf = buckets.subList(0, half).stream().mapToInt(Integer::intValue).sum();
-      int lastHalf =
-          buckets.subList(half, TREND_BUCKET_COUNT).stream().mapToInt(Integer::intValue).sum();
-      if (lastHalf > firstHalf) {
-        result = IncidentTrendDirection.Rising;
-      } else if (lastHalf < firstHalf) {
-        result = IncidentTrendDirection.Falling;
-      }
-    }
-    return result;
   }
 
   // A table can be gone while incidents raised on it are still open; it is then named after its
