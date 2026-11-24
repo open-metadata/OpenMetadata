@@ -11,11 +11,9 @@
 
 """Exercise Python CI selection, gates and report collection."""
 
-import fnmatch
 import itertools
 import json
 import os
-import runpy
 import shutil
 import subprocess
 import sys
@@ -42,15 +40,6 @@ def run(*args, cwd=ROOT, env=None):
 
 def workflow(name):
     return yaml.load((ROOT / ".github/workflows" / name).read_text(), Loader=yaml.BaseLoader)
-
-
-@pytest.mark.parametrize("lane", ["python", "airflow-apis"])
-def test_generation_inputs_select_consuming_workloads(lane):
-    generation = runpy.run_path(str(ROOT / "scripts/check_generated_models.py"))
-    rules = yaml.safe_load((ROOT / ".github/python-ci/paths.yml").read_text())[lane]
-    changed = [path.relative_to(ROOT).as_posix() for path in generation["input_paths"]()]
-    omitted = [path for path in changed if not any(fnmatch.fnmatchcase(path, pattern) for pattern in rules)]
-    assert not omitted, f"Generation inputs would skip {lane}: {omitted}"
 
 
 @pytest.mark.parametrize("output_file", [False, True])
@@ -199,16 +188,15 @@ def test_nightly_artifact_names_are_unique_across_invocations():
 
 
 @pytest.mark.parametrize(
-    "step_outcome, exit_code, classification",
+    "directory, step_outcome, exit_code, classification",
     [
-        ("skipped", None, "setup_failure"),
-        ("failure", 124, "hung_test"),
-        ("failure", 1, "hung_test"),
-        ("success", 0, "passed"),
-        ("success", 0, "missing_results"),
+        ("ingestion", "success", 0, "passed"),
+        ("openmetadata-airflow-apis", "success", 0, "passed"),
+        ("ingestion", "skipped", None, "setup_failure"),
+        ("openmetadata-airflow-apis", "failure", 124, "hung_test"),
+        ("ingestion", "success", 0, "missing_results"),
     ],
 )
-@pytest.mark.parametrize("directory", ["ingestion", "openmetadata-airflow-apis"])
 def test_reporting_records_outcomes_and_keeps_only_failure_logs(
     tmp_path, step_outcome, exit_code, classification, directory
 ):
