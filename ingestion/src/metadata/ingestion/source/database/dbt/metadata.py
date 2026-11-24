@@ -151,10 +151,13 @@ from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.filters import filter_by_tag
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
+
+RESOLVED_TABLES_CACHE_SIZE = LRU_CACHE_SIZE
 
 
 class InvalidServiceException(Exception):  # noqa: N818
@@ -186,6 +189,10 @@ class DbtSource(DbtServiceSource):
         # per referencing model. Bounded by the number of distinct upstream nodes in the
         # project and reset per project in yield_data_models.
         self.reported_unresolved_upstreams: set[str] = set()
+        # Tables found so far, keyed by how the manifest names them. A table is met once as
+        # its own model and again for every model and test that depends on it. Reset per
+        # project in yield_data_models.
+        self.resolved_tables: LRUCache[Table] = LRUCache(RESOLVED_TABLES_CACHE_SIZE)
         self._load_omd_custom_properties()
 
     @cached_property
@@ -833,13 +840,12 @@ class DbtSource(DbtServiceSource):
         # A freshness check tests the source table itself. Sources are graph roots with no
         # depends_on, so resolving upstreams the way a dbt test node does always yields an
         # empty list and leaves the test case with no table to attach to.
-        source_fqn = self._build_table_fqn(
-            database_name=get_corrected_name(manifest_node.database),
-            schema_name=get_corrected_name(manifest_node.schema_),
-            table_name=get_source_physical_name(manifest_node),
+        table_entity = self._resolve_table(
+            get_corrected_name(manifest_node.database),
+            get_corrected_name(manifest_node.schema_),
+            get_source_physical_name(manifest_node),
             literal_table_name=True,
         )
-        table_entity = self._get_table_entity(table_fqn=source_fqn, literal_table_name=True) if source_fqn else None
         if not table_entity:
             logger.warning(f"Table entity not found for dbt source {key}, skipping its freshness test")
             return
@@ -976,12 +982,38 @@ class DbtSource(DbtServiceSource):
 
         return None
 
+    def _resolve_table(
+        self,
+        database_name: str | None,
+        schema_name: str | None,
+        table_name: str,
+        *,
+        literal_table_name: bool = False,
+    ) -> Table | None:
+        key = (database_name, schema_name, table_name, literal_table_name)
+        if key in self.resolved_tables:
+            return self.resolved_tables.get(key)
+        table_fqn = self._build_table_fqn(
+            database_name=database_name,
+            schema_name=schema_name,
+            table_name=table_name,
+            literal_table_name=literal_table_name,
+        )
+        table_entity = (
+            self._get_table_entity(table_fqn=table_fqn, literal_table_name=literal_table_name) if table_fqn else None
+        )
+        # Misses are not kept: _get_table_entity returns None for a failed lookup as well.
+        if table_entity:
+            self.resolved_tables.put(key, table_entity)
+        return table_entity
+
     # pylint: disable=too-many-locals, too-many-branches
     def yield_data_models(self, dbt_objects: DbtObjects) -> Iterable[Either[DataModelLink]]:  # noqa: C901
         """
         Yield the data models
         """
         self.reported_unresolved_upstreams.clear()
+        self.resolved_tables.clear()
         if self.source_config.dbtConfigSource and dbt_objects.dbt_manifest:
             logger.debug("Parsing DBT Data Models")
             manifest_entities = {
@@ -1093,18 +1125,13 @@ class DbtSource(DbtServiceSource):
                             )
                             or []
                         )
-                    table_fqn = self._build_table_fqn(
-                        database_name=get_corrected_name(node_database),
-                        schema_name=get_corrected_name(node_schema),
-                        table_name=model_name,
-                        literal_table_name=resource_type == DbtCommonEnum.SOURCE.value,
-                    )
-
                     dbt_compiled_query = get_dbt_compiled_query(manifest_node)
                     dbt_raw_query = get_dbt_raw_query(manifest_node)
 
-                    if table_entity := self._get_table_entity(
-                        table_fqn=table_fqn,
+                    if table_entity := self._resolve_table(
+                        get_corrected_name(node_database),
+                        get_corrected_name(node_schema),
+                        model_name,
                         literal_table_name=resource_type == DbtCommonEnum.SOURCE.value,
                     ):
                         logger.debug(
@@ -1239,25 +1266,16 @@ class DbtSource(DbtServiceSource):
                     if check_ephemeral_node(parent_node):
                         upstream_nodes.extend(self.parse_upstream_nodes_with_names(manifest_entities, parent_node))
                     else:
-                        parent_fqn = self._build_table_fqn(
-                            database_name=get_corrected_name(parent_database),
-                            schema_name=get_corrected_name(parent_schema),
-                            table_name=table_name,
-                            literal_table_name=parent_resource_type == DbtCommonEnum.SOURCE.value,
-                        )
-
                         # check if the parent table exists in OM before adding it to the upstream list
-                        table_entity = (
-                            self._get_table_entity(
-                                table_fqn=parent_fqn,
-                                literal_table_name=parent_resource_type == DbtCommonEnum.SOURCE.value,
-                            )
-                            if parent_fqn
-                            else None
+                        table_entity = self._resolve_table(
+                            get_corrected_name(parent_database),
+                            get_corrected_name(parent_schema),
+                            table_name,
+                            literal_table_name=parent_resource_type == DbtCommonEnum.SOURCE.value,
                         )
                         # catalogMapping and searchAcrossDatabases can resolve the parent under another
                         # database or service, so lineage and tests follow the table that was found
-                        if parent_fqn and table_entity:
+                        if table_entity:
                             upstream_nodes.append(
                                 build_upstream_node(
                                     parent_node,
