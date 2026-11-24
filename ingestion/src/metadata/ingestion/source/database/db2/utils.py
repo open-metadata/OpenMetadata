@@ -263,7 +263,8 @@ def _extract_clidriver(archive: Path, destination: Path) -> Path:
             zip_file.extractall(destination)
     else:
         if not hasattr(tarfile, "data_filter"):
-            # An unfiltered extractall writes `..` members and follows links outside destination.
+            # An unfiltered extractall writes `..` members and follows links outside destination
+            # (ADR:2026-11-24-db2-clidriver-archives-extract-only-with-filters).
             raise RuntimeError(
                 f"Extracting {archive.name} safely needs tarfile's extraction filters (Python 3.10.12+ or 3.11.4+)"
             )
