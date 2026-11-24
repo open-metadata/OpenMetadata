@@ -36,6 +36,7 @@ import org.apache.jena.query.QueryExecution;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -71,6 +72,7 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 import org.openmetadata.service.rdf.storage.StorageFacts;
+import org.openmetadata.service.rdf.translator.ConceptBindingLookup;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.rdf.translator.LiveTagLookup;
 import org.openmetadata.service.rdf.translator.ReferenceScope;
@@ -228,7 +230,12 @@ public class RdfRepository {
       this.storageService =
           servingChain(materializationStorageService, inferenceRuleRepository, assertedOnlyQueries);
       this.translator =
-          new JsonLdTranslator(JsonUtils.getObjectMapper(), config.getBaseUri().toString());
+          new JsonLdTranslator(
+              JsonUtils.getObjectMapper(),
+              config.getBaseUri().toString(),
+              LiveTagLookup.database(),
+              ConceptBindingLookup.database(),
+              ReferenceScope.LIVE);
       this.documentTranslator =
           new JsonLdTranslator(
               JsonUtils.getObjectMapper(),
@@ -587,11 +594,55 @@ public class RdfRepository {
       delete(new EntityReference().withType(entityType).withId(entityId));
       return;
     }
-    createOrUpdate(entity);
+    if (Entity.TABLE.equals(entityType) && isEnabled()) {
+      refreshTable(entity);
+    } else {
+      createOrUpdate(entity);
+    }
+  }
+
+  /**
+   * A column test can show its evidence only while its column resolves and its tags allow it
+   * (ADR:2026-11-18-the-rdf-graph-carries-the-latest-quality-evidence).
+   */
+  private void refreshTable(final EntityInterface<?> table) {
+    try {
+      final String tableUri = entityUri(Entity.TABLE, table.getId());
+      final Map<String, Set<RDFNode>> previousColumnTags =
+          RdfColumnTags.read(
+              storageService.executeSparqlQuery(
+                  RdfColumnTags.storedQuery(KNOWLEDGE_GRAPH, tableUri),
+                  RdfColumnTags.RESULTS_FORMAT));
+      final Model projection = translator.toRdf(table);
+      if (!previousColumnTags.equals(RdfColumnTags.of(projection, tableUri))) {
+        // A failed requeue must leave the previous projection for the retry to compare.
+        projectionLoaders.testCaseRequeue().requeueTestCasesOf(table.getFullyQualifiedName());
+      }
+      storeProjection(table, projection);
+    } catch (RuntimeException failure) {
+      throw projectionFailure(table, failure);
+    }
   }
 
   public void refreshOntologyGraph(final UUID ontologyId) {
     projectionLoaders.ontologyGraphs().get().refresh(ontologyId, storageService);
+  }
+
+  /** Hands the assets bound to a concept of the ontology to {@code pageAction}, page by page. */
+  public void forEachBoundAssetPage(
+      final UUID ontologyId, final Consumer<List<EntityReference>> pageAction) {
+    String after = "";
+    List<EntityReference> page;
+    do {
+      page =
+          projectionLoaders
+              .boundAssets()
+              .page(ontologyId, after, RdfProjectionLoaders.BoundAssets.PAGE_SIZE);
+      if (!page.isEmpty()) {
+        pageAction.accept(page);
+        after = page.getLast().getId().toString();
+      }
+    } while (page.size() == RdfProjectionLoaders.BoundAssets.PAGE_SIZE);
   }
 
   public void rebuildOntologyGraphs() {
@@ -661,34 +712,40 @@ public class RdfRepository {
   }
 
   public void createOrUpdate(EntityInterface<?> entity) {
-    if (!isEnabled()) {
-      return;
+    if (isEnabled()) {
+      try {
+        storeProjection(entity, translator.toRdf(entity));
+      } catch (RuntimeException failure) {
+        throw projectionFailure(entity, failure);
+      }
     }
+  }
 
-    try {
-      String entityType = entity.getEntityReference().getType();
-      LOG.debug(
-          "Storing entity in RDF - Type: {}, FQN: {}, Name: {}, ID: {}",
-          entityType,
-          entity.getFullyQualifiedName(),
-          entity.getName(),
-          entity.getId());
-      Model rdfModel = translator.toRdf(entity);
-      storageService.storeEntity(entityType, entity.getId(), rdfModel);
-      LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
-    } catch (RdfStorageMaintenanceException heldBack) {
-      recordFailure(heldBack);
-      throw heldBack;
-    } catch (Exception e) {
-      recordFailure(e);
-      LOG.error(
-          "Failed to create/update entity {} in RDF - Type: {}, FQN: {}",
-          entity.getId(),
-          entity.getEntityReference().getType(),
-          entity.getFullyQualifiedName(),
-          e);
-      throw new RuntimeException("Failed to create/update entity in RDF", e);
+  private void storeProjection(final EntityInterface<?> entity, final Model projection) {
+    final String entityType = entity.getEntityReference().getType();
+    LOG.debug(
+        "Storing entity in RDF - Type: {}, FQN: {}, Name: {}, ID: {}",
+        entityType,
+        entity.getFullyQualifiedName(),
+        entity.getName(),
+        entity.getId());
+    storageService.storeEntity(entityType, entity.getId(), projection);
+    LOG.debug("Created/Updated entity {} in RDF store", entity.getId());
+  }
+
+  private RuntimeException projectionFailure(
+      final EntityInterface<?> entity, final RuntimeException failure) {
+    recordFailure(failure);
+    if (failure instanceof RdfStorageMaintenanceException) {
+      return failure;
     }
+    LOG.error(
+        "Failed to create/update entity {} in RDF - Type: {}, FQN: {}",
+        entity.getId(),
+        entity.getEntityReference().getType(),
+        entity.getFullyQualifiedName(),
+        failure);
+    return new RuntimeException("Failed to create/update entity in RDF", failure);
   }
 
   /**
@@ -1071,20 +1128,22 @@ public class RdfRepository {
   }
 
   /**
-   * Builds one update that removes an entity's incoming and outgoing triples, its owned resources
-   * and the lineage details of its edges.
+   * Builds one update that removes an entity's incoming and outgoing triples, its owned resources,
+   * the concept binding edges into its columns and the lineage details of its edges.
    */
   public static String buildEntityDeleteUpdate(String entityUri) {
     return String.format(
         "DELETE { GRAPH <%1$s> { ?subject ?p ?o } } WHERE { GRAPH <%1$s> { "
             + "VALUES ?entity { <%2$s> } "
             + "{ ?entity ?p ?o . BIND(?entity AS ?subject) } UNION "
-            + "{ ?subject ?p ?entity . BIND(?entity AS ?o) } UNION { %3$s } UNION { %4$s } } }",
+            + "{ ?subject ?p ?entity . BIND(?entity AS ?o) } UNION { %3$s } UNION { %4$s } "
+            + "UNION { %5$s } } }",
         KNOWLEDGE_GRAPH,
         entityUri,
         RdfOwnedResources.ownedTriplesPattern(),
         RdfLineage.incidentDetailsTriplesPattern(
-            entityUri.substring(entityUri.lastIndexOf('/') + 1)));
+            entityUri.substring(entityUri.lastIndexOf('/') + 1)),
+        RdfOwnedResources.incomingBindingTriplesPattern());
   }
 
   private static String buildIriValues(Collection<String> iris) {
@@ -1750,11 +1809,7 @@ public class RdfRepository {
     }
 
     try {
-      // Get entity to convert to JSON-LD directly
-      EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", null);
-
-      // Convert directly to JSON-LD without going through RDF model
-      return translator.toJsonLdString(entity, true);
+      return translator.toJsonLdString(loadEntityDocument(entityType, entityId), true);
 
     } catch (EntityNotFoundException e) {
       throw e;
@@ -1770,9 +1825,7 @@ public class RdfRepository {
     }
 
     try {
-      // Get the entity and convert to RDF
-      EntityInterface<?> entity = Entity.getEntity(entityType, entityId, "*", null);
-      Model rdfModel = documentTranslator.toRdf(entity);
+      Model rdfModel = documentTranslator.toRdf(loadEntityDocument(entityType, entityId));
 
       // Convert model to requested format
       java.io.StringWriter writer = new java.io.StringWriter();
@@ -1793,6 +1846,18 @@ public class RdfRepository {
       LOG.error("Failed to get entity {} as RDF", entityId, e);
       throw new RuntimeException("Failed to get entity as RDF", e);
     }
+  }
+
+  private EntityInterface<?> loadEntityDocument(final String entityType, final UUID entityId) {
+    final boolean isTestCase = Entity.TEST_CASE.equals(entityType);
+    final String fields =
+        isTestCase ? String.join(",", RdfIndexingFields.forEntityType(entityType)) : "*";
+    final EntityInterface<?> entity =
+        Entity.getEntity(entityType, entityId, fields, Include.NON_DELETED);
+    if (isTestCase) {
+      RdfQualityEvidence.database().attach(entityType, List.of(entity));
+    }
+    return entity;
   }
 
   public String executeSparqlQuery(String query, String format) {

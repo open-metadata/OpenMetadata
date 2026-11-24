@@ -416,26 +416,20 @@ export const getTrimmedHtmlContent = (html: string, limit: number) => {
   return doc.body.innerHTML;
 };
 
-/**
- * Checks whether a block-editor HTML string represents empty content.
- * Treats null/undefined/empty strings, whitespace-only strings, and
- * single empty `<p>` tags as empty.
- */
+/** Text, mentions and embedded media count as content; layout-only markup does not. */
 export const isDescriptionContentEmpty = (content: string) => {
   if (isEmpty(content)) {
     return true;
   }
 
-  const trimmedContent = content.trim();
+  const doc = new DOMParser().parseFromString(content, 'text/html');
 
-  if (trimmedContent === '') {
-    return true;
-  }
-
-  const emptyPRegex =
-    /^[ \t\r\n]*<p(?:\s[^>]*)?>[ \t\r\n\u00A0]*<\/p>[ \t\r\n]*$/i;
-
-  return emptyPRegex.test(trimmedContent);
+  return (
+    !doc.body.textContent?.trim() &&
+    !doc.body.querySelector(
+      'img, video, audio, iframe, hr, [data-type="mention"], [data-type="file-attachment"]'
+    )
+  );
 };
 
 /**

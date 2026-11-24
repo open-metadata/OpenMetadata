@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.util.RequestEntityCache;
 
@@ -138,6 +139,19 @@ class RdfLiveWriterTest {
     }
   }
 
+  @Test
+  void onlyAnEntityRefreshCanBeSupersededByALaterCopyOfItself() {
+    final UUID tableId = UUID.randomUUID();
+
+    assertTrue(
+        RdfLiveWriter.isEntityRefresh(
+            JsonUtils.pojoToJson(new RdfLiveWrite.EntityUpdate(Entity.TABLE, tableId))));
+    assertFalse(
+        RdfLiveWriter.isEntityRefresh(
+            JsonUtils.pojoToJson(new RdfLiveWrite.EntityDelete(Entity.TABLE, tableId))));
+    assertFalse(RdfLiveWriter.isEntityRefresh("malformed"));
+  }
+
   private static Table cachedTable(final UUID tableId) {
     return RequestEntityCache.getById(Entity.TABLE, tableId, null, null, false, Table.class);
   }
@@ -150,7 +164,7 @@ class RdfLiveWriterTest {
     final RdfLiveWriteStore store = mock(RdfLiveWriteStore.class);
     doAnswer(call -> persisted.add(call.getArgument(0))).when(store).enqueue(anyString());
     when(store.pendingWrites()).thenAnswer(call -> (long) persisted.size());
-    when(store.processNext(any()))
+    when(store.processNext(any(), any()))
         .thenAnswer(
             call -> {
               if (persisted.isEmpty()) {

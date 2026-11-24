@@ -374,4 +374,35 @@ public class TaskCommentsIT {
           .delete(unrelated.getId().toString(), java.util.Map.of("hardDelete", "true"));
     }
   }
+
+  @Test
+  void test_editedCommentMention_isReturnedByMentionedUser() {
+    Task task = createTestTask(adminClient);
+    try {
+      Task commented = adminClient.tasks().addComment(task.getId().toString(), "Needs review");
+      ListParams params =
+          new ListParams().addFilter("mentionedUser", shared.USER2.getName()).setLimit(1000);
+      assertFalse(
+          adminClient.tasks().list(params).getData().stream()
+              .anyMatch(item -> task.getId().equals(item.getId())));
+      String message = "Please review <#E::user::%s>".formatted(shared.USER2.getName());
+      adminClient
+          .tasks()
+          .editComment(
+              task.getId().toString(), commented.getComments().getFirst().getId(), message);
+      assertTrue(
+          adminClient.tasks().list(params).getData().stream()
+              .anyMatch(item -> task.getId().equals(item.getId())));
+      assertEquals(
+          message,
+          adminClient
+              .tasks()
+              .get(task.getId().toString(), "comments")
+              .getComments()
+              .getFirst()
+              .getMessage());
+    } finally {
+      adminClient.tasks().delete(task.getId().toString(), java.util.Map.of("hardDelete", "true"));
+    }
+  }
 }
