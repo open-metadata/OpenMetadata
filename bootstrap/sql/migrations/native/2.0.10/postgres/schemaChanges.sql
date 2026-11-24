@@ -13,6 +13,9 @@ CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_admin
 CREATE INDEX IF NOT EXISTS idx_sso_test_login_session_expires
     ON sso_test_login_session (expires_at);
 
+-- The released test_suite table has no index beginning with id.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_test_suite_id ON test_suite (id);
+
 -- Logical suites select their tables through their test cases.
 UPDATE ingestion_pipeline_entity AS pipeline
 SET json = pipeline.json::jsonb #- '{sourceConfig,config,entityFullyQualifiedName}'

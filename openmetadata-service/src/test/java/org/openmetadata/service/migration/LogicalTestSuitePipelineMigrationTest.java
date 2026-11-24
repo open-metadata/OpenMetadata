@@ -2,6 +2,7 @@ package org.openmetadata.service.migration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -48,6 +49,8 @@ class LogicalTestSuitePipelineMigrationTest {
           final List<String> statements = migrationStatements(version, dialect);
           assertFalse(statements.isEmpty(), version + " must normalize logical suite pipelines");
           statements.forEach(handle::execute);
+          assertSuiteIdIndex(handle, dialect);
+          assertIndexedSuiteLookup(handle, dialect, statements);
           assertEquals(expected, storedPipelines(handle), version + " first run");
           statements.forEach(handle::execute);
           assertEquals(expected, storedPipelines(handle), version + " replay");
@@ -101,12 +104,9 @@ class LogicalTestSuitePipelineMigrationTest {
     final String jsonType = MYSQL.equals(dialect) ? "JSON" : "JSONB";
     for (final String table : List.of("test_suite", "ingestion_pipeline_entity")) {
       handle.execute(
-          "CREATE TABLE "
-              + table
-              + " (id VARCHAR(36) PRIMARY KEY, json "
-              + jsonType
-              + " NOT NULL)");
+          "CREATE TABLE " + table + " (id VARCHAR(36) NOT NULL, json " + jsonType + " NOT NULL)");
     }
+    handle.execute("ALTER TABLE ingestion_pipeline_entity ADD PRIMARY KEY (id)");
     handle.execute(
         """
         CREATE TABLE entity_relationship (
@@ -122,11 +122,56 @@ class LogicalTestSuitePipelineMigrationTest {
         """);
   }
 
+  private static void seedUnrelatedSuites(final Handle handle, final String dialect) {
+    final String jsonBind = MYSQL.equals(dialect) ? ":json" : "CAST(:json AS JSONB)";
+    final var batch =
+        handle.prepareBatch("INSERT INTO test_suite (id, json) VALUES (:id, " + jsonBind + ")");
+    for (int i = 0; i < 2000; i++) {
+      batch.bind("id", UUID.randomUUID().toString()).bind("json", "{\"basic\":false}").add();
+    }
+    batch.execute();
+  }
+
+  private static void assertIndexedSuiteLookup(
+      final Handle handle, final String dialect, final List<String> statements) {
+    handle.execute(MYSQL.equals(dialect) ? "ANALYZE TABLE test_suite" : "ANALYZE test_suite");
+    final String update =
+        statements.stream()
+            .filter(sql -> sql.contains("entityFullyQualifiedName"))
+            .findFirst()
+            .orElseThrow();
+    final String explain =
+        MYSQL.equals(dialect) ? "EXPLAIN FORMAT=JSON " : "EXPLAIN (FORMAT JSON) ";
+    final JsonNode plan =
+        JsonUtils.readTree(handle.createQuery(explain + update).mapTo(String.class).one());
+    final String key = MYSQL.equals(dialect) ? "key" : "Index Name";
+    assertTrue(
+        plan.findValues(key).stream().anyMatch(value -> "idx_test_suite_id".equals(value.asText())),
+        "The populated suite table should be joined through its id index: " + plan);
+  }
+
+  private static void assertSuiteIdIndex(final Handle handle, final String dialect) {
+    final String sql =
+        MYSQL.equals(dialect)
+            ? """
+          SELECT COUNT(*) FROM information_schema.statistics
+          WHERE table_schema = DATABASE() AND table_name = 'test_suite'
+            AND index_name = 'idx_test_suite_id' AND column_name = 'id' AND seq_in_index = 1
+          """
+            : """
+          SELECT COUNT(*) FROM pg_indexes
+          WHERE schemaname = 'public' AND tablename = 'test_suite'
+            AND indexname = 'idx_test_suite_id' AND indexdef LIKE '%(id)'
+          """;
+    assertEquals(1, handle.createQuery(sql).mapTo(Integer.class).one());
+  }
+
   private static Map<String, JsonNode> seedPipelines(final Handle handle, final String dialect) {
     for (final String table :
         List.of("entity_relationship", "ingestion_pipeline_entity", "test_suite")) {
       handle.execute("DELETE FROM " + table);
     }
+    seedUnrelatedSuites(handle, dialect);
     final Map<String, JsonNode> expected = new LinkedHashMap<>();
     for (final Fixture fixture : fixtures()) {
       final String suiteId = UUID.randomUUID().toString();
@@ -357,7 +402,11 @@ class LogicalTestSuitePipelineMigrationTest {
             false);
     migration.parseSQLFiles();
     return migration.getSchemaChanges().stream()
-        .filter(sql -> sql.contains("entityFullyQualifiedName"))
+        .filter(
+            sql ->
+                sql.contains("entityFullyQualifiedName")
+                    || sql.contains("logical_suite_index")
+                    || sql.contains("idx_test_suite_id"))
         .toList();
   }
 
