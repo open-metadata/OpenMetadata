@@ -388,6 +388,11 @@ interface TableHeadProps
   tooltip?: string;
   /** Aligns the header content, e.g. `center` over a column of centred icons. @default 'start' */
   align?: 'start' | 'center' | 'end';
+  /**
+   * Wraps a long `label` instead of keeping it on one line, for a column whose
+   * width is capped (it would otherwise spill into the next header). @default false
+   */
+  wrapLabel?: boolean;
 }
 
 const HEAD_ALIGN_CLASS = {
@@ -401,6 +406,7 @@ const TableHead = ({
   tooltip,
   label,
   align = 'start',
+  wrapLabel = false,
   children,
   ...props
 }: TableHeadProps) => {
@@ -430,11 +436,22 @@ const TableHead = ({
         <div
           className={cx(
             'tw:flex tw:items-center tw:gap-1',
+            wrapLabel && 'tw:min-w-0',
             HEAD_ALIGN_CLASS[align]
           )}>
-          <div className="tw:flex tw:items-center tw:gap-1">
+          <div
+            className={cx(
+              'tw:flex tw:items-center tw:gap-1',
+              wrapLabel && 'tw:min-w-0'
+            )}>
             {label && (
-              <span className="tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-quaternary">
+              <span
+                className={cx(
+                  'tw:text-xs tw:font-semibold tw:text-quaternary',
+                  wrapLabel
+                    ? 'tw:text-start tw:whitespace-normal tw:wrap-anywhere'
+                    : 'tw:whitespace-nowrap'
+                )}>
                 {label}
               </span>
             )}

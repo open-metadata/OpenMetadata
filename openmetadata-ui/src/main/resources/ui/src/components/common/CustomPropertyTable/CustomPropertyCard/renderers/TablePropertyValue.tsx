@@ -98,6 +98,7 @@ const TablePropertyView = ({ property, value }: PropertyViewProps) => {
         <Table.Header>
           {columns.map((column, index) => (
             <Table.Head
+              wrapLabel
               className={COLUMN_CLASS}
               id={column}
               isRowHeader={index === 0}
