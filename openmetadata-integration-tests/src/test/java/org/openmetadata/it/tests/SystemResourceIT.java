@@ -61,6 +61,8 @@ import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.api.configuration.LogoConfiguration;
 import org.openmetadata.api.configuration.ThemeConfiguration;
 import org.openmetadata.api.configuration.UiThemePreference;
@@ -69,6 +71,7 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
@@ -102,6 +105,7 @@ import org.openmetadata.schema.api.security.ResponseType;
 import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.LdapConfiguration;
@@ -136,12 +140,15 @@ import org.openmetadata.schema.system.TestLoginSession;
 import org.openmetadata.schema.system.TestLoginStage;
 import org.openmetadata.schema.system.TestLoginStartRequest;
 import org.openmetadata.schema.system.TestLoginTokenRequest;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DescriptionUpdatePayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
@@ -152,6 +159,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Databases;
+import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -160,10 +168,13 @@ import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
+import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.TestLoginCallbackPage;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.mask.FailedRowsSamplePolicy;
+import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -1744,6 +1755,216 @@ public class SystemResourceIT {
         updatedSearchConfig.getAssetTypeConfigurations().stream()
             .anyMatch(conf -> "newAsset".equalsIgnoreCase(conf.getAssetType()));
     assertTrue(newAssetTypeExists);
+  }
+
+  private enum FailedRowsSensitivityScope {
+    TABLE,
+    COLUMN,
+    GLOSSARY_TABLE
+  }
+
+  private record CertificationFailedSample(
+      TestCase testCase, OpenMetadataClient reader, TableData data) {}
+
+  @ParameterizedTest
+  @EnumSource(FailedRowsSensitivityScope.class)
+  void test_failedRowsCertificationClassificationCannotHideSensitivity(
+      FailedRowsSensitivityScope scope, TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String originalSettings =
+        admin
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/system/settings/" + SettingsType.ASSET_CERTIFICATION_SETTINGS.value(),
+                null,
+                RequestOptions.builder().build());
+    try {
+      setFailedRowsCertificationClassification(originalSettings, "Certification");
+      Table table = certificationSensitiveTable(ns, scope);
+      CertificationFailedSample sample = certificationFailedSample(ns, table);
+      setFailedRowsCertificationClassification(originalSettings, "PII");
+      Table presentation = refreshCertificationTable(table);
+      assertFalse(
+          CommonUtil.listOrEmpty(presentation.getTags()).stream()
+              .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())));
+      if (scope == FailedRowsSensitivityScope.COLUMN) {
+        assertFalse(
+            CommonUtil.listOrEmpty(presentation.getColumns().get(1).getTags()).stream()
+                .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())));
+      }
+      assertEquals(
+          sample.data(),
+          admin.testCases().getFailedRowsSample(sample.testCase().getId().toString()));
+      assertEquals(
+          PIIMasker.MASKED_VALUE,
+          sample
+              .reader()
+              .testCases()
+              .getFailedRowsSample(sample.testCase().getId().toString())
+              .getRows()
+              .getFirst()
+              .getFirst(),
+          "Certification presentation must not hide committed sensitivity from failed rows");
+
+      admin
+          .tables()
+          .patch(
+              table.getId(),
+              JsonUtils.readTree(
+                  "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Unrelated edit under PII certification\"}]"));
+      Table beforeRemoval = refreshCertificationTable(table);
+      String beforeEvidence = failedRowsRemovalEvidence(table);
+      assertEquals(
+          412,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      admin
+                          .tables()
+                          .patch(
+                              table.getId(),
+                              JsonUtils.readTree("[{\"op\":\"remove\",\"path\":\"/columns/1\"}]")))
+              .getStatusCode());
+      Table rejected = refreshCertificationTable(table);
+      assertEquals(beforeRemoval.getColumns(), rejected.getColumns());
+      assertEquals(beforeRemoval.getVersion(), rejected.getVersion());
+      assertEquals(beforeEvidence, failedRowsRemovalEvidence(table));
+
+      setFailedRowsCertificationClassification(originalSettings, "Certification");
+      refreshCertificationTable(table);
+      admin
+          .tables()
+          .patch(
+              table.getId(),
+              JsonUtils.readTree(
+                  "[{\"op\":\"remove\",\"path\":\"/columns/1\"},{\"op\":\"replace\",\"path\":\"/tags\",\"value\":[]}]"));
+      FailedRowsSamplePolicy.RemovalRecord record =
+          FailedRowsSamplePolicy.decodeRemovalRecord(failedRowsRemovalEvidence(table));
+      assertEquals(1L, record.sequence());
+      assertEquals(
+          List.of(new FailedRowsSamplePolicy.RemovalFact(List.of("name"), true)),
+          record.batches().getFirst().facts());
+      assertEquals(
+          List.of(PIIMasker.MASKED_VALUE, "extra"),
+          sample
+              .reader()
+              .testCases()
+              .getFailedRowsSample(sample.testCase().getId().toString())
+              .getRows()
+              .getFirst());
+      assertEquals(
+          sample.data(),
+          admin.testCases().getFailedRowsSample(sample.testCase().getId().toString()));
+    } finally {
+      admin
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.PUT,
+              "/v1/system/settings",
+              originalSettings,
+              RequestOptions.builder().build());
+    }
+  }
+
+  private void setFailedRowsCertificationClassification(
+      String originalSettings, String classification) throws Exception {
+    Settings settings = MAPPER.readValue(originalSettings, Settings.class);
+    AssetCertificationSettings config =
+        MAPPER.convertValue(settings.getConfigValue(), AssetCertificationSettings.class);
+    config.setAllowedClassification(classification);
+    settings.setConfigValue(config);
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/system/settings",
+            MAPPER.writeValueAsString(settings),
+            RequestOptions.builder().build());
+  }
+
+  private Table certificationSensitiveTable(TestNamespace ns, FailedRowsSensitivityScope scope) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    Table table =
+        admin
+            .tables()
+            .get(
+                TableTestFactory.createSimple(ns, schema.getFullyQualifiedName())
+                    .getId()
+                    .toString(),
+                "columns,tags");
+    TagLabel sensitive =
+        new TagLabel()
+            .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+            .withSource(TagLabel.TagSource.CLASSIFICATION);
+    switch (scope) {
+      case TABLE -> table.setTags(List.of(sensitive));
+      case COLUMN -> table.getColumns().get(1).setTags(List.of(sensitive));
+      case GLOSSARY_TABLE -> {
+        Glossary glossary = GlossaryTestFactory.createSimple(ns);
+        GlossaryTerm term =
+            admin
+                .glossaryTerms()
+                .create(
+                    new CreateGlossaryTerm()
+                        .withName(ns.prefix("sensitive_term"))
+                        .withGlossary(glossary.getFullyQualifiedName())
+                        .withDescription("Failed-row certification sensitivity")
+                        .withTags(List.of(sensitive)));
+        table.setTags(
+            List.of(
+                new TagLabel()
+                    .withTagFQN(term.getFullyQualifiedName())
+                    .withSource(TagLabel.TagSource.GLOSSARY)));
+      }
+    }
+    admin.tables().update(table.getId().toString(), table);
+    return table;
+  }
+
+  private CertificationFailedSample certificationFailedSample(TestNamespace ns, Table table) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    TestCase testCase =
+        TestCaseBuilder.create(admin)
+            .name(ns.prefix("certification_sample"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    admin
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(TestCaseStatus.Failed)
+                .withFailedRows(1L));
+    TableData data =
+        new TableData()
+            .withColumns(List.of("name", "extra_column"))
+            .withRows(List.of(List.of("synthetic", "extra")));
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/dataQuality/testCases/" + testCase.getId() + "/failedRowsSample?validate=false",
+            data,
+            TestCase.class);
+    User reader = UserTestFactory.createUser(ns, "certification_sample_reader");
+    return new CertificationFailedSample(testCase, clientFor(reader), data);
+  }
+
+  private Table refreshCertificationTable(Table table) {
+    EntityRepository.invalidateCacheForEntity(
+        Entity.TABLE, table.getId(), table.getFullyQualifiedName());
+    return SdkClients.adminClient().tables().get(table.getId().toString(), "columns,tags");
+  }
+
+  private String failedRowsRemovalEvidence(Table table) {
+    return Entity.getCollectionDAO()
+        .entityExtensionDAO()
+        .getExtension(table.getId(), TableRepository.FAILED_ROWS_COLUMN_REMOVALS_EXTENSION);
   }
 
   @Test
