@@ -25,8 +25,7 @@ updates:
       # See ingestion/setup.py comment on the tableau pin.
       - dependency-name: "urllib3"
         versions: [">=2.0.0"]
-      # Must match the ANTLR CLI that generates the FQN parser (ANTLR_VERSION in the
-      # root Makefile); 4.10+ cannot load 4.9-generated parsers.
+      # Runtime must match the 4.9.2 ANTLR CLI (ANTLR_VERSION in the root Makefile).
       - dependency-name: "antlr4-python3-runtime"
         versions: [">=4.10.0"]
 
@@ -72,27 +71,18 @@ updates:
           - "minor"
           - "patch"
     ignore:
-      # The antlr4 runtime must match the ANTLR CLI that generates src/generated/antlr,
-      # pinned with the Python runtime by ANTLR_VERSION in the root Makefile. 4.10+
-      # cannot load 4.9-generated parsers.
+      # Runtime must match the 4.9.2 ANTLR CLI (ANTLR_VERSION in the root Makefile).
       - dependency-name: "antlr4"
         versions: [">=4.10.0"]
       - dependency-name: "@types/antlr4"
         versions: [">=4.10.0"]
-      # openmetadata-ui-core-components builds with react-aria external, so the UI's copy
-      # is what core runs against, while core's own lockfile and tests stay on 1.16.
-      # 1.22 breaks core (Dialog's TextContext rejects HintText's errorMessage slot, and
-      # Switch was restructured), so react-aria minors move with core, not alone here.
+      # Externals of openmetadata-ui-core-components: upgrade together with core.
       - dependency-name: "react-aria-components"
         update-types: ["version-update:semver-minor"]
       - dependency-name: "react-aria"
         update-types: ["version-update:semver-minor"]
-      # Same reason: core imports echarts-for-react/esm/core as an external, and 3.1.0's
-      # exports map no longer allows that path.
       - dependency-name: "echarts-for-react"
         update-types: ["version-update:semver-minor"]
-      # Core's own copy of react-hook-form reads the form the UI's copy creates, so a
-      # version split between the two drops field validation in core form fields.
       - dependency-name: "react-hook-form"
         update-types: ["version-update:semver-minor"]
 
