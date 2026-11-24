@@ -22,7 +22,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -45,6 +47,7 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
 import org.openmetadata.service.rdf.rebuild.RdfMutation;
+import org.openmetadata.service.rdf.rebuild.ReleaseGraphs;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.testcontainers.containers.GenericContainer;
@@ -54,6 +57,10 @@ import org.testcontainers.containers.GenericContainer;
 @EnabledIfSystemProperty(named = "enableRdf", matches = "true")
 @Execution(ExecutionMode.SAME_THREAD)
 public class RdfLiveWriteRecoveryIT {
+  private static final ReleaseGraphs NO_RELEASES =
+      release -> {
+        throw new IllegalStateException("No ontology release is journaled here");
+      };
   private static final String BASE = "https://open-metadata.org/";
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String NAME = BASE + "ontology/name";
@@ -284,6 +291,26 @@ public class RdfLiveWriteRecoveryIT {
 
   @ParameterizedTest
   @EnumSource(RdfTestDatabase.Backend.class)
+  void anRdfOffMarkWrittenAfterARebuildStartedKeepsTheProjectionDegradedUntilALaterRebuild(
+      final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      assertFalse(fixture.primary.isDegraded());
+
+      fixture.primary.recordRdfDisabled();
+      assertTrue(fixture.other.isDegraded());
+
+      final long rebuildStarted = fixture.primary.failureVersion();
+      fixture.other.recordRdfDisabled();
+      fixture.primary.markRebuilt(rebuildStarted);
+      assertTrue(fixture.primary.isDegraded());
+
+      fixture.primary.markRebuilt(fixture.primary.failureVersion());
+      assertFalse(fixture.other.isDegraded());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
   void migrationReapplicationPreservesFailuresAndPendingWrites(
       final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
@@ -343,6 +370,68 @@ public class RdfLiveWriteRecoveryIT {
       fixture.primary.markRebuilt(fixture.primary.failureVersion());
       assertFalse(fixture.newStore().isDegraded());
       assertEquals(0, fixture.deadLetters());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aRefreshQueuedAgainLaterIsRetiredWithoutBeingApplied(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final String refresh = insert(1);
+      fixture.primary.enqueue(refresh);
+      fixture.primary.enqueue(insert(2));
+      fixture.primary.enqueue(refresh);
+      final long last = fixture.primary.enqueuedWatermark();
+      final List<String> applied = new ArrayList<>();
+
+      while (fixture.other.processNext(applied::add, refresh::equals)) {
+        // drain
+      }
+
+      assertEquals(List.of(insert(2), refresh), applied);
+      assertEquals(0, fixture.primary.pendingWrites());
+      assertEquals(last, fixture.newStore().acknowledgedWatermark());
+      fixture.primary.enqueue(refresh);
+      assertTrue(fixture.other.processNext(applied::add, refresh::equals));
+      assertEquals(List.of(insert(2), refresh, refresh), applied, "a lone refresh is applied");
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void anOldRefreshIsAppliedEvenWhenAnotherCopyIsPending(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final String refresh = insert(1);
+      fixture.primary.enqueue(refresh);
+      fixture.clock.advance(61_000);
+      fixture.primary.enqueue(refresh);
+      final List<String> applied = new ArrayList<>();
+
+      assertTrue(fixture.other.processNext(applied::add, refresh::equals));
+
+      assertEquals(List.of(refresh), applied);
+      assertEquals(1, fixture.primary.pendingWrites());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aCopyOutsideTheNextHundredRowsDoesNotRetireTheHead(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final String refresh = insert(1);
+      final List<String> queued = new ArrayList<>();
+      queued.add(refresh);
+      for (int index = 2; index <= 101; index++) {
+        queued.add(insert(index));
+      }
+      queued.add(refresh);
+      fixture.primary.enqueueAll(queued);
+      final List<String> applied = new ArrayList<>();
+
+      assertTrue(fixture.other.processNext(applied::add, refresh::equals));
+
+      assertEquals(List.of(refresh), applied);
+      assertEquals(101, fixture.primary.pendingWrites());
     }
   }
 
@@ -585,7 +674,7 @@ public class RdfLiveWriteRecoveryIT {
     }
 
     void apply(final String payload) {
-      JsonUtils.readValue(payload, RdfMutation.class).apply(storage);
+      JsonUtils.readValue(payload, RdfMutation.class).apply(storage, NO_RELEASES);
     }
 
     String lastError() {

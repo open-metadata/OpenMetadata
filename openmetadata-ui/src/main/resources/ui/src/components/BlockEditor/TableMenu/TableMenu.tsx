@@ -11,14 +11,16 @@
  *  limitations under the License.
  */
 import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import {
+  ColumnDelete,
+  ColumnInsertRight,
+  RowDelete,
+  RowInsertBottom,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import type { Editor } from '@tiptap/react';
 import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
-import { ReactComponent as IconDeleteTable } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconAddColumnAfter } from '../../../assets/svg/ic-format-add-column-after.svg';
-import { ReactComponent as IconAddRowAfter } from '../../../assets/svg/ic-format-add-row-after.svg';
-import { ReactComponent as IconDeleteColumn } from '../../../assets/svg/ic-format-delete-column.svg';
-import { ReactComponent as IconDeleteRow } from '../../../assets/svg/ic-format-delete-row.svg';
 
 interface TableMenuProps {
   editor: Editor;
@@ -156,59 +158,57 @@ const TableMenu = (props: TableMenuProps) => {
     };
   }, [handleMouseDown, isEditable]);
 
+  // tippy moves menuRef's node into its popper. React must only ever remove the
+  // wrapper, which stays put; removing the moved node throws NotFoundError when
+  // the menu unmounts while the editor stays mounted (editable flips to false).
   return (
-    <div className="table-menu" ref={menuRef}>
-      <Box align="center" gap={4}>
-        <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
-          data-testid="Add row after current row"
-          icon={<IconAddRowAfter style={{ verticalAlign: 'middle' }} />}
-          tooltip="Add row after current row"
-          onClick={() => editor.chain().focus().addRowAfter().run()}
-        />
+    <div>
+      <div className="table-menu" ref={menuRef}>
+        <Box align="center" gap={4}>
+          <ButtonUtility
+            data-testid="Add row after current row"
+            icon={RowInsertBottom}
+            size="lg"
+            tooltip="Add row after current row"
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+          />
 
-        <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
-          data-testid="Add column after current column"
-          icon={<IconAddColumnAfter style={{ verticalAlign: 'middle' }} />}
-          tooltip="Add column after current column"
-          onClick={() => editor.chain().focus().addColumnAfter().run()}
-        />
+          <ButtonUtility
+            data-testid="Add column after current column"
+            icon={ColumnInsertRight}
+            size="lg"
+            tooltip="Add column after current column"
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+          />
 
-        <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
-          data-testid="Delete current row"
-          icon={<IconDeleteRow style={{ verticalAlign: 'middle' }} />}
-          tooltip="Delete current row"
-          onClick={() => editor.chain().focus().deleteRow().run()}
-        />
+          <ButtonUtility
+            data-testid="Delete current row"
+            icon={RowDelete}
+            size="lg"
+            tooltip="Delete current row"
+            onClick={() => editor.chain().focus().deleteRow().run()}
+          />
 
-        <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
-          data-testid="Delete current col"
-          icon={<IconDeleteColumn style={{ verticalAlign: 'middle' }} />}
-          tooltip="Delete current column"
-          onClick={() => editor.chain().focus().deleteColumn().run()}
-        />
+          <ButtonUtility
+            data-testid="Delete current col"
+            icon={ColumnDelete}
+            size="lg"
+            tooltip="Delete current column"
+            onClick={() => editor.chain().focus().deleteColumn().run()}
+          />
 
-        <ButtonUtility
-          className="tw:h-8"
-          color="tertiary"
-          data-testid="Delete table"
-          icon={
-            <IconDeleteTable style={{ verticalAlign: 'middle' }} width={14} />
-          }
-          tooltip="Delete table"
-          onClick={() => {
-            editor.chain().focus().deleteTable().run();
-            tableMenuPopup.current?.hide();
-          }}
-        />
-      </Box>
+          <ButtonUtility
+            data-testid="Delete table"
+            icon={Trash01}
+            size="lg"
+            tooltip="Delete table"
+            onClick={() => {
+              editor.chain().focus().deleteTable().run();
+              tableMenuPopup.current?.hide();
+            }}
+          />
+        </Box>
+      </div>
     </div>
   );
 };

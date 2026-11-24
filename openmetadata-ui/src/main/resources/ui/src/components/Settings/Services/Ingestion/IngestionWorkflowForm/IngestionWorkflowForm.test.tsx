@@ -20,10 +20,12 @@ import {
 } from '@testing-library/react';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { PipelineType } from '../../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
+import { DatabaseServiceType } from '../../../../../generated/entity/services/databaseService';
 import {
   IngestionWorkflowData,
   IngestionWorkflowFormProps,
 } from '../../../../../interface/service.interface';
+import profilerConfigurationClassBase from '../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import IngestionWorkflowForm from './IngestionWorkflowForm';
 
 const DBT_WORKFLOW_DATA = {
@@ -49,6 +51,140 @@ const renderDbtForm = (onChange = jest.fn(), onSubmit = jest.fn()) =>
       onSubmit={onSubmit}
     />
   );
+
+describe('IngestionWorkflowForm processing-engine extension', () => {
+  beforeEach(() => {
+    jest
+      .spyOn(profilerConfigurationClassBase, 'getSparkAgentField')
+      .mockImplementation((serviceType) =>
+        serviceType === DatabaseServiceType.Mysql
+          ? ({ formData }) => (
+              <div data-testid="processing-engine-selector">
+                {formData?.id ?? 'Native'}
+              </div>
+            )
+          : undefined
+      );
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  const renderProfilerForm = (
+    serviceType: DatabaseServiceType,
+    workflowData: IngestionWorkflowData,
+    onSubmit = jest.fn()
+  ) =>
+    render(
+      <IngestionWorkflowForm
+        pipeLineType={PipelineType.Profiler}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        serviceData={{ name: 'my_service', serviceType }}
+        workflowData={workflowData}
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+
+  it.each([DatabaseServiceType.BigQuery, DatabaseServiceType.Redshift])(
+    'submits Native profiling with no engine panel for %s',
+    async (serviceType) => {
+      const onSubmit = jest.fn();
+      renderProfilerForm(
+        serviceType,
+        {
+          name: 'my_profiler',
+          type: 'Profiler',
+          processingEngine: { type: 'Native' },
+          rootProcessingEngine: undefined,
+        } as IngestionWorkflowData,
+        onSubmit
+      );
+
+      const submit = await screen.findByTestId('submit-btn');
+
+      expect(
+        screen.queryByTestId('processing-engine-selector')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('Processing Engine')).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(submit);
+      });
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+      expect(onSubmit.mock.lastCall[0]).toEqual(
+        expect.objectContaining({ processingEngine: { type: 'Native' } })
+      );
+      expect(onSubmit.mock.lastCall[0].rootProcessingEngine).toBeUndefined();
+    }
+  );
+
+  it('renders and submits a saved supported engine reference', async () => {
+    const onSubmit = jest.fn();
+    const engine = { type: 'ingestionRunner', id: 'engine-1' };
+    renderProfilerForm(
+      DatabaseServiceType.Mysql,
+      {
+        name: 'my_profiler',
+        type: 'Profiler',
+        rootProcessingEngine: engine,
+      } as IngestionWorkflowData,
+      onSubmit
+    );
+
+    expect(
+      await screen.findByTestId('processing-engine-selector')
+    ).toHaveTextContent('engine-1');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-btn'));
+    });
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    expect(onSubmit.mock.lastCall[0].rootProcessingEngine).toEqual(engine);
+  });
+
+  it('updates both the schema and field when the connector changes', async () => {
+    const formFor = (serviceType: DatabaseServiceType) => (
+      <IngestionWorkflowForm
+        pipeLineType={PipelineType.Profiler}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        serviceData={{ name: 'my_service', serviceType }}
+        workflowData={{ name: 'my_profiler' }}
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={jest.fn()}
+      />
+    );
+    const { rerender } = render(formFor(DatabaseServiceType.BigQuery));
+    await screen.findByTestId('submit-btn');
+
+    expect(
+      screen.queryByTestId('processing-engine-selector')
+    ).not.toBeInTheDocument();
+
+    rerender(formFor(DatabaseServiceType.Mysql));
+
+    expect(
+      await screen.findByTestId('processing-engine-selector')
+    ).toBeInTheDocument();
+
+    rerender(formFor(DatabaseServiceType.BigQuery));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('processing-engine-selector')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(screen.queryByText('Processing Engine')).not.toBeInTheDocument();
+  });
+});
 
 describe('IngestionWorkflowForm dbt catalogMapping', () => {
   it('renders the catalog mapping under its own title with the saved entries', async () => {

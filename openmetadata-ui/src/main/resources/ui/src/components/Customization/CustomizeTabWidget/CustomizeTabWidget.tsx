@@ -40,6 +40,7 @@ import { EntityTabs } from '../../../enums/entity.enum';
 import { Page, Tab } from '../../../generated/system/ui/page';
 import { PageType } from '../../../generated/system/ui/uiCustomization';
 import { useLeftPanelCrossDrop } from '../../../hooks/platform/useLeftPanelCrossDrop';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../../hooks/useGridLayoutDirection';
 import {
   WidgetCommonProps,
@@ -121,9 +122,10 @@ type TargetKey = React.MouseEvent | React.KeyboardEvent | string;
 export const CustomizeTabWidget = () => {
   const { currentPage, currentPageType, updateCurrentPage } =
     useCustomizeStore();
+  const rdfEnabled = useApplicationStore((state) => state.rdfEnabled);
   const systemTabs = useMemo(
-    () => getDefaultTabs(currentPageType as PageType),
-    [currentPageType]
+    () => getDefaultTabs(currentPageType as PageType, rdfEnabled),
+    [currentPageType, rdfEnabled]
   );
 
   const items = useMemo(() => {

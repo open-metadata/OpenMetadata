@@ -11,6 +11,21 @@
  *  limitations under the License.
  */
 
+import { isEmpty } from 'lodash';
+import {
+  GRID_PAGE_SIZE_OPTIONS,
+  LIST_PAGE_SIZE_OPTIONS,
+} from '../constants/constants';
+import { PageViewMode } from '../generated/type/personaPreferences';
+
 export const computeTotalPages = (pSize: number, total: number) => {
   return Math.ceil(total / pSize);
 };
+
+type ViewMode = PageViewMode | `${PageViewMode}`;
+
+export const getViewPageSizeOptions = (view?: ViewMode) =>
+  view === PageViewMode.Card ? GRID_PAGE_SIZE_OPTIONS : LIST_PAGE_SIZE_OPTIONS;
+
+export const shouldShowPager = (items: readonly unknown[] | undefined) =>
+  !isEmpty(items);

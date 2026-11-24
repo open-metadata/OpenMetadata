@@ -44,9 +44,12 @@ class McpServerFatalErrorTest {
   void toolCallThatOverflowsTheStackIsAnsweredWithAnInternalError() {
     server.jwtFilter = mock(JwtFilter.class);
     when(server.jwtFilter.getCatalogSecurityContext(TOKEN)).thenThrow(new StackOverflowError());
-    McpSchema.Tool tool = McpSchema.Tool.builder().name("patch_entity").description("desc").build();
+    McpSchema.Tool tool =
+        McpSchema.Tool.builder("patch_entity", Map.of("type", "object"))
+            .description("desc")
+            .build();
     McpSchema.CallToolRequest request =
-        McpSchema.CallToolRequest.builder().name("patch_entity").arguments(Map.of()).build();
+        McpSchema.CallToolRequest.builder("patch_entity").arguments(Map.of()).build();
     McpTransportContext context =
         McpTransportContext.create(
             Map.of(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER, TOKEN));

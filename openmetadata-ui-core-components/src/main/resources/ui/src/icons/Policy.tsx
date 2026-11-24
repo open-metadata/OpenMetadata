@@ -24,16 +24,16 @@ export const Policy: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="m13.687 14.527-.445 1.738a.91.91 0 0 0 1.219 1.07.9.9 0 0 1 .676 0c.7.28 1.433-.337 1.267-1.072l-.406-1.785m1.2-2.078a2.4 2.4 0 1 1-4.8 0 2.4 2.4 0 0 1 4.8 0"
+      d="m13.687 14.527-.445 1.738a.91.91 0 0 0 1.219 1.07.9.9 0 0 1 .676 0c.7.28 1.433-.337 1.267-1.072l-.406-1.785m-2.311.05a2.4 2.4 0 1 0 2.223-4.255 2.4 2.4 0 0 0-2.223 4.254"
       stroke="currentColor"
       strokeWidth={1.3}
     />

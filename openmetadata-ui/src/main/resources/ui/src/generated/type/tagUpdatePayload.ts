@@ -23,7 +23,10 @@ export interface TagUpdatePayload {
      */
     currentTags?: TagLabel[];
     /**
-     * Path to the field being tagged (e.g., 'columns.customer_id' or empty for entity-level).
+     * Path to the tags being updated. Written as <container>.<name>[.<child name>...].tags, for
+     * example 'columns.customer_id.tags', 'columns.address.city.tags' for a nested column or
+     * 'messageSchema.schemaFields."order.id".tags' for a name that contains a dot; 'tags'
+     * alone, or no path, means the entity itself.
      */
     fieldPath?: string;
     /**

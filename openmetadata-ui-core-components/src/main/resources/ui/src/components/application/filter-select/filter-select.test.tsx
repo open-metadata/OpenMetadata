@@ -366,6 +366,15 @@ describe('FilterSelect', () => {
     expect(screen.getByText('BigQuery')).toBeInTheDocument();
   });
 
+  it('turns off browser autocomplete on the search box', () => {
+    renderFilter({ searchable: true });
+
+    expect(screen.getByPlaceholderText('Search')).toHaveAttribute(
+      'autocomplete',
+      'off'
+    );
+  });
+
   it('delegates filtering to onSearch when given', () => {
     const onSearch = vi.fn();
     renderFilter({ searchable: true, onSearch });

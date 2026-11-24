@@ -15,6 +15,7 @@ import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
+import { MAX_PIPELINE_STATUS_PAGE_SIZE } from '../constants/pipeline.constants';
 import { Pipeline, PipelineStatus } from '../generated/entity/data/pipeline';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
@@ -125,16 +126,44 @@ export const patchPipelineDetails = async (id: string, data: Operation[]) => {
 
 export const getPipelineStatus = async (
   fqn: string,
-  params?: ListTestCaseResultsParams
+  params?: ListTestCaseResultsParams,
+  signal?: AbortSignal
 ) => {
   const url = `${BASE_URL}/${getEncodedFqn(fqn)}/status`;
 
   const response = await APIClient.get<PagingResponse<Array<PipelineStatus>>>(
     url,
-    { params }
+    { params, signal }
   );
 
   return response.data;
+};
+
+/**
+ * Every status between `startTs` and `endTs`, newest first. The API returns at
+ * most one page per request, so this follows the `after` cursor.
+ */
+export const getAllPipelineStatuses = async (
+  fqn: string,
+  params: Pick<ListTestCaseResultsParams, 'startTs' | 'endTs'>,
+  signal?: AbortSignal
+) => {
+  const statuses: PipelineStatus[] = [];
+  let after: string | undefined;
+  let pageLength: number;
+
+  do {
+    const { data, paging } = await getPipelineStatus(
+      fqn,
+      { ...params, after, limit: MAX_PIPELINE_STATUS_PAGE_SIZE },
+      signal
+    );
+    statuses.push(...data);
+    after = paging.after;
+    pageLength = data.length;
+  } while (after && pageLength === MAX_PIPELINE_STATUS_PAGE_SIZE);
+
+  return statuses;
 };
 
 export interface ListPipelineSummariesParams {

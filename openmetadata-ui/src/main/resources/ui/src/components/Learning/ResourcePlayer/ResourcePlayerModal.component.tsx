@@ -172,10 +172,9 @@ const ResourceHeaderTitleRow: FC<ResourceHeaderProps> = ({
           aria-label={
             isFullScreen ? t('label.exit-full-screen') : t('label.fullscreen')
           }
-          color="tertiary"
           data-testid={isFullScreen ? 'minimize-button' : 'maximize-button'}
           icon={isFullScreen ? Minimize01 : Maximize01}
-          size="xs"
+          size="lg"
           tooltip={
             isFullScreen ? t('label.exit-full-screen') : t('label.fullscreen')
           }
@@ -184,10 +183,9 @@ const ResourceHeaderTitleRow: FC<ResourceHeaderProps> = ({
         {onClose && (
           <ButtonUtility
             aria-label={t('label.close')}
-            color="tertiary"
             data-testid="close-resource-player"
             icon={XClose}
-            size="xs"
+            size="lg"
             onClick={onClose}
           />
         )}
@@ -342,7 +340,12 @@ export const ResourcePlayer: FC<ResourcePlayerProps> = ({
       case ResourceType.Video:
         return <VideoPlayer resource={displayResource} />;
       case ResourceType.Storylane:
-        return <StorylaneTour resource={displayResource} />;
+        return (
+          <StorylaneTour
+            title={displayResource.displayName || displayResource.name}
+            url={displayResource.source.url}
+          />
+        );
       case ResourceType.Article:
         return <ArticleViewer resource={displayResource} />;
       case ResourceType.PDF:

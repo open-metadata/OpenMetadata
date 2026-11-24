@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from '@openmetadata/ui-core-components';
 import { IChangeEvent } from '@rjsf/core';
 import { RJSFSchema } from '@rjsf/utils';
 import { isEmpty } from 'lodash';
@@ -38,15 +39,17 @@ const McpApplicationConfiguration = ({
   const [activeField, setActiveField] = useState<string>('');
   const {
     formConfig,
+    formSchema,
     formUiSchema,
     isEveryFieldManaged,
+    fetchFailed,
     isFetching,
     isSaving,
     sources,
     fetchMcpConfig,
     refetchSources,
     saveMcpConfig,
-  } = useMcpConfiguration();
+  } = useMcpConfiguration(jsonSchema);
 
   const handleFieldFocus = useCallback((fieldName: string) => {
     if (isEmpty(fieldName)) {
@@ -69,16 +72,21 @@ const McpApplicationConfiguration = ({
         onAdopted={fetchMcpConfig}
         onRefetch={refetchSources}
       />
+      {fetchFailed && (
+        <Button color="secondary" onClick={() => void fetchMcpConfig()}>
+          {t('label.retry')}
+        </Button>
+      )}
       <FormBuilderV1
         hideCancelButton
         cancelText={t('label.back')}
-        disabled={isEveryFieldManaged}
+        disabled={isEveryFieldManaged || fetchFailed}
         formData={formConfig}
-        hideFooter={isEveryFieldManaged}
+        hideFooter={isEveryFieldManaged || fetchFailed}
         isLoading={isSaving}
         okText={t('label.save')}
-        readonly={isEveryFieldManaged}
-        schema={jsonSchema}
+        readonly={isEveryFieldManaged || fetchFailed}
+        schema={formSchema}
         uiSchema={formUiSchema}
         onFocus={handleFieldFocus}
         onSubmit={({ formData }: IChangeEvent<MCPConfiguration>) =>

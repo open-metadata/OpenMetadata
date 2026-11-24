@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import {
   Box,
@@ -65,6 +66,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import AlertPendingEvents from '../../../../../Alerts/AlertPendingEvents/AlertPendingEvents';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
@@ -78,7 +80,10 @@ import NotificationRecentEvents from './NotificationRecentEvents';
 
 interface NotificationAlertDetailProps {
   fqn: string;
-  onNavigate: (view: NotificationView) => void;
+  onNavigate: (
+    view: NotificationView,
+    options?: SettingsNavigateOptions
+  ) => void;
   onNameResolved?: (name: string) => void;
   onSetHeaderActions?: (node: React.ReactNode) => void;
 }
@@ -116,10 +121,8 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
         </Typography>
         {canEdit && !isEditing && (
           <ButtonUtility
-            color="tertiary"
             data-testid="edit-description-btn"
             icon={Edit01}
-            size="xs"
             tooltip={String(
               t('label.edit-entity', { entity: t('label.description') })
             )}
@@ -192,10 +195,7 @@ const DiagnosticStatsSummary: FC<{
           {`${t('label.pending-entity', { entity: t('label.event-plural') })}:`}
         </Typography>
         <Typography size="text-sm" weight="medium">
-          {formatEventCount(
-            eventsRecord.pendingEventsCount,
-            eventsRecord.countsAreLowerBound
-          )}
+          <AlertPendingEvents counts={eventsRecord} />
         </Typography>
       </Box>
       <Box align="center" direction="row" gap={1}>
@@ -234,17 +234,19 @@ function buildHeaderActions({
   handleSync: () => void;
   isSystemProvider: boolean;
   isSyncing: boolean;
-  onNavigate: (view: NotificationView) => void;
+  onNavigate: (
+    view: NotificationView,
+    options?: SettingsNavigateOptions
+  ) => void;
   t: ReturnType<typeof useTranslation>['t'];
 }): React.ReactNode {
   return (
     <Box direction="row" gap={2}>
       <ButtonUtility
-        color="tertiary"
         data-testid="sync-alert-btn"
         icon={RefreshCw01}
         isDisabled={isSyncing || !canEditAll}
-        size="xs"
+        size="lg"
         tooltip={String(
           canEditAll
             ? t('label.sync-alert-offset')
@@ -254,10 +256,9 @@ function buildHeaderActions({
       />
       {canEditAll && !isSystemProvider && (
         <ButtonUtility
-          color="tertiary"
           data-testid="edit-alert-btn"
           icon={Edit01}
-          size="xs"
+          size="lg"
           tooltip={String(t('label.edit'))}
           onPress={() => onNavigate({ type: 'edit', fqn })}
         />
@@ -274,10 +275,9 @@ function buildHeaderActions({
           entityName={alertName}
           entityType={EntityType.SUBSCRIPTION}>
           <ButtonUtility
-            color="tertiary"
             data-testid="delete-alert-btn"
             icon={Trash01}
-            size="xs"
+            size="lg"
             tooltip={String(t('label.delete'))}
           />
         </DeleteEntityPopover>
@@ -420,7 +420,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
   }, [fqn, t]);
 
   const handleAfterDelete = useCallback(
-    () => onNavigate({ type: 'list' }),
+    () => onNavigate({ type: 'list' }, { replace: true }),
     [onNavigate]
   );
 

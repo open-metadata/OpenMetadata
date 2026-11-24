@@ -1,5 +1,6 @@
 package org.openmetadata.service.security.policyevaluator;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.getUniqueTags;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
@@ -114,6 +115,28 @@ public class CreateResourceContext<T extends EntityInterface<?>>
   }
 
   /**
+   * The domains of the persisted parents the entity is created in. A parent that is itself a
+   * domain counts as its own domain, as {@link ResourceContext#getDomains()} has it.
+   */
+  public List<EntityReference> getContainerDomains() {
+    List<EntityReference> domains = new ArrayList<>();
+    for (EntityInterface<?> parent : listOrEmpty(parentEntities)) {
+      EntityReference parentReference = parent.getEntityReference();
+      if (parentReference != null && Entity.DOMAIN.equals(parentReference.getType())) {
+        domains = mergedInheritedEntityRefs(domains, List.of(parentReference));
+      } else if (parent.getDomains() != null) {
+        domains = mergedInheritedEntityRefs(domains, parent.getDomains());
+      }
+    }
+    return domains;
+  }
+
+  /** The domains the create request names for the entity itself. */
+  public List<EntityReference> getRequestedDomains() {
+    return entity == null ? List.of() : listOrEmpty(entity.getDomains());
+  }
+
+  /**
    * Resolves the service from the persisted parent, never from the entity being created.
    *
    * <p>On CREATE the entity is caller-supplied, and its {@code service} is an unvalidated stub:
@@ -193,46 +216,53 @@ public class CreateResourceContext<T extends EntityInterface<?>>
     if (entityRepository.isSupportsReviewers()) {
       fields.getFieldList().add(Entity.FIELD_REVIEWERS);
     }
+    EntityInterface<?> directParent;
     try {
       // First, check direct parent, which are always singular
-      EntityInterface<?> directParent = entityRepository.getParentEntity(entity, fields.toString());
-      if (directParent != null) {
-        parentEntities = List.of(directParent);
-      } else {
-        // If direct parent is not found, check for root-level parent
-        parentEntities = resolveRootParentEntities(entity, fields);
-      }
+      directParent = entityRepository.getParentEntity(entity, fields.toString());
     } catch (EntityNotFoundException e) {
-      parentEntities = null;
+      // The create fails when the repository validates the missing parent.
+      directParent = null;
     }
+    parentEntities =
+        directParent != null
+            ? List.of(directParent)
+            : resolveRootParentEntities(entity, fields); // root-level parent
   }
 
+  /**
+   * The root parents named by the entity. A reference without an id is loaded by name, and one that
+   * cannot be loaded fails the request: skipping it would authorize the create as if the entity had
+   * no parent (ADR:2026-11-03-a-create-is-authorized-against-its-stored-container).
+   */
   private List<EntityInterface<?>> resolveRootParentEntities(T entity, Fields fields) {
-    try {
-      List<EntityReference> rootReferences =
-          switch (entityRepository.getEntityType()) {
-            case Entity.GLOSSARY_TERM -> List.of(((GlossaryTerm) entity).getGlossary());
-            case Entity.TAG -> List.of(((Tag) entity).getClassification());
-            case Entity.DATA_PRODUCT -> entity.getDomains();
-            case Entity.TEAM -> ((Team) entity).getParents();
-            default -> null;
-          };
+    List<EntityReference> rootReferences =
+        switch (resource) {
+          case Entity.GLOSSARY_TERM -> List.of(((GlossaryTerm) entity).getGlossary());
+          case Entity.TAG -> List.of(((Tag) entity).getClassification());
+          case Entity.DATA_PRODUCT -> entity.getDomains();
+          case Entity.TEAM -> ((Team) entity).getParents();
+          default -> null;
+        };
 
-      if (nullOrEmpty(rootReferences)) return null;
-      List<EntityInterface<?>> parentEntities = new ArrayList<>();
+    if (nullOrEmpty(rootReferences)) return null;
+    List<EntityInterface<?>> parentEntities = new ArrayList<>();
 
-      for (EntityReference rootReference : rootReferences) {
-        if (rootReference == null || rootReference.getId() == null) {
-          LOG.warn("Root reference is null or does not have an ID: {}", rootReference);
-          continue;
-        }
-        EntityRepository<?> rootRepository = Entity.getEntityRepository(rootReference.getType());
-        parentEntities.add(rootRepository.get(null, rootReference.getId(), fields));
+    for (EntityReference rootReference : rootReferences) {
+      if (rootReference == null) {
+        continue;
       }
-      return parentEntities;
-    } catch (Exception e) {
-      LOG.error("Failed to resolve parent entity: {}", e.getMessage(), e);
-      return null;
+      EntityRepository<?> rootRepository = Entity.getEntityRepository(rootReference.getType());
+      if (rootReference.getId() != null) {
+        parentEntities.add(rootRepository.get(null, rootReference.getId(), fields));
+      } else if (rootReference.getFullyQualifiedName() != null) {
+        parentEntities.add(
+            rootRepository.getByName(null, rootReference.getFullyQualifiedName(), fields));
+      } else {
+        throw new IllegalArgumentException(
+            "A " + rootReference.getType() + " reference needs an id or a name");
+      }
     }
+    return parentEntities;
   }
 }

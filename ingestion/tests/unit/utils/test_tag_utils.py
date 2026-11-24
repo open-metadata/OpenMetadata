@@ -12,9 +12,17 @@
 Test tag_utils module
 """
 
+import logging
+import uuid
 from unittest import TestCase
 from unittest.mock import MagicMock
 
+import pytest
+
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.status import EntityStatus
+from metadata.generated.schema.type.tagLabel import TagSource
 from metadata.utils.tag_utils import (
     get_ometa_tag_and_classification,
     get_tag_label,
@@ -183,3 +191,33 @@ class TestTagUtils(TestCase):
             classification_name="test_class",
         )
         self.assertIsNone(result, "get_tag_label should return None for None tag_name")
+
+
+@pytest.mark.parametrize("status", [*EntityStatus, None])
+def test_get_tag_label_sends_glossary_term_of_any_status(status, caplog):
+    """The server holds a term that is not Approved until approval, so the client sends it and logs why it won't show yet"""
+    term = GlossaryTerm(
+        id=uuid.uuid4(),
+        name="Term",
+        fullyQualifiedName="Gloss.Term",
+        description="term",
+        glossary=EntityReference(id=uuid.uuid4(), type="glossary"),
+        entityStatus=status,
+    )
+    metadata = MagicMock()
+    metadata.get_by_name.return_value = term
+
+    get_tag_label.cache_clear()
+    with caplog.at_level(logging.INFO):
+        label = get_tag_label(metadata=metadata, tag_name="Gloss.Term", classification_name=None, tag_type=GlossaryTerm)
+    get_tag_label.cache_clear()
+
+    assert label.tagFQN.root == "Gloss.Term"
+    assert label.source == TagSource.Glossary
+    held_logs = [record.getMessage() for record in caplog.records if "not Approved" in record.getMessage()]
+    if status in (None, EntityStatus.Approved):
+        assert held_logs == []
+    else:
+        assert held_logs == [
+            f"Glossary term 'Gloss.Term' is {status.value}, not Approved. It will show on the asset once it is approved."
+        ]

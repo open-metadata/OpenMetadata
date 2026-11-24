@@ -44,6 +44,7 @@ public class EqHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{eq }}")
-                    .withExample("{{#if (eq status \"Success\")}}Test passed{{/if}}")));
+                    .withExample(
+                        "{{#if (eq entity.entityStatus \"In Review\")}}Needs review{{/if}}")));
   }
 }

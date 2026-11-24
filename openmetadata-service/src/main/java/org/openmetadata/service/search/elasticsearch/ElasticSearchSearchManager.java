@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
@@ -24,9 +25,13 @@ import es.co.elastic.clients.elasticsearch._types.SortMode;
 import es.co.elastic.clients.elasticsearch._types.SortOrder;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
+import es.co.elastic.clients.elasticsearch._types.aggregations.CompositeAggregate;
+import es.co.elastic.clients.elasticsearch._types.aggregations.CompositeAggregationSource;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
 import es.co.elastic.clients.elasticsearch._types.mapping.Property;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
@@ -34,6 +39,7 @@ import es.co.elastic.clients.elasticsearch.indices.GetMappingResponse;
 import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.JsonpDeserializer;
 import es.co.elastic.clients.json.JsonpMapper;
+import es.co.elastic.clients.util.NamedValue;
 import io.micrometer.core.instrument.Timer;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
@@ -52,6 +58,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -88,12 +95,14 @@ import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
+import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -212,18 +221,20 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
                     b ->
                         b.must(m -> m.wildcard(w -> w.field(fieldName).value(fieldValue)))
                             .filter(f -> f.term(t -> t.field("deleted").value(deleted)))));
-    SearchRequest request =
-        SearchRequest.of(
-            search ->
-                search
-                    .index(Entity.getSearchRepository().getIndexOrAliasName(index))
-                    .from(from)
-                    .size(size)
-                    .query(
-                        restrictToOrgWideMemories(
-                            ElasticRbacQueries.withAccessPolicies(
-                                query, subjectContext, rbacConditionEvaluator))));
-    return executeSearchRequest(request);
+    SearchRequest.Builder request =
+        new SearchRequest.Builder()
+            .index(Entity.getSearchRepository().getIndexOrAliasName(index))
+            .from(from)
+            .size(size)
+            .query(
+                restrictToOrgWideMemories(
+                    ElasticRbacQueries.withAccessPolicies(
+                        query, subjectContext, rbacConditionEvaluator)));
+    List<String> sourceExcludes = PrivateSearchFields.sourceExcludes(subjectContext, index, null);
+    if (!sourceExcludes.isEmpty()) {
+      request.source(source -> source.filter(filter -> filter.excludes(sourceExcludes)));
+    }
+    return executeSearchRequest(request.build());
   }
 
   @Override
@@ -452,7 +463,13 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
 
     applyRbacCondition(
-        subjectContext, requestBuilder, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
+        subjectContext,
+        requestBuilder,
+        statuses,
+        ContextMemoryAnchorPins.ofQueryFilters(filter),
+        ContextMemorySearchVisibility.isMemoryListingIndex(index)
+            ? matchingListingAnchors(index, requestBuilder, subjectContext, statuses)
+            : null);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -547,11 +564,14 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     if (nullOrEmpty(queryFilter) || EMPTY_JSON_OBJECT.equals(queryFilter)) {
       return;
     }
-    String queryDsl = QueryFilterShape.requireQueryDsl(queryFilter);
-    Query filterQuery = Query.of(q -> q.withJson(new StringReader(queryDsl)));
+    Query filterQuery = fromJson(QueryFilterShape.requireQueryDsl(queryFilter));
     Query existingQuery = requestBuilder.query();
     requestBuilder.query(
         existingQuery == null ? filterQuery : filteredBy(existingQuery, filterQuery));
+  }
+
+  private static Query fromJson(String queryDsl) {
+    return Query.of(q -> q.withJson(new StringReader(queryDsl)));
   }
 
   private static Query filteredBy(Query existingQuery, Query filterQuery) {
@@ -645,7 +665,16 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     // this against the dataAsset/all aliases.
     String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
     applyDeletedFilter(requestBuilder, request, indexName);
+    String[] privateFields =
+        toArrayOrNull(PrivateSearchFields.sourceExcludes(subjectContext, request.getIndex(), null));
+    if (privateFields != null) {
+      requestBuilder.fetchSource(null, privateFields);
+    }
     return requestBuilder;
+  }
+
+  private static String[] toArrayOrNull(List<String> fields) {
+    return nullOrEmpty(fields) ? null : fields.toArray(String[]::new);
   }
 
   private void applyRbacCondition(
@@ -664,6 +693,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       ElasticSearchRequestBuilder requestBuilder,
       List<ContextMemoryStatus> statuses,
       Collection<String> pinnedAnchorIds) {
+    applyRbacCondition(subjectContext, requestBuilder, statuses, pinnedAnchorIds, null);
+  }
+
+  private void applyRbacCondition(
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      List<ContextMemoryStatus> statuses,
+      Collection<String> pinnedAnchorIds,
+      Collection<String> matchingAnchorIds) {
     if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQueryBuilder != null) {
@@ -685,7 +723,81 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
     }
-    applyContextMemoryVisibility(subjectContext, requestBuilder, statuses, pinnedAnchorIds);
+    OMQueryBuilder memoryVisibility =
+        matchingAnchorIds != null
+            ? contextMemoryVisibility.buildListingVisibilityFilter(
+                subjectContext, statuses, matchingAnchorIds)
+            : contextMemoryVisibility.buildVisibilityFilter(
+                subjectContext, statuses, pinnedAnchorIds);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, memoryVisibility);
+  }
+
+  Set<String> matchingListingAnchors(
+      String index,
+      ElasticSearchRequestBuilder listing,
+      SubjectContext subject,
+      List<ContextMemoryStatus> statuses)
+      throws IOException {
+    Set<String> anchors = Set.of();
+    if (contextMemoryVisibility.needsListingAnchorAccess(subject, statuses)) {
+      ElasticSearchRequestBuilder candidates =
+          new ElasticSearchRequestBuilder()
+              .query(listing.query())
+              .size(0)
+              .timeout("30s")
+              .contextMemoryVisibilityResolved()
+              .filter(
+                  ((ElasticQueryBuilder)
+                          contextMemoryVisibility.buildListingAnchorCandidateFilter(statuses))
+                      .buildV2());
+      if (listing.postFilter() != null) {
+        candidates.filter(listing.postFilter());
+      }
+      anchors = matchingMemoryAnchorIds(index, candidates);
+    }
+    return anchors;
+  }
+
+  Set<String> matchingMemoryAnchorIds(String index, ElasticSearchRequestBuilder candidates)
+      throws IOException {
+    Set<String> anchors = new LinkedHashSet<>();
+    Map<String, FieldValue> after = Map.of();
+    do {
+      CompositeAggregate page = memoryAnchorPage(index, candidates, after);
+      page.buckets()
+          .array()
+          .forEach(
+              bucket ->
+                  anchors.add(bucket.key().get(ContextMemoryIndex.FIELD_ANCHOR_ID).stringValue()));
+      after = page.afterKey();
+    } while (after != null && !after.isEmpty());
+    return anchors;
+  }
+
+  private CompositeAggregate memoryAnchorPage(
+      String index, ElasticSearchRequestBuilder candidates, Map<String, FieldValue> after)
+      throws IOException {
+    var source =
+        CompositeAggregationSource.of(
+            s -> s.terms(t -> t.field(ContextMemoryIndex.FIELD_ANCHOR_ID)));
+    candidates.aggregation(
+        ContextMemoryIndex.FIELD_ANCHOR_ID,
+        Aggregation.of(
+            a ->
+                a.composite(
+                    c -> {
+                      c.sources(List.of(NamedValue.of(ContextMemoryIndex.FIELD_ANCHOR_ID, source)))
+                          .size(ContextMemorySearchVisibility.LISTING_ANCHOR_PAGE_SIZE);
+                      if (!after.isEmpty()) {
+                        c.after(after);
+                      }
+                      return c;
+                    })));
+    SearchResponse<JsonData> response = client.search(candidates.build(index), JsonData.class);
+    if (response.timedOut() || response.shards().failed().intValue() > 0) {
+      throw new IOException("Incomplete memory anchor listing for " + index);
+    }
+    return response.aggregations().get(ContextMemoryIndex.FIELD_ANCHOR_ID).composite();
   }
 
   /**
@@ -715,6 +827,13 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       Collection<String> pinnedAnchorIds) {
     OMQueryBuilder visibilityBuilder =
         contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses, pinnedAnchorIds);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, visibilityBuilder);
+  }
+
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      OMQueryBuilder visibilityBuilder) {
     if (visibilityBuilder != null) {
       requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -883,6 +1002,11 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         String transformedQuery = nlqService.transformNaturalLanguageQuery(request, null);
         if (transformedQuery == null) {
           LOG.info("Failed to get Transformed NLQ query");
+          return fallbackToBasicSearch(request, subjectContext);
+        }
+        if (PrivateSearchFields.namesPrivateField(
+            subjectContext, request.getIndex(), transformedQuery)) {
+          LOG.info("NLQ query names a field the caller may not search; using keyword search");
           return fallbackToBasicSearch(request, subjectContext);
         }
 
@@ -1488,46 +1612,76 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     ElasticSearchRequestBuilder requestBuilder =
         buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+    return completeResults(requestBuilder.build(request.getIndex()), request.getIndex());
+  }
 
+  @Override
+  public SearchResultListMapper searchSimilarContextMemories(
+      String text, String filterJson, int size) throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("Elasticsearch client is not available");
+    }
+    String index = Entity.getSearchRepository().getIndexOrAliasName(Entity.CONTEXT_MEMORY);
+    // The caller's filter decides which memories qualify, so the org-wide-only default stays off.
+    ElasticSearchRequestBuilder requestBuilder =
+        new ElasticSearchRequestBuilder()
+            .query(sharedTermsQuery(text))
+            .filter(fromJson(QueryFilterShape.requireQueryDsl(filterJson)))
+            .fetchSource(ContextMemoryIndex.SIMILARITY_RESULT_FIELDS.toArray(String[]::new), null)
+            .size(size)
+            .timeout("30s")
+            .contextMemoryVisibilityResolved();
+    return completeResults(requestBuilder.build(index), index);
+  }
+
+  private static Query sharedTermsQuery(String text) {
+    return Query.of(
+        q ->
+            q.multiMatch(
+                m ->
+                    m.query(text)
+                        .fields(ContextMemoryIndex.SIMILARITY_FIELDS)
+                        .type(TextQueryType.CrossFields)
+                        .operator(Operator.Or)
+                        .minimumShouldMatch(ContextMemoryIndex.SIMILARITY_MINIMUM_SHOULD_MATCH)));
+  }
+
+  /** A response missing hits, timed out or with a failed shard, fails instead of reading short. */
+  private SearchResultListMapper completeResults(SearchRequest searchRequest, String index)
+      throws IOException {
     try {
-      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> response =
-          searchForCompleteExportResponse(searchRequest, request.getIndex());
-
-      if (response.timedOut() || response.shards().failed().intValue() > 0) {
-        throw new IOException("Incomplete search export for " + request.getIndex());
-      }
-
-      List<Map<String, Object>> results = new ArrayList<>();
-      Object[] lastHitSortValues = null;
-
-      if (response.hits().hits() != null && !response.hits().hits().isEmpty()) {
-        List<Hit<JsonData>> hits = response.hits().hits();
-        for (Hit<JsonData> hit : hits) {
-          if (hit.source() != null) {
-            results.add(EsUtils.jsonDataToMap(hit.source()));
-          }
-        }
-        Hit<JsonData> lastHit = hits.getLast();
-        if (lastHit.sort() != null && !lastHit.sort().isEmpty()) {
-          lastHitSortValues =
-              lastHit.sort().stream().map(fv -> fv == null ? null : fv._get()).toArray();
-        }
-      }
-
-      long totalHits = 0;
-      if (response.hits().total() != null) {
-        totalHits = response.hits().total().value();
-      }
-
-      return new SearchResultListMapper(results, totalHits, lastHitSortValues);
+      return toResultList(searchForCompleteExportResponse(searchRequest, index));
     } catch (ElasticsearchException e) {
       if (e.status() == 404) {
-        throw SearchEngineErrors.indexNotFound(request.getIndex());
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw buildSearchException(e);
       }
     }
+  }
+
+  private static SearchResultListMapper toResultList(SearchResponse<JsonData> response) {
+    List<Hit<JsonData>> hits = listOrEmpty(response.hits().hits());
+    long totalHits = response.hits().total() == null ? 0 : response.hits().total().value();
+    return new SearchResultListMapper(sourcesOf(hits), totalHits, lastSortValues(hits));
+  }
+
+  private static List<Map<String, Object>> sourcesOf(List<Hit<JsonData>> hits) {
+    List<Map<String, Object>> results = new ArrayList<>();
+    for (Hit<JsonData> hit : hits) {
+      if (hit.source() != null) {
+        results.add(EsUtils.jsonDataToMap(hit.source()));
+      }
+    }
+    return results;
+  }
+
+  private static Object[] lastSortValues(List<Hit<JsonData>> hits) {
+    Object[] values = null;
+    if (!hits.isEmpty() && !nullOrEmpty(hits.getLast().sort())) {
+      values = hits.getLast().sort().stream().map(fv -> fv == null ? null : fv._get()).toArray();
+    }
+    return values;
   }
 
   private SearchResponse<JsonData> searchForCompleteExportResponse(
@@ -1586,7 +1740,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
 
     String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
     ElasticSearchSourceBuilderFactory searchBuilderFactory =
-        new ElasticSearchSourceBuilderFactory(searchSettings);
+        new ElasticSearchSourceBuilderFactory(
+            searchSettings,
+            PrivateSearchFields.matchesPrivateFields(subjectContext, request.getIndex()));
 
     ElasticSearchRequestBuilder requestBuilder =
         searchBuilderFactory.getSearchSourceBuilderV2(
@@ -1665,22 +1821,21 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       requestBuilder = buildHierarchyQuery(request, requestBuilder, clusterAlias, subjectContext);
     }
 
-    // Handle fetch source
-    String[] includeFields =
-        !nullOrEmpty(request.getIncludeSourceFields())
-            ? request.getIncludeSourceFields().toArray(String[]::new)
-            : null;
+    // Handle fetch source; a fetched source never carries a field the caller may not read
+    String[] includeFields = toArrayOrNull(request.getIncludeSourceFields());
     String[] excludeFields =
-        !nullOrEmpty(request.getExcludeSourceFields())
-            ? request.getExcludeSourceFields().toArray(String[]::new)
-            : null;
+        toArrayOrNull(
+            PrivateSearchFields.sourceExcludes(
+                subjectContext, request.getIndex(), request.getExcludeSourceFields()));
 
-    if (Boolean.TRUE.equals(request.getFetchSource())
+    if (Boolean.FALSE.equals(request.getFetchSource())
+        && includeFields == null
+        && nullOrEmpty(request.getExcludeSourceFields())) {
+      requestBuilder.fetchSource(false);
+    } else if (Boolean.TRUE.equals(request.getFetchSource())
         || includeFields != null
         || excludeFields != null) {
       requestBuilder.fetchSource(includeFields, excludeFields);
-    } else if (Boolean.FALSE.equals(request.getFetchSource())) {
-      requestBuilder.fetchSource(false);
     }
 
     // Handle track total hits

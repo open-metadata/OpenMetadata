@@ -20,7 +20,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   Database01,
   ShieldTick,
 } from '@openmetadata/ui-core-components/icons';
@@ -33,10 +33,8 @@ import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSu
 import { FqnPart } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import {
-  Assigned,
   Severities,
   TestCaseResolutionStatus,
-  TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseResolutionStatus';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useBulkEntityPermissions } from '../../../../hooks/useEntityPermissions/useBulkEntityPermissions';
@@ -58,13 +56,6 @@ import IncidentSeverityBadge from './IncidentSeverityBadge';
 
 /** Time of day under the date, with the zone the stamp is read in. */
 const LAST_UPDATED_TIME_FORMAT = "h:mm a '(UTC'ZZ')'";
-
-const getAssignee = (incident: TestCaseResolutionStatus) =>
-  incident.testCaseResolutionStatusType ===
-  TestCaseResolutionStatusTypes.Assigned
-    ? (incident.testCaseResolutionStatusDetails as Assigned | undefined)
-        ?.assignee
-    : undefined;
 
 const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
   const { t } = useTranslation();
@@ -92,7 +83,7 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
           : fqn}
       </Link>
       <Box align="center" className="tw:text-tertiary" gap={1}>
-        <Database01 className="tw:size-3 tw:shrink-0 tw:text-fg-quaternary" />
+        <Database01 className="tw:shrink-0 tw:text-fg-quaternary" size={12} />
         <Typography as="span" data-testid="incident-table" size="text-xs">
           {getPartialNameFromTableFQN(fqn, [FqnPart.Table])}
         </Typography>
@@ -105,7 +96,10 @@ const TestCaseCell = ({ incident }: { incident: TestCaseResolutionStatus }) => {
           className="tw:text-error-primary"
           data-testid="incident-failure-summary"
           gap={1}>
-          <AlertTriangle className="tw:mt-0.5 tw:size-3.5 tw:shrink-0 tw:text-fg-error-primary" />
+          <Alert
+            className="tw:mt-0.5 tw:shrink-0 tw:text-fg-error-primary"
+            size={14}
+          />
           <Typography as="span" size="text-xs">
             {incident.failureSummary}
           </Typography>
@@ -215,7 +209,7 @@ const IncidentList = ({
         items={incidents}
         renderEmptyState={renderEmptyState}>
         {(incident) => {
-          const assignee = getAssignee(incident);
+          const assignee = incident.testCaseResolutionStatusDetails?.assignee;
           const status = incident.testCaseResolutionStatusType;
           const rowId = incident.id ?? incident.stateId;
           const lastUpdated = incident.updatedAt ?? incident.timestamp;

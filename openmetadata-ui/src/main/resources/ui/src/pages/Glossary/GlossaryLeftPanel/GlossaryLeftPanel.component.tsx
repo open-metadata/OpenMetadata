@@ -90,19 +90,16 @@ const GlossaryLeftPanel = ({
   }, [glossaryFqn]);
 
   return (
-    <div
-      className="tw:h-full"
-      data-testid="glossary-left-panel"
-      data-tour-step="glossary">
+    <div className="tw:h-full" data-testid="glossary-left-panel">
       <GlossaryV1Skeleton loading={glossaries.length === 0}>
         <div className="tw:flex tw:flex-col tw:gap-4">
           {createGlossaryPermission && (
             <div className="tw:px-3">
               <Button
-                className="tw:w-full"
+                className="tw:w-full tw:*:data-icon:text-utility-brand-600"
                 color="secondary"
                 data-testid="add-glossary"
-                iconLeading={<Plus className="tw:text-fg-brand-primary" />}
+                iconLeading={Plus}
                 size="sm"
                 onPress={onAddGlossary}>
                 <Typography className="tw:text-brand-tertiary" weight="regular">

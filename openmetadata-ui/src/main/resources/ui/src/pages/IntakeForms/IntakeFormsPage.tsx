@@ -28,6 +28,7 @@ import {
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import DeprecatedFeatureBadge from '../../components/common/DeprecatedFeatureBadge/DeprecatedFeatureBadge';
 import CreatePlaceholder from '../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -237,6 +238,12 @@ const IntakeFormsPage = () => {
   const headerBar = (
     <Box align="center" justify="between">
       <PageHeader
+        badge={
+          <DeprecatedFeatureBadge
+            description={t('message.intake-form-deprecated')}
+            featureName={t('label.intake-form-plural')}
+          />
+        }
         data={{
           header: t('label.intake-form-plural'),
           subHeader: t('message.intake-form-plural-description'),

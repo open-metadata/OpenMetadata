@@ -10,12 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Divider, Typography } from '@openmetadata/ui-core-components';
+import {
+  ButtonUtility,
+  Card,
+  Divider,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Edit01, Globe01, Plus } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityReference } from '../../../generated/entity/type';
 import {
@@ -28,10 +33,6 @@ import DomainSelect from '../DomainSelect/DomainSelect';
 import { DomainSelectTrigger } from '../DomainSelect/DomainSelectTrigger';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import DomainTags from '../DomainTags/DomainTags';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../WidgetCard/WidgetCard';
 import './domain-label.less';
 import { DomainLabelProps } from './DomainLabel.interface';
@@ -168,14 +169,16 @@ export const DomainLabel = ({
     const renderTrigger = ({ toggle }: { toggle: () => void }) => (
       <DomainSelectTrigger toggle={toggle}>
         {isEmpty(activeDomain) ? (
-          <WidgetPlusButton
+          <ButtonUtility
             data-testid="add-domain"
-            title={t('label.add-entity', { entity: widgetTitle })}
+            icon={Plus}
+            tooltip={t('label.add-entity', { entity: widgetTitle })}
           />
         ) : (
-          <WidgetEditButton
+          <ButtonUtility
             data-testid="edit-domain"
-            title={t('label.edit-entity', { entity: widgetTitle })}
+            icon={Edit01}
+            tooltip={t('label.edit-entity', { entity: widgetTitle })}
           />
         )}
       </DomainSelectTrigger>
@@ -237,7 +240,10 @@ export const DomainLabel = ({
         <div className="tw:flex tw:w-full tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:px-5 tw:pt-5 tw:pb-2.5 tw:mb-5">
           <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
             <div style={{ width: '16px' }}>
-              <DomainIcon height={16} style={{ marginLeft: '2px' }} />
+              <Globe01
+                className="tw:ml-0.5 tw:text-utility-gray-500"
+                size={16}
+              />
             </div>
 
             <div className="d-flex justify-between w-full">

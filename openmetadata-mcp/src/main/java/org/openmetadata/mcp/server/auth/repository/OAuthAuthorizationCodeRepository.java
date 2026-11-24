@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.McpGrantTransaction;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord;
 
 /**
@@ -18,6 +19,10 @@ import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeR
 @Slf4j
 public class OAuthAuthorizationCodeRepository {
   private final CollectionDAO.OAuthAuthorizationCodeDAO dao;
+
+  private CollectionDAO.OAuthAuthorizationCodeDAO dao() {
+    return McpGrantTransaction.resolve(daos -> daos.oauthAuthorizationCodeDAO(), dao);
+  }
 
   public OAuthAuthorizationCodeRepository() {
     this.dao = Entity.getCollectionDAO().oauthAuthorizationCodeDAO();
@@ -36,15 +41,16 @@ public class OAuthAuthorizationCodeRepository {
       List<String> scopes,
       long expiresAt) {
 
-    dao.insert(
-        hashAuthCode(code),
-        clientId,
-        userName,
-        codeChallenge,
-        codeChallengeMethod,
-        redirectUri.toString(),
-        JsonUtils.pojoToJson(scopes),
-        expiresAt);
+    dao()
+        .insert(
+            hashAuthCode(code),
+            clientId,
+            userName,
+            codeChallenge,
+            codeChallengeMethod,
+            redirectUri.toString(),
+            JsonUtils.pojoToJson(scopes),
+            expiresAt);
 
     LOG.debug(
         "Stored authorization code in database for client: {} by user: {}", clientId, userName);
@@ -54,7 +60,7 @@ public class OAuthAuthorizationCodeRepository {
    * Find authorization code by code value.
    */
   public OAuthAuthorizationCodeRecord findByCode(String code) {
-    return dao.findByCode(hashAuthCode(code));
+    return dao().findByCode(hashAuthCode(code));
   }
 
   /**
@@ -67,10 +73,10 @@ public class OAuthAuthorizationCodeRepository {
    */
   public OAuthAuthorizationCodeRecord markAsUsedAtomic(String code) {
     String hashed = hashAuthCode(code);
-    int rowsAffected = dao.markAsUsedAtomic(hashed);
+    int rowsAffected = dao().markAsUsedAtomic(hashed);
     if (rowsAffected == 1) {
       LOG.debug("Atomically marked authorization code as used");
-      return dao.findByCode(hashed);
+      return dao().findByCode(hashed);
     }
     LOG.warn("Failed to atomically mark authorization code as used (already used or not found)");
     return null;
@@ -80,7 +86,7 @@ public class OAuthAuthorizationCodeRepository {
    * Delete authorization code.
    */
   public void delete(String code) {
-    dao.delete(hashAuthCode(code));
+    dao().delete(hashAuthCode(code));
     LOG.debug("Deleted authorization code");
   }
 
@@ -90,7 +96,7 @@ public class OAuthAuthorizationCodeRepository {
    */
   public void deleteExpired() {
     long currentTime = System.currentTimeMillis();
-    dao.deleteExpired(currentTime);
+    dao().deleteExpired(currentTime);
     LOG.info("Deleted expired authorization codes");
   }
 

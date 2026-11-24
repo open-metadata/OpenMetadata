@@ -15,8 +15,13 @@
         }
       ],
       "properties": {
+        "fullyQualifiedName": { "type": "keyword", "normalizer": "lowercase_normalizer" },
+        "originEntityId": { "type": "keyword" },
+        "testCaseCount": { "type": "long" },
+        "hasTestCases": { "type": "integer" },
         "diRunId": { "type": "keyword" },
         "diCapturedAt": { "type": "long" },
+        "dataQualityStatus": { "type": "keyword" },
         "updatedAt": { "type": "long" },
         "completenessDownstreamCount": { "type": "long" },
         "completenessFactVersion": { "type": "integer" },

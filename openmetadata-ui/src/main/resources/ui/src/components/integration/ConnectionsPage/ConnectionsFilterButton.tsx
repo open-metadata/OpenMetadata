@@ -206,6 +206,7 @@ export const ConnectionsFilterButton: React.FC<ConnectionsFilterButtonProps> = (
         {searchable && (
           <div className="tw:p-2">
             <Input
+              autoComplete="off"
               data-testid={testId ? `${testId}-search` : undefined}
               icon={Search}
               placeholder={t('label.search')}

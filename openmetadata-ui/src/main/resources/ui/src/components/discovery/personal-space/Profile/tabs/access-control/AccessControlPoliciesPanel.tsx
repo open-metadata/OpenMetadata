@@ -35,9 +35,8 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
+  NO_DATA_PLACEHOLDER,
 } from '../../../../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
@@ -55,6 +54,7 @@ import { Paging } from '../../../../../../generated/type/paging';
 import { useHashPagingParams } from '../../../../../../hooks/useSettingsHash';
 import { getPolicies } from '../../../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import {
   checkPermission,
   LIST_CAP,
@@ -81,12 +81,12 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   const { t } = useTranslation();
   const {
     page: currentPage,
-    pageSize: hashPageSize,
+    resolvedPageSize: pageSize,
+    savePageSize,
     cursor: hashCursor,
     cursorType: hashCursorType,
     setPage: setHashPage,
-  } = useHashPagingParams();
-  const pageSize = hashPageSize || PAGE_SIZE_BASE;
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
 
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,14 +96,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   );
   const fetchRequestIdRef = useRef(0);
 
-  const showPagination = useMemo(
-    () =>
-      Boolean(paging.before || paging.after) ||
-      paging.total > pageSize ||
-      // ADR:2026-10-31-paged-settings-lists-keep-pagination-at-non-default-page-size
-      pageSize !== PAGE_SIZE_BASE,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(policies);
 
   const { permissions } = usePermissionProvider();
 
@@ -268,6 +261,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
   };
 
   const handlePageSizeChange = (size: number) => {
+    savePageSize(size);
     setHashPage(1, undefined, undefined, size);
     setCursorCache(new Map());
   };
@@ -299,7 +293,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
 
     return (
       <Button
-        className="tw:truncate tw:block tw:text-left"
+        className="tw:max-w-full tw:truncate tw:block tw:text-left"
         color="link-color"
         key={key}
         size="sm"
@@ -323,7 +317,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
     const hasMore = listLength > LIST_CAP;
 
     if (!roles?.length) {
-      return '--';
+      return NO_DATA_PLACEHOLDER;
     }
 
     return (
@@ -339,7 +333,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
               {t('label.plus-count-more', { count: listLength - LIST_CAP })}
             </Button>
             <Popover className="tw:overflow-y-auto" maxHeight={320}>
-              <Box className="tw:p-3" direction="col" gap={1}>
+              <Box className="tw:max-w-xs tw:p-3" direction="col" gap={1}>
                 {roles.slice(LIST_CAP).map(renderRoleItem)}
               </Box>
             </Popover>
@@ -388,11 +382,10 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
             entityName={getEntityName(policy)}
             entityType={EntityType.POLICY}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`delete-action-${getEntityName(policy)}`}
               icon={Trash01}
               isDisabled={!deletePolicyPermission}
-              size="xs"
+              size="lg"
               tooltip={
                 deletePolicyPermission
                   ? t('label.delete-entity', { entity: t('label.policy') })
@@ -483,11 +476,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}

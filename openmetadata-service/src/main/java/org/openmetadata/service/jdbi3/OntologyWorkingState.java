@@ -1,5 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
+import jakarta.ws.rs.ClientErrorException;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -17,6 +19,7 @@ import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.rdf.RdfUpdater;
 
@@ -186,6 +189,7 @@ final class OntologyWorkingState {
         existing == null ? null : entities.findJsonByIdForUpdate(expected.getId(), Include.ALL);
     if (json != null) {
       final T current = JsonUtils.readValue(json, entities.getEntityClass());
+      requireStillDeleted(expected, current);
       if (!Objects.equals(expected.getVersion(), current.getVersion())
           || !Objects.equals(expected.getUpdatedAt(), current.getUpdatedAt())) {
         throw new PreconditionFailedException(
@@ -193,6 +197,23 @@ final class OntologyWorkingState {
       }
     }
     return new Baseline(ontologyId(expected), expected.getId(), json);
+  }
+
+  /**
+   * A write planned against a soft-deleted row, such as re-creating its name, finds it live when
+   * another request restored or re-created it first; the name is then taken, as for any create.
+   * ADR:2026-11-17-recreating-a-deleted-ontology-name-restores-its-record
+   */
+  private static void requireStillDeleted(
+      final OntologyDefinition expected, final OntologyDefinition current) {
+    if (Boolean.TRUE.equals(expected.getDeleted()) && !Boolean.TRUE.equals(current.getDeleted())) {
+      throw new ClientErrorException(
+          CatalogExceptionMessage.ENTITY_ALREADY_EXISTS
+              + ": "
+              + expected.getFullyQualifiedName()
+              + " was restored by another request",
+          Response.Status.CONFLICT);
+    }
   }
 
   private static UUID ontologyId(final OntologyDefinition entity) {

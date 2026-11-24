@@ -34,20 +34,18 @@ import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.Permission;
-import org.openmetadata.schema.type.Permission.Access;
-import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ViewOperations;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 /**
- * Bulk-hydrate lineage nodes into full entity objects with per-entity VIEW_BASIC authorization.
+ * Bulk-hydrate lineage nodes into full entity objects with per-entity read authorization.
  *
  * <p>The lineage UI consumes a graph of {@link EntityReference}s and used to issue one
  * {@code GET /{type}/{id}} per node to hydrate each into its concrete entity. On a 50-node graph
@@ -57,11 +55,10 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  * <ol>
  *   <li>Bucket ids by entityType so each type goes through its own repository exactly once
  *       ({@link EntityRepository#get(UriInfo, List, Fields, Include)}).
- *   <li>For each bucket, walk the loaded entities and drop the ones the caller can't
- *       {@link MetadataOperation#VIEW_BASIC}. Auth uses the entity-aware
- *       {@link ResourceContext#ResourceContext(String, EntityInterface, EntityRepository)
- *       constructor} so {@code authorizer.getPermission} sees a pre-resolved entity — no second
- *       repository fetch (or parent lookup, for glossary terms / tags / data products) per id.
+ *   <li>For each bucket, load the entities with every attribute a policy condition reads and drop
+ *       the ones the caller may not read with the requested fields (the view operations a GET of
+ *       those fields needs, from {@link ViewOperations}); the survivors are trimmed back to the
+ *       requested fields. The decision runs on the loaded entities, so nothing is fetched twice.
  *   <li>Drops are <i>silent</i>: not-found ids and denied entities both vanish from the response.
  *       The aggregate count surfaces in {@link HydrateLineageResponse#getDroppedCount}.
  * </ol>
@@ -76,25 +73,45 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 @Slf4j
 public class LineageHydrator {
   private static final String LINEAGE_SCENE_SYNTHETIC_COUNT = "lineageSceneSyntheticCount";
-  private static final String AUTHORIZATION_FIELDS =
-      String.join(
-          ",",
-          Entity.FIELD_OWNERS,
-          Entity.FIELD_TAGS,
-          Entity.FIELD_DOMAINS,
-          Entity.FIELD_REVIEWERS);
 
-  private final Authorizer authorizer;
+  /**
+   * The data assets lineage draws as nodes. Their own GET returns the stored entity trimmed to the
+   * requested fields and redacts nothing, so authorizing and trimming here answers as that GET
+   * would. Every other type is refused: a service's connection, a user's credentials and email, an
+   * MCP server's environment are redacted only by their own GET
+   * (ADR:2026-11-03-every-read-path-checks-the-fields-it-returns).
+   */
+  private static final Set<String> HYDRATABLE_TYPES =
+      Set.of(
+          Entity.TABLE,
+          Entity.TOPIC,
+          Entity.DASHBOARD,
+          Entity.DASHBOARD_DATA_MODEL,
+          Entity.CHART,
+          Entity.PIPELINE,
+          Entity.MLMODEL,
+          Entity.CONTAINER,
+          Entity.SEARCH_INDEX,
+          Entity.STORED_PROCEDURE,
+          Entity.API_ENDPOINT,
+          Entity.METRIC,
+          Entity.DIRECTORY,
+          Entity.FILE,
+          Entity.SPREADSHEET,
+          Entity.WORKSHEET);
+
+  private final ViewPermissionFilter viewPermissionFilter;
 
   public LineageHydrator(Authorizer authorizer) {
-    this.authorizer = authorizer;
+    this.viewPermissionFilter = new ViewPermissionFilter(authorizer);
   }
 
   /**
    * Validate, group, hydrate, authorize.
    *
    * @throws IllegalArgumentException if {@code request} is null, the entities list is empty, or
-   *     any entry has a blank {@code type} or missing {@code id}.
+   *     any entry has a blank {@code type}, a missing {@code id} or a type that is not a lineage
+   *     data asset.
    */
   public HydrateLineageResponse hydrate(
       UriInfo uriInfo, SecurityContext securityContext, HydrateLineageRequest request) {
@@ -107,15 +124,17 @@ public class LineageHydrator {
     Map<String, List<Object>> entitiesByType = new LinkedHashMap<>(idsByType.size());
     int returnedCount = 0;
     for (Map.Entry<String, List<UUID>> entry : idsByType.entrySet()) {
+      EntityRepository<? extends EntityInterface<?>> repository =
+          Entity.getEntityRepository(entry.getKey());
       List<? extends EntityInterface<?>> hydrated =
           hydrateAndAuthorize(
               uriInfo,
               securityContext,
               entry.getKey(),
               entry.getValue(),
-              Entity.getEntityRepository(entry.getKey()).getFields(request.getFields()),
+              repository.getFields(request.getFields()),
               include,
-              Entity.getEntityRepository(entry.getKey()));
+              repository);
       if (!hydrated.isEmpty()) {
         entitiesByType.put(entry.getKey(), new ArrayList<>(hydrated));
         returnedCount += hydrated.size();
@@ -176,11 +195,22 @@ public class LineageHydrator {
       if (ref == null || ref.getType() == null || ref.getType().isBlank() || ref.getId() == null) {
         throw new IllegalArgumentException("each entity must have non-blank type and non-null id");
       }
+      requireHydratable(ref.getType());
       uniqueIdsByType.computeIfAbsent(ref.getType(), k -> new LinkedHashSet<>()).add(ref.getId());
     }
     Map<String, List<UUID>> idsByType = new LinkedHashMap<>(uniqueIdsByType.size());
     uniqueIdsByType.forEach((type, ids) -> idsByType.put(type, new ArrayList<>(ids)));
     return idsByType;
+  }
+
+  private static void requireHydratable(String entityType) {
+    if (!HYDRATABLE_TYPES.contains(entityType)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Entity type '%s' cannot be hydrated: hydrate serves lineage data assets only, so read"
+                  + " it from its own endpoint",
+              entityType));
+    }
   }
 
   private Set<EntityKey> authorizeLineageNodes(
@@ -201,10 +231,15 @@ public class LineageHydrator {
     try {
       EntityRepository<? extends EntityInterface<?>> repository =
           Entity.getEntityRepository(entry.getKey());
-      Fields fields = repository.getOnlySupportedFields(AUTHORIZATION_FIELDS);
       List<? extends EntityInterface<?>> entities =
           hydrateAndAuthorize(
-              null, securityContext, entry.getKey(), entry.getValue(), fields, include, repository);
+              null,
+              securityContext,
+              entry.getKey(),
+              entry.getValue(),
+              Fields.EMPTY_FIELDS,
+              include,
+              repository);
       for (EntityInterface<?> entity : entities) {
         authorized.add(new EntityKey(entry.getKey(), entity.getId()));
       }
@@ -213,6 +248,12 @@ public class LineageHydrator {
     }
   }
 
+  /**
+   * The entities of {@code ids} the caller may read with {@code fields}, as a GET with those fields
+   * would return them: loaded with every attribute a condition reads, checked for the view
+   * operations the fields need, and trimmed back to {@code fields}
+   * (ADR:2026-11-03-every-read-path-checks-the-fields-it-returns).
+   */
   private <T extends EntityInterface<?>> List<T> hydrateAndAuthorize(
       UriInfo uriInfo,
       SecurityContext securityContext,
@@ -221,18 +262,17 @@ public class LineageHydrator {
       Fields fields,
       Include include,
       EntityRepository<T> repo) {
-    List<T> entities = repo.get(uriInfo, ids, fields, include);
-    String userName = securityContext.getUserPrincipal().getName();
-    List<T> authorized = new ArrayList<>(entities.size());
-    for (T entity : entities) {
-      ResourceContext<T> resourceContext = new ResourceContext<>(entityType, entity, repo);
-      ResourcePermission permission =
-          authorizer.getPermission(securityContext, userName, resourceContext);
-      if (isViewBasicAllowed(permission)) {
-        authorized.add(entity);
-      }
-    }
-    return authorized;
+    List<T> entities =
+        repo.get(uriInfo, ids, ResourceContext.authorizationFields(repo, fields), include);
+    List<T> permitted =
+        viewPermissionFilter.retainPermitted(
+            securityContext,
+            entityType,
+            repo,
+            entities,
+            ViewOperations.forFields(entityType, fields));
+    permitted.forEach(entity -> repo.clearFieldsInternal(entity, fields));
+    return permitted;
   }
 
   private static List<LineageNode> lineageNodes(Map<String, NodeInformation> nodes) {
@@ -307,23 +347,6 @@ public class LineageHydrator {
     } catch (IllegalArgumentException ignored) {
       return null;
     }
-  }
-
-  /**
-   * Return {@code true} when the resolved permission set explicitly allows VIEW_BASIC on the
-   * resource (either unconditionally or conditionally — both let the caller read the entity).
-   */
-  private static boolean isViewBasicAllowed(ResourcePermission permission) {
-    if (permission == null || nullOrEmpty(permission.getPermissions())) {
-      return false;
-    }
-    for (Permission p : permission.getPermissions()) {
-      if (p.getOperation() == MetadataOperation.VIEW_BASIC) {
-        Access access = p.getAccess();
-        return access == Access.ALLOW || access == Access.CONDITIONAL_ALLOW;
-      }
-    }
-    return false;
   }
 
   private record EntityKey(String type, UUID id) {}

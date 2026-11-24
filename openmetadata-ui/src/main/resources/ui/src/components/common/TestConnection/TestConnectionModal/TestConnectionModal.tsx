@@ -12,25 +12,28 @@
  */
 import {
   Button,
+  ButtonUtility,
   Dialog,
   Divider,
   Modal,
   ModalOverlay,
   ProgressBarBase,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  RunProfiler,
+  TimeoutButton,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconTimeOut } from '../../../../assets/svg/ic-time-out.svg';
-import { ReactComponent as IconTimeOutButton } from '../../../../assets/svg/ic-timeout-button.svg';
 import { TEST_CONNECTION_FAILURE_MESSAGE } from '../../../../constants/Services.constant';
 import {
   Status,
   TestConnectionStepResult,
 } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
-import { useClipboard } from '../../../../hooks/useClipBoard';
+import { formatDuration } from '../../../../utils/date-time/DateTimeUtils';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
 import {
   ConnectionCapabilitySection,
@@ -287,7 +290,7 @@ const TestConnectionModal = ({
           const summary = result.resultSummary || result.message;
           if (summary) {
             const timing = result.durationMs
-              ? ` (${result.durationMs} ms)`
+              ? ` (${formatDuration(result.durationMs)})`
               : '';
             parts.push(`  ${summary}${timing}`);
           }
@@ -314,7 +317,6 @@ const TestConnectionModal = ({
     [testConnectionStepResult]
   );
 
-  const { onCopyToClipBoard } = useClipboard(rawLog);
   const rawLogLineCount = getRawLogLineCount(rawLog);
 
   const serviceLogo = useMemo(
@@ -381,12 +383,11 @@ const TestConnectionModal = ({
                 {connectionDisplayName}
               </div>
             </div>
-            <Button
-              className="tw:flex tw:size-9 tw:items-center tw:justify-center tw:text-fg-quaternary"
-              color="tertiary"
+            <ButtonUtility
               data-testid="test-connection-close"
-              iconLeading={<XClose size={20} />}
-              size="xs"
+              icon={XClose}
+              size="lg"
+              tooltip={t('label.close')}
               onClick={handleModalClose}
             />
           </div>
@@ -406,7 +407,7 @@ const TestConnectionModal = ({
               <div
                 className="tw:flex tw:w-full tw:flex-col tw:items-center tw:justify-center tw:gap-4 tw:rounded-xl tw:bg-primary tw:p-5 tw:text-center"
                 data-testid="test-connection-timeout-widget">
-                <IconTimeOut height={100} width={100} />
+                <RunProfiler className="tw:text-utility-gray-500" size={100} />
                 <div className="tw:text-base tw:font-medium tw:leading-6 tw:text-primary">
                   {t('label.connection-timeout')}
                 </div>
@@ -418,7 +419,7 @@ const TestConnectionModal = ({
                     className="tw:flex tw:items-center tw:gap-1.5"
                     color="primary"
                     data-testid="try-again-button"
-                    iconLeading={<IconTimeOutButton height={14} width={14} />}
+                    iconLeading={TimeoutButton}
                     size="sm"
                     onClick={onTestConnection}>
                     {t('label.try-again')}
@@ -506,7 +507,6 @@ const TestConnectionModal = ({
               t={t}
               onCancel={onCancel}
               onConfirm={onConfirm}
-              onCopyToClipBoard={() => onCopyToClipBoard()}
               onTestConnection={onTestConnection}
             />
           </div>

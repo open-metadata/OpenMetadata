@@ -266,6 +266,7 @@ function TeamAndUserSelectItem({
           data-testid={`team-user-select-dropdown-${destinationNumber}`}
           ref={focusDropdown}>
           <Input
+            autoComplete="off"
             data-testid="search-input"
             inputDataTestId="search-input-field"
             placeholder={t('label.search-by-type', { type: entityType })}

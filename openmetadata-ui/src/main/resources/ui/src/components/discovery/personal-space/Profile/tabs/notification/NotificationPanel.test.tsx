@@ -497,7 +497,9 @@ describe('NotificationPanel', () => {
 
     expect(mockSetHash).toHaveBeenCalledWith(
       'notification',
-      'section/templates'
+      'section/templates',
+      undefined,
+      { push: true }
     );
   });
 });

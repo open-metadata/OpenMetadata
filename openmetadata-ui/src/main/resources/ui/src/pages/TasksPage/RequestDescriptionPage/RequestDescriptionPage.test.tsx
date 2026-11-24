@@ -147,7 +147,7 @@ describe('RequestDescriptionPage', () => {
       payload: {
         newDescription: '',
         currentDescription: '',
-        fieldPath: 'columns::"address.street_name"::description',
+        fieldPath: 'columns.address.street_name.description',
       },
     });
   });

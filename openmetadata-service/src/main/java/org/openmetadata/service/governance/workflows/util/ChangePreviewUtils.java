@@ -226,9 +226,22 @@ public final class ChangePreviewUtils {
    */
   public static Object buildProposedChangesPayload(
       EntityInterface<?> entity, Object existingPayload, ChangeDescription pending) {
+    return buildProposedChangesPayload(entity, existingPayload, pending, null);
+  }
+
+  /**
+   * Same as {@link #buildProposedChangesPayload(EntityInterface, Object, ChangeDescription)} for a
+   * task that opens an approval cycle: {@code openingChange} is the change of the edit that started
+   * it, and the preview starts from it instead of the entity's latest hop, which is the workflow's
+   * own status write. A task that continues a cycle passes none and folds in the latest hop.
+   */
+  public static Object buildProposedChangesPayload(
+      EntityInterface<?> entity,
+      Object existingPayload,
+      ChangeDescription pending,
+      ChangeDescription openingChange) {
     if (entity == null) return existingPayload;
-    ChangeDescription changeDescription =
-        hasNoChanges(pending) ? pickIncrementalOrFull(entity) : pending;
+    ChangeDescription changeDescription = changeToPreview(entity, pending, openingChange);
     if (hasNoChanges(changeDescription)) {
       if (LOG.isDebugEnabled()) {
         LOG.debug(
@@ -280,6 +293,15 @@ public final class ChangePreviewUtils {
           e);
       return existingPayload;
     }
+  }
+
+  private static ChangeDescription changeToPreview(
+      EntityInterface<?> entity, ChangeDescription pending, ChangeDescription openingChange) {
+    ChangeDescription change = pending;
+    if (hasNoChanges(pending)) {
+      change = hasNoChanges(openingChange) ? pickIncrementalOrFull(entity) : openingChange;
+    }
+    return change;
   }
 
   /**
