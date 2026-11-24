@@ -235,8 +235,10 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             passed_rows = row_count - len_rows
             failed_rows = len_rows
         elif operator == "==":
-            passed_rows = len_rows
-            failed_rows = row_count - len_rows
+            # The query returned exactly the expected count, so no row is in excess
+            # (the failure path counts the excess over the threshold as failed).
+            passed_rows = row_count if row_count else len_rows
+            failed_rows = 0
         else:
             passed_rows = len_rows
             failed_rows = 0
