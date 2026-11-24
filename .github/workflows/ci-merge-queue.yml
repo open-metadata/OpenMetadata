@@ -61,8 +61,8 @@ jobs:
     with:
       ref: ${{ needs.plan.outputs.ref }}
 
-  py-checkstyle:
-    name: py-checkstyle
+  py-static-checks:
+    name: py-static-checks
     needs: plan
     if: ${{ needs.plan.outputs.static == 'true' }}
     runs-on: ubuntu-latest
@@ -129,7 +129,7 @@ jobs:
     needs:
       - plan
       - airflow-apis
-      - py-checkstyle
+      - py-static-checks
       - classification-models
       - backend
       - python-unit
@@ -145,7 +145,7 @@ jobs:
             {
               "plan": "success",
               "airflow-apis": "${{ needs.plan.outputs.airflow-apis == 'true' && 'success' || 'skipped' }}",
-              "py-checkstyle": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
+              "py-static-checks": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
               "classification-models": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
               "backend": "${{ (needs.plan.outputs.python == 'true' || needs.plan.outputs.airflow-apis == 'true') && 'success' || 'skipped' }}",
               "python-unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",

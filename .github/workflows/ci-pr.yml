@@ -57,8 +57,8 @@ jobs:
         id: versions
         run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
 
-  py-checkstyle:
-    name: py-checkstyle
+  py-static-checks:
+    name: py-static-checks
     needs: plan
     if: ${{ needs.plan.outputs.static == 'true' }}
     runs-on: ubuntu-latest
@@ -98,7 +98,7 @@ jobs:
     needs:
       - plan
       - airflow-apis
-      - py-checkstyle
+      - py-static-checks
       - python-unit
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-slim
@@ -111,7 +111,7 @@ jobs:
             {
               "plan": "success",
               "airflow-apis": "${{ needs.plan.outputs.airflow-apis == 'true' && 'success' || 'skipped' }}",
-              "py-checkstyle": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
+              "py-static-checks": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
               "python-unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}"
             }
         run: |

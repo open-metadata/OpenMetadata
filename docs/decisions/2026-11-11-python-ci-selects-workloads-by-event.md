@@ -44,12 +44,12 @@ independently of its host interpreter.
 
 `ci-pr.yml`, `ci-merge-queue.yml` and `ci-nightly.yml` own their respective triggers, workload
 selection, Python matrices, dependencies, permissions and required `py-tests-status` check.
-The required `py-checkstyle` job also stays in the entrypoints. Reusable workflows execute
+The `py-static-checks` job also stays in the entrypoints. Reusable workflows execute
 the supplied Python version and source revision; they do not choose event policy. Shared
 backend construction uses a complete reusable job. Aggregate jobs run on `ubuntu-slim`, verify
-the selected results without checking out the repository, and retain the existing required
-check names. Other Python CI jobs run on `ubuntu-latest`. Playwright workflows and their cache
-warmer remain on `ubuntu-24.04`, matching the validated browser dependencies.
+the selected results without checking out the repository, and retain the required
+`py-tests-status` aggregate check. Other Python CI jobs run on `ubuntu-latest`. Playwright
+workflows and their cache warmer remain on `ubuntu-24.04`, matching the validated browser dependencies.
 
 Nightly connector tests share one ingestion image built at the tested revision, in parallel with
 backend and classification preparation. Consumers verify its revision and dependency selection
