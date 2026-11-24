@@ -46,6 +46,7 @@ import {
   getTaskResolutionNewValue,
   getTaskTransitionFormSchema,
   getTaskTransitionUiSchema,
+  hasRequiredTaskFormFields,
   hasTaskFormFields,
   shouldRequireTaskResolutionValue,
   __resetTaskFormSchemaCache,
@@ -590,6 +591,74 @@ describe('TaskFormSchemaUtils', () => {
     });
   });
 
+  describe('hasRequiredTaskFormFields', () => {
+    it('returns true when the schema declares a non-empty required array', () => {
+      expect(
+        hasRequiredTaskFormFields({
+          type: 'object',
+          required: ['targetField', 'proposedText'],
+          properties: {
+            targetField: { type: 'string' },
+            proposedText: { type: 'string' },
+          },
+        })
+      ).toBe(true);
+    });
+
+    it('returns false when the schema has properties but no required fields', () => {
+      expect(
+        hasRequiredTaskFormFields({
+          type: 'object',
+          properties: { comment: { type: 'string' } },
+        })
+      ).toBe(false);
+    });
+
+    it('returns false when the required array is empty', () => {
+      expect(
+        hasRequiredTaskFormFields({
+          type: 'object',
+          required: [],
+          properties: {},
+        })
+      ).toBe(false);
+    });
+
+    it('returns false for undefined / null schemas', () => {
+      expect(hasRequiredTaskFormFields(undefined)).toBe(false);
+      // @ts-expect-error - guarding against a null schema from a malformed binding
+      expect(hasRequiredTaskFormFields(null)).toBe(false);
+    });
+
+    // The inbox's transition guard uses this to decide whether a workflow
+    // transition must open the form modal. A `requiresComment` transition whose
+    // form only adds a comment field (the seeded DDAR `reject`) reports
+    // `requiresForm` but `requiresComment` takes precedence, so the comment
+    // modal still handles it.
+    it('returns true for a requiresComment transition whose form requires a comment', () => {
+      const formSchema = getTaskTransitionFormSchema(
+        {
+          name: 'DataAccessRequest',
+          taskType: TaskEntityType.DataAccessRequest,
+          taskCategory: TaskCategory.DataAccess,
+          formSchema: { type: 'object', properties: {} },
+          transitionForms: {
+            reject: {
+              formSchema: {
+                type: 'object',
+                required: ['comment'],
+                properties: { comment: { type: 'string' } },
+              },
+            },
+          },
+        },
+        { id: 'reject', requiresComment: true }
+      );
+
+      expect(hasRequiredTaskFormFields(formSchema)).toBe(true);
+    });
+  });
+
   describe('tag suggestion tasks', () => {
     const tags = [
       {
@@ -921,6 +990,28 @@ describe('Suggestion form schema resolution', () => {
       );
       expect(callsTo(isByNameUrl)[1][0]).toBe(
         '/taskFormSchemas/name/TagSuggestion'
+      );
+    });
+
+    it('does not hand a strict lookup result to a caller that allows the fallback', async () => {
+      stubByUrl([{ match: isListUrl, data: { data: [] } }]);
+
+      const strict = await getResolvedTaskFormSchema(
+        TaskEntityType.DescriptionUpdate,
+        TaskCategory.MetadataUpdate,
+        { allowFallback: false }
+      );
+      const withFallback = await getResolvedTaskFormSchema(
+        TaskEntityType.DescriptionUpdate,
+        TaskCategory.MetadataUpdate
+      );
+
+      expect(strict).toBeUndefined();
+      expect(withFallback).toEqual(
+        getDefaultTaskFormSchema(
+          TaskEntityType.DescriptionUpdate,
+          TaskCategory.MetadataUpdate
+        )
       );
     });
 
