@@ -456,8 +456,8 @@ const matchMustNotPhrase: QueryFilterBranchHandler = (curr, parentPath) =>
     identity
   );
 
-// AND-ed `must_not` terms on one field are a `Not in` rule: read them back as the
-// row the user filled, not one `!=` row per value.
+// AND-ed `must_not` terms on one field are a `Not in` rule, even with one value: read them back as the row the user
+// filled, not one `!=` row per value. A lone `!=` is written bare, never inside a `must`.
 const isMustNotTermClause = (clause: QueryFieldInterface) =>
   !isUndefined((clause?.bool?.must_not as EsTerm)?.term);
 
@@ -466,7 +466,7 @@ const matchMustMustNotTerm: QueryFilterBranchHandler = (curr, parentPath) => {
     | QueryFieldInterface[]
     | undefined;
 
-  if (!Array.isArray(clauses) || clauses.length < 2) {
+  if (!Array.isArray(clauses) || clauses.length === 0) {
     return undefined;
   }
 

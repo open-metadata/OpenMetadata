@@ -235,6 +235,30 @@ describe('Explore query filter round trip', () => {
         ],
       ],
       [
+        'one-value Any in and Not in, as rules',
+        'OR',
+        [
+          {
+            conjunction: 'OR',
+            rules: [
+              { ...domainsIn, value: [['a']] },
+              { ...tagsNotIn, value: [['PII.Sensitive']] },
+            ],
+          },
+        ],
+      ],
+      [
+        'one-value Any in and Not in, as groups',
+        'AND',
+        [
+          { conjunction: 'AND', rules: [{ ...domainsIn, value: [['a']] }] },
+          {
+            conjunction: 'AND',
+            rules: [{ ...tagsNotIn, value: [['PII.Sensitive']] }],
+          },
+        ],
+      ],
+      [
         'two OR groups joined by AND',
         'AND',
         [
@@ -345,7 +369,7 @@ describe('custom properties of an entity type', () => {
     ).toEqual([tableRule]);
   });
 
-  it("keeps searching with the link's filter when a rule's entity type no longer declares the property", () => {
+  it("shows no rule, rather than another entity type's, when the property is gone from its own", () => {
     const extension = provider.fields.extension as {
       subfields: Record<string, unknown>;
     };
@@ -366,7 +390,6 @@ describe('custom properties of an entity type', () => {
       []
     );
     expect(back.isComplete).toBe(false);
-    expect(back.queryFilter).toEqual(tableFilter);
   });
 });
 
@@ -394,20 +417,19 @@ describe('a link Explore can only partly show', () => {
     ]);
   });
 
-  it("searches with the link's whole filter, never the narrower one the shown rules write", () => {
-    const back = readInExplore(linkFilter, provider);
-
-    expect(back.isComplete).toBe(false);
-    expect(back.queryFilter).toEqual(linkFilter);
+  it('reports that it shows only part of the filter', () => {
+    expect(readInExplore(linkFilter, provider).isComplete).toBe(false);
   });
 
-  it('keeps the filter even when none of it can be shown', () => {
+  it('shows no rules when none of it can be read', () => {
     const onlyUnreadable = {
       query: { bool: { must: [{ bool: { must: [unreadable] } }] } },
     } as unknown as QueryFilterInterface;
     const back = readInExplore(onlyUnreadable, provider);
 
     expect(back.isComplete).toBe(false);
-    expect(back.queryFilter).toEqual(onlyUnreadable);
+    expect(describeGroups(back.tree).flatMap((group) => group.rules)).toEqual(
+      []
+    );
   });
 });

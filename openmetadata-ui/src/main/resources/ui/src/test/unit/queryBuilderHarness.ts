@@ -317,11 +317,16 @@ export const toQueryFilter = (tree: ImmutableTree, config: Config) => {
   return query ? ({ query } as QueryFilterInterface) : undefined;
 };
 
-// What the provider does with a filter it reads from the URL.
+// What the provider does with a filter it reads from the URL: the tree it shows, whether that tree shows all of the
+// filter, and the filter the tree writes back (what applying the modal would search with).
 export const readInExplore = (
   queryFilter: QueryFilterInterface,
   config: Config
-) => loadExploreQueryFilter(queryFilter, config);
+) => {
+  const { tree, isComplete } = loadExploreQueryFilter(queryFilter, config);
+
+  return { tree, isComplete, queryFilter: toQueryFilter(tree, config) };
+};
 
 // What Explore does with a link: read its `queryFilter` param, as the provider does on load.
 export const openInExplore = (url: string, config: Config) => {

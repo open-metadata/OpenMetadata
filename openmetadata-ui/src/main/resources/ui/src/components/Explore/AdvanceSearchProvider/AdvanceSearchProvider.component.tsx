@@ -345,11 +345,11 @@ export const AdvanceSearchProvider = ({
       return;
     }
 
-    const {
-      tree,
-      queryFilter: qFilter,
-      isComplete,
-    } = loadExploreQueryFilter(urlFilter.queryFilter, config);
+    const { tree, isComplete } = loadExploreQueryFilter(
+      urlFilter.queryFilter,
+      config
+    );
+    const qFilter = { query: urlFilter.queryFilter.query };
 
     setTreeInternal(tree);
     setSQLQuery(QbUtils.sqlFormat(tree, config) ?? '');
