@@ -20,7 +20,7 @@ const { dirname, join } = require('node:path');
 const { runInNewContext } = require('node:vm');
 
 const MARKER = 'OpenMetadata: wait for the IndexedDB restore transaction';
-const PATCHED_VERSION = '1.65.0';
+const PATCHED_VERSION = '1.65.1';
 
 // Playwright resolves restore after individual requests succeed, before their
 // transaction commits. Closing its temporary page can abort that write and lose

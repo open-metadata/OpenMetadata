@@ -843,7 +843,7 @@ jobs:
             --env PW_BROWSER_HELPER_OUTPUT=/artifacts \
             --env DBUS_SESSION_BUS_ADDRESS=disabled: \
             --env FC_FONTATIONS=1 \
-            mcr.microsoft.com/playwright:v1.65.0-jammy \
+            mcr.microsoft.com/playwright:v1.65.1-jammy \
             ./node_modules/.bin/playwright test \
             --config=playwright/browser-helper-tests.config.ts
 
@@ -1892,7 +1892,7 @@ jobs:
               --user "$(id -u):$(id -g)" -e CI=true -e HOME=/tmp
               "${env_args[@]}"
               -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -v "$RUNNER_TEMP:$RUNNER_TEMP"
-              -w "$PWD" mcr.microsoft.com/playwright:v1.65.0-jammy npx)
+              -w "$PWD" mcr.microsoft.com/playwright:v1.65.1-jammy npx)
             # Only a shard restoring the shared fixture has auth state before its
             # setup projects run; an own-environment lane creates it in the run.
             if [[ "$PW_PRESEEDED_STATE" == "true" ]] &&
