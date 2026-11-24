@@ -25,7 +25,7 @@ import SamlIcon from '../assets/svg/ic-saml.svg';
 
 import { ErrorSchema } from '@rjsf/utils';
 import { AxiosError } from 'axios';
-import { isNil } from 'lodash';
+import { cloneDeep, isNil } from 'lodash';
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
@@ -518,8 +518,9 @@ const cleanupAuthorizerConfig = (
 
   authorizerConfig.enforcePrincipalDomain ??= false;
   authorizerConfig.enableSecureSocketConnection ??= false;
-  authorizerConfig.className = DEFAULT_AUTHORIZER_CLASS_NAME;
-  authorizerConfig.containerRequestFilter = DEFAULT_CONTAINER_REQUEST_FILTER;
+  // A deployment may run its own authorizer; the defaults only fill a gap.
+  authorizerConfig.className ??= DEFAULT_AUTHORIZER_CLASS_NAME;
+  authorizerConfig.containerRequestFilter ??= DEFAULT_CONTAINER_REQUEST_FILTER;
 };
 
 /**
@@ -581,18 +582,49 @@ const cleanupSamlIdp = (
   }
 };
 
+const SAML_ACS_SUFFIX = /\/api\/v1\/saml\/acs\/*$/;
+
+/**
+ * An earlier form version saved the ACS URL as the browser callback. The ACS
+ * servlet only accepts POST, so such a callback must not be kept.
+ */
+const isSamlAcsCallback = (callback: string, acs: string): boolean =>
+  callback === acs || SAML_ACS_SUFFIX.test(callback.split(/[?#]/)[0]);
+
+/**
+ * The UI callback next to an ACS URL. An ACS served under a base path keeps
+ * that path: https://host/om/api/v1/saml/acs pairs with
+ * https://host/om/callback, whatever trailing slashes the base path carries.
+ */
+const browserCallbackFor = (acs: URL): string => {
+  const suffix = SAML_ACS_SUFFIX.exec(acs.pathname);
+  const basePath = suffix
+    ? acs.pathname.slice(0, suffix.index).replace(/\/+$/, '')
+    : '';
+
+  return `${acs.origin}${basePath}/callback`;
+};
+
+/**
+ * The browser callback to save: the first saved callback that is not the ACS
+ * URL, or the one derived from the ACS when none is.
+ */
 const resolveSamlBrowserCallback = (
   acs: string,
-  configuredCallback: string | undefined
+  configuredCallbacks: Array<string | undefined>
 ): string | undefined => {
+  const usableCallback = configuredCallbacks.find(
+    (callback) => callback && !isSamlAcsCallback(callback, acs)
+  );
+
   try {
     const url = new URL(acs);
 
     return url.pathname.endsWith('/callback')
       ? acs
-      : configuredCallback || `${url.origin}/callback`;
+      : usableCallback || browserCallbackFor(url);
   } catch {
-    return configuredCallback;
+    return usableCallback;
   }
 };
 
@@ -610,11 +642,10 @@ const cleanupSamlSp = (
 
   if (typeof acs === 'string' && acs) {
     spConfig.acs = acs;
-    const callbackUrl = resolveSamlBrowserCallback(
-      acs,
-      authConfig.callbackUrl ||
-        (typeof spConfig.callback === 'string' ? spConfig.callback : undefined)
-    );
+    const callbackUrl = resolveSamlBrowserCallback(acs, [
+      authConfig.callbackUrl,
+      typeof spConfig.callback === 'string' ? spConfig.callback : undefined,
+    ]);
 
     if (callbackUrl) {
       authConfig.callbackUrl = callbackUrl;
@@ -681,7 +712,9 @@ export const cleanupProviderSpecificFields = (
     return undefined;
   }
 
-  const cleanedData = { ...data };
+  // A deep copy: callers compare the result with the data they passed in, so
+  // cleaning must never change that data.
+  const cleanedData = cloneDeep(data);
 
   if (cleanedData.authenticationConfiguration) {
     cleanupAuthenticationConfig(

@@ -7,6 +7,9 @@ paths: "openmetadata-ui/src/main/resources/ui/playwright/**"
 
 Applies to `openmetadata-ui/src/main/resources/ui/playwright/**`.
 
+**Before writing a Playwright test,** check it belongs here: page behaviour (paging, forms, pickers,
+permission-driven controls) goes in a Vitest browser test instead. See `frontend-browser-tests.md`.
+
 **Run this before you finish:**
 
 ```bash
