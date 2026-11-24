@@ -21,6 +21,7 @@ import {
 } from '../../../../generated/entity/tasks/task';
 import { queryClient } from '../../../../queryClient';
 import { resolveTask, TaskResolutionType } from '../../../../rest/tasksAPI';
+import { getResolvedTaskFormSchema } from '../../../../utils/TaskFormSchemaUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import {
   TASK_LIST_QUERY_KEY,
@@ -38,6 +39,11 @@ jest.mock('react-i18next', () => ({
 jest.mock('../../../../rest/tasksAPI', () => ({
   ...jest.requireActual('../../../../rest/tasksAPI'),
   resolveTask: jest.fn(),
+}));
+
+jest.mock('../../../../utils/TaskFormSchemaUtils', () => ({
+  ...jest.requireActual('../../../../utils/TaskFormSchemaUtils'),
+  getResolvedTaskFormSchema: jest.fn(),
 }));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
@@ -121,6 +127,34 @@ describe('useBulkResolveTasks', () => {
 
     expect(mockResolve).toHaveBeenCalledTimes(1);
     expect(mockResolve).toHaveBeenCalledWith('a', expect.anything());
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'message.count-tasks-not-resolved {"count":1}'
+    );
+  });
+
+  it('skips a task whose transition form requires fields', async () => {
+    mockResolve.mockResolvedValue({} as Task);
+    (getResolvedTaskFormSchema as jest.Mock).mockResolvedValue({
+      transitionForms: {
+        approve: {
+          formSchema: {
+            type: 'object',
+            properties: { proposedText: { type: 'string' } },
+            required: ['proposedText'],
+          },
+        },
+      },
+    });
+    const { result } = renderHook(() => useBulkResolveTasks(), { wrapper });
+
+    await act(() =>
+      result.current.resolveTasks({
+        decision: 'approve',
+        tasks: [{ ...workflowTask('needs-form'), type: 'CustomTask' } as Task],
+      })
+    );
+
+    expect(mockResolve).not.toHaveBeenCalled();
     expect(showErrorToast).toHaveBeenCalledWith(
       'message.count-tasks-not-resolved {"count":1}'
     );

@@ -2,6 +2,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
@@ -51,14 +52,17 @@ public class CollectMetadataTask implements NodeInterface {
         new ServiceTaskBuilder()
             .id(getFlowableElementId(node.getName(), "collectMetadata"))
             .implementation(CollectMetadataImpl.class.getName());
-    final Map<String, String> fields =
-        Map.of(
-            "configurationExpr", JsonUtils.pojoToJson(node.getConfig()),
-            "inputNamespaceMapExpr",
-                JsonUtils.pojoToJson(
-                    node.getInputNamespaceMap() != null ? node.getInputNamespaceMap() : Map.of()),
-            "workflowNameExpr", workflowName,
-            "nodeNameExpr", node.getName());
+    // Ordered: the fields are written into the BPMN in this order, and the server compares that
+    // BPMN
+    // byte for byte with its deployment on every start, so it must be the same in every JVM.
+    final Map<String, String> fields = new LinkedHashMap<>();
+    fields.put("configurationExpr", JsonUtils.pojoToJson(node.getConfig()));
+    fields.put(
+        "inputNamespaceMapExpr",
+        JsonUtils.pojoToJson(
+            node.getInputNamespaceMap() != null ? node.getInputNamespaceMap() : Map.of()));
+    fields.put("workflowNameExpr", workflowName);
+    fields.put("nodeNameExpr", node.getName());
     fields.forEach(
         (name, value) ->
             builder.addFieldExtension(
