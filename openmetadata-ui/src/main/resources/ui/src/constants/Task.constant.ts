@@ -44,3 +44,5 @@ export const INCIDENT_TASK_TYPES: ReadonlySet<TaskType> = new Set([
   TaskType.IncidentResolution,
   TaskType.TestCaseResolution,
 ]);
+
+export const INCIDENT_TASK_ID_PARAM = 'taskId';

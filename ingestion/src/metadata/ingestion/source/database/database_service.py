@@ -90,6 +90,9 @@ class DataModelLink(BaseModel):
     table_entity: Table
     datamodel: DataModel
     upstream_table_ids: dict[str, UUID] = Field(default_factory=dict)
+    # The manifest itself lists no parents. An empty upstream alone cannot tell this apart from
+    # parents that were filtered out or are not in OpenMetadata yet, whose lineage must survive.
+    declared_no_upstream: bool = False
 
 
 class DatabaseServiceTopology(ServiceTopology):

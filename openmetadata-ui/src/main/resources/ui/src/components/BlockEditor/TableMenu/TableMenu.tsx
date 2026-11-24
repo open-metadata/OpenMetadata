@@ -158,52 +158,57 @@ const TableMenu = (props: TableMenuProps) => {
     };
   }, [handleMouseDown, isEditable]);
 
+  // tippy moves menuRef's node into its popper. React must only ever remove the
+  // wrapper, which stays put; removing the moved node throws NotFoundError when
+  // the menu unmounts while the editor stays mounted (editable flips to false).
   return (
-    <div className="table-menu" ref={menuRef}>
-      <Box align="center" gap={4}>
-        <ButtonUtility
-          data-testid="Add row after current row"
-          icon={RowInsertBottom}
-          size="lg"
-          tooltip="Add row after current row"
-          onClick={() => editor.chain().focus().addRowAfter().run()}
-        />
+    <div>
+      <div className="table-menu" ref={menuRef}>
+        <Box align="center" gap={4}>
+          <ButtonUtility
+            data-testid="Add row after current row"
+            icon={RowInsertBottom}
+            size="lg"
+            tooltip="Add row after current row"
+            onClick={() => editor.chain().focus().addRowAfter().run()}
+          />
 
-        <ButtonUtility
-          data-testid="Add column after current column"
-          icon={ColumnInsertRight}
-          size="lg"
-          tooltip="Add column after current column"
-          onClick={() => editor.chain().focus().addColumnAfter().run()}
-        />
+          <ButtonUtility
+            data-testid="Add column after current column"
+            icon={ColumnInsertRight}
+            size="lg"
+            tooltip="Add column after current column"
+            onClick={() => editor.chain().focus().addColumnAfter().run()}
+          />
 
-        <ButtonUtility
-          data-testid="Delete current row"
-          icon={RowDelete}
-          size="lg"
-          tooltip="Delete current row"
-          onClick={() => editor.chain().focus().deleteRow().run()}
-        />
+          <ButtonUtility
+            data-testid="Delete current row"
+            icon={RowDelete}
+            size="lg"
+            tooltip="Delete current row"
+            onClick={() => editor.chain().focus().deleteRow().run()}
+          />
 
-        <ButtonUtility
-          data-testid="Delete current col"
-          icon={ColumnDelete}
-          size="lg"
-          tooltip="Delete current column"
-          onClick={() => editor.chain().focus().deleteColumn().run()}
-        />
+          <ButtonUtility
+            data-testid="Delete current col"
+            icon={ColumnDelete}
+            size="lg"
+            tooltip="Delete current column"
+            onClick={() => editor.chain().focus().deleteColumn().run()}
+          />
 
-        <ButtonUtility
-          data-testid="Delete table"
-          icon={Trash01}
-          size="lg"
-          tooltip="Delete table"
-          onClick={() => {
-            editor.chain().focus().deleteTable().run();
-            tableMenuPopup.current?.hide();
-          }}
-        />
-      </Box>
+          <ButtonUtility
+            data-testid="Delete table"
+            icon={Trash01}
+            size="lg"
+            tooltip="Delete table"
+            onClick={() => {
+              editor.chain().focus().deleteTable().run();
+              tableMenuPopup.current?.hide();
+            }}
+          />
+        </Box>
+      </div>
     </div>
   );
 };

@@ -297,6 +297,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           @QueryParam("endTs")
           Long endTs,
       @Parameter(
+              description =
+                  "Filter by tasks last updated on or after this timestamp (epoch millis)")
+          @QueryParam("updatedSince")
+          Long updatedSince,
+      @Parameter(
+              description = "Timestamp to sort by: createdAt or updatedAt (defaults to createdAt)")
+          @QueryParam("sortBy")
+          String sortBy,
+      @Parameter(
               description = TASK_SORT_ORDER_DESCRIPTION,
               schema =
                   @Schema(
@@ -316,6 +325,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       filter.addQueryParam("taskStatus", status.value());
     }
     applyTaskTimeRange(filter, startTs, endTs);
+    if (updatedSince != null) {
+      filter.addQueryParam("taskUpdatedSince", updatedSince.toString());
+    }
     if (category != null) {
       filter.addQueryParam("category", category.value());
     }
@@ -361,7 +373,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     }
     applyTaskSearch(filter, q);
 
-    TaskListOrder.fromParam(sortOrder).applyTo(filter);
+    TaskListOrder.fromParam(sortOrder).applyTo(filter, sortBy);
     return withoutUnreadableValues(
         securityContext,
         aboutVisibility.retainViewable(
@@ -1875,7 +1887,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     validateTaskCanBeClosed(task);
     requireClosable(task);
 
-    Task closedTask = repository.closeTask(task, userName, comment);
+    Task closedTask = repository.closeTaskAndCancelWorkflowRun(task, userName, comment);
     return Response.ok(closedTask).build();
   }
 
@@ -2128,7 +2140,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
         repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
         validateTaskCanBeClosed(task);
         requireClosable(task);
-        repository.closeTask(task, userName, comment);
+        repository.closeTaskAndCancelWorkflowRun(task, userName, comment);
       }
     }
   }

@@ -147,7 +147,7 @@ def postgres_session():
 
 @pytest.fixture(scope="module")
 def mysql_session():
-    with MySqlContainer(image="mysql:8.4.5", dbname="test_missing_count") as container:
+    with MySqlContainer(image="mysql:8.4.13", dbname="test_missing_count") as container:
         engine = create_engine(container.get_connection_url())
         session = _seed(engine)
         yield session

@@ -263,6 +263,8 @@ import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.LifecycleTransitionRuns;
 import org.openmetadata.service.governance.workflows.StageOwnership;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.HeldTerm;
+import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.TaggedEntity;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
@@ -675,7 +677,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    *       {@code service.id} / parent-id in a single delete-by-query;
    *   <li>satellites: the root's {@code cleanup()} deletes field_relationship / tag_usage for the
    *       whole subtree by FQN prefix in a single statement (only valid when descendant FQNs are
-   *       nested under the root FQN).
+   *       nested under the root FQN). When an entity the delete leaves in place holds rows under
+   *       the root's FQN, the root keeps them and each descendant removes its own instead (see
+   *       {@code CASCADE_ROOT_FQN_SHARED}).
    * </ul>
    *
    * <p>When {@code true}, {@link #bulkHardDeleteSubtree(List, String)} skips the per-entity search
@@ -1021,7 +1025,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     if (supportsTags) {
       List<String> fqns = entities.stream().map(EntityInterface<?>::getFullyQualifiedName).toList();
-      daoCollection.tagUsageDAO().deleteTagsByTargets(fqns);
+      daoCollection.tagUsageDAO().deleteShownTagsByTargets(fqns);
     }
     if (supportsOwners) {
       deleteToMany(ids, entityType, Relationship.OWNS, null);
@@ -4052,6 +4056,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
+   * Set while a recursive hard delete cascades under a root that keeps some FQN-keyed rows under
+   * its FQN because an entity it leaves in place holds them: another type's entity with the same
+   * FQN, or one that nests under it. The root's prefix delete then misses its descendants' rows,
+   * so each descendant removes its own.
+   */
+  private static final ThreadLocal<Boolean> CASCADE_ROOT_FQN_SHARED = new ThreadLocal<>();
+
+  private boolean reliesOnCascadeRootFqnCleanup() {
+    return descendantsCoveredByAncestorCascade
+        && !Boolean.TRUE.equals(CASCADE_ROOT_FQN_SHARED.get());
+  }
+
+  /**
    * De-duplication key for a deferred Redis-L2 cache invalidation. Equality is on {@code
    * (entityType, id)} only so repeated relationship writes touching the same entity collapse to one
    * invalidation when the transaction ends; the {@code fqn} is carried along (best non-null wins) so
@@ -4351,7 +4368,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     try {
       page =
           ReindexingUtil.findReferenceInElasticSearchAcrossAllIndexes(
-              "tags.tagFQN", ReindexingUtil.escapeDoubleQuotes(tagFqn), from);
+              "tags.tagFQN", ReindexingUtil.escapeQueryStringPhrase(tagFqn), from);
     } catch (Exception e) {
       LOG.warn("Search-based cache invalidation failed for tag={}", tagFqn, e);
       page = List.of();
@@ -5971,7 +5988,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
 
       try {
-        deleteChildren(original.getId(), recursive, hardDelete, deletedBy);
+        deleteChildrenOf(original, recursive, hardDelete, deletedBy);
 
         EventType changeType;
         T updated = loadForDelete(original.getId());
@@ -6075,6 +6092,26 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Validate entity
     T entity = find(id, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
+  }
+
+  /** Runs {@link #deleteChildren} with the cascade told whether this root's FQN is shared. */
+  private void deleteChildrenOf(T root, boolean recursive, boolean hardDelete, String deletedBy) {
+    Boolean outerCascadeRootShared = CASCADE_ROOT_FQN_SHARED.get();
+    CASCADE_ROOT_FQN_SHARED.set(
+        recursive && hardDelete && rootKeepsDescendantRows(root.getFullyQualifiedName()));
+    try {
+      deleteChildren(root.getId(), recursive, hardDelete, deletedBy);
+    } finally {
+      if (outerCascadeRootShared == null) {
+        CASCADE_ROOT_FQN_SHARED.remove();
+      } else {
+        CASCADE_ROOT_FQN_SHARED.set(outerCascadeRootShared);
+      }
+    }
+  }
+
+  private boolean rootKeepsDescendantRows(String fqn) {
+    return shouldCleanupFqnDependents() && fqnKeyedRowCleanup().rootKeepsDescendantRows(fqn);
   }
 
   @Transaction
@@ -6213,14 +6250,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // field_relationship in opposite orders is an AB-BA deadlock the database cannot avoid for us.
     // Neither table depends on the other here; only the feed-artifact ordering above is required.
     if (shouldCleanupFqnDependents()) {
-      daoCollection
-          .fieldRelationshipDAO()
-          .deleteAllByPrefix(entityInterface.getFullyQualifiedName(), entityType);
-      if (supportsTags) {
-        daoCollection
-            .tagUsageDAO()
-            .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
-      }
+      fqnKeyedRowCleanup().delete(List.of(entityInterface.getFullyQualifiedName()));
     }
     // Delete all the usage data
     daoCollection.usageDAO().delete(id);
@@ -6292,6 +6322,32 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   protected boolean shouldCleanupFqnDependents() {
     return supportsTags;
+  }
+
+  /**
+   * Whether an FQN of this type can nest under an FQN that none of its ancestors has: a bare name
+   * with dots ("sales.revenue"), or a fixed segment after the parent (data models under
+   * "service.model"). Such an entity sits under the FQN of an unrelated entity, so a hard delete of
+   * that entity keeps its FQN-keyed rows. Its own FQN can also equal a field's (a table column's),
+   * so its own hard delete keeps the rows of the fields it shares an FQN with (see {@link
+   * FqnKeyedRowCleanup}).
+   */
+  protected boolean nestsUnderUnrelatedFqns() {
+    return false;
+  }
+
+  /**
+   * For a type that {@link #nestsUnderUnrelatedFqns()}, the type whose cascade-covered descendants
+   * its entities are when their FQN nests under its FQN (data models under their dashboard service),
+   * or {@code null}. Before a recursive delete from such a parent, they do not count as unrelated, so
+   * its descendants keep relying on its single prefix delete.
+   */
+  protected String fqnParentType() {
+    return null;
+  }
+
+  private FqnKeyedRowCleanup fqnKeyedRowCleanup() {
+    return new FqnKeyedRowCleanup(daoCollection, this);
   }
 
   /**
@@ -6453,38 +6509,105 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private void createNewEntityFlush(T entity) {
-    checkAppliedGlossaryTermsApproved(entity);
+    List<HeldTerm> heldTerms = holdUnapprovedGlossaryTerms(null, entity);
     assignInitialEntityStatus(entity);
-    flushInOneTransaction(List.of(entity), () -> createNewEntityFlushBody(entity));
+    flushInOneTransaction(
+        List.of(entity),
+        () -> {
+          createNewEntityFlushBody(entity);
+          storePendingGlossaryTerms(heldTerms, entity.getUpdatedBy());
+        });
     try (var ignored = phase("createSetInheritedFields")) {
       setInheritedFields(entity, new Fields(allowedFields));
     }
   }
 
-  final void checkAppliedGlossaryTermsApproved(T entity) {
-    ApprovedGlossaryTermGuard.checkApplied(glossaryTagsByTarget(entity));
+  /**
+   * Takes out of {@code entity} each glossary term that is not Approved and that it newly applies
+   * to the entity or one of its fields, for {@link #storePendingGlossaryTerms} to keep as pending
+   * (ADR:2026-11-06-only-approved-glossary-terms-can-be-newly-applied-to-an-asset). {@code stored}
+   * is the entity as stored, or null for a create.
+   */
+  final List<HeldTerm> holdUnapprovedGlossaryTerms(T stored, T entity) {
+    return ApprovedGlossaryTermGuard.holdNewlyApplied(
+        new TaggedEntity(entity, taggedFieldContainers(entity)),
+        stored == null ? null : new TaggedEntity(stored, taggedFieldContainers(stored)));
   }
 
   /**
-   * Rejects a glossary term that is not Approved and that {@code updated} newly applies to the
-   * entity or one of its fields. Edits an approval workflow holds are checked when they are staged,
-   * so a term is rejected before a change request is opened for it, not when the request is
-   * approved.
+   * Stores held terms as pending labels, which no tag read returns until the term is approved. Once
+   * the write commits, a term approved while it ran is shown: its approval may have finished before
+   * these labels existed.
    */
-  public final void checkNewlyAppliedGlossaryTermsApproved(
-      final EntityInterface original, final EntityInterface updated) {
-    final T stored = entityClass.cast(original);
-    final T edited = entityClass.cast(updated);
-    ApprovedGlossaryTermGuard.checkNewlyApplied(
-        ApprovedGlossaryTermGuard.tagsByStoredTarget(
-            new ApprovedGlossaryTermGuard.TaggedEntity(edited, taggedFieldContainers(edited)),
-            new ApprovedGlossaryTermGuard.TaggedEntity(stored, taggedFieldContainers(stored))),
-        glossaryTagsByTarget(stored));
+  final void storePendingGlossaryTerms(List<HeldTerm> heldTerms, String appliedBy) {
+    if (!heldTerms.isEmpty()) {
+      Map<String, List<TagLabel>> labelsByTarget = new HashMap<>();
+      heldTerms.forEach(
+          held ->
+              labelsByTarget
+                  .computeIfAbsent(held.targetFqn(), target -> new ArrayList<>())
+                  .add(JsonUtils.deepCopy(held.label(), TagLabel.class).withAppliedBy(appliedBy)));
+      daoCollection.tagUsageDAO().applyPendingTagsBatch(labelsByTarget);
+      Set<String> termFqns = new HashSet<>();
+      heldTerms.forEach(held -> termFqns.add(held.label().getTagFQN()));
+      PostCommitActionQueue.runOrDefer(() -> GlossaryTermPendingLabels.showIfApproved(termFqns));
+    }
+  }
+
+  /**
+   * Shows an approved glossary term the entity holds as pending, as an ordinary edit by {@code
+   * user}: the term is added to the targets {@code labelsByTargetHash} names and the entity is
+   * patched, so it records a version and a change event and updates the cache, search and RDF like
+   * any other edit. The write's upsert turns the pending rows into shown ones. Returns whether there
+   * was anything to add.
+   */
+  public final boolean showApprovedTerm(
+      UUID id, Map<String, TagLabel> labelsByTargetHash, String user) {
+    T original = get(null, id, patchFields, NON_DELETED, false);
+    T updated = JsonUtils.deepCopy(original, entityClass);
+    boolean added =
+        ApprovedGlossaryTermGuard.addToTargets(
+                new TaggedEntity(updated, taggedFieldContainers(updated)), labelsByTargetHash)
+            > 0;
+    if (added) {
+      // The patch names columns by position, so it applies only to the version it was built from: a
+      // newer one is refused and the asset stays pending for the next attempt.
+      PatchResponse<T> response =
+          patch(
+              null,
+              id,
+              user,
+              JsonUtils.getJsonPatch(original, updated),
+              null,
+              EntityETag.generateWeakETag(original),
+              null);
+      // A background write has no response for the response filter to record a change event from.
+      storeChangeEventForAsyncOperation(response.entity(), response.changeType(), false, user);
+    }
+    return added;
+  }
+
+  /**
+   * The FQNs of the entity and of every inline field it holds labels on: its own targets, not those
+   * of other entities nested under its FQN.
+   */
+  public final Set<String> ownTargetFqns(UUID id) {
+    T entity = find(id, ALL);
+    return new HashSet<>(glossaryTagsByTarget(entity).keySet());
   }
 
   /** Labels on the entity and its tagged inline fields, keyed by target FQN. */
   final Map<String, List<TagLabel>> glossaryTagsByTarget(T entity) {
     return ApprovedGlossaryTermGuard.tagsByTarget(entity, taggedFieldContainers(entity));
+  }
+
+  /**
+   * Whether entities of this type have inline fields that carry their own tags: the type-level
+   * answer to {@link #taggedFieldContainers}, so a repository that overrides that hook for fields
+   * outside the {@link ChildFieldResolver} registry overrides this one too.
+   */
+  protected boolean hasTaggedFields() {
+    return ChildFieldResolver.supports(entityType);
   }
 
   /**
@@ -6821,15 +6944,48 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private void createManyEntitiesFlush(List<T> entities) {
-    entities.forEach(this::checkAppliedGlossaryTermsApproved);
+    // Each chunk commits on its own, so each stores its own held terms with its entities.
+    List<List<HeldTerm>> heldTerms = new ArrayList<>();
+    entities.forEach(entity -> heldTerms.add(holdUnapprovedGlossaryTerms(null, entity)));
     entities.forEach(this::assignInitialEntityStatus);
     for (int start = 0; start < entities.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
       int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
       List<T> chunk = entities.subList(start, end);
-      flushInOneTransaction(chunk, () -> createManyEntitiesFlushBody(chunk));
+      List<List<HeldTerm>> chunkHeldTerms = heldTerms.subList(start, end);
+      try {
+        flushInOneTransaction(
+            chunk,
+            () -> {
+              createManyEntitiesFlushBody(chunk);
+              for (int i = 0; i < chunk.size(); i++) {
+                storePendingGlossaryTerms(chunkHeldTerms.get(i), chunk.get(i).getUpdatedBy());
+              }
+            });
+      } catch (RuntimeException e) {
+        // The rollback dropped this chunk's pending rows and later chunks never ran, and callers
+        // retry or fall back with these same entities: give them their terms back so that write
+        // holds them again.
+        restoreHeldTerms(
+            entities.subList(start, entities.size()), heldTerms.subList(start, entities.size()));
+        throw e;
+      }
     }
     try (var ignored = phase("setInheritedFields")) {
       setInheritedFields(entities, new Fields(allowedFields));
+    }
+  }
+
+  private void restoreHeldTerms(List<T> entities, List<List<HeldTerm>> heldTerms) {
+    for (int i = 0; i < entities.size(); i++) {
+      TaggedEntity tagged =
+          new TaggedEntity(entities.get(i), taggedFieldContainers(entities.get(i)));
+      heldTerms
+          .get(i)
+          .forEach(
+              held ->
+                  ApprovedGlossaryTermGuard.addToTargets(
+                      tagged,
+                      Map.of(FullyQualifiedName.buildHash(held.targetFqn()), held.label())));
     }
   }
 
@@ -8090,7 +8246,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   protected void deleteTagsPreservingCertification(String entityFQN) {
     String certClassification = getCertificationClassification();
     if (certClassification == null) {
-      daoCollection.tagUsageDAO().deleteTagsByTarget(entityFQN);
+      daoCollection.tagUsageDAO().deleteShownTagsByTarget(entityFQN);
     } else {
       daoCollection
           .tagUsageDAO()
@@ -8976,17 +9132,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // deleteTagLabelsByTargetPrefix
     // on the root FQN covers every descendant), making these per-entity calls redundant — N no-op
     // round-trips for an N-entity subtree. Skip them for cascade-covered types and rely on the root
-    // cleanup() prefix delete. Types not FQN-nested under their delete root (e.g. flat-FQN teams)
-    // keep the per-entity path.
-    if (shouldCleanupFqnDependents() && !descendantsCoveredByAncestorCascade) {
+    // cleanup() prefix delete, unless the root keeps rows under its FQN for an entity the delete
+    // leaves in place (CASCADE_ROOT_FQN_SHARED). Types not FQN-nested under their delete root
+    // (e.g. flat-FQN teams) keep the per-entity path.
+    if (shouldCleanupFqnDependents() && !reliesOnCascadeRootFqnCleanup()) {
       try (var ignored = phase("bulkHardDeleteFqnDependents")) {
-        for (T entity : entities) {
-          String fqn = entity.getFullyQualifiedName();
-          daoCollection.fieldRelationshipDAO().deleteAllByPrefix(fqn, entityType);
-          if (supportsTags) {
-            daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(fqn);
-          }
-        }
+        fqnKeyedRowCleanup()
+            .delete(entities.stream().map(EntityInterface::getFullyQualifiedName).toList());
       }
     }
     try (var ignored = phase("bulkHardDeleteUsage")) {
@@ -11081,6 +11233,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * @see TableRepository.TableUpdater::entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
+    // Glossary terms updateWithDeferredStore held back, stored once the caller writes the entity,
+    // and the user whose write held them.
+    private List<HeldTerm> heldTerms = List.of();
+    private String heldBy;
+
     private static volatile long sessionTimeoutMillis = 10L * 60 * 1000; // 10 minutes
     protected T previous;
     protected T original;
@@ -11294,7 +11451,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * unchanged caller POJOs avoid a redundant restore.
      */
     private void flushUpdate(boolean useOptimisticStore, boolean importMode) {
-      checkNewlyAppliedGlossaryTermsApproved();
+      List<HeldTerm> heldTerms = holdUnapprovedGlossaryTerms();
+      // Read before the flush: a write that changes nothing reverts `updated`, and its updatedBy
+      // with it, to the stored version's.
+      String writer = updated.getUpdatedBy();
       UpdaterSnapshot snapshot = snapshotUpdaterState();
       boolean[] firstAttempt = {true};
       flushInOneTransaction(
@@ -11303,6 +11463,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             restoreUpdaterState(snapshot, !firstAttempt[0]);
             firstAttempt[0] = false;
             flushUpdateBody(useOptimisticStore || useOptimisticLocking, importMode);
+            storePendingGlossaryTerms(heldTerms, writer);
           });
       if (entityStored) {
         try (var ignored = phase("entityUpdateCacheEvict")) {
@@ -11312,9 +11473,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Runs before any write, and before consolidation rebases `original` onto the pre-session
-    // version, so the baseline is the stored entity this request changes.
-    private void checkNewlyAppliedGlossaryTermsApproved() {
-      EntityRepository.this.checkNewlyAppliedGlossaryTermsApproved(original, updated);
+    // version, so the baseline is the stored entity this request changes. A held term leaves
+    // `updated`, so it is not in the diff, the change description, the response or search.
+    private List<HeldTerm> holdUnapprovedGlossaryTerms() {
+      return EntityRepository.this.holdUnapprovedGlossaryTerms(original, updated);
+    }
+
+    /**
+     * Stores the terms {@link #updateWithDeferredStore} held back, once the caller has written the
+     * entity: a write that fails must not leave a pending label for its approval to show later.
+     */
+    public final void storeHeldGlossaryTerms() {
+      storePendingGlossaryTerms(heldTerms, heldBy);
     }
 
     private UpdaterSnapshot snapshotUpdaterState() {
@@ -11523,7 +11693,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      */
     @Transaction
     public final void updateWithDeferredStore() {
-      checkNewlyAppliedGlossaryTermsApproved();
+      heldTerms = holdUnapprovedGlossaryTerms();
+      heldBy = updated.getUpdatedBy();
       changeDescription = new ChangeDescription();
       try (var ignored = phase("entityUpdateDiffDeferred")) {
         updateInternal();
@@ -12089,7 +12260,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
       // Remove current entity tags in the database. It will be added back later from the merged tag
       // list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
+      daoCollection.tagUsageDAO().deleteShownTagsByTarget(fqn);
 
       List<TagLabel> addedTags = new ArrayList<>();
       List<TagLabel> deletedTags = new ArrayList<>();
@@ -13371,7 +13542,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // Delete tags related to deleted columns
       deletedColumns.forEach(
           deleted -> {
-            daoCollection.tagUsageDAO().deleteTagsByTarget(deleted.getFullyQualifiedName());
+            daoCollection
+                .tagUsageDAO()
+                .deleteFieldTags(
+                    deleted.getFullyQualifiedName(), addedColumnMap.containsKey(deleted.getName()));
             deleteColumnExtension(entityId, deleted.getFullyQualifiedName());
           });
 
@@ -15372,8 +15546,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * Returns true when a connector-supplied entity is provably unchanged from what is stored, so
    * the bulk update path can skip field hydration and per-field diffing. Requires a non-empty
    * sourceHash on both the incoming entity and the stored original that match, an existing
-   * non-deleted original, and that the FQN appears only once in the batch (duplicate FQNs need
-   * the full updater path so each occurrence diffs against a fresh snapshot).
+   * non-deleted original, that the FQN appears only once in the batch (duplicate FQNs need the
+   * full updater path so each occurrence diffs against a fresh snapshot), and that the original
+   * still holds what the hash covered (see {@link #hasLostSourceFields}).
    */
   private boolean isSourceHashUnchanged(
       T entity, Map<String, T> hydratedOriginalByFqn, Map<String, Integer> updateFrequencyByFqn) {
@@ -15389,7 +15564,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (original == null || Boolean.TRUE.equals(original.getDeleted())) {
       return false;
     }
-    return incomingHash.equals(original.getSourceHash());
+    return incomingHash.equals(original.getSourceHash()) && !hasLostSourceFields(original, entity);
+  }
+
+  /**
+   * Whether the stored row lacks a field the incoming entity carries although their sourceHash
+   * matches. A write outside the updater can drop such a field and keep the hash, and skipping on
+   * the hash would then keep the field missing for good.
+   */
+  protected boolean hasLostSourceFields(T stored, T incoming) {
+    return false;
   }
 
   private void bulkUpdateEntities(
@@ -15538,6 +15722,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         if (!entitiesToStore.isEmpty()) {
           updateMany(entitiesToStore);
         }
+        updaters.forEach(EntityUpdater::storeHeldGlossaryTerms);
       }
 
       List<T> changedEntities = changedUpdaters.stream().map(EntityUpdater::getUpdated).toList();
@@ -15582,6 +15767,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             updater.storeUpdate();
             invalidate(updater.getUpdated());
           }
+          updater.storeHeldGlossaryTerms();
           succeededUpdaters.add(updater);
         } catch (Exception e) {
           failedRequests.add(

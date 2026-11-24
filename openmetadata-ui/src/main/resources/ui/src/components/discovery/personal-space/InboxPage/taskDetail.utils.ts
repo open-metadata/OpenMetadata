@@ -436,22 +436,25 @@ const getResolutionRows = (task: Task, t: Translate): TaskDetailRow[] => {
 
   // Who resolved it reads in the line under the title ("Rejected by … on …"),
   // so the rows keep only when and why.
-  return [
-    ...textRow(
-      'resolvedOn',
-      'calendar',
-      t('label.resolved-on'),
-      resolution.resolvedOn
-    ),
-    ...(resolution.hasResolution
-      ? textRow(
-          'resolutionComment',
-          'type',
-          t(resolution.commentLabelKey),
-          resolution.comment
-        )
-      : []),
-  ];
+  const rows = textRow(
+    'resolvedOn',
+    'calendar',
+    t('label.resolved-on'),
+    resolution.resolvedOn
+  );
+  if (resolution.hasResolution) {
+    rows.push({
+      key: 'resolutionComment',
+      icon: 'type',
+      label: t(resolution.commentLabelKey),
+      value: {
+        kind: resolution.comment === NO_DATA_PLACEHOLDER ? 'text' : 'richText',
+        text: resolution.comment,
+      },
+    });
+  }
+
+  return rows;
 };
 
 const describeIncident = (

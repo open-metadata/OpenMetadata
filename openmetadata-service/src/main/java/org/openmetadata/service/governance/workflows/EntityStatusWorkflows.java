@@ -7,7 +7,6 @@ import static org.openmetadata.service.governance.workflows.WorkflowEventConsume
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -24,13 +23,11 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
 import org.openmetadata.schema.governance.workflows.elements.triggers.EventBasedEntityTriggerDefinition;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.CheckEntityAttributesImpl;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.TriggerEntityFilter;
-import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 
 /**
@@ -314,19 +311,7 @@ public final class EntityStatusWorkflows implements StageOwnership {
   // read (a node type from another version) must not fail stage changes on every entity type. It
   // cannot be deployed here either, so skipping it leaves ownership unchanged.
   private static List<WorkflowDefinition> readableWorkflowDefinitions() {
-    WorkflowDefinitionRepository repository =
-        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
-    List<WorkflowDefinition> workflows = new ArrayList<>();
-    for (String json :
-        repository
-            .getDao()
-            .listAfter(new ListFilter(Include.NON_DELETED), Integer.MAX_VALUE, "", "")) {
-      try {
-        workflows.add(JsonUtils.readValue(json, WorkflowDefinition.class));
-      } catch (Exception e) {
-        LOG.error("Skipping unreadable workflow definition for lifecycle-stage ownership", e);
-      }
-    }
-    return workflows;
+    return ((WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION))
+        .listReadable();
   }
 }

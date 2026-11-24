@@ -116,6 +116,11 @@ export interface Assignees {
      */
     candidates?: EntityReference[];
     /**
+     * When no reviewer or owner of the asset resolves, assign its service's owners, and when
+     * those resolve to no one, its domains' owners. Runs before emptyAssigneeStrategy.
+     */
+    cascadeOwners?: boolean;
+    /**
      * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
      * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
      * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,

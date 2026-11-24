@@ -288,6 +288,11 @@ Run `python3 .github/scripts/check_pr_workflow_security.py` after workflow chang
 repeatedly add the following.
 
 - **Java migrations** (`migration/utils/vNNN`):
+  - Carry their own logic: rows and SQL through the `Handle`, using only the classes
+    `MigrationArchitectureTest` allows, not `CollectionDAO`, repositories, `Entity` lookups or
+    generated classes, which keep changing after the step ships. An unavoidable call is a named
+    exception in that test.
+    ADR:2026-11-11-a-data-migration-carries-its-own-logic
   - Compute a fixed point that is safe to re-run, never a subtractive delta.
   - Guard on the current shape, so an admin-customized row is left alone.
   - Let unexpected failures propagate. A migration that logs and returns is recorded as applied in
@@ -295,11 +300,14 @@ repeatedly add the following.
   - Skip work already done. Data migrations re-run whenever `MigrationCodeFingerprint` changes.
   - Normalize legacy `null` values.
   - Rewrite the `entity_extension` `<entity>.version.*` snapshots as well as the live row.
-  - Remove the deployed pipelines of an entity type the migration removes.
+  - Remove the deployed pipelines of an entity type the migration removes. This needs the pipeline
+    service, so the step is a named exception.
+    ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
 - **SQL.**
   - Never edit a statement that already ran; statements are tracked by a hash of their text.
-    Appending a statement to the newest folder of the release in progress is fine:
-    `MigrationWorkflow` reprocesses it.
+    Appending a statement to the newest folder of the release in progress is fine while that
+    release has not shipped: `MigrationWorkflow` reprocesses it. A shipped folder never changes,
+    because a database that ran a later version of the same line never reads it again.
   - Size FQN-hash key columns like `entity_extension` (`VARCHAR(512)`).
   - Replace MySQL `INSERT IGNORE`, which turns truncation into a warning, with
     `ON DUPLICATE KEY UPDATE`.
@@ -308,6 +316,13 @@ repeatedly add the following.
   - Predicates on `entity_extension` must be index-usable; `LIKE 'app.version.%'` scans the table.
   - Scope catch-up sweeps to rows created after the previous upgrade: a missing target row can mean
     it was deleted on purpose.
+- **Migration queries on large, growing tables must not scan the whole table.** Check that each
+  such query's `WHERE` or `JOIN` is backed by an index, and that the index already exists when the
+  query runs: an index created in a later version, or present only on `main`, does not help an
+  earlier version. Check a backport on the target branch itself; do not assume an index, column or
+  other change from `main` came with it. A test on an empty database will not show a scan. (The
+  2.0.8 `audit_log_event` cleanup ran for hours on large deployments because only 2.1.0 indexed
+  `entity_type`.)
 - **Earlier releases' stored data.**
   - A new schema `maximum` (Pydantic `le=`) must not reject saved configs; ship a clamping migration.
   - Class names persisted by Quartz or `ServiceLoader` keep resolving.

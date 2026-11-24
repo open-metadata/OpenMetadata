@@ -243,19 +243,36 @@ function ServiceMainTabContent({
     ).canEditDisplayName;
   }, [permissions, serviceCategory, isVersionPage]);
 
+  // Mirrors ServiceDetailsPage.fetchDatabases: that fetch only requests the
+  // `usageSummary` field when `permissions.database.canViewUsage` is true, so
+  // the column must be hidden for users without that permission — otherwise
+  // every row's usage cell renders fabricated text ("0th pctile") from the
+  // `?? 0` coercion on the omitted field. The flag here gates the column in
+  // `getServiceMainTabColumns` exactly the way DatabaseSchemaTable already
+  // gates its own Usage column on `viewUsagePermission`.
+  const viewUsagePermission = useMemo(
+    () =>
+      getDerivedPermissionFlags(
+        permissions.database ?? DEFAULT_ENTITY_PERMISSION
+      ).canViewUsage,
+    [permissions.database]
+  );
+
   const tableColumn: ColumnsType<ServicePageData> = useMemo(
     () =>
       getServiceMainTabColumns(
         serviceCategory,
         editDisplayNamePermission,
         handleDisplayNameUpdate,
-        searchValue
+        searchValue,
+        viewUsagePermission
       ),
     [
       serviceCategory,
       handleDisplayNameUpdate,
       editDisplayNamePermission,
       searchValue,
+      viewUsagePermission,
     ]
   );
 

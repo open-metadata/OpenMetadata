@@ -15,15 +15,20 @@ Greenplum source module
 import traceback
 from collections import namedtuple
 from collections.abc import Iterable
+from typing import cast
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine import Inspector
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
+    Column,
+    ConstraintType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
+    TableConstraint,
     TablePartition,
     TableType,
 )
@@ -48,6 +53,7 @@ from metadata.ingestion.source.database.common_pg_mappings import (
     ischema_names,
 )
 from metadata.ingestion.source.database.greenplum.queries import (
+    GREENPLUM_DISTRIBUTION_KEYS,
     GREENPLUM_GET_DB_NAMES,
     GREENPLUM_GET_TABLE_NAMES,
     GREENPLUM_PARTITION_DETAILS,
@@ -181,3 +187,37 @@ class GreenplumSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
             )
             return True, partition_details
         return False, None
+
+    def update_table_constraints(
+        self,
+        table_name: str,
+        schema_name: str,
+        db_name: str,
+        table_constraints: list[TableConstraint] | None,
+        foreign_columns: list[dict],
+        columns: list[Column],
+    ) -> list[TableConstraint]:
+        """Include Greenplum distribution columns in the table constraints."""
+        table_constraints = table_constraints or []
+        connection = self.connection
+        # The cached dialect version is PostgreSQL's base: GP5 uses 8.3, GP6 uses 9.4.
+        if cast("tuple[int, ...]", connection.dialect.server_version_info) >= (9, 4):
+            try:
+                distribution_columns = [
+                    row[0]
+                    for row in connection.execute(
+                        text(GREENPLUM_DISTRIBUTION_KEYS),
+                        {"schema_name": schema_name, "table_name": table_name},
+                    )
+                ]
+            except SQLAlchemyError as exc:
+                connection.rollback()
+                logger.warning("Skipping DIST_KEY for %s.%s: %s", schema_name, table_name, exc)
+            else:
+                if distribution_columns:
+                    table_constraints.append(
+                        TableConstraint(constraintType=ConstraintType.DIST_KEY, columns=distribution_columns)
+                    )
+        return super().update_table_constraints(
+            table_name, schema_name, db_name, table_constraints, foreign_columns, columns
+        )
