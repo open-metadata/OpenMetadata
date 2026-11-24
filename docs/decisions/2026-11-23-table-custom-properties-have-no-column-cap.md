@@ -20,9 +20,11 @@ create form. The cap kept tables readable on asset pages, but customers need mor
   schema cell) show three columns; wider hosts show more, at 12rem each (about four in the 960px
   modal, five or six on full-width cards). The rest scroll horizontally. The cap is a design
   choice: a third of a wide card left mostly-empty columns.
-- Whichever edge hides columns carries a shadow, the same treatment as the core card `Tabs`
-  (`useOverflowEdges`, exported from ui-core-components). It is the only scroll cue where the
-  scrollbar is an overlay (macOS). The editor's end shadow sits before its pinned delete column.
+- Whichever edge hides columns carries a shadow, the same treatment as the core card `Tabs`. It
+  is the only scroll cue where the scrollbar is an overlay (macOS). The shadow lives in
+  ui-core-components so any table can opt in: `<Table scrollShadows>`, or `ScrollShadow` around
+  non-core content (`endShadowClassName` insets the end shadow before a pinned column, as the
+  editor's delete column needs). Both use `useOverflowEdges`, shared with the card `Tabs`.
 - A container-query host needs a definite width: a host that sizes to its content collapses it to
   zero, so wide values render in a full-width slot (`CustomPropertyRow`, `ColumnCustomPropertyCell`).
 

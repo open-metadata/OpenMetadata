@@ -15,11 +15,11 @@ import {
   Button,
   ButtonUtility,
   Input,
+  ScrollShadow,
   Table,
-  useOverflowEdges,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
-import { FormEvent, ReactNode, useRef, useState } from 'react';
+import { FormEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Config } from '../../../../../generated/type/customProperty';
 import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
@@ -41,59 +41,21 @@ const getRows = (value: unknown): TableRow[] =>
 // a third of the host (at most 12rem); break-words keeps long values inside it.
 const COLUMN_CLASS =
   'tw:min-w-[min(calc(100cqw/3),12rem)] tw:max-w-[min(calc(100cqw/3),12rem)] tw:break-words';
-const EDGE_SHADOW_CLASS =
-  'tw:pointer-events-none tw:absolute tw:inset-y-0 tw:w-7 tw:from-black/10 tw:to-transparent tw:dark:from-black/40';
-
-// Same edge shadows as the core card Tabs: the only cue on overlay-scrollbar
-// platforms that columns sit past an edge.
-const ScrollShadowFrame = ({
-  children,
-  hasPinnedEnd = false,
-  testId,
-}: {
-  children: ReactNode;
-  hasPinnedEnd?: boolean;
-  testId?: string;
-}) => {
-  const { ref, edges } = useOverflowEdges(true);
-
-  return (
-    <div
-      className="tw:@container tw:relative tw:w-full tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary"
-      data-testid={testId}>
-      <div className="tw:overflow-x-auto" ref={ref}>
-        {children}
-      </div>
-      {edges.start && (
-        <div
-          aria-hidden="true"
-          className={`${EDGE_SHADOW_CLASS} tw:left-0 tw:bg-linear-to-r`}
-          data-testid="table-scroll-shadow-start"
-        />
-      )}
-      {edges.end && (
-        <div
-          aria-hidden="true"
-          className={`${EDGE_SHADOW_CLASS} tw:bg-linear-to-l ${
-            hasPinnedEnd ? 'tw:right-10' : 'tw:right-0'
-          }`}
-          data-testid="table-scroll-shadow-end"
-        />
-      )}
-    </div>
-  );
-};
+// The bordered @container box: its width is the host's, so `cqw` above sizes
+// columns against what is visible, not against the scrolled content.
+const FRAME_CLASS =
+  'tw:@container tw:w-full tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary';
 
 const TablePropertyView = ({ property, value }: PropertyViewProps) => {
   const columns = getColumns(property.customPropertyConfig?.config);
   const rows = getRows(value);
 
   return (
-    <ScrollShadowFrame testId="table-type-property-value">
+    <div className={FRAME_CLASS} data-testid="table-type-property-value">
       <Table
+        scrollShadows
         aria-label={property.displayName || property.name}
         className="tw:w-max tw:min-w-full"
-        containerClassName="tw:overflow-x-visible"
         size="sm">
         <Table.Header>
           {columns.map((column, index) => (
@@ -121,7 +83,7 @@ const TablePropertyView = ({ property, value }: PropertyViewProps) => {
           ))}
         </Table.Body>
       </Table>
-    </ScrollShadowFrame>
+    </div>
   );
 };
 
@@ -174,61 +136,65 @@ const TablePropertyEdit = ({
   return (
     <form noValidate id={formId} onSubmit={handleSubmit}>
       <Box direction="col" gap={3}>
-        <ScrollShadowFrame hasPinnedEnd>
-          <table className="tw:w-max tw:min-w-full tw:text-sm">
-            <thead className="tw:bg-secondary">
-              <tr>
-                {columns.map((column) => (
-                  <th
-                    className={`${COLUMN_CLASS} tw:px-2 tw:py-2 tw:text-left tw:text-xs tw:font-semibold tw:text-tertiary`}
-                    key={column}
-                    scope="col">
-                    {column}
-                  </th>
-                ))}
-                <th
-                  className="tw:sticky tw:right-0 tw:w-10 tw:bg-secondary"
-                  scope="col">
-                  <span className="tw:sr-only">{t('label.action-plural')}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row, rowIndex) => (
-                <tr
-                  className="tw:border-t tw:border-secondary"
-                  data-testid={`table-row-${rowIndex}`}
-                  key={row.key}>
+        <div className={FRAME_CLASS}>
+          <ScrollShadow endShadowClassName="tw:right-10">
+            <table className="tw:w-max tw:min-w-full tw:text-sm">
+              <thead className="tw:bg-secondary">
+                <tr>
                   {columns.map((column) => (
-                    <td
-                      className={`${COLUMN_CLASS} tw:px-2 tw:py-1.5`}
-                      key={column}>
-                      <Input
-                        aria-label={`${column} ${rowIndex + 1}`}
-                        inputDataTestId={`${column}-${rowIndex}`}
+                    <th
+                      className={`${COLUMN_CLASS} tw:px-2 tw:py-2 tw:text-left tw:text-xs tw:font-semibold tw:text-tertiary`}
+                      key={column}
+                      scope="col">
+                      {column}
+                    </th>
+                  ))}
+                  <th
+                    className="tw:sticky tw:right-0 tw:w-10 tw:bg-secondary"
+                    scope="col">
+                    <span className="tw:sr-only">
+                      {t('label.action-plural')}
+                    </span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, rowIndex) => (
+                  <tr
+                    className="tw:border-t tw:border-secondary"
+                    data-testid={`table-row-${rowIndex}`}
+                    key={row.key}>
+                    {columns.map((column) => (
+                      <td
+                        className={`${COLUMN_CLASS} tw:px-2 tw:py-1.5`}
+                        key={column}>
+                        <Input
+                          aria-label={`${column} ${rowIndex + 1}`}
+                          inputDataTestId={`${column}-${rowIndex}`}
+                          isDisabled={isSaving}
+                          value={row.values[column] ?? ''}
+                          onChange={(cellValue) =>
+                            updateCell(row.key, column, cellValue)
+                          }
+                        />
+                      </td>
+                    ))}
+                    <td className="tw:sticky tw:right-0 tw:bg-primary tw:px-1">
+                      <ButtonUtility
+                        data-testid={`delete-row-${rowIndex}`}
+                        icon={Trash01}
                         isDisabled={isSaving}
-                        value={row.values[column] ?? ''}
-                        onChange={(cellValue) =>
-                          updateCell(row.key, column, cellValue)
-                        }
+                        size="lg"
+                        tooltip={t('label.delete-row')}
+                        onClick={() => removeRow(row.key)}
                       />
                     </td>
-                  ))}
-                  <td className="tw:sticky tw:right-0 tw:bg-primary tw:px-1">
-                    <ButtonUtility
-                      data-testid={`delete-row-${rowIndex}`}
-                      icon={Trash01}
-                      isDisabled={isSaving}
-                      size="lg"
-                      tooltip={t('label.delete-row')}
-                      onClick={() => removeRow(row.key)}
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </ScrollShadowFrame>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ScrollShadow>
+        </div>
         <Box align="center" gap={3}>
           <Button
             color="secondary"

@@ -34,6 +34,7 @@ import {
   TableHeader as AriaTableHeader,
   useTableOptions,
 } from 'react-aria-components';
+import { ScrollShadow } from '@/components/application/scroll-shadow/scroll-shadow';
 import { Badge } from '@/components/base/badges/badges';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
@@ -274,6 +275,11 @@ interface TableRootProps
    * `stickyHeader` sticking).
    */
   variant?: TableCardVariant;
+  /**
+   * Shadows whichever edge hides columns while the table scrolls horizontally —
+   * the only scroll cue where the scrollbar is an overlay (macOS). @default false
+   */
+  scrollShadows?: boolean;
 }
 
 const TableRoot = ({
@@ -283,35 +289,45 @@ const TableRoot = ({
   containerStyle,
   containerClassName,
   variant = 'default',
+  scrollShadows = false,
   ...props
 }: TableRootProps) => {
   const context = useContext(TableContext);
   // An explicit prop wins; otherwise inherit an enclosing TableCard's size.
   const resolvedSize = size ?? context?.size ?? DEFAULT_TABLE_SIZE;
 
+  const scrollerClassName = cx(
+    'tw:overflow-x-auto',
+    variant === 'muted' &&
+      cx(
+        'tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt',
+        MUTED_TABLE_SURFACE_CLASSES
+      ),
+    containerClassName
+  );
+  const table = (
+    <AriaTable
+      className={(state) =>
+        cx(
+          'tw:w-full tw:overflow-x-hidden tw:dark:bg-surface',
+          typeof className === 'function' ? className(state) : className
+        )
+      }
+      {...props}
+    />
+  );
+
   return (
     <TableContext.Provider value={{ size: resolvedSize, stickyHeader }}>
-      <div
-        className={cx(
-          'tw:overflow-x-auto',
-          variant === 'muted' &&
-            cx(
-              'tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt',
-              MUTED_TABLE_SURFACE_CLASSES
-            ),
-          containerClassName
-        )}
-        style={containerStyle}>
-        <AriaTable
-          className={(state) =>
-            cx(
-              'tw:w-full tw:overflow-x-hidden tw:dark:bg-surface',
-              typeof className === 'function' ? className(state) : className
-            )
-          }
-          {...props}
-        />
-      </div>
+      {scrollShadows ? (
+        <ScrollShadow className={scrollerClassName} style={containerStyle}>
+          {table}
+        </ScrollShadow>
+      ) : (
+        <div className={scrollerClassName} style={containerStyle}>
+          {table}
+        </div>
+      )}
     </TableContext.Provider>
   );
 };

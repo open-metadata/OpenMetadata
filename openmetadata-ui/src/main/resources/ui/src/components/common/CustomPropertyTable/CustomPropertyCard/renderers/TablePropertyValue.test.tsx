@@ -148,24 +148,19 @@ describe('TablePropertyView scroll shadows', () => {
       />
     );
 
-    expect(screen.getByTestId('table-scroll-shadow-end')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('table-scroll-shadow-start')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('scroll-shadow-end')).toBeInTheDocument();
+    expect(screen.queryByTestId('scroll-shadow-start')).not.toBeInTheDocument();
 
-    const scroller = screen.getByTestId('table-type-property-value')
-      .firstElementChild as HTMLElement;
+    const scroller = screen.getByRole('grid').parentElement as HTMLElement;
     scroller.scrollLeft = 300;
     fireEvent.scroll(scroller);
 
-    expect(screen.getByTestId('table-scroll-shadow-start')).toBeInTheDocument();
-    expect(screen.getByTestId('table-scroll-shadow-end')).toBeInTheDocument();
+    expect(screen.getByTestId('scroll-shadow-start')).toBeInTheDocument();
+    expect(screen.getByTestId('scroll-shadow-end')).toBeInTheDocument();
 
     scroller.scrollLeft = 600;
     fireEvent.scroll(scroller);
 
-    expect(
-      screen.queryByTestId('table-scroll-shadow-end')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('scroll-shadow-end')).not.toBeInTheDocument();
   });
 });
