@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT,DataProductPortsAtomicityIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CsvExportMultiNodeIT,RdfDisabledMarkLifecycleIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tests that need the RDF store. The rdf lane runs them against the published
@@ -472,6 +472,7 @@
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -541,6 +542,7 @@
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -640,6 +642,7 @@
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -708,6 +711,7 @@
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -808,6 +812,7 @@
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -877,6 +882,7 @@
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -977,6 +983,7 @@
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -1045,6 +1052,7 @@
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -1144,6 +1152,7 @@
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -1212,6 +1221,7 @@
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -1310,6 +1320,7 @@
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -1379,6 +1390,7 @@
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -1494,6 +1506,7 @@
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -1564,6 +1577,7 @@
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -1670,6 +1684,7 @@
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -1739,6 +1754,7 @@
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>

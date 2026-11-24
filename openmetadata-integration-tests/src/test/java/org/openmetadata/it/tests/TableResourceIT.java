@@ -165,6 +165,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Table CSV export exports columns from a specific table, not tables from a schema
     // Enable import/export for table column CSV testing
     supportsImportExport = true;
+    supportsAsyncDelete = true;
+    supportsCustomExtension = true;
     supportsCreationAudit = true;
     supportsCsvImportSessionConsolidationRegression = true;
     supportsBatchImport = true;
@@ -8299,7 +8301,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   // ===================================================================
-  // PATCH PERSISTENCE: schemaDefinition (#32625) and tablePartition (#33429)
+  // PERSISTENCE: schemaDefinition across PATCH (#32625) and the dataModel PUT, tablePartition
+  // (#33429)
   // Tables are created by ingestion-bot and patched by admin, as in production. A patch by the
   // same user inside the session window is consolidated into the previous version and stored
   // regardless, which would hide the tablePartition no-op.
@@ -8327,6 +8330,22 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     Table stored =
         SdkClients.adminClient().tables().get(view.getId().toString(), "schemaDefinition");
+    assertEquals(VIEW_DDL, stored.getSchemaDefinition());
+  }
+
+  @Test
+  void put_dataModel_keepsSchemaDefinition(TestNamespace ns) {
+    Table view = createAsIngestionBot(ns, "datamodel_keeps_ddl", TableType.View, VIEW_DDL);
+
+    SdkClients.ingestionBotClient()
+        .tables()
+        .updateDataModel(view.getId(), new DataModel().withModelType(DataModel.ModelType.DBT));
+
+    Table stored =
+        SdkClients.adminClient()
+            .tables()
+            .get(view.getId().toString(), "schemaDefinition,dataModel");
+    assertNotNull(stored.getDataModel());
     assertEquals(VIEW_DDL, stored.getSchemaDefinition());
   }
 

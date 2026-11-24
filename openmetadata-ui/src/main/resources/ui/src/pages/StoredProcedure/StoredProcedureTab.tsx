@@ -64,13 +64,6 @@ const StoredProcedureTab = () => {
   const [isLoading, setIsLoading] = useState(true);
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
 
-  useEffect(() => {
-    const urlPage = Number(pagingCursor.currentPage) || INITIAL_PAGING_VALUE;
-    if (currentPage !== urlPage) {
-      handlePageChange(urlPage);
-    }
-  }, [pagingCursor.currentPage, currentPage, handlePageChange]);
-
   const { filters: tableFilters, setFilters } = useTableFilters(
     INITIAL_TABLE_FILTERS
   );

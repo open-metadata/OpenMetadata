@@ -28,6 +28,10 @@ import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURA
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +40,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.IdentityProviderConfig;
+import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
@@ -43,7 +50,9 @@ import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.config.source.SettingsSecrets;
 import org.openmetadata.service.exception.AuthenticationException;
+import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
@@ -60,6 +69,7 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 class SystemResourceSecurityConfigApplyTest {
   private static final String AUTH = AUTHENTICATION_CONFIGURATION.value();
   private static final String AUTHZ = AUTHORIZER_CONFIGURATION.value();
+  private static final String FERNET_KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
 
   private final Map<String, String> rows = new ConcurrentHashMap<>();
   private final AtomicBoolean databaseDown = new AtomicBoolean();
@@ -138,6 +148,30 @@ class SystemResourceSecurityConfigApplyTest {
     assertEquals(savedMeanwhile, rows.get(AUTH));
   }
 
+  /**
+   * The rows go back as they were read. Checking them again against the refused save would refuse
+   * an IdP certificate that was accepted and has expired since, and leave the refused save stored.
+   */
+  @Test
+  void aRefusedSaveOverAnExpiredIdpCertificatePutsTheRowsBackAsTheyWere() {
+    Fernet.getInstance().setFernetKey(FERNET_KEY);
+    rows.put(
+        AUTH,
+        JsonUtils.pojoToJson(
+            SettingsSecrets.encrypted(
+                AUTHENTICATION_CONFIGURATION,
+                JsonUtils.valueToTree(saml(resource("/saml/expired-idp.crt"))))));
+    final String authenticationBefore = rows.get(AUTH);
+    final String authorizerBefore = rows.get(AUTHZ);
+    reloadFails(() -> {});
+
+    final WebApplicationException refused = assertThrows(WebApplicationException.class, this::save);
+
+    assertEquals(400, refused.getResponse().getStatus(), refused.getMessage());
+    assertEquals(authenticationBefore, rows.get(AUTH));
+    assertEquals(authorizerBefore, rows.get(AUTHZ));
+  }
+
   private void save() {
     SecurityConfiguration refused =
         new SecurityConfiguration()
@@ -172,6 +206,34 @@ class SystemResourceSecurityConfigApplyTest {
         .withProvider(provider)
         .withProviderName(name)
         .withClientType(ClientType.PUBLIC);
+  }
+
+  private static AuthenticationConfiguration saml(final String idpCertificate) {
+    return new AuthenticationConfiguration()
+        .withProvider(AuthProvider.SAML)
+        .withProviderName("SAML")
+        .withSamlConfiguration(
+            new SamlSSOClientConfig()
+                .withIdp(
+                    new IdentityProviderConfig()
+                        .withEntityId("https://idp.example.com/metadata")
+                        .withSsoLoginUrl("https://idp.example.com/sso")
+                        .withIdpX509Certificate(idpCertificate))
+                .withSp(
+                    new ServiceProviderConfig()
+                        .withEntityId("http://localhost:8585/api/v1/saml/metadata")
+                        .withAcs("http://localhost:8585/api/v1/saml/acs")
+                        .withCallback("http://localhost:8585/saml/callback")
+                        .withSpPrivateKey(resource("/saml/mock-idp-pkcs8.key"))));
+  }
+
+  private static String resource(final String path) {
+    try (InputStream stream =
+        SystemResourceSecurityConfigApplyTest.class.getResourceAsStream(path)) {
+      return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
   }
 
   private static AuthorizerConfiguration authorizer() {

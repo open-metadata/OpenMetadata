@@ -47,6 +47,22 @@ export const useTheme = (): ThemeContextType => {
   return context;
 };
 
+/**
+ * Safe outside ThemeProvider. Pre-auth pages (sign-in, sign-up, password reset)
+ * render without it, but the #theme-restore boot script in index.html already
+ * set `dark-mode` on the root, so read that, as LoginClassBase does.
+ */
+export const useResolvedTheme = (): Theme => {
+  const context = useContext(ThemeContext);
+  if (context) {
+    return context.theme;
+  }
+
+  return globalThis.document?.documentElement.classList.contains('dark-mode')
+    ? 'dark'
+    : 'light';
+};
+
 interface ThemeProviderProps {
   children: ReactNode;
   brandColors?: BrandColors;

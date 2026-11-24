@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { updateSettingsConfig } from '../../rest/settingConfigAPI';
 import AppearanceConfigSettingsPage from './AppearanceConfigSettingsPage';
 
@@ -187,5 +194,42 @@ describe('Test appearance config page', () => {
     );
 
     expect(screen.getByTestId('selectedColor-color-input')).not.toHaveValue('');
+  });
+
+  it('keeps the dark-mode logo URLs set in Platform Settings when saving', async () => {
+    act(() => {
+      useApplicationStore.getState().setApplicationConfig({
+        customLogoConfig: {
+          customLogoUrlPath: 'https://cdn.example.com/logo.svg',
+          customLogoDarkUrlPath: 'https://cdn.example.com/logo-dark.svg',
+          customMonogramDarkUrlPath: 'https://cdn.example.com/mark-dark.svg',
+        },
+        customTheme: {
+          errorColor: '',
+          infoColor: '',
+          primaryColor: '',
+          successColor: '',
+          warningColor: '',
+        },
+      });
+    });
+
+    render(<AppearanceConfigSettingsPage />);
+    fireEvent.click(screen.getByTestId('save-btn'));
+
+    await waitFor(() =>
+      expect(updateSettingsConfig).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          config_value: expect.objectContaining({
+            customLogoConfig: expect.objectContaining({
+              customLogoUrlPath: 'https://cdn.example.com/logo.svg',
+              customLogoDarkUrlPath: 'https://cdn.example.com/logo-dark.svg',
+              customMonogramDarkUrlPath:
+                'https://cdn.example.com/mark-dark.svg',
+            }),
+          }),
+        })
+      )
+    );
   });
 });

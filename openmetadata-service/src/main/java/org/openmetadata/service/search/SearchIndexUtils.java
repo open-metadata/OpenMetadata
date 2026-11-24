@@ -236,7 +236,8 @@ public final class SearchIndexUtils {
             target ->
                 target.equals(normalize.apply(type))
                     || ((target.equals(normalize.apply(GLOBAL_SEARCH_ALIAS))
-                            || target.equals(normalize.apply(DATA_ASSET_SEARCH_ALIAS)))
+                            || target.equals(normalize.apply(DATA_ASSET_SEARCH_ALIAS))
+                            || target.equals(normalize.apply(OntologyTermSearch.ALIAS)))
                         && mapping.getParentAliases() != null
                         && mapping.getParentAliases().stream()
                             .map(normalize)
