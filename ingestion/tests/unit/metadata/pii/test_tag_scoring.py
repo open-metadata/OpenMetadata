@@ -436,6 +436,89 @@ class TestTagAnalyzer:
         assert analysis.score > 0.0
         assert [result.entity_type for result in analysis.recognizer_results] == [PIIEntity.DATE_TIME.value]
 
+    @staticmethod
+    def _pii_date_tag_analyzer(
+        pii_classification: Classification,
+        column_name: str,
+        column_name_regex: str | None = None,
+        context: list[str] | None = None,
+    ) -> TagAnalyzer:
+        recognizers = [
+            RecognizerFactory.create(
+                name="DateRecognizer",
+                recognizerConfig=PredefinedRecognizerFactory.create(name=Name.DateRecognizer, context=context or []),
+                target=Target.content,
+            )
+        ]
+        if column_name_regex is not None:
+            recognizers.append(
+                RecognizerFactory.create(
+                    name="BirthDateColumnRecognizer",
+                    recognizerConfig=PatternRecognizerFactory.create(
+                        patterns=[PatternFactory.create(name="birth date", regex=column_name_regex, score=0.9)],
+                        context=[],
+                        supportedLanguage=ClassificationLanguage.en,
+                    ),
+                    target=Target.column_name,
+                )
+            )
+        tag = TagFactory.create(
+            tag_name="NonSensitive",
+            tag_classification=pii_classification,
+            autoClassificationEnabled=True,
+            recognizers=recognizers,
+        )
+        column = Column(
+            name=ColumnName(root=column_name),
+            dataType=DataType.STRING,
+            fullyQualifiedName=f"test.table.{column_name}",
+        )
+        return TagAnalyzer(tag=tag, column=column, nlp_engine=load_nlp_engine())
+
+    def test_pii_tag_drops_date_content_on_event_column(self, pii_classification: Classification):
+        analysis = self._pii_date_tag_analyzer(pii_classification, "event_time").analyze(str_values=["1980-04-03"])
+
+        assert analysis.score == 0.0
+        assert analysis.recognizer_results == []
+
+    def test_pii_tag_keeps_date_content_on_allowlisted_column(self, pii_classification: Classification):
+        analysis = self._pii_date_tag_analyzer(pii_classification, "birth_date").analyze(str_values=["1980-04-03"])
+
+        assert analysis.score > 0.0
+        assert [r.entity_type for r in analysis.recognizer_results] == [PIIEntity.DATE_TIME.value]
+
+    def test_pii_tag_keeps_date_content_when_own_column_recognizer_matches(self, pii_classification: Classification):
+        analysis = self._pii_date_tag_analyzer(
+            pii_classification, "fecha_nacimiento", column_name_regex="^fecha_nacimiento$"
+        ).analyze(str_values=["1980-04-03"])
+
+        assert analysis.score > 0.0
+        assert [r.entity_type for r in analysis.recognizer_results] == [PIIEntity.DATE_TIME.value]
+
+    def test_pii_tag_keeps_date_content_when_configured_context_matches(self, pii_classification: Classification):
+        analysis = self._pii_date_tag_analyzer(pii_classification, "geburtsdatum", context=["geburtsdatum"]).analyze(
+            str_values=["1990-04-12"]
+        )
+
+        assert analysis.score > 0.0
+        assert [r.entity_type for r in analysis.recognizer_results] == [PIIEntity.DATE_TIME.value]
+
+    def test_pii_tag_ignores_generic_date_context(self, pii_classification: Classification):
+        analysis = self._pii_date_tag_analyzer(
+            pii_classification, "event_datetime", context=["date", "datetime", "timestamp"]
+        ).analyze(str_values=["1990-04-12"])
+
+        assert analysis.recognizer_results == []
+
+    def test_pii_tag_keeps_date_content_named_in_sampled_value(self, pii_classification: Classification):
+        analyzer = self._pii_date_tag_analyzer(pii_classification, "notes")
+
+        personal = analyzer.analyze(str_values=["date of birth: 1990-04-12"])
+        operational = analyzer.analyze(str_values=["2024-01-01"])
+
+        assert [r.entity_type for r in personal.recognizer_results] == [PIIEntity.DATE_TIME.value]
+        assert operational.recognizer_results == []
+
     @pytest.mark.parametrize(
         "values",
         [

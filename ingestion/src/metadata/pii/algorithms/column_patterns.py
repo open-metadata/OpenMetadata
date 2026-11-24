@@ -21,6 +21,22 @@ from functools import lru_cache
 
 from metadata.pii.algorithms.tags import PIITag
 
+
+def _whole_tokens(fragment: str) -> str:
+    """Match `fragment` as whole "_"-separated tokens anywhere in a normalized name."""
+    return rf"^(?:.*_)?(?:{fragment})(?:_.*)?$"
+
+
+def normalize_name(text: str) -> str:
+    """Lower-case `text` and join its alphanumeric tokens with "_", splitting camelCase.
+
+    "Birth.Date" -> "birth_date", "dateOfBirth" -> "date_of_birth",
+    "date of birth: 1990-04-12" -> "date_of_birth_1990_04_12".
+    """
+    text = re.sub(r"([a-z])([A-Z])", r"\1_\2", text)
+    return "_".join(re.findall(r"[^\W_]+", text.lower()))
+
+
 # Regex patterns for PII detection in column names, not for content
 _pii_column_name_regexes: Mapping[PIITag, str | list[str]] = {
     PIITag.US_SSN: "^.*(ssn|social).*$",
@@ -38,7 +54,30 @@ _pii_column_name_regexes: Mapping[PIITag, str | list[str]] = {
     ],
     PIITag.EMAIL_ADDRESS: "^(email|e-mail|mail)(.*address)?$",
     PIITag.PERSON: "^.*(user|client|person|first|last|maiden|nick).*(name).*$",
-    PIITag.DATE_TIME: "^.*(date|time|dob|birthday|dod).*$",
+    # DATE_TIME content hits are only kept when there is personal-date evidence (see
+    # classifiers.py and tag_analyzer.py).  Use an allowlist of personal-date names
+    # rather than a broad "anything with 'date'" match, so operational timestamps
+    # (event_timestamp, created_at, job_start_date) are never tagged as PII.
+    # These patterns run against the normalized name (see `normalize_name`): lower-case
+    # tokens joined by "_", so "Birth.Date", "date of birth" and "dateOfBirth" all match.
+    # Each fragment must cover whole tokens, so "dob" does not match "adobe_timestamp".
+    PIITag.DATE_TIME: [
+        # Date of birth / death
+        _whole_tokens(
+            r"(?:date|day)_?of_?(?:birth|death)"
+            r"|(?:birth|death)_?(?:date|day|dt|ts|time|timestamp|datetime)"
+            r"|dob|dod"
+        ),
+        # Employment lifecycle dates; a bare "start_date" is too generic (job_start_date)
+        _whole_tokens(
+            r"hire_?(?:date|dt)|employment_?(?:start_?|end_?)?date|employee_?(?:start|end)_?date"
+            r"|(?:termination|retirement|resignation)_?date"
+        ),
+        # Medical / patient dates
+        _whole_tokens(r"(?:admission|discharge|appointment|diagnosis|treatment|medical_?test)_?date"),
+        # User / account lifecycle dates (registration, onboarding, deletion)
+        _whole_tokens(r"(?:registration|sign_?up|account|onboarding|deletion|deactivation)_?date"),
+    ],
     PIITag.NRP: "^.*(gender|nationality).*$",
     PIITag.LOCATION: "^.*(address|city|state|county|country|zipcode|zip|postal|zone|borough).*$",
     PIITag.PHONE_NUMBER: "^.*(phone).*$",
@@ -60,3 +99,9 @@ def get_pii_column_name_patterns() -> Mapping[PIITag, list[re.Pattern[str]]]:
             patterns[pii_type].append(re.compile(regex, re.IGNORECASE))
 
     return patterns
+
+
+def is_personal_date_text(text: str) -> bool:
+    """Whether a column name or sampled value names a personal date (birth, hire, ...)."""
+    normalized = normalize_name(text)
+    return any(p.match(normalized) for p in get_pii_column_name_patterns().get(PIITag.DATE_TIME, []))

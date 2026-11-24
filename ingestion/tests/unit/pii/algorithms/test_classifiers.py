@@ -54,3 +54,44 @@ def test_pii_heuristic_classifier(pii_test_logger):
     heuristic_classifier = HeuristicPIIClassifier()
     results = run_test_on_pii_classifier(heuristic_classifier)
     pii_test_logger.info(results)
+
+
+def test_pii_heuristic_classifier_keeps_personal_date_named_in_sample():
+    """A DATE_TIME hit on a free-text column is kept when the sample names a personal date."""
+    heuristic_classifier = HeuristicPIIClassifier()
+
+    scores = heuristic_classifier.predict_scores(
+        sample_data=["date of birth: 1990-04-12", "date of birth: 1985-11-03"],
+        column_name="notes",
+    )
+
+    assert PIITag.DATE_TIME in scores
+
+
+def test_pii_heuristic_classifier_ignores_personal_date_text_without_a_date():
+    """A row naming a personal date but holding no date cannot corroborate other rows' dates."""
+    heuristic_classifier = HeuristicPIIClassifier()
+
+    scores = heuristic_classifier.predict_scores(
+        sample_data=[
+            "2024-03-01 job finished",
+            "2024-03-02 job finished",
+            "2024-03-03 job finished",
+            "user updated date of birth",
+        ],
+        column_name="notes",
+    )
+
+    assert PIITag.DATE_TIME not in scores
+
+
+def test_pii_heuristic_classifier_drops_operational_date_in_free_text():
+    """A DATE_TIME hit on a free-text column without personal-date evidence is dropped."""
+    heuristic_classifier = HeuristicPIIClassifier()
+
+    scores = heuristic_classifier.predict_scores(
+        sample_data=["shipped on 1990-04-12", "shipped on 1985-11-03"],
+        column_name="notes",
+    )
+
+    assert PIITag.DATE_TIME not in scores

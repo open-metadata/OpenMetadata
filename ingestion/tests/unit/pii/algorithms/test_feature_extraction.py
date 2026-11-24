@@ -315,7 +315,25 @@ def test_extract_pii_from_column_names():
         PIITag.US_SSN: ["ssn", "social_security_number", "social_security"],
         PIITag.EMAIL_ADDRESS: ["email", "e-mail", "mail_address"],
         PIITag.PERSON: ["user_name", "client_name", "first_name", "last_name"],
-        PIITag.DATE_TIME: ["date_of_birth", "dob", "birthday"],
+        PIITag.DATE_TIME: [
+            "date_of_birth",
+            "dob",
+            "birthday",
+            "date of birth",
+            "birth date",
+            "death_date",
+            "date_of_death",
+            "date of death",
+            "hire date",
+            "birth.date",
+            "date.of.birth",
+            "dateOfBirth",
+            "birth_timestamp",
+            "birth_dt",
+            "userDob",
+            "DOB",
+            "employment_start_date",
+        ],
     }
 
     patterns = get_pii_column_name_patterns()
@@ -324,6 +342,22 @@ def test_extract_pii_from_column_names():
         for column_name in column_names:
             extracted_pii_tags = extract_pii_from_column_names(column_name, patterns)
             assert pii_tag in extracted_pii_tags, (pii_tag, column_name)
+
+
+@pytest.mark.parametrize(
+    "column_name",
+    [
+        "event_timestamp",
+        "created_at",
+        "event_start_date",
+        "job_start_date",
+        "adobe_timestamp",
+        "death_count",
+        "update_date",
+    ],
+)
+def test_operational_date_column_names_are_not_personal_dates(column_name: str):
+    assert PIITag.DATE_TIME not in extract_pii_from_column_names(column_name, get_pii_column_name_patterns())
 
 
 def test_split_column_name():
