@@ -5243,6 +5243,7 @@
     "expected-schema-structure-of-this-asset": "ساختار طرح مورد انتظار این دارایی",
     "expected-true-or-false-got-type": "true یا false انتظار می‌رفت، {{type}} دریافت شد",
     "explore-assets-indexed-suffix": "دارایی فهرست شد",
+    "explore-filter-partially-shown": "برخی از شرایط این پیوند در جستجوی پیشرفته قابل نمایش نیستند. نتایج همچنان از همه آن‌ها استفاده می‌کنند؛ با اعمال تغییرات فقط شرایط نمایش‌داده‌شده حفظ می‌شوند.",
     "explore-our-guide-here": "راهنمای ما را اینجا ببینید.",
     "explore-search-placeholder": "در سراسر پلتفرم زمینه خود جستجو کنید",
     "export-all-matching-assets-description": "صادرات همه ی دارایی‌های مطابق با این جستجو در طرح‌های دارایی",

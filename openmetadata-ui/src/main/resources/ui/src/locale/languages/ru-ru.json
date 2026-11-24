@@ -5243,6 +5243,7 @@
     "expected-schema-structure-of-this-asset": "Ожидаемая структура схемы этого актива",
     "expected-true-or-false-got-type": "ожидалось true или false, получено {{type}}",
     "explore-assets-indexed-suffix": "активов проиндексировано",
+    "explore-filter-partially-shown": "Некоторые условия из этой ссылки нельзя показать в расширенном поиске. Результаты по-прежнему учитывают их все; при применении изменений сохраняются только показанные условия.",
     "explore-our-guide-here": "изучите наши руководства здесь.",
     "explore-search-placeholder": "Ищите по всей вашей Контекстной Платформе",
     "export-all-matching-assets-description": "Экспортируйте все активы, соответствующие этому поиску, по типам активов",

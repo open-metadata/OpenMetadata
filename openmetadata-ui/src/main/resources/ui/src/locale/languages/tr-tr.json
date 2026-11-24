@@ -5243,6 +5243,7 @@
     "expected-schema-structure-of-this-asset": "Bu varlığın beklenen şema yapısı",
     "expected-true-or-false-got-type": "true veya false bekleniyordu, {{type}} alındı",
     "explore-assets-indexed-suffix": "assets indexed",
+    "explore-filter-partially-shown": "Bu bağlantıdaki bazı koşullar Gelişmiş Arama'da gösterilemiyor. Sonuçlar hâlâ hepsini kullanıyor; değişiklikleri uygulamak yalnızca gösterilen koşulları korur.",
     "explore-our-guide-here": "kılavuzumuzu buradan keşfedin.",
     "explore-search-placeholder": "Search across your Context Platform",
     "export-all-matching-assets-description": "Bu aramayla eşleşen tüm varlıkları varlık türleri arasında dışa aktarın",

@@ -5243,6 +5243,7 @@
     "expected-schema-structure-of-this-asset": "Verwachte schemastructuur van dit asset",
     "expected-true-or-false-got-type": "true of false verwacht, kreeg {{type}}",
     "explore-assets-indexed-suffix": "assets geïndexeerd",
+    "explore-filter-partially-shown": "Sommige voorwaarden in deze link kunnen niet worden getoond in Geavanceerd zoeken. De resultaten gebruiken ze nog allemaal; bij het toepassen van wijzigingen blijven alleen de getoonde voorwaarden behouden.",
     "explore-our-guide-here": "bekijk onze handleiding hier.",
     "explore-search-placeholder": "Zoek in je Contextplatform",
     "export-all-matching-assets-description": "Exporteer alle activa die overeenkomen met deze zoekopdracht over activa typen",

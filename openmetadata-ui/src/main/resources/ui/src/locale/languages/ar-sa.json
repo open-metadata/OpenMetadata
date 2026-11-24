@@ -5243,6 +5243,7 @@
     "expected-schema-structure-of-this-asset": "بنية المخطط المتوقعة لهذا الأصل",
     "expected-true-or-false-got-type": "كان من المتوقع true أو false، تم الحصول على {{type}}",
     "explore-assets-indexed-suffix": "assets indexed",
+    "explore-filter-partially-shown": "تعذّر عرض بعض الشروط في هذا الرابط في البحث المتقدم. لا تزال النتائج تستخدمها كلها؛ وعند تطبيق التغييرات تُحفظ الشروط المعروضة فقط.",
     "explore-our-guide-here": "استكشف دليلنا هنا.",
     "explore-search-placeholder": "Search across your Context Platform",
     "export-all-matching-assets-description": "تصدير جميع الأصول المطابقة لهذا البحث عبر أنواع الأصول",

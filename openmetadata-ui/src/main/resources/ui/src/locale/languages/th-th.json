@@ -5243,6 +5243,7 @@
     "expected-schema-structure-of-this-asset": "โครงสร้างสคีมาที่คาดหวังของทรัพย์สินนี้",
     "expected-true-or-false-got-type": "ต้องการ true หรือ false แต่ได้รับ {{type}}",
     "explore-assets-indexed-suffix": "สินทรัพย์ที่จัดทำดัชนีแล้ว",
+    "explore-filter-partially-shown": "ไม่สามารถแสดงเงื่อนไขบางรายการในลิงก์นี้ในการค้นหาขั้นสูงได้ ผลลัพธ์ยังคงใช้เงื่อนไขทั้งหมด การใช้การเปลี่ยนแปลงจะเก็บไว้เฉพาะเงื่อนไขที่แสดงอยู่",
     "explore-our-guide-here": "สำรวจกับคู่มือนี้ที่นี่",
     "explore-search-placeholder": "ค้นหาทั่วทั้งแพลตฟอร์มบริบทของคุณ",
     "export-all-matching-assets-description": "ส่งออกทั้งหมดของทรัพย์สินที่ตรงกับคำค้นหาในประเภททรัพย์สิน",

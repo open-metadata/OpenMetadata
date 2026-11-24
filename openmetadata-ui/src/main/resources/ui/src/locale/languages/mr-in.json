@@ -5243,6 +5243,7 @@
     "expected-schema-structure-of-this-asset": "या मालमत्तेची अपेक्षित स्कीमा रचना",
     "expected-true-or-false-got-type": "true किंवा false अपेक्षित होते, मिळाले {{type}}",
     "explore-assets-indexed-suffix": "assets indexed",
+    "explore-filter-partially-shown": "या लिंकमधील काही अटी प्रगत शोधामध्ये दाखवता येत नाहीत. निकाल अजूनही सर्व अटी वापरतात; बदल लागू केल्यास फक्त दाखवलेल्या अटी राहतात.",
     "explore-our-guide-here": "आमचा मार्गदर्शक येथे एक्सप्लोर करा.",
     "explore-search-placeholder": "Search across your Context Platform",
     "export-all-matching-assets-description": "या शोधासाठी या शोधासाठी सर्व मिळणारे ॲसेट्स निर्यात करा",

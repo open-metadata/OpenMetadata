@@ -5243,6 +5243,7 @@
     "expected-schema-structure-of-this-asset": "Struttura dello schema attesa per questo asset",
     "expected-true-or-false-got-type": "atteso true o false, ricevuto {{type}}",
     "explore-assets-indexed-suffix": "asset indicizzati",
+    "explore-filter-partially-shown": "Alcune condizioni di questo link non possono essere mostrate nella ricerca avanzata. I risultati le usano ancora tutte; applicando le modifiche vengono mantenute solo le condizioni mostrate.",
     "explore-our-guide-here": "esplora la nostra guida qui.",
     "explore-search-placeholder": "Cerca in tutta la tua Context Platform",
     "export-all-matching-assets-description": "Esporta asset di tutti i tipi",
