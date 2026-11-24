@@ -83,6 +83,7 @@ const getEmptyInitialValues = (
   readTimeout: DEFAULT_READ_TIMEOUT,
   resources: [],
   timeout: ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
+  enabled: true,
 });
 
 /** Renders the shared add/edit alert drawer using OSS alert form hooks and AI fields. */
