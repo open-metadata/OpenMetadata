@@ -12,6 +12,7 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
+import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import React, {
@@ -91,7 +92,10 @@ import {
 import { getTaskTitleParts } from '../taskTitle.utils';
 import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useIsScrolled } from '../useIsScrolled';
-import { useTaskAboutEntity } from '../useTaskAboutEntity';
+import {
+  TASK_ABOUT_ENTITY_QUERY_KEY,
+  useTaskAboutEntity,
+} from '../useTaskAboutEntity';
 import TaskActionCommentModal from './TaskActionCommentModal';
 import TaskActivityTimeline from './TaskActivityTimeline';
 import TaskAssetCard from './TaskAssetCard';
@@ -367,6 +371,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   onLoaded,
 }) => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { isScrolled: isBodyScrolled, onScroll: onBodyScroll } =
     useIsScrolled();
   const { getEntityPermission } = usePermissionProvider();
@@ -712,6 +717,9 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         };
         consumedTransitionIdsRef.current.add(action.id);
         setTask(resolved);
+        void queryClient.invalidateQueries({
+          queryKey: [TASK_ABOUT_ENTITY_QUERY_KEY],
+        });
         setCommentAction(undefined);
         if (extras?.isAssigneeChange) {
           onTaskUpdated?.(resolved);
@@ -735,7 +743,15 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         setLoadingTransitionId(undefined);
       }
     },
-    [task, formSchema, onResolved, onTaskUpdated, syncTransitionsAfter, t]
+    [
+      task,
+      formSchema,
+      onResolved,
+      onTaskUpdated,
+      queryClient,
+      syncTransitionsAfter,
+      t,
+    ]
   );
 
   const handleTransition = useCallback(

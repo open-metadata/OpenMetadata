@@ -22,6 +22,11 @@ import {
 jest.mock('../../../../../rest/axiosClient', () => ({ get: jest.fn() }));
 runQueryNotificationsSynchronously();
 
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQueryClient: () => ({ invalidateQueries: jest.fn() }),
+}));
+
 const mockGetTaskById = jest.fn();
 const mockResolveTask = jest.fn();
 const mockAddComment = jest.fn();

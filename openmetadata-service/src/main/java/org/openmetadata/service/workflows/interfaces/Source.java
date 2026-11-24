@@ -25,10 +25,6 @@ public interface Source<R> extends Stats {
 
   R readWithCursor(String currentCursor) throws SearchIndexException;
 
-  List<String> getReaderErrors();
-
-  void reset();
-
   String getEntityType();
 
   int getBatchSize();
