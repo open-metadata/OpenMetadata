@@ -2728,13 +2728,13 @@ describe('SSOConfigurationForm', () => {
       ).not.toHaveAttribute('readonly');
       expect(
         container.querySelector(`[id="root/${SAML}/sp/entityId__help"]`)
-      ).toHaveTextContent(/defaults to the application URL/i);
+      ).toHaveTextContent('message.saml-sp-entity-id-help');
       expect(
         container.querySelector(`[id="root/${SAML}/sp/acs"]`)
       ).not.toHaveAttribute('readonly');
       expect(
         container.querySelector(`[id="root/${SAML}/sp/acs__help"]`)
-      ).toHaveTextContent(/defaults to the application callback URL/i);
+      ).toHaveTextContent('message.saml-acs-url-help');
 
       for (const path of [
         `${SAML}/sp/callback`,
