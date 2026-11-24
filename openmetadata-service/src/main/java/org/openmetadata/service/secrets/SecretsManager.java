@@ -53,6 +53,7 @@ import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.secrets.SecretMapOwnership.WriteContext;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
@@ -114,7 +115,12 @@ public abstract class SecretsManager {
       String connectionName,
       ServiceType serviceType) {
     return encryptServiceConnectionConfig(
-        connectionConfig, null, connectionType, connectionName, serviceType, true);
+        connectionConfig,
+        connectionType,
+        connectionName,
+        serviceType,
+        true,
+        WriteContext.untracked(null));
   }
 
   public Object encryptServiceConnectionConfig(
@@ -125,11 +131,21 @@ public abstract class SecretsManager {
       ServiceType serviceType) {
     return encryptServiceConnectionConfig(
         connectionConfig,
-        originalConnectionConfig,
         connectionType,
         connectionName,
         serviceType,
-        true);
+        true,
+        WriteContext.untracked(originalConnectionConfig));
+  }
+
+  public Object encryptServiceConnectionConfigForWrite(
+      Object connectionConfig,
+      String connectionType,
+      String connectionName,
+      ServiceType serviceType,
+      WriteContext<Object> context) {
+    return encryptServiceConnectionConfig(
+        connectionConfig, connectionType, connectionName, serviceType, true, context);
   }
 
   /** Protects prepared and approval-staged values without creating or changing external secrets. */
@@ -139,19 +155,25 @@ public abstract class SecretsManager {
       String connectionName,
       ServiceType serviceType) {
     return encryptServiceConnectionConfig(
-        connectionConfig, null, connectionType, connectionName, serviceType, false);
+        connectionConfig,
+        connectionType,
+        connectionName,
+        serviceType,
+        false,
+        WriteContext.untracked(null));
   }
 
   private Object encryptServiceConnectionConfig(
       Object connectionConfig,
-      Object originalConnectionConfig,
       String connectionType,
       String connectionName,
       ServiceType serviceType,
-      boolean persistExternalSecrets) {
+      boolean persistExternalSecrets,
+      WriteContext<Object> context) {
     try {
       Object newConnectionConfig =
           SecretsUtil.convert(connectionConfig, connectionType, connectionName, serviceType);
+      Object originalConnectionConfig = context.original();
       Object savedConnectionConfig =
           originalConnectionConfig == null
               ? null
@@ -159,7 +181,7 @@ public abstract class SecretsManager {
                   originalConnectionConfig, connectionType, connectionName, serviceType);
       return encryptPasswordFields(
           newConnectionConfig,
-          savedConnectionConfig,
+          context.withOriginal(savedConnectionConfig),
           buildSecretId(true, serviceType.value(), connectionName),
           true,
           persistExternalSecrets);
@@ -384,12 +406,19 @@ public abstract class SecretsManager {
 
   public void encryptIngestionPipeline(
       IngestionPipeline ingestionPipeline, IngestionPipeline originalIngestionPipeline) {
+    encryptIngestionPipelineForWrite(
+        ingestionPipeline, WriteContext.untracked(originalIngestionPipeline));
+  }
+
+  public void encryptIngestionPipelineForWrite(
+      IngestionPipeline ingestionPipeline, WriteContext<IngestionPipeline> context) {
     OpenMetadataConnection openMetadataConnection =
         encryptOpenMetadataConnection(ingestionPipeline.getOpenMetadataServerConnection(), true);
     ingestionPipeline.setOpenMetadataServerConnection(null);
     // we don't store OM conn sensitive data
     IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
     IngestionPipeline savedPipeline = null;
+    IngestionPipeline originalIngestionPipeline = context.original();
     if (originalIngestionPipeline != null) {
       savedPipeline = JsonUtils.deepCopy(originalIngestionPipeline, IngestionPipeline.class);
       IngestionPipelineBuilder.addDefinedConfigForRead(savedPipeline);
@@ -399,7 +428,7 @@ public abstract class SecretsManager {
       // A pipeline name is unique only within its service, so it cannot key the vault entry.
       encryptPasswordFields(
           ingestionPipeline,
-          savedPipeline,
+          context.withOriginal(savedPipeline),
           buildSecretId(true, "pipeline", ingestionPipeline.getId().toString()),
           true,
           true);
@@ -544,18 +573,19 @@ public abstract class SecretsManager {
   private static final int MAX_FRESH_ID_ATTEMPTS = 8;
 
   private Object encryptPasswordFields(Object toEncryptObject, String secretId, boolean store) {
-    return encryptPasswordFields(toEncryptObject, null, secretId, store, true);
+    return encryptPasswordFields(
+        toEncryptObject, WriteContext.untracked(null), secretId, store, true);
   }
 
   private Object encryptPasswordFields(
       Object toEncryptObject,
-      Object savedObject,
+      WriteContext<?> context,
       String secretId,
       boolean store,
       boolean persistExternalSecrets) {
     ReferenceScope scope =
-        store && persistExternalSecrets && this instanceof ExternalSecretsManager
-            ? ReferenceScope.from(this, secretId, toEncryptObject, savedObject)
+        store && persistExternalSecrets && this instanceof ExternalSecretsManager external
+            ? ReferenceScope.from(external, secretId, toEncryptObject, context)
             : null;
     if (scope != null) {
       validateIncomingSecretValues(toEncryptObject, secretId);
@@ -687,8 +717,7 @@ public abstract class SecretsManager {
     if (Boolean.TRUE.equals(isSecret(value))) {
       return value;
     }
-    String targetId = scope.selectWriteSecretId(defaultSecretId);
-    String storedRef = storeWithFreshFallback(fieldName, targetId, defaultSecretId, value, scope);
+    String storedRef = storeWithFreshFallback(fieldName, defaultSecretId, value, scope);
     if (Boolean.TRUE.equals(isSecret(storedRef))) {
       scope.claim(storedRef.substring(SECRET_FIELD_PREFIX.length()));
     }
@@ -696,22 +725,31 @@ public abstract class SecretsManager {
   }
 
   private String storeWithFreshFallback(
-      String fieldName,
-      String targetId,
-      String defaultSecretId,
-      String value,
-      ReferenceScope scope) {
-    String candidate = targetId;
-    for (int attempt = 0; attempt < MAX_FRESH_ID_ATTEMPTS; attempt++) {
+      String fieldName, String defaultSecretId, String value, ReferenceScope scope) {
+    Optional<String> existingId = scope.selectExistingWriteId(defaultSecretId);
+    if (existingId.isPresent()) {
       try {
-        return storeOwnedValue(fieldName, candidate, value);
+        return storeOwnedValue(fieldName, existingId.get(), value);
       } catch (SecretNameReservedException e) {
-        LOG.debug("Secret [{}] is held by a deleted secret; using a fresh key", candidate);
-        scope.claim(candidate);
-        candidate = scope.allocateFreshId(defaultSecretId);
+        LOG.debug("Secret [{}] is held by a deleted secret; using a fresh key", existingId.get());
       }
     }
-    return storeOwnedValue(fieldName, candidate, value);
+
+    String base = scope.freshIdBase(defaultSecretId);
+    for (int attempt = 0; attempt < MAX_FRESH_ID_ATTEMPTS; attempt++) {
+      String candidate = buildSecretId(false, base, SecretKeyEncoding.freshSuffix());
+      if (!scope.claimFresh(candidate)) {
+        continue;
+      }
+      try {
+        return scope.manager.storeFreshValue(
+            fieldName, candidate, value, scope.context::freshCreated);
+      } catch (SecretNameReservedException e) {
+        LOG.debug("Fresh secret name [{}] is unavailable; trying another key", candidate);
+      }
+    }
+    throw new SecretsManagerException(
+        String.format("Could not allocate a fresh secret id for [%s].", defaultSecretId));
   }
 
   /**
@@ -1222,32 +1260,28 @@ public abstract class SecretsManager {
   /**
    * Names the secret that holds a password field. A migration that moves a field into a nested
    * object leaves its {@code secret:} reference where the field used to be, so a reference to the
-   * same field under an enclosing object is the secret to delete, as is a fresh secret id
-   * allocated for this field when its default id was referenced by another element. Any other
-   * reference was supplied by the user (or belongs to another renamed element) and is never
-   * deleted under this field's name.
+   * same field under an enclosing object is the legacy secret to delete. Fresh secret ownership
+   * comes from the write ledger, since a reference can have the same suffix without being owned.
    */
   private String storedSecretName(String fieldValue, List<String> secretIds, String fieldName) {
-    String root = secretIds.getFirst();
     List<String> fieldSecretNames =
         secretIds.stream().map(secretId -> buildSecretId(false, secretId, fieldName)).toList();
     return referencedSecretName(fieldValue)
-        .filter(ref -> isOwnFieldSecret(ref, fieldSecretNames, root))
+        .filter(ref -> isOwnFieldSecret(ref, fieldSecretNames))
         .orElse(fieldSecretNames.getLast());
   }
 
-  private boolean isOwnFieldSecret(String reference, List<String> fieldSecretNames, String root) {
+  private boolean isOwnFieldSecret(String reference, List<String> fieldSecretNames) {
     String canonicalRef = canonicalSecretName(reference);
     for (String candidate : fieldSecretNames) {
-      if (canonicalRef.equals(canonicalSecretName(candidate))
-          || isFreshIdFor(reference, candidate, root)) {
+      if (canonicalRef.equals(canonicalSecretName(candidate))) {
         return true;
       }
     }
     return false;
   }
 
-  private boolean isFreshIdFor(String candidateName, String fieldSecretId, String root) {
+  final boolean isFreshIdFor(String candidateName, String fieldSecretId, String root) {
     String canonCandidate = canonicalSecretName(candidateName);
     String sep = secretsIdConfig.separator();
     if (hasFreshSuffix(canonCandidate, canonicalSecretName(fieldSecretId) + sep)) {
@@ -1260,7 +1294,7 @@ public abstract class SecretsManager {
     return false;
   }
 
-  private String compactFieldTag(String fieldSecretId) {
+  final String compactFieldTag(String fieldSecretId) {
     return "f" + DigestUtils.sha256Hex(canonicalSecretName(fieldSecretId)).substring(0, 16);
   }
 
@@ -1293,7 +1327,8 @@ public abstract class SecretsManager {
    * a list element's secret id may be overwritten or deleted without clobbering another element.
    */
   private static final class ReferenceScope {
-    private final SecretsManager manager;
+    private final ExternalSecretsManager manager;
+    private final WriteContext<?> context;
     private final String root;
     private final Map<String, Set<String>> incomingReferrers;
     private final Map<String, Set<String>> savedReferrers;
@@ -1301,28 +1336,32 @@ public abstract class SecretsManager {
     private final Set<String> claimed = new HashSet<>();
 
     private ReferenceScope(
-        SecretsManager manager,
+        ExternalSecretsManager manager,
         String root,
+        WriteContext<?> context,
         Map<String, Set<String>> incomingReferrers,
         Map<String, Set<String>> savedReferrers,
         Map<String, String> savedRefBySlot) {
       this.manager = manager;
       this.root = root;
+      this.context = context;
       this.incomingReferrers = incomingReferrers;
       this.savedReferrers = savedReferrers;
       this.savedRefBySlot = savedRefBySlot;
     }
 
     private static ReferenceScope from(
-        SecretsManager manager, String root, Object incoming, Object saved) {
+        ExternalSecretsManager manager, String root, Object incoming, WriteContext<?> context) {
       Map<String, Set<String>> incomingReferrers = new HashMap<>();
       collectReferences(manager, root, incoming, incomingReferrers, null);
       Map<String, Set<String>> savedReferrers = new HashMap<>();
       Map<String, String> savedRefBySlot = new HashMap<>();
+      Object saved = context.original();
       if (saved != null) {
         collectReferences(manager, root, saved, savedReferrers, savedRefBySlot);
       }
-      return new ReferenceScope(manager, root, incomingReferrers, savedReferrers, savedRefBySlot);
+      return new ReferenceScope(
+          manager, root, context, incomingReferrers, savedReferrers, savedRefBySlot);
     }
 
     private static void collectReferences(
@@ -1350,26 +1389,23 @@ public abstract class SecretsManager {
                       }));
     }
 
-    private String selectWriteSecretId(String defaultSecretId) {
+    private Optional<String> selectExistingWriteId(String defaultSecretId) {
       String savedOwnRef = savedRefAt(defaultSecretId);
-      if (savedOwnRef != null
-          && manager.isFreshIdFor(savedOwnRef, defaultSecretId, root)
+      if (isOwnedFreshId(savedOwnRef, defaultSecretId)
           && !isReferencedByOther(savedOwnRef, defaultSecretId)) {
-        return savedOwnRef;
+        return Optional.of(savedOwnRef);
       }
-      if (!isReferencedByOther(defaultSecretId, defaultSecretId)) {
-        return defaultSecretId;
-      }
-      return allocateFreshId(defaultSecretId);
+      return isReferencedByOther(defaultSecretId, defaultSecretId)
+          ? Optional.empty()
+          : Optional.of(defaultSecretId);
     }
 
     private Optional<String> secretIdToDeleteOnClear(String defaultSecretId) {
       String savedOwnRef = savedRefAt(defaultSecretId);
       if (savedOwnRef != null) {
-        if (manager.isFreshIdFor(savedOwnRef, defaultSecretId, root)) {
-          return isReferencedByOther(savedOwnRef, defaultSecretId)
-              ? Optional.empty()
-              : Optional.of(savedOwnRef);
+        if (isOwnedFreshId(savedOwnRef, defaultSecretId)
+            && !isReferencedByOther(savedOwnRef, defaultSecretId)) {
+          context.deferFreshClear(manager.canonicalSecretName(savedOwnRef));
         }
         if (manager
             .canonicalSecretName(savedOwnRef)
@@ -1383,6 +1419,12 @@ public abstract class SecretsManager {
       return isReferencedByOther(defaultSecretId, defaultSecretId)
           ? Optional.empty()
           : Optional.of(defaultSecretId);
+    }
+
+    private boolean isOwnedFreshId(String reference, String defaultSecretId) {
+      return reference != null
+          && context.owns(manager.canonicalSecretName(reference))
+          && manager.isFreshIdFor(reference, defaultSecretId, root);
     }
 
     private String savedRefAt(String defaultSecretId) {
@@ -1406,8 +1448,8 @@ public abstract class SecretsManager {
       return slots.size() > 1 || !slots.contains(canonSlot);
     }
 
-    private String allocateFreshId(String defaultSecretId) {
-      String sep = manager.secretsIdConfig.separator();
+    private String freshIdBase(String defaultSecretId) {
+      String sep = manager.getSecretsIdConfig().separator();
       int maxLength = manager.maxSecretIdLength();
       String base;
       if (defaultSecretId.length() + sep.length() + SecretKeyEncoding.FIELD_KEY_LENGTH
@@ -1422,17 +1464,15 @@ public abstract class SecretsManager {
                   root, maxLength, manager.getSecretsManagerProvider().value()));
         }
       }
-      for (int attempt = 0; attempt < MAX_FRESH_ID_ATTEMPTS; attempt++) {
-        String candidate = manager.buildSecretId(false, base, SecretKeyEncoding.freshSuffix());
-        String canonical = manager.canonicalSecretName(candidate);
-        if (!claimed.contains(canonical)
-            && !incomingReferrers.containsKey(canonical)
-            && !savedReferrers.containsKey(canonical)) {
-          return candidate;
-        }
-      }
-      throw new SecretsManagerException(
-          String.format("Could not allocate a fresh secret id for [%s].", defaultSecretId));
+      return base;
+    }
+
+    private boolean claimFresh(String candidate) {
+      String canonical = manager.canonicalSecretName(candidate);
+      return !context.owns(canonical)
+          && !incomingReferrers.containsKey(canonical)
+          && !savedReferrers.containsKey(canonical)
+          && claimed.add(canonical);
     }
 
     private void claim(String secretName) {

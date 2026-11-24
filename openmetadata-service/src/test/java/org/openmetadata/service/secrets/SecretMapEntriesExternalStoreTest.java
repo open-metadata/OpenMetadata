@@ -35,7 +35,9 @@ import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
+import org.openmetadata.service.secrets.SecretMapOwnership.WriteContext;
 import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
 
 /**
@@ -387,6 +389,31 @@ class SecretMapEntriesExternalStoreTest {
     assertTrue(secretsManager.getSecretsMap().isEmpty());
   }
 
+  @Test
+  void clearingAnOwnedFreshIdReleasesOwnershipAfterCleanup() {
+    McpConnection created = encryptMcp(List.of(mcpServer("alpha", "first-key")), null);
+    McpConnection reused =
+        encryptMcp(
+            List.of(
+                copy(created.getServers().getFirst()).withName("beta"),
+                mcpServer("alpha", "second-key")),
+            created);
+    String freshName =
+        storedReference(reused, "alpha").substring(SecretsManager.SECRET_FIELD_PREFIX.length());
+
+    McpConnection cleared =
+        encryptMcp(List.of(copy(reused.getServers().getFirst()), mcpServer("alpha", "")), reused);
+    assertEquals("second-key", secretsManager.getSecretsMap().get(freshName));
+    ownership.clean(mcpRoot());
+    assertFalse(secretsManager.getSecretsMap().containsKey(freshName));
+    assertEquals("first-key", storedKey(cleared, "beta"));
+
+    secretsManager.upsertSecret(freshName, "external-key");
+    ownership.removeOwner(owner, secretsManager.secretInventory(cleared, mcpRoot()));
+    ownership.clean(mcpRoot());
+    assertEquals(Map.of(freshName, "external-key"), secretsManager.getSecretsMap());
+  }
+
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
   void renamingAServerThenReusingItsOldNameInTheSameSaveKeepsBothKeys(boolean newAlphaFirst) {
@@ -604,19 +631,26 @@ class SecretMapEntriesExternalStoreTest {
   private McpConnection encryptMcp(List<McpServerConfig> servers, McpConnection original) {
     McpConnection config = new McpConnection().withServers(servers);
     SecretInventory input = secretsManager.secretInventory(config, mcpRoot());
+    WriteContext<Object> context =
+        ownership.forWrite(
+            mock(CollectionDAO.class),
+            owner,
+            mcpRoot(),
+            original == null ? null : JsonUtils.deepCopy(original, McpConnection.class));
     McpConnection stored =
         (McpConnection)
-            secretsManager.encryptServiceConnectionConfig(
+            secretsManager.encryptServiceConnectionConfigForWrite(
                 JsonUtils.deepCopy(config, McpConnection.class),
-                original == null ? null : JsonUtils.deepCopy(original, McpConnection.class),
                 "Mcp",
                 SERVICE,
-                ServiceType.MCP);
+                ServiceType.MCP,
+                context);
     ownership.recordWrite(
         owner,
         original == null ? null : secretsManager.secretInventory(original, mcpRoot()),
         input,
-        secretsManager.secretInventory(stored, mcpRoot()));
+        secretsManager.secretInventory(stored, mcpRoot()),
+        context);
     return stored;
   }
 

@@ -51,6 +51,7 @@ import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.secrets.SecretMapOwnership;
+import org.openmetadata.service.secrets.SecretMapOwnership.WriteContext;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
@@ -269,7 +270,8 @@ public abstract class ServiceEntityRepository<
     return manager.secretInventory(entity, serviceType);
   }
 
-  private void writeWithSecretOwnership(List<T> entities, boolean update, Consumer<List<T>> write) {
+  private void writeWithSecretOwnership(
+      List<T> entities, boolean update, Consumer<List<WriteContext<T>>> write) {
     SecretsManager manager = SecretsManagerFactory.getSecretsManager();
     if (manager == null || manager.getSecretsManagerProvider() == SecretsManagerProvider.DB) {
       write.accept(Collections.nCopies(entities.size(), null));
@@ -291,11 +293,24 @@ public abstract class ServiceEntityRepository<
                   .map(original -> original == null ? null : secretInventory(manager, original))
                   .toList();
           SecretMapOwnership.preserveWriteInputs(daoCollection, entities);
-          write.accept(originalEntities);
+          List<WriteContext<T>> contexts = new ArrayList<>(entities.size());
+          for (int i = 0; i < entities.size(); i++) {
+            contexts.add(
+                ownership.forWrite(
+                    daoCollection,
+                    entities.get(i).getId(),
+                    inputs.get(i).root(),
+                    originalEntities.get(i)));
+          }
+          write.accept(contexts);
           for (int i = 0; i < entities.size(); i++) {
             T entity = entities.get(i);
             ownership.recordWrite(
-                entity.getId(), originals.get(i), inputs.get(i), secretInventory(manager, entity));
+                entity.getId(),
+                originals.get(i),
+                inputs.get(i),
+                secretInventory(manager, entity),
+                contexts.get(i));
             String root = inputs.get(i).root();
             PostCommitActionQueue.runOrDefer(() -> cleanOwnedSecrets(manager, root));
           }
@@ -342,8 +357,20 @@ public abstract class ServiceEntityRepository<
         });
   }
 
-  private void encryptConnection(T service, T original) {
+  private void encryptConnection(T service, WriteContext<T> context) {
     if (service.getConnection() != null) {
+      SecretsManager manager = SecretsManagerFactory.getSecretsManager();
+      Object config = service.getConnection().getConfig();
+      String connectionType = service.getServiceType().value();
+      if (context == null) {
+        service
+            .getConnection()
+            .setConfig(
+                manager.encryptServiceConnectionConfig(
+                    config, connectionType, service.getName(), serviceType));
+        return;
+      }
+      T original = context.original();
       Object originalConfig =
           original != null && original.getConnection() != null
               ? original.getConnection().getConfig()
@@ -351,13 +378,12 @@ public abstract class ServiceEntityRepository<
       service
           .getConnection()
           .setConfig(
-              SecretsManagerFactory.getSecretsManager()
-                  .encryptServiceConnectionConfig(
-                      service.getConnection().getConfig(),
-                      originalConfig,
-                      service.getServiceType().value(),
-                      service.getName(),
-                      serviceType));
+              manager.encryptServiceConnectionConfigForWrite(
+                  config,
+                  connectionType,
+                  service.getName(),
+                  serviceType,
+                  context.withOriginal(originalConfig)));
     }
   }
 

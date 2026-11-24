@@ -1,20 +1,26 @@
 package org.openmetadata.service.secrets;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import com.google.api.gax.rpc.NotFoundException;
 import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse;
+import com.google.cloud.secretmanager.v1.ProjectName;
 import com.google.cloud.secretmanager.v1.Secret;
 import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
+import com.google.cloud.secretmanager.v1.SecretName;
 import com.google.cloud.secretmanager.v1.SecretPayload;
 import com.google.cloud.secretmanager.v1.SecretVersion;
 import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.protobuf.ByteString;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +36,7 @@ import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.security.secrets.Parameters;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
 
 @ExtendWith(MockitoExtension.class)
@@ -144,6 +151,24 @@ public class GCPSecretsManagerTest extends ExternalSecretsManagerTest {
     boolean hasEmptyPayload = mockSecretStorage.values().stream().anyMatch(String::isEmpty);
     assertFalse(
         hasEmptyPayload, "Token revocation with null should not create empty secret payloads");
+  }
+
+  @Test
+  void reportsConfirmedFreshCreationWhenWritingTheGcpVersionFails() throws Exception {
+    SecretManagerServiceClient client = SecretManagerServiceClient.create();
+    when(client.createSecret(any(ProjectName.class), any(String.class), any(Secret.class)))
+        .thenReturn(Secret.newBuilder().build());
+    when(client.addSecretVersion(any(SecretName.class), any(SecretPayload.class)))
+        .thenThrow(new IllegalStateException("Secret version rejected"));
+    List<String> createdNames = new ArrayList<>();
+
+    assertThrows(
+        SecretsManagerException.class,
+        () ->
+            ((ExternalSecretsManager) secretsManager)
+                .storeFreshValue("apiKey", "fresh_id", "fixture-key", createdNames::add));
+
+    assertEquals(List.of("fresh_id"), createdNames);
   }
 
   @Test

@@ -65,15 +65,18 @@ shifted element still referenced.
   both the locked stored config (passed by `ServiceEntityRepository` / `IngestionPipelineRepository`)
   and the incoming config — never probing the vault. References are compared by the provider's
   `canonicalSecretName`.
-- **Overwrite vs. fresh id:** a new value writes to the element's default id (or reuses a fresh id
-  already held by that exact slot) only when no other slot in the stored or incoming config still
-  references it; otherwise it writes to a fresh id (`<defaultId><sep><13-char base32 suffix>`, with
-  a hashed fallback under the entity root when a provider's max length would be exceeded). If a
-  provider refuses a soft-deleted name (such as Azure Key Vault 409), the write falls back to a
-  fresh id as well.
-- **Clearing:** clearing a list element's secret never deletes an id referenced by another slot or a
-  reference pointing outside the element's own id.
+- **Overwrite vs. fresh id:** a new value writes to the element's default id or reuses a fresh id
+  already held by that exact slot and recorded in the ownership ledger. Either id can be used
+  only when no other slot in the stored or incoming config references it. Otherwise, or if the
+  provider refuses a soft-deleted name (such as Azure Key Vault 409), it tries up to eight fresh id
+  candidates. The standard form is `<defaultId><sep><13-char base32 suffix>`. If that exceeds the
+  provider limit, use `<root><sep>f<first 16 hex digits of SHA-256(canonical default id)><sep><suffix>`.
+  Both formats are recognized when reusing owned ids.
+- **Clearing:** clearing a list element's secret preserves ids referenced by another slot and
+  fresh-shaped references absent from the ownership ledger. Clearing a recorded fresh id schedules
+  cleanup after the updated config commits, when the ledger no longer shows a live reference.
 - **Ownership and rollback safety:** checking the stored config prevents a save that later fails in
-  the database from overwriting a secret still referenced by the committed entity. `SecretMapOwnership`
+  the database from overwriting a secret another slot in the committed entity still references. `SecretMapOwnership`
   records the actual secret id written for each plaintext slot (including fresh ids), so hard delete
-  removes every owned secret while leaving user-supplied references untouched.
+  removes owned secrets while leaving user-supplied references untouched. When the database rolls
+  back, its rollback callback attempts to remove each confirmed fresh creation from that transaction.

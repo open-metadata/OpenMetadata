@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
+import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -17,6 +19,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
 import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
 
 /** Ownership survives entity deletion and aliases; callers hold the lock in their DB transaction. */
+@Slf4j
 public final class SecretMapOwnership {
   private static final String EXTENSION = "secrets.mapOwnership";
   private static final UUID LOCK_ID = namespaceId("lock");
@@ -46,6 +49,7 @@ public final class SecretMapOwnership {
   /** Active-transaction state only: the first snapshot wins, even when an object is written twice. */
   private static final class WriteInputs {
     private final Map<EntityInterface<?>, TokenBuffer> snapshots = new IdentityHashMap<>();
+    private final Map<SecretsManager, Set<String>> freshSecrets = new IdentityHashMap<>();
     private final Handle handle;
 
     private WriteInputs(Handle handle) {
@@ -58,8 +62,14 @@ public final class SecretMapOwnership {
       entities.forEach(entity -> snapshots.computeIfAbsent(entity, JsonUtils::toTokenBuffer));
     }
 
+    private void trackFreshSecret(SecretsManager manager, String name) {
+      freshSecrets.computeIfAbsent(manager, ignored -> new HashSet<>()).add(name);
+    }
+
     private void restore() {
       try {
+        freshSecrets.forEach(
+            (manager, names) -> names.forEach(name -> deleteAfterRollback(manager, name)));
         snapshots.forEach(JsonUtils::overwriteFromTokenBuffer);
       } finally {
         clear();
@@ -68,6 +78,7 @@ public final class SecretMapOwnership {
 
     private void clear() {
       snapshots.clear();
+      freshSecrets.clear();
       Map<Handle, WriteInputs> transactions = WRITE_INPUTS.get();
       transactions.remove(handle);
       if (transactions.isEmpty()) {
@@ -76,13 +87,93 @@ public final class SecretMapOwnership {
     }
   }
 
+  private static void deleteAfterRollback(SecretsManager manager, String name) {
+    try {
+      manager.deleteStoredSecret(name);
+    } catch (RuntimeException e) {
+      // Provider errors may include credential material. Preserve the original transaction error.
+      LOG.warn(
+          "Failed to delete fresh secret [{}] after rollback ({})",
+          name,
+          e.getClass().getSimpleName());
+    }
+  }
+
   public void lock() {
     // A stable row also serializes namespace creation and cleanup after its entity row disappears.
     dao.insert(LOCK_ID, EXTENSION, EXTENSION, "{}");
   }
 
+  public <T> WriteContext<T> forWrite(
+      CollectionDAO collection, UUID owner, String root, T original) {
+    State state = load(root);
+    Set<String> owned = new HashSet<>(state.owned());
+    Owner previous = state.owners().get(owner);
+    if (previous != null) {
+      owned.addAll(previous.scalars());
+    }
+    Set<String> canonicalNames = new HashSet<>();
+    owned.forEach(name -> canonicalNames.add(manager.canonicalSecretName(name)));
+    return new WriteContext<>(
+        original,
+        canonicalNames,
+        name -> collection.useHandle(handle -> inputsFor(handle).trackFreshSecret(manager, name)),
+        new HashSet<>());
+  }
+
+  public static final class WriteContext<T> {
+    private final T original;
+    private final Set<String> ownedNames;
+    private final Consumer<String> onFreshCreate;
+    private final Set<String> clearedSecrets;
+
+    private WriteContext(
+        T original,
+        Set<String> ownedNames,
+        Consumer<String> onFreshCreate,
+        Set<String> clearedSecrets) {
+      this.original = original;
+      this.ownedNames = ownedNames;
+      this.onFreshCreate = onFreshCreate;
+      this.clearedSecrets = clearedSecrets;
+    }
+
+    static <T> WriteContext<T> untracked(T original) {
+      return new WriteContext<>(original, Set.of(), name -> {}, Set.of());
+    }
+
+    public T original() {
+      return original;
+    }
+
+    public <U> WriteContext<U> withOriginal(U convertedOriginal) {
+      return new WriteContext<>(convertedOriginal, ownedNames, onFreshCreate, clearedSecrets);
+    }
+
+    boolean owns(String canonicalName) {
+      return ownedNames.contains(canonicalName);
+    }
+
+    void freshCreated(String name) {
+      onFreshCreate.accept(name);
+    }
+
+    void deferFreshClear(String name) {
+      clearedSecrets.add(name);
+    }
+  }
+
   public void recordWrite(
       UUID owner, SecretInventory original, SecretInventory input, SecretInventory stored) {
+    recordWrite(owner, original, input, stored, WriteContext.untracked(null));
+  }
+
+  public void recordWrite(
+      UUID owner,
+      SecretInventory original,
+      SecretInventory input,
+      SecretInventory stored,
+      WriteContext<?> context) {
     State state = load(stored.root());
     Owner previous = state.owners().get(owner);
     Set<String> scalars = new HashSet<>();
@@ -94,6 +185,14 @@ public final class SecretMapOwnership {
     }
     state.owned().addAll(stored.writtenSecretsFor(input.writtenMaps()));
     scalars.addAll(stored.writtenSecretsFor(input.writtenScalars()));
+    Set<String> clearedScalars = new HashSet<>();
+    for (String scalar : scalars) {
+      if (context.clearedSecrets.contains(manager.canonicalSecretName(scalar))) {
+        clearedScalars.add(scalar);
+      }
+    }
+    scalars.removeAll(clearedScalars);
+    state.owned().addAll(clearedScalars);
     state.owners().put(owner, new Owner(stored.references(), scalars));
     save(stored.root(), state);
   }

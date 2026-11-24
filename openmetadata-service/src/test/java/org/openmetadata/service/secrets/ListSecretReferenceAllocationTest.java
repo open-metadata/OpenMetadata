@@ -14,7 +14,6 @@
 package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -49,6 +48,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentMatchers;
 import org.openmetadata.schema.api.services.CreateMcpService.McpServiceType;
 import org.openmetadata.schema.entity.services.McpService;
@@ -214,12 +215,58 @@ class ListSecretReferenceAllocationTest {
     assertEquals("alpha-key", resolveKey(vault, updated, "beta"));
     assertEquals("new-alpha-key", resolveKey(vault, updated, "alpha"));
 
-    // Direct deleteSecretsFromServiceConnectionConfig also deletes the fresh id.
+    // A direct caller has no ownership ledger for suffixed references.
     String freshSecretName =
         referenceOf(updated, "alpha").substring(SecretsManager.SECRET_FIELD_PREFIX.length());
     assertTrue(vault.getSecretsMap().containsKey(freshSecretName));
     vault.deleteSecretsFromServiceConnectionConfig(updated, "Mcp", SERVICE, ServiceType.MCP);
-    assertFalse(vault.getSecretsMap().containsKey(freshSecretName));
+    assertTrue(vault.getSecretsMap().containsKey(freshSecretName));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"replacement", ""})
+  void changingAFreshShapedUserReferenceLeavesItsSecretUntouched(String newValue) {
+    InMemorySecretsManager vault = inMemoryVault();
+    SecretsManagerFactory.setSecretsManager(vault);
+    String userSecretName =
+        vault.buildSecretId(true, ServiceType.MCP.value(), SERVICE, "servers", "alpha", "apikey")
+            + "/abcdefghijklm";
+    vault.upsertSecret(userSecretName, "user-owned");
+    AtomicReference<String> committedJson = new AtomicReference<>();
+    McpTestRepository repository = new McpTestRepository(mockMcpDao(committedJson));
+    UUID id = UUID.randomUUID();
+    repository.storeEntity(
+        mcpService(
+            id, List.of(server("alpha", SecretsManager.SECRET_FIELD_PREFIX + userSecretName))),
+        false);
+
+    repository.storeEntity(mcpService(id, List.of(server("alpha", newValue))), true);
+
+    McpConnection stored = configOf(JsonUtils.readValue(committedJson.get(), McpService.class));
+    if (newValue.isEmpty()) {
+      assertNull(referenceOf(stored, "alpha"));
+    } else {
+      assertEquals(newValue, resolveKey(vault, stored, "alpha"));
+    }
+    assertEquals("user-owned", vault.getSecretsMap().get(userSecretName));
+  }
+
+  @Test
+  void legacyHardDeleteDoesNotAdoptAFreshShapedUserReference() {
+    InMemorySecretsManager vault = inMemoryVault();
+    String root = vault.buildSecretId(true, ServiceType.MCP.value(), SERVICE);
+    String userSecretName = root + "/servers/alpha/apikey/abcdefghijklm";
+    vault.upsertSecret(userSecretName, "user-owned");
+    McpConnection config =
+        new McpConnection()
+            .withServers(
+                List.of(server("alpha", SecretsManager.SECRET_FIELD_PREFIX + userSecretName)));
+    SecretMapOwnership ownership = new SecretMapOwnership(mockExtensionDao(), vault);
+
+    ownership.removeOwner(UUID.randomUUID(), vault.secretInventory(config, root));
+    ownership.clean(root);
+
+    assertEquals(Map.of(userSecretName, "user-owned"), vault.getSecretsMap());
   }
 
   @Test

@@ -71,6 +71,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.IngestionPipelineRepository;
+import org.openmetadata.service.jdbi3.McpServiceRepository;
 import org.openmetadata.service.jdbi3.MessagingServiceRepository;
 import org.openmetadata.service.secrets.ExternalSecretsManager;
 import org.openmetadata.service.secrets.InMemorySecretsManager;
@@ -954,6 +955,59 @@ public class SecretsManagerNullSecretIT {
         .mcpServices()
         .delete(created.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
     assertFalse(vault.getSecretsMap().keySet().stream().anyMatch(id -> id.startsWith(root + "/")));
+  }
+
+  @Test
+  void rollingBackAFreshMcpSecretRemovesItAndKeepsTheExistingCredential(TestNamespace ns) {
+    String serviceName = ns.prefix("mcp_rollback_fresh");
+    McpService created =
+        SdkClients.adminClient()
+            .mcpServices()
+            .create(
+                new CreateMcpService()
+                    .withName(serviceName)
+                    .withServiceType(McpServiceType.Mcp)
+                    .withConnection(mcpDirectConnection(mcpServer("alpha", "first-key"))));
+    ns.trackRoot(Entity.MCP_SERVICE, created);
+    String originalSecret = entitySecretRoot("mcp", serviceName) + "/servers/alpha/apikey";
+    McpService original =
+        Entity.getCollectionDAO().mcpServiceDAO().findEntityById(created.getId(), Include.ALL);
+    org.openmetadata.schema.services.connections.mcp.McpConnection originalConfig =
+        JsonUtils.convertValue(
+            original.getConnection().getConfig(),
+            org.openmetadata.schema.services.connections.mcp.McpConnection.class);
+    McpService updated =
+        JsonUtils.deepCopy(original, McpService.class)
+            .withConnection(
+                mcpDirectConnection(
+                    originalConfig.getServers().getFirst().withName("beta"),
+                    mcpServer("alpha", "second-key")));
+    McpServiceRepository repository =
+        (McpServiceRepository) Entity.getEntityRepository(Entity.MCP_SERVICE);
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            repository.executeInTransaction(
+                () -> {
+                  repository.storeEntity(updated, true);
+                  assertTrue(vault.getSecretsMap().containsValue("second-key"));
+                  throw new IllegalStateException("Injected failure before commit");
+                }));
+
+    assertEquals(
+        original,
+        Entity.getCollectionDAO().mcpServiceDAO().findEntityById(created.getId(), Include.ALL));
+    assertEquals("first-key", vault.getSecretsMap().get(originalSecret));
+    assertFalse(
+        vault.getSecretsMap().keySet().stream()
+            .anyMatch(id -> id.startsWith(originalSecret + "/")));
+
+    repository.storeEntity(updated, true);
+    RequestEntityCache.clear();
+    Map<String, String> refs = mcpBotReferences(created.getId().toString());
+    assertEquals("first-key", vault.getSecretValue(refs.get("beta")));
+    assertEquals("second-key", vault.getSecretValue(refs.get("alpha")));
   }
 
   private static McpConnection mcpDirectConnection(McpServerConfig... servers) {
