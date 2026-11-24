@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -53,6 +54,7 @@ class SystemRepositoryEmbeddingsValidationTest {
 
     when(searchRepository.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.OPENSEARCH);
+    when(searchRepository.usesHybridSearchPipeline()).thenReturn(true);
 
     systemRepository = new SystemRepository();
   }
@@ -64,7 +66,7 @@ class SystemRepositoryEmbeddingsValidationTest {
   }
 
   @Test
-  void testEmbeddingsPassWhenTheClientWorks() {
+  void testEmbeddingsPassWithPipelineAvailable() {
     VectorIndexService vectorService = mock(VectorIndexService.class);
     EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
     when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
@@ -72,11 +74,48 @@ class SystemRepositoryEmbeddingsValidationTest {
     when(embeddingClient.embed("OpenMetadata embedding validation test"))
         .thenReturn(new float[] {0.1f, 0.2f});
     when(embeddingClient.getDimension()).thenReturn(2);
+    when(searchRepository.checkHybridSearchPipeline()).thenReturn(Optional.empty());
 
     StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
 
     assertTrue(result.getPassed());
     assertTrue(result.getMessage().contains("working correctly"));
+  }
+
+  @Test
+  void testEmbeddingsFailWhenPipelineMissing() {
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    when(searchRepository.getEmbeddingClient()).thenReturn(embeddingClient);
+    when(embeddingClient.embed("OpenMetadata embedding validation test"))
+        .thenReturn(new float[] {0.1f, 0.2f});
+    when(embeddingClient.getDimension()).thenReturn(2);
+    when(searchRepository.checkHybridSearchPipeline())
+        .thenReturn(Optional.of("Hybrid search pipeline 'hybrid-rrf' not found."));
+
+    StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
+
+    assertFalse(result.getPassed());
+    assertTrue(result.getMessage().contains("not found"));
+  }
+
+  @Test
+  void testPipelineCheck5xxReportsSpecificError() {
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
+    when(searchRepository.getEmbeddingClient()).thenReturn(embeddingClient);
+    when(embeddingClient.embed("OpenMetadata embedding validation test"))
+        .thenReturn(new float[] {0.1f, 0.2f});
+    when(embeddingClient.getDimension()).thenReturn(2);
+    when(searchRepository.checkHybridSearchPipeline())
+        .thenReturn(Optional.of("Unexpected status 500"));
+
+    StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
+
+    assertFalse(result.getPassed());
+    assertTrue(result.getMessage().contains("Unexpected status 500"));
   }
 
   @Test
@@ -137,6 +176,7 @@ class SystemRepositoryEmbeddingsValidationTest {
     when(embeddingClient.embed("OpenMetadata embedding validation test"))
         .thenReturn(new float[] {0.1f, 0.2f});
     when(embeddingClient.getDimension()).thenReturn(2);
+    when(searchRepository.usesHybridSearchPipeline()).thenReturn(false);
 
     StepValidation result = systemRepository.getEmbeddingsValidation(appConfig);
 

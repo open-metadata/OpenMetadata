@@ -269,7 +269,7 @@
           "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.HybridSearch",
           "properties": {
             "searchPipeline": {
-              "description": "Ignored. Hybrid search no longer uses an OpenSearch search pipeline; the key is kept so that configuration files that still set it keep loading.",
+              "description": "Name of the OpenSearch search pipeline used to normalize hybrid (BM25 + KNN) scores.",
               "type": "string",
               "default": "hybrid-rrf"
             },
@@ -293,7 +293,7 @@
               "default": 1000
             },
             "paginationDepth": {
-              "description": "Number of documents each leg of a hybrid search retrieves before the legs are fused.",
+              "description": "Pagination depth used by the hybrid query for RRF normalization.",
               "type": "integer",
               "minimum": 1,
               "default": 1000

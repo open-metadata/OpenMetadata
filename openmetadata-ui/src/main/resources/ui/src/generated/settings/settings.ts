@@ -2683,12 +2683,11 @@ export interface HybridSearch {
      */
     maxQueryTerms?: number;
     /**
-     * Number of documents each leg of a hybrid search retrieves before the legs are fused.
+     * Pagination depth used by the hybrid query for RRF normalization.
      */
     paginationDepth?: number;
     /**
-     * Ignored. Hybrid search no longer uses an OpenSearch search pipeline; the key is kept so
-     * that configuration files that still set it keep loading.
+     * Name of the OpenSearch search pipeline used to normalize hybrid (BM25 + KNN) scores.
      */
     searchPipeline?: string;
     /**
