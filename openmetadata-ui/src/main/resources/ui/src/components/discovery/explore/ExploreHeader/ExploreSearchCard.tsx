@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, PageLayout } from '@openmetadata/ui-core-components';
+import { Badge, Box, PageLayout } from '@openmetadata/ui-core-components';
+import { ArrowRight } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import type { FormEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { useCurrentUserPreferences } from '../../../../hooks/currentUserStore/useCurrentUserStore';
@@ -30,7 +32,12 @@ import type { QuickFilter } from './ExploreQuickFilters.interface';
 import { ExploreSearchCardInfo } from './ExploreSearchCardInfo';
 import { ExploreSearchInput } from './ExploreSearchInput';
 
+interface GlobalSearchCarryOver {
+  fromGlobalSearch?: { query: string; filterCount: number };
+}
+
 export const ExploreSearchCard = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const searchCriteria = useApplicationStore((state) => state.searchCriteria);
@@ -46,6 +53,11 @@ export const ExploreSearchCard = () => {
   const searchParamValue = useMemo(() => {
     return new URLSearchParams(location.search).get('search') ?? '';
   }, [location.search]);
+
+  // Shown only while the query still matches what search handed over.
+  const carryOver = (location.state as GlobalSearchCarryOver | null)
+    ?.fromGlobalSearch;
+  const isCarriedOver = carryOver?.query === searchParamValue;
 
   const [searchValue, setSearchValue] = useState(searchParamValue);
   const [suggestionSearch, setSuggestionSearch] = useState('');
@@ -235,6 +247,20 @@ export const ExploreSearchCard = () => {
         onSubmit={handleSubmit}
         onSuggestionSelect={handleSuggestionSelect}
       />
+      {isCarriedOver ? (
+        <Badge
+          className="tw:self-start"
+          color="brand"
+          data-testid="explore-carried-over"
+          size="sm">
+          <ArrowRight className="tw:mr-1 tw:size-3" />
+          {carryOver?.filterCount
+            ? t('message.carried-over-from-search-with-filters', {
+                count: carryOver.filterCount,
+              })
+            : t('message.carried-over-from-search')}
+        </Badge>
+      ) : null}
       <div className="tw:w-full">
         <ExploreQuickFilters onFilterClick={handleQuickFilterClick} />
       </div>
