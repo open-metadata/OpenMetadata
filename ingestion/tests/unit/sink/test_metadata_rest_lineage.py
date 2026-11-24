@@ -25,6 +25,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.ometa_lineage import OMetaDeleteLineageBySource
 from metadata.ingestion.sink.metadata_rest import MetadataRestSink, MetadataRestSinkConfig
 
 FROM_ID = "d311bdf2-c4a9-4be3-9937-3b26309759af"
@@ -90,3 +91,41 @@ class TestWriteLineageStatusIdentifier:
         assert result.left is not None
         assert result.left.error == "boom"
         assert result.right is None
+
+
+class TestDeleteLineageBySource:
+    """An override with no edge left to write still has to clear the source's old edges (#37092)."""
+
+    @staticmethod
+    def _run(entity):
+        sink = make_sink(None)
+        sink.run(OMetaDeleteLineageBySource(entity=entity, source=LineageSource.DbtLineage))
+        return sink
+
+    def test_deletes_by_id(self):
+        sink = self._run(EntityReference(id=TO_ID, type="table"))
+
+        sink.metadata.delete_lineage_by_source.assert_called_once_with(
+            entity_type="table", entity_id=TO_ID, source="DbtLineage"
+        )
+
+    def test_falls_back_to_the_fqn(self):
+        sink = self._run(EntityReference.model_construct(id=None, type="table", fullyQualifiedName=FROM_FQN))
+
+        sink.metadata.delete_lineage_by_source.assert_not_called()
+        sink.metadata.delete_lineage_by_source_by_name.assert_called_once_with(
+            entity_type="table", entity_fqn=FROM_FQN, source="DbtLineage"
+        )
+
+    def test_a_reference_with_neither_deletes_nothing(self, caplog):
+        sink = self._run(EntityReference.model_construct(id=None, type="table", fullyQualifiedName=None))
+
+        sink.metadata.delete_lineage_by_source.assert_not_called()
+        sink.metadata.delete_lineage_by_source_by_name.assert_not_called()
+        assert "neither id nor fullyQualifiedName" in caplog.text
+
+    def test_is_neither_counted_nor_failed(self):
+        """Nothing is ingested, so the run summary must not count it as a record."""
+        sink = self._run(EntityReference(id=TO_ID, type="table"))
+
+        assert (sink.status.records, sink.status.failures) == ([], [])
