@@ -14,11 +14,12 @@
 /**
  * A stored connection secret must stay masked wherever a saved service on a real server shows it.
  *
- * A Redshift password once rendered as readable text on the Connection tab: the secret sits
- * inside the `authType` oneOf, and the read-only view only looked for `format: password` on
- * direct properties (#28299). One connector per secret shape — an `authType` oneOf, a flat
- * field the form folds into a synthesized `authType`, a top-level field, a non-database
- * service. Every connector's schema is covered by ServiceConnectionDetails.browser.test.tsx.
+ * The read-only Connection tab decides which values are secrets by walking the connection
+ * schema, so a secret in a shape it does not follow renders as readable text. One connector per
+ * secret shape: an `authType` oneOf, a flat field the form folds into a synthesized `authType`,
+ * a top-level field, a non-database service, and a oneOf whose branches share a top-level key
+ * (Datalake's Azure/GCS/S3 `securityConfig`). Every connector's schema is covered by
+ * ServiceConnectionDetails.browser.test.tsx.
  */
 
 import { Page } from '@playwright/test';
@@ -29,6 +30,8 @@ import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForServiceConnectionForm } from '../../utils/serviceIngestion';
 
 const SECRET = 'pw-Plaintext-Secret-123';
+// The server masks stored secrets for every non-bot user.
+const MASKED = '*********';
 
 interface ConnectorCase {
   serviceType: string;
@@ -66,6 +69,22 @@ const CONNECTORS: ConnectorCase[] = [
       account: 'pw-account',
       warehouse: 'COMPUTE_WH',
       password: SECRET,
+    },
+  },
+  {
+    serviceType: 'Datalake',
+    category: 'databaseServices',
+    secretFieldId: 'root/configSource/securityConfig/awsSecretAccessKey',
+    secretKey: 'awsSecretAccessKey',
+    config: {
+      type: 'Datalake',
+      configSource: {
+        securityConfig: {
+          awsAccessKeyId: 'pw-access-key-id',
+          awsSecretAccessKey: SECRET,
+          awsRegion: 'us-east-1',
+        },
+      },
     },
   },
   {
@@ -157,7 +176,7 @@ test.describe(
               .getByLabel(connectorCase.secretKey, { exact: true });
 
             await expect(storedSecret).toHaveAttribute('type', 'password');
-            await expect(storedSecret).not.toHaveValue(SECRET);
+            await expect(storedSecret).toHaveValue(MASKED);
           });
 
           await test.step('Edit connection form keeps the secret masked', async () => {
@@ -170,7 +189,7 @@ test.describe(
             );
 
             await expect(secret).toHaveAttribute('type', 'password');
-            await expect(secret).not.toHaveValue(SECRET);
+            await expect(secret).toHaveValue(MASKED);
           });
         });
       });

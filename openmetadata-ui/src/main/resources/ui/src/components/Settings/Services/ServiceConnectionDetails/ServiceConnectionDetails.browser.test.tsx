@@ -14,8 +14,7 @@
  * Every connector's stored secrets stay masked on the read-only Connection tab.
  *
  * This view walks each connection schema itself to decide which values are secrets, so a
- * secret in a shape it does not follow renders as readable text: a Redshift password inside
- * the `authType` oneOf once did (#28299). Rather than listing connectors, the test walks the
+ * secret in a shape it does not follow renders as readable text. Rather than listing connectors, the test walks the
  * same schemas the view loads, finds every `format: password` field (through `$ref`,
  * nested objects and oneOf/anyOf branches) and renders a config holding just that secret.
  * A new connector or a new secret field is covered without touching this file.

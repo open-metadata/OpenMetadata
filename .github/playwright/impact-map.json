@@ -780,6 +780,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/ServiceConnectionDetails/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ServiceConnectionDetailsUtils*"
+      ],
+      "projects": ["Basic"],
+      "specs": ["playwright/e2e/Flow/ServiceConnectionSecretMasking.spec.ts"]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/TestConnection/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/TestConnectionModalUtils.tsx"
       ],
