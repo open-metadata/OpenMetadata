@@ -2,7 +2,6 @@ import logging
 import os
 import shutil
 import time
-from typing import List, Tuple, Type  # noqa: UP035
 
 import pytest
 
@@ -18,6 +17,69 @@ from metadata.generated.schema.metadataIngestion.workflow import LogLevels
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.ingestion import IngestionWorkflow
+
+# Docker Hub took three separate pulls down on this branch in a single day —
+# twice "connection reset by peer" against auth.docker.io, once a 502 from
+# registry-1.docker.io — and each one failed a whole shard at fixture setup.
+#
+# docker-py's ContainerCollection.run is create -> ImageNotFound -> pull ->
+# create, and the pull goes through ImageCollection.pull, so retrying there
+# covers every testcontainer without touching the per-package conftests that
+# start them. Only registry-transport failures are retried; anything else (a
+# missing tag, a denied pull) still fails immediately, which is what we want.
+_TRANSIENT_REGISTRY_MARKERS = (
+    "502 Bad Gateway",
+    "503 Service Unavailable",
+    "504 Gateway",
+    "connection reset by peer",
+    "i/o timeout",
+    "TLS handshake timeout",
+    "toomanyrequests",
+    "unexpected EOF",
+)
+
+
+def _is_transient_registry_failure(error: BaseException) -> bool:
+    return any(marker in str(error) for marker in _TRANSIENT_REGISTRY_MARKERS)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def retry_transient_image_pulls():
+    """Retry container image pulls that fail on registry transport errors."""
+    try:
+        from docker.models.images import ImageCollection
+    except ImportError:
+        # Only the container-backed packages need docker-py; a session that never
+        # starts one still has to run.
+        yield
+        return
+
+    original_pull = ImageCollection.pull
+
+    def pull_with_retry(self, *args, **kwargs):
+        attempts = 3
+        for attempt in range(attempts):
+            try:
+                return original_pull(self, *args, **kwargs)
+            except Exception as error:
+                if not _is_transient_registry_failure(error) or attempt == attempts - 1:
+                    raise
+                delay = 3 * 2**attempt
+                logging.warning(
+                    "Transient registry failure on image pull (attempt %s/%s): %s. Retrying in %ss.",
+                    attempt + 1,
+                    attempts,
+                    error,
+                    delay,
+                )
+                time.sleep(delay)
+        raise RuntimeError("unreachable: the retry loop always returns or raises")
+
+    ImageCollection.pull = pull_with_retry
+    try:
+        yield
+    finally:
+        ImageCollection.pull = original_pull
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -208,7 +270,7 @@ def classifier_config(db_service, workflow_config, sink_config):
 
 @pytest.fixture(scope="module")
 def run_workflow():
-    def _run(workflow_type: Type[IngestionWorkflow], config, raise_from_status=True):  # noqa: UP006
+    def _run(workflow_type: type[IngestionWorkflow], config, raise_from_status=True):
         workflow: IngestionWorkflow = workflow_type.create(config)
         workflow.execute()
         if raise_from_status:
@@ -364,9 +426,9 @@ def patch_passwords_for_db_services(db_service, unmask_password, monkeymodule):
 
 @pytest.fixture
 def cleanup_fqns(metadata):
-    fqns: List[Tuple[Type[Entity], str]] = []  # noqa: UP006
+    fqns: list[tuple[type[Entity], str]] = []
 
-    def inner(entity_type: Type[Entity], fqn: str):  # noqa: UP006
+    def inner(entity_type: type[Entity], fqn: str):
         fqns.append((entity_type, fqn))
 
     yield inner

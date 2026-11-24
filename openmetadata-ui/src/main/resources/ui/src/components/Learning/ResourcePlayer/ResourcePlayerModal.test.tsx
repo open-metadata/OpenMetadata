@@ -12,8 +12,25 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { LearningResource } from '../../../rest/learningResourceAPI';
-import { ResourcePlayerModal } from './ResourcePlayerModal.component';
+import {
+  getLearningResourceById,
+  LearningResource,
+} from '../../../rest/learningResourceAPI';
+import { showErrorToast } from '../../../utils/ToastUtils';
+import {
+  ResourcePlayer,
+  ResourcePlayerModal,
+} from './ResourcePlayerModal.component';
+import { StorylaneTour } from './StorylaneTour.component';
+
+// The modal tests pass the list row, so a failed refetch falls back to it.
+jest.mock('../../../rest/learningResourceAPI', () => ({
+  getLearningResourceById: jest.fn().mockRejectedValue(new Error('offline')),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
 
 jest.mock('./VideoPlayer.component', () => ({
   VideoPlayer: jest
@@ -27,10 +44,16 @@ jest.mock('./StorylaneTour.component', () => ({
     .mockImplementation(() => <div data-testid="storylane-tour" />),
 }));
 
+jest.mock('./PdfViewer', () => ({
+  PdfViewer: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="pdf-viewer" />),
+}));
+
 const mockOnClose = jest.fn();
 
 const createMockResource = (
-  resourceType: 'Video' | 'Storylane',
+  resourceType: 'Video' | 'Storylane' | 'PDF',
   overrides?: Partial<LearningResource>
 ): LearningResource => ({
   id: 'test-id',
@@ -89,6 +112,42 @@ describe('ResourcePlayerModal', () => {
     );
 
     expect(screen.getByTestId('storylane-tour')).toBeInTheDocument();
+    expect(StorylaneTour).toHaveBeenCalledWith(
+      { title: 'Test Resource', url: 'https://example.com/resource' },
+      {}
+    );
+  });
+
+  it('should title a Storylane tour by its name when it has no display name', () => {
+    const resource = createMockResource('Storylane', {
+      displayName: undefined,
+    });
+    render(
+      <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
+    );
+
+    expect(StorylaneTour).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'test-resource' }),
+      {}
+    );
+  });
+
+  it('should render PdfViewer for PDF resource type', () => {
+    const resource = createMockResource('PDF');
+    render(
+      <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
+    );
+
+    expect(screen.getByTestId('pdf-viewer')).toBeInTheDocument();
+  });
+
+  it('should display formatted duration with min read for PDF', () => {
+    const resource = createMockResource('PDF');
+    render(
+      <ResourcePlayerModal open resource={resource} onClose={mockOnClose} />
+    );
+
+    expect(screen.getByText('5 label.min-read')).toBeInTheDocument();
   });
 
   it('should display resource description', () => {
@@ -200,5 +259,31 @@ describe('ResourcePlayerModal', () => {
     expect(
       screen.getByText('message.unsupported-resource-type')
     ).toBeInTheDocument();
+  });
+});
+
+describe('ResourcePlayer without a list row (settings sub-page)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('shows the resource once fetched', async () => {
+    (getLearningResourceById as jest.Mock).mockResolvedValueOnce(
+      createMockResource('Video')
+    );
+    render(<ResourcePlayer resourceId="test-id" />);
+
+    expect(await screen.findByText('Test Resource')).toBeInTheDocument();
+    expect(screen.getByTestId('video-player')).toBeInTheDocument();
+  });
+
+  it('shows a not-found state and a toast instead of loading forever when the fetch fails', async () => {
+    (getLearningResourceById as jest.Mock).mockRejectedValueOnce(
+      new Error('404')
+    );
+    render(<ResourcePlayer resourceId="missing-id" />);
+
+    expect(await screen.findByTestId('resource-not-found')).toBeInTheDocument();
+    expect(showErrorToast).toHaveBeenCalled();
   });
 });

@@ -13,10 +13,13 @@
 
 package org.openmetadata.service.secrets.converter;
 
+import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.ReflectionException;
 
 /**
  * Currently when an object is converted into a specific class using `JsonUtils.convertValue` there`Object` fields that
@@ -67,6 +70,57 @@ public abstract class ClassConverter {
   }
 
   // method called when and Object field can expect a HashMap or a specific class
+  /**
+   * Reads {@code property} off {@code target}, converts it against {@code candidates} and writes it
+   * back.
+   *
+   * <p>Mostly for {@code Object}-typed properties, i.e. the ones jsonschema2pojo emits for a JSON
+   * Schema {@code oneOf}. Jackson leaves a {@code LinkedHashMap} in such a field, and neither the
+   * password masker nor the secrets manager descends into a non-{@code org.openmetadata} value, so
+   * every {@code format: password} leaf below it stays in the clear until it is typed again here.
+   *
+   * <p>A typed property works too: it is run through its own registered converter, which is how a
+   * {@code oneOf} nested inside it (e.g. {@code GCPCredentials.gcpConfig}) gets typed.
+   *
+   * <p>An empty map is left as it is: choosing "None" for an optional {@code oneOf} submits {@code
+   * {}}, and since Jackson does not enforce JSON Schema {@code required} it would convert to the
+   * first candidate, filled with schema defaults. An empty map holds no secret to mask.
+   */
+  protected void convertProperty(Object target, String property, List<Class<?>> candidates) {
+    String accessorSuffix = Character.toUpperCase(property.charAt(0)) + property.substring(1);
+    try {
+      Method getter = target.getClass().getMethod("get" + accessorSuffix);
+      Object value = getter.invoke(target);
+      Optional<Object> converted =
+          isEmptyMap(value) ? Optional.empty() : tryToConvert(value, candidates);
+      converted.ifPresent(
+          typed -> {
+            try {
+              target
+                  .getClass()
+                  .getMethod("set" + accessorSuffix, getter.getReturnType())
+                  .invoke(target, typed);
+            } catch (ReflectiveOperationException e) {
+              throw new ReflectionException(
+                  String.format(
+                      "Failed to set property [%s] on [%s]: %s",
+                      property, target.getClass().getSimpleName(), e.getMessage()),
+                  e);
+            }
+          });
+    } catch (ReflectiveOperationException e) {
+      throw new ReflectionException(
+          String.format(
+              "Failed to convert property [%s] on [%s]: %s",
+              property, target.getClass().getSimpleName(), e.getMessage()),
+          e);
+    }
+  }
+
+  private static boolean isEmptyMap(Object value) {
+    return value instanceof Map<?, ?> map && map.isEmpty();
+  }
+
   protected Optional<Object> tryToConvert(Object object, List<Class<?>> candidateClasses) {
     if (object != null) {
       Optional<Object> converted =

@@ -18,6 +18,7 @@ import {
   ENTITY_REFERENCE_OPTIONS,
   SUPPORTED_DATE_TIME_FORMATS_ANTD_FORMAT_MAPPING,
 } from '../constants/CustomProperty.constants';
+import { PAGE_HEADERS } from '../constants/PageHeaders.constant';
 import { SearchIndex } from '../enums/search.enum';
 import {
   CustomProperty,
@@ -25,6 +26,7 @@ import {
   EntityReference,
 } from '../generated/entity/type';
 import {
+  buildUpdatedExtension,
   filterPopulatedTableRows,
   formatCustomPropertyDateTime,
   formatTableCellValue,
@@ -32,6 +34,7 @@ import {
   getCustomPropertyEntityPathname,
   getCustomPropertyLuxonFormat,
   getCustomPropertyMomentFormat,
+  getCustomPropertyPageHeaderFromEntity,
   getCustomPropertyReferenceSearchIndex,
   getCustomPropertyTypeDisplayName,
   getHyperlinkUrlValidationErrorKey,
@@ -60,6 +63,16 @@ describe('CustomProperty.utils', () => {
     const entityType = 'glossaryTerm';
 
     expect(getCustomPropertyEntityPathname(entityType)).toEqual(expectedPath);
+  });
+
+  it('getCustomPropertyEntityPathname should map the page type to the articles settings path', () => {
+    expect(getCustomPropertyEntityPathname('page')).toEqual('articles');
+  });
+
+  it('getCustomPropertyPageHeaderFromEntity should return the Articles header for the page type', () => {
+    expect(getCustomPropertyPageHeaderFromEntity('page')).toEqual(
+      PAGE_HEADERS.ARTICLE_CUSTOM_ATTRIBUTES
+    );
   });
 
   it('getCustomPropertyEntityPathname should return empty string if entityPath is not found', () => {
@@ -662,6 +675,70 @@ describe('CustomProperty.utils', () => {
     expect(
       filterPopulatedTableRows([{ id: 'business-id' }, { id: '' }])
     ).toEqual([{ id: 'business-id' }]);
+  });
+
+  describe('buildUpdatedExtension', () => {
+    it('merges the new value into the existing extension', () => {
+      expect(
+        buildUpdatedExtension({ owner: 'Riya' }, 'team', 'string', 'Data')
+      ).toEqual({ owner: 'Riya', team: 'Data' });
+    });
+
+    it('coerces integer and number values to numbers', () => {
+      expect(buildUpdatedExtension({}, 'days', 'integer', '365')).toEqual({
+        days: 365,
+      });
+      expect(buildUpdatedExtension({}, 'score', 'number', '98.6')).toEqual({
+        score: 98.6,
+      });
+    });
+
+    it('keeps a zero numeric value', () => {
+      expect(buildUpdatedExtension({}, 'days', 'integer', 0)).toEqual({
+        days: 0,
+      });
+    });
+
+    it('wraps a single enum value in an array and drops empty options', () => {
+      expect(buildUpdatedExtension({}, 'tier', 'enum', 'Gold')).toEqual({
+        tier: ['Gold'],
+      });
+      expect(
+        buildUpdatedExtension({}, 'tier', 'enum', ['Gold', '', 'Tier 1'])
+      ).toEqual({ tier: ['Gold', 'Tier 1'] });
+    });
+
+    it('removes the key when the new value is empty', () => {
+      const extension = { owner: 'Riya', team: 'Data' };
+
+      expect(buildUpdatedExtension(extension, 'team', 'string', '')).toEqual({
+        owner: 'Riya',
+      });
+      expect(
+        buildUpdatedExtension(extension, 'team', 'string', undefined)
+      ).toEqual({ owner: 'Riya' });
+      expect(buildUpdatedExtension(extension, 'team', 'enum', [])).toEqual({
+        owner: 'Riya',
+      });
+      expect(
+        buildUpdatedExtension(extension, 'team', 'hyperlink-cp', {})
+      ).toEqual({ owner: 'Riya' });
+      expect(
+        buildUpdatedExtension(extension, 'team', 'table-cp', {
+          columns: ['name'],
+          rows: [],
+        })
+      ).toEqual({ owner: 'Riya' });
+    });
+
+    it('returns undefined when no values remain', () => {
+      expect(
+        buildUpdatedExtension({ team: 'Data' }, 'team', 'string', '')
+      ).toBeUndefined();
+      expect(
+        buildUpdatedExtension(undefined, 'team', 'string', null)
+      ).toBeUndefined();
+    });
   });
 
   describe('hasPopulatedTableRows', () => {

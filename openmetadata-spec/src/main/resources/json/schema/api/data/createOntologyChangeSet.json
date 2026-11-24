@@ -1,0 +1,70 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/createOntologyChangeSet.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CreateOntologyChangeSetRequest",
+  "description": "Create or update an ontology authoring session.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.CreateOntologyChangeSet",
+  "javaInterfaces": [
+    "org.openmetadata.schema.CreateEntity"
+  ],
+  "properties": {
+    "name": {
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "type": "string"
+    },
+    "description": {
+      "$ref": "../../type/basic.json#/definitions/markdown"
+    },
+    "glossaries": {
+      "description": "Fully qualified names of affected ontology models.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+      },
+      "uniqueItems": true
+    },
+    "state": {
+      "$ref": "../../entity/data/ontologyChangeSet.json#/definitions/state"
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyChangeOperation.json"
+      }
+    },
+    "undoCursor": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "owners": {
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
+    },
+    "ontology": {
+      "description": "Fully qualified native ontology name. Mutually exclusive with glossaries.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
+    "baseWorkingRevision": {
+      "description": "Expected native working revision when applying this proposal.",
+      "type": "integer",
+      "existingJavaType": "java.lang.Long",
+      "minimum": 0
+    },
+    "sourcePack": {
+      "description": "Library pack selection this native proposal installs, as stamped by the library preview.",
+      "$ref": "../../type/ontologyPackSource.json"
+    }
+  },
+  "required": [
+    "name",
+    "displayName",
+    "description"
+  ],
+  "additionalProperties": false
+}

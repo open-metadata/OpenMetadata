@@ -17,12 +17,12 @@ import {
   Database01,
   Grid01,
   LayersThree01,
+  PlatformLineage,
   Shield01,
+  Sparkle,
   Zap,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
-import { ReactComponent as LineageIcon } from '../../../assets/svg/agents/lineage.svg';
-import { ReactComponent as SparkleIcon } from '../../../assets/svg/agents/sparkle.svg';
 import { convertSecondsToHumanReadableFormat } from '../../../utils/date-time/DateTimeUtils';
 import {
   Agent,
@@ -110,6 +110,21 @@ export const getUnitLabelKey = (unit: string): string =>
 export const getUnitVerbLabelKey = (verb: string): string =>
   UNIT_VERB_LABEL_KEY[verb] ?? 'label.assets-ingested';
 
+// An agent shows its last completed run's metric once it has succeeded, or
+// (for an agent that has never run in this session) once it has some history
+// to report — either processed assets or a recorded finish time.
+export const shouldShowLastRunMetric = (
+  agent: Agent,
+  isSuccess: boolean,
+  isNone: boolean
+): boolean =>
+  isSuccess || (isNone && (agent.assets > 0 || Boolean(agent.finishedAt)));
+
+export const getFinishedSuffix = (agent: Agent, t: TFunction): string =>
+  agent.finishedAt
+    ? ` · ${t('label.finished-lowercase')} ${agent.finishedAt}`
+    : '';
+
 const EM_DASH = '—';
 
 export const formatEtaLong = (info: EtaInfo, t: TFunction): string => {
@@ -139,8 +154,8 @@ export const AGENT_TYPE_ICON: Record<string, SvgComponent> = {
   Metadata: Database01,
   Usage: Zap,
   Profiler: Grid01,
-  Lineage: LineageIcon,
-  'Auto Classification': SparkleIcon,
+  Lineage: PlatformLineage,
+  'Auto Classification': Sparkle,
   dbt: Code01,
   Tier: LayersThree01,
   Documentation: BookClosed,
@@ -178,6 +193,7 @@ export const STATUS_PILL_META: Record<AgentStatus, PillMeta> = {
   running: { color: 'brand', pulse: true },
   success: { color: 'success' },
   failed: { color: 'error' },
+  stopped: { color: 'warning' },
   queued: { color: 'gray' },
   none: { color: 'gray' },
 };
@@ -229,10 +245,13 @@ export const RUN_DOT_CLASS: Record<string, string> = {
   skipped: 'tw:bg-utility-gray-300',
 };
 
+const IDLE_ICON_CLASS = 'tw:text-fg-quaternary';
+
 export const AGENT_ICON_CLASS: Record<AgentStatus, string> = {
   running: 'tw:text-fg-brand-primary',
   failed: 'tw:text-fg-error-primary',
   success: 'tw:text-fg-success-primary',
-  queued: 'tw:text-fg-quaternary',
-  none: 'tw:text-fg-quaternary',
+  stopped: IDLE_ICON_CLASS,
+  queued: IDLE_ICON_CLASS,
+  none: IDLE_ICON_CLASS,
 };

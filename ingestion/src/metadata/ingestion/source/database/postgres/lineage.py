@@ -13,8 +13,8 @@ Postgres lineage module
 """
 
 import traceback
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Iterable  # noqa: UP035
 
 from sqlalchemy import text
 

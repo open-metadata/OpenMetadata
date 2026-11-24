@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HelpCircle, SearchLg } from '@untitledui/icons';
+import { HelpCircle, Search } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Input } from '../components/base/input/input';
 import { TextArea } from '../components/base/textarea/textarea';
@@ -65,7 +65,7 @@ export const WithLeadingIcon: StoryObj = {
   render: () => (
     <div
       style={{ display: 'flex', flexDirection: 'column', gap: 12, width: 320 }}>
-      <Input icon={SearchLg} label="Search" placeholder="Search..." size="sm" />
+      <Input icon={Search} label="Search" placeholder="Search..." size="sm" />
       <Input
         icon={HelpCircle}
         label="Email"
@@ -103,6 +103,21 @@ export const Invalid: StoryObj = {
   ),
 };
 
+export const InvalidWithTooltip: StoryObj = {
+  render: () => (
+    <div style={{ width: 320 }}>
+      <Input
+        isInvalid
+        hint="Please enter a valid email address."
+        label="Email"
+        placeholder="you@example.com"
+        size="sm"
+        tooltip="We only use this for notifications."
+      />
+    </div>
+  ),
+};
+
 export const Disabled: StoryObj = {
   render: () => (
     <div style={{ width: 320 }}>
@@ -112,6 +127,14 @@ export const Disabled: StoryObj = {
         placeholder="Cannot edit"
         size="sm"
       />
+    </div>
+  ),
+};
+
+export const DisabledWithValue: StoryObj = {
+  render: () => (
+    <div style={{ width: 320 }}>
+      <Input isDisabled label="Service name" size="sm" value="mysql_sample" />
     </div>
   ),
 };
@@ -163,6 +186,19 @@ export const TextAreaInvalid: StoryObj = {
         label="Description"
         placeholder="Enter description..."
         rows={4}
+      />
+    </div>
+  ),
+};
+
+export const TextAreaAutoSize: StoryObj = {
+  render: () => (
+    <div style={{ width: 380 }}>
+      <TextArea
+        autoSize={{ minRows: 1, maxRows: 6 }}
+        hint="Grows from one line up to six, then scrolls."
+        label="Prompt"
+        placeholder="Ask anything..."
       />
     </div>
   ),

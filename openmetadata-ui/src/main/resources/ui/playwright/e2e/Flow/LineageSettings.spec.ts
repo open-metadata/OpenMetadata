@@ -26,15 +26,15 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
+  getApiContext,
   redirectToHomePage,
+  selectOptionWithRetry,
   toastNotification,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   applyPipelineFromModal,
   connectEdgeBetweenNodesViaAPI,
-  editLineage,
-  editLineageClick,
   fillLineageConfigForm,
   performCollapse,
   performExpand,
@@ -133,6 +133,65 @@ test.describe.serial(
 
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
+    });
+
+    test('Saving the lineage config keeps the settings the form does not edit', async ({
+      page,
+    }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const settingsUrl = '/api/v1/system/settings/lineageSettings';
+      const stored = await (await apiContext.get(settingsUrl)).json();
+      // A value the form cannot produce, so only a save that keeps the field
+      // can leave it in place.
+      await apiContext.put('/api/v1/system/settings', {
+        data: {
+          config_type: 'lineageSettings',
+          config_value: {
+            ...stored.config_value,
+            graphPerformanceConfig: {
+              ...stored.config_value.graphPerformanceConfig,
+              cacheTTLSeconds: 600,
+            },
+          },
+        },
+      });
+      // An upgraded instance may store no graphPerformanceConfig, and the
+      // server fills the schema defaults on write, so compare against what it kept.
+      const seeded = await (await apiContext.get(settingsUrl)).json();
+      const graphPerformanceConfig = seeded.config_value.graphPerformanceConfig;
+
+      expect(graphPerformanceConfig.cacheTTLSeconds).toBe(600);
+
+      try {
+        // Compare against what the server returns, not what was sent: a
+        // database upgraded from before 1.12 has no graphPerformanceConfig, so
+        // the partial one sent above comes back with the schema defaults.
+        const { graphPerformanceConfig } = (
+          await (await apiContext.get(settingsUrl)).json()
+        ).config_value;
+
+        expect(graphPerformanceConfig.cacheTTLSeconds).toBe(600);
+
+        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+        await page.getByTestId('field-upstream').fill('2');
+        const saveRes = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/system/settings') &&
+            response.request().method() === 'PUT'
+        );
+        await page.getByTestId('save-button').click();
+        expect((await saveRes).ok()).toBeTruthy();
+
+        const saved = await (await apiContext.get(settingsUrl)).json();
+
+        expect(saved.config_value.upstreamDepth).toBe(2);
+        expect(saved.config_value.graphPerformanceConfig).toEqual(
+          graphPerformanceConfig
+        );
+      } finally {
+        await apiContext.put('/api/v1/system/settings', { data: stored });
+        await afterAction();
+      }
     });
 
     test('Verify global lineage config', async ({ page }) => {
@@ -332,29 +391,25 @@ test.describe.serial(
       dataStewardPage,
     }) => {
       // Update setting to show pipeline as Edge
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.SETTINGS);
       await page.getByTestId('preferences').click();
       await page.getByTestId('preferences.lineageConfig').click();
 
-      await page.getByTestId('field-pipeline-view-mode').click();
-
-      await page.getByTitle('Edge').filter({ visible: true }).click();
+      await selectOptionWithRetry(
+        page.getByTestId('field-pipeline-view-mode').getByRole('button'),
+        page.getByRole('option', { name: 'Edge', exact: true })
+      );
       const lineageSettingUpdate = page.waitForResponse(
         '/api/v1/system/settings'
       );
       await page.getByTestId('save-button').click();
       await lineageSettingUpdate;
 
-      await redirectToHomePage(dataStewardPage);
-
       await table.visitEntityPage(dataStewardPage);
       await visitLineageTab(dataStewardPage);
-      await editLineage(dataStewardPage);
 
       // Select pipeline from Modal
       await applyPipelineFromModal(dataStewardPage, table, topic, pipeline);
-      await editLineageClick(dataStewardPage);
       await waitForAllLoadersToDisappear(dataStewardPage);
       await verifyPipelineDataInDrawer(
         dataStewardPage,
@@ -377,13 +432,15 @@ test.describe.serial(
       ).toBeVisible({ timeout: 10000 });
 
       // update pipeline view mode to Node
-      await page.getByTestId('field-pipeline-view-mode').click();
-      await page.getByTitle('Node').filter({ visible: true }).click();
+      await selectOptionWithRetry(
+        page.getByTestId('field-pipeline-view-mode').getByRole('button'),
+        page.getByRole('option', { name: 'Node', exact: true })
+      );
       const settingsUpdate = page.waitForResponse('/api/v1/system/settings');
       await page.getByTestId('save-button').click();
       await settingsUpdate;
 
-      await dataStewardPage.reload();
+      await dataStewardPage.reload({ waitUntil: 'domcontentloaded' });
       await waitForAllLoadersToDisappear(dataStewardPage);
 
       // Pipeline should be shown as Node and not as Edge

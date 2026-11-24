@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
-import { Thread } from '../../../../generated/entity/feed/thread';
+import { Conversation } from '../../../../generated/entity/feed/conversation';
 
 export interface FeedCardBodyV1Props {
-  feed?: Thread;
+  feed?: Conversation;
   activity?: ActivityEvent;
   isEditPost: boolean;
   className?: string;
@@ -26,4 +26,6 @@ export interface FeedCardBodyV1Props {
   showThread?: boolean;
   isForFeedTab?: boolean;
   isFeedWidget?: boolean;
+  /** In the activity thread panel, a message is edited in the comment edit form. */
+  isThreadPanel?: boolean;
 }

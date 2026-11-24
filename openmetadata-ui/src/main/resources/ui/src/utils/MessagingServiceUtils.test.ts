@@ -11,31 +11,9 @@
  *  limitations under the License.
  */
 
-jest.mock(
-  '../jsons/connectionSchemas/connections/messaging/kafkaConnection.json',
-  () => ({}),
-  { virtual: true }
-);
-jest.mock(
-  '../jsons/connectionSchemas/connections/messaging/redpandaConnection.json',
-  () => ({}),
-  { virtual: true }
-);
-jest.mock(
-  '../jsons/connectionSchemas/connections/messaging/customMessagingConnection.json',
-  () => ({}),
-  { virtual: true }
-);
-jest.mock(
-  '../jsons/connectionSchemas/connections/messaging/kinesisConnection.json',
-  () => ({}),
-  { virtual: true }
-);
-jest.mock(
-  '../jsons/connectionSchemas/connections/messaging/pubSubConnection.json',
-  () => ({}),
-  { virtual: true }
-);
+jest.mock('./loadConnectionSchema', () => ({
+  loadConnectionSchema: jest.fn(() => Promise.resolve({})),
+}));
 
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { MessagingServiceType } from '../generated/entity/services/messagingService';

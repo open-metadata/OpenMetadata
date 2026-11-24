@@ -11,36 +11,41 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
-import { DefaultOptionType } from 'antd/lib/select';
+import {
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  Grid,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Maximize01, Minimize01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
-import { Duration } from 'luxon';
 import Qs from 'qs';
 import { FC, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
-import { ReactComponent as FullScreen } from '../../../assets/svg/full-screen.svg';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/icon-copy.svg';
-import {
-  ONE_MINUTE_IN_MILLISECOND,
-  PIPE_SYMBOL,
-} from '../../../constants/constants';
+import { PIPE_SYMBOL } from '../../../constants/constants';
 import {
   QUERY_DATE_FORMAT,
   QUERY_LINE_HEIGHT,
 } from '../../../constants/Query.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { useClipboard } from '../../../hooks/useClipBoard';
+import { EntityReference } from '../../../generated/type/entityReference';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
-import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+import {
+  customFormatDateTime,
+  formatDuration,
+} from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
 import queryClassBase from '../../../utils/QueryClassBase';
 import { getEntityDetailsPath, getQueryPath } from '../../../utils/RouterUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
 import './table-queries.style.less';
@@ -49,8 +54,6 @@ import { QueryCardProp } from './TableQueries.interface';
 const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../SchemaEditor/SchemaEditor'))
 );
-
-const { Text } = Typography;
 
 const QueryCard: FC<QueryCardProp> = ({
   isExpanded = false,
@@ -68,7 +71,6 @@ const QueryCard: FC<QueryCardProp> = ({
   const { fqn: datasetFQN } = useFqn();
   const location = useCustomLocation();
   const navigate = useNavigate();
-  const { onCopyToClipBoard } = useClipboard(query.query);
   const searchFilter = useMemo(
     () => parseSearchParams(location.search),
     [location.search]
@@ -79,7 +81,7 @@ const QueryCard: FC<QueryCardProp> = ({
     query: query.query,
     isLoading: false,
   });
-  const [selectedTables, setSelectedTables] = useState<DefaultOptionType[]>();
+  const [selectedTables, setSelectedTables] = useState<EntityReference[]>();
 
   const { isAllowExpand, queryDate } = useMemo(() => {
     const queryArr = split(query.query, '\n');
@@ -98,23 +100,10 @@ const QueryCard: FC<QueryCardProp> = ({
       return undefined;
     }
 
-    if (durationInMilliSeconds < 1) {
-      return `${t('label.runs-for')} ${durationInMilliSeconds} ms`;
-    }
-
-    const duration = Duration.fromObject({
-      milliseconds: durationInMilliSeconds,
-    });
-
-    let formatString;
-    if (durationInMilliSeconds < ONE_MINUTE_IN_MILLISECOND) {
-      formatString = "s.S 'sec'";
-    } else {
-      formatString = "m 'min' s 'sec'";
-    }
-
-    // Format the duration as a string using the chosen format string
-    return duration.toFormat(`'${t('label.runs-for')}' ${formatString}`);
+    return `${t('label.runs-for')} ${formatDuration(
+      durationInMilliSeconds,
+      2
+    )}`;
   }, [query]);
 
   const updateSqlQuery = async () => {
@@ -123,21 +112,7 @@ const QueryCard: FC<QueryCardProp> = ({
     const updatedData = {
       ...query,
       query: query.query !== sqlQuery.query ? sqlQuery.query : query.query,
-      queryUsedIn: isUndefined(selectedTables)
-        ? query.queryUsedIn
-        : selectedTables.map((option) => {
-            const existingTable = query.queryUsedIn?.find(
-              (table) => table.id === option.value
-            );
-
-            return (
-              existingTable ?? {
-                id: (option.value as string) ?? '',
-                displayName: option.labelName as string,
-                type: EntityType.TABLE,
-              }
-            );
-          }),
+      queryUsedIn: selectedTables ?? query.queryUsedIn,
     };
     if (query.query !== sqlQuery.query || !isUndefined(selectedTables)) {
       await onQueryUpdate(updatedData, 'query');
@@ -173,128 +148,166 @@ const QueryCard: FC<QueryCardProp> = ({
     onQuerySelection?.(query);
   };
 
+  const renderCardTitle = () => (
+    <Box
+      inline
+      align="center"
+      className="layout-space layout-space-horizontal font-normal p-y-xs"
+      gap={2}
+      itemClassName="layout-space-item">
+      {query?.displayName && (
+        <>
+          <Typography data-testid="query-display-name" size="text-sm">
+            {query.displayName}
+          </Typography>
+          <Typography className="tw:text-quaternary" size="text-sm">
+            {PIPE_SYMBOL}
+          </Typography>
+        </>
+      )}
+      <Typography className="text-sm">{queryDate}</Typography>
+      {duration && (
+        <>
+          <Typography className="tw:text-quaternary" size="text-sm">
+            {PIPE_SYMBOL}
+          </Typography>
+          <Typography className="text-sm" data-testid="query-run-duration">
+            {duration}
+          </Typography>
+        </>
+      )}
+    </Box>
+  );
+
+  const getExpandButtonProps = () =>
+    isExpanded
+      ? { icon: Minimize01, tooltip: t('label.exit-fit-to-screen') }
+      : { icon: Maximize01, tooltip: t('label.fit-to-screen') };
+
+  const renderEditActions = () =>
+    isEditMode && (
+      <Box
+        inline
+        align="end"
+        className="layout-space layout-space-horizontal w-full justify-end p-r-md"
+        gap={4}
+        itemClassName="layout-space-item">
+        <Button
+          color="secondary"
+          data-testid="cancel-query-btn"
+          key="cancel"
+          size="xs"
+          onClick={() => setIsEditMode(false)}>
+          {t('label.cancel')}
+        </Button>
+
+        <Button
+          color="primary"
+          data-testid="save-query-btn"
+          isLoading={sqlQuery.isLoading}
+          key="save"
+          size="xs"
+          onClick={updateSqlQuery}>
+          {t('label.save')}
+        </Button>
+      </Box>
+    );
+
   return (
-    <Row gutter={[0, 8]}>
-      <Col span={isExpanded && QueryExtras ? 12 : 24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(0, 8) }}>
+      <Grid.Item
+        className="layout-column"
+        span={isExpanded && QueryExtras ? 12 : 24}>
+        {/* Light values reproduce the antd Card head this replaced. */}
         <Card
-          bordered={false}
           className={classNames(
-            'query-card-container',
+            'query-card-container tw:overflow-visible tw:text-sm tw:leading-[1.5715] tw:text-primary tw:tabular-nums',
             { selected: selectedId === query?.id },
             className
           )}
-          extra={
-            <QueryCardExtraOption
-              afterDeleteAction={afterDeleteAction}
-              permission={permission}
-              query={query}
-              onEditClick={setIsEditMode}
-              onUpdateVote={onUpdateVote}
-            />
-          }
-          title={
-            <Space className="font-normal p-y-xs" size={8}>
-              <Text className="text-sm">{queryDate}</Text>
-              {duration && (
-                <>
-                  <Text className="text-gray-400">{PIPE_SYMBOL}</Text>
-                  <Text className="text-sm" data-testid="query-run-duration">
-                    {duration}
-                  </Text>
-                </>
-              )}
-            </Space>
-          }
           onClick={handleCardClick}>
-          <Space className="query-entity-button" size={8}>
-            <Button
-              className="flex-center bg-white"
-              data-testid="query-entity-expand-button"
-              icon={
-                isExpanded ? (
-                  <Tooltip title={t('label.exit-fit-to-screen')}>
-                    <ExitFullScreen height={16} width={16} />
-                  </Tooltip>
-                ) : (
-                  <Tooltip title={t('label.fit-to-screen')}>
-                    <FullScreen height={16} width={16} />
-                  </Tooltip>
-                )
-              }
-              onClick={handleExpandClick}
-            />
-            <Tooltip title={t('message.copy-to-clipboard')}>
-              <Button
-                className="flex-center bg-white"
-                data-testid="query-entity-copy-button"
-                icon={<CopyIcon height={16} width={16} />}
-                onClick={onCopyToClipBoard}
-              />
-            </Tooltip>
-          </Space>
-
           <div
             className={classNames(
-              'sql-editor-container',
-              !isExpanded && {
-                'h-max-24': !isAllowExpand,
-                'h-24': !isEditMode,
-                'h-max-56': isEditMode && isAllowExpand,
-              }
+              'tw:-mb-px tw:flex tw:min-h-12 tw:items-center tw:border-b',
+              'tw:border-black/6 tw:px-6 tw:text-base tw:leading-[1.5715]',
+              'tw:font-medium tw:text-black/85 tw:dark:border-secondary',
+              'tw:dark:text-primary'
             )}>
-            <SchemaEditor
-              editorClass={classNames('custom-code-mirror-theme', {
-                'full-screen-editor-height': isExpanded,
-              })}
-              mode={{ name: CSMode.SQL }}
-              options={{
-                styleActiveLine: isEditMode,
-                readOnly: isEditMode ? false : 'nocursor',
-              }}
-              showCopyButton={false}
-              value={query.query ?? ''}
-              onChange={handleQueryChange}
-            />
-          </div>
-          <Row align="middle" className="p-y-md border-top">
-            <Col className="p-l-md" span={20}>
-              <QueryUsedByOtherTable
-                isEditMode={isEditMode}
+            <div className="tw:inline-block tw:flex-1 tw:overflow-hidden tw:text-ellipsis tw:whitespace-nowrap tw:py-4">
+              {renderCardTitle()}
+            </div>
+            <div className="tw:ml-auto tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary">
+              <QueryCardExtraOption
+                afterDeleteAction={afterDeleteAction}
+                permission={permission}
                 query={query}
-                onChange={(value) => setSelectedTables(value)}
+                onEditClick={setIsEditMode}
+                onUpdateVote={onUpdateVote}
               />
-            </Col>
-            <Col span={4}>
-              {isEditMode && (
-                <Space
-                  align="end"
-                  className="w-full justify-end p-r-md"
-                  size={16}>
-                  <Button
-                    data-testid="cancel-query-btn"
-                    key="cancel"
-                    size="small"
-                    onClick={() => setIsEditMode(false)}>
-                    {t('label.cancel')}
-                  </Button>
+            </div>
+          </div>
+          <div className="tw:pt-px">
+            <Box
+              inline
+              align="center"
+              className="layout-space layout-space-horizontal query-entity-button"
+              gap={2}
+              itemClassName="layout-space-item">
+              <ButtonUtility
+                data-testid="query-entity-expand-button"
+                size="lg"
+                onClick={handleExpandClick}
+                {...getExpandButtonProps()}
+              />
+              <CopyButton
+                testId="query-entity-copy-button"
+                tooltip={t('message.copy-to-clipboard')}
+                value={query.query ?? ''}
+              />
+            </Box>
 
-                  <Button
-                    data-testid="save-query-btn"
-                    key="save"
-                    loading={sqlQuery.isLoading}
-                    size="small"
-                    type="primary"
-                    onClick={updateSqlQuery}>
-                    {t('label.save')}
-                  </Button>
-                </Space>
-              )}
-            </Col>
-          </Row>
+            <div
+              className={classNames(
+                'sql-editor-container',
+                !isExpanded && {
+                  'h-max-24': !isAllowExpand,
+                  'h-24': !isEditMode,
+                  'h-max-56': isEditMode && isAllowExpand,
+                }
+              )}>
+              <SchemaEditor
+                editorClass={classNames('custom-code-mirror-theme', {
+                  'full-screen-editor-height': isExpanded,
+                })}
+                mode={{ name: CSMode.SQL }}
+                options={{
+                  styleActiveLine: isEditMode,
+                  readOnly: isEditMode ? false : 'nocursor',
+                }}
+                showCopyButton={false}
+                value={query.query ?? ''}
+                onChange={handleQueryChange}
+              />
+            </div>
+            <Grid className="layout-row layout-grid tw:items-center p-y-md border-top">
+              <Grid.Item className="layout-column p-l-md" span={20}>
+                <QueryUsedByOtherTable
+                  isEditMode={isEditMode}
+                  query={query}
+                  onChange={(value) => setSelectedTables(value)}
+                />
+              </Grid.Item>
+              <Grid.Item className="layout-column" span={4}>
+                {renderEditActions()}
+              </Grid.Item>
+            </Grid>
+          </div>
         </Card>
-      </Col>
+      </Grid.Item>
       {isExpanded && QueryExtras && <QueryExtras />}
-    </Row>
+    </Grid>
   );
 };
 

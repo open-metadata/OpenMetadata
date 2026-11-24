@@ -11,15 +11,8 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
-import {
-  TaskType as ThreadTaskType,
-  Thread,
-} from '../../../../generated/entity/feed/thread';
 import { Task } from '../../../../generated/entity/tasks/task';
-import {
-  getTaskDetailPath,
-  getTaskDetailPathFromTask,
-} from '../../../../utils/TaskNavigationUtils';
+import { getTaskDetailPathFromTask } from '../../../../utils/TaskNavigationUtils';
 import TestSummaryCustomTooltip from './TestSummaryCustomTooltip.component';
 
 const mockProps = {
@@ -81,7 +74,6 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../../../../utils/TaskNavigationUtils', () => ({
-  getTaskDetailPath: jest.fn().mockReturnValue('/legacy/issues'),
   getTaskDetailPathFromTask: jest.fn().mockReturnValue('/test-case/issues'),
   getTaskDisplayId: jest.fn().mockReturnValue('244'),
 }));
@@ -95,8 +87,9 @@ jest.mock('react-router-dom', () => ({
   )),
 }));
 
-jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockReturnValue(null),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 jest.mock('../../../../utils/HistoryUtils', () => ({
   ...jest.requireActual('../../../../utils/HistoryUtils'),
@@ -136,37 +129,6 @@ describe('Test TestSummaryCustomTooltip component', () => {
     expect(getTaskDetailPathFromTask).toHaveBeenCalledWith(task);
   });
 
-  it('should preserve legacy thread incident details', async () => {
-    const thread: Thread = {
-      about: '<#E::testCase::service.database.schema.table.testCase>',
-      id: 'thread-id',
-      message: 'Resolve the test failure',
-      task: {
-        assignees: [],
-        id: 42,
-        type: ThreadTaskType.RequestTestCaseFailureResolution,
-      },
-    };
-
-    render(
-      <TestSummaryCustomTooltip
-        active
-        payload={[
-          {
-            payload: {
-              name: 1748045364386,
-              status: 'Failed',
-              task: thread,
-            },
-          },
-        ]}
-      />
-    );
-
-    expect(await screen.findByTestId('incident')).toHaveTextContent('#42');
-    expect(getTaskDetailPath).toHaveBeenCalledWith(thread);
-  });
-
   it('should render', async () => {
     render(<TestSummaryCustomTooltip {...mockProps} />);
 
@@ -189,6 +151,31 @@ describe('Test TestSummaryCustomTooltip component', () => {
       (await screen.findByTestId('failedRowsPercentage')).textContent
     ).toBe('40%');
     expect(screen.queryByText('name')).not.toBeInTheDocument();
+  });
+
+  // An aborted run is placed on the chart at a value it never recorded; the
+  // tooltip must not present that value as its result.
+  it('should not list a value that was only placed', async () => {
+    render(
+      <TestSummaryCustomTooltip
+        {...mockProps}
+        payload={[
+          {
+            ...mockProps.payload[0],
+            payload: {
+              name: 'Jan 3, 2024, 6:45 PM',
+              status: 'Aborted',
+              minValueLength: 12,
+              placedKeys: ['minValueLength'],
+            },
+          },
+        ]}
+      />
+    );
+
+    expect((await screen.findByTestId('status')).textContent).toBe('Aborted');
+    expect(screen.queryByTestId('minValueLength')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('placedKeys')).not.toBeInTheDocument();
   });
 
   it('should display freshness values in seconds', async () => {

@@ -1,12 +1,21 @@
 package org.openmetadata.sdk.fluent;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.collections.GlossaryTermCollection;
+import org.openmetadata.sdk.fluent.request.BulkCreateRequest;
 
 /**
  * Pure Fluent API for GlossaryTerm operations.
@@ -74,6 +83,12 @@ public final class GlossaryTerms {
 
   public static GlossaryTerm create(CreateGlossaryTerm request) {
     return getClient().glossaryTerms().create(request);
+  }
+
+  public static BulkCreateRequest createMany(final List<CreateGlossaryTerm> requests) {
+    final OpenMetadataClient client = getClient();
+    final List<CreateGlossaryTerm> batch = List.copyOf(requests);
+    return new BulkCreateRequest(policy -> client.glossaryTerms().createMany(batch, policy));
   }
 
   // ==================== Finding/Retrieval ====================
@@ -208,7 +223,7 @@ public final class GlossaryTerms {
     }
 
     public GlossaryTermFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "domains"));
       return this;
     }
 
@@ -362,11 +377,10 @@ public final class GlossaryTerms {
   // ==================== Relations Finder ====================
 
   /**
-   * Fluent builder for the relation graph rooted at a glossary term. Returns the raw {@code nodes}
-   * and {@code edges} map the server produces.
+   * Fluent builder for the typed relation graph rooted at a glossary term.
    *
    * <pre>
-   * Map&lt;String, Object&gt; graph =
+   * GlossaryTermRelationGraph graph =
    *     GlossaryTerms.find(hcpId).relations().depth(2).ofTypes("prescribes", "treats").fetch();
    * </pre>
    */
@@ -396,7 +410,7 @@ public final class GlossaryTerms {
       return this;
     }
 
-    public Map<String, Object> fetch() {
+    public GlossaryTermRelationGraph fetch() {
       UUID rootId = resolveTermId(client, identifier, isFqn);
       return client.glossaryTerms().relationGraph(rootId, depth, relationTypes);
     }

@@ -11,9 +11,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -24,6 +26,7 @@ import org.junit.jupiter.api.parallel.Resources;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.MessagingServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -33,6 +36,8 @@ import org.openmetadata.schema.api.data.ColumnMetadataGroup;
 import org.openmetadata.schema.api.data.ColumnOccurrenceRef;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.data.MetadataStatus;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -45,6 +50,10 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldDataType;
+import org.openmetadata.schema.type.MessageSchema;
+import org.openmetadata.schema.type.SchemaType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Columns;
@@ -53,17 +62,10 @@ import org.openmetadata.sdk.fluent.Domains;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.network.HttpMethod;
 
-// TEMPORARILY DISABLED — the metadataStatus aggregation on this endpoint reproducibly fails
-// with [search_phase_execution_exception] all shards failed on both postgres+ES+redis (single
-// failure on test_getColumnGrid_withMetadataStatusIncomplete) AND postgres+OpenSearch (the same
-// query crashes the OS container, then 15 follow-up tests in the class fail with Connection
-// refused). Same behavior on PR #28100 with and without the cache changes, so it is a
-// pre-existing aggregator bug, not a cache regression. The ES Java client swallows the
-// underlying `caused_by`, so root-causing the actual ES-side error requires response-body
-// logging that is not wired up yet. Re-enable once the underlying aggregator/index-mapping
-// issue is fixed in a follow-up. See PR #28100 history and CI run 25940411417 for context.
-@Disabled(
-    "ColumnGrid metadataStatus aggregation crashes ES/OS — pre-existing flake, follow-up needed")
+// Re-enabled with #26824: the metadataStatus crash came from the per-document filter query
+// (wildcard/exists on flat-object columns.description/columns.tags), which ES 7.17 and OpenSearch
+// rejected with `search_phase_execution_exception ... all shards failed`. That push-down is gone —
+// status is now filtered on the aggregate grouped item — so the crashing query no longer runs.
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class ColumnGridResourceIT {
@@ -218,6 +220,103 @@ public class ColumnGridResourceIT {
     assertTrue(page1.getColumns().size() <= 2, "Should respect page size limit");
   }
 
+  /**
+   * Browsing table columns and topic fields together pages through each name exactly once, with
+   * names that differ only in case in one row.
+   */
+  @Test
+  void test_getColumnGrid_browseAcrossColumnFieldsServesEachColumnOnce(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain =
+        Domains.create(
+            new CreateDomain()
+                .withName(ns.prefix("browse_domain"))
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("Scopes the multi-field browse walk"));
+    List<String> domains = List.of(domain.getFullyQualifiedName());
+    String prefix = (ns.shortPrefix() + "_browse_").toLowerCase(Locale.ROOT);
+    String c0 = prefix + "c0";
+    String c1 = prefix + "c1";
+    String c2 = prefix + "c2";
+    String c3 = prefix + "c3";
+    String c4 = prefix + "c4";
+    String c5 = prefix + "c5";
+    String c6 = prefix + "c6";
+    String c8 = prefix + "c8";
+
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    client
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(ns.prefix("browse_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    Stream.of(c0, c2, c4, c6, c8)
+                        .map(
+                            name ->
+                                Columns.build(name)
+                                    .withType(ColumnDataType.VARCHAR)
+                                    .withLength(255)
+                                    .create())
+                        .toList())
+                .withDomains(domains));
+    client
+        .topics()
+        .create(
+            new CreateTopic()
+                .withName(ns.prefix("browse_topic"))
+                .withService(MessagingServiceTestFactory.createKafka(ns).getFullyQualifiedName())
+                .withPartitions(1)
+                .withMessageSchema(
+                    new MessageSchema()
+                        .withSchemaType(SchemaType.JSON)
+                        .withSchemaFields(
+                            Stream.of(c1, c3, c5, c8.toUpperCase(Locale.ROOT))
+                                .map(
+                                    name ->
+                                        new Field()
+                                            .withName(name)
+                                            .withDataType(FieldDataType.STRING))
+                                .toList()))
+                .withDomains(domains));
+
+    String query = "entityTypes=table,topic&domainId=" + domain.getId();
+    waitForSearchIndexRefresh(ns);
+    await("Wait for the table and the topic to be indexed")
+        .atMost(Duration.ofSeconds(45))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> assertEquals(8, getColumnGrid(client, query + "&size=100").getColumns().size()));
+    assertEquals(8, getColumnGrid(client, query + "&size=3").getTotalUniqueColumns());
+
+    List<List<String>> pages = new ArrayList<>();
+    ColumnGridItem shared = null;
+    String cursor = null;
+    do {
+      String cursorParam =
+          cursor == null ? "" : "&cursor=" + URLEncoder.encode(cursor, StandardCharsets.UTF_8);
+      ColumnGridResponse page = getColumnGrid(client, query + "&size=3" + cursorParam);
+      pages.add(
+          page.getColumns().stream()
+              .map(item -> item.getColumnName().toLowerCase(Locale.ROOT))
+              .sorted()
+              .toList());
+      shared =
+          page.getColumns().stream()
+              .filter(item -> c8.equalsIgnoreCase(item.getColumnName()))
+              .findFirst()
+              .orElse(shared);
+      cursor = page.getCursor();
+    } while (cursor != null && pages.size() <= 3);
+
+    assertEquals(List.of(List.of(c0, c1, c2), List.of(c3, c4, c5), List.of(c6, c8)), pages);
+    assertNotNull(shared);
+    assertEquals(2, shared.getTotalOccurrences());
+  }
+
   @Test
   void test_getColumnGrid_withEntityTypeFilter(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -314,6 +413,11 @@ public class ColumnGridResourceIT {
 
     assertNotNull(response);
     assertNotNull(response.getColumns());
+    assertAllRowsHaveStatus(response, MetadataStatus.MISSING);
+    assertEquals(
+        response.getColumns().size(),
+        response.getTotalUniqueColumns(),
+        "totalUniqueColumns must reflect the filtered set, not the unfiltered total");
   }
 
   @Test
@@ -328,6 +432,9 @@ public class ColumnGridResourceIT {
 
     assertNotNull(response);
     assertNotNull(response.getColumns());
+    assertFalse(response.getColumns().isEmpty(), "the COMPLETE column should be returned");
+    // The reported bug (#26824): COMPLETE must not surface MISSING/INCOMPLETE/INCONSISTENT rows.
+    assertAllRowsHaveStatus(response, MetadataStatus.COMPLETE);
   }
 
   @Test
@@ -342,6 +449,8 @@ public class ColumnGridResourceIT {
 
     assertNotNull(response);
     assertNotNull(response.getColumns());
+    assertFalse(response.getColumns().isEmpty(), "the INCOMPLETE column should be returned");
+    assertAllRowsHaveStatus(response, MetadataStatus.INCOMPLETE);
   }
 
   @Test
@@ -422,6 +531,125 @@ public class ColumnGridResourceIT {
 
     assertNotNull(response);
     assertNotNull(response.getColumns());
+    assertFalse(response.getColumns().isEmpty(), "the INCONSISTENT column should be returned");
+    assertAllRowsHaveStatus(response, MetadataStatus.INCONSISTENT);
+    assertTrue(
+        response.getColumns().stream().allMatch(ColumnGridItem::getHasVariations),
+        "INCONSISTENT rows have metadata variations across occurrences");
+  }
+
+  @Test
+  void test_getColumnGrid_metadataStatusPaginationCountsAreConsistent(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Three COMPLETE columns and one MISSING column in the same service.
+    for (int i = 0; i < 3; i++) {
+      Column complete =
+          Columns.build(ns.prefix("paged_complete_" + i))
+              .withType(ColumnDataType.BIGINT)
+              .withDescription("has description")
+              .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))
+              .create();
+      Tables.create()
+          .name(ns.prefix("paged_table_" + i))
+          .inSchema(schema.getFullyQualifiedName())
+          .withColumns(List.of(complete))
+          .execute();
+    }
+    Column missing =
+        Columns.build(ns.prefix("paged_missing")).withType(ColumnDataType.BIGINT).create();
+    Tables.create()
+        .name(ns.prefix("paged_table_missing"))
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(List.of(missing))
+        .execute();
+
+    waitForSearchIndexRefresh(ns);
+
+    ColumnGridResponse page1 =
+        getColumnGrid(
+            client,
+            "size=2&entityTypes=table&metadataStatus=COMPLETE&serviceName=" + service.getName());
+
+    // totalUniqueColumns must count only the 3 COMPLETE columns (not 4), and the page must respect
+    // the requested size — the pagination half of #26824.
+    assertEquals(3, page1.getTotalUniqueColumns());
+    assertEquals(2, page1.getColumns().size());
+    assertAllRowsHaveStatus(page1, MetadataStatus.COMPLETE);
+    assertNotNull(page1.getCursor(), "a second page of COMPLETE columns remains");
+
+    ColumnGridResponse page2 =
+        getColumnGrid(
+            client,
+            "size=2&entityTypes=table&metadataStatus=COMPLETE&serviceName="
+                + service.getName()
+                + "&cursor="
+                + URLEncoder.encode(page1.getCursor(), StandardCharsets.UTF_8));
+
+    assertEquals(3, page2.getTotalUniqueColumns());
+    assertEquals(1, page2.getColumns().size(), "the last page holds the remaining COMPLETE column");
+    assertAllRowsHaveStatus(page2, MetadataStatus.COMPLETE);
+  }
+
+  @Test
+  void test_getColumnGrid_metadataStatusWithColumnNamePattern(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    // Two COMPLETE columns; only one name contains "alpha".
+    String matchName = ns.prefix("alpha_amount");
+    String otherName = ns.prefix("zzz_other");
+    for (String colName : List.of(matchName, otherName)) {
+      Column col =
+          Columns.build(colName)
+              .withType(ColumnDataType.BIGINT)
+              .withDescription("has description")
+              .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))
+              .create();
+      Tables.create()
+          .name(ns.prefix("pat_" + colName))
+          .inSchema(schema.getFullyQualifiedName())
+          .withColumns(List.of(col))
+          .execute();
+    }
+    waitForSearchIndexRefresh(ns);
+
+    ColumnGridResponse response =
+        getColumnGrid(
+            client,
+            "entityTypes=table&metadataStatus=COMPLETE&columnNamePattern=alpha&serviceName="
+                + service.getName());
+
+    // Combining columnNamePattern with a status filter must honor the pattern per column:
+    // the non-matching "zzz_other" column must not leak in (regression for the _source-scan path).
+    assertNotNull(response);
+    assertFalse(response.getColumns().isEmpty(), "the matching COMPLETE column should be returned");
+    assertAllRowsHaveStatus(response, MetadataStatus.COMPLETE);
+    assertTrue(
+        response.getColumns().stream()
+            .allMatch(c -> c.getColumnName().toLowerCase().contains("alpha")),
+        "only columns whose name matches the pattern should be returned");
+    assertEquals(
+        response.getColumns().size(),
+        response.getTotalUniqueColumns(),
+        "totalUniqueColumns must not include pattern-mismatched columns");
+  }
+
+  /**
+   * Every returned row must carry the requested aggregate status — the core guarantee of #26824
+   * (before the fix a COMPLETE/INCOMPLETE filter leaked rows of other statuses).
+   */
+  private void assertAllRowsHaveStatus(ColumnGridResponse response, MetadataStatus expected) {
+    for (ColumnGridItem item : response.getColumns()) {
+      assertEquals(
+          expected,
+          item.getMetadataStatus(),
+          "column '" + item.getColumnName() + "' should have status " + expected);
+    }
   }
 
   @Test
@@ -1424,6 +1652,7 @@ public class ColumnGridResourceIT {
         Columns.build("full_metadata_id")
             .withType(ColumnDataType.BIGINT)
             .withDescription("Primary key with description")
+            .withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")))
             .create();
 
     Tables.create()

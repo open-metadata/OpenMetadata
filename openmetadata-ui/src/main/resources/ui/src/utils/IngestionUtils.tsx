@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 
-import {
-  EmptyPlaceholder,
-  Typography as CoreTypography,
-} from '@openmetadata/ui-core-components';
-import { Code01 } from '@untitledui/icons';
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
+import { Code01 } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
+import NoDataPlaceholder from '../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   LogViewerModalProps,
   LogViewerStatusTone,
 } from '../components/common/LogViewerModal/LogViewerModal.interface';
-import { AgentStatus } from '../components/ServiceAgents/AgentsPage.interface';
+import {
+  AgentStatus,
+  RunStatus,
+} from '../components/ServiceAgents/AgentsPage.interface';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,
   ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
@@ -46,9 +46,7 @@ const getPipelineExtraInfo = (
     case PipelineType.DataInsight:
       return (
         <>
-          <CoreTypography
-            className="w-max-500 tw:text-secondary"
-            size="text-xs">
+          <Typography className="w-max-500 tw:text-secondary" size="text-xs">
             <Transi18next
               i18nKey="message.data-insight-pipeline-description"
               renderElement={
@@ -64,15 +62,13 @@ const getPipelineExtraInfo = (
                 link: t('label.data-insight-ingestion'),
               }}
             />
-          </CoreTypography>
+          </Typography>
         </>
       );
     case PipelineType.ElasticSearchReindex:
       return (
         <>
-          <CoreTypography
-            className="w-max-500 tw:text-secondary"
-            size="text-xs">
+          <Typography className="w-max-500 tw:text-secondary" size="text-xs">
             <Transi18next
               i18nKey="message.elastic-search-re-index-pipeline-description"
               renderElement={
@@ -88,12 +84,12 @@ const getPipelineExtraInfo = (
                 link: t('label.search-index-ingestion'),
               }}
             />
-          </CoreTypography>
+          </Typography>
         </>
       );
     default:
       return (
-        <CoreTypography className="w-max-500 tw:text-secondary" size="text-xs">
+        <Typography className="w-max-500 tw:text-secondary" size="text-xs">
           <Transi18next
             i18nKey={
               isPlatFormDisabled
@@ -123,7 +119,7 @@ const getPipelineExtraInfo = (
               ),
             }}
           />
-        </CoreTypography>
+        </Typography>
       );
   }
 };
@@ -137,7 +133,7 @@ export const getErrorPlaceHolder = (
 ) => {
   if (ingestionDataLength === 0) {
     return (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         className={className}
         description={getPipelineExtraInfo(
           isPlatFormDisabled,
@@ -146,7 +142,6 @@ export const getErrorPlaceHolder = (
         )}
         icon={<Code01 className="tw:text-fg-brand-primary" />}
         title={t('message.no-agents-set-up-yet') as string}
-        variant="blank"
       />
     );
   }
@@ -190,12 +185,12 @@ export const getSuccessMessage = (
       });
 
   return (
-    <Typography.Text>
-      <Typography.Text className="font-medium break-word">{`"${ingestionName}"`}</Typography.Text>
-      <Typography.Text>
+    <Typography>
+      <Typography className="font-medium break-word">{`"${ingestionName}"`}</Typography>
+      <Typography>
         {status === FormSubmitType.ADD ? createMessage : updateMessage}
-      </Typography.Text>
-    </Typography.Text>
+      </Typography>
+    </Typography>
   );
 };
 
@@ -203,9 +198,25 @@ const agentStatusToneMap: Record<AgentStatus, LogViewerStatusTone> = {
   running: 'muted',
   failed: 'error',
   success: 'success',
+  stopped: 'warning',
   queued: 'muted',
   none: 'muted',
 };
+
+const runStatusToneMap: Record<RunStatus, LogViewerStatusTone> = {
+  success: 'success',
+  partial: 'warning',
+  failed: 'error',
+  running: 'muted',
+  skipped: 'muted',
+};
+
+export const getLogViewerStatusFromRunStatus = (
+  runStatus: RunStatus
+): LogViewerModalProps['status'] => ({
+  label: startCase(runStatus),
+  tone: runStatusToneMap[runStatus],
+});
 
 export const getLogViewerStatusFromAgentStatus = (
   agentStatus?: AgentStatus

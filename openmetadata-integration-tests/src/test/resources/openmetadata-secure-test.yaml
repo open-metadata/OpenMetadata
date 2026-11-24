@@ -3,7 +3,10 @@ swagger:
   resourcePackage: org.openmetadata.service.webservice.resources
 server:
   rootPath: '/api/*'
-  enableVirtualThreads: true
+  # Matches production (conf/openmetadata.yaml defaults to false since #27231). On JDK 21 a virtual
+  # thread that blocks while pinned holds its carrier, and CI runners have only four: once they
+  # are all held, no request handler can run and the whole parallel lane stalls until its timeout.
+  enableVirtualThreads: false
   applicationConnectors:
     - type: http
       port: 0
@@ -112,8 +115,8 @@ objectStorage:
   s3:
     bucketName: test-bucket
     region: us-east-1
-    accessKey: minio
-    secretKey: minio123
+    accessKey: accesskey
+    secretKey: secretkey
     endpoint: http://placeholder:9000
 
 # RDF Configuration - will be dynamically configured by TestSuiteBootstrap
@@ -122,6 +125,7 @@ rdf:
   baseUri: "https://open-metadata.org/"
   storageType: "FUSEKI"
   remoteEndpoint: "http://localhost:3030/openmetadata"
+  maxInMemoryInferenceTriples: 100000
   username: "admin"
   password: "test-admin"
   dataset: "openmetadata"

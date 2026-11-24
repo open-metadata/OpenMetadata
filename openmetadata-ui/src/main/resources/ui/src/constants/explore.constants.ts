@@ -16,8 +16,10 @@ import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { SORT_ORDER } from '../enums/common.enum';
 import { EntityType } from '../enums/entity.enum';
 
+export const DISPLAY_NAME_KEYWORD_FIELD = 'displayName.keyword';
+
 export const INITIAL_SORT_FIELD = 'totalVotes';
-export const TAGS_INITIAL_SORT_FIELD = 'displayName.keyword';
+export const TAGS_INITIAL_SORT_FIELD = DISPLAY_NAME_KEYWORD_FIELD;
 export const TAGS_INITIAL_SORT_ORDER = SORT_ORDER.ASC;
 export const TIER_FQN_KEY = 'tier.tagFQN';
 export const TAG_FQN_KEY = 'tags.tagFQN';
@@ -27,6 +29,7 @@ export const MAX_RESULT_HITS = 10000;
 export const SUPPORTED_EMPTY_FILTER_FIELDS = [
   EntityFields.OWNERS,
   EntityFields.DOMAINS,
+  EntityFields.DATA_PRODUCT,
   EntityFields.TIER,
   EntityFields.TAG,
   EntityFields.CERTIFICATION,
@@ -43,7 +46,7 @@ export const tableSortingFields: SortingField[] = [
   },
   {
     name: 'label.name',
-    value: 'displayName.keyword',
+    value: DISPLAY_NAME_KEYWORD_FIELD,
   },
   {
     name: 'label.weekly-usage',
@@ -63,7 +66,7 @@ export const entitySortingFields = [
   },
   {
     name: 'label.name',
-    value: 'displayName.keyword',
+    value: DISPLAY_NAME_KEYWORD_FIELD,
   },
   { name: 'label.relevance', value: '_score' },
   {
@@ -75,7 +78,7 @@ export const entitySortingFields = [
 export const tagSortingFields = [
   {
     name: 'label.name',
-    value: 'displayName.keyword',
+    value: DISPLAY_NAME_KEYWORD_FIELD,
   },
   { name: 'label.relevance', value: '_score' },
   {
@@ -95,7 +98,7 @@ export const columnSortingFields: SortingField[] = [
   },
   {
     name: 'label.name',
-    value: 'displayName.keyword',
+    value: DISPLAY_NAME_KEYWORD_FIELD,
   },
   { name: 'label.relevance', value: '_score' },
   {
@@ -103,6 +106,57 @@ export const columnSortingFields: SortingField[] = [
     value: 'updatedAt',
   },
 ];
+
+export type SortOrderIcon = 'barsDesc' | 'barsAsc' | 'az' | 'za' | 'search';
+
+export interface SortOrderOption {
+  order: SORT_ORDER;
+  label: string;
+  icon: SortOrderIcon;
+}
+
+const ALPHABETICAL_ORDER_OPTIONS: SortOrderOption[] = [
+  { order: SORT_ORDER.ASC, label: 'label.a-to-z', icon: 'az' },
+  { order: SORT_ORDER.DESC, label: 'label.z-to-a', icon: 'za' },
+];
+
+// The first option of each field is the order applied when that field is picked.
+export const SORT_ORDER_OPTIONS: Record<string, SortOrderOption[]> = {
+  totalVotes: [
+    {
+      order: SORT_ORDER.DESC,
+      label: 'label.most-votes-first',
+      icon: 'barsDesc',
+    },
+    {
+      order: SORT_ORDER.ASC,
+      label: 'label.fewest-votes-first',
+      icon: 'barsAsc',
+    },
+  ],
+  [DISPLAY_NAME_KEYWORD_FIELD]: ALPHABETICAL_ORDER_OPTIONS,
+  'table.name.keyword': ALPHABETICAL_ORDER_OPTIONS,
+  dataType: ALPHABETICAL_ORDER_OPTIONS,
+  _score: [
+    { order: SORT_ORDER.DESC, label: 'label.best-match-first', icon: 'search' },
+  ],
+  updatedAt: [
+    { order: SORT_ORDER.DESC, label: 'label.newest-first', icon: 'barsDesc' },
+    { order: SORT_ORDER.ASC, label: 'label.oldest-first', icon: 'barsAsc' },
+  ],
+  'usageSummary.weeklyStats.count': [
+    {
+      order: SORT_ORDER.DESC,
+      label: 'label.most-used-first',
+      icon: 'barsDesc',
+    },
+    {
+      order: SORT_ORDER.ASC,
+      label: 'label.least-used-first',
+      icon: 'barsAsc',
+    },
+  ],
+};
 
 export const COMMON_FILTERS_FOR_DIFFERENT_TABS = [
   'owner.displayName',
@@ -115,69 +169,29 @@ export const ES_EXCEPTION_SHARDS_FAILED = 'reason=all shards failed';
 
 export const SEARCH_INDEXING_APPLICATION = 'SearchIndexingApplication';
 
+// Explore's advanced search, as the Elasticsearch filter its URL carries: one group of one rule.
 export const INCOMPLETE_DESCRIPTION_ADVANCE_SEARCH_FILTER = {
-  id: 'descriptionID1',
-  type: 'group',
-  properties: { conjunction: 'AND', not: false },
-  children1: {
-    descriptionID2: {
-      type: 'group',
-      properties: { conjunction: 'AND', not: false },
-      children1: {
-        descriptionID3: {
-          type: 'rule',
-          properties: {
-            field: 'descriptionStatus',
-            operator: 'select_equals',
-            value: ['INCOMPLETE'],
-            valueSrc: ['value'],
-            operatorOptions: null,
-            valueType: ['select'],
-            asyncListValues: [
-              {
-                key: 'INCOMPLETE',
-                value: 'INCOMPLETE',
-                children: 'Incomplete',
-              },
-            ],
-          },
-          id: 'descriptionID3',
-          path: ['descriptionID1', 'descriptionID2', 'descriptionID3'],
-        },
-      },
-      id: 'descriptionID2',
-      path: ['descriptionID1', 'descriptionID2'],
+  query: {
+    bool: {
+      must: [
+        { bool: { must: [{ term: { descriptionStatus: 'INCOMPLETE' } }] } },
+      ],
     },
   },
-  path: ['descriptionID1'],
 };
 
 export const NO_OWNER_ADVANCE_SEARCH_FILTER = {
-  id: 'ownerID1',
-  type: 'group',
-  properties: { conjunction: 'AND', not: false },
-  children1: {
-    ownerID3: {
-      type: 'group',
-      properties: { conjunction: 'AND', not: false },
-      children1: {
-        ownerID2: {
-          type: 'rule',
-          properties: {
-            field: 'ownerDisplayName',
-            operator: 'is_null',
-            value: [],
-            valueSrc: [],
-            operatorOptions: null,
-            valueType: [],
+  query: {
+    bool: {
+      must: [
+        {
+          bool: {
+            must: [
+              { bool: { must_not: { exists: { field: 'ownerDisplayName' } } } },
+            ],
           },
-          id: 'ownerID2',
-          path: ['ownerID1', 'ownerID3', 'ownerID2'],
         },
-      },
-      id: 'ownerID3',
-      path: ['ownerID1', 'ownerID3'],
+      ],
     },
   },
-  path: ['ownerID1'],
 };

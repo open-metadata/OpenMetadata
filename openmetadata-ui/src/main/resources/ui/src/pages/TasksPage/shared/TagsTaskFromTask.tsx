@@ -11,13 +11,16 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import { diffArrays } from 'diff';
+import { Typography } from '@openmetadata/ui-core-components';
 import { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { Task, TaskEntityStatus, TaskEntityType } from '../../../rest/tasksAPI';
-import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
+import { Task, TaskEntityStatus } from '../../../rest/tasksAPI';
+import { isTagsTaskType } from '../../../utils/TaskActionUtils';
+import {
+  diffTagLabels,
+  getNormalizedTaskPayload,
+} from '../../../utils/TaskPayloadUtils';
 import { TagsDiffView } from './TagsDiffView';
 import { TagsTabs } from './TagsTabs';
 import TagSuggestion from './TagSuggestion';
@@ -29,6 +32,51 @@ interface TagsTaskFromTaskProps {
   value?: TagLabel[];
   onChange?: (newTags: TagLabel[]) => void;
 }
+
+interface OpenTaskTagsProps {
+  isRequestTag: boolean;
+  isUpdateTag: boolean;
+  canEditTags: boolean;
+  currentValue?: string;
+  value?: TagLabel[];
+  onChange?: (newTags: TagLabel[]) => void;
+  suggestedTagsDiff: JSX.Element;
+}
+
+const OpenTaskTags: FC<OpenTaskTagsProps> = ({
+  isRequestTag,
+  isUpdateTag,
+  canEditTags,
+  currentValue,
+  value,
+  onChange,
+  suggestedTagsDiff,
+}) => (
+  <div data-testid="tags-task">
+    {isRequestTag && (
+      <div data-testid="request-tags">
+        {canEditTags ? (
+          <TagSuggestion value={value} onChange={onChange} />
+        ) : (
+          suggestedTagsDiff
+        )}
+      </div>
+    )}
+    {isUpdateTag && (
+      <div data-testid="update-tags">
+        {canEditTags ? (
+          <TagsTabs
+            tags={JSON.parse(currentValue ?? '[]')}
+            value={value ?? []}
+            onChange={onChange}
+          />
+        ) : (
+          suggestedTagsDiff
+        )}
+      </div>
+    )}
+  </div>
+);
 
 const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
   value,
@@ -51,10 +99,9 @@ const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
     [suggestedTags]
   );
 
-  const isRequestTag = task.type === TaskEntityType.TagUpdate && !currentValue;
-
-  const isUpdateTag =
-    task.type === TaskEntityType.TagUpdate && Boolean(currentValue);
+  const isTagTask = isTagsTaskType(task);
+  const isRequestTag = isTagTask && !currentValue;
+  const isUpdateTag = isTagTask && Boolean(currentValue);
 
   const isTaskClosed = [
     TaskEntityStatus.Completed,
@@ -67,15 +114,17 @@ const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
     if (!currentValue && !suggestedValue) {
       return (
         <div>
-          <Typography.Text className="text-grey-muted border border-main p-sm rounded-4 m-y-xss m-b-xs">
+          <Typography
+            className="border border-main p-sm rounded-4 m-y-xss m-b-xs"
+            color="secondary">
             {t('label.no-entity', { entity: t('label.tag-plural') })}
-          </Typography.Text>
+          </Typography>
         </div>
       );
     } else {
       return (
         <TagsDiffView
-          diffArr={diffArrays(
+          diffArr={diffTagLabels(
             JSON.parse(currentValue ?? '[]'),
             JSON.parse(suggestedValue ?? '[]')
           )}
@@ -87,16 +136,17 @@ const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
   const suggestedTagsDiff = useMemo(() => {
     if (!suggestedValue && !currentValue) {
       return (
-        <Typography.Text
-          className="text-grey-muted p-xs"
+        <Typography
+          className="p-xs"
+          color="secondary"
           data-testid="no-suggestion">
           {t('label.no-entity', { entity: t('label.suggestion') })}
-        </Typography.Text>
+        </Typography>
       );
     } else {
       return (
         <TagsDiffView
-          diffArr={diffArrays(
+          diffArr={diffTagLabels(
             JSON.parse(currentValue ?? '[]'),
             JSON.parse(suggestedValue ?? '[]')
           )}
@@ -111,30 +161,15 @@ const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
         {isTaskClosed ? (
           diffView
         ) : (
-          <div data-testid="tags-task">
-            {isRequestTag && (
-              <div data-testid="request-tags">
-                {isTaskActionEdit && hasEditAccess ? (
-                  <TagSuggestion value={value} onChange={onChange} />
-                ) : (
-                  suggestedTagsDiff
-                )}
-              </div>
-            )}
-            {isUpdateTag && (
-              <div data-testid="update-tags">
-                {isTaskActionEdit && hasEditAccess ? (
-                  <TagsTabs
-                    tags={JSON.parse(currentValue ?? '[]')}
-                    value={value ?? []}
-                    onChange={onChange}
-                  />
-                ) : (
-                  suggestedTagsDiff
-                )}
-              </div>
-            )}
-          </div>
+          <OpenTaskTags
+            canEditTags={isTaskActionEdit && hasEditAccess}
+            currentValue={currentValue}
+            isRequestTag={isRequestTag}
+            isUpdateTag={isUpdateTag}
+            suggestedTagsDiff={suggestedTagsDiff}
+            value={value}
+            onChange={onChange}
+          />
         )}
       </Fragment>
     </div>

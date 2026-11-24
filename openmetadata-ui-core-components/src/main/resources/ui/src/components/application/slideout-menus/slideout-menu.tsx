@@ -27,7 +27,7 @@ export const ModalOverlay = (props: ModalOverlayProps) => {
       {...props}
       className={(state) =>
         cx(
-          'tw:fixed tw:inset-0 tw:flex tw:min-h-dvh tw:w-full tw:items-center tw:justify-end tw:bg-overlay/70 tw:pl-6 tw:outline-hidden tw:ease-linear tw:md:pl-10',
+          'tw:fixed tw:inset-0 tw:z-50 tw:flex tw:min-h-dvh tw:w-full tw:items-center tw:justify-end tw:bg-overlay/70 tw:pl-6 tw:outline-hidden tw:ease-linear tw:md:pl-10',
           state.isEntering && 'tw:duration-300 tw:animate-in tw:fade-in',
           state.isExiting && 'tw:duration-500 tw:animate-out tw:fade-out',
           typeof props.className === 'function'
@@ -49,7 +49,7 @@ export const Modal = (props: ModalProps) => (
     {...props}
     className={(state) =>
       cx(
-        'tw:inset-y-0 tw:right-0 tw:h-full tw:w-full tw:max-w-100 tw:shadow-xl tw:transition',
+        'tw:inset-y-0 tw:right-0 tw:h-full tw:w-full tw:max-w-100 tw:shadow-overlay tw:transition',
         state.isEntering &&
           'tw:duration-300 tw:animate-in tw:slide-in-from-right',
         state.isExiting &&
@@ -72,7 +72,7 @@ export const Dialog = (props: DialogProps) => (
     className={cx(
       // `outline-hidden` removed: the outline now draws this panel's border (it replaced a
       // ring, which WebKit does not pixel-snap), so suppressing it would erase the border.
-      'tw:relative tw:flex tw:size-full tw:flex-col tw:items-start tw:gap-6 tw:overflow-y-auto tw:bg-primary tw:outline-1 tw:outline-secondary_alt',
+      'tw:relative tw:flex tw:size-full tw:flex-col tw:items-start tw:gap-6 tw:overflow-y-auto tw:bg-overlay-surface tw:outline-1 tw:outline-secondary_alt',
       props.className
     )}
   />
@@ -82,6 +82,8 @@ Dialog.displayName = 'Dialog';
 interface SlideoutMenuProps
   extends Omit<AriaModalOverlayProps, 'children'>,
     RefAttributes<HTMLDivElement> {
+  'aria-label'?: string;
+  'aria-labelledby'?: string;
   children:
     | ReactNode
     | ((children: AriaModalRenderProps & { close: () => void }) => ReactNode);
@@ -90,13 +92,15 @@ interface SlideoutMenuProps
 }
 
 const Menu = ({
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
   children,
   dialogClassName,
   width,
   ...props
 }: SlideoutMenuProps) => {
   return (
-    <ModalOverlay {...props}>
+    <ModalOverlay aria-label={ariaLabel} {...props}>
       <Modal
         className={(state) =>
           cx(
@@ -107,7 +111,10 @@ const Menu = ({
         }
         style={width !== undefined ? { maxWidth: width } : undefined}>
         {(state) => (
-          <Dialog className={dialogClassName}>
+          <Dialog
+            aria-label={ariaLabel}
+            aria-labelledby={ariaLabelledBy}
+            className={dialogClassName}>
             {({ close }) => {
               return typeof children === 'function'
                 ? children({ ...state, close })
@@ -127,7 +134,8 @@ const Content = ({ role = 'main', ...props }: ComponentPropsWithRef<'div'>) => {
       role={role}
       {...props}
       className={cx(
-        'tw:flex tw:size-full tw:flex-col tw:gap-6 tw:overflow-y-auto tw:overscroll-auto tw:px-4 tw:md:px-6',
+        // `relative` clips absolute descendants (hidden inputs) here, not in the scrolling dialog.
+        'tw:relative tw:flex tw:size-full tw:flex-col tw:gap-6 tw:overflow-y-auto tw:overscroll-auto tw:px-4 tw:md:px-6',
         props.className
       )}
     />
@@ -137,12 +145,18 @@ Content.displayName = 'SlideoutContent';
 
 interface SlideoutHeaderProps extends ComponentPropsWithRef<'header'> {
   onClose?: () => void;
+  /** Omit the built-in close control when the caller already supplies one. */
+  showCloseButton?: boolean;
+  /** `data-testid` for the built-in close control. */
+  closeButtonTestId?: string;
 }
 
 const Header = ({
   className,
   children,
   onClose,
+  showCloseButton = true,
+  closeButtonTestId,
   ...props
 }: SlideoutHeaderProps) => {
   return (
@@ -153,11 +167,14 @@ const Header = ({
         className
       )}>
       {children}
-      <CloseButton
-        className="tw:absolute tw:top-1/2 tw:right-3 tw:shrink-0 tw:-translate-y-1/2"
-        size="md"
-        onClick={onClose}
-      />
+      {showCloseButton && (
+        <CloseButton
+          className="tw:absolute tw:top-1/2 tw:right-3 tw:shrink-0 tw:-translate-y-1/2"
+          data-testid={closeButtonTestId}
+          size="md"
+          onClick={onClose}
+        />
+      )}
     </header>
   );
 };
@@ -168,7 +185,7 @@ const Footer = (props: ComponentPropsWithRef<'footer'>) => {
     <footer
       {...props}
       className={cx(
-        'tw:w-full tw:p-4 tw:shadow-[inset_0px_1px_0px_0px] tw:shadow-border-secondary tw:md:px-6',
+        'tw:w-full tw:border-t tw:border-subtle tw:p-4 tw:md:px-6',
         props.className
       )}
     />

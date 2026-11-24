@@ -13,8 +13,10 @@
 
 import { useCallback } from 'react';
 import { Connection, Edge, MarkerType, Node } from 'reactflow';
-import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
-import { WORKFLOW_EDGE_THEME } from '../utils/WorkflowEdgeTheme';
+import {
+  getWorkflowConditionTheme,
+  WORKFLOW_EDGE_THEME,
+} from '../utils/WorkflowEdgeTheme';
 
 interface UseWorkflowEdgeManagementProps {
   nodes: Node[];
@@ -68,6 +70,9 @@ export const useWorkflowEdgeManagement = ({
             const newCondition =
               firstBand.name?.toLowerCase() || firstBand.name;
             const newLabel = firstBand.name;
+            const { backgroundColor, labelColor } = getWorkflowConditionTheme(
+              newCondition ?? ''
+            );
 
             return {
               ...edge,
@@ -84,20 +89,20 @@ export const useWorkflowEdgeManagement = ({
                 condition: newCondition,
               },
               style: {
-                stroke: T.success600,
+                stroke: labelColor,
                 strokeWidth: 2,
               },
               labelStyle: {
-                color: T.success600,
+                color: labelColor,
                 fontSize: '14px',
                 fontWeight: 600,
                 letterSpacing: '1px',
                 cursor: 'pointer',
               },
               labelBgStyle: {
-                fill: T.success100,
+                fill: backgroundColor,
                 fillOpacity: 1,
-                stroke: T.white,
+                stroke: T.labelBorder,
                 strokeWidth: 2,
                 rx: 5,
                 ry: 5,
@@ -112,66 +117,6 @@ export const useWorkflowEdgeManagement = ({
     [setEdges, T]
   );
 
-  const fixMissingEdgeLabels = useCallback(() => {
-    setEdges((currentEdges) => {
-      return currentEdges.map((edge) => {
-        const sourceNode = nodes.find((n) => n.id === edge.source);
-        if (
-          edge.label &&
-          typeof edge.label === 'string' &&
-          edge.label.trim() !== ''
-        ) {
-          return edge;
-        }
-
-        if (
-          sourceNode?.data?.subType === NodeSubType.UserApprovalTask ||
-          sourceNode?.data?.subType === NodeSubType.CheckEntityAttributesTask ||
-          sourceNode?.data?.subType ===
-            NodeSubType.CheckChangeDescriptionTask ||
-          sourceNode?.data?.subType === NodeSubType.DataCompletenessTask
-        ) {
-          return {
-            ...edge,
-            label: 'TRUE',
-            data: {
-              ...edge.data,
-              conditions: [
-                {
-                  field: 'result',
-                  operator: 'equals',
-                  value: 'TRUE',
-                },
-              ],
-              condition: 'TRUE',
-            },
-            style: {
-              stroke: T.success600,
-              strokeWidth: 2,
-            },
-            labelStyle: {
-              color: T.success600,
-              fontSize: '14px',
-              fontWeight: 600,
-              letterSpacing: '1px',
-              cursor: 'pointer',
-            },
-            labelBgStyle: {
-              fill: T.success100,
-              fillOpacity: 1,
-              stroke: T.white,
-              strokeWidth: 2,
-              rx: 5,
-              ry: 5,
-            },
-          };
-        }
-
-        return edge;
-      });
-    });
-  }, [nodes, setEdges, T]);
-
   const handleConnectionSave = useCallback(
     (connection: Connection, conditions: { value: string }[]) => {
       const conditionLabel =
@@ -179,11 +124,17 @@ export const useWorkflowEdgeManagement = ({
           ? conditions[0].value
           : `${conditions.length} conditions`;
 
+      if (!connection.source || !connection.target) {
+        return;
+      }
+
+      const { backgroundColor, labelColor } =
+        getWorkflowConditionTheme(conditionLabel);
       const edgeId = `reactflow__edge-${connection.source}-${connection.target}`;
       const newEdge = {
         id: edgeId,
-        source: connection.source!,
-        target: connection.target!,
+        source: connection.source,
+        target: connection.target,
         sourceHandle: connection.sourceHandle,
         targetHandle: connection.targetHandle,
         type: 'straight',
@@ -192,33 +143,27 @@ export const useWorkflowEdgeManagement = ({
           type: MarkerType.ArrowClosed,
           width: 16,
           height: 16,
-          color: T.gray400,
+          color: T.edge,
         },
         data: {
           conditions,
           condition: conditionLabel,
         },
         style: {
-          stroke: T.gray400,
+          stroke: T.edge,
           strokeWidth: 2,
         },
         labelStyle: {
-          color: conditions.some(
-            (c) => c.value === 'TRUE' || c.value === 'true'
-          )
-            ? T.success600
-            : T.labelFalse,
+          color: labelColor,
           fontSize: '14px',
           fontWeight: 600,
           letterSpacing: '1px',
           cursor: 'pointer',
         },
         labelBgStyle: {
-          fill: conditions.some((c) => c.value === 'TRUE' || c.value === 'true')
-            ? T.success100
-            : T.warning100,
+          fill: backgroundColor,
           fillOpacity: 1,
-          stroke: T.white,
+          stroke: T.labelBorder,
           strokeWidth: 2,
           rx: 5,
           ry: 5,
@@ -331,7 +276,6 @@ export const useWorkflowEdgeManagement = ({
 
   return {
     fixInvalidEdgeConditions,
-    fixMissingEdgeLabels,
     handleConnectionSave,
     handleConnectionCancel,
     handleEdgeClick,

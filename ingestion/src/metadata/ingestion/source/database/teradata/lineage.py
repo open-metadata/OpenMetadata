@@ -12,32 +12,23 @@
 Teradata lineage module
 """
 
-from typing import Optional
-
-from metadata.generated.schema.entity.services.connections.database.teradataConnection import (
-    TeradataConnection,
-)
-from metadata.generated.schema.metadataIngestion.workflow import (
-    Source as WorkflowSource,
-)
-from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.utils.logger import ingestion_logger
+from metadata.ingestion.source.database.teradata.query_parser import (
+    TeradataQueryParserSource,
+)
 
-logger = ingestion_logger()
 
-
-class TeradataLineageSource(LineageSource):
+class TeradataLineageSource(TeradataQueryParserSource, LineageSource):
     """
-    Teradata lineage source implements view lineage
+    Teradata lineage from view definitions and the DBQL query log
     """
 
-    @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
-        """Create class instance"""
-        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: TeradataConnection = config.serviceConnection.root.config
-        if not isinstance(connection, TeradataConnection):
-            raise InvalidSourceException(f"Expected TeradataConnection, but got {connection}")
-        return cls(config, metadata)
+    # INSERT ... VALUES rows (TPump/BTEQ loads) and plain CREATE TABLE DDL carry no lineage
+    # and would flood resultLimit, so those two types must also read from a SELECT
+    filters = """
+        AND UPPER(q.StatementType) LIKE ANY ('INSERT%', 'UPDATE%', 'MERGE%', 'CREATE TABLE%')
+        AND (
+            UPPER(q.StatementType) NOT LIKE ALL ('INSERT%', 'CREATE TABLE%')
+            OR UPPER(COALESCE(s.SqlTextInfo, q.QueryText)) LIKE '%SEL%'
+        )
+    """

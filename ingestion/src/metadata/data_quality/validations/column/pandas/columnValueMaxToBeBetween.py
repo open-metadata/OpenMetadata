@@ -13,7 +13,7 @@ Validator for column value max to be between test case
 """
 
 from collections import defaultdict
-from typing import List, Optional, cast  # noqa: UP035
+from typing import cast
 
 import pandas as pd
 
@@ -41,7 +41,7 @@ logger = test_suite_logger()
 class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator, PandasValidatorMixin):
     """Validator for column value max to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:  # noqa: UP045
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> int | None:
         """compute result of the test case
 
         Args:
@@ -57,7 +57,7 @@ class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator,
         metrics_to_compute: dict,
         test_params: dict,
         top_n: int,
-    ) -> List[DimensionResult]:  # noqa: UP006
+    ) -> list[DimensionResult]:
         """Execute dimensional validation for max with proper aggregation
 
         Follows the iterate pattern from the Mean metric's df_fn method to handle
@@ -82,86 +82,81 @@ class ColumnValueMaxToBeBetweenValidator(BaseColumnValueMaxToBeBetweenValidator,
         checker = self._get_validation_checker(test_params)
         dimension_results = []
 
-        try:
-            dfs = self.runner
-            max_impl = Metrics.max(column).get_pandas_computation()
+        dfs = self.runner
+        max_impl = Metrics.max(column).get_pandas_computation()
 
-            dimension_aggregates = defaultdict(
-                lambda: {
-                    Metrics.max.name: max_impl.create_accumulator(),
-                    DIMENSION_TOTAL_COUNT_KEY: 0,
+        dimension_aggregates = defaultdict(
+            lambda: {
+                Metrics.max.name: max_impl.create_accumulator(),
+                DIMENSION_TOTAL_COUNT_KEY: 0,
+            }
+        )
+
+        for df in dfs:
+            df_typed = cast(pd.DataFrame, df)  # noqa: TC006
+            grouped = df_typed.groupby(dimension_col.name, dropna=False)
+
+            for dimension_value, group_df in grouped:
+                dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
+
+                dimension_aggregates[dimension_value][Metrics.max.name] = max_impl.update_accumulator(
+                    dimension_aggregates[dimension_value][Metrics.max.name],
+                    group_df,
+                )
+
+                dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] += len(group_df)
+
+        results_data = []
+        for dimension_value, agg in dimension_aggregates.items():
+            max_value = agg[Metrics.max.name]
+            total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
+
+            if max_value is None:
+                logger.warning(
+                    "Skipping '%s=%s' dimension since 'max' is 'None'",
+                    dimension_col.name,
+                    dimension_value,
+                )
+                continue
+
+            failed_count = total_rows if checker.violates_pandas({Metrics.max.name: max_value}) else 0
+
+            results_data.append(
+                {
+                    DIMENSION_VALUE_KEY: dimension_value,
+                    Metrics.max.name: max_value,
+                    DIMENSION_TOTAL_COUNT_KEY: total_rows,
+                    DIMENSION_FAILED_COUNT_KEY: failed_count,
                 }
             )
 
-            for df in dfs:
-                df_typed = cast(pd.DataFrame, df)  # noqa: TC006
-                grouped = df_typed.groupby(dimension_col.name, dropna=False)
+        results_df = pd.DataFrame(results_data)
 
-                for dimension_value, group_df in grouped:
-                    dimension_value = self.format_dimension_value(dimension_value)  # noqa: PLW2901
+        if not results_df.empty:
+            results_df = calculate_impact_score_pandas(
+                results_df,
+                failed_column=DIMENSION_FAILED_COUNT_KEY,
+                total_column=DIMENSION_TOTAL_COUNT_KEY,
+            )
 
-                    dimension_aggregates[dimension_value][Metrics.max.name] = max_impl.update_accumulator(
-                        dimension_aggregates[dimension_value][Metrics.max.name],
-                        group_df,
-                    )
+            results_df = aggregate_others_statistical_pandas(
+                results_df,
+                dimension_column=DIMENSION_VALUE_KEY,
+                agg_functions={
+                    Metrics.max.name: "max",
+                    DIMENSION_TOTAL_COUNT_KEY: "sum",
+                    DIMENSION_FAILED_COUNT_KEY: "sum",
+                },
+                top_n=top_n,
+                violation_metrics=[Metrics.max.name],
+                violation_predicate=checker.violates_pandas,
+            )
 
-                    dimension_aggregates[dimension_value][DIMENSION_TOTAL_COUNT_KEY] += len(group_df)
-
-            results_data = []
-            for dimension_value, agg in dimension_aggregates.items():
-                max_value = agg[Metrics.max.name]
-                total_rows = agg[DIMENSION_TOTAL_COUNT_KEY]
-
-                if max_value is None:
-                    logger.warning(
-                        "Skipping '%s=%s' dimension since 'max' is 'None'",
-                        dimension_col.name,
-                        dimension_value,
-                    )
-                    continue
-
-                failed_count = total_rows if checker.violates_pandas({Metrics.max.name: max_value}) else 0
-
-                results_data.append(
-                    {
-                        DIMENSION_VALUE_KEY: dimension_value,
-                        Metrics.max.name: max_value,
-                        DIMENSION_TOTAL_COUNT_KEY: total_rows,
-                        DIMENSION_FAILED_COUNT_KEY: failed_count,
-                    }
-                )
-
-            results_df = pd.DataFrame(results_data)
-
-            if not results_df.empty:
-                results_df = calculate_impact_score_pandas(
-                    results_df,
-                    failed_column=DIMENSION_FAILED_COUNT_KEY,
-                    total_column=DIMENSION_TOTAL_COUNT_KEY,
-                )
-
-                results_df = aggregate_others_statistical_pandas(
-                    results_df,
-                    dimension_column=DIMENSION_VALUE_KEY,
-                    agg_functions={
-                        Metrics.max.name: "max",
-                        DIMENSION_TOTAL_COUNT_KEY: "sum",
-                        DIMENSION_FAILED_COUNT_KEY: "sum",
-                    },
-                    top_n=top_n,
-                    violation_metrics=[Metrics.max.name],
-                    violation_predicate=checker.violates_pandas,
-                )
-
-                dimension_results = self._process_dimension_rows(
-                    results_df.to_dict("records"),
-                    dimension_col.name,
-                    metrics_to_compute,
-                    test_params,
-                )
-
-        except Exception as exc:
-            logger.warning(f"Error executing dimensional query: {exc}")
-            logger.debug("Full error details: ", exc_info=True)
+            dimension_results = self._process_dimension_rows(
+                results_df.to_dict("records"),
+                dimension_col.name,
+                metrics_to_compute,
+                test_params,
+            )
 
         return dimension_results

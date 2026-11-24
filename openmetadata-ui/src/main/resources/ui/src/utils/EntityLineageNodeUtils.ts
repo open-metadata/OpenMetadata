@@ -20,22 +20,12 @@ import {
   isNode,
   Position,
 } from 'reactflow';
-import type {
-  EntityChildren,
-  Flatten,
-} from '../components/Entity/EntityLineage/NodeChildren/NodeChildren.interface';
-import type {
-  EdgeDetails,
-  LineageEntityReference,
-  LineageNodeType,
-} from '../components/Lineage/Lineage.interface';
-import type { LineagePagingInfo } from '../components/LineageTable/LineageTable.interface';
+import type { LineageEntityReference } from '../components/Lineage/Lineage.interface';
 import {
   DATATYPES_HAVING_SUBFIELDS,
   NODE_HEIGHT,
   NODE_WIDTH,
 } from '../constants/Lineage.constants';
-import { LineagePlatformView } from '../context/LineageProvider/LineageProvider.interface';
 import { EntityLineageNodeType, EntityType } from '../enums/entity.enum';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
 import type { APIEndpoint } from '../generated/entity/data/apiEndpoint';
@@ -44,82 +34,144 @@ import type { SearchIndex } from '../generated/entity/data/searchIndex';
 import type { Table } from '../generated/entity/data/table';
 import type { Topic } from '../generated/entity/data/topic';
 import type { EntityReference } from '../generated/type/entityReference';
+import { LineagePlatformView } from '../hooks/lineage/types';
+import type {
+  EdgeDetails,
+  EntityChildren,
+  Flatten,
+  LineageNodeType,
+  LineagePagingInfo,
+} from '../interface/lineage.interface';
 import { getEntityName } from './EntityNameUtils';
 import { isDeleted } from './EntityStatusUtils';
 import { t } from './i18next/LocalUtil';
+
+type EntityChildrenMapping = {
+  data: EntityChildren;
+  label: string;
+  singularLabel: string;
+  childrenCount: number;
+};
+
+const getTableEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: node.flattenChildren ?? node.columns ?? [],
+  label: t('label.column-plural'),
+  singularLabel: t('label.column'),
+  childrenCount: node.columns?.length ?? 0,
+});
+
+const getDashboardEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: node.charts ?? [],
+  label: t('label.chart-plural'),
+  singularLabel: t('label.chart'),
+  childrenCount: node.charts?.length ?? 0,
+});
+
+const getMlModelEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: node.mlFeatures ?? [],
+  label: t('label.feature-plural'),
+  singularLabel: t('label.feature'),
+  childrenCount: node.mlFeatures?.length ?? 0,
+});
+
+const getContainerEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: node.flattenChildren ?? node.dataModel?.columns ?? [],
+  label: t('label.column-plural'),
+  singularLabel: t('label.column'),
+  childrenCount: node.dataModel?.columns?.length ?? 0,
+});
+
+const getTopicEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: node.flattenChildren ?? node.messageSchema?.schemaFields ?? [],
+  label: t('label.field-plural'),
+  singularLabel: t('label.field'),
+  childrenCount: node.messageSchema?.schemaFields?.length ?? 0,
+});
+
+const getApiEndpointEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data:
+    node.flattenChildren ??
+    node?.responseSchema?.schemaFields ??
+    node?.requestSchema?.schemaFields ??
+    [],
+  label: t('label.field-plural'),
+  singularLabel: t('label.field'),
+  childrenCount:
+    node?.responseSchema?.schemaFields?.length ??
+    node?.requestSchema?.schemaFields?.length ??
+    0,
+});
+
+const getSearchIndexEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: node.flattenChildren ?? node.fields ?? [],
+  label: t('label.field-plural'),
+  singularLabel: t('label.field'),
+  childrenCount: node.fields?.length ?? 0,
+});
+
+/**
+ * A metric has no columns of its own -- it *is* the leaf a table column feeds,
+ * e.g. Total Sales = sum(Sales.Amount). So it exposes itself as its single
+ * column-lineage endpoint, keyed by its own FQN like the backend expects.
+ * childrenCount stays 0 so the node keeps its compact label with no
+ * "1 column" footer outside the column layer.
+ */
+const getMetricEntityChildren = (
+  node: LineageNodeType
+): EntityChildrenMapping => ({
+  data: [node],
+  label: t('label.metric'),
+  singularLabel: t('label.metric'),
+  childrenCount: 0,
+});
+
+const ENTITY_CHILDREN_RESOLVERS: Partial<
+  Record<EntityType, (node: LineageNodeType) => EntityChildrenMapping>
+> = {
+  [EntityType.TABLE]: getTableEntityChildren,
+  [EntityType.DASHBOARD]: getDashboardEntityChildren,
+  [EntityType.MLMODEL]: getMlModelEntityChildren,
+  [EntityType.DASHBOARD_DATA_MODEL]: getTableEntityChildren,
+  [EntityType.CONTAINER]: getContainerEntityChildren,
+  [EntityType.TOPIC]: getTopicEntityChildren,
+  [EntityType.API_ENDPOINT]: getApiEndpointEntityChildren,
+  [EntityType.SEARCH_INDEX]: getSearchIndexEntityChildren,
+  [EntityType.METRIC]: getMetricEntityChildren,
+};
 
 export function getEntityChildrenAndLabel(node: LineageNodeType) {
   if (!node) {
     return {
       children: [],
       childrenHeading: '',
+      childHeading: '',
       childrenCount: 0,
     };
   }
-  const entityMappings: Record<
-    string,
-    { data: EntityChildren; label: string; childrenCount: number }
-  > = {
-    [EntityType.TABLE]: {
-      data: node.flattenChildren ?? node.columns ?? [],
-      label: t('label.column-plural'),
-      childrenCount: node.columns?.length ?? 0,
-    },
-    [EntityType.DASHBOARD]: {
-      data: node.charts ?? [],
-      label: t('label.chart-plural'),
-      childrenCount: node.charts?.length ?? 0,
-    },
-    [EntityType.MLMODEL]: {
-      data: node.mlFeatures ?? [],
-      label: t('label.feature-plural'),
-      childrenCount: node.mlFeatures?.length ?? 0,
-    },
-    [EntityType.DASHBOARD_DATA_MODEL]: {
-      data: node.flattenChildren ?? node.columns ?? [],
-      label: t('label.column-plural'),
-      childrenCount: node.columns?.length ?? 0,
-    },
-    [EntityType.CONTAINER]: {
-      data: node.flattenChildren ?? node.dataModel?.columns ?? [],
-      label: t('label.column-plural'),
-      childrenCount: node.dataModel?.columns?.length ?? 0,
-    },
-    [EntityType.TOPIC]: {
-      data: node.flattenChildren ?? node.messageSchema?.schemaFields ?? [],
-      label: t('label.field-plural'),
-      childrenCount: node.messageSchema?.schemaFields?.length ?? 0,
-    },
-    [EntityType.API_ENDPOINT]: {
-      data:
-        node.flattenChildren ??
-        node?.responseSchema?.schemaFields ??
-        node?.requestSchema?.schemaFields ??
-        [],
-      label: t('label.field-plural'),
-      childrenCount:
-        node?.responseSchema?.schemaFields?.length ??
-        node?.requestSchema?.schemaFields?.length ??
-        0,
-    },
-    [EntityType.SEARCH_INDEX]: {
-      data: node.flattenChildren ?? node.fields ?? [],
-      label: t('label.field-plural'),
-      childrenCount: node.fields?.length ?? 0,
-    },
-  };
 
-  const { data, label, childrenCount } = entityMappings[
-    node.entityType as EntityType
-  ] || {
-    data: [],
-    label: '',
-    childrenCount: 0,
-  };
+  const resolver = ENTITY_CHILDREN_RESOLVERS[node.entityType as EntityType];
+  const { data, label, singularLabel, childrenCount } = resolver
+    ? resolver(node)
+    : { data: [], label: '', singularLabel: '', childrenCount: 0 };
 
   return {
     children: data,
     childrenHeading: label,
+    childHeading: singularLabel,
     childrenCount,
   };
 }
@@ -134,6 +186,24 @@ export const checkUpstreamDownstream = (id: string, data: EdgeDetails[]) => {
   return { hasUpstream, hasDownstream };
 };
 
+const groupEdgesByFqn = (
+  edges: EdgeDetails[],
+  endpoint: 'fromEntity' | 'toEntity'
+) => {
+  const grouped = new Map<string | undefined, EdgeDetails[]>();
+  edges.forEach((edge) => {
+    const fqn = edge[endpoint].fullyQualifiedName;
+    const group = grouped.get(fqn);
+    if (group) {
+      group.push(edge);
+    } else {
+      grouped.set(fqn, [edge]);
+    }
+  });
+
+  return grouped;
+};
+
 export function getUpstreamDownstreamNodesEdges(
   edges: EdgeDetails[],
   nodes: EntityReference[],
@@ -143,24 +213,34 @@ export function getUpstreamDownstreamNodesEdges(
   const upstreamEdges: EdgeDetails[] = [];
   const downstreamNodes: EntityReference[] = [];
   const upstreamNodes: EntityReference[] = [];
-  const activeNode = nodes.find(
-    (node) => node.fullyQualifiedName === currentNode
-  );
+
+  // Lookups are indexed up front: scanning every node and edge per visited
+  // node is quadratic and froze large lineage graphs (#34904).
+  const nodesByFqn = new Map<string | undefined, EntityReference>();
+  nodes.forEach((node) => {
+    if (!nodesByFqn.has(node.fullyQualifiedName)) {
+      nodesByFqn.set(node.fullyQualifiedName, node);
+    }
+  });
+  const edgesByFromFqn = groupEdgesByFqn(edges, 'fromEntity');
+  const edgesByToFqn = groupEdgesByFqn(edges, 'toEntity');
+
+  const activeNode = nodesByFqn.get(currentNode);
 
   if (!activeNode) {
     return { downstreamEdges, upstreamEdges, downstreamNodes, upstreamNodes };
   }
 
+  const visitedDownstream = new Set<EntityReference>();
+  const visitedUpstream = new Set<EntityReference>();
+
   function findDownstream(node: EntityReference) {
-    const directDownstream = edges.filter(
-      (edge) => edge.fromEntity.fullyQualifiedName === node.fullyQualifiedName
-    );
-    downstreamEdges.push(...directDownstream);
+    const directDownstream = edgesByFromFqn.get(node.fullyQualifiedName) ?? [];
+    directDownstream.forEach((edge) => downstreamEdges.push(edge));
     directDownstream.forEach((edge) => {
-      const toNode = nodes.find(
-        (item) => item.fullyQualifiedName === edge.toEntity.fullyQualifiedName
-      );
-      if (!isUndefined(toNode) && !downstreamNodes.includes(toNode)) {
+      const toNode = nodesByFqn.get(edge.toEntity.fullyQualifiedName);
+      if (!isUndefined(toNode) && !visitedDownstream.has(toNode)) {
+        visitedDownstream.add(toNode);
         downstreamNodes.push(toNode);
         findDownstream(toNode);
       }
@@ -168,15 +248,12 @@ export function getUpstreamDownstreamNodesEdges(
   }
 
   function findUpstream(node: EntityReference) {
-    const directUpstream = edges.filter(
-      (edge) => edge.toEntity.fullyQualifiedName === node.fullyQualifiedName
-    );
-    upstreamEdges.push(...directUpstream);
+    const directUpstream = edgesByToFqn.get(node.fullyQualifiedName) ?? [];
+    directUpstream.forEach((edge) => upstreamEdges.push(edge));
     directUpstream.forEach((edge) => {
-      const fromNode = nodes.find(
-        (item) => item.fullyQualifiedName === edge.fromEntity.fullyQualifiedName
-      );
-      if (!isUndefined(fromNode) && !upstreamNodes.includes(fromNode)) {
+      const fromNode = nodesByFqn.get(edge.fromEntity.fullyQualifiedName);
+      if (!isUndefined(fromNode) && !visitedUpstream.has(fromNode)) {
+        visitedUpstream.add(fromNode);
         upstreamNodes.push(fromNode);
         findUpstream(fromNode);
       }
@@ -214,6 +291,24 @@ const getTracedNode = (
   return nodes.filter((n) => tracedEdgeIds.has(n.id));
 };
 
+// Appends every newly visited node to the caller's accumulator. Kept separate
+// from the traversal so each stays a single, readable loop.
+const collectTracedNodes = (
+  visitedNodeIds: Set<string>,
+  nodes: Node[],
+  prevTraced: Node[]
+) => {
+  for (const nodeId of visitedNodeIds) {
+    if (prevTraced.some((n) => n.id === nodeId)) {
+      continue;
+    }
+    const tracedNode = nodes.find((n) => n.id === nodeId);
+    if (tracedNode) {
+      prevTraced.push(tracedNode);
+    }
+  }
+};
+
 export const getAllTracedNodes = (
   node: Node,
   nodes: Node[],
@@ -227,7 +322,10 @@ export const getAllTracedNodes = (
   const queue: Node[] = [node];
 
   while (queue.length > 0) {
-    const currentNode = queue.shift()!;
+    const currentNode = queue.shift();
+    if (!currentNode) {
+      break;
+    }
 
     if (currentNode !== node) {
       result.push(currentNode);
@@ -243,14 +341,7 @@ export const getAllTracedNodes = (
     }
   }
 
-  for (const nodeId of visitedNodeIds) {
-    if (!prevTraced.some((n) => n.id === nodeId)) {
-      const tracedNode = nodes.find((n) => n.id === nodeId);
-      if (tracedNode) {
-        prevTraced.push(tracedNode);
-      }
-    }
-  }
+  collectTracedNodes(visitedNodeIds, nodes, prevTraced);
 
   return result;
 };
@@ -373,53 +464,46 @@ const flatItems = <T extends { children?: T[]; dataType: string }>(
   columns: T[]
 ) => columns.flatMap((column) => flattenColumn(column as T, 0));
 
+const getTableFlattenChildren = (entity: EntityReference): EntityChildren =>
+  flatItems((entity as unknown as Table).columns);
+
+const getContainerFlattenChildren = (entity: EntityReference): EntityChildren =>
+  flatItems((entity as unknown as Container).dataModel?.columns ?? []);
+
+const getTopicFlattenChildren = (entity: EntityReference): EntityChildren =>
+  flatItems((entity as unknown as Topic).messageSchema?.schemaFields ?? []);
+
+const getApiEndpointFlattenChildren = (
+  entity: EntityReference
+): EntityChildren =>
+  flatItems(
+    (entity as unknown as APIEndpoint).responseSchema?.schemaFields ??
+      (entity as unknown as APIEndpoint).requestSchema?.schemaFields ??
+      []
+  );
+
+const getSearchIndexFlattenChildren = (
+  entity: EntityReference
+): EntityChildren => flatItems((entity as unknown as SearchIndex).fields ?? []);
+
+const FLATTEN_CHILDREN_RESOLVERS: Partial<
+  Record<EntityType, (entity: EntityReference) => EntityChildren>
+> = {
+  [EntityType.TABLE]: getTableFlattenChildren,
+  [EntityType.DASHBOARD_DATA_MODEL]: getTableFlattenChildren,
+  [EntityType.CONTAINER]: getContainerFlattenChildren,
+  [EntityType.TOPIC]: getTopicFlattenChildren,
+  [EntityType.API_ENDPOINT]: getApiEndpointFlattenChildren,
+  [EntityType.SEARCH_INDEX]: getSearchIndexFlattenChildren,
+};
+
 const getFlattenChildrenFromEntity = (
   entity: EntityReference
 ): EntityChildren => {
-  const children: EntityChildren = [];
-
   const entityType = 'entityType' in entity ? entity.entityType : '';
+  const resolver = FLATTEN_CHILDREN_RESOLVERS[entityType as EntityType];
 
-  switch (entityType) {
-    case EntityType.TABLE:
-    case EntityType.DASHBOARD_DATA_MODEL: {
-      const tableData = entity as unknown as Table;
-      children.push(...flatItems(tableData.columns));
-
-      break;
-    }
-    case EntityType.CONTAINER: {
-      const dataModelColumns =
-        (entity as unknown as Container).dataModel?.columns ?? [];
-      children.push(...flatItems(dataModelColumns));
-
-      break;
-    }
-    case EntityType.TOPIC: {
-      const messageSchemaFields =
-        (entity as unknown as Topic).messageSchema?.schemaFields ?? [];
-      children.push(...flatItems(messageSchemaFields));
-
-      break;
-    }
-    case EntityType.API_ENDPOINT: {
-      const apiEndpointFields =
-        (entity as unknown as APIEndpoint).responseSchema?.schemaFields ??
-        (entity as unknown as APIEndpoint).requestSchema?.schemaFields ??
-        [];
-      children.push(...flatItems(apiEndpointFields));
-
-      break;
-    }
-    case EntityType.SEARCH_INDEX: {
-      const searchIndexFields = (entity as unknown as SearchIndex).fields ?? [];
-      children.push(...flatItems(searchIndexFields));
-
-      break;
-    }
-  }
-
-  return children;
+  return resolver ? resolver(entity) : [];
 };
 
 export const getNodeLineageData = (node: EntityReference) => {
@@ -484,14 +568,21 @@ export const createNodes = (
   return uniqueNodesData.map((node) => {
     node.deleted = isDeleted(node.deleted);
 
-    const type =
-      node.type === EntityLineageNodeType.LOAD_MORE
-        ? node.type
-        : incomingMap.has(node.id) && !outgoingMap.has(node.id)
-        ? EntityLineageNodeType.OUTPUT
-        : !incomingMap.has(node.id) && outgoingMap.has(node.id)
-        ? EntityLineageNodeType.INPUT
-        : EntityLineageNodeType.DEFAULT;
+    const hasIncoming = incomingMap.has(node.id);
+    const hasOutgoing = outgoingMap.has(node.id);
+    const isOutputNode = hasIncoming && !hasOutgoing;
+    const isInputNode = !hasIncoming && hasOutgoing;
+
+    let type: EntityLineageNodeType | string;
+    if (node.type === EntityLineageNodeType.LOAD_MORE) {
+      type = node.type;
+    } else if (isOutputNode) {
+      type = EntityLineageNodeType.OUTPUT;
+    } else if (isInputNode) {
+      type = EntityLineageNodeType.INPUT;
+    } else {
+      type = EntityLineageNodeType.DEFAULT;
+    }
 
     const nodeHeight = isExpanded ? 550 : NODE_HEIGHT;
 

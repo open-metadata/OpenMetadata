@@ -15,7 +15,7 @@ Source connection handler
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.errors import (
@@ -24,7 +24,7 @@ from databricks.sdk.errors import (
     ResourceDoesNotExist,
     Unauthenticated,
 )
-from databricks.sdk.service.catalog import TableType
+from databricks.sdk.service.catalog import CatalogType, TableType
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
@@ -161,6 +161,14 @@ UNITY_CATALOG_ERRORS = ErrorPack(
         "it to a running SQL warehouse (/sql/1.0/warehouses/<warehouseId>). Metadata ingestion "
         "works without it, but query-log lineage and tag extraction do not.",
     ),
+    # Before the warehouse rule: a federated catalog's JDBC error also says "failed to
+    # connect to the database", but it is the foreign database that is unreachable.
+    when(Matchers.contains("failed_jdbc")).diagnose(
+        "Foreign catalog connection failed",
+        fix="The probed catalog is a Lakehouse Federation (foreign) catalog, and its connection to "
+        "the external database failed. Fix that connection in Databricks, or set Catalog to a "
+        "standard catalog.",
+    ),
     when(Matchers.contains("failed to connect to the database")).diagnose(
         "SQL warehouse not reachable",
         fix="Could not open a SQL connection over the configured HTTP Path. Verify the SQL "
@@ -188,21 +196,22 @@ def _require_resolved_catalog_and_schema(table_obj: DatabricksTable) -> tuple[st
     return table_obj.catalog_name, table_obj.schema_name
 
 
-def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable, catalog_name: Optional[str] = None) -> None:  # noqa: UP045
+def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable, catalog_name: str | None = None) -> None:
     """
     Resolve the catalog used by the remaining test connection steps. If a catalog is
-    configured on the connection, validate access to that exact catalog.
+    configured on the connection, validate access to that exact catalog. Otherwise prefer a
+    standard (managed) catalog: a foreign or Delta Sharing catalog proxies another system, so
+    the later probes on it can fail for reasons that say nothing about this connection.
     """
     if catalog_name:
         table_obj.catalog_name = connection.catalogs.get(catalog_name).name
-    else:
-        for catalog in connection.catalogs.list():
-            if catalog.name != INTERNAL_CATALOG:
-                table_obj.catalog_name = catalog.name
-                break
+        return
+    usable = [c for c in connection.catalogs.list() if c.name and c.name != INTERNAL_CATALOG]
+    pick = next((c for c in usable if c.catalog_type == CatalogType.MANAGED_CATALOG), usable[0] if usable else None)
+    table_obj.catalog_name = pick.name if pick else None
 
 
-def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable, schema_name: Optional[str] = None) -> None:  # noqa: UP045
+def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable, schema_name: str | None = None) -> None:
     """
     Resolve the schema used by the remaining test connection steps. If a databaseSchema is
     configured on the connection, validate access to that exact schema.
@@ -258,6 +267,7 @@ def read_tag_tables(engine: Engine, table_obj: DatabricksTable) -> None:
     Validate that the information_schema tag tables are readable for the resolved
     catalog and schema.
     """
+    _require_resolved_catalog_and_schema(table_obj)
     with engine.connect() as connection:
         connection.execute(
             text(UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=table_obj.catalog_name).replace(";", " limit 1;"))

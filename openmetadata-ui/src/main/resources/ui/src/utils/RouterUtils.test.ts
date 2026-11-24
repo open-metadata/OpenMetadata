@@ -22,6 +22,7 @@ import {
   getExploreTabPath,
   getSettingPath,
   getSettingsPathWithFqn,
+  isLandingPagePath,
 } from './RouterUtils';
 
 describe('Global Setting routes', () => {
@@ -168,5 +169,18 @@ describe('getExplorePath', () => {
     const path = getExplorePath({ tab: 'topics' });
 
     expect(path.startsWith(getExploreTabPath('topics'))).toBe(true);
+  });
+});
+
+describe('isLandingPagePath', () => {
+  it('should treat both landing page paths as the landing page', () => {
+    expect(isLandingPagePath(ROUTES.HOME)).toBe(true);
+    expect(isLandingPagePath(ROUTES.MY_DATA)).toBe(true);
+  });
+
+  it('should not match any other route', () => {
+    expect(isLandingPagePath(ROUTES.EXPLORE)).toBe(false);
+    expect(isLandingPagePath('/my-data-quality')).toBe(false);
+    expect(isLandingPagePath('/table/sample_data.ecommerce_db')).toBe(false);
   });
 });

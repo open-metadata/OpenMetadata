@@ -12,11 +12,14 @@
  */
 
 import { ComponentType, FC, lazy, LazyExoticComponent, Suspense } from 'react';
-import Loader from '../components/common/Loader/Loader';
+import EntityDetailsPageSkeleton from '../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import { EntityType } from '../enums/entity.enum';
 
 const lazyComponentMap: Partial<
-  Record<EntityType, LazyExoticComponent<ComponentType<any>>>
+  Record<
+    EntityType,
+    LazyExoticComponent<ComponentType<Record<string, unknown>>>
+  >
 > = {
   [EntityType.DATABASE]: lazy(
     () => import('../pages/DatabaseDetailsPage/DatabaseDetailsPage')
@@ -81,6 +84,9 @@ const lazyComponentMap: Partial<
   [EntityType.WORKSHEET]: lazy(
     () => import('../pages/WorksheetDetailsPage/WorksheetDetailsPage')
   ),
+  [EntityType.DATA_CONTRACT]: lazy(
+    () => import('../pages/DataContractRedirectPage/DataContractRedirectPage')
+  ),
 };
 
 export function getEntityDetailComponent(entityType: string): FC | null {
@@ -90,8 +96,8 @@ export function getEntityDetailComponent(entityType: string): FC | null {
     return null;
   }
 
-  const WrappedComponent: FC<any> = (props) => (
-    <Suspense fallback={<Loader fullScreen />}>
+  const WrappedComponent: FC = (props) => (
+    <Suspense fallback={<EntityDetailsPageSkeleton />}>
       <LazyComponent {...props} />
     </Suspense>
   );

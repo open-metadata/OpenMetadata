@@ -10,20 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactNode, useEffect, useMemo, useRef } from 'react';
 import { ReactComponent as FeedEmptyIcon } from '../../../assets/svg/ic-task-empty.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
-import { Thread } from '../../../generated/entity/feed/thread';
-import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
+import { Conversation } from '../../../generated/entity/feed/conversation';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import FeedPanelBodyV1New from '../ActivityFeedPanel/FeedPanelBodyV1New';
 
 type MergedFeedItem =
-  | { type: 'feed'; id: string; timestamp: number; feed: Thread }
+  | { type: 'feed'; id: string; timestamp: number; feed: Conversation }
   | {
       type: 'activity';
       id: string;
@@ -31,20 +29,25 @@ type MergedFeedItem =
       activity: ActivityEvent;
     };
 
-const getThreadTimestamp = (feed: Thread): number =>
-  feed.updatedAt ?? feed.threadTs ?? 0;
+const getConversationTimestamp = (feed: Conversation): number =>
+  feed.updatedAt ?? feed.createdAt ?? 0;
 interface ActivityFeedListV1Props {
-  feedList?: Thread[];
+  feedList?: Conversation[];
   activityList?: ActivityEvent[];
   isLoading: boolean;
   showThread?: boolean;
-  onFeedClick?: (feed: Thread) => void;
+  onFeedClick?: (feed: Conversation) => void;
   onActivityClick?: (activity: ActivityEvent) => void;
   activeFeedId?: string;
   hidePopover: boolean;
   isForFeedTab?: boolean;
   emptyPlaceholderText: ReactNode;
-  selectedThread?: Thread;
+  emptyPlaceholderDescription?: ReactNode;
+  componentsVisibility?: {
+    showThreadIcon?: boolean;
+    showRepliesContainer?: boolean;
+  };
+  selectedThread?: Conversation;
   selectedActivity?: ActivityEvent;
   onAfterClose?: () => void;
   onUpdateEntityDetails?: () => void;
@@ -66,6 +69,7 @@ const ActivityFeedListV1New = ({
   isForFeedTab = false,
   isFullWidth,
   emptyPlaceholderText,
+  emptyPlaceholderDescription,
   selectedThread,
   selectedActivity,
   onAfterClose,
@@ -78,7 +82,7 @@ const ActivityFeedListV1New = ({
     const feedItems: MergedFeedItem[] = (feedList ?? []).map((feed) => ({
       type: 'feed',
       id: feed.id,
-      timestamp: getThreadTimestamp(feed),
+      timestamp: getConversationTimestamp(feed),
       feed,
     }));
     const activityItems: MergedFeedItem[] = (activityList ?? []).map(
@@ -91,7 +95,7 @@ const ActivityFeedListV1New = ({
     );
 
     return [...activityItems, ...feedItems].sort(
-      (a, b) => b.timestamp - a.timestamp
+      (a, b) => b.timestamp - a.timestamp || a.id.localeCompare(b.id)
     );
   }, [feedList, activityList]);
 
@@ -100,6 +104,10 @@ const ActivityFeedListV1New = ({
   const autoSelectedIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
+    if (isFeedWidget) {
+      return;
+    }
+
     const firstItem = mergedList[0];
     if (isUndefined(firstItem)) {
       return;
@@ -140,6 +148,7 @@ const ActivityFeedListV1New = ({
     selectedActivity,
     onFeedClick,
     onActivityClick,
+    isFeedWidget,
   ]);
 
   useEffect(() => {
@@ -209,15 +218,14 @@ const ActivityFeedListV1New = ({
         className="p-x-md no-data-placeholder-container h-full"
         data-testid="no-data-placeholder-container"
         id="feedData">
-        <ErrorPlaceHolderNew
-          icon={<FeedEmptyIcon height={140} width={140} />}
-          type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-          <Typography.Paragraph
-            className="placeholder-text"
-            style={{ marginBottom: '0' }}>
-            {emptyPlaceholderText}
-          </Typography.Paragraph>
-        </ErrorPlaceHolderNew>
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <NoDataPlaceholder
+            data-testid="no-data-placeholder"
+            description={emptyPlaceholderDescription}
+            icon={<FeedEmptyIcon height={140} width={140} />}
+            title={emptyPlaceholderText}
+          />
+        </div>
       </div>
     );
   }

@@ -1,0 +1,10 @@
+{
+  "name": "DataQuality",
+  "displayName": "Data Quality",
+  "description": "Overview of data quality test results (passing, failing, and aborted) with a link through to the failing tests.",
+  "entityType": "KnowledgePanel",
+  "fullyQualifiedName": "KnowledgePanel.DataQuality",
+  "data": {
+    "gridSizes": ["small", "medium", "large"]
+  }
+}

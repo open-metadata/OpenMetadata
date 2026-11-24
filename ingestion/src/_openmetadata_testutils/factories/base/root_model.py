@@ -1,4 +1,4 @@
-from typing import Any, Dict, Set  # noqa: UP035
+from typing import Any
 
 import factory
 from factory.base import FactoryOptions, OptionDefault
@@ -6,7 +6,7 @@ from factory.base import FactoryOptions, OptionDefault
 DEFAULT_ROOT_ATTRIBUTE_NAME = "root"
 
 
-def add_root_prefix(parameters: Dict[str, Any], root_attribute_name: str, ignore_keys: Set[str]) -> Dict[str, Any]:  # noqa: UP006
+def add_root_prefix(parameters: dict[str, Any], root_attribute_name: str, ignore_keys: set[str]) -> dict[str, Any]:
     params = {}
 
     for key, value in parameters.items():

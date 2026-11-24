@@ -162,6 +162,35 @@ describe('useCustomPages', () => {
     expect(result.current.customizedPage?.pageType).toBe(PageType.Dashboard);
   });
 
+  it('should remove null pages before caching a legacy persona document', async () => {
+    const legacyDocument = {
+      ...mockDocument,
+      data: {
+        ...mockDocument.data,
+        pages: [null, mockPage],
+      },
+    } as Document;
+    mockGetDocumentByFQN.mockResolvedValue(legacyDocument);
+
+    const { result } = renderHook(() => useCustomPages(PageType.Table), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await waitFor(() => {
+      expect(result.current.customizedPage).toEqual(mockPage);
+    });
+
+    expect(
+      queryClient.getQueryData(['docStore', 'persona.test-persona'])
+    ).toEqual({
+      ...legacyDocument,
+      data: {
+        ...legacyDocument.data,
+        pages: [mockPage],
+      },
+    });
+  });
+
   it('should return updated results when selected persona changes', async () => {
     mockGetDocumentByFQN.mockResolvedValueOnce(mockDocument);
 

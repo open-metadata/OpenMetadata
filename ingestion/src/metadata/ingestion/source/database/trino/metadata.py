@@ -15,7 +15,9 @@ Trino source implementation.
 import re  # noqa: I001
 import traceback
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
+from itertools import islice
+from typing import Any
+from collections.abc import Iterable
 
 from sqlalchemy import exc, sql, util
 from sqlalchemy.engine.base import Connection
@@ -47,7 +49,7 @@ from metadata.ingestion.source.database.trino.queries import (
     TRINO_VIEW_DEFINITION_FALLBACK,
 )
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database
+from metadata.utils.filters import filter_by_database, filter_pattern_enabled
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import get_all_table_comments
 
@@ -74,7 +76,7 @@ def _starts_with_type(type_str: str, type_name: str) -> bool:
     return type_str.lower().startswith(type_name)
 
 
-def split_row_field(field_str: str) -> Tuple[Optional[str], str]:  # noqa: UP006, UP045
+def split_row_field(field_str: str) -> tuple[str | None, str]:
     """
     Split a single Trino ROW field into its (name, type) pair.
 
@@ -99,7 +101,7 @@ def split_row_field(field_str: str) -> Tuple[Optional[str], str]:  # noqa: UP006
     return parts[0], parts[1].strip()
 
 
-def resolve_field_names(fields: List[Tuple[Optional[str], str]]) -> List[Tuple[str, str]]:  # noqa: UP006, UP045
+def resolve_field_names(fields: list[tuple[str | None, str]]) -> list[tuple[str, str]]:
     """
     Give every field of one ROW a unique name.
 
@@ -123,7 +125,7 @@ def resolve_field_names(fields: List[Tuple[Optional[str], str]]) -> List[Tuple[s
     return resolved
 
 
-def get_type_name_and_opts(type_str: str) -> Tuple[str, Optional[str]]:  # noqa: UP006, UP045
+def get_type_name_and_opts(type_str: str) -> tuple[str, str | None]:
     match = re.match(r"^(?P<type>\w+)\s*(?:\((?P<options>.*)\))?", type_str)
     if not match:
         util.warn(f"Could not parse type name '{type_str}'")
@@ -194,7 +196,7 @@ def _parse_sqltype(type_str: str, table_name: str, column_name: str):
         return sqltypes.NULLTYPE
 
 
-def _get_columns(self, connection: Connection, table_name: str, schema: str = None, **__) -> List[Dict[str, Any]]:  # noqa: RUF013, UP006
+def _get_columns(self, connection: Connection, table_name: str, schema: str = None, **__) -> list[dict[str, Any]]:  # noqa: RUF013
     # pylint: disable=protected-access
     schema = schema or self._get_default_schema_name(connection)
     preparer = connection.dialect.identifier_preparer
@@ -229,13 +231,30 @@ def _get_columns(self, connection: Connection, table_name: str, schema: str = No
     return columns
 
 
+# Above this many kept tables the comments query keeps its schema-wide form: a long IN list
+# grows the SQL text towards Trino's query.max-length and slows planning, and a filter that
+# keeps that many tables gains little from restricting the scan.
+# ADR:2026-11-11-trino-table-comments-query-is-restricted-to-filtered-tables-up-to-500
+MAX_COMMENT_TABLE_NAMES = 500
+
+
+def _table_names_predicate(table_names: Iterable[str]) -> str:
+    """
+    `and "table_name" IN (...)` clause for TRINO_TABLE_COMMENTS. Names come from Trino's own
+    listing, but they are still embedded as SQL literals, so single quotes are doubled. The query
+    runs through sqlalchemy `text()`, which reads `:name` as a bind parameter, so `:` is escaped.
+    """
+    literals = ", ".join("'" + name.replace("'", "''").replace(":", "\\:") + "'" for name in sorted(table_names))
+    return f'    and "table_name" IN ({literals})\n'
+
+
 def get_table_comment(  # pylint: disable=unused-argument
     self,
     connection: Connection,
     table_name: str,
     schema: str = None,  # noqa: RUF013
     **kw,
-) -> Dict[str, Any]:  # noqa: UP006
+) -> dict[str, Any]:
     """
     Override get table comment method to batch process comments
     """
@@ -258,10 +277,15 @@ def get_table_comment(  # pylint: disable=unused-argument
             or schema not in self.processed_schema
         ):
             self.processed_schema.add(schema)
-            self.get_all_table_comments(
-                connection,
-                TRINO_TABLE_COMMENTS.format(catalog_name=catalog_name, schema_name=schema),
-            )
+            query = TRINO_TABLE_COMMENTS.format(catalog_name=catalog_name, schema_name=schema)
+            # Restrict the schema-wide scan to the tables the source kept after applying
+            # tableFilterPattern (recorded by TrinoSource.get_tables_name_and_type). Without
+            # this, a run scoped to a few tables of a large schema still reads every row of
+            # system.metadata.table_comments and can hit the query timeout.
+            table_names = getattr(self, "comment_table_names", {}).get(schema)
+            if table_names:
+                query += _table_names_predicate(table_names)
+            self.get_all_table_comments(connection, query)
         return {"text": self.all_table_comments.get((table_name, schema)) or None}
     except error.TrinoQueryError as exe:
         if exe.error_name in (error.PERMISSION_DENIED,):
@@ -269,7 +293,7 @@ def get_table_comment(  # pylint: disable=unused-argument
         raise
 
 
-def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw) -> Optional[str]:  # noqa: RUF013, UP045
+def get_view_definition(self, connection: Connection, view_name: str, schema: str = None, **kw) -> str | None:  # noqa: RUF013
     """
     Get the view definition for Trino views.
 
@@ -287,10 +311,12 @@ def get_view_definition(self, connection: Connection, view_name: str, schema: st
     if schema is None:
         raise exc.NoSuchTableError("schema is required")
 
+    # Catalog, schema and view names come from Trino, so they are untrusted.
+    quote = self.identifier_preparer.quote_identifier
     if catalog_name:
-        full_view_name = f'"{catalog_name}"."{schema}"."{view_name}"'
+        full_view_name = f"{quote(catalog_name)}.{quote(schema)}.{quote(view_name)}"
     else:
-        full_view_name = f'"{schema}"."{view_name}"'
+        full_view_name = f"{quote(schema)}.{quote(view_name)}"
 
     try:
         # Fetch from information_schema.views (requires only read permissions)
@@ -337,7 +363,7 @@ class TrinoSource(CommonDbSourceService):
     ColumnTypeParser._COLUMN_TYPE_MAPPING[JSON] = "JSON"
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config = WorkflowSource.model_validate(config_dict)
         connection: TrinoConnection = config.serviceConnection.root.config
         if not isinstance(connection, TrinoConnection):
@@ -369,12 +395,42 @@ class TrinoSource(CommonDbSourceService):
             row = result.first()
             if row and row[0] == "iceberg":
                 table_type = TableType.Iceberg
+            elif row and row[0] == "delta_lake":
+                table_type = TableType.DeltaLake
         except Exception:
             logger.debug(traceback.format_exc())
 
         return [
             TableNameAndType(name=name, type_=table_type) for name in self.inspector.get_table_names(schema_name) or []
         ]
+
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
+        """
+        When `tableFilterPattern` is set, read the schema's filtered table list ahead of
+        the first table and hand it to the dialect, so `get_table_comment` only fetches
+        the comments of the tables that survived the filter instead of scanning
+        `system.metadata.table_comments` for the whole schema. Runs without a filter, or
+        that keep more than MAX_COMMENT_TABLE_NAMES tables, record nothing and keep the
+        schema-wide query.
+        """
+        if not filter_pattern_enabled(self.source_config.tableFilterPattern):
+            yield from super().get_tables_name_and_type() or []
+            return
+        schema_name = self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+        tables = iter(super().get_tables_name_and_type() or [])
+        # Read at most one table past the cap: a schema that keeps more is streamed
+        # instead of buffered, and keeps the schema-wide query.
+        head = list(islice(tables, MAX_COMMENT_TABLE_NAMES + 1))
+        # Schema workers share the dialect; setdefault avoids two of them each creating
+        # the registry and one overwriting the other's entry.
+        registry = vars(self.engine.dialect).setdefault("comment_table_names", {})
+        if len(head) <= MAX_COMMENT_TABLE_NAMES:
+            registry[schema_name] = {name for name, _ in head}
+        try:
+            yield from head
+            yield from tables
+        finally:
+            registry.pop(schema_name, None)
 
     def get_database_names(self) -> Iterable[str]:
         configured_catalog = self.service_connection.catalog

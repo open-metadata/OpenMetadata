@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.csv;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import jakarta.ws.rs.BadRequestException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -26,8 +28,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jobs.BackgroundJobLog;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.security.ImpersonationContext;
 
 @Slf4j
 public final class CsvAsyncJobManager {
@@ -54,8 +58,6 @@ public final class CsvAsyncJobManager {
   // The TTL and the row prune bound it further in time.
   public static final int RETAINED_EXPORTS_PER_USER = 5;
   public static final Duration RESULT_TTL = Duration.ofHours(24);
-  // A job whose worker has not heartbeated within this window has no live owner.
-  public static final Duration RUNNING_JOB_STALE_AFTER = Duration.ofMinutes(5);
   private static final int CLEANUP_BATCH_SIZE = 500;
 
   private static final CsvAsyncJobManager INSTANCE = new CsvAsyncJobManager();
@@ -92,6 +94,7 @@ public final class CsvAsyncJobManager {
             .setDryRun(dryRun)
             .setRecursive(recursive)
             .setCsv(csv)
+            .setImpersonatedBy(ImpersonationContext.getImpersonatedBy())
             .setVersioningEntityType(versioningEntityType);
     String message =
         operation == CsvAsyncJob.Operation.IMPORT ? IMPORT_QUEUED_MESSAGE : EXPORT_QUEUED_MESSAGE;
@@ -110,6 +113,14 @@ public final class CsvAsyncJobManager {
       String createdBy, CsvAsyncJobArgs.LineageExportArgs lineageExport) {
     return insertExportJob(
         exportArgs(LINEAGE_ENTITY_TYPE, lineageExport.getFqn()).setLineageExport(lineageExport),
+        createdBy,
+        BackgroundJob.JobType.CSV_EXPORT);
+  }
+
+  public CsvAsyncJob createTestCaseExportJob(
+      String targetFqn, String createdBy, CsvAsyncJobArgs.TestCaseExportArgs testCaseExport) {
+    return insertExportJob(
+        exportArgs(Entity.TEST_CASE, targetFqn).setTestCaseExport(testCaseExport),
         createdBy,
         BackgroundJob.JobType.CSV_EXPORT);
   }
@@ -144,6 +155,20 @@ public final class CsvAsyncJobManager {
   public String getExportResult(String jobId) {
     Long id = lookupIdOrNull(jobId);
     return id == null ? null : dao.findCsvJobResultById(id);
+  }
+
+  /**
+   * The stored import result, read on demand after the thin completion notification. Kept out of the
+   * notification itself and out of {@link #getJob} so a large result (e.g. a recursive import) is
+   * fetched once by the client, not pushed through the websocket relay on every pod.
+   */
+  public CsvImportResult getImportResult(String jobId) {
+    Long id = lookupIdOrNull(jobId);
+    if (id == null) {
+      return null;
+    }
+    String result = dao.findCsvJobResultById(id);
+    return nullOrEmpty(result) ? null : JsonUtils.readValue(result, CsvImportResult.class);
   }
 
   private CsvAsyncJob insertExportJob(
@@ -333,7 +358,7 @@ public final class CsvAsyncJobManager {
     return log;
   }
 
-  private void validateImportPayload(String csv) {
+  public static void validateImportPayload(String csv) {
     if (csv != null) {
       int payloadBytes = csv.getBytes(StandardCharsets.UTF_8).length;
       if (payloadBytes > MAX_IMPORT_CSV_BYTES) {
@@ -369,7 +394,6 @@ public final class CsvAsyncJobManager {
       return;
     }
     long now = now();
-    dao.markStaleRunningCsvJobsFailed(now, now - RUNNING_JOB_STALE_AFTER.toMillis());
     releaseExpiredResults(now);
     // Ages out files left by jobs that completed before results moved into the
     // job row. Once those have expired this call, and the spool, can go.

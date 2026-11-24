@@ -21,25 +21,21 @@ each base table into the semantic view.
 
 import re
 import traceback
-from typing import Callable, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
+from collections.abc import Callable, Iterable
 
 from sqlalchemy import text
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.generated.schema.type.entityLineage import (
-    ColumnLineage,
-    EntitiesEdge,
-    LineageDetails,
-)
-from metadata.generated.schema.type.entityLineage import (
-    Source as LineageSource,
-)
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.source.database.semantic_metric_lineage import (
+    SQL_KEYWORDS,
+    column_lineage,
+    metric_lineage_request,
+    view_lineage_request,
+)
+from metadata.ingestion.source.database.semantic_metrics import unquote_name_part
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB,
@@ -62,12 +58,50 @@ ViewKey = tuple[str, str]
 # is not unique -- Snowflake declares every object as ``<table_alias>.<name>``.
 SemanticKey = tuple[str, str]
 
-# A single identifier segment: a double-quoted name or a bare name.
-_IDENTIFIER = r'"[^"]*"|[A-Za-z_][\w$]*'
+# A comment, a string literal with any type prefix (``DATE '...'``) or a quoted identifier,
+# scanned together so none is read inside another. ``A$$B`` is a name, not a string.
+_LITERAL_OR_QUOTED_RE = re.compile(
+    r"/\*.*?\*/|(?:--|//)[^\n]*"
+    r"|(?:(?<![\w$.])(?i:DATE|TIME|TIMESTAMP(?:_[LNT]?TZ)?)\s*)?'(?:[^'\\]|\\.|'')*'"
+    r"|(?<![\w$])\$\$.*?\$\$|\"(?:[^\"]|\"\")*\"",
+    re.DOTALL,
+)
+# A single identifier segment once each quoted identifier is masked as ``\0<n>\0``.
+# A bare name never starts inside a number, so ``1e5`` offers no ``e5``.
+_IDENTIFIER = r"\x00\d+\x00|(?<![\w$])[A-Za-z_][\w$]*"
 # A dotted chain of two or more identifier segments (e.g. ``orders.amount``,
 # ``"orders"."o amount"``, ``db.schema.orders.amount``).
 _COLUMN_REF_RE = re.compile(rf"(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER}))+")
 _SEGMENT_RE = re.compile(_IDENTIFIER)
+# A function name, possibly schema-qualified, with its opening parenthesis (``SUM(``).
+_FUNCTION_HEAD_RE = re.compile(rf"(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER}))*\s*\(")
+# The date or time part a date function takes first, such as ``year`` in
+# ``DATE_PART(year, d)`` or ``EXTRACT(year FROM d)``.
+_DATE_PART_RE = re.compile(
+    rf"\b((?:EXTRACT|DATE_PART|DATE_TRUNC|DATEADD|DATEDIFF|TIMEADD|TIMEDIFF|TIMESTAMPADD|TIMESTAMPDIFF)\s*\(\s*)"
+    rf"(?:{_IDENTIFIER})",
+    re.IGNORECASE,
+)
+# Mask interval units before generic casts remove INTERVAL, retaining genuine
+# unit-named columns elsewhere in the expression.
+_INTERVAL_QUALIFIER_RE = re.compile(
+    r"\b(INTERVAL)\s+(?:YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)S?\b"
+    r"(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?"
+    r"(?:\s+TO\s+(?:YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)S?\b"
+    r"(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?)?",
+    re.IGNORECASE,
+)
+# A cast target (``::NUMBER(10, 2)``, ``CAST(x AS DOUBLE PRECISION)``) or a
+# semi-structured path (``payload:a.b[0]``). A path needs a left operand; a masked
+# string key in an OBJECT constant leaves only whitespace before its separator.
+# Snowflake's multi-word type names are listed.
+_CAST_OR_PATH_RE = re.compile(
+    rf"(?:::|\bAS\b)\s*(?:{_IDENTIFIER})"
+    r"(?:\s+PRECISION\b|\s+VARYING\b|\s+WITH(?:OUT)?(?:\s+LOCAL)?\s+TIME\s+ZONE\b)?"
+    r"(?:\s*\([^)]*\))?"
+    rf"|(?<=[\w$\x00)\]])\s*:\s*(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER})|\[[^\]]*\])*",
+    re.IGNORECASE,
+)
 _MAX_RESOLUTION_DEPTH = 5
 SEMANTIC_COLUMN_CATALOG_VIEWS = (
     "semantic_dimensions",
@@ -81,33 +115,59 @@ def _quote_db(database: str) -> str:
     return database.replace('"', '""')
 
 
-def _unquote_identifier(identifier: str) -> str:
-    """Strip surrounding double quotes from a Snowflake identifier segment."""
-    unquoted = identifier
-    if len(identifier) >= 2 and identifier[0] == '"' and identifier[-1] == '"':
-        unquoted = identifier[1:-1]
-    return unquoted
-
-
-def extract_column_refs(expression: Optional[str]) -> List[Tuple[str, str]]:  # noqa: UP006, UP045
+def extract_column_refs(expression: str | None) -> list[tuple[str | None, str]]:
     """Extract ``(table, column)`` references from a semantic object's expression.
 
-    Handles bare, double-quoted, and multi-part qualified identifiers, always
-    taking the last two segments of each dotted chain as ``(table, column)``.
+    A dotted chain contributes its last two segments. An unqualified name comes back
+    with table ``None``: it refers to the semantic object's own logical table.
     """
-    refs = []
-    for chain in _COLUMN_REF_RE.findall(expression or ""):
+    quoted: list[str] = []
+
+    def mask(match: re.Match[str]) -> str:
+        token = match.group()
+        if not token.startswith('"'):
+            return " "
+        quoted.append(unquote_name_part(token))
+        return f"\x00{len(quoted) - 1}\x00"
+
+    def name(segment: str) -> str:
+        return quoted[int(segment.strip("\x00"))] if segment.startswith("\x00") else segment
+
+    text = _LITERAL_OR_QUOTED_RE.sub(mask, expression or "")
+    text = _INTERVAL_QUALIFIER_RE.sub(r"\1", text)
+    text = _CAST_OR_PATH_RE.sub(" ", text)
+    text = _DATE_PART_RE.sub(r"\1", text)
+    text = _FUNCTION_HEAD_RE.sub("(", text)
+    refs: list[tuple[str | None, str]] = []
+    for chain in _COLUMN_REF_RE.findall(text):
         segments = _SEGMENT_RE.findall(chain)
-        if len(segments) >= 2:
-            refs.append((_unquote_identifier(segments[-2]), _unquote_identifier(segments[-1])))
+        refs.append((name(segments[-2]), name(segments[-1])))
+    for identifier in _SEGMENT_RE.findall(_COLUMN_REF_RE.sub(" ", text)):
+        if not identifier.startswith("\x00") and (
+            identifier.lower() in SQL_KEYWORDS
+            or identifier.lower()
+            in {
+                "rlike",
+                "regexp",
+                "ilike",
+                "current_date",
+                "current_time",
+                "current_timestamp",
+                "current_user",
+                "localtime",
+                "localtimestamp",
+            }
+        ):
+            continue
+        refs.append((None, name(identifier)))
     return refs
 
 
 def match_semantic_name(
     table_ref: str,
     name_ref: str,
-    columns: Dict[SemanticKey, dict],  # noqa: UP006
-) -> Optional[SemanticKey]:  # noqa: UP045
+    columns: dict[SemanticKey, dict],
+) -> SemanticKey | None:
     """Return the ``(logical_table, name)`` key matching a table-qualified reference
     (case-insensitively), used to detect intra-view references (e.g. a metric defined
     over a fact).
@@ -124,7 +184,7 @@ def match_semantic_name(
     return matched
 
 
-def lookup_base_table(table_ref: str, table_map: Dict[str, BaseTable]) -> Optional[BaseTable]:  # noqa: UP006, UP045
+def lookup_base_table(table_ref: str, table_map: dict[str, BaseTable]) -> BaseTable | None:
     """Resolve a logical table alias to its physical base table (case-insensitive)."""
     lowered = table_ref.lower()
     result = None
@@ -137,10 +197,10 @@ def lookup_base_table(table_ref: str, table_map: Dict[str, BaseTable]) -> Option
 
 def resolve_base_columns(
     column_key: SemanticKey,
-    columns: Dict[SemanticKey, dict],  # noqa: UP006
-    table_map: Dict[str, BaseTable],  # noqa: UP006
+    columns: dict[SemanticKey, dict],
+    table_map: dict[str, BaseTable],
     depth: int = 0,
-) -> List[Tuple[BaseTable, str]]:  # noqa: UP006
+) -> list[tuple[BaseTable, str]]:
     """Resolve a semantic object to the physical base-table columns it derives from.
 
     ``column_key`` is ``(logical_table, name)`` -- the name alone does not identify a
@@ -150,10 +210,11 @@ def resolve_base_columns(
     ``_MAX_RESOLUTION_DEPTH`` levels to avoid runaway recursion on cyclic
     definitions. Returns a de-duplicated list of ``(base_table, base_column)``.
     """
-    results: List[Tuple[BaseTable, str]] = []  # noqa: UP006
+    results: list[tuple[BaseTable, str]] = []
     info = columns.get(column_key)
     if info is not None and depth <= _MAX_RESOLUTION_DEPTH:
-        for table_ref, column_ref in extract_column_refs(info.get("expression")):
+        for qualifier, column_ref in extract_column_refs(info.get("expression")):
+            table_ref = qualifier or column_key[0]
             matched = match_semantic_name(table_ref, column_ref, columns)
             if matched is not None and matched != column_key:
                 for item in resolve_base_columns(matched, columns, table_map, depth + 1):
@@ -164,11 +225,6 @@ def resolve_base_columns(
                 if base_table is not None and (base_table, column_ref) not in results:
                     results.append((base_table, column_ref))
     return results
-
-
-def _table_reference(entity: Table) -> EntityReference:
-    """Build a table EntityReference for a lineage edge endpoint."""
-    return EntityReference(id=entity.id, type="table")  # pyright: ignore[reportCallIssue]
 
 
 class SnowflakeSemanticViewLineage:
@@ -185,9 +241,9 @@ class SnowflakeSemanticViewLineage:
         service_name: str,
         engine,
         database_filter_pattern,
-        resolve_table_by_fqn: Callable[[str], Optional[Table]],  # noqa: UP045
-        resolve_metric_by_name: Callable[[str], Optional[Metric]],  # noqa: UP045
-        configured_database: Optional[str] = None,  # noqa: UP045
+        resolve_table_by_fqn: Callable[[str], Table | None],
+        resolve_metric_by_name: Callable[[str], Metric | None],
+        configured_database: str | None = None,
     ):
         self.service_name = service_name
         self.engine = engine
@@ -209,7 +265,7 @@ class SnowflakeSemanticViewLineage:
         finally:
             self._close()
 
-    def _get_databases(self) -> List[str]:  # noqa: UP006
+    def _get_databases(self) -> list[str]:
         """Databases to scan for semantic views.
 
         Mirrors ``_compute_filtered_database_names`` in the metadata source: when the
@@ -255,9 +311,9 @@ class SnowflakeSemanticViewLineage:
                 logger.warning(f"Failed semantic view lineage for [{database}.{schema}.{view}]: {exc}")
                 logger.debug(traceback.format_exc())
 
-    def _fetch_table_maps(self, database: str) -> Dict[ViewKey, Dict[str, BaseTable]]:  # noqa: UP006
+    def _fetch_table_maps(self, database: str) -> dict[ViewKey, dict[str, BaseTable]]:
         """{(schema, view): {logical_table_name: (base_catalog, base_schema, base_table)}}"""
-        table_maps: Dict[ViewKey, Dict[str, BaseTable]] = {}  # noqa: UP006
+        table_maps: dict[ViewKey, dict[str, BaseTable]] = {}
         for row in self._run(SNOWFLAKE_GET_SEMANTIC_TABLES_IN_DB.format(database=_quote_db(database))):
             schema, view, logical_name, base_catalog, base_schema, base_table = (
                 row[0],
@@ -270,7 +326,7 @@ class SnowflakeSemanticViewLineage:
             table_maps.setdefault((schema, view), {})[logical_name] = (base_catalog, base_schema, base_table)
         return table_maps
 
-    def _fetch_columns(self, database: str) -> Dict[ViewKey, Dict[SemanticKey, dict]]:  # noqa: UP006
+    def _fetch_columns(self, database: str) -> dict[ViewKey, dict[SemanticKey, dict]]:
         """{(schema, view): {(logical_table, name): {"logical_table":..., "expression":...}}}
 
         Keyed by ``(TABLE_NAME, NAME)`` rather than ``NAME``: Snowflake scopes a
@@ -279,7 +335,7 @@ class SnowflakeSemanticViewLineage:
         resolved the second through the first's expression, silently attributing its
         column lineage to the wrong base table.
         """
-        columns_by_view: Dict[ViewKey, Dict[SemanticKey, dict]] = {}  # noqa: UP006
+        columns_by_view: dict[ViewKey, dict[SemanticKey, dict]] = {}
         for catalog_view in SEMANTIC_COLUMN_CATALOG_VIEWS:
             query = SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB.format(database=_quote_db(database), catalog_view=catalog_view)
             for row in self._run(query):
@@ -288,14 +344,14 @@ class SnowflakeSemanticViewLineage:
                 columns.setdefault((logical_table, name), {"logical_table": logical_table, "expression": expression})
         return columns_by_view
 
-    def _fetch_view_metrics(self, database: str) -> Dict[ViewKey, List[SemanticKey]]:  # noqa: UP006
+    def _fetch_view_metrics(self, database: str) -> dict[ViewKey, list[SemanticKey]]:
         """{(schema, view): [(logical_table, metric_name), ...]} for the whole database.
 
         The logical table is part of the metric's identity and feeds
         ``build_metric_name``; dropping it here would make this pass look up a name
         the metadata pass never wrote.
         """
-        metrics_by_view: Dict[ViewKey, List[SemanticKey]] = {}  # noqa: UP006
+        metrics_by_view: dict[ViewKey, list[SemanticKey]] = {}
         query = SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB.format(
             database=_quote_db(database), catalog_view="semantic_metrics"
         )
@@ -310,27 +366,15 @@ class SnowflakeSemanticViewLineage:
         schema: str,
         view: str,
         view_entity: Table,
-        metrics: List[SemanticKey],  # noqa: UP006
+        metrics: list[SemanticKey],
     ) -> Iterable[Either[AddLineageRequest]]:
         """Yield one `semantic view -> Metric` edge per resolvable metric."""
-        requests: List[Either[AddLineageRequest]] = []  # noqa: UP006
+        requests: list[Either[AddLineageRequest]] = []
         for logical_table, metric_name in metrics:
             name = build_metric_name(self.service_name, database, schema, view, logical_table, metric_name)
             metric = self.resolve_metric_by_name(name)
             if metric is not None:
-                requests.append(
-                    Either(  # pyright: ignore[reportCallIssue]
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=_table_reference(view_entity),
-                                toEntity=EntityReference(id=metric.id, type="metric"),  # pyright: ignore[reportCallIssue]
-                                lineageDetails=LineageDetails(  # pyright: ignore[reportCallIssue]
-                                    source=LineageSource.ViewLineage,
-                                ),
-                            )
-                        )
-                    )
-                )
+                requests.append(metric_lineage_request(view_entity, metric))
         return requests
 
     def _build_view_lineage(
@@ -338,11 +382,11 @@ class SnowflakeSemanticViewLineage:
         database: str,
         schema: str,
         view: str,
-        table_map: Dict[str, BaseTable],  # noqa: UP006
-        columns: Dict[SemanticKey, dict],  # noqa: UP006
+        table_map: dict[str, BaseTable],
+        columns: dict[SemanticKey, dict],
     ) -> Iterable[Either[AddLineageRequest]]:
         view_entity = self.resolve_table_by_fqn(fqn._build(self.service_name, database, schema, view))
-        requests: List[Either[AddLineageRequest]] = []  # noqa: UP006
+        requests: list[Either[AddLineageRequest]] = []
         if view_entity is not None:
             pairs_by_base = self._group_pairs_by_base_table(columns, table_map)
             for base_table in set(table_map.values()):
@@ -355,9 +399,9 @@ class SnowflakeSemanticViewLineage:
 
     @staticmethod
     def _group_pairs_by_base_table(
-        columns: Dict[SemanticKey, dict],  # noqa: UP006
-        table_map: Dict[str, BaseTable],  # noqa: UP006
-    ) -> Dict[BaseTable, List[Tuple[str, str]]]:  # noqa: UP006
+        columns: dict[SemanticKey, dict],
+        table_map: dict[str, BaseTable],
+    ) -> dict[BaseTable, list[tuple[str, str]]]:
         """Map each base table to the (base_column, view_column) pairs feeding it.
 
         Resolution keys on ``(logical_table, name)``, but the pair's destination is the
@@ -367,7 +411,7 @@ class SnowflakeSemanticViewLineage:
         objects therefore land as two upstreams of the one column OpenMetadata holds,
         instead of one of them being attributed to the other's base table.
         """
-        pairs_by_base: Dict[BaseTable, List[Tuple[str, str]]] = {}  # noqa: UP006
+        pairs_by_base: dict[BaseTable, list[tuple[str, str]]] = {}
         for column_key in columns:
             view_column = column_key[1]
             for base_table, base_column in resolve_base_columns(column_key, columns, table_map):
@@ -378,52 +422,16 @@ class SnowflakeSemanticViewLineage:
         self,
         base_table: BaseTable,
         view_entity: Table,
-        pairs: List[Tuple[str, str]],  # noqa: UP006
-    ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
+        pairs: list[tuple[str, str]],
+    ) -> Either[AddLineageRequest] | None:
         base_catalog, base_schema, base_name = base_table
         base_entity = self.resolve_table_by_fqn(fqn._build(self.service_name, base_catalog, base_schema, base_name))
         result = None
         if base_entity is not None:
-            column_lineage = self._build_column_lineage(base_entity, view_entity, pairs)
-            result = Either(  # pyright: ignore[reportCallIssue]
-                right=AddLineageRequest(
-                    edge=EntitiesEdge(
-                        fromEntity=_table_reference(base_entity),
-                        toEntity=_table_reference(view_entity),
-                        lineageDetails=LineageDetails(  # pyright: ignore[reportCallIssue]
-                            source=LineageSource.ViewLineage,
-                            columnsLineage=column_lineage or None,
-                        ),
-                    )
-                )
-            )
+            result = view_lineage_request(base_entity, view_entity, column_lineage(base_entity, view_entity, pairs))
         return result
 
-    @staticmethod
-    def _build_column_lineage(
-        base_entity: Table,
-        view_entity: Table,
-        pairs: List[Tuple[str, str]],  # noqa: UP006
-    ) -> List[ColumnLineage]:  # noqa: UP006
-        """Group (base_column, view_column) pairs into ColumnLineage entries by
-        destination column, resolving each side to its materialized column FQN."""
-        grouped: Dict[str, List[str]] = {}  # noqa: UP006
-        for base_column, view_column in pairs:
-            from_fqn = get_column_fqn(base_entity, base_column)
-            to_fqn = get_column_fqn(view_entity, view_column)
-            if from_fqn and to_fqn:
-                sources = grouped.setdefault(to_fqn, [])
-                if from_fqn not in sources:
-                    sources.append(from_fqn)
-        return [
-            ColumnLineage(  # pyright: ignore[reportCallIssue]
-                fromColumns=[FullyQualifiedEntityName(source) for source in sources],
-                toColumn=FullyQualifiedEntityName(to_fqn),
-            )
-            for to_fqn, sources in grouped.items()
-        ]
-
-    def _run(self, query: str) -> List[tuple]:  # noqa: UP006
+    def _run(self, query: str) -> list[tuple]:
         """Execute a query on the shared connection and return all rows.
 
         Reuses one connection for the whole extraction. Opening a fresh

@@ -13,8 +13,6 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from typing import List, Optional  # noqa: UP035
-
 from sqlalchemy import Column, Table, text
 from sqlalchemy.sql.selectable import CTE
 
@@ -22,7 +20,10 @@ from metadata.generated.schema.entity.data.table import TableData, TableType
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
-from metadata.sampler.sqlalchemy.tsql import get_temporal_column_names
+from metadata.sampler.sqlalchemy.tsql import (
+    NOT_COMPUTE_PYODBC,
+    get_temporal_column_names,
+)
 
 
 class MssqlSampler(SQASampler):
@@ -30,6 +31,10 @@ class MssqlSampler(SQASampler):
     Generates a sample of the data to not
     run the query in the whole table.
     """
+
+    # Shared with AzureSQLSampler via tsql so the two pyodbc dialects cannot drift;
+    # kept as a class attribute so pyodbc-based subclasses can still override it.
+    NOT_COMPUTE_PYODBC = NOT_COMPUTE_PYODBC
 
     def set_tablesample(self, static: StaticSamplingConfig, selectable: Table):
         """Set the TABLESAMPLE clause for MSSQL
@@ -51,14 +56,20 @@ class MssqlSampler(SQASampler):
         query = self.get_client().query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")
 
-    def fetch_sample_data(self, columns: Optional[List[Column]] = None) -> TableData:  # noqa: UP006, UP045
+    def fetch_sample_data(self, columns: list[Column] | None = None) -> TableData:
         """Period columns are catalogued but kept out of the sample: they are row-validity
         bookkeeping, not user data, and classifying them adds noise (issue #21329).
+        Pyodbc-unsupported columns (geography, undetermined, geometry) are kept out too,
+        same as AzureSQL.
         """
         if not columns:
             return super().fetch_sample_data(columns)
         temporal_cols = get_temporal_column_names(self)
-        sampled = [col for col in columns if col.name not in temporal_cols]
+        sampled = [
+            col
+            for col in columns
+            if col.type.__class__.__name__ not in self.NOT_COMPUTE_PYODBC and col.name not in temporal_cols
+        ]
         if not sampled:
             # The base method reads an empty list as "caller gave me nothing, use them all"
             return TableData(columns=[], rows=[])

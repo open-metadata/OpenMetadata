@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useMemo } from 'react';
-import {
-  INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-} from '../../../constants/constants';
+import { useCallback, useMemo, useState } from 'react';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
+import { TEST_DEFINITION_COLUMN_BY_SORT_FIELD } from '../../../constants/TestDefinition.constants';
+import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { useTestDefinitionData } from './useTestDefinitionData';
 import { useTestDefinitionFilters } from './useTestDefinitionFilters';
@@ -38,13 +39,18 @@ export const useTestDefinitionListPage = () => {
     handlePageSizeChange,
     showPagination,
     pagingCursor,
-  } = usePaging(PAGE_SIZE_BASE);
+  } = usePaging();
 
   const {
     urlParams,
     urlFilters,
     parsedFilters,
+    searchQuery,
+    sortField,
+    sortOrder,
+    handleSortChange,
     handleFilterChange,
+    handleSearchChange,
     setSingleFilter,
     clearAllFilters,
     hasActiveFilters,
@@ -62,6 +68,7 @@ export const useTestDefinitionListPage = () => {
     testDefinitions,
     setTestDefinitions,
     isLoading,
+    isInitialLoading,
     fetchTestDefinitions,
     handleEnableToggle,
   } = useTestDefinitionData({
@@ -70,6 +77,8 @@ export const useTestDefinitionListPage = () => {
     pagingCursor,
     urlFilters,
     urlParams,
+    sortField,
+    sortOrder,
     fetchTestDefinitionPermissions,
   });
 
@@ -96,6 +105,26 @@ export const useTestDefinitionListPage = () => {
     handleFormCancel,
   } = useTestDefinitionModals({ setTestDefinitions, resetPagingAndRefetch });
 
+  const [viewedDefinition, setViewedDefinition] = useState<TestDefinition>();
+  const canEditViewedDefinition = viewedDefinition
+    ? getDerivedPermissionFlags(
+        testDefinitionPermissions[viewedDefinition.name] ??
+          DEFAULT_ENTITY_PERMISSION
+      ).canEditAll
+    : false;
+  const openDetails = useCallback(
+    (record: TestDefinition) => setViewedDefinition(record),
+    []
+  );
+  const closeDetails = useCallback(() => setViewedDefinition(undefined), []);
+  const editFromDetails = useCallback(
+    (record: TestDefinition) => {
+      setViewedDefinition(undefined);
+      handleEdit(record);
+    },
+    [handleEdit]
+  );
+
   const handlePageChangeCallback = ({
     cursorType,
     currentPage: page,
@@ -108,6 +137,20 @@ export const useTestDefinitionListPage = () => {
       );
     }
   };
+
+  /**
+   * The table talks in column ids and react-aria's ascending/descending; the
+   * URL and the API talk in sort fields and asc/desc. Translated once here so
+   * neither side has to know the other's vocabulary.
+   */
+  const sortDescriptor = useMemo(
+    () => ({
+      column: TEST_DEFINITION_COLUMN_BY_SORT_FIELD[sortField],
+      direction:
+        sortOrder === 'desc' ? ('descending' as const) : ('ascending' as const),
+    }),
+    [sortField, sortOrder]
+  );
 
   const pagingData = useMemo(
     () => ({
@@ -124,6 +167,7 @@ export const useTestDefinitionListPage = () => {
   return {
     testDefinitions,
     isLoading,
+    isInitialLoading,
     createPermission,
     viewPermission,
     testDefinitionPermissions,
@@ -134,7 +178,11 @@ export const useTestDefinitionListPage = () => {
     showPagination,
     urlFilters,
     parsedFilters,
+    searchQuery,
+    sortDescriptor,
+    handleSortChange,
     handleFilterChange,
+    handleSearchChange,
     setSingleFilter,
     clearAllFilters,
     hasActiveFilters,
@@ -152,5 +200,10 @@ export const useTestDefinitionListPage = () => {
     handleFormSuccess,
     handleFormCancel,
     fetchTestDefinitions,
+    viewedDefinition,
+    canEditViewedDefinition,
+    openDetails,
+    closeDetails,
+    editFromDetails,
   };
 };

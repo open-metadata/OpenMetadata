@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Progress, Row, Typography } from 'antd';
+import {
+  Grid,
+  ProgressBar,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { round } from 'lodash';
 import { ReactNode } from 'react';
@@ -38,38 +43,36 @@ const EntitySummaryProgressBar = ({
   };
 
   return (
-    <Row
-      className={classNames({
+    <Grid
+      className={`layout-row layout-grid ${classNames({
         'non-active-details': !isActive,
-      })}
+      })}`}
       data-testid="entity-summary-container">
-      <Col
-        className="d-flex justify-between items-center text-xs"
-        md={12}
-        sm={24}>
-        <Typography.Paragraph
-          className="m-b-0 entity-summary-name break-all"
+      <Grid.Item className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12 d-flex justify-between items-center text-xs">
+        <Typography
+          as="p"
+          className="m-b-0 entity-summary-name tw:wrap-anywhere"
           data-testid="entity-name">
           {pluralize ? pluralizeName(entity) : entity}
-        </Typography.Paragraph>
+        </Typography>
 
-        <Typography.Paragraph
+        <Typography
+          as="p"
           className="m-b-0 entity-summary-value"
           data-testid="entity-value">
           {label ?? round(progress || 0, 2)}
-        </Typography.Paragraph>
-      </Col>
-      <Col md={12} sm={24}>
-        <Progress
-          className="p-l-xss"
-          data-testid="progress-bar"
-          percent={progress}
-          showInfo={false}
-          size="small"
-          strokeColor={isActive ? strokeColor : GRAYED_OUT_COLOR}
-        />
-      </Col>
-    </Row>
+        </Typography>
+      </Grid.Item>
+      <Grid.Item className="layout-column tw:col-span-24 tw:min-[576px]:col-span-24 tw:min-[768px]:col-span-12">
+        <div data-testid="progress-bar">
+          <ProgressBar
+            className="p-l-xss"
+            color={isActive ? strokeColor : GRAYED_OUT_COLOR}
+            value={Math.min(100, Math.max(0, progress || 0))}
+          />
+        </div>
+      </Grid.Item>
+    </Grid>
   );
 };
 

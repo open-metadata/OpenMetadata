@@ -24,17 +24,29 @@ import classNames from 'classnames';
 import { DateTime } from 'luxon';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as StoryLaneIcon } from '../../../assets/svg/ic_storylane.svg';
-import { ReactComponent as VideoIcon } from '../../../assets/svg/ic_video.svg';
 import {
   CATEGORY_BADGE_COLORS,
   DESCRIPTION_VIEW_MORE_THRESHOLD,
-  ICON_COLOR_CLASS,
   MAX_VISIBLE_CATEGORIES_IN_CARD,
-  ResourceType,
 } from '../../../constants/Learning.constants';
+import { getDurationUnitLabelKey } from '../../../utils/platform/learning.utils';
 import { LEARNING_CATEGORIES, ResourceCategory } from '../Learning.interface';
+import { ResourceTypeIcon } from '../ResourceTypeIcon/ResourceTypeIcon';
 import { LearningResourceCardProps } from './LearningResourceCard.interface';
+
+const getCategoryTags = (
+  categories: string[] | undefined
+): { visible: string[]; hidden: string[]; remaining: number } => {
+  if (!categories || categories.length === 0) {
+    return { visible: [], hidden: [], remaining: 0 };
+  }
+
+  return {
+    visible: categories.slice(0, MAX_VISIBLE_CATEGORIES_IN_CARD),
+    hidden: categories.slice(MAX_VISIBLE_CATEGORIES_IN_CARD),
+    remaining: categories.length - MAX_VISIBLE_CATEGORIES_IN_CARD,
+  };
+};
 
 export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
   resource,
@@ -47,33 +59,17 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
     resource.description &&
     resource.description.length > DESCRIPTION_VIEW_MORE_THRESHOLD;
 
-  const iconColorClass =
-    ICON_COLOR_CLASS[resource.resourceType.toLowerCase()] ??
-    ICON_COLOR_CLASS.video;
-  const resourceTypeIcon =
-    resource.resourceType === ResourceType.Storylane ? (
-      <StoryLaneIcon className={iconColorClass} height={24} width={24} />
-    ) : (
-      <VideoIcon className={iconColorClass} height={24} width={24} />
-    );
-
   const formattedDuration = resource.estimatedDuration
-    ? `${Math.floor(resource.estimatedDuration / 60)} ${t('label.min-watch')}`
+    ? `${Math.floor(resource.estimatedDuration / 60)} ${t(
+        getDurationUnitLabelKey(resource.resourceType)
+      )}`
     : null;
 
   const formattedDate = resource.updatedAt
     ? DateTime.fromMillis(resource.updatedAt).toFormat('LLL dd, yyyy')
     : null;
 
-  const categoryTags =
-    !resource.categories || resource.categories.length === 0
-      ? { visible: [] as string[], hidden: [] as string[], remaining: 0 }
-      : {
-          visible: resource.categories.slice(0, MAX_VISIBLE_CATEGORIES_IN_CARD),
-          hidden: resource.categories.slice(MAX_VISIBLE_CATEGORIES_IN_CARD),
-          remaining:
-            resource.categories.length - MAX_VISIBLE_CATEGORIES_IN_CARD,
-        };
+  const categoryTags = getCategoryTags(resource.categories);
 
   const getCategoryLabel = (category: string) =>
     LEARNING_CATEGORIES[category as ResourceCategory]?.label ?? category;
@@ -89,8 +85,125 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
     e.stopPropagation();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick?.(resource);
+    }
+  };
+
+  const interactiveProps = onClick
+    ? {
+        'aria-label': resource.displayName || resource.name,
+        role: 'button',
+        tabIndex: 0,
+        onKeyDown: handleKeyDown,
+      }
+    : undefined;
+
+  const renderDescription = () =>
+    resource.description ? (
+      <>
+        <Typography
+          aria-label={resource.description}
+          as="span"
+          className="tw:text-tertiary"
+          data-testid="learning-resource-description"
+          ellipsis={{ rows: showViewMore ? 2 : 3 }}
+          size="text-xs">
+          {resource.description}
+        </Typography>
+        {showViewMore && (
+          <Box inline className="tw:shrink-0" onClick={stopPropagation}>
+            <Button color="link-color" size="sm" onPress={handleViewMoreClick}>
+              {t('label.view-more')}
+            </Button>
+          </Box>
+        )}
+      </>
+    ) : (
+      <Typography
+        as="span"
+        className="tw:italic tw:text-quaternary"
+        data-testid="learning-resource-description"
+        size="text-sm">
+        {t('label.no-entity-added', {
+          entity: t('label.description-lowercase'),
+        })}
+      </Typography>
+    );
+
+  const renderCategories = () =>
+    categoryTags.visible.length > 0 ? (
+      <>
+        <Box className="tw:min-w-0 tw:flex-nowrap tw:gap-1.5 tw:overflow-hidden">
+          {categoryTags.visible.map((category) => (
+            <Badge
+              color={getCategoryColor(category)}
+              key={category}
+              size="sm"
+              type="color">
+              {getCategoryLabel(category)}
+            </Badge>
+          ))}
+        </Box>
+        {categoryTags.remaining > 0 && (
+          <Box inline className="tw:shrink-0" onClick={stopPropagation}>
+            <PopoverTrigger isOpen={popoverOpen} onOpenChange={setPopoverOpen}>
+              <Button color="secondary" data-testid="more-categories" size="sm">
+                +{categoryTags.remaining}
+              </Button>
+              <Popover containerClassName="tw:p-3" placement="bottom left">
+                <Box className="tw:max-w-[250px] tw:flex-wrap tw:gap-1.5">
+                  {categoryTags.hidden.map((category) => (
+                    <Badge
+                      color={getCategoryColor(category)}
+                      key={category}
+                      size="sm"
+                      type="color">
+                      {getCategoryLabel(category)}
+                    </Badge>
+                  ))}
+                </Box>
+              </Popover>
+            </PopoverTrigger>
+          </Box>
+        )}
+      </>
+    ) : (
+      <Typography
+        as="span"
+        className="tw:italic tw:text-quaternary"
+        size="text-sm">
+        {t('label.no-entity-added', {
+          entity: t('label.category-lowercase'),
+        })}
+      </Typography>
+    );
+
+  const renderMetadata = () => (
+    <>
+      {formattedDate && (
+        <Typography as="span" className="tw:text-tertiary" size="text-xs">
+          {formattedDate}
+        </Typography>
+      )}
+      {formattedDate && formattedDuration && (
+        <Typography as="span" className="tw:text-quaternary" size="text-xs">
+          |
+        </Typography>
+      )}
+      {formattedDuration && (
+        <Typography as="span" className="tw:text-tertiary" size="text-xs">
+          {formattedDuration}
+        </Typography>
+      )}
+    </>
+  );
+
   return (
     <Box
+      {...interactiveProps}
       className={classNames(
         'tw:w-full tw:min-w-0 tw:p-5 tw:rounded-xl tw:bg-primary tw:border tw:border-secondary tw:shadow-xs tw:transition-all',
         onClick && 'tw:cursor-pointer tw:hover:shadow-md'
@@ -101,7 +214,9 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
       gap={3}
       onClick={() => onClick?.(resource)}>
       <Box align="start" className="tw:min-w-0 tw:min-h-10" gap={3}>
-        <Box className="tw:shrink-0 tw:mt-0.5">{resourceTypeIcon}</Box>
+        <Box className="tw:shrink-0 tw:mt-0.5">
+          <ResourceTypeIcon resourceType={resource.resourceType} />
+        </Box>
         <Typography
           as="span"
           className="tw:flex-1 tw:min-w-0 tw:text-primary"
@@ -113,116 +228,18 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
       </Box>
 
       <Box className="tw:min-h-14" direction="col" gap={1}>
-        {resource.description ? (
-          <>
-            <Typography
-              aria-label={resource.description}
-              as="span"
-              className="tw:text-tertiary"
-              data-testid="learning-resource-description"
-              ellipsis={{ rows: showViewMore ? 2 : 3 }}
-              size="text-xs">
-              {resource.description}
-            </Typography>
-            {showViewMore && (
-              <Box inline className="tw:shrink-0" onClick={stopPropagation}>
-                <Button
-                  color="link-color"
-                  size="sm"
-                  onPress={handleViewMoreClick}>
-                  {t('label.view-more')}
-                </Button>
-              </Box>
-            )}
-          </>
-        ) : (
-          <Typography
-            as="span"
-            className="tw:italic tw:text-quaternary"
-            data-testid="learning-resource-description"
-            size="text-sm">
-            {t('label.no-entity-added', {
-              entity: t('label.description-lowercase'),
-            })}
-          </Typography>
-        )}
+        {renderDescription()}
       </Box>
 
       <Box direction="col" gap={3}>
         <Box
           align="center"
           className="tw:min-w-0 tw:gap-1.5 tw:overflow-hidden">
-          {categoryTags.visible.length > 0 ? (
-            <>
-              <Box className="tw:min-w-0 tw:flex-nowrap tw:gap-1.5 tw:overflow-hidden">
-                {categoryTags.visible.map((category) => (
-                  <Badge
-                    color={getCategoryColor(category)}
-                    key={category}
-                    size="sm"
-                    type="color">
-                    {getCategoryLabel(category)}
-                  </Badge>
-                ))}
-              </Box>
-              {categoryTags.remaining > 0 && (
-                <Box inline className="tw:shrink-0" onClick={stopPropagation}>
-                  <PopoverTrigger
-                    isOpen={popoverOpen}
-                    onOpenChange={setPopoverOpen}>
-                    <Button
-                      color="secondary"
-                      data-testid="more-categories"
-                      size="sm">
-                      +{categoryTags.remaining}
-                    </Button>
-                    <Popover
-                      containerClassName="tw:p-3"
-                      placement="bottom left">
-                      <Box className="tw:max-w-[250px] tw:flex-wrap tw:gap-1.5">
-                        {categoryTags.hidden.map((category) => (
-                          <Badge
-                            color={getCategoryColor(category)}
-                            key={category}
-                            size="sm"
-                            type="color">
-                            {getCategoryLabel(category)}
-                          </Badge>
-                        ))}
-                      </Box>
-                    </Popover>
-                  </PopoverTrigger>
-                </Box>
-              )}
-            </>
-          ) : (
-            <Typography
-              as="span"
-              className="tw:italic tw:text-quaternary"
-              size="text-sm">
-              {t('label.no-entity-added', {
-                entity: t('label.category-lowercase'),
-              })}
-            </Typography>
-          )}
+          {renderCategories()}
         </Box>
 
         <Box align="center" className="tw:shrink-0 tw:gap-1.5">
-          {formattedDate && (
-            <Typography as="span" className="tw:text-tertiary" size="text-xs">
-              {formattedDate}
-            </Typography>
-          )}
-          {formattedDate && formattedDuration && (
-            <Typography as="span" className="tw:text-quaternary" size="text-xs">
-              |
-            </Typography>
-          )}
-          {formattedDuration && (
-            <Typography as="span" className="tw:text-tertiary" size="text-xs">
-              {formattedDuration}
-            </Typography>
-          )}
+          {renderMetadata()}
         </Box>
       </Box>
     </Box>

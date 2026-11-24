@@ -12,6 +12,7 @@
  */
 import { useMemo } from 'react';
 import { useTheme } from '../context/UntitledUIThemeProvider/theme-provider';
+import { resolveCssColor } from '../utils/common/cssColor.utils';
 import { LineageEdgeColors } from '../utils/EdgeStyleUtils';
 
 /**
@@ -21,13 +22,22 @@ import { LineageEdgeColors } from '../utils/EdgeStyleUtils';
  * dark mode is handled via CSS variables rather than a recomputed palette.
  */
 export const useLineageEdgeColors = (): LineageEdgeColors => {
-  const { brandColors } = useTheme();
+  const { brandColors, theme } = useTheme();
 
   return useMemo(() => {
     return {
       primary: brandColors?.primaryColor ?? '#1570ef',
       columnHighlight: '#444ce7', // It's a replacement to indigo-600 not a theme color
       dqHighlight: brandColors?.errorColor ?? '#d92d20',
+      labelBackground: resolveCssColor(
+        'var(--tw-background-color-surface)',
+        '#ffffff'
+      ),
+      labelBorder: resolveCssColor(
+        'var(--tw-border-color-secondary)',
+        '#e9eaeb'
+      ),
+      labelText: resolveCssColor('var(--tw-color-fg-tertiary)', '#535862'),
     };
-  }, [brandColors]);
+  }, [brandColors, theme]);
 };

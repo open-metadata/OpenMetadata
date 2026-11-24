@@ -13,10 +13,14 @@
 MSSQL E2E tests
 """
 
-from typing import List  # noqa: UP035
+import pytest
 
 from .common.test_cli_db import CliCommonDB  # noqa: TID252
 from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
+
+# TODO: Remove skip once the E2E SQL Server has moved off EC2:
+# https://github.com/open-metadata/k8s-manifests/pull/429
+pytestmark = pytest.mark.skip(reason="Skipped: E2E SQL Server is being migrated off EC2")
 
 
 class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
@@ -38,7 +42,7 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             FROM e2e_cli_tests.dbo.persons;
     """
 
-    insert_data_queries: List[str] = [  # noqa: RUF012, UP006
+    insert_data_queries: list[str] = [  # noqa: RUF012
         """
     INSERT INTO persons (person_id, full_name, birthdate, is_meeting_scheduled) VALUES
         (1,'Peter Parker', '2004-08-10', 1),
@@ -105,15 +109,15 @@ class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):
         }
 
     @staticmethod
-    def get_includes_schemas() -> List[str]:  # noqa: UP006
+    def get_includes_schemas() -> list[str]:
         return ["dbo"]
 
     @staticmethod
-    def get_includes_tables() -> List[str]:  # noqa: UP006
+    def get_includes_tables() -> list[str]:
         return ["persons"]
 
     @staticmethod
-    def get_excludes_tables() -> List[str]:  # noqa: UP006
+    def get_excludes_tables() -> list[str]:
         return ["foo"]
 
     @staticmethod

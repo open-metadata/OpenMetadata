@@ -12,11 +12,16 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { AgentStatus } from '../enums/ServiceInsights.enum';
 import {
   AppRunRecord,
   Status,
 } from '../generated/entity/applications/appRunRecord';
-import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  PipelineState,
+  PipelineType,
+  ProviderType,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   WorkflowInstance,
   WorkflowStatus,
@@ -27,6 +32,8 @@ import {
 } from '../rest/applicationAPI';
 import {
   automationRunToAppRunRecord,
+  getAgentStatusLabelFromStatus,
+  getAgentStatusSummary,
   getAutomationTemplate,
 } from './AgentsStatusWidgetPureUtils';
 import {
@@ -218,20 +225,50 @@ describe('getFormattedAgentsList', () => {
 });
 
 describe('getFormattedAgentsListFromAgentsLiveInfo', () => {
-  it('keeps the Collate agents when a frame carries no app status', () => {
+  it('lists both halves of a frame in the AutoPilot order', () => {
+    const result = getFormattedAgentsListFromAgentsLiveInfo(
+      [
+        {
+          pipelineType: PipelineType.Metadata,
+          provider: ProviderType.Automation,
+        },
+      ] as never,
+      [{ appName: 'svc_TierAutomation' } as never]
+    );
+
+    expect(result.map((a) => a.agentType)).toEqual([
+      PipelineType.Metadata,
+      'TierAutomation',
+    ]);
+  });
+
+  // The server folds a failed automation lookup into an empty app status, so a live frame without
+  // one must not wipe the Collate agents already on screen — while its metadata half still applies.
+  it('keeps the Collate agents on screen when a live frame carries no app status', () => {
     const preserved = getFormattedAgentsList(
       {},
       [],
       [{ id: 'a1', name: 'svc_TierAutomation' }]
     );
 
-    // Terminal frames carry no payload, so the agents already on screen stay.
-    const result = getFormattedAgentsListFromAgentsLiveInfo([], [], preserved);
+    const result = getFormattedAgentsListFromAgentsLiveInfo(
+      [
+        {
+          pipelineType: PipelineType.Metadata,
+          provider: ProviderType.Automation,
+        },
+      ] as never,
+      [],
+      preserved
+    );
 
-    expect(result.map((a) => a.agentType)).toEqual(['TierAutomation']);
+    expect(result.map((a) => a.agentType)).toEqual([
+      PipelineType.Metadata,
+      'TierAutomation',
+    ]);
   });
 
-  it('prefers live Collate app status over the preserved fallback', () => {
+  it('prefers the live Collate app status over the agents on screen', () => {
     const preserved = getFormattedAgentsList(
       {},
       [],
@@ -245,5 +282,39 @@ describe('getFormattedAgentsListFromAgentsLiveInfo', () => {
     );
 
     expect(result.map((a) => a.agentType)).toEqual(['DescriptionAutomation']);
+  });
+
+  it('drops the metadata agents when a frame reports none', () => {
+    const result = getFormattedAgentsListFromAgentsLiveInfo(
+      [],
+      [{ appName: 'svc_TierAutomation' } as never]
+    );
+
+    expect(result.map((a) => a.agentType)).toEqual(['TierAutomation']);
+  });
+
+  it('reports an empty list when a frame reports no agents at all', () => {
+    expect(getFormattedAgentsListFromAgentsLiveInfo([], [])).toEqual([]);
+  });
+});
+
+describe('stopped agent runs', () => {
+  it.each([PipelineState.Stopped, Status.Stopped])(
+    'labels a %s run as Stopped, not Pending',
+    (status) => {
+      expect(getAgentStatusLabelFromStatus(status)).toBe(AgentStatus.Stopped);
+    }
+  );
+
+  it('counts a stopped run under Stopped in the summary', () => {
+    const summary = getAgentStatusSummary([
+      { agentType: PipelineType.Metadata, status: AgentStatus.Stopped },
+      { agentType: PipelineType.Usage, status: AgentStatus.Pending },
+    ] as Parameters<typeof getAgentStatusSummary>[0]);
+
+    expect(summary).toEqual({
+      [AgentStatus.Stopped]: 1,
+      [AgentStatus.Pending]: 1,
+    });
   });
 });

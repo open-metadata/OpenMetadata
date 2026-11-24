@@ -1,0 +1,98 @@
+package org.openmetadata.service.lineage;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch._types.ErrorResponse;
+import jakarta.ws.rs.BadRequestException;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.search.QueryFilterParser;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
+
+class LineageSceneQueryTest {
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"null", "{}", "{\"query\":null}", "{\"query\":{}}"})
+  void absentAndEmptyFiltersDoNotAddAQuery(String filter) {
+    assertNull(LineageSceneQuery.parseQueryFilter(filter));
+  }
+
+  @Test
+  void wrappedAndUnwrappedFiltersSerializeIdentically() {
+    String filter = "{\"term\":{\"tags.tagFQN\":\"PII.Sensitive\"}}";
+    String unwrapped = LineageSceneQuery.queryJson(LineageSceneQuery.parseQueryFilter(filter));
+    String wrapped =
+        LineageSceneQuery.queryJson(
+            LineageSceneQuery.parseQueryFilter("{\"query\":" + filter + "}"));
+
+    assertEquals(JsonUtils.readTree(unwrapped), JsonUtils.readTree(wrapped));
+    assertEquals(
+        "PII.Sensitive", JsonUtils.readTree(wrapped).at("/query/term/tags.tagFQN/value").asText());
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{\"term\":{\"tags.tagFQN\":\"PII.Sensitive\"}}",
+        "{\"term\":{\"tier.tagFQN\":\"Tier.Tier2\"}}",
+        "{\"match\":{\"name\":\"sales\"}}"
+      })
+  void normalizedFiltersPreserveInMemoryLineageMatches(String filter) {
+    String normalized = LineageSceneQuery.queryJson(LineageSceneQuery.parseQueryFilter(filter));
+    Map<String, Object> matchingEntity =
+        Map.of(
+            "tags", List.of(Map.of("tagFQN", "PII.Sensitive")),
+            "tier", Map.of("tagFQN", "Tier.Tier2"),
+            "name", "monthly_sales");
+    Map<String, Object> nonMatchingEntity =
+        Map.of(
+            "tags", List.of(Map.of("tagFQN", "PII.NonSensitive")),
+            "tier", Map.of("tagFQN", "Tier.Tier1"),
+            "name", "customers");
+
+    assertTrue(QueryFilterParser.matchesFilter(matchingEntity, normalized));
+    assertFalse(QueryFilterParser.matchesFilter(nonMatchingEntity, normalized));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"{\"query\":", "{\"term\":{}}", "[\"not\",\"a\",\"query\"]"})
+  void malformedFiltersAreRejectedAsBadRequests(String filter) {
+    BadRequestException error =
+        assertThrows(BadRequestException.class, () -> LineageSceneQuery.parseQueryFilter(filter));
+
+    assertTrue(error.getMessage().startsWith("Invalid query_filter"), error.getMessage());
+  }
+
+  @Test
+  void searchEngineBadRequestsAnywhereInTheCauseChainAreRejectedFilters() {
+    ErrorResponse elasticError =
+        ErrorResponse.of(
+            e -> e.status(400).error(cause -> cause.type("parsing_exception").reason("bad")));
+    os.org.opensearch.client.opensearch._types.ErrorResponse openSearchError =
+        os.org.opensearch.client.opensearch._types.ErrorResponse.of(
+            e -> e.status(400).error(cause -> cause.type("parsing_exception").reason("bad")));
+
+    assertTrue(
+        LineageSceneQuery.isRejectedBySearchEngine(
+            new IllegalStateException(new ElasticsearchException("search", elasticError))));
+    assertTrue(
+        LineageSceneQuery.isRejectedBySearchEngine(new OpenSearchException(openSearchError)));
+    assertFalse(
+        LineageSceneQuery.isRejectedBySearchEngine(
+            new ElasticsearchException(
+                "search",
+                ErrorResponse.of(
+                    e -> e.status(500).error(cause -> cause.type("node").reason("down"))))));
+    assertFalse(LineageSceneQuery.isRejectedBySearchEngine(new IllegalStateException("down")));
+  }
+}

@@ -25,7 +25,6 @@ import {
   WorkflowType,
 } from '../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
-import { WorkflowTriggerFields } from '../../../generated/type/workflowTriggerFields';
 import {
   BackendNodeConfig,
   DataAssetFilter,
@@ -40,13 +39,71 @@ import {
   isStartNode,
 } from '../../../utils/NodeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import { validateWorkflowConfig } from '../../../utils/WorkflowConfigUtils';
 import {
+  buildEntityFieldGroups,
+  getGitSinkTriggerNodeConfig,
+  getTriggerDataAssets,
+  isIncidentSettingsWorkflow,
+  validateWorkflowConfig,
+  withExtensionPrefix,
+} from '../../../utils/WorkflowConfigUtils';
+import {
+  reconcileDataAssetFilters,
   serializeDataAssetFilters,
   serializeEventBasedFilters,
   serializePeriodicBatchFilters,
 } from '../../../utils/WorkflowSerializationUtils';
-import { FormActionButtons, WorkflowConfigFormV1 } from './forms';
+import { FormActionButtons } from './forms/FormActionButtons';
+import { WorkflowConfigFormV1 } from './forms/WorkflowConfigFormV1';
+
+// An unset flag means on, matching the workflow definition's default.
+const resolveAutoAssignOwners = (
+  node: Node,
+  workflowDefinition: NodeConfigSidebarProps['workflowDefinition']
+): boolean =>
+  node.data?.autoAssignOwners ??
+  (node.data?.config as NodeConfig | undefined)?.autoAssignOwners ??
+  workflowDefinition?.config?.autoAssignOwners ??
+  true;
+
+const computeStartNodeConfig = (
+  node: Node,
+  workflowDefinition: NodeConfigSidebarProps['workflowDefinition'],
+  workflowMetadata: NodeConfigSidebarProps['workflowMetadata'],
+  localName: string | null,
+  localDescription: string | null
+): NodeConfig => {
+  const baseConfig: NodeConfig = {
+    ...getInitialNodeConfig(node, workflowDefinition, null),
+    ...(isIncidentSettingsWorkflow(workflowDefinition) && {
+      autoAssignOwners: resolveAutoAssignOwners(node, workflowDefinition),
+    }),
+  };
+
+  if (workflowMetadata) {
+    const configWithMetadata = {
+      ...baseConfig,
+      name: workflowMetadata.displayName || baseConfig.name,
+      description: workflowMetadata.description || baseConfig.description,
+    };
+
+    return {
+      ...configWithMetadata,
+      name: localName !== null ? localName : configWithMetadata.name,
+      description:
+        localDescription !== null
+          ? localDescription
+          : configWithMetadata.description,
+    };
+  }
+
+  return {
+    ...baseConfig,
+    name: localName !== null ? localName : baseConfig.name,
+    description:
+      localDescription !== null ? localDescription : baseConfig.description,
+  };
+};
 
 const getBackendConfig = (node: Node | null): BackendNodeConfig => {
   const nodeConfig = node?.data?.config || {};
@@ -71,12 +128,16 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   workflowDefinition,
   workflowMetadata,
   onWorkflowMetadataUpdate,
+  triggerFieldsConfig,
+  hasGitSinkNode = false,
 }) => {
   const {
     allowFullStartNodeConfiguration,
     allowStartNodeFilterScheduleAndBatchEdit,
     allowScheduledTrigger,
+    isNoOp,
   } = useWorkflowModeContext();
+  const isIncidentWorkflow = isIncidentSettingsWorkflow(workflowDefinition);
   const [isUpdating, setIsUpdating] = useState(false);
   const [backendConfig, setBackendConfig] = useState(() =>
     getBackendConfig(node)
@@ -88,31 +149,13 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
 
   const config = useMemo(() => {
     if (isStartNode(node) && node) {
-      const baseConfig = getInitialNodeConfig(node, workflowDefinition, null);
-
-      if (workflowMetadata) {
-        const configWithMetadata = {
-          ...baseConfig,
-          name: workflowMetadata.displayName || baseConfig.name,
-          description: workflowMetadata.description || baseConfig.description,
-        };
-
-        return {
-          ...configWithMetadata,
-          name: localName !== null ? localName : configWithMetadata.name,
-          description:
-            localDescription !== null
-              ? localDescription
-              : configWithMetadata.description,
-        };
-      }
-
-      return {
-        ...baseConfig,
-        name: localName !== null ? localName : baseConfig.name,
-        description:
-          localDescription !== null ? localDescription : baseConfig.description,
-      };
+      return computeStartNodeConfig(
+        node,
+        workflowDefinition,
+        workflowMetadata,
+        localName,
+        localDescription
+      );
     }
 
     return node
@@ -120,7 +163,15 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       : getInitialNodeConfig({} as Node, workflowDefinition, null);
   }, [node, workflowDefinition, workflowMetadata, localName, localDescription]);
 
-  const effectiveConfig = localConfig || config;
+  // A Git sink workflow's trigger keeps only the entity types the sink syncs, whichever order the
+  // trigger and the sink were configured in.
+  const effectiveConfig = useMemo(() => {
+    const currentConfig = localConfig || config;
+
+    return hasGitSinkNode && isStartNode(node)
+      ? getGitSinkTriggerNodeConfig(currentConfig)
+      : currentConfig;
+  }, [localConfig, config, hasGitSinkNode, node]);
 
   const [customPropertyFields, setCustomPropertyFields] = useState<string[]>(
     []
@@ -137,16 +188,50 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     Promise.all(assets.map((asset) => getCustomPropertiesByEntityType(asset)))
       .then((results) => {
         const names = [
-          ...new Set(results.flat().map((p) => `extension.${p.name}`)),
+          ...new Set(results.flat().map((p) => withExtensionPrefix(p.name))),
         ];
         setCustomPropertyFields(names);
       })
       .catch(() => setCustomPropertyFields([]));
   }, [effectiveConfig.dataAssets]);
 
+  // Offer the fields relevant to the workflow's selected entity types: the common fields plus each
+  // selected entity's own trigger fields (e.g. `columns` for a table) and its custom properties.
   const availableExcludeFields = useMemo(() => {
-    return [...Object.values(WorkflowTriggerFields), ...customPropertyFields];
-  }, [customPropertyFields]);
+    const assets = effectiveConfig.dataAssets ?? [];
+    const entitySpecificFields = assets.flatMap(
+      (asset) => triggerFieldsConfig.entitySpecific[asset] ?? []
+    );
+
+    return [
+      ...new Set([
+        ...triggerFieldsConfig.common,
+        ...entitySpecificFields,
+        ...customPropertyFields,
+      ]),
+    ];
+  }, [triggerFieldsConfig, effectiveConfig.dataAssets, customPropertyFields]);
+
+  // The trigger-fields registry's entity types are the ones a workflow can be defined on.
+  const workflowEntityTypes = useMemo(
+    () =>
+      getTriggerDataAssets(
+        Object.keys(triggerFieldsConfig.entitySpecific),
+        hasGitSinkNode
+      ),
+    [triggerFieldsConfig, hasGitSinkNode]
+  );
+
+  // Group entity-specific fields under their entity type below the common fields
+  // (e.g. `columns` shown under `table`).
+  const excludeFieldGroups = useMemo(
+    () =>
+      buildEntityFieldGroups(
+        triggerFieldsConfig.entitySpecific,
+        effectiveConfig.dataAssets ?? []
+      ),
+    [triggerFieldsConfig, effectiveConfig.dataAssets]
+  );
 
   useEffect(() => {
     if (isStartNode(node)) {
@@ -162,10 +247,25 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
 
   const updateConfig = useCallback(
     <K extends keyof NodeConfig>(key: K, value: NodeConfig[K]) => {
-      setLocalConfig((prevConfig) => ({
-        ...(prevConfig || effectiveConfig),
-        [key]: value,
-      }));
+      setLocalConfig((prevConfig) => {
+        const base = prevConfig || effectiveConfig;
+
+        if (key !== 'dataAssets') {
+          return { ...base, [key]: value };
+        }
+
+        // Each filter is bound to the asset type it was created for.
+        const assets = (value as string[]) ?? [];
+
+        return {
+          ...base,
+          dataAssets: assets,
+          dataAssetFilters: reconcileDataAssetFilters(
+            base.dataAssetFilters,
+            assets
+          ),
+        };
+      });
 
       if (key === 'name') {
         setLocalName(value as string);
@@ -317,13 +417,15 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     let filterConfig = {};
 
     if (isEventBased) {
-      const eventFilters = serializeEventBasedFilters(
-        effectiveConfig.triggerFilter || '',
-        effectiveConfig.dataAssets
-      );
-      if (Object.keys(eventFilters).length > 0) {
-        filterConfig = { filter: eventFilters };
-      }
+      // Always set filter - even when empty - so clearing the exclude filter overwrites the stale
+      // value the effectiveConfig/backendConfig spread below carries over, instead of leaving the
+      // old filter in place. An empty object deserializes back to "no filter".
+      filterConfig = {
+        filter: serializeEventBasedFilters(
+          effectiveConfig.triggerFilter || '',
+          effectiveConfig.dataAssets
+        ),
+      };
     } else if (isPeriodicBatch) {
       const periodicFilters = serializePeriodicBatchFilters(
         effectiveConfig.dataAssetFilters
@@ -361,7 +463,8 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       setIsUpdating(true);
       const isTriggerNode = isStartNode(node);
 
-      if (isTriggerNode && allowFullStartNodeConfiguration) {
+      // OSS keeps the description editable; name and trigger type are locked in the form.
+      if (isTriggerNode && !isNoOp) {
         updateWorkflowMetadata();
       }
 
@@ -384,12 +487,12 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     }
   }, [
     node,
+    isNoOp,
     updateWorkflowMetadata,
     buildTriggerConfiguration,
     buildTaskConfiguration,
     onSave,
     onClose,
-    allowFullStartNodeConfiguration,
   ]);
 
   const handleCancel = useCallback(() => {
@@ -397,8 +500,10 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   }, [onClose]);
 
   const isWorkflowConfigValid = useMemo(
-    () => validateWorkflowConfig(effectiveConfig, isStartNode(node)),
-    [effectiveConfig, node]
+    () =>
+      (isNoOp && isIncidentWorkflow) ||
+      validateWorkflowConfig(effectiveConfig, isStartNode(node)),
+    [effectiveConfig, node, isNoOp, isIncidentWorkflow]
   );
 
   const renderFormContent = () => {
@@ -414,12 +519,15 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
         allowStartNodeFilterScheduleAndBatchEdit={
           allowStartNodeFilterScheduleAndBatchEdit
         }
+        availableDataAssets={workflowEntityTypes}
         availableEventTypes={[...AVAILABLE_OPTIONS.EVENT_TYPES]}
         availableExcludeFields={availableExcludeFields}
         config={effectiveConfig}
+        fieldGroups={excludeFieldGroups}
         handleEventTypeChange={handleEventTypeChange}
         removeDataAssetFilter={removeDataAssetFilter}
         removeFromArray={removeFromArray}
+        showAutoAssignOwners={isIncidentWorkflow}
         updateConfig={updateConfig}
         onUpdateDataAssetFilter={updateDataAssetFilter}
       />

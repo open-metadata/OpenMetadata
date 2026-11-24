@@ -1,4 +1,18 @@
 {
+  "ontologyConcept": {
+    "indexName": "ontology_concept_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ontology_term_index_mapping.json",
+    "alias": "ontologyConcept",
+    "parentAliases": ["ontologyTerms"],
+    "childAliases": []
+  },
+  "ontologyProperty": {
+    "indexName": "ontology_property_search_index",
+    "indexMappingFile": "/elasticsearch/%s/ontology_term_index_mapping.json",
+    "alias": "ontologyProperty",
+    "parentAliases": ["ontologyTerms"],
+    "childAliases": []
+  },
   "table": {
     "indexName": "table_search_index",
     "indexMappingFile": "/elasticsearch/%s/table_index_mapping.json",
@@ -230,7 +244,7 @@
     "indexName": "query_search_index",
     "indexMappingFile": "/elasticsearch/%s/query_index_mapping.json",
     "alias": "query",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "dataAssetEmbeddings"],
     "childAliases": []
   },
   "mlmodel": {
@@ -284,7 +298,8 @@
     "indexName": "domain_search_index",
     "indexMappingFile": "/elasticsearch/%s/domain_index_mapping.json",
     "alias": "domain",
-    "parentAliases": ["all", "marketplace"],
+    "parentAliases": ["all", "dataAssetEmbeddings",
+      "marketplace"],
     "childAliases": ["dataProduct"]
   },
   "metric": {
@@ -295,6 +310,15 @@
       "all",
       "dataAsset",
       "dataAssetEmbeddings"
+    ],
+    "childAliases": []
+  },
+  "metricGroup": {
+    "indexName": "metric_group_search_index",
+    "indexMappingFile": "/elasticsearch/%s/metric_group_index_mapping.json",
+    "alias": "metricGroup",
+    "parentAliases": [
+      "all"
     ],
     "childAliases": []
   },
@@ -319,6 +343,15 @@
       "glossary",
       "dataAsset",
       "dataAssetEmbeddings"
+    ],
+    "childAliases": []
+  },
+  "relationshipType": {
+    "indexName": "relationship_type_search_index",
+    "indexMappingFile": "/elasticsearch/relationship_type_index_mapping.json",
+    "alias": "relationshipType",
+    "parentAliases": [
+      "all"
     ],
     "childAliases": []
   },
@@ -545,21 +578,21 @@
     "indexName": "ai_application_search_index",
     "indexMappingFile": "/elasticsearch/%s/ai_application_index_mapping.json",
     "alias": "aiApplication",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "dataAssetEmbeddings"],
     "childAliases": []
   },
   "llmModel": {
     "indexName": "llm_model_search_index",
     "indexMappingFile": "/elasticsearch/%s/llm_model_index_mapping.json",
     "alias": "llmModel",
-    "parentAliases": ["llmService", "all"],
+    "parentAliases": ["llmService", "all", "dataAssetEmbeddings"],
     "childAliases": []
   },
   "promptTemplate": {
     "indexName": "prompt_template_search_index",
     "indexMappingFile": "/elasticsearch/%s/prompt_template_index_mapping.json",
     "alias": "promptTemplate",
-    "parentAliases": ["all"],
+    "parentAliases": ["all", "dataAssetEmbeddings"],
     "childAliases": []
   },
   "aiGovernancePolicy": {
@@ -567,7 +600,8 @@
     "indexMappingFile": "/elasticsearch/%s/ai_governance_policy_index_mapping.json",
     "alias": "aiGovernancePolicy",
     "parentAliases": [
-      "all"
+      "all",
+      "dataAssetEmbeddings"
     ],
     "childAliases": []
   },
@@ -576,7 +610,8 @@
     "indexMappingFile": "/elasticsearch/%s/ai_governance_framework_index_mapping.json",
     "alias": "aiGovernanceFramework",
     "parentAliases": [
-      "all"
+      "all",
+      "dataAssetEmbeddings"
     ],
     "childAliases": ["aiFrameworkControl"]
   },
@@ -599,13 +634,21 @@
     ],
     "childAliases": []
   },
+  "dataContract": {
+    "indexName": "data_contract_search_index",
+    "indexMappingFile": "/elasticsearch/%s/data_contract_index_mapping.json",
+    "alias": "dataContract",
+    "parentAliases": [],
+    "childAliases": []
+  },
   "mcpServer": {
     "indexName": "mcp_server_search_index",
     "indexMappingFile": "/elasticsearch/%s/mcp_server_index_mapping.json",
     "alias": "mcpServer",
     "parentAliases": [
       "mcpService",
-      "all"
+      "all",
+      "dataAssetEmbeddings"
     ],
     "childAliases": [
       "mcpExecution"

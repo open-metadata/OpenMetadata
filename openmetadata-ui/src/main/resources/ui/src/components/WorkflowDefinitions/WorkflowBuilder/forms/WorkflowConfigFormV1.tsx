@@ -11,25 +11,26 @@
  *  limitations under the License.
  */
 
+import { Toggle } from '@openmetadata/ui-core-components';
 import React from 'react';
-import {
-  AVAILABLE_OPTIONS,
-  WorkflowType,
-} from '../../../../constants/WorkflowBuilder.constants';
+import { useTranslation } from 'react-i18next';
+import { WorkflowType } from '../../../../constants/WorkflowBuilder.constants';
+import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { EntityType } from '../../../../enums/entity.enum';
 import { NodeConfig } from '../../../../interface/workflow-builder-components.interface';
-import {
-  DataAssetFiltersSection,
-  DataAssetFormSection,
-  EventTriggerFilterSection,
-  MetadataFormSection,
-  TriggerConfigSection,
-} from './';
+import { ApprovalModeSection } from './ApprovalModeSection';
+import { DataAssetFiltersSection } from './DataAssetFiltersSection';
+import { DataAssetFormSection } from './DataAssetFormSection';
+import { EventTriggerFilterSection } from './EventTriggerFilterSection';
+import { MetadataFormSection } from './MetadataFormSection';
+import { TriggerConfigSection } from './TriggerConfigSection';
 
 interface WorkflowConfigFormV1Props {
   config: NodeConfig;
+  availableDataAssets: string[];
   availableEventTypes: string[];
   availableExcludeFields: string[];
+  fieldGroups?: Record<string, string>;
   allowFullStartNodeConfiguration: boolean;
   allowStartNodeFilterScheduleAndBatchEdit: boolean;
   allowScheduledTrigger: boolean;
@@ -45,6 +46,7 @@ interface WorkflowConfigFormV1Props {
   addDataAssetFilter: (dataAsset?: string) => void;
   onUpdateDataAssetFilter: (dataAssetId: number, value: string) => void;
   removeDataAssetFilter: (dataAssetId: number) => void;
+  showAutoAssignOwners?: boolean;
 }
 
 function getEventTriggerEntityType(
@@ -59,8 +61,10 @@ function getEventTriggerEntityType(
 
 export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   config,
+  availableDataAssets,
   availableEventTypes,
   availableExcludeFields,
+  fieldGroups,
   allowFullStartNodeConfiguration,
   allowStartNodeFilterScheduleAndBatchEdit,
   allowScheduledTrigger,
@@ -70,11 +74,32 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   addDataAssetFilter,
   onUpdateDataAssetFilter,
   removeDataAssetFilter,
+  showAutoAssignOwners = false,
 }) => {
+  const { t } = useTranslation();
+  const { canSave, isNoOp, showEditButton, enterEditMode } =
+    useWorkflowModeContext();
+  const canStartIncidentSettingsEdit = isNoOp && showEditButton;
   const lockCoreStartFields = !allowFullStartNodeConfiguration;
   const canEditFiltersAndPeriodicSchedule =
     allowFullStartNodeConfiguration || allowStartNodeFilterScheduleAndBatchEdit;
   const lockFilterSections = !canEditFiltersAndPeriodicSchedule;
+
+  const ownerAssignmentToggle = showAutoAssignOwners ? (
+    <Toggle
+      data-testid="auto-assign-owners-toggle"
+      hint={t('message.auto-assign-owners-help')}
+      isDisabled={!canSave && !canStartIncidentSettingsEdit}
+      isSelected={config.autoAssignOwners !== false}
+      label={t('label.auto-assign-owners')}
+      onChange={(isSelected: boolean) => {
+        if (canStartIncidentSettingsEdit) {
+          enterEditMode();
+        }
+        updateConfig('autoAssignOwners', isSelected);
+      }}
+    />
+  ) : null;
 
   return (
     <div data-testid="workflow-config-form-v1">
@@ -91,7 +116,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
       />
 
       <DataAssetFormSection
-        availableDataAssets={[...AVAILABLE_OPTIONS.DATA_ASSETS]}
+        availableDataAssets={availableDataAssets}
         dataAssets={config.dataAssets}
         lockFields={lockCoreStartFields}
         onDataAssetsChange={(dataAssets) =>
@@ -118,6 +143,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
         cronExpression={config.cronExpression}
         eventType={config.eventType}
         excludeFields={config.excludeFields}
+        fieldGroups={fieldGroups}
         include={config.include}
         lockNonIncludeExcludeFields={lockCoreStartFields}
         lockPeriodicBatchFields={lockFilterSections}
@@ -158,6 +184,18 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
           }
         />
       )}
+
+      {config.triggerType === WorkflowType.EVENT_BASED && (
+        <ApprovalModeSection
+          approvalMode={config.approvalMode}
+          lockFields={lockFilterSections}
+          onApprovalModeChange={(approvalMode) =>
+            updateConfig('approvalMode', approvalMode)
+          }
+        />
+      )}
+
+      {ownerAssignmentToggle}
     </div>
   );
 };

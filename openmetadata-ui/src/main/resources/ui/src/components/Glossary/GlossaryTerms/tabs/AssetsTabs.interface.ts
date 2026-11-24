@@ -15,20 +15,9 @@ import { OperationPermission } from '../../../../context/PermissionProvider/Perm
 import { EntityDetailsObjectInterface } from '../../../Explore/ExplorePage.interface';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
 
-export enum AssetsOfEntity {
-  GLOSSARY = 'GLOSSARY',
-  DOMAIN = 'DOMAIN',
-  DATA_PRODUCT = 'DATA_PRODUCT',
-  DATA_PRODUCT_INPUT_PORT = 'DATA_PRODUCT_INPUT_PORT',
-  DATA_PRODUCT_OUTPUT_PORT = 'DATA_PRODUCT_OUTPUT_PORT',
-  TEAM = 'TEAM',
-  MY_DATA = 'MY_DATA',
-  FOLLOWING = 'FOLLOWING',
-  ACCESS_TOKEN = 'ACCESS_TOKEN',
-  LINEAGE = 'LINEAGE',
-  TAG = 'TAG',
-  COLUMN = 'COLUMN',
-}
+import { AssetsOfEntity } from '../../../../enums/Assets.enum';
+
+export { AssetsOfEntity };
 
 export interface AssetsTabsProps {
   onAddAsset: () => void;
@@ -45,6 +34,13 @@ export interface AssetsTabsProps {
   addDisabledMessage?: string;
   preloadedData?: SearchedDataProps['data'];
   skipSearch?: boolean;
+  /**
+   * Route the asset search through `POST /v1/search/query` (searchAPI.searchQueryPost)
+   * instead of the GET path. Set this for callers whose `queryFilter` can grow large
+   * enough to overflow the server's request-line size limit — e.g. the metric Assets
+   * tab, which embeds every linked asset id in an `ids` filter.
+   */
+  useQueryPost?: boolean;
 }
 
 export interface AssetNoDataPlaceholderProps {

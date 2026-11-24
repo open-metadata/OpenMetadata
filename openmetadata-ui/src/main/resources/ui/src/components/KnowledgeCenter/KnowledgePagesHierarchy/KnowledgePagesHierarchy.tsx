@@ -22,9 +22,17 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  Article,
+  File06,
+  ListCollapse,
+  ListExpand,
+  QuickLink,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
-import { Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniq } from 'lodash';
 import {
@@ -34,6 +42,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useReducer,
   useRef,
   useState,
@@ -41,21 +50,16 @@ import {
 import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as CollapseAllIcon } from '../../../assets/svg/collapse-new.svg';
-import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
-import { ReactComponent as ExpandAllIcon } from '../../../assets/svg/expand-new.svg';
-import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
-import CreateErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/CreateErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import { CREATE_PAGE_HASH } from '../../../constants/constants';
+import { PANEL_ICON_BOX_CLASS } from '../../../constants/ContextCenter.constants';
 import {
   KNOWLEDGE_CENTER_PAGINATION_LIMIT,
   KNOWLEDGE_CENTER_PAGINATION_OFFSET_INCREMENT,
 } from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { SIZE } from '../../../enums/common.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
@@ -95,8 +99,10 @@ import {
   updateTreeData,
 } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 interface KnowledgePagesHierarchyProps {
   permissions: OperationPermission;
@@ -112,6 +118,9 @@ const SCROLL_BOTTOM_THRESHOLD = 1;
 // triggers all collapse into a single in-flight request instead of firing
 // one GET /contextCenter/pages?limit=0 per trigger.
 const KNOWLEDGE_PAGES_TOTAL_COUNT_QUERY_KEY = ['knowledge-pages-total-count'];
+
+const dedupePageHierarchyById = (items: PageHierarchy[]): PageHierarchy[] =>
+  Array.from(new Map(items.map((item) => [item.id, item])).values());
 
 const KnowledgePagesHierarchy = forwardRef<
   KnowledgePagesHierarchyRef,
@@ -178,6 +187,19 @@ const KnowledgePagesHierarchy = forwardRef<
     const nodesLoadingChildrenRef = useRef<Set<string>>(new Set());
     const nodesWithNoMoreChildrenRef = useRef<Set<string>>(new Set());
     const nodeChildrenOffsetRef = useRef<Map<string, number>>(new Map());
+
+    // Named-flag derivation (Task 8 sweep): `permissions` is the raw OperationPermission this
+    // component receives as a prop. Every old raw read here is a single-key EditAll/Delete
+    // read (no OR-of-two-fields, no explicit-deny-wins case) and none referenced a
+    // `deleted` field (there's no single "deleted" entity at this hierarchy level) — so these
+    // are pure identical mappings onto the named flags, no `deleted` argument. `canCreate` was
+    // dropped from this destructure — its only use site (the `CreateErrorPlaceHolder`
+    // `permission` prop) was removed upstream, which replaced that component with a
+    // non-permission-gated `EmptyPlaceholder` (see `isHierarchyEmpty` render below).
+    const { canEditAll, canDelete } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
+      [permissions]
+    );
 
     const handleExpandAll = useCallback(async () => {
       setIsExpandingAll(true);
@@ -294,19 +316,77 @@ const KnowledgePagesHierarchy = forwardRef<
       limit = KNOWLEDGE_CENTER_PAGINATION_LIMIT,
       forceRefresh = false
     ) => {
-      const isCreateHash =
+      // Nested closures so their own branching (&&/||/if chains) counts
+      // against their own (small) complexity, not this function's.
+      const computeIsCreateHash = () =>
         hash?.slice(1) === CREATE_PAGE_HASH &&
         !isPaginationLoading &&
         consumedCreateHashFqnRef.current !== fqn;
 
-      if (
-        !forceRefresh &&
-        !isPaginationLoading &&
+      const computeHasCachedHierarchyForFqn = () =>
         isHierarchyInitialized &&
         knowledgePageHierarchy.length > 0 &&
-        lastFetchedFqnRef.current === fqn &&
-        !isCreateHash
-      ) {
+        lastFetchedFqnRef.current === fqn;
+
+      const isCreateHash = computeIsCreateHash();
+      const hasCachedHierarchyForFqn = computeHasCachedHierarchyForFqn();
+
+      const shouldSkipFetch = () =>
+        !forceRefresh &&
+        !isPaginationLoading &&
+        hasCachedHierarchyForFqn &&
+        !isCreateHash;
+
+      const applyReplaceHierarchy = (data: PageHierarchy[]) => {
+        setKnowledgePageHierarchy(data);
+        if (forceRefresh) {
+          setExpandedKeys([]);
+          setIsUserExpandedAll(false);
+          nodesWithNoMoreChildrenRef.current.clear();
+          nodesLoadingChildrenRef.current.clear();
+          nodeChildrenOffsetRef.current.clear();
+        }
+        if (isCreateHash) {
+          consumedCreateHashFqnRef.current = fqn;
+        }
+      };
+
+      const applyIncrementalHierarchy = (data: PageHierarchy[]) => {
+        const fqnParts = fqn ? Fqn.split(fqn) : [];
+        const isNestedNode = fqnParts.length > 1;
+
+        if (isNestedNode && data.length > 0) {
+          const parentFQN = extractKnowledgePageParentFQN(fqn);
+          setKnowledgePageHierarchy((prev) =>
+            integrateNodesIntoHierarchy(prev, data)
+          );
+          setExpandedKeys((prev) => uniq([...prev, ...parentFQN]));
+        } else {
+          setKnowledgePageHierarchy((prev) =>
+            dedupePageHierarchyById(prev.concat(data))
+          );
+        }
+      };
+
+      const applyFetchedResult = (
+        data: PageHierarchy[],
+        paging: { total: number }
+      ) => {
+        if (
+          data.length === 0 ||
+          knowledgePageHierarchy.length === paging.total
+        ) {
+          setPaginationState({ type: 'SET_IS_PAGINATION_END', value: true });
+        }
+
+        if (isCreateHash || forceRefresh) {
+          applyReplaceHierarchy(data);
+        } else {
+          applyIncrementalHierarchy(data);
+        }
+      };
+
+      if (shouldSkipFetch()) {
         return;
       }
 
@@ -329,46 +409,7 @@ const KnowledgePagesHierarchy = forwardRef<
         lastFetchedFqnRef.current = fqn;
 
         setPaginationState({ type: 'SET_PAGING_VALUE', value: paging });
-
-        if (
-          data.length === 0 ||
-          knowledgePageHierarchy.length === paging.total
-        ) {
-          setPaginationState({ type: 'SET_IS_PAGINATION_END', value: true });
-        }
-
-        if (isCreateHash || forceRefresh) {
-          setKnowledgePageHierarchy(data);
-          if (forceRefresh) {
-            setExpandedKeys([]);
-            setIsUserExpandedAll(false);
-            nodesWithNoMoreChildrenRef.current.clear();
-            nodesLoadingChildrenRef.current.clear();
-            nodeChildrenOffsetRef.current.clear();
-          }
-          if (isCreateHash) {
-            consumedCreateHashFqnRef.current = fqn;
-          }
-        } else {
-          const fqnParts = fqn ? Fqn.split(fqn) : [];
-          const isNestedNode = fqnParts.length > 1;
-
-          if (isNestedNode && data.length > 0) {
-            const parentFQN = extractKnowledgePageParentFQN(fqn);
-            setKnowledgePageHierarchy((prev) =>
-              integrateNodesIntoHierarchy(prev, data)
-            );
-            setExpandedKeys((prev) => uniq([...prev, ...parentFQN]));
-          } else {
-            setKnowledgePageHierarchy((prev) => {
-              const merged = prev.concat(data);
-
-              return Array.from(
-                new Map(merged.map((item) => [item.id, item])).values()
-              );
-            });
-          }
-        }
+        applyFetchedResult(data, paging);
         setIsHierarchyInitialized(true);
       } catch (error) {
         showErrorToast(error as AxiosError);
@@ -612,20 +653,21 @@ const KnowledgePagesHierarchy = forwardRef<
 
     const handleItemMove = useCallback(
       ({ sourceKey, targetKey, dropPosition }: TreeItemMoveEvent) => {
-        if (!permissions.EditAll) {
+        if (!canEditAll) {
           return;
         }
 
-        if (sourceKey === targetKey) {
+        // Pages have no sibling order, so only a drop onto a row moves; root moves use onItemRootDrop.
+        if (sourceKey === targetKey || dropPosition !== 'on') {
           return;
         }
 
-        const isDropOnNode = dropPosition === 'on';
-        const targetNode = isDropOnNode
-          ? findPageInTreeData(knowledgePageHierarchy, targetKey as string)
-          : undefined;
+        const targetNode = findPageInTreeData(
+          knowledgePageHierarchy,
+          targetKey as string
+        );
 
-        if (isDropOnNode && !targetNode) {
+        if (!targetNode) {
           return;
         }
 
@@ -639,9 +681,9 @@ const KnowledgePagesHierarchy = forwardRef<
           return;
         }
 
-        const isAlreadyChild =
-          targetNode &&
-          (targetNode.children ?? []).some((c) => c.id === sourceNode.id);
+        const isAlreadyChild = (targetNode.children ?? []).some(
+          (c) => c.id === sourceNode.id
+        );
 
         if (isAlreadyChild) {
           return;
@@ -649,7 +691,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
         setMovedPage({ sourceNode, sourceNodeParent, targetNode });
       },
-      [knowledgePageHierarchy, permissions.EditAll]
+      [knowledgePageHierarchy, canEditAll]
     );
 
     const handleScroll: UIEventHandler<HTMLElement> = useCallback(
@@ -688,18 +730,16 @@ const KnowledgePagesHierarchy = forwardRef<
             className="tw:min-w-0 tw:flex-1 tw:cursor-pointer"
             gap={2}>
             {isQuickLink ? (
-              <QuickLinkIcon
+              <QuickLink
                 className="tw:shrink-0 tw:text-quaternary"
                 data-testid="quick-link-icon"
-                height={14}
-                width={14}
+                size={14}
               />
             ) : (
-              <FileIcon
+              <Article
                 className="tw:shrink-0 tw:text-quaternary"
                 data-testid="page-icon"
-                height={14}
-                width={14}
+                size={14}
               />
             )}
             <Typography
@@ -712,10 +752,9 @@ const KnowledgePagesHierarchy = forwardRef<
           </Box>
         );
 
-        const deleteButton = permissions.Delete ? (
+        const deleteButton = canDelete ? (
           <ButtonUtility
-            className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0 tw:p-0"
-            color="tertiary"
+            className="tw:opacity-0 tw:group-hover/tree-item:opacity-100 tw:focus-visible:opacity-100"
             data-testid={`${displayName}-delete-page-btn`}
             icon={Trash01}
             size="xs"
@@ -733,38 +772,56 @@ const KnowledgePagesHierarchy = forwardRef<
             id={node.fullyQualifiedName}
             key={node.fullyQualifiedName}
             textValue={displayName}>
-            <Tree.ItemContent showGuideLines hasChildItems={hasChildren}>
-              {() =>
-                isQuickLink && onQuickLinkClick ? (
-                  <div className="custom-group tw:flex tw:items-center tw:justify-between tw:flex-1 tw:min-w-0">
-                    <button
-                      className="tw:gap-2 tw:cursor-pointer tw:border-none tw:bg-transparent tw:p-0 tw:text-left tw:truncate"
+            <Tree.ItemContent
+              showGuideLines
+              className="tw:gap-0.5 tw:pl-1"
+              hasChildItems={hasChildren}
+              indentPerLevel={24}>
+              {() => (
+                <>
+                  {canEditAll && (
+                    <Tree.DragButton
+                      aria-label={t('label.move')}
+                      className="tw:opacity-0 tw:group-hover/tree-item:opacity-100 tw:focus-visible:opacity-100"
+                      data-testid="drag-handle-icon"
+                    />
+                  )}
+                  {isQuickLink && onQuickLinkClick ? (
+                    <Box
+                      align="center"
+                      className="custom-group tw:min-w-0 tw:flex-1"
+                      justify="between">
+                      <button
+                        className="tw:gap-2 tw:cursor-pointer tw:border-none tw:bg-transparent tw:p-0 tw:text-left tw:truncate"
+                        data-isactive={isActive}
+                        data-testid={`page-node-${displayName}`}
+                        onClick={() =>
+                          onQuickLinkClick(node.fullyQualifiedName)
+                        }>
+                        {nodeContent}
+                      </button>
+                      {deleteButton}
+                    </Box>
+                  ) : (
+                    <Link
+                      className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:cursor-pointer tw:hover:no-underline"
                       data-isactive={isActive}
                       data-testid={`page-node-${displayName}`}
-                      onClick={() => onQuickLinkClick(node.fullyQualifiedName)}>
+                      to={contextCenterClassBase.getArticlePath(
+                        node.fullyQualifiedName
+                      )}>
                       {nodeContent}
-                    </button>
-                    {deleteButton}
-                  </div>
-                ) : (
-                  <Link
-                    className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:cursor-pointer tw:hover:no-underline"
-                    data-isactive={isActive}
-                    data-testid={`page-node-${displayName}`}
-                    to={contextCenterClassBase.getArticlePath(
-                      node.fullyQualifiedName
-                    )}>
-                    {nodeContent}
-                    {deleteButton}
-                  </Link>
-                )
-              }
+                      {deleteButton}
+                    </Link>
+                  )}
+                </>
+              )}
             </Tree.ItemContent>
             {node.children?.map(renderNode)}
           </Tree.Item>
         );
       },
-      [activeKey, onQuickLinkClick, permissions.Delete, handleDeletePage, t]
+      [activeKey, onQuickLinkClick, canDelete, canEditAll, handleDeletePage, t]
     );
 
     useImperativeHandle(ref, () => ({
@@ -827,15 +884,125 @@ const KnowledgePagesHierarchy = forwardRef<
 
     const isHierarchyEmpty = !isLoading && knowledgePageHierarchy.length === 0;
 
+    // Extracted so their own conditionals don't add to this component
+    // function's cyclomatic complexity.
+    const renderExpandCollapseButton = () =>
+      isUserExpandedAll ? (
+        <ButtonUtility
+          icon={ListCollapse}
+          size="lg"
+          tooltip={t('label.collapse-all')}
+          onClick={() => {
+            setExpandedKeys([]);
+            setIsUserExpandedAll(false);
+          }}
+        />
+      ) : (
+        <ButtonUtility
+          icon={ListExpand}
+          isDisabled={isExpandingAll}
+          size="lg"
+          tooltip={t('label.expand-all')}
+          onClick={handleExpandAll}
+        />
+      );
+
+    const renderArticleListBody = () => (
+      <>
+        {isLoading && (
+          <div className="tw:px-1.5">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div
+                className="tw:h-5 tw:mb-2 tw:rounded tw:bg-tertiary tw:animate-pulse"
+                key={`skeleton-${i}`}
+                style={{ width: `${60 + (i % 3) * 15}%` }}
+              />
+            ))}
+          </div>
+        )}
+
+        {isHierarchyEmpty && (
+          <div className="tw:relative tw:flex-1 tw:h-full tw:border-0 tw:px-4">
+            <NoDataPlaceholder
+              description={t('message.no-articles-listed')}
+              icon={<File06 />}
+              title={t('label.no-entity', {
+                entity: t('label.article-plural'),
+              })}
+              width={200}
+            />
+          </div>
+        )}
+
+        {!isLoading && !isHierarchyEmpty && (
+          <Tree
+            aria-label={t('label.article-plural')}
+            className="knowledge-pages-tree"
+            data-testid="knowledge-pages-hierarchy"
+            expandedKeys={new Set(expandedKeys)}
+            selectedKeys={activeKey ? new Set([activeKey]) : new Set<string>()}
+            selectionMode="single"
+            onExpandedChange={(keys: Selection) => {
+              if (keys !== 'all') {
+                setExpandedKeys(Array.from(keys).map(String));
+              }
+            }}
+            onItemMove={handleItemMove}
+            onItemRootDrop={(sourceKey) => {
+              if (!canEditAll) {
+                return;
+              }
+              const { page: sourceNode, parent: sourceNodeParent } =
+                findPageAndParentInTreeData(
+                  knowledgePageHierarchy,
+                  sourceKey as string
+                );
+              if (sourceNode && sourceNodeParent) {
+                setMovedPage({
+                  sourceNode,
+                  sourceNodeParent,
+                  targetNode: undefined,
+                });
+              }
+            }}>
+            {knowledgePageHierarchy.map(renderNode)}
+          </Tree>
+        )}
+
+        {paginationState.paginationLoading && <Loader size="x-small" />}
+      </>
+    );
+
+    const renderMoveModalContent = () =>
+      movedPage?.targetNode ? (
+        <Transi18next
+          i18nKey="message.entity-transfer-message"
+          renderElement={<strong />}
+          values={{
+            from: getEntityName(movedPage?.sourceNode),
+            to: getEntityName(movedPage.targetNode),
+            entity: t('label.page-lowercase'),
+          }}
+        />
+      ) : (
+        <Transi18next
+          i18nKey="message.move-page-to-top-level-message"
+          renderElement={<strong />}
+          values={{
+            entity: getEntityName(movedPage?.sourceNode),
+          }}
+        />
+      );
+
     return (
       <Card
         aria-label={t('label.article-plural')}
-        className="tw:h-full tw:flex tw:flex-col tw:py-5 tw:px-0"
+        className="tw:h-full tw:flex tw:flex-col tw:pt-3 tw:pb-5 tw:px-0"
         data-testid="knowledge-pages-hierarchy-container"
         role="region"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
-          if (!permissions.EditAll) {
+          if (!canEditAll) {
             return;
           }
           const sourceKey = e.dataTransfer.getData('text/plain');
@@ -855,15 +1022,11 @@ const KnowledgePagesHierarchy = forwardRef<
         <Card.Content className="tw:p-0 tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:h-full">
           <Box
             align="center"
-            className="tw:pb-5 tw:shrink-0 tw:px-5"
+            className="tw:pb-5 tw:shrink-0 tw:px-3"
             justify="between">
             <Box align="center" gap={3}>
-              <div className="tw:p-3 tw:rounded-lg tw:bg-utility-gray-blue-50 tw:leading-0">
-                <FileIcon
-                  className="tw:text-quaternary"
-                  height={20}
-                  width={20}
-                />
+              <div className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-3')}>
+                <Article className="tw:text-fg-quaternary" size={20} />
               </div>
               <div>
                 <Typography size="text-md" weight="medium">
@@ -876,92 +1039,14 @@ const KnowledgePagesHierarchy = forwardRef<
                 </Typography>
               </div>
             </Box>
-            {isUserExpandedAll ? (
-              <ButtonUtility
-                color="tertiary"
-                icon={<CollapseAllIcon className="tw:size-6" />}
-                size="sm"
-                tooltip={t('label.collapse-all')}
-                onClick={() => {
-                  setExpandedKeys([]);
-                  setIsUserExpandedAll(false);
-                }}
-              />
-            ) : (
-              <ButtonUtility
-                color="tertiary"
-                icon={<ExpandAllIcon className="tw:size-6" />}
-                isDisabled={isExpandingAll}
-                size="sm"
-                tooltip={t('label.expand-all')}
-                onClick={handleExpandAll}
-              />
-            )}
+            {renderExpandCollapseButton()}
           </Box>
 
           <div
-            className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-5"
+            className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-3"
             data-testid="article-list-container"
             onScroll={handleScroll}>
-            {isLoading && (
-              <div className="tw:px-1.5">
-                {Array.from({ length: 8 }, (_, i) => (
-                  <div
-                    className="tw:h-5 tw:mb-2 tw:rounded tw:bg-tertiary tw:animate-pulse"
-                    key={`skeleton-${i}`}
-                    style={{ width: `${60 + (i % 3) * 15}%` }}
-                  />
-                ))}
-              </div>
-            )}
-
-            {isHierarchyEmpty && (
-              <CreateErrorPlaceHolder
-                className="tw:border-0 tw:px-4 tw:flex-1 tw:h-auto"
-                permission={permissions.Create}
-                placeholderText={t('message.no-articles-listed')}
-                size={SIZE.MEDIUM}
-              />
-            )}
-
-            {!isLoading && !isHierarchyEmpty && (
-              <Tree
-                aria-label={t('label.article-plural')}
-                className="knowledge-pages-tree"
-                data-testid="knowledge-pages-hierarchy"
-                expandedKeys={new Set(expandedKeys)}
-                selectedKeys={
-                  activeKey ? new Set([activeKey]) : new Set<string>()
-                }
-                selectionMode="single"
-                onExpandedChange={(keys: Selection) => {
-                  if (keys !== 'all') {
-                    setExpandedKeys(Array.from(keys).map(String));
-                  }
-                }}
-                onItemMove={handleItemMove}
-                onItemRootDrop={(sourceKey) => {
-                  if (!permissions.EditAll) {
-                    return;
-                  }
-                  const { page: sourceNode, parent: sourceNodeParent } =
-                    findPageAndParentInTreeData(
-                      knowledgePageHierarchy,
-                      sourceKey as string
-                    );
-                  if (sourceNode && sourceNodeParent) {
-                    setMovedPage({
-                      sourceNode,
-                      sourceNodeParent,
-                      targetNode: undefined,
-                    });
-                  }
-                }}>
-                {knowledgePageHierarchy.map(renderNode)}
-              </Tree>
-            )}
-
-            {paginationState.paginationLoading && <Loader size="x-small" />}
+            {renderArticleListBody()}
           </div>
 
           <DeleteModal
@@ -984,7 +1069,7 @@ const KnowledgePagesHierarchy = forwardRef<
                 if (deletePage.pageType === PageType.QUICK_LINK) {
                   await deleteKnowledgePage(deletePage.id, false, true);
                 } else {
-                  await deleteKnowledgePage(deletePage.id);
+                  await deleteKnowledgePage(deletePage.id, true, true);
                 }
                 queryClient.invalidateQueries({
                   queryKey: CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY,
@@ -1019,25 +1104,7 @@ const KnowledgePagesHierarchy = forwardRef<
                   })}
                 />
                 <Dialog.Content className="tw:block">
-                  {movedPage?.targetNode ? (
-                    <Transi18next
-                      i18nKey="message.entity-transfer-message"
-                      renderElement={<strong />}
-                      values={{
-                        from: getEntityName(movedPage?.sourceNode),
-                        to: getEntityName(movedPage.targetNode),
-                        entity: t('label.page-lowercase'),
-                      }}
-                    />
-                  ) : (
-                    <Transi18next
-                      i18nKey="message.move-page-to-top-level-message"
-                      renderElement={<strong />}
-                      values={{
-                        entity: getEntityName(movedPage?.sourceNode),
-                      }}
-                    />
-                  )}
+                  {renderMoveModalContent()}
                 </Dialog.Content>
                 <Dialog.Footer className="quick-link-modal-footer">
                   <Button

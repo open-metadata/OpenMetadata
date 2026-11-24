@@ -65,7 +65,7 @@
 | SearchResourceIT | 55 | ✅ |
 | NotificationTemplateResourceIT | 52 | ✅ |
 | EventSubscriptionResourceIT | 48 | ✅ |
-| FeedResourceIT | 47 | ✅ |
+| ConversationResourceIT | 10 | ✅ |
 | TopicResourceIT | 38 | ✅ |
 | MlModelResourceIT | 38 | ✅ |
 | PipelineResourceIT | 36 | ✅ |
@@ -152,14 +152,31 @@
 
 ## Test Infrastructure
 
+### Feed V1 retirement traceability
+
+The removed `FeedResourceIT` and `FeedTaskAuthzIT` cases are split by their runtime owner:
+
+| Legacy coverage | Replacement suite |
+|---|---|
+| Conversation root/reply CRUD, validation, reactions, resolution, filters, pagination, permissions, domains, concurrency, and cleanup | `ConversationResourceIT` |
+| Activity-backed reply creation, isolation, concurrency, mutation, permissions, deleted-target behavior, and reactions | `ActivityResourceIT` |
+| Task creation, assignment, status, comments, authorization, concurrency, and bot restrictions | `TaskResourceIT` and `TaskCommentsIT` |
+| Announcement CRUD, validation, activation windows, and entity scoping | `AnnouncementResourceIT` |
+| Chatbot feed cases | Removed with the Chatbot feature; legacy rows remain only in the archived migration source |
+
+`ConversationSchemaMigrationIT` replays the exact `2.1.0` Conversation V2 DDL twice against the
+active database profile, verifies generated columns, and proves reply/reaction/mention/domain rows
+cascade with their root. CI runs the same test under the MySQL and PostgreSQL profiles; the existing
+`ContinuousMigrationIT` covers checksum-based current-version reprocessing for both profiles.
+
 ### Available Profiles
 
 | Profile | Database | Search Engine |
 |---------|----------|---------------|
-| `mysql-elasticsearch` (default) | MySQL 8.3.0 | Elasticsearch 8.11.4 |
+| `mysql-elasticsearch` (default) | MySQL 8.4.13 | Elasticsearch 8.11.4 |
 | `postgres-opensearch` | PostgreSQL 15 | OpenSearch 2.19.0 |
 | `postgres-elasticsearch` | PostgreSQL 15 | Elasticsearch 8.11.4 |
-| `mysql-opensearch` | MySQL 8.3.0 | OpenSearch 2.19.0 |
+| `mysql-opensearch` | MySQL 8.4.13 | OpenSearch 2.19.0 |
 
 ### Running Tests
 
@@ -214,7 +231,7 @@ GitHub workflows run on every PR:
 - `integration-tests-mysql-elasticsearch.yml` - MySQL + Elasticsearch
 - `integration-tests-postgres-opensearch.yml` - PostgreSQL + OpenSearch
 
-Tests require the "safe to test" label on PRs (uses `pull_request_target`).
+They run in the merge queue; on a PR they only report their required check names (as skipped).
 
 ---
 

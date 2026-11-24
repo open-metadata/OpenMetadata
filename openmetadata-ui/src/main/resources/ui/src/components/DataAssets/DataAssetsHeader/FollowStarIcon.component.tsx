@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { Star01, StarFilled } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
 import { FC } from 'react';
-import { ReactComponent as FollowStarFilled } from '../../../assets/svg/ic-follow-star-filled.svg';
-import { ReactComponent as FollowStarOutline } from '../../../assets/svg/ic-follow-star-outline.svg';
 import { FollowStarIconProps } from './FollowStarIcon.interface';
 
 export const FollowStarIcon: FC<FollowStarIconProps> = ({
@@ -21,7 +21,13 @@ export const FollowStarIcon: FC<FollowStarIconProps> = ({
   selected,
 }) =>
   selected ? (
-    <FollowStarFilled className={className} />
+    <StarFilled
+      className={classNames('tw:text-utility-yellow-400', className)}
+      size={20}
+    />
   ) : (
-    <FollowStarOutline className={className} />
+    <Star01
+      className={classNames('tw:text-utility-gray-500', className)}
+      size={20}
+    />
   );

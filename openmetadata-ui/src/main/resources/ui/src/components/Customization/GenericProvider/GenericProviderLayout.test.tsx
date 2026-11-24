@@ -19,8 +19,6 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { useGenericContext } from './GenericContext';
 import { GenericProvider } from './GenericProvider';
 
-jest.mock('../../../rest/feedsAPI');
-
 jest.mock('../../../hooks/useEntityRules', () => ({
   useEntityRules: jest.fn().mockImplementation(() => ({ entityRules: {} })),
 }));

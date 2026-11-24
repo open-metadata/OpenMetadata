@@ -1,0 +1,31 @@
+{
+  "abbreviation": "GS1",
+  "attribution": "GS1 Web Vocabulary 1.18. Copyright 2015-2019 GS1 AISBL. Licensed under the Apache License, Version 2.0. GS1 and the GS1 logo are registered trademarks of GS1 AISBL. Redistributed without changes.",
+  "bundled": true,
+  "description": "The GS1 Web Vocabulary for products, organizations, places, offers and the GS1 code lists, published verbatim.",
+  "id": "gs1",
+  "industry": "retail",
+  "layer": "L2",
+  "license": "Apache License 2.0",
+  "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+  "modules": [
+    {
+      "conceptCount": 56,
+      "dependencies": [],
+      "description": "Products, organizations, places, offers, certifications and code lists.",
+      "format": "turtle",
+      "id": "gs1-voc",
+      "name": "GS1 Web Vocabulary",
+      "relationshipCount": 229,
+      "resourcePath": "rdf/ontology-packs/gs1/gs1-voc.ttl",
+      "selectedByDefault": true,
+      "sha256": "b6039ed1b3229853a0aed1eb8568527f2d393925fd163d6fce5fddefe7ea1aa7",
+      "sourceUrl": "https://ref.gs1.org/voc/data/gs1Voc.ttl"
+    }
+  ],
+  "name": "GS1 Web Vocabulary",
+  "publisher": "GS1",
+  "sourceUrl": "https://ref.gs1.org/voc/",
+  "standard": "GS1 Web Vocabulary",
+  "version": "1.18"
+}

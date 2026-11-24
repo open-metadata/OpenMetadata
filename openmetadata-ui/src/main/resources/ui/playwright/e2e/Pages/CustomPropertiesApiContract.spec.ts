@@ -13,6 +13,7 @@
 
 import type { APIRequestContext, APIResponse } from '@playwright/test';
 import { createHash } from 'crypto';
+import { migratedTo } from '../../constant/migration';
 import { expect, test, TestNamespace } from '../../fixtures/testNamespace';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
@@ -27,6 +28,14 @@ import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
 import { PipelineClass } from '../../support/entity/PipelineClass';
 import { SearchIndexClass } from '../../support/entity/SearchIndexClass';
+import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
 import { StoredProcedureClass } from '../../support/entity/StoredProcedureClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
@@ -102,31 +111,40 @@ type ValueTarget = {
   setValue: (propertyName: string, value: unknown) => Promise<void>;
 };
 
+// Every fixture below pins its own service name via `namespace.name('…-service')`
+// so custom-property contract assertions can locate the exact service they
+// created. Shared mode would drop those pinned names — opt out uniformly.
 const ENTITY_CONTRACTS: EntityContract[] = [
   {
     apiPath: 'containers',
     createInstance: (namespace) =>
-      new ContainerClass(namespace.name('storage-service')),
+      new ContainerClass({
+        service: new StorageServiceClass(namespace.name('storage-service')),
+      }),
     typeName: 'container',
   },
   {
     apiPath: 'dashboards',
     createInstance: (namespace) =>
-      new DashboardClass(undefined, undefined, {
-        name: namespace.name('dashboard-service'),
+      new DashboardClass({
+        service: new DashboardServiceClass(namespace.name('dashboard-service')),
       }),
     typeName: 'dashboard',
   },
   {
     apiPath: 'topics',
     createInstance: (namespace) =>
-      new TopicClass(namespace.name('messaging-service')),
+      new TopicClass({
+        service: new MessagingServiceClass(namespace.name('messaging-service')),
+      }),
     typeName: 'topic',
   },
   {
     apiPath: 'pipelines',
     createInstance: (namespace) =>
-      new PipelineClass(namespace.name('pipeline-service')),
+      new PipelineClass({
+        service: new PipelineServiceClass(namespace.name('pipeline-service')),
+      }),
     typeName: 'pipeline',
   },
   {
@@ -151,25 +169,37 @@ const ENTITY_CONTRACTS: EntityContract[] = [
   {
     apiPath: 'mlmodels',
     createInstance: (namespace) =>
-      new MlModelClass(namespace.name('mlmodel-service')),
+      new MlModelClass({
+        service: new MlmodelServiceClass(namespace.name('mlmodel-service')),
+      }),
     typeName: 'mlmodel',
   },
   {
     apiPath: 'searchIndexes',
     createInstance: (namespace) =>
-      new SearchIndexClass(namespace.name('search-service')),
+      new SearchIndexClass({
+        service: new SearchIndexServiceClass(namespace.name('search-service')),
+      }),
     typeName: 'searchIndex',
   },
   {
     apiPath: 'storedProcedures',
     createInstance: (namespace) =>
-      new StoredProcedureClass(namespace.name('stored-procedure-service')),
+      new StoredProcedureClass({
+        service: new DatabaseServiceClass(
+          namespace.name('stored-procedure-service')
+        ),
+      }),
     typeName: 'storedProcedure',
   },
   {
     apiPath: 'dashboard/datamodels',
     createInstance: (namespace) =>
-      new DashboardDataModelClass(namespace.name('data-model-service')),
+      new DashboardDataModelClass({
+        service: new DashboardServiceClass(
+          namespace.name('data-model-service')
+        ),
+      }),
     typeName: 'dashboardDataModel',
   },
   {
@@ -180,16 +210,19 @@ const ENTITY_CONTRACTS: EntityContract[] = [
   {
     apiPath: 'apiCollections',
     createInstance: (namespace) =>
-      new ApiCollectionClass(namespace.name('api-collection')),
+      new ApiCollectionClass({
+        name: namespace.name('api-collection'),
+        service: new ApiServiceClass(namespace.name('api-collection')),
+      }),
     typeName: 'apiCollection',
   },
   {
     apiPath: 'apiEndpoints',
     createInstance: (namespace) =>
-      new ApiEndpointClass(
-        namespace.name('api-endpoint-service'),
-        namespace.name('api-endpoint')
-      ),
+      new ApiEndpointClass({
+        name: namespace.name('api-endpoint'),
+        service: new ApiServiceClass(namespace.name('api-endpoint-service')),
+      }),
     typeName: 'apiEndpoint',
   },
   {
@@ -416,7 +449,9 @@ const getCustomPropertyIndex = (
 
 const expectPersistedValue = (actual: unknown, expected: unknown) => {
   if (typeof expected === 'object' && expected !== null) {
-    expect(actual).toMatchObject(expected);
+    expect(actual).toMatchObject(
+      Array.isArray(expected) ? expected : { ...expected }
+    );
 
     return;
   }
@@ -749,7 +784,10 @@ const exerciseTableColumnContract = async ({
     adminApiContext,
     testNamespace
   );
-  const table = new TableClass(testNamespace.name('column-contract-table'));
+  const table = new TableClass({
+    name: testNamespace.name('column-contract-table'),
+    service: new DatabaseServiceClass(),
+  });
 
   testNamespace.registerCleanup(async () => {
     await adminApiContext.delete(
@@ -896,33 +934,60 @@ const exercisePropertyVariants = async ({
   }
 };
 
+// The same 16-type matrix, per entity type: BaseEntityIT#put_addEntityCustomAttributes
+// as inherited by each entity's IT.
+const CONTRACT_ITS: Record<string, string> = {
+  apiCollection: 'APICollectionResourceIT',
+  apiEndpoint: 'APIEndpointResourceIT',
+  container: 'ContainerResourceIT',
+  dashboard: 'DashboardResourceIT',
+  dashboardDataModel: 'DashboardDataModelResourceIT',
+  database: 'DatabaseResourceIT',
+  databaseSchema: 'DatabaseSchemaResourceIT',
+  dataProduct: 'DataProductResourceIT',
+  domain: 'DomainResourceIT',
+  glossaryTerm: 'GlossaryTermResourceIT',
+  metric: 'MetricResourceIT',
+  mlmodel: 'MlModelResourceIT',
+  pipeline: 'PipelineResourceIT',
+  searchIndex: 'SearchIndexResourceIT',
+  storedProcedure: 'StoredProcedureResourceIT',
+  topic: 'TopicResourceIT',
+};
+
 test.describe('Custom property instance-value API compatibility contract', () => {
   for (const contract of ENTITY_CONTRACTS) {
-    test(`${contract.typeName} supports removed property value variants`, async ({
-      adminApiContext,
-      testNamespace,
-    }) => {
-      test.setTimeout(300_000);
+    test(
+      `${contract.typeName} supports removed property value variants`,
+      migratedTo.javaIT(
+        `${CONTRACT_ITS[contract.typeName]}#put_addEntityCustomAttributes`
+      ),
+      async ({ adminApiContext, testNamespace }) => {
+        test.setTimeout(300_000);
 
-      await exerciseEntityContract({
-        adminApiContext,
-        contract,
-        testNamespace,
-      });
-    });
+        await exerciseEntityContract({
+          adminApiContext,
+          contract,
+          testNamespace,
+        });
+      }
+    );
   }
 
-  test('tableColumn supports removed property value variants', async ({
-    adminApiContext,
-    testNamespace,
-  }) => {
-    test.setTimeout(300_000);
+  test(
+    'tableColumn supports removed property value variants',
+    migratedTo.javaIT(
+      'ColumnCustomPropertiesIT#test_tableColumn_allPropertyTypes_crudViaColumnsApi'
+    ),
+    async ({ adminApiContext, testNamespace }) => {
+      test.setTimeout(300_000);
 
-    await exerciseTableColumnContract({
-      adminApiContext,
-      testNamespace,
-    });
-  });
+      await exerciseTableColumnContract({
+        adminApiContext,
+        testNamespace,
+      });
+    }
+  );
 });
 
 test('custom property value contract covers the exact removed browser matrix', () => {

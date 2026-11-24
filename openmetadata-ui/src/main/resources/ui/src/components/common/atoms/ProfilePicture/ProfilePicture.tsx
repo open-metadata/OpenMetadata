@@ -12,9 +12,10 @@
  */
 
 import { Avatar, Typography } from '@openmetadata/ui-core-components';
+import { Teams } from '@openmetadata/ui-core-components/icons';
 import { ComponentProps, useMemo } from 'react';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
 import {
@@ -88,6 +89,18 @@ const ProfilePicture = ({
         {character}
       </Typography>
     );
+
+  if (isTeam) {
+    return (
+      <Avatar
+        className="tw:text-fg-secondary"
+        contrastBorder={false}
+        placeholderIcon={Teams}
+        size={size}
+        style={{ backgroundColor: 'transparent' }}
+      />
+    );
+  }
 
   return (
     <Avatar

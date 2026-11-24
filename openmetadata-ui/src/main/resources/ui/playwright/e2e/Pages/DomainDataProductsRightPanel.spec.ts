@@ -96,8 +96,11 @@ test.describe('Domain Data Products Tab - Right Panel', () => {
     await rightPanel.waitForPanelLoaded();
 
     await expect(
-      rightPanel.getSummaryPanel().getByTestId('entity-link').first()
-    ).toBeVisible();
+      rightPanel
+        .getSummaryPanel()
+        .getByTestId('entity-link')
+        .filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   test('Should display overview tab for data product', async ({

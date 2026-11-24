@@ -1,0 +1,22 @@
+{
+  "outcome": "scenario-passed-with-distributed-lease-findings",
+  "productionCommit": "a3e202811e4f57f8592bf3def8cdd6754a734274",
+  "scenarioPassed": true,
+  "observedCoordinatorWorkers": 3,
+  "observedParticipantWorkersInSameProcess": 3,
+  "configuredConsumerThreads": 3,
+  "activePartitionReclaims": 4,
+  "reclaimTimesUtc": [
+    "2026-09-08T21:20:28.493Z",
+    "2026-09-08T21:20:58.506Z",
+    "2026-09-08T21:24:58.554Z",
+    "2026-09-08T21:32:28.687Z"
+  ],
+  "findings": [
+    "Local participation can begin while coordinator partition cursors are prepared, before the job is registered as locally coordinated.",
+    "Participant execution does not start the partition heartbeat loop used by coordinator execution; long-running participant work can be reclaimed.",
+    "Partition progress and heartbeat updates lack original-owner guards; terminal updates only require PROCESSING and can accept a stale claim.",
+    "Worker shutdown skips executors that have begun shutdown but still contain running tasks."
+  ],
+  "interpretation": "Counts, query responses, cancellation isolation, and restart persistence passed. These timings include duplicate local participation and partition retries; they do not establish performance for the intended three-worker configuration after the lease fix."
+}

@@ -9,6 +9,9 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.configuration.apps.AppPrivateConfig;
 import org.openmetadata.service.apps.ConfigurationReader;
 
@@ -49,5 +52,21 @@ public class ConfigurationReaderTest {
   public void missingConfig() {
     ConfigurationReader reader = new ConfigurationReader();
     assertThrows(IOException.class, () -> reader.readConfigFromResource("missing"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"../TestApplication", "nested/../../TestApplication", "/TestApplication"})
+  void rejectsConfigPathsOutsideApplicationsDirectory(String appName) {
+    final ConfigurationReader reader = new ConfigurationReader();
+
+    assertThrows(IllegalArgumentException.class, () -> reader.readConfigFromResource(appName));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  void rejectsMissingApplicationName(String appName) {
+    final ConfigurationReader reader = new ConfigurationReader();
+
+    assertThrows(IllegalArgumentException.class, () -> reader.readConfigFromResource(appName));
   }
 }

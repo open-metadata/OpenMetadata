@@ -12,7 +12,10 @@
  */
 
 import { HTMLAttributes } from 'react';
-import { ExtensionOptions } from '../../BlockEditor/BlockEditor.interface';
+import {
+  BlockEditorProps,
+  ExtensionOptions,
+} from '../../BlockEditor/BlockEditor.interface';
 
 export type TextVariant = 'white' | 'black';
 
@@ -26,6 +29,7 @@ export interface PreviewerProp {
   textVariant?: TextVariant;
   reducePreviewLineClass?: string;
   maxLineLength?: string;
+  clampByLines?: boolean;
   extensionOptions?: ExtensionOptions;
 }
 
@@ -34,6 +38,7 @@ export type PreviewStyle = 'tab' | 'vertical';
 export type EditorType = 'markdown' | 'wysiwyg';
 
 export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
+  variant?: BlockEditorProps['variant'];
   autofocus?: boolean;
   initialValue?: string;
   readonly?: boolean;

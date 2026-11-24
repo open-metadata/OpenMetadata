@@ -1,0 +1,70 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { AxiosError } from 'axios';
+import { useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { EntityType } from '../enums/entity.enum';
+import { EntityReference } from '../generated/entity/type';
+import { updateUserDetail } from '../rest/userAPI';
+import { showErrorToast } from '../utils/ToastUtils';
+import { useApplicationStore } from './useApplicationStore';
+import { useDomainStore } from './useDomainStore';
+
+// The URL params usePaging reads the current page from.
+const PAGING_URL_PARAMS = ['currentPage', 'cursorType', 'cursorValue'];
+
+/**
+ * Switches the navbar domain and persists it as the user's `defaultDomain`, so the server applies
+ * it to every list. `undefined` clears the selection (All Domains).
+ */
+export const useSwitchActiveDomain = () => {
+  const navigate = useNavigate();
+  const { currentUser, updateCurrentUser } = useApplicationStore();
+  const { updateActiveDomain } = useDomainStore();
+
+  return useCallback(
+    async (domain?: EntityReference) => {
+      // With a user, the pick is stored only once saved (updateCurrentUser syncs it), so another
+      // tab that reloads on the change never reads the old defaultDomain back.
+      if (!currentUser?.id) {
+        updateActiveDomain(domain);
+      } else {
+        try {
+          // JSON Patch `add` upserts, so one op covers first-set, change, and clear (null).
+          const updated = await updateUserDetail(currentUser.id, [
+            {
+              op: 'add',
+              path: '/defaultDomain',
+              value: domain ? { id: domain.id, type: EntityType.DOMAIN } : null,
+            },
+          ]);
+          updateCurrentUser(updated);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+
+          return;
+        }
+      }
+      // A list page belongs to the old domain's results, so reload at page 1
+      // (e.g. page 3 of one domain may not exist in another).
+      const search = new URLSearchParams(globalThis.location.search);
+      PAGING_URL_PARAMS.forEach((param) => search.delete(param));
+      navigate(
+        { search: search.toString(), hash: globalThis.location.hash },
+        { replace: true }
+      );
+      navigate(0);
+    },
+    [currentUser?.id, navigate, updateActiveDomain, updateCurrentUser]
+  );
+};

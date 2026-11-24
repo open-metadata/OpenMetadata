@@ -16,7 +16,7 @@
 pipeline). One primary action per view; everything else is secondary/tertiary.
 
 **Don't use when** navigating to another page — use a link
-(`--om-color-link`). Don't use a button as a container or for pure layout.
+(`tw:text-link` / `--color-text-link`). Don't use a button as a container or for pure layout.
 
 ## Anatomy
 
@@ -54,7 +54,7 @@ optional **leading/trailing icon**, **focus ring**.
 | `size` | `sm`, `md`, `lg` |
 | `isDisabled` | boolean |
 | `isLoading` | boolean |
-| leading / trailing icon | `@untitledui/icons` component |
+| leading / trailing icon | `@openmetadata/ui-core-components/icons` component |
 
 ## States
 

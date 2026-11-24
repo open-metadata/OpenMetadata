@@ -23,7 +23,7 @@ import {
   Flag04,
   MessageTextSquare01,
   UsersRight,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -33,28 +33,34 @@ import { EntityType } from '../../../enums/entity.enum';
 import {
   FeedbackType,
   RecognizerFeedback,
-} from '../../../generated/entity/feed/thread';
+} from '../../../generated/type/recognizerFeedback';
 import { Task } from '../../../rest/tasksAPI';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 
 interface FeedbackApprovalTaskProps {
   task: Task;
 }
 
-const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
-  const { t } = useTranslation();
+const getFeedbackTaskData = (
+  task: Task
+): { feedback?: RecognizerFeedback; recognizerName: string } => {
   const payload =
     task?.payload && typeof task.payload === 'object'
       ? (task.payload as Record<string, unknown>)
       : undefined;
   const feedback = payload?.feedback as RecognizerFeedback | undefined;
-  const recognizer =
-    (payload?.recognizer as { recognizerName?: string } | undefined) ??
-    undefined;
-  const recognizerName = recognizer?.recognizerName || '';
+  const recognizer = payload?.recognizer as
+    | { recognizerName?: string }
+    | undefined;
+
+  return { feedback, recognizerName: recognizer?.recognizerName || '' };
+};
+
+const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
+  const { t } = useTranslation();
+  const { feedback, recognizerName } = getFeedbackTaskData(task);
 
   const feedbackTypeLabel = useMemo(() => {
     if (!feedback?.feedbackType) {
@@ -156,7 +162,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
         </>
       )}
 
-      {feedback.createdBy && (
+      {feedback.createdBy?.name && (
         <>
           <Grid.Item span={8}>
             <Typography
@@ -169,9 +175,9 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
           <Grid.Item span={16}>
             <UserPopOverCard
               showUserName
-              displayName={getEntityName(feedback.createdBy)}
+              displayName={feedback.createdBy.displayName}
               profileWidth={22}
-              userName={feedback.createdBy.name || '-'}
+              userName={feedback.createdBy.name}
             />
           </Grid.Item>
         </>

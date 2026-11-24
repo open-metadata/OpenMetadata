@@ -13,8 +13,7 @@
 import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
-import './asset-selection-model.style.less';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import AssetSelectionContentBody from './AssetSelectionContentBody';
 import AssetSelectionFooter from './AssetSelectionFooter';
 import { AssetSelectionModalProps } from './AssetSelectionModal.interface';
@@ -28,6 +27,7 @@ export const AssetSelectionModal = ({
   type = AssetsOfEntity.GLOSSARY,
   queryFilter,
   emptyPlaceHolderText,
+  useQueryPost,
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
 
@@ -39,22 +39,24 @@ export const AssetSelectionModal = ({
     type,
     variant: 'modal',
     queryFilter,
+    useQueryPost,
   });
 
   return (
     <ModalOverlay
       isOpen={open}
       onOpenChange={(isOpen) => !isOpen && onCancel?.()}>
-      <Modal className="asset-selection-modal">
+      <Modal>
         <Dialog
           data-testid="asset-selection-modal"
           title={t('label.add-entity', { entity: t('label.asset-plural') })}
           width={675}
           onClose={onCancel}>
-          <Dialog.Content className="tw:max-h-[70vh] tw:overflow-hidden">
+          <Dialog.Content>
             <AssetSelectionContentBody
               aggregations={state.aggregations}
               assetJobResponse={state.assetJobResponse}
+              assetsFilter={state.assetsFilter}
               cancelDomainAssetMove={state.cancelDomainAssetMove}
               clearFilters={state.clearFilters}
               confirmDomainAssetMove={state.confirmDomainAssetMove}
@@ -84,7 +86,7 @@ export const AssetSelectionModal = ({
             <AssetSelectionFooter
               errorCount={state.failedStatus?.failedRequest?.length ?? 0}
               hasAssetJobResponse={!isUndefined(state.assetJobResponse)}
-              isLoading={state.isLoading}
+              isLoading={state.isLoading || isUndefined(state.activeEntity)}
               isSaveLoading={state.isSaveLoading}
               selectedCount={state.selectedItems?.size ?? 0}
               onCancel={onCancel}

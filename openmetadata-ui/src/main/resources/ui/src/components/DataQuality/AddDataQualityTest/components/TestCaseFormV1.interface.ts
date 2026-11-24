@@ -24,6 +24,7 @@ import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCardGroup.interface';
+import { AddTestCaseListChangePayload } from '../../AddTestCaseList/AddTestCaseList.interface';
 
 // =============================================
 // COMPONENT PROPS
@@ -36,10 +37,10 @@ export interface TestCaseFormDrawerProps {
   table?: Table;
   testSuite?: TestSuite;
   testLevel?: TestLevel;
-  variant?: 'drawer' | 'modal';
   title?: ReactNode;
   headerActions?: ReactNode;
   width?: number | string;
+  /** Show the Show Hint toggle and Form Hint column. Defaults to true. */
   showDocPanel?: boolean;
   testCase?: TestCase;
   showOnlyParameter?: boolean;
@@ -49,6 +50,14 @@ export interface TestCaseFormDrawerProps {
 export interface TestCaseFormContext {
   selectedDefinition?: TestDefinition;
   selectedTableData?: Table;
+  /**
+   * Raw FQN of the selected table, straight from the form field. Available
+   * synchronously, unlike `selectedTableData`, which is fetched from it — and
+   * `canCreatePipeline` is gated on this, so consumers building a pipeline
+   * payload must prefer it or they will read `undefined` while the fetch is in
+   * flight (or has failed).
+   */
+  selectedTableFqn?: string;
   selectedColumn?: string;
   selectedTestLevel: TestLevel;
   generateName: () => string;
@@ -108,13 +117,19 @@ export interface FormValues {
   parameterValues?: Array<{ name: string; value: string }>;
   dimensionColumns?: Array<string | FormSelectItem>;
   topDimensions?: number;
+  // Holds the name of the selected dimension entity, system or custom.
+  dataQualityDimension?: string | FormSelectItem;
   // Scheduler fields
+  createPipeline?: boolean;
   pipelineName?: string;
   cron?: string;
   enableDebugLog?: boolean;
   raiseOnError?: boolean;
   selectAllTestCases?: boolean;
-  testCases?: EntityReference[];
+  // The picker (AddTestCaseList) forwards its raw AddTestCaseListChangePayload
+  // on change; on edit prefill it holds the saved name list. Both shapes flow
+  // through normalizeSelectedTestProp/isValidTestCaseSelection on submit.
+  testCases?: EntityReference[] | AddTestCaseListChangePayload;
 }
 
 // =============================================

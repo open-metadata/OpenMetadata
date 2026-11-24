@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
@@ -30,20 +31,30 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateDashboard;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.lineage.HydrateLineageRequest;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for {@code POST /v1/lineage/hydrate} — the batch entity hydration endpoint.
@@ -64,6 +75,7 @@ import org.openmetadata.sdk.network.RequestOptions;
  * this IT's scope.
  */
 @Execution(ExecutionMode.CONCURRENT)
+@ExtendWith(TestNamespaceExtension.class)
 public class LineageHydrateIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -176,6 +188,80 @@ public class LineageHydrateIT {
     assertTrue(richTable.has("owners"), "fields=owners must include owners key");
   }
 
+  /**
+   * Hydrate returns the fields it was asked for, so it needs the view operations a GET of those
+   * fields needs: a caller denied ViewTests on tables gets no customMetrics from it either.
+   */
+  @Test
+  void hydrateChecksTheViewOperationsOfTheRequestedFields() throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    TestNamespace namespace = new TestNamespace("LineageHydrateIT");
+    Table table = createTable(admin, namespace, "hydrate_field_ops");
+    Policy noTests =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(namespace.prefix("noTableTests"))
+                    .withDescription("Denies ViewTests on tables")
+                    .withRules(
+                        List.of(
+                            new Rule()
+                                .withName("denyTests")
+                                .withResources(List.of(Entity.TABLE))
+                                .withOperations(List.of(MetadataOperation.VIEW_TESTS))
+                                .withEffect(Rule.Effect.DENY))));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(namespace.prefix("noTableTestsRole"))
+                    .withDescription("Role denying ViewTests on tables")
+                    .withPolicies(List.of(noTests.getFullyQualifiedName())));
+    String name = "hy_" + UUID.randomUUID().toString().substring(0, 8);
+    String email = name + "@test.openmetadata.org";
+    admin
+        .users()
+        .create(new CreateUser().withName(name).withEmail(email).withRoles(List.of(role.getId())));
+    OpenMetadataClient restricted = SdkClients.createClient(email, email, new String[] {});
+    List<EntityReference> entities =
+        List.of(new EntityReference().withType(Entity.TABLE).withId(table.getId()));
+
+    JsonNode withTests =
+        postHydrate(
+            restricted,
+            new HydrateLineageRequest().withEntities(entities).withFields("customMetrics"));
+    JsonNode bare = postHydrate(restricted, new HydrateLineageRequest().withEntities(entities));
+
+    assertFalse(withTests.path("entitiesByType").has(Entity.TABLE), withTests.toString());
+    assertEquals(1, withTests.path("droppedCount").asInt());
+    assertEquals(1, bare.path("entitiesByType").path(Entity.TABLE).size(), bare.toString());
+  }
+
+  /**
+   * Hydrate answers as each type's own GET would, which holds only for the data assets lineage
+   * draws: a service's GET drops its connection, a user's its credentials, an MCP server's its
+   * environment. Those types are refused, whoever asks.
+   */
+  @Test
+  void hydrateRefusesTypesWhoseOwnReadsRedact(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    UUID adminId = admin.users().getByName("admin").getId();
+
+    for (HydrateLineageRequest request :
+        List.of(
+            hydrateOne(Entity.DATABASE_SERVICE, service.getId(), null),
+            hydrateOne(Entity.USER, adminId, "authenticationMechanism"),
+            hydrateOne(Entity.MCP_SERVER, UUID.randomUUID(), null))) {
+      String type = request.getEntities().getFirst().getType();
+      InvalidRequestException refused =
+          assertThrows(InvalidRequestException.class, () -> postHydrate(admin, request), type);
+      assertTrue(refused.getMessage().contains(type), refused.getMessage());
+    }
+  }
+
   @Test
   void hydrateSilentlyDropsMissingIds() throws Exception {
     // The endpoint's silent-drop contract: ids the batch cannot resolve (because they're
@@ -254,6 +340,12 @@ public class LineageHydrateIT {
             || msg.contains("400")
             || msg.contains("404"),
         "unknown entity type must yield a 4xx, got: " + msg);
+  }
+
+  private static HydrateLineageRequest hydrateOne(String type, UUID id, String fields) {
+    return new HydrateLineageRequest()
+        .withEntities(List.of(new EntityReference().withType(type).withId(id)))
+        .withFields(fields);
   }
 
   private static JsonNode postHydrate(OpenMetadataClient client, HydrateLineageRequest request)

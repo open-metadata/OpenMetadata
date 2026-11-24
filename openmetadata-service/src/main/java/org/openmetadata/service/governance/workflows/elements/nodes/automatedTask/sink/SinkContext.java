@@ -16,6 +16,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 import java.util.Map;
 import lombok.Builder;
 import lombok.Data;
+import lombok.ToString;
 
 /**
  * Context object passed to sink providers containing configuration and metadata for sink
@@ -25,8 +26,8 @@ import lombok.Data;
 @Builder
 public class SinkContext {
 
-  /** The sink-specific configuration object. */
-  private Object sinkConfig;
+  /** The sink-specific configuration object, holding the decrypted sink secrets. */
+  @ToString.Exclude private Object sinkConfig;
 
   /** The sync mode: "append", "overwrite", or "merge". */
   private String syncMode;
@@ -54,4 +55,15 @@ public class SinkContext {
 
   /** The name of the workflow that triggered this sink operation. */
   private String workflowName;
+
+  /**
+   * The Lombok builder; its {@code toString} prints the context it builds, which leaves out the
+   * sink config.
+   */
+  public static class SinkContextBuilder {
+    @Override
+    public String toString() {
+      return "SinkContext.SinkContextBuilder(%s)".formatted(build());
+    }
+  }
 }

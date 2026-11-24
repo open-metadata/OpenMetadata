@@ -11,25 +11,21 @@
  *  limitations under the License.
  */
 
+import { User01 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
-import { TERM_ADMIN } from '../../../constants/constants';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { UserRolesProps } from './UserPopOverCard.interface';
 
-export const UserRoles = React.memo(({ userName }: UserRolesProps) => {
-  const { userProfilePics } = useApplicationStore();
-  const userData = userProfilePics[userName];
-  const roles = userData?.roles;
-  const isAdmin = userData?.isAdmin;
+export const UserRoles = React.memo(({ user }: UserRolesProps) => {
+  const roles = user?.roles;
+  const isAdmin = user?.isAdmin;
   const { t } = useTranslation();
 
   return roles?.length ? (
     <div className="m-t-xs">
       <p className="d-flex items-center">
-        <IconUsers height={16} width={16} />
+        <User01 size={16} />
         <span className="m-r-xs m-l-xss align-middle font-medium">
           {t('label.role-plural')}
         </span>
@@ -38,7 +34,7 @@ export const UserRoles = React.memo(({ userName }: UserRolesProps) => {
       <span className="d-flex flex-wrap m-t-xss">
         {isAdmin && (
           <span className="bg-grey rounded-4 p-x-xs text-xs m-b-xss">
-            {TERM_ADMIN}
+            {t('label.admin-superuser')}
           </span>
         )}
         {roles.map((role) => (

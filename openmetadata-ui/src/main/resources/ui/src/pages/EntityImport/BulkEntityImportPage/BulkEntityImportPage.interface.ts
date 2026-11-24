@@ -10,8 +10,61 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+import { ReactNode } from 'react';
+import type { Column } from 'react-data-grid';
+import { VALIDATION_STEP } from '../../../constants/BulkImport.constant';
 import { EntityStatus } from '../../../generated/entity/data/metric';
 import { CSVImportResult } from '../../../generated/type/csvImportResult';
+import type { CSVImportJobType } from '../../../interface/entity/csv.interface';
+import type { getImportOperationSummary } from '../../../utils/CSV/CSV.utils';
+
+export type TranslateFn = (
+  key: string,
+  options?: Record<string, unknown>
+) => string;
+
+export interface ActiveImportBannerProps {
+  activeAsyncImportJob?: CSVImportJobType;
+}
+
+export interface ImportWizardFooterProps {
+  activeStep: VALIDATION_STEP;
+  isValidating: boolean;
+  isRichGridImport: boolean;
+  onBack: () => void;
+  onCancel: () => void;
+  onValidate: () => void;
+}
+
+export interface Step0UploadContentProps {
+  isCsvPreviewProcessing: boolean;
+  abortReason?: string;
+  processingPreview: ReactNode;
+  uploadStep: ReactNode;
+  onRetryCsvUpload: () => void;
+}
+
+export interface Step2ResultsContentProps {
+  isValidating: boolean;
+  hasActiveAsyncImportJob: boolean;
+  importProgress: ReactNode;
+  validationData?: CSVImportResult;
+  importOperationSummary?: ReturnType<typeof getImportOperationSummary>;
+  validateCSVData?: {
+    columns: Column<Record<string, string>>[];
+    dataSource: Record<string, string>[];
+  };
+  importResultColumns: Column<Record<string, string>>[];
+}
+
+export interface Step1EditGridContentProps {
+  validationData?: CSVImportResult;
+  editDataGrid: ReactNode;
+  onAddRow: () => void;
+  onToggleRowFilter: () => void;
+  onRevertChanges: () => void;
+}
 
 export interface MetricBulkEditListFilters {
   searchText?: string;
@@ -35,27 +88,10 @@ export interface BulkEntityImportLocationState {
   selectedMetricNames?: string[];
 }
 
-export type CSVImportAsyncResponse = {
-  jobId: string;
-  message: string;
-};
-
-export type CSVImportAsyncWebsocketResponse = {
-  jobId: string;
-  status: 'COMPLETED' | 'FAILED' | 'STARTED' | 'IN_PROGRESS';
-  result?: CSVImportResult;
-  error?: string | null;
-  progress?: number;
-  total?: number;
-  message?: string;
-};
-
-export type CSVImportAsyncJob = Partial<CSVImportAsyncWebsocketResponse> &
-  CSVImportAsyncResponse;
-
-export type CSVImportJobType =
-  | (Partial<CSVImportAsyncJob> & {
-      type: 'initialLoad';
-      initialResult: string;
-    })
-  | (Partial<CSVImportAsyncJob> & { type: 'onValidate' });
+// Canonical definitions live in the lower-layer csv.interface; re-exported here
+// for existing page-local importers.
+export type {
+  CSVImportAsyncJob,
+  CSVImportAsyncWebsocketResponse,
+} from '../../../interface/entity/csv.interface';
+export type { CSVImportJobType };

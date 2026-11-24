@@ -16,7 +16,7 @@ Memory limit decorator using tracemalloc for lightweight, low-overhead tracking.
 import functools
 import threading
 import tracemalloc
-from typing import Callable, Optional  # noqa: UP035
+from collections.abc import Callable
 
 from metadata.utils.constants import BYTES_PER_MB
 from metadata.utils.logger import utils_logger
@@ -38,8 +38,8 @@ class MemoryMonitor:
         self,
         max_memory_mb: int,
         check_interval: float = MEMORY_CHECK_INTERVAL_SECONDS,
-        context: Optional[str] = None,  # noqa: UP045
-        function_name: Optional[str] = None,  # noqa: UP045
+        context: str | None = None,
+        function_name: str | None = None,
         verbose: bool = False,
     ):
         self.max_memory_bytes = max_memory_mb * BYTES_PER_MB
@@ -50,7 +50,7 @@ class MemoryMonitor:
         self.verbose = verbose
         self.should_stop = threading.Event()
         self.exceeded = threading.Event()
-        self.monitor_thread: Optional[threading.Thread] = None  # noqa: UP045
+        self.monitor_thread: threading.Thread | None = None
         self.baseline_memory = 0
         self.peak_memory = 0
 
@@ -140,7 +140,7 @@ class MemoryMonitor:
 
 def memory_limit(
     max_memory_mb: int = DEFAULT_MEMORY_LIMIT_MB,
-    context: Optional[str] = None,  # noqa: UP045
+    context: str | None = None,
     verbose: bool = True,
 ) -> Callable:
     """

@@ -16,7 +16,7 @@ import base64
 import json
 import re
 import string
-from typing import Any, Dict, Optional, Type, TypeVar, Union  # noqa: UP035
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 from requests.utils import quote as url_quote  # pyright: ignore[reportPrivateImportUsage]
@@ -39,7 +39,7 @@ def format_name(name: str) -> str:
 
 
 def get_entity_type(
-    entity: Union[Type[T], str],  # noqa: UP006, UP007
+    entity: type[T] | str,
 ) -> str:
     """
     Given an Entity T, return its type.
@@ -78,9 +78,9 @@ MAX_USER_AGENT_LENGTH = 256
 
 
 def sanitize_user_agent(
-    value: Optional[str],  # noqa: UP045
+    value: str | None,
     max_length: int = MAX_USER_AGENT_LENGTH,
-) -> Optional[str]:  # noqa: UP045
+) -> str | None:
     """
     Produce a header-safe User-Agent string.
 
@@ -101,7 +101,7 @@ def sanitize_user_agent(
     return sanitized or None
 
 
-def quote(fqn: Union[FullyQualifiedEntityName, str]) -> str:  # noqa: UP007
+def quote(fqn: FullyQualifiedEntityName | str) -> str:
     """
     Quote the FQN so that it's safe to pass to the API.
     E.g., `"foo.bar/baz"` -> `%22foo.bar%2Fbaz%22`
@@ -121,7 +121,7 @@ def build_entity_reference(entity: T) -> EntityReference:
     )
 
 
-def decode_jwt_token(jwt_token: str) -> Optional[Dict[str, Any]]:  # noqa: UP006, UP045
+def decode_jwt_token(jwt_token: str) -> dict[str, Any] | None:
     """
     Decode JWT token to extract payload without verification.
     JWT tokens have three parts: header.payload.signature

@@ -6,20 +6,42 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.net.ProtocolException;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.Signature;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.security.auth.x500.X500Principal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -112,6 +134,71 @@ class SamlValidatorTest {
       -----END CERTIFICATE-----
       """;
 
+  /**
+   * Okta issues application signing certificates with the org short name as CN (never a domain),
+   * while the IdP Entity ID is always {@code http://www.okta.com/{appId}}. See issue #28619.
+   */
+  private static final String OKTA_ORG_CERT =
+      """
+      -----BEGIN CERTIFICATE-----
+      MIIDyzCCArOgAwIBAgIUIZV2P9D5F0TyWYkhelWTeh0aQEowDQYJKoZIhvcNAQEL
+      BQAwdTELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFjAUBgNVBAcM
+      DVNhbiBGcmFuY2lzY28xDTALBgNVBAoMBE9rdGExFDASBgNVBAsMC1NTT1Byb3Zp
+      ZGVyMRQwEgYDVQQDDAtleGFtcGxlLW9yZzAeFw0yNjA5MTYyMDQ1MjNaFw0zNjA5
+      MTMyMDQ1MjNaMHUxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRYw
+      FAYDVQQHDA1TYW4gRnJhbmNpc2NvMQ0wCwYDVQQKDARPa3RhMRQwEgYDVQQLDAtT
+      U09Qcm92aWRlcjEUMBIGA1UEAwwLZXhhbXBsZS1vcmcwggEiMA0GCSqGSIb3DQEB
+      AQUAA4IBDwAwggEKAoIBAQDVQvEms8hTsAV8LUUx8uTQhxER/Hf3+yx3LPjMD+KY
+      +4YpRHhQk3IY6r3DOQvT/PsUUWuqbRyYmGWiXkDyPsQAGUd3HW63fAcX+0TfBYEz
+      75pt9U/QYhjJQAvmBmxqrak25bImKEZln7/+65zBS8Ohs9TYFBAT1lfaCBifhh0A
+      80FkQXl8/5thnZAaNaFK3YIJfd3PBpMt2uGYOxo6xJbKS9NSGZLc3gRPRqcLhNx9
+      01n8CxwFrCwqbY3urJ2rejPIaCZ+iVaJhFzuM1i1sB3H7/9+U6Wns1Is7a+OZLY8
+      l41nDougHYvwwQaWA9xZ5lHPIiTdE9UWlHS53pfkp2qdAgMBAAGjUzBRMB0GA1Ud
+      DgQWBBT5mtJZvkkmbFeAdkQt1ka2gyfakTAfBgNVHSMEGDAWgBT5mtJZvkkmbFeA
+      dkQt1ka2gyfakTAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQCI
+      /vPj2Z3lk9lvlnSsoXCpSxGfkxR3XSy/Pkm4CTPLN0XXhVKjyPTb2kdqM8AXjrID
+      qehxhNunicS3+w3bwK4XZ4gTxpXnOflkXE+B38/1+rz9QQwiIx8q0B3thspazkm3
+      aawU4aQEwSWygI8sXuxkShru5hHcwXWRA5F5s5kpiFK50FLOqWbOukLMSFoVNu1D
+      Y8or/But9KUsAfHy294vbQAOj4kI0SYqBvhhlpJxXq1vMFtBiiwKeNIxE0mW240w
+      b0/XIHowzxARt4SAZS+0jpaHqBESyanV8iVNqx8heeW+odH2cBkE0ic6t6/s3SrD
+      V7z+p03MrlFxMur28rIH
+      -----END CERTIFICATE-----
+      """;
+
+  private static final String OKTA_ENTITY_ID = "http://www.okta.com/exk1a2b3c4d5";
+
+  /**
+   * Self-signed, {@code CN=auth.example.com, O=Auth0}, valid 2026-09 to 2036-09 — the certificate an
+   * Auth0 tenant on a custom domain signs with, whose CN is that domain rather than the
+   * {@code .auth0.com} tenant host its Entity ID uses.
+   */
+  private static final String AUTH0_CUSTOM_DOMAIN_CERT =
+      """
+      -----BEGIN CERTIFICATE-----
+      MIIDyzCCArOgAwIBAgIUOT6JVV3WC/4YZo6y/nFgX2MatPYwDQYJKoZIhvcNAQEL
+      BQAwdTELMAkGA1UEBhMCVVMxEzARBgNVBAgMCldhc2hpbmd0b24xEDAOBgNVBAcM
+      B1NlYXR0bGUxDjAMBgNVBAoMBUF1dGgwMRQwEgYDVQQLDAtTU09Qcm92aWRlcjEZ
+      MBcGA1UEAwwQYXV0aC5leGFtcGxlLmNvbTAeFw0yNjA5MTgwOTM3MzFaFw0zNjA5
+      MTUwOTM3MzFaMHUxCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApXYXNoaW5ndG9uMRAw
+      DgYDVQQHDAdTZWF0dGxlMQ4wDAYDVQQKDAVBdXRoMDEUMBIGA1UECwwLU1NPUHJv
+      dmlkZXIxGTAXBgNVBAMMEGF1dGguZXhhbXBsZS5jb20wggEiMA0GCSqGSIb3DQEB
+      AQUAA4IBDwAwggEKAoIBAQDM1w9Hl/70gFeFfqywrSi8I+DasQoqXJWHSmqvfBQw
+      NLrN4U8L4ud2nmfyY+qzPWHJr1V5wys0TDcmozmUxsDtZH4khcTE1JMv4abBoKcM
+      WNwYffXJfYjQ71BjnZsVnxPcq5Ixxtfq60XPy6Qfjw8cxeniHDWjUlTCaTTPK6Qq
+      rDpOPekcRE2LZQGUiNsW0UkSEZ6vGdi1WPAWgQKhiQTx/nEtnOCEiPyeWkxK0uOe
+      KCP6LMKD2avy+2VArJjiVxjZoH0GykK71rFvBSf4xJcvdLw9APGRcjJVmzV3MUo4
+      /2WRCzM8tW2/fH+8xU33i0Ub5KGkUCU1f3m2BitPu5BLAgMBAAGjUzBRMB0GA1Ud
+      DgQWBBTUpOXNCEKm3v29sDWddBeC8NTHpDAfBgNVHSMEGDAWgBTUpOXNCEKm3v29
+      sDWddBeC8NTHpDAPBgNVHRMBAf8EBTADAQH/MA0GCSqGSIb3DQEBCwUAA4IBAQAm
+      CTeFF7Hgo4DvlmgEZSH2CO8OncEuLKnSwjIusb9MTkrFdcmlR9sZeQzzDy8H5RQ7
+      68PUqNWsGt9lVwZhm/A4XzXPyIZLiH20cGaZs6PqXi+ycT74LsUAq6/+zq8WLSua
+      Uj4nZnUyYJ7TDNc+lQYbAmEXENFa4OQT6sEYho18xiWafcF4mmE+3NugviSqR54J
+      UFa2CtLwbGTs/IrGJzgv0Ti5atSxF/8/gJzRCPp/rEOhmCFG8X0RKYpT2O0clf+7
+      nPq7sRFeMMIEX8GsxgvaahcgLZ2QHa075ZDSSxNXVHy3J8niKrAjnHEE4n52yXLC
+      NM3Pv29cF9tNA0rqilc7
+      -----END CERTIFICATE-----
+      """;
+
   private static final String AZURE_CERT =
       """
       -----BEGIN CERTIFICATE-----
@@ -190,18 +277,40 @@ class SamlValidatorTest {
     }
   }
 
+  /**
+   * Issue #28619: Okta signs with a cert whose CN is the org short name, never the Entity ID host,
+   * so requiring CN to equal {@code www.okta.com} rejected every legitimate Okta configuration.
+   */
   @Test
-  void validateSamlConfigurationRejectsAuth0CertificateMismatchForUrnEntityId() throws Exception {
+  void validateSamlConfigurationAcceptsOktaOrgNameCertificate() throws Exception {
     try (TestSsoServer server = TestSsoServer.start(200, "ok")) {
       SamlSSOClientConfig samlConfig = baseConfig(server.url());
-      samlConfig.getIdp().setEntityId("urn:dev-tenant.us.auth0.com");
+      samlConfig.getIdp().setEntityId(OKTA_ENTITY_ID);
+      samlConfig.getIdp().setIdpX509Certificate(OKTA_ORG_CERT);
 
       FieldError error =
           validator.validateSamlConfiguration(new AuthenticationConfiguration(), samlConfig);
 
-      assertNotNull(error);
-      assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_CERT, error.getField());
-      assertTrue(error.getError().contains("Auth0 certificate validation failed"));
+      assertNull(error);
+    }
+  }
+
+  /**
+   * An Auth0 tenant on a custom domain signs with that domain while its Entity ID stays on the
+   * tenant host, so CN and Entity ID host are different namespaces — the same shape as the Okta
+   * case, and what the removed exact-match rule rejected.
+   */
+  @Test
+  void validateSamlConfigurationAcceptsAuth0CustomDomainCertificate() throws Exception {
+    try (TestSsoServer server = TestSsoServer.start(200, "ok")) {
+      SamlSSOClientConfig samlConfig = baseConfig(server.url());
+      samlConfig.getIdp().setEntityId("urn:dev-tenant.us.auth0.com");
+      samlConfig.getIdp().setIdpX509Certificate(AUTH0_CUSTOM_DOMAIN_CERT);
+
+      FieldError error =
+          validator.validateSamlConfiguration(new AuthenticationConfiguration(), samlConfig);
+
+      assertNull(error);
     }
   }
 
@@ -220,7 +329,7 @@ class SamlValidatorTest {
   }
 
   @Test
-  void validateSamlConfigurationRejectsMicrosoftCertificateForNonAzureProvider() throws Exception {
+  void validateSamlConfigurationAcceptsMicrosoftCertificateForNonAzureProvider() throws Exception {
     try (TestSsoServer server = TestSsoServer.start(200, "ok")) {
       SamlSSOClientConfig samlConfig = baseConfig(server.url());
       samlConfig.getIdp().setIdpX509Certificate(AZURE_CERT);
@@ -228,9 +337,7 @@ class SamlValidatorTest {
       FieldError error =
           validator.validateSamlConfiguration(new AuthenticationConfiguration(), samlConfig);
 
-      assertNotNull(error);
-      assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_CERT, error.getField());
-      assertTrue(error.getError().contains("Invalid use of Microsoft Azure certificate"));
+      assertNull(error);
     }
   }
 
@@ -263,6 +370,39 @@ class SamlValidatorTest {
       samlConfig.getIdp().setEntityId("https://sts.windows.net/" + tenantId + "/");
       samlConfig.getIdp().setIdpX509Certificate(AZURE_CERT);
       samlConfig.getIdp().setNameId("urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress");
+
+      FieldError error =
+          validator.validateSamlConfiguration(new AuthenticationConfiguration(), samlConfig);
+
+      assertNull(error);
+    }
+  }
+
+  /**
+   * An Azure AD tenant GUID entered in upper case (e.g. transcribed from a tool that renders GUIDs
+   * in upper case) must be accepted end-to-end. Azure's OpenID-config endpoint returns a
+   * lowercase issuer for an upper case path GUID, so both the format check and the issuer
+   * comparison must be case-insensitive.
+   */
+  @Test
+  void validateSamlConfigurationAcceptsUppercaseAzureTenantGuid() throws Exception {
+    String tenantId = "A1B2C3D4-E5F6-7890-1234-567890ABCDEF";
+    String normalizedTenantId = tenantId.toLowerCase(Locale.ROOT);
+    String openIdConfigUrl =
+        "https://login.microsoftonline.com/"
+            + normalizedTenantId
+            + "/v2.0/.well-known/openid-configuration";
+
+    try (TestSsoServer server = TestSsoServer.start(200, "ok");
+        MockedStatic<ValidationHttpUtil> http = mockStatic(ValidationHttpUtil.class)) {
+      http.when(() -> ValidationHttpUtil.safeGet(openIdConfigUrl))
+          .thenReturn(
+              new ValidationHttpUtil.HttpResponseData(
+                  200, "{\"issuer\":\"https://sts.windows.net/" + normalizedTenantId + "/\"}"));
+
+      SamlSSOClientConfig samlConfig = baseConfig(server.url());
+      samlConfig.getIdp().setEntityId("https://sts.windows.net/" + tenantId + "/");
+      samlConfig.getIdp().setIdpX509Certificate(AZURE_CERT);
 
       FieldError error =
           validator.validateSamlConfiguration(new AuthenticationConfiguration(), samlConfig);
@@ -321,6 +461,44 @@ class SamlValidatorTest {
 
     assertNotNull(error);
     assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_KEY, error.getField());
+  }
+
+  /** Sign-in signs requests with the keystore's key when one is set, so no PEM values are needed. */
+  @Test
+  void validateSecurityConfigurationAcceptsSignedRequestsWithAKeyStore() {
+    SamlSSOClientConfig samlConfig = withoutPemCredentials(baseConfig("http://localhost/unused"));
+    samlConfig.setSecurity(keyStore().withSendSignedAuthRequest(true));
+
+    assertNull(SamlValidator.validateSecurityConfiguration(samlConfig));
+  }
+
+  /**
+   * The PEM values are still needed where sign-in reads no keystore: one missing its alias, and
+   * metadata signing on its own, for which sign-in never loads the keystore.
+   */
+  @Test
+  void validateSecurityConfigurationNeedsPemCredentialsWhereSignInReadsNoKeyStore() {
+    SamlSSOClientConfig samlConfig = withoutPemCredentials(baseConfig("http://localhost/unused"));
+
+    samlConfig.setSecurity(keyStore().withKeyStoreAlias(null).withSendSignedAuthRequest(true));
+    FieldError incompleteKeyStore = SamlValidator.validateSecurityConfiguration(samlConfig);
+    samlConfig.setSecurity(keyStore().withSignSpMetadata(true));
+    FieldError metadataSigning = SamlValidator.validateSecurityConfiguration(samlConfig);
+
+    assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_CERT, incompleteKeyStore.getField());
+    assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_CERT, metadataSigning.getField());
+  }
+
+  private static SamlSecurityConfig keyStore() {
+    return new SamlSecurityConfig()
+        .withKeyStoreFilePath("/etc/openmetadata/saml-sp.jks")
+        .withKeyStoreAlias("sp")
+        .withKeyStorePassword("keystore-password");
+  }
+
+  private static SamlSSOClientConfig withoutPemCredentials(SamlSSOClientConfig samlConfig) {
+    samlConfig.getSp().withSpX509Certificate(null).setSpPrivateKey(null);
+    return samlConfig;
   }
 
   @Test
@@ -834,13 +1012,79 @@ class SamlValidatorTest {
   }
 
   @Test
-  void validateIdpConnectivityTreatsSamlClientErrorsAsWarnings() throws Exception {
+  void validateSamlConfigurationSignsTheCheckRequestWhenRequestSigningIsOn() throws Exception {
+    try (SigningIdp idp = SigningIdp.start()) {
+      SamlSSOClientConfig samlConfig = baseConfig(idp.url());
+      samlConfig.setSecurity(new SamlSecurityConfig().withSendSignedAuthRequest(true));
+
+      FieldError error =
+          validator.validateSamlConfiguration(new AuthenticationConfiguration(), samlConfig);
+
+      assertNull(error);
+      assertTrue(idp.acceptedSignedRequest(), "the IdP must have verified a signed request");
+    }
+  }
+
+  @Test
+  void validateSamlConfigurationShowsTheIdpReasonWhenItRejectsAnUnsignedRequest() throws Exception {
+    try (SigningIdp idp = SigningIdp.start()) {
+      FieldError error =
+          validator.validateSamlConfiguration(
+              new AuthenticationConfiguration(), baseConfig(idp.url()));
+
+      assertNotNull(error);
+      assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, error.getField());
+      assertEquals(
+          "The identity provider rejected the SAML sign-in request (HTTP 400): "
+              + IdpErrorResponseTest.ENTRA_UNSIGNED_REQUEST_REASON,
+          error.getError());
+    }
+  }
+
+  @Test
+  void validateIdpConnectivityReportsAnSpKeyThatCannotSignRequests() throws Exception {
+    try (TestSsoServer server = TestSsoServer.start(200, "ok")) {
+      SamlSSOClientConfig samlConfig = baseConfig(server.url());
+      samlConfig.setSecurity(new SamlSecurityConfig().withSendSignedAuthRequest(true));
+      samlConfig.getSp().setSpPrivateKey(pkcs1PrivateKey());
+
+      FieldError error =
+          invokePrivate("validateIdpConnectivity", SamlSSOClientConfig.class, samlConfig);
+
+      assertNotNull(error);
+      assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_KEY, error.getField());
+      assertTrue(error.getError().contains("PKCS#8"));
+    }
+  }
+
+  @Test
+  void validateIdpConnectivityReportsSettingsTheLiveLoginCannotBuild() throws Exception {
+    try (TestSsoServer server = TestSsoServer.start(200, "ok")) {
+      SamlSSOClientConfig samlConfig = baseConfig(server.url());
+      samlConfig.setSecurity(new SamlSecurityConfig().withWantAssertionEncrypted(true));
+      samlConfig.getSp().withSpX509Certificate(null).setSpPrivateKey(null);
+
+      FieldError error =
+          invokePrivate("validateIdpConnectivity", SamlSSOClientConfig.class, samlConfig);
+
+      assertNotNull(error);
+      assertEquals("", error.getField());
+      assertTrue(error.getError().startsWith("Could not build the SAML sign-in request: "));
+    }
+  }
+
+  @Test
+  void validateIdpConnectivityReportsSamlClientErrorsWithTheIdpReason() throws Exception {
     try (TestSsoServer server = TestSsoServer.start(400, "invalid saml request")) {
       FieldError error =
           invokePrivate(
               "validateIdpConnectivity", SamlSSOClientConfig.class, baseConfig(server.url()));
 
-      assertNull(error);
+      assertNotNull(error);
+      assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, error.getField());
+      assertEquals(
+          "The identity provider rejected the SAML sign-in request (HTTP 400): invalid saml request",
+          error.getError());
     }
   }
 
@@ -861,60 +1105,167 @@ class SamlValidatorTest {
       assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, methodError.getField());
       assertNotNull(serverErrorField);
       assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, serverErrorField.getField());
+      assertEquals(
+          "SSO URL is not accessible (HTTP 503): unavailable", serverErrorField.getError());
     }
   }
 
   @Test
-  void validateIdpConnectivityMapsClientErrorsWithoutSamlHints() throws Exception {
-    try (TestSsoServer server = TestSsoServer.start(400, "plain client error")) {
+  void validateIdpConnectivityMapsClientErrorsWithoutAReadableReason() throws Exception {
+    try (TestSsoServer server = TestSsoServer.start(400, "")) {
       FieldError error =
           invokePrivate(
               "validateIdpConnectivity", SamlSSOClientConfig.class, baseConfig(server.url()));
 
       assertNotNull(error);
       assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, error.getField());
+      assertTrue(
+          error
+              .getError()
+              .startsWith("The identity provider rejected the SAML sign-in request (HTTP 400)."));
     }
   }
 
   @Test
-  void validateIdpConnectivityTreatsMalformedUrlsAsWarnings() throws Exception {
+  void validateSamlConfigurationRejectsMalformedSsoUrlsBeforeTheCheckRequest() {
+    FieldError error =
+        validator.validateSamlConfiguration(
+            new AuthenticationConfiguration(), baseConfig("http://bad host"));
+
+    assertNotNull(error);
+    assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, error.getField());
+    assertTrue(error.getError().startsWith("Invalid SAML IdP SSO Login URL"));
+  }
+
+  @Test
+  void validateIdpConnectivityTreatsUnreachableIdpsAsWarnings() throws Exception {
     FieldError error =
         invokePrivate(
-            "validateIdpConnectivity", SamlSSOClientConfig.class, baseConfig("http://bad host"));
+            "validateIdpConnectivity",
+            SamlSSOClientConfig.class,
+            baseConfig("http://localhost:0/sso"));
 
     assertNull(error);
   }
 
   @Test
-  void readResponseSnippetReturnsEmptyWhenConnectionHasNoReadableStreams() throws Exception {
+  void readResponseBodyReturnsEmptyWhenConnectionHasNoReadableStreams() throws Exception {
     HttpURLConnection connection = mock(HttpURLConnection.class);
     when(connection.getErrorStream()).thenReturn(null);
     when(connection.getInputStream()).thenThrow(new IOException("no body"));
 
-    String snippet = invokePrivate("readResponseSnippet", HttpURLConnection.class, connection);
+    String body = invokePrivate("readResponseBody", HttpURLConnection.class, connection);
 
-    assertEquals("", snippet);
+    assertEquals("", body);
   }
 
   @Test
-  void readResponseSnippetFallsBackToInputStreams() throws Exception {
+  void readResponseBodyFallsBackToInputStreams() throws Exception {
     HttpURLConnection connection = mock(HttpURLConnection.class);
     when(connection.getErrorStream()).thenReturn(null);
     when(connection.getInputStream())
         .thenReturn(new java.io.ByteArrayInputStream("from-input".getBytes()));
 
-    String snippet = invokePrivate("readResponseSnippet", HttpURLConnection.class, connection);
+    String body = invokePrivate("readResponseBody", HttpURLConnection.class, connection);
 
-    assertEquals("from-input", snippet);
+    assertEquals("from-input", body);
   }
 
   @Test
-  void createTestSamlRequestFallsBackWhenConfigIsIncomplete() throws Exception {
-    String request =
-        invokePrivate(
-            "createTestSamlRequest", SamlSSOClientConfig.class, new SamlSSOClientConfig());
+  void readResponseBodyClosesReadableStreams() throws Exception {
+    TrackingInputStream inputStream = new TrackingInputStream("from-error".getBytes());
+    HttpURLConnection connection = mock(HttpURLConnection.class);
+    when(connection.getErrorStream()).thenReturn(inputStream);
 
-    assertEquals("dGVzdA==", request);
+    String body = invokePrivate("readResponseBody", HttpURLConnection.class, connection);
+
+    assertEquals("from-error", body);
+    assertTrue(inputStream.isClosed());
+  }
+
+  @Test
+  void validateIdpConnectivityDisconnectsConnections() throws Exception {
+    TrackingHttpURLConnection connection = new TrackingHttpURLConnection(400, "plain client error");
+    validator = spy(validator);
+    doReturn(connection).when(validator).openConnection(any(URL.class));
+
+    FieldError error =
+        invokePrivate(
+            "validateIdpConnectivity",
+            SamlSSOClientConfig.class,
+            baseConfig("https://sso.example.com"));
+
+    assertNotNull(error);
+    assertTrue(connection.isDisconnected());
+    assertTrue(connection.getBodyStream().isClosed());
+  }
+
+  /** The server must never send the probe to a metadata address, whatever the admin typed. */
+  @Test
+  void validateIdpConnectivityNeverProbesMetadataAddress() throws Exception {
+    validator = spy(validator);
+
+    FieldError error =
+        invokePrivate(
+            "validateIdpConnectivity",
+            SamlSSOClientConfig.class,
+            baseConfig("http://169.254.169.254/latest/meta-data/"));
+
+    assertNull(error);
+    verify(validator, never()).openConnection(any(URL.class));
+  }
+
+  /**
+   * An identity provider on a private network is never probed, but the live login still cannot
+   * sign with a key OneLogin cannot load, so the check reports it without sending anything.
+   */
+  @Test
+  void validateIdpConnectivityReportsAnUnusableSpKeyForAnIdpItMayNotProbe() throws Exception {
+    validator = spy(validator);
+    SamlSSOClientConfig samlConfig = baseConfig("http://169.254.169.254/latest/meta-data/");
+    samlConfig.setSecurity(new SamlSecurityConfig().withSendSignedAuthRequest(true));
+    samlConfig.getSp().setSpPrivateKey(pkcs1PrivateKey());
+
+    FieldError error =
+        invokePrivate("validateIdpConnectivity", SamlSSOClientConfig.class, samlConfig);
+
+    assertNotNull(error);
+    assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_KEY, error.getField());
+    verify(validator, never()).openConnection(any(URL.class));
+  }
+
+  @Test
+  void validatesRolloverBundlesButStillRejectsInactiveSpCertificates() throws Exception {
+    for (String inactive : List.of("expired", "future")) {
+      String pem;
+      try (InputStream input = getClass().getResourceAsStream("/saml/" + inactive + "-idp.crt")) {
+        pem = new String(input.readAllBytes(), StandardCharsets.US_ASCII);
+      }
+      invokePrivate(
+          "validateX509Certificate",
+          new Class<?>[] {String.class, String.class, SamlSSOClientConfig.class},
+          pem + "\n" + GENERIC_CERT,
+          "IdP X509 certificate",
+          baseConfig("http://localhost/unused"));
+      String inactivePem = pem;
+      assertThrows(
+          InvocationTargetException.class,
+          () ->
+              invokePrivate(
+                  "validateX509Certificate",
+                  new Class<?>[] {String.class, String.class, SamlSSOClientConfig.class},
+                  inactivePem,
+                  "IdP X509 certificate",
+                  baseConfig("http://localhost/unused")));
+      assertThrows(
+          InvocationTargetException.class,
+          () ->
+              invokePrivate(
+                  "validateX509Certificate",
+                  new Class<?>[] {String.class, String.class},
+                  inactivePem,
+                  "SP X509 certificate"));
+    }
   }
 
   @Test
@@ -975,28 +1326,40 @@ class SamlValidatorTest {
   }
 
   @Test
-  void validateIdpCertificateAgainstConfigThrowsForAuth0Mismatches() {
+  void validateIdpCertificateAgainstConfigAllowsOktaOrgNameCertificates() throws Exception {
     X509Certificate cert = mock(X509Certificate.class);
-    when(cert.getSubjectDN()).thenReturn(new X500Principal("CN=wrong.auth0.com"));
+    when(cert.getSubjectDN())
+        .thenReturn(
+            new X500Principal(
+                "CN=example-org, OU=SSOProvider, O=Okta, L=San Francisco, ST=California, C=US"));
+
+    SamlSSOClientConfig samlConfig = baseConfig("http://localhost/unused");
+    samlConfig.getIdp().setEntityId(OKTA_ENTITY_ID);
+
+    invokePrivate(
+        "validateIdpCertificateAgainstConfig",
+        new Class<?>[] {X509Certificate.class, SamlSSOClientConfig.class},
+        cert,
+        samlConfig);
+  }
+
+  @Test
+  void validateIdpCertificateAgainstConfigAllowsAuth0CustomDomains() throws Exception {
+    X509Certificate cert = mock(X509Certificate.class);
+    when(cert.getSubjectDN()).thenReturn(new X500Principal("CN=login.example.com"));
 
     SamlSSOClientConfig samlConfig = baseConfig("http://localhost/unused");
     samlConfig.getIdp().setEntityId("urn:dev-tenant.us.auth0.com");
 
-    InvocationTargetException exception =
-        assertThrows(
-            InvocationTargetException.class,
-            () ->
-                invokePrivate(
-                    "validateIdpCertificateAgainstConfig",
-                    new Class<?>[] {X509Certificate.class, SamlSSOClientConfig.class},
-                    cert,
-                    samlConfig));
-
-    assertInstanceOf(CertificateException.class, exception.getCause());
+    invokePrivate(
+        "validateIdpCertificateAgainstConfig",
+        new Class<?>[] {X509Certificate.class, SamlSSOClientConfig.class},
+        cert,
+        samlConfig);
   }
 
   @Test
-  void validateIdpCertificateAgainstConfigThrowsForAzureMismatches() {
+  void validateIdpCertificateAgainstConfigAllowsNonMicrosoftAzureCertificates() throws Exception {
     X509Certificate cert = mock(X509Certificate.class);
     when(cert.getSubjectDN()).thenReturn(new X500Principal("CN=generic.example.com"));
 
@@ -1005,17 +1368,11 @@ class SamlValidatorTest {
         .getIdp()
         .setEntityId("https://sts.windows.net/11111111-2222-3333-4444-555555555555/");
 
-    InvocationTargetException exception =
-        assertThrows(
-            InvocationTargetException.class,
-            () ->
-                invokePrivate(
-                    "validateIdpCertificateAgainstConfig",
-                    new Class<?>[] {X509Certificate.class, SamlSSOClientConfig.class},
-                    cert,
-                    samlConfig));
-
-    assertInstanceOf(CertificateException.class, exception.getCause());
+    invokePrivate(
+        "validateIdpCertificateAgainstConfig",
+        new Class<?>[] {X509Certificate.class, SamlSSOClientConfig.class},
+        cert,
+        samlConfig);
   }
 
   @Test
@@ -1113,18 +1470,41 @@ class SamlValidatorTest {
     return (T) method.invoke(validator, arguments);
   }
 
+  /**
+   * The test key in PKCS#1 form ({@code BEGIN RSA PRIVATE KEY}), as OpenSSL 1.x {@code genrsa}
+   * writes it. A 2048-bit PKCS#8 RSA key is a 26-byte PrivateKeyInfo header followed by the PKCS#1
+   * RSAPrivateKey.
+   */
+  private static String pkcs1PrivateKey() {
+    String base64 =
+        GENERIC_PRIVATE_KEY
+            .replace("-----BEGIN PRIVATE KEY-----", "")
+            .replace("-----END PRIVATE KEY-----", "")
+            .replaceAll("\\s", "");
+    byte[] pkcs8 = Base64.getDecoder().decode(base64);
+    byte[] pkcs1 = Arrays.copyOfRange(pkcs8, 26, pkcs8.length);
+    return "-----BEGIN RSA PRIVATE KEY-----\n"
+        + Base64.getMimeEncoder(64, "\n".getBytes(StandardCharsets.US_ASCII)).encodeToString(pkcs1)
+        + "\n-----END RSA PRIVATE KEY-----\n";
+  }
+
+  private static void respond(HttpExchange exchange, int statusCode, String body)
+      throws IOException {
+    byte[] payload = body.getBytes(StandardCharsets.UTF_8);
+    exchange.sendResponseHeaders(statusCode, payload.length == 0 ? -1 : payload.length);
+    try (OutputStream responseBody = exchange.getResponseBody()) {
+      responseBody.write(payload);
+    }
+  }
+
   private record TestSsoServer(HttpServer server, String url) implements AutoCloseable {
     static TestSsoServer start(int statusCode, String body) throws IOException {
+      return start(exchange -> respond(exchange, statusCode, body));
+    }
+
+    static TestSsoServer start(HttpHandler handler) throws IOException {
       HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-      server.createContext(
-          "/sso",
-          exchange -> {
-            byte[] payload = body.getBytes();
-            exchange.sendResponseHeaders(statusCode, payload.length);
-            try (OutputStream responseBody = exchange.getResponseBody()) {
-              responseBody.write(payload);
-            }
-          });
+      server.createContext("/sso", handler);
       server.start();
       return new TestSsoServer(
           server, "http://localhost:" + server.getAddress().getPort() + "/sso");
@@ -1133,6 +1513,174 @@ class SamlValidatorTest {
     @Override
     public void close() {
       server.stop(0);
+    }
+  }
+
+  /**
+   * An identity provider that, like a Microsoft Entra application with "Require verification
+   * certificates" on, accepts a sign-in request only when it carries a valid HTTP-Redirect binding
+   * signature by the SP key, and otherwise answers with Entra's AADSTS76021 error page.
+   */
+  private static final class SigningIdp implements AutoCloseable {
+    private final AtomicBoolean acceptedSignedRequest = new AtomicBoolean();
+    private final TestSsoServer server;
+
+    private SigningIdp() throws IOException {
+      server = TestSsoServer.start(this::handle);
+    }
+
+    static SigningIdp start() throws IOException {
+      return new SigningIdp();
+    }
+
+    String url() {
+      return server.url();
+    }
+
+    boolean acceptedSignedRequest() {
+      return acceptedSignedRequest.get();
+    }
+
+    private void handle(HttpExchange exchange) throws IOException {
+      boolean signed = isSignedBySpKey(exchange.getRequestURI().getRawQuery());
+      acceptedSignedRequest.compareAndSet(false, signed);
+      respond(
+          exchange,
+          signed ? 200 : 400,
+          signed ? "Sign in to your account" : IdpErrorResponseTest.ENTRA_UNSIGNED_REQUEST_PAGE);
+    }
+
+    /** SAML 2.0 bindings §3.4.4.1: the signature covers the parameters exactly as encoded. */
+    private static boolean isSignedBySpKey(String rawQuery) {
+      Map<String, String> parameters = new HashMap<>();
+      for (String parameter : rawQuery.split("&")) {
+        String[] nameAndValue = parameter.split("=", 2);
+        parameters.put(nameAndValue[0], nameAndValue.length > 1 ? nameAndValue[1] : "");
+      }
+      if (!parameters.containsKey("Signature")) {
+        return false;
+      }
+      String signedContent =
+          "SAMLRequest="
+              + parameters.get("SAMLRequest")
+              + (parameters.containsKey("RelayState")
+                  ? "&RelayState=" + parameters.get("RelayState")
+                  : "")
+              + "&SigAlg="
+              + parameters.get("SigAlg");
+      try {
+        Signature verifier = Signature.getInstance("SHA256withRSA");
+        verifier.initVerify(spCertificate().getPublicKey());
+        verifier.update(signedContent.getBytes(StandardCharsets.UTF_8));
+        return verifier.verify(
+            Base64.getDecoder()
+                .decode(URLDecoder.decode(parameters.get("Signature"), StandardCharsets.UTF_8)));
+      } catch (GeneralSecurityException e) {
+        return false;
+      }
+    }
+
+    private static X509Certificate spCertificate() throws CertificateException {
+      return (X509Certificate)
+          CertificateFactory.getInstance("X.509")
+              .generateCertificate(
+                  new ByteArrayInputStream(GENERIC_CERT.getBytes(StandardCharsets.US_ASCII)));
+    }
+
+    @Override
+    public void close() {
+      server.close();
+    }
+  }
+
+  private static final class TrackingInputStream extends InputStream {
+    private final byte[] data;
+    private int index;
+    private boolean closed;
+
+    private TrackingInputStream(byte[] data) {
+      this.data = data;
+    }
+
+    @Override
+    public int read() {
+      if (index >= data.length) {
+        return -1;
+      }
+      return data[index++];
+    }
+
+    @Override
+    public int read(byte[] buffer, int offset, int length) {
+      if (index >= data.length) {
+        return -1;
+      }
+      int bytesToRead = Math.min(length, data.length - index);
+      System.arraycopy(data, index, buffer, offset, bytesToRead);
+      index += bytesToRead;
+      return bytesToRead;
+    }
+
+    @Override
+    public void close() {
+      closed = true;
+    }
+
+    private boolean isClosed() {
+      return closed;
+    }
+  }
+
+  private static final class TrackingHttpURLConnection extends HttpURLConnection {
+    private final int responseCode;
+    private final TrackingInputStream bodyStream;
+    private boolean disconnected;
+
+    private TrackingHttpURLConnection(int responseCode, String body) throws Exception {
+      super(new URL("http://localhost"));
+      this.responseCode = responseCode;
+      bodyStream = new TrackingInputStream(body.getBytes());
+    }
+
+    @Override
+    public void disconnect() {
+      disconnected = true;
+    }
+
+    @Override
+    public boolean usingProxy() {
+      return false;
+    }
+
+    @Override
+    public void connect() {}
+
+    @Override
+    public int getResponseCode() {
+      return responseCode;
+    }
+
+    @Override
+    public InputStream getErrorStream() {
+      return bodyStream;
+    }
+
+    @Override
+    public InputStream getInputStream() throws IOException {
+      throw new IOException("not used");
+    }
+
+    @Override
+    public void setRequestMethod(String method) throws ProtocolException {
+      this.method = method;
+    }
+
+    private boolean isDisconnected() {
+      return disconnected;
+    }
+
+    private TrackingInputStream getBodyStream() {
+      return bodyStream;
     }
   }
 }

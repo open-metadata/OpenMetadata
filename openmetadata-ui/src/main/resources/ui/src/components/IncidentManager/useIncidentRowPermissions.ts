@@ -11,10 +11,8 @@
  *  limitations under the License.
  */
 import { useEffect, useState } from 'react';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { TestCaseIncidentStatusData } from '../../pages/IncidentManager/IncidentManager.interface';
 import { TestCasePermission } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 

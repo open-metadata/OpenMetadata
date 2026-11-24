@@ -11,12 +11,29 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholderProps } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholderAction,
+  EmptyPlaceholderFeature,
+  EmptyPlaceholderProps,
+} from '@openmetadata/ui-core-components';
+import { ReactNode } from 'react';
 
 export type EmptyPlaceholderVariantProps = Omit<
   EmptyPlaceholderProps,
   'variant'
 >;
+
+export interface FeaturesPlaceholderFeature extends EmptyPlaceholderFeature {
+  /** Renders the feature's title as a button that runs this action. */
+  action?: Omit<EmptyPlaceholderAction, 'key' | 'label'> & {
+    'data-testid'?: string;
+  };
+}
+
+export interface FeaturesPlaceholderProps
+  extends Omit<EmptyPlaceholderVariantProps, 'features'> {
+  features?: FeaturesPlaceholderFeature[];
+}
 
 export interface NoFilteredResultsPlaceholderProps
   extends EmptyPlaceholderVariantProps {
@@ -40,4 +57,16 @@ export interface CreatePlaceholderProps extends EmptyPlaceholderVariantProps {
   buttonId?: string;
   permissionValue?: string;
   onCreate?: () => void;
+}
+
+export interface PanelEmptyPlaceholderProps {
+  /** An active search swaps the no-data message for "no matching results". */
+  searchText?: string;
+  /** Short headline ("No test cases"); long guidance goes in `description`. */
+  title?: ReactNode;
+  description?: ReactNode;
+  className?: string;
+  'data-testid'?: string;
+  /** Test id for the search state when callers address it separately. */
+  searchResultsTestId?: string;
 }

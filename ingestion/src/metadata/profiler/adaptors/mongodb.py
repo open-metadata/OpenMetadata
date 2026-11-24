@@ -13,8 +13,9 @@ MongoDB adaptor for the NoSQL profiler.
 """
 
 import json
+from datetime import date, datetime, time
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional, Union  # noqa: UP035
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
@@ -42,7 +43,7 @@ class AggregationFunction(Enum):
 
 
 class Executable(BaseModel):
-    def to_executable(self, client: MongoClient) -> Union[CommandCursor, Cursor]:  # noqa: UP007
+    def to_executable(self, client: MongoClient) -> "CommandCursor | Cursor":
         raise NotImplementedError
 
 
@@ -50,7 +51,7 @@ class Query(Executable):
     database: str
     collection: str
     filter: dict = Field(default_factory=dict)
-    limit: Optional[int] = None  # noqa: UP045
+    limit: int | None = None
 
     def to_executable(self, client: MongoClient) -> Cursor:
         db = client[self.database]
@@ -65,7 +66,7 @@ class Aggregation(Executable):
     database: str
     collection: str
     column: str
-    aggregations: List[AggregationFunction]  # noqa: UP006
+    aggregations: list[AggregationFunction]
 
     def to_executable(self, client: MongoClient) -> CommandCursor:
         db = client[self.database]
@@ -93,7 +94,7 @@ class MongoDB(NoSQLAdaptor):
         collection = db[table.name.root]
         return collection.count_documents({})
 
-    def scan(self, table: Table, columns: List[Column], limit: int) -> List[Dict[str, any]]:  # noqa: UP006
+    def scan(self, table: Table, columns: list[Column], limit: int) -> list[dict[str, any]]:
         return self.execute(
             Query(
                 database=table.databaseSchema.name,
@@ -102,7 +103,7 @@ class MongoDB(NoSQLAdaptor):
             )
         )
 
-    def query(self, table: Table, columns: List[Column], query: any, limit: int) -> List[Dict[str, any]]:  # noqa: UP006
+    def query(self, table: Table, columns: list[Column], query: any, limit: int) -> list[dict[str, any]]:
         try:
             json_query = json.loads(query)
         except json.JSONDecodeError:
@@ -115,12 +116,26 @@ class MongoDB(NoSQLAdaptor):
             )
         )
 
+    @staticmethod
+    def _normalize_aggregate_value(
+        value: Any,
+    ) -> int | float | str | datetime | date | time | None:
+        """Convert BSON aggregate values without a ColumnProfile representation."""
+        if value is None:
+            return None
+        if hasattr(value, "to_decimal"):
+            decimal_value = value.to_decimal()
+            return float(decimal_value) if decimal_value.is_finite() else None
+        if isinstance(value, (int, float, str, datetime, date, time)):
+            return value
+        return str(value)
+
     def get_aggregates(
         self,
         table: Table,
         column: SQALikeColumn,
-        aggregate_functions: List[AggregationFunction],  # noqa: UP006
-    ) -> Dict[str, Union[int, float]]:  # noqa: UP006, UP007
+        aggregate_functions: list[AggregationFunction],
+    ) -> dict[str, int | float | str | datetime | date | time | None]:
         """
         Get the aggregate functions for a column in a table
         Returns:
@@ -134,15 +149,17 @@ class MongoDB(NoSQLAdaptor):
                 "min": 25
             }
         """
-        row = self.execute(
+        rows = self.execute(
             Aggregation(
                 database=table.databaseSchema.name,
                 collection=table.name.root,
                 column=column.name,
                 aggregations=aggregate_functions,
             )
-        )[0]
-        return {k: v for k, v in row.items() if k != "_id"}
+        )
+        if not rows:
+            return {}
+        return {k: self._normalize_aggregate_value(v) for k, v in rows[0].items() if k != "_id"}
 
     def sum(self, table: Table, column: SQALikeColumn) -> AggregationFunction:
         return AggregationFunction.SUM
@@ -156,5 +173,5 @@ class MongoDB(NoSQLAdaptor):
     def min(self, table: Table, column: SQALikeColumn) -> AggregationFunction:
         return AggregationFunction.MIN
 
-    def execute(self, query: Executable) -> List[Dict[str, any]]:  # noqa: UP006
+    def execute(self, query: Executable) -> list[dict[str, any]]:
         return list(query.to_executable(self.client))

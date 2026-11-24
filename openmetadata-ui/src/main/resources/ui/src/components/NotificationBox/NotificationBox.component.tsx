@@ -11,26 +11,35 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Badge, Button, List, Tabs, Typography } from 'antd';
+import {
+  Button,
+  Dot,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  TextEditorMention,
+  TotalOccurrences,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
-import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
 import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
   DEFAULT_DOMAIN_VALUE,
   NOTIFICATION_READ_TIMER,
 } from '../../constants/constants';
 import { EntityTabs } from '../../enums/entity.enum';
-import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
-import { Post, Thread } from '../../generated/entity/feed/thread';
+import {
+  Conversation,
+  ConversationReply,
+} from '../../generated/entity/feed/conversation';
+import { ConversationFilterType } from '../../generated/type/conversationFilterType';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useDomainStore } from '../../hooks/useDomainStore';
-import { getFeedsWithFilter } from '../../rest/feedsAPI';
+import { listConversations } from '../../rest/conversationsAPI';
 import {
   listMyAssignedTasks,
   Task as TaskEntity,
@@ -38,31 +47,92 @@ import {
 } from '../../rest/tasksAPI';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtilsPure';
 import { getUserPath } from '../../utils/RouterUtils';
+import {
+  getTaskCommentMentions,
+  TaskCommentMention,
+} from '../../utils/tasks/TaskMentions.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import './notification-box.less';
 import { NotificationBoxProp } from './NotificationBox.interface';
 import { tabsInfo } from './NotificationBox.utils';
 import NotificationFeedCard from './NotificationFeedCard.component';
-import { MentionNotification } from './NotificationFeedCard.interface';
-type NotificationItem = MentionNotification | TaskEntity;
+import { TaskMentionCard } from './TaskMentionCard';
+type NotificationItem = Conversation | TaskEntity | TaskCommentMention;
+const MAX_NOTIFICATION_ITEMS = 5;
 
 const isTaskNotification = (
   notification: NotificationItem
 ): notification is TaskEntity => 'taskId' in notification;
 
-const toMentionNotification = (thread: Thread): MentionNotification => ({
-  id: thread.id,
-  about: thread.about,
-  createdBy: thread.createdBy,
-  entityRef: thread.entityRef,
-  entityUrlLink: thread.entityUrlLink,
-  feedInfo: thread.feedInfo,
-  message: thread.message,
-  posts: thread.posts,
-  reactions: thread.reactions,
-  threadTs: thread.threadTs,
-});
+const renderTaskNotificationCard = (feed: TaskEntity) => (
+  <NotificationFeedCard
+    createdBy={feed.createdBy?.name ?? ''}
+    entityFQN={feed.about?.fullyQualifiedName ?? ''}
+    entityType={feed.about?.type ?? ''}
+    key={`${feed.createdBy?.name ?? ''} ${feed.id}`}
+    taskEntity={feed}
+    timestamp={feed.createdAt}
+  />
+);
+
+const getMentionReply = (
+  feed: Conversation,
+  activeTab: string
+): ConversationReply | undefined => {
+  if (
+    activeTab !== NotificationTabsKey.CONVERSATION ||
+    !feed.replies ||
+    feed.replies.length === 0
+  ) {
+    return undefined;
+  }
+
+  return [...feed.replies]
+    .filter((reply) => reply.message.includes('<#E::user::'))
+    .sort((left, right) => right.createdAt - left.createdAt)[0] as
+    | ConversationReply
+    | undefined;
+};
+
+const getMentionTimestamp = (item: Conversation | TaskCommentMention) =>
+  'comment' in item
+    ? item.comment.createdAt
+    : getMentionReply(item, NotificationTabsKey.CONVERSATION)?.createdAt ??
+      item.createdAt ??
+      0;
+
+const renderConversationNotificationCard = (
+  feed: Conversation,
+  activeTab: string
+) => {
+  const entityType = feed.entityRef?.type ?? getEntityType(feed.about);
+  const entityFQN =
+    feed.entityRef?.fullyQualifiedName ?? getEntityFQN(feed.about);
+
+  let actualUser =
+    feed.createdBy?.name ?? feed.createdBy?.fullyQualifiedName ?? '';
+  let actualTimestamp = feed.createdAt;
+
+  const mentionReply = getMentionReply(feed, activeTab);
+
+  if (mentionReply) {
+    actualUser =
+      mentionReply.author.name ?? mentionReply.author.fullyQualifiedName ?? '';
+    actualTimestamp = mentionReply.createdAt;
+  }
+
+  return (
+    <NotificationFeedCard
+      createdBy={actualUser}
+      entityFQN={entityFQN as string}
+      entityType={entityType as string}
+      key={`${actualUser} ${feed.id}`}
+      mentionNotification={feed}
+      timestamp={actualTimestamp}
+    />
+  );
+};
 
 const NotificationBox = ({
   activeTab,
@@ -77,6 +147,7 @@ const NotificationBox = ({
   const { currentUser } = useApplicationStore();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const latestRequest = useRef(0);
   const [viewAllPath, setViewAllPath] = useState<string>(
     getUserPath(
       currentUser?.name as string,
@@ -86,114 +157,91 @@ const NotificationBox = ({
   );
 
   const notificationDropDownList = useMemo(() => {
-    return notifications.slice(0, 5).map((feed) => {
-      if (isTaskNotification(feed)) {
-        return (
-          <NotificationFeedCard
-            createdBy={feed.createdBy?.name ?? ''}
-            entityFQN={feed.about?.fullyQualifiedName ?? ''}
-            entityType={feed.about?.type ?? ''}
-            key={`${feed.createdBy?.name ?? ''} ${feed.id}`}
-            taskEntity={feed}
-            timestamp={feed.createdAt}
-          />
-        );
+    return notifications.slice(0, MAX_NOTIFICATION_ITEMS).map((feed) => {
+      if ('comment' in feed) {
+        return <TaskMentionCard key={feed.comment.id} mention={feed} />;
       }
 
-      const mainFeed = {
-        message: feed.message,
-        postTs: feed.threadTs,
-        from: feed.createdBy,
-        id: feed.id,
-        reactions: feed.reactions,
-      } as Post;
-      const entityType = feed.entityRef?.type ?? getEntityType(feed.about);
-      const entityFQN =
-        feed.entityRef?.fullyQualifiedName ?? getEntityFQN(feed.about);
+      return isTaskNotification(feed)
+        ? renderTaskNotificationCard(feed)
+        : renderConversationNotificationCard(feed, activeTab);
+    });
+  }, [activeTab, notifications]);
 
-      let actualUser = mainFeed.from;
-      let actualTimestamp = mainFeed.postTs;
-
-      if (
-        activeTab === NotificationTabsKey.CONVERSATION &&
-        feed.posts &&
-        feed.posts.length > 0
-      ) {
-        const mentionPost = feed.posts
-          .filter(
-            (post) =>
-              post.message.includes('<#E::user::') && post.postTs !== undefined
-          )
-          .sort((a, b) => (b.postTs ?? 0) - (a.postTs ?? 0))[0];
-
-        if (mentionPost?.postTs !== undefined) {
-          actualUser = mentionPost.from;
-          actualTimestamp = mentionPost.postTs;
+  const loadNotifications = useCallback(
+    async (request: Promise<NotificationItem[]>) => {
+      const requestId = ++latestRequest.current;
+      setIsLoading(true);
+      setNotifications([]);
+      try {
+        const items = await request;
+        if (requestId === latestRequest.current) {
+          setNotifications(items);
+        }
+      } catch (error) {
+        if (requestId === latestRequest.current) {
+          showErrorToast(
+            error as AxiosError,
+            t('server.entity-fetch-error', {
+              entity: t('label.notification'),
+            })
+          );
+        }
+      } finally {
+        if (requestId === latestRequest.current) {
+          setIsLoading(false);
         }
       }
-
-      return (
-        <NotificationFeedCard
-          createdBy={actualUser}
-          entityFQN={entityFQN as string}
-          entityType={entityType as string}
-          key={`${actualUser} ${mainFeed.id}`}
-          mentionNotification={toMentionNotification(feed)}
-          timestamp={actualTimestamp}
-        />
-      );
-    });
-  }, [notifications]);
+    },
+    [t]
+  );
 
   const getTaskNotificationData = useCallback(() => {
-    setIsLoading(true);
     const domain =
       activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-    listMyAssignedTasks({
-      status: TaskEntityStatus.Open,
-      fields: 'about,createdBy,assignees',
-      limit: 10,
-      domain,
-    })
-      .then((res) => {
-        setNotifications(res.data);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.entity-fetch-error', {
-            entity: t('label.notification'),
-          })
-        );
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [activeDomain, t]);
+    void loadNotifications(
+      listMyAssignedTasks({
+        status: TaskEntityStatus.Open,
+        fields: 'about,createdBy,assignees',
+        limit: 10,
+        domain,
+      }).then((res) => res.data)
+    );
+  }, [activeDomain, loadNotifications]);
 
   const getMentionNotificationData = useCallback(() => {
-    setIsLoading(true);
-    getFeedsWithFilter(
-      currentUser?.id,
-      FeedFilter.MENTIONS,
-      undefined,
-      undefined
-    )
-      .then((res) => {
-        setNotifications(res.data);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.entity-fetch-error', {
-            entity: t('label.notification'),
+    const domain =
+      activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
+    const request = Promise.allSettled([
+      listConversations({
+        filterType: ConversationFilterType.Mentions,
+        limit: 10,
+        userId: currentUser?.id,
+      }),
+      currentUser?.name
+        ? getTaskCommentMentions(currentUser.name, {
+            domain,
+            maxResults: MAX_NOTIFICATION_ITEMS,
           })
-        );
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [currentUser?.id, t]);
+        : undefined,
+    ]).then(([conversations, tasks]) => {
+      const taskMentions =
+        tasks.status === 'fulfilled' ? tasks.value : undefined;
+      if (conversations.status === 'rejected' && !taskMentions) {
+        throw conversations.reason;
+      }
+
+      return [
+        ...(conversations.status === 'fulfilled'
+          ? conversations.value.data
+          : []),
+        ...(taskMentions ?? []),
+      ].sort(
+        (left, right) => getMentionTimestamp(right) - getMentionTimestamp(left)
+      );
+    });
+    void loadNotifications(request);
+  }, [activeDomain, currentUser?.id, currentUser?.name, loadNotifications]);
 
   const updateActiveTab = useCallback(
     (key: string) => {
@@ -230,6 +278,8 @@ const NotificationBox = ({
       hasMentionNotification,
       getTaskNotificationData,
       getMentionNotificationData,
+      onMarkMentionsNotificationRead,
+      onMarkTaskNotificationRead,
     ]
   );
 
@@ -238,22 +288,30 @@ const NotificationBox = ({
   }, []);
 
   const getTabTitle = (name: string, key: string) => {
+    const NotificationIcon =
+      key === NotificationTabsKey.TASK ? TotalOccurrences : TextEditorMention;
+
     return (
-      <Badge
-        dot={
-          key === NotificationTabsKey.TASK
-            ? hasTaskNotification
-            : hasMentionNotification
-        }
-        offset={[5, 0]}>
-        <Icon
-          alt="notification-icon"
-          className="align-middle m-r-xs"
-          component={key === NotificationTabsKey.TASK ? IconTask : IconMentions}
-          style={{ fontSize: '16px' }}
+      <span className="tw:relative tw:inline-flex tw:items-center">
+        <NotificationIcon
+          aria-label="notification-icon"
+          className="tw:align-middle tw:mr-2 tw:shrink-0"
+          height={16}
+          role="img"
+          width={16}
         />
         {name}
-      </Badge>
+        {(key === NotificationTabsKey.TASK
+          ? hasTaskNotification
+          : hasMentionNotification) && (
+          <Dot
+            aria-label={t('label.notification-plural')}
+            className="tw:absolute tw:-right-1 tw:top-0 tw:text-fg-error-primary"
+            role="img"
+            size="sm"
+          />
+        )}
+      </span>
     );
   };
 
@@ -264,52 +322,52 @@ const NotificationBox = ({
           <p>{t('message.no-notification-found')}</p>
         </div>
       ) : (
-        <List
-          className="notification-content-container"
-          dataSource={notificationDropDownList}
-          footer={
-            <Button block href={viewAllPath} type="link">
-              <span>
+        <div className="notification-content-container">
+          <ul className="tw:m-0 tw:h-50 tw:list-none tw:overflow-y-auto tw:p-0">
+            {notificationDropDownList.map((item) => (
+              <li
+                className="notification-dropdown-list-btn cursor-pointer tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
+                key={item.key}>
+                {item}
+              </li>
+            ))}
+          </ul>
+          <div className="notification-list-footer tw:px-4 tw:py-3">
+            <Button className="tw:w-full" color="link-color" href={viewAllPath}>
+              <Typography>
                 {t('label.view-entity', {
                   entity: t('label.all-lowercase'),
                 })}
-              </span>
+              </Typography>
             </Button>
-          }
-          itemLayout="vertical"
-          renderItem={(item) => (
-            <List.Item className="notification-dropdown-list-btn cursor-pointer">
-              {item}
-            </List.Item>
-          )}
-          size="small"
-        />
+          </div>
+        </div>
       ),
     [notifications, notificationDropDownList, viewAllPath, t]
   );
 
   return (
     <div className="notification-box">
-      <Typography.Title
+      <Typography
+        as="h5"
         className="p-x-md p-t-sm p-b-xss"
         data-testid="notification-heading"
-        level={5}>
+        size="text-md"
+        weight="semibold">
         {t('label.notification-plural')}
-      </Typography.Title>
+      </Typography>
       <Tabs
-        className="tabs-new"
-        defaultActiveKey="Task"
-        size="small"
-        tabBarGutter={24}
-        tabBarStyle={{
-          borderBottom: '1px solid #DCE3EC',
-          margin: '0px',
-          paddingLeft: '16px',
-          color: 'inherit',
-        }}
-        onTabClick={updateActiveTab}>
-        {tabsInfo.map(({ name, key }) => (
-          <Tabs.TabPane key={key} tab={getTabTitle(name, key)}>
+        defaultSelectedKey={NotificationTabsKey.TASK}
+        onSelectionChange={(key) => updateActiveTab(String(key))}>
+        <Tabs.List className="tw:gap-6 tw:px-4" size="sm" type="underline">
+          {tabsInfo.map(({ name, key }) => (
+            <Tabs.Item id={key} key={key}>
+              {getTabTitle(name, key)}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+        {tabsInfo.map(({ key }) => (
+          <Tabs.Panel id={key} key={key}>
             {isLoading ? (
               <div className="h-64 d-flex items-center justify-center">
                 <Loader size="small" />
@@ -317,7 +375,7 @@ const NotificationBox = ({
             ) : (
               notificationList
             )}
-          </Tabs.TabPane>
+          </Tabs.Panel>
         ))}
       </Tabs>
     </div>

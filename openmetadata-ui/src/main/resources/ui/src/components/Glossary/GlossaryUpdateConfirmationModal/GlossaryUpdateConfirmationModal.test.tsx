@@ -30,7 +30,7 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
-jest.mock('../../common/Table/Table', () => {
+jest.mock('../../common/Table/TableV2', () => {
   return jest.fn();
 });
 
@@ -70,7 +70,7 @@ describe('GlossaryUpdateConfirmationModal component', () => {
     expect(mockOnCancel).toHaveBeenCalled();
   });
 
-  it.skip('should call validation api on clicking on yes, confirm button', async () => {
+  it('should call validation api on clicking on yes, confirm button', async () => {
     const { findByText } = render(
       <GlossaryUpdateConfirmationModal
         glossaryTerm={{} as GlossaryTerm}

@@ -1,3 +1,4 @@
+import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx, sortCx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
@@ -13,61 +14,113 @@ import type {
   ButtonProps as AriaButtonProps,
   LinkProps as AriaLinkProps,
 } from 'react-aria-components';
+import type { Placement } from 'react-aria';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
+
+/** The spinner a loading button draws in place of its icon. */
+export const ButtonLoadingIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    data-icon="loading"
+    fill="none"
+    viewBox="0 0 20 20">
+    {/* Background circle */}
+    <circle
+      className="tw:stroke-current tw:opacity-30"
+      cx="10"
+      cy="10"
+      fill="none"
+      r="8"
+      strokeWidth="2"
+    />
+    {/* Spinning circle */}
+    <circle
+      className="tw:origin-center tw:animate-spin tw:stroke-current"
+      cx="10"
+      cy="10"
+      fill="none"
+      r="8"
+      strokeDasharray="12.5 50"
+      strokeLinecap="round"
+      strokeWidth="2"
+    />
+  </svg>
+);
 
 export const styles = sortCx({
   common: {
+    // A link button drops the button box by default; `boxed` keeps it.
+    linkUnboxed: 'tw:justify-normal tw:rounded tw:p-0!',
     root: [
       'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:whitespace-nowrap tw:transition tw:duration-100 tw:ease-linear tw:before:absolute',
       // When button is used within `InputGroup`
       'tw:in-data-input-wrapper:shadow-xs tw:in-data-input-wrapper:focus:!z-50 tw:in-data-input-wrapper:in-data-leading:-mr-px tw:in-data-input-wrapper:in-data-leading:rounded-r-none tw:in-data-input-wrapper:in-data-leading:before:rounded-r-none tw:in-data-input-wrapper:in-data-trailing:-ml-px tw:in-data-input-wrapper:in-data-trailing:rounded-l-none tw:in-data-input-wrapper:in-data-trailing:before:rounded-l-none',
-      // Disabled styles
-      'tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled',
+      // Disabled styles. They skip `data-loading`: callers often pass
+      // `isDisabled={loading}`, and the disabled palette must not cover the loading fill.
+      'tw:disabled:not-data-loading:cursor-not-allowed tw:disabled:not-data-loading:text-fg-disabled',
+      // The masked highlight fades the disabled border into dark surfaces.
+      'tw:dark:disabled:not-data-loading:before:hidden tw:dark:disabled:not-data-loading:after:outline-disabled',
       // Icon styles
-      'tw:disabled:*:data-icon:text-fg-disabled_subtle',
+      'tw:disabled:not-data-loading:*:data-icon:text-fg-disabled_subtle',
       // Same as `icon` but for SSR icons that cannot be passed to the client as functions.
       'tw:*:data-icon:pointer-events-none tw:*:data-icon:size-5 tw:*:data-icon:shrink-0 tw:*:data-icon:transition-inherit-all',
+      // Smaller frames scale the 20-grid glyph down; keep its drawn line weight.
+      // `**` reaches shapes nested in `<g>`, which does not inherit vector-effect.
+      'tw:*:data-icon:**:[vector-effect:non-scaling-stroke]',
     ].join(' '),
     focusOutline:
       'tw:outline-brand tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
     icon: 'tw:pointer-events-none tw:size-5 tw:shrink-0 tw:transition-inherit-all',
   },
+  // Heights and icon frames follow the Figma "Icons in buttons" spec
+  // (ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec).
+  // Leading and trailing icons share one frame per height: 16 at xs, 18 at
+  // sm–lg, 20 at xl. At xs–lg the icon-only padding (also inside an
+  // InputGroup) is 1px wider than text padding so the smaller frame keeps the
+  // button height. The visible icon→label gap is 6px at every size, also
+  // inside an InputGroup: `gap-1` plus the label's `px-0.5`; unboxed links
+  // drop that padding, so `linkRoot` is `gap-1.5`. Icons draw in the middle 16
+  // of 20 units, so the spec's fixed 2px frame padding needs svg padding on
+  // smaller frames: 18 → 0.25px (14px glyph), 16 → 0.5px (12px).
   sizes: {
-    xxs: {
-      root: [
-        'tw:gap-0.5 tw:rounded-md tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1.5',
-        'tw:*:data-icon:size-3',
-      ].join(' '),
-      linkRoot: 'tw:gap-0.5',
-    },
+    // Compact — 28px; 16px icon frame.
     xs: {
       root: [
-        'tw:gap-0.5 tw:rounded-md tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1',
-        'tw:in-data-input-wrapper:px-2.5 tw:in-data-input-wrapper:py-1.5 tw:in-data-input-wrapper:data-icon-only:p-1.5',
-        'tw:*:data-icon:size-4',
+        'tw:gap-1 tw:rounded-md tw:px-2 tw:py-1.25 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1.5',
+        'tw:in-data-input-wrapper:px-2.5 tw:in-data-input-wrapper:py-1.5 tw:in-data-input-wrapper:data-icon-only:p-1.75',
+        'tw:*:data-icon:size-4 tw:*:data-icon:p-[0.5px]',
       ].join(' '),
-      linkRoot: 'tw:gap-0.5',
-    },
-    sm: {
-      root: [
-        'tw:gap-1 tw:rounded-lg tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2',
-        'tw:in-data-input-wrapper:px-3.5 tw:in-data-input-wrapper:py-2.5 tw:in-data-input-wrapper:data-icon-only:p-2.5',
-      ].join(' '),
-      linkRoot: 'tw:gap-1',
-    },
-    md: {
-      root: [
-        'tw:gap-1 tw:rounded-lg tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2.5',
-        'tw:in-data-input-wrapper:gap-1.5 tw:in-data-input-wrapper:px-4 tw:in-data-input-wrapper:text-md tw:in-data-input-wrapper:data-icon-only:p-3',
-      ].join(' '),
-      linkRoot: 'tw:gap-1',
-    },
-    lg: {
-      root: 'tw:gap-1.5 tw:rounded-lg tw:px-4 tw:py-2.5 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3',
       linkRoot: 'tw:gap-1.5',
     },
+    // X-Small — 32px; 18px icon frame.
+    sm: {
+      root: [
+        'tw:gap-1 tw:rounded-lg tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-1.75',
+        'tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px]',
+      ].join(' '),
+      linkRoot: 'tw:gap-1.5',
+    },
+    // Small — 36px; 18px icon frame.
+    md: {
+      root: [
+        'tw:gap-1 tw:rounded-lg tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2.25',
+        'tw:in-data-input-wrapper:px-3.5 tw:in-data-input-wrapper:py-2.5 tw:in-data-input-wrapper:data-icon-only:p-2.75',
+        'tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px]',
+      ].join(' '),
+      linkRoot: 'tw:gap-1.5',
+    },
+    // Medium — 40px; 18px icon frame.
+    lg: {
+      root: [
+        'tw:gap-1 tw:rounded-lg tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2.75',
+        'tw:in-data-input-wrapper:px-4 tw:in-data-input-wrapper:text-md tw:in-data-input-wrapper:data-icon-only:p-3.25',
+        'tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px]',
+      ].join(' '),
+      linkRoot: 'tw:gap-1.5',
+    },
+    // Large — 44px; 20px icon frame.
     xl: {
-      root: 'tw:gap-1.5 tw:rounded-lg tw:px-4.5 tw:py-3 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3.5',
+      root: 'tw:gap-1 tw:rounded-lg tw:px-4 tw:py-2.5 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3',
       linkRoot: 'tw:gap-1.5',
     },
   },
@@ -80,64 +133,83 @@ export const styles = sortCx({
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
         // Disabled styles
-        'tw:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         // Icon styles
-        'tw:*:data-icon:text-button-primary-icon tw:hover:*:data-icon:text-button-primary-icon_hover',
+        'tw:*:data-icon:text-white',
       ].join(' '),
     },
     secondary: {
       root: [
-        'tw:bg-primary tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover tw:dark:data-loading:bg-raised',
         `${borderAfter} tw:after:outline-primary`,
         // Disabled styles
-        'tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:dark:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         // Icon styles
-        'tw:*:data-icon:text-fg-quaternary tw:hover:*:data-icon:text-fg-quaternary_hover',
+        'tw:*:data-icon:text-utility-gray-500 tw:hover:*:data-icon:text-utility-gray-600',
       ].join(' '),
     },
     tertiary: {
       root: [
         'tw:text-tertiary tw:hover:bg-primary_hover tw:hover:text-tertiary_hover tw:data-loading:bg-primary_hover',
         // Icon styles
-        'tw:*:data-icon:text-fg-quaternary tw:hover:*:data-icon:text-fg-quaternary_hover',
+        'tw:*:data-icon:text-utility-gray-500 tw:hover:*:data-icon:text-utility-gray-600',
       ].join(' '),
     },
     'link-gray': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-tertiary tw:hover:text-tertiary_hover',
+        'tw:text-tertiary tw:hover:text-tertiary_hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
-        'tw:*:data-icon:text-fg-quaternary tw:hover:*:data-icon:text-fg-quaternary_hover',
+        'tw:*:data-icon:text-utility-gray-500 tw:hover:*:data-icon:text-utility-gray-600',
+      ].join(' '),
+    },
+    // Primary text for a link that is the heading of a card (e.g. lineage node
+    // titles), where link-gray's tertiary text washes out.
+    'link-primary': {
+      root: [
+        'tw:text-primary tw:hover:text-secondary_hover',
+        // Inner text underline
+        'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
+        // Icon styles
+        'tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover',
       ].join(' '),
     },
     'link-color': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-brand-secondary tw:hover:text-brand-secondary_hover',
+        // Dark keeps light frozen (brand-secondary) but flips to the blue link
+        // tone (blue-300) per the dark-mode palette guideline — links are blue,
+        // not the gray brand-secondary text step.
+        'tw:text-brand-secondary tw:hover:text-brand-secondary_hover tw:dark:text-link tw:dark:hover:text-link-hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
-        'tw:*:data-icon:text-fg-brand-secondary_alt tw:hover:*:data-icon:text-fg-brand-secondary_hover',
+        'tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-700 tw:dark:*:data-icon:text-link tw:dark:hover:*:data-icon:text-link-hover',
+        // A link sits in running text, so its leading icon takes the 18px frame.
+        'tw:*:data-[icon=leading]:size-4.5 tw:*:data-[icon=leading]:p-[0.25px]',
       ].join(' '),
     },
     'primary-destructive': {
       root: [
-        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover',
+        // Dark fill softened to 90% opacity per the palette guideline — scoped to
+        // this button so the shared `bg-error-solid` token stays opaque for
+        // badges, error FeaturedIcons, and other solid-error consumers.
+        'tw:bg-error-solid tw:text-white tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-solid_hover tw:data-loading:bg-error-solid_hover tw:dark:bg-error-solid/90 tw:dark:hover:bg-error-solid_hover/90 tw:dark:data-loading:bg-error-solid_hover/90',
         `${borderAfter} tw:after:outline-transparent`,
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
         // Disabled styles
-        'tw:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-button-destructive-primary-icon tw:hover:*:data-icon:text-button-destructive-primary-icon_hover',
       ].join(' '),
     },
     'secondary-destructive': {
       root: [
-        'tw:bg-primary tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
+        'tw:bg-surface tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
         `${borderAfter} tw:after:outline-error_subtle`,
         // Disabled styles
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:not-data-loading:bg-surface tw:dark:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-fg-error-secondary tw:hover:*:data-icon:text-fg-error-primary',
       ].join(' '),
@@ -151,7 +223,7 @@ export const styles = sortCx({
     },
     'link-destructive': {
       root: [
-        'tw:justify-normal tw:rounded tw:p-0! tw:text-error-primary tw:outline-error tw:hover:text-error-primary_hover',
+        'tw:text-error-primary tw:outline-error tw:hover:text-error-primary_hover',
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
@@ -160,28 +232,39 @@ export const styles = sortCx({
     },
     'secondary-success': {
       root: [
-        'tw:bg-primary tw:text-success-primary tw:shadow-xs-skeuomorphic',
+        'tw:bg-surface tw:text-success-primary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-success-300`,
         'tw:hover:bg-success-primary tw:hover:text-success-primary tw:data-loading:bg-success-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:not-data-loading:bg-surface tw:dark:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         'tw:*:data-icon:text-success-primary',
       ].join(' '),
     },
     'secondary-warning': {
       root: [
-        'tw:bg-primary tw:text-warning-primary tw:shadow-xs-skeuomorphic',
+        'tw:bg-surface tw:text-warning-primary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-warning-300`,
         'tw:hover:bg-warning-primary tw:hover:text-warning-primary tw:data-loading:bg-warning-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:not-data-loading:bg-surface tw:dark:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         'tw:*:data-icon:text-warning-primary',
+      ].join(' '),
+    },
+    // Neutral text on a warning outline: the action inside a warning notice, which already
+    // carries the colour, so the button only echoes it in its edge.
+    'secondary-warning-outline': {
+      root: [
+        'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic',
+        `${borderAfter} tw:after:outline-utility-warning-300`,
+        'tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        'tw:disabled:not-data-loading:bg-surface tw:dark:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
+        'tw:*:data-icon:text-utility-gray-500',
       ].join(' '),
     },
     'secondary-brand': {
       root: [
-        'tw:bg-primary tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
+        'tw:bg-surface tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-brand`,
         'tw:hover:bg-brand-primary tw:hover:text-brand-secondary_hover tw:data-loading:bg-brand-primary',
-        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:not-data-loading:bg-surface tw:dark:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         'tw:*:data-icon:text-brand-secondary',
       ].join(' '),
     },
@@ -208,10 +291,27 @@ export interface CommonProps {
   noTextPadding?: boolean;
   /** When true, keeps the text visible during loading state */
   showTextWhileLoading?: boolean;
+  /**
+   * Keeps a `link-*` button's size padding, height and radius instead of
+   * collapsing it to an inline text box, so it lines up with regular buttons
+   * beside it (antd's `type="link"`).
+   */
+  boxed?: boolean;
+  /** Fully rounded ends, for a button inside a pill-shaped notice or toolbar */
+  pill?: boolean;
   /** Truncates the button text with an ellipsis when it overflows */
   ellipsis?: boolean;
+  /**
+   * Lets the text wrap onto more lines instead of staying on one, for link buttons whose label
+   * is a sentence (a task title, an entity reference) that can be wider than its container.
+   */
+  wrap?: boolean;
   /** Omits the default focus outline when the surrounding UI intentionally does not use one */
   hideFocusOutline?: boolean;
+  /** Tooltip text shown on hover/focus */
+  tooltip?: string;
+  /** Placement of the tooltip relative to the button */
+  tooltipPlacement?: Placement;
 }
 
 /**
@@ -258,18 +358,23 @@ export type Props = ButtonProps | LinkProps;
 export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
   function Button(
     {
-      size = 'sm',
+      size = 'md',
       color = 'primary',
       children,
       className,
       hideFocusOutline,
       noTextPadding,
+      boxed,
       ellipsis,
+      pill,
+      wrap,
       iconLeading: IconLeading,
       iconTrailing: IconTrailing,
       isDisabled: disabled,
       isLoading: loading,
       showTextWhileLoading,
+      tooltip,
+      tooltipPlacement = 'top',
       ...otherProps
     }: Props,
     ref
@@ -277,11 +382,21 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
     const href = 'href' in otherProps ? otherProps.href : undefined;
     const Component = href ? AriaLink : AriaButton;
 
-    const isIcon = (IconLeading || IconTrailing) && !children;
-    const isLinkType = ['link-gray', 'link-color', 'link-destructive'].includes(
-      color
-    );
-    noTextPadding = isLinkType || noTextPadding;
+    // A count of 0 is a label too, so test for presence rather than truthiness.
+    const hasText =
+      children !== undefined &&
+      children !== null &&
+      children !== false &&
+      children !== '';
+    const isIcon = (IconLeading || IconTrailing) && !hasText;
+    const isLinkType = [
+      'link-gray',
+      'link-primary',
+      'link-color',
+      'link-destructive',
+    ].includes(color);
+    const isUnboxedLink = isLinkType && !boxed;
+    noTextPadding = isUnboxedLink || noTextPadding;
 
     let props = {};
 
@@ -300,7 +415,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       };
     }
 
-    return (
+    const button = (
       <Component
         data-icon-only={isIcon ? true : undefined}
         data-loading={loading ? true : undefined}
@@ -319,8 +434,19 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           hideFocusOutline ? 'tw:outline-none' : styles.common.focusOutline,
           styles.sizes[size].root,
           styles.colors[color].root,
-          isLinkType && styles.sizes[size].linkRoot,
+          // link-color keeps its 18px leading frame at xs, where the size's
+          // icon-only padding is sized for a 16px frame; this keeps it 28px
+          // (30px inside an InputGroup). A trailing-only icon stays 16px.
+          color === 'link-color' &&
+            size === 'xs' &&
+            IconLeading &&
+            'tw:data-icon-only:p-1.25 tw:in-data-input-wrapper:data-icon-only:p-1.5',
+          isUnboxedLink && styles.common.linkUnboxed,
+          isUnboxedLink && styles.sizes[size].linkRoot,
           ellipsis && 'tw:min-w-0',
+          pill && 'tw:rounded-full tw:before:rounded-full',
+          wrap &&
+            'tw:min-w-0 tw:justify-start tw:text-start tw:whitespace-normal',
           (loading || (href && (disabled || loading))) &&
             'tw:pointer-events-none',
           // If in `loading` state, hide everything except the loading icon
@@ -339,45 +465,26 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
         )}
 
         {loading && (
-          <svg
+          <ButtonLoadingIcon
             className={cx(
               styles.common.icon,
               !showTextWhileLoading &&
                 'tw:absolute tw:top-1/2 tw:left-1/2 tw:-translate-x-1/2 tw:-translate-y-1/2'
             )}
-            data-icon="loading"
-            fill="none"
-            viewBox="0 0 20 20">
-            {/* Background circle */}
-            <circle
-              className="tw:stroke-current tw:opacity-30"
-              cx="10"
-              cy="10"
-              fill="none"
-              r="8"
-              strokeWidth="2"
-            />
-            {/* Spinning circle */}
-            <circle
-              className="tw:origin-center tw:animate-spin tw:stroke-current"
-              cx="10"
-              cy="10"
-              fill="none"
-              r="8"
-              strokeDasharray="12.5 50"
-              strokeLinecap="round"
-              strokeWidth="2"
-            />
-          </svg>
+          />
         )}
 
-        {children && (
+        {hasText && (
           <span
             data-text
             className={cx(
-              'tw:transition-inherit-all',
+              // Only the underline is the span's own colour. Transitioning the
+              // inherited `color` as well restarts every frame of the root's
+              // colour transition, so the label lags the background.
+              'tw:transition-[text-decoration-color] tw:duration-100 tw:ease-linear',
               !noTextPadding && 'tw:px-0.5',
-              ellipsis && 'tw:truncate tw:min-w-0'
+              ellipsis && 'tw:truncate tw:min-w-0',
+              wrap && 'tw:min-w-0 tw:wrap-break-word'
             )}>
             {children}
           </span>
@@ -390,5 +497,18 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
         )}
       </Component>
     );
+
+    if (tooltip) {
+      return (
+        <Tooltip
+          isDisabled={disabled}
+          placement={tooltipPlacement}
+          title={tooltip}>
+          {button}
+        </Tooltip>
+      );
+    }
+
+    return button;
   }
 );

@@ -216,6 +216,10 @@ export enum AgentType {
  *
  * Cache Warmup Application Configuration.
  *
+ * RDF indexing application configuration.
+ *
+ * Scheduled RDF inference materialization configuration.
+ *
  * Configuration for the AutoPilot Application.
  */
 export interface CollateAIAppConfig {
@@ -243,6 +247,11 @@ export interface CollateAIAppConfig {
      */
     resources?: Resource;
     /**
+     * App-level token (xapp-*) required for Socket Mode. Generate from Slack app settings under
+     * App-Level Tokens with connections:write scope.
+     */
+    appToken?: string;
+    /**
      * Bot Token
      */
     botToken?: string;
@@ -254,6 +263,13 @@ export interface CollateAIAppConfig {
      * Client Secret of the Application.
      */
     clientSecret?: string;
+    /**
+     * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+     * for production) receives events on a public HTTP endpoint and scales horizontally behind
+     * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+     * deployments that cannot expose a public endpoint (on-prem/firewalled).
+     */
+    connectionMode?: ConnectionMode;
     /**
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
@@ -270,6 +286,8 @@ export interface CollateAIAppConfig {
      * Maximum number of events sent in a batch (Default 100).
      *
      * Number of entities to process in each batch.
+     *
+     * Maximum number of entities processed in a batch.
      */
     batchSize?:           number;
     moduleConfiguration?: ModuleConfiguration;
@@ -301,6 +319,8 @@ export interface CollateAIAppConfig {
      * List of Entities to Reindex
      *
      * List of entity types to warm up in cache. Use 'all' to warm up all entity types.
+     *
+     * List of entities that you need to reindex. Leave empty to index all supported entities.
      */
     entities?: string[];
     /**
@@ -343,6 +363,9 @@ export interface CollateAIAppConfig {
     payLoadSize?: number;
     /**
      * Number of threads to use for reindexing
+     *
+     * Number of threads loading entities to index. Writes always go through one writer, because
+     * Fuseki accepts one write transaction at a time.
      */
     producerThreads?: number;
     /**
@@ -372,6 +395,8 @@ export interface CollateAIAppConfig {
     enableDistributedClaim?: boolean;
     /**
      * Force cache warmup even if another instance is detected (use with caution).
+     *
+     * Recompute every rule even when no rule is dirty.
      */
     force?: boolean;
     /**
@@ -385,6 +410,39 @@ export interface CollateAIAppConfig {
      * warmup, so enable it only when first-read relationship latency matters.
      */
     warmRelationships?: boolean;
+    /**
+     * Build the rebuild into an idle dataset and switch to it only after the run succeeds, so
+     * queries keep seeing the previous graph instead of a partially-rebuilt one. Requires
+     * roughly twice the dataset size on disk. Only applies when Recreate RDF Store is enabled.
+     */
+    blueGreenRebuild?: boolean;
+    /**
+     * Fraction of records that must index successfully before a blue/green rebuild is allowed
+     * to become the served dataset. Below this the previous dataset keeps serving and the run
+     * is marked failed.
+     */
+    minSuccessRatio?: number;
+    /**
+     * Recreate the RDF store before indexing.
+     */
+    recreateIndex?: boolean;
+    /**
+     * Maximum failed per-source writes during isolation of a failed RDF relationship batch.
+     * Once this limit is reached, remaining sources are recorded as failures. Successful writes
+     * do not consume the budget; zero disables per-source isolation. This is separate from HTTP
+     * request retries.
+     */
+    relationshipIsolationMaxFailures?: number;
+    /**
+     * Optional rule that must exist. The run still computes every rule, because rules read each
+     * other's conclusions.
+     */
+    ruleName?: string;
+    /**
+     * Enter the retention period for comments on Activity Events in days. Use 0 to retain
+     * activity comments forever.
+     */
+    activityCommentsRetentionPeriod?: number;
     /**
      * Enter the retention period for Activity Threads of type = 'Conversation' records in days
      * (e.g., 30 for one month, 60 for two months).
@@ -400,6 +458,12 @@ export interface CollateAIAppConfig {
      */
     changeEventRetentionPeriod?: number;
     /**
+     * Retention periods for cleanups contributed by distributions built on OpenMetadata, keyed
+     * by the extension's name. OpenMetadata never reads these values; it hands them to the
+     * registered DataRetentionExtension, which decides what a missing key means.
+     */
+    extensions?: any;
+    /**
      * Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two
      * months).
      */
@@ -409,6 +473,18 @@ export interface CollateAIAppConfig {
      * two months).
      */
     testCaseResultsRetentionPeriod?: number;
+    /**
+     * Enter the retention period in days for the run history of governance workflows. A
+     * finished run older than this is deleted with its stages, but the latest run of each
+     * workflow for every entity is always kept. Use 0 to retain the history forever.
+     */
+    workflowInstanceRetentionPeriod?: number;
+    /**
+     * Enter the retention period in days for automation Workflows: the short-lived records left
+     * behind by test connection, query runner and reverse ingestion runs. Use 0 to retain them
+     * forever.
+     */
+    workflowRetentionPeriod?: number;
     /**
      * Whether the AutoPilot Workflow should be active or not.
      */
@@ -1237,6 +1313,17 @@ export enum TranslogDurability {
 }
 
 /**
+ * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+ * for production) receives events on a public HTTP endpoint and scales horizontally behind
+ * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+ * deployments that cannot expose a public endpoint (on-prem/firewalled).
+ */
+export enum ConnectionMode {
+    SocketMode = "SocketMode",
+    Webhook = "Webhook",
+}
+
+/**
  * Settings applied to staged indexes before alias swap (live serving values). Tune for read
  * freshness and HA. Defaults: refresh=1s (near-real-time, required if users/agents
  * read-after-write), replicas=1, shards=1, durability=request.
@@ -1361,6 +1448,7 @@ export interface Resource {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ko = "KO",
     Ru = "RU",
     Zh = "ZH",
 }
@@ -1377,6 +1465,7 @@ export enum Type {
     CollateAI = "CollateAI",
     DataInsights = "DataInsights",
     DataInsightsReport = "DataInsightsReport",
+    RDFIndexing = "RdfIndexing",
     SearchIndexing = "SearchIndexing",
 }
 

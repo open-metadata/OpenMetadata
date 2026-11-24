@@ -3,6 +3,8 @@ package org.openmetadata.service.search.vector.client;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -15,6 +17,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.search.vector.client.BedrockEmbeddingClient.BedrockEmbeddingFamily;
+import org.openmetadata.service.search.vector.client.EmbeddingClient.EmbeddingResult;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
@@ -227,6 +230,51 @@ class BedrockEmbeddingClientTest {
         BedrockEmbeddingClient.parseEmbeddingResponse(
             BedrockEmbeddingFamily.COHERE, "{\"embeddings\":{\"float\":[[0.4,0.5]]}}");
     assertArrayEquals(new float[] {0.4f, 0.5f}, embedding, DELTA);
+  }
+
+  @Test
+  void titanResponseReportsInputTokens() {
+    EmbeddingResult result =
+        BedrockEmbeddingClient.parseEmbeddingResult(
+            BedrockEmbeddingFamily.TITAN_V2,
+            "{\"embedding\":[0.6,0.7],\"inputTextTokenCount\":2}",
+            null);
+
+    assertArrayEquals(new float[] {0.6f, 0.7f}, result.vector(), DELTA);
+    assertNotNull(result.usage());
+    assertEquals(2L, result.usage().inputTokens());
+  }
+
+  @Test
+  void titanV1ResponseReportsInputTokens() {
+    EmbeddingResult result =
+        BedrockEmbeddingClient.parseEmbeddingResult(
+            BedrockEmbeddingFamily.TITAN_V1,
+            "{\"embedding\":[0.1],\"inputTextTokenCount\":17}",
+            null);
+
+    assertNotNull(result.usage());
+    assertEquals(17L, result.usage().inputTokens());
+  }
+
+  @Test
+  void titanResponseWithoutTokenCountReportsNoUsage() {
+    EmbeddingResult result =
+        BedrockEmbeddingClient.parseEmbeddingResult(
+            BedrockEmbeddingFamily.TITAN_V2, "{\"embedding\":[0.6,0.7]}", null);
+
+    assertNull(result.usage(), "an absent count must stay absent rather than becoming 0");
+  }
+
+  @Test
+  void cohereResponseReportsNoUsage() {
+    // Cohere on Bedrock returns no token count at all, so consumers must estimate one.
+    EmbeddingResult result =
+        BedrockEmbeddingClient.parseEmbeddingResult(
+            BedrockEmbeddingFamily.COHERE, "{\"embeddings\":[[0.1,0.2,0.3]]}", null);
+
+    assertArrayEquals(new float[] {0.1f, 0.2f, 0.3f}, result.vector(), DELTA);
+    assertNull(result.usage());
   }
 
   @Test

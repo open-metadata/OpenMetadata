@@ -13,7 +13,7 @@
 import { Dropdown } from '@/components/base/dropdown/dropdown';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx, sortCx } from '@/utils/cx';
-import { ChevronRight, DotsHorizontal } from '@untitledui/icons';
+import { ChevronRight, DotsHorizontal } from '../../../icons';
 import type { FC, HTMLAttributes, Key, ReactNode } from 'react';
 import {
   useEffect,
@@ -47,6 +47,8 @@ export interface BreadcrumbItemType {
   href?: string;
   /** Optional leading icon, e.g. a home icon on the first crumb. */
   icon?: FC<{ className?: string }>;
+  /** Render as plain text even when `href` or `onAction` is set, e.g. a section label. */
+  isDisabled?: boolean;
 }
 
 export interface BreadcrumbsProps extends HTMLAttributes<HTMLElement> {
@@ -197,7 +199,9 @@ const CrumbLabel = ({
       {Icon && <Icon className={cx('tw:shrink-0', sizes[size].icon)} />}
       <span
         className="tw:truncate"
-        style={maxItemWidth ? { maxWidth: maxItemWidth } : undefined}>
+        // A capped label can be cut short; the title keeps it readable.
+        style={maxItemWidth ? { maxWidth: maxItemWidth } : undefined}
+        title={maxItemWidth ? toText(item.label, '') || undefined : undefined}>
         {item.label}
       </span>
     </span>
@@ -238,6 +242,7 @@ const EllipsisMenu = ({
             <Dropdown.Item
               href={onAction ? undefined : item.href}
               icon={item.icon}
+              isDisabled={item.isDisabled}
               key={item.id}
               label={toText(item.label, `Item ${index + 1}`)}
               onAction={() => onAction?.(item.id)}
@@ -290,23 +295,35 @@ export const Breadcrumbs = ({
     }
   }, [autoCollapse, fittedCount, items, measureKey]);
 
-  // Reset to the full trail and re-measure on mount, on a container resize, and
-  // once web fonts load (label widths can change after the first layout, which
-  // would otherwise leave a stale measurement). The reset lets the trail
-  // re-expand when there is more room.
+  // Reset to the full trail and re-measure on mount, when the container grows,
+  // and once web fonts load (label widths can change after the first layout,
+  // which would otherwise leave a stale measurement). The reset lets the trail
+  // re-expand when there is more room. A shrink only re-measures: in a
+  // content-sized container (a flex `auto` column) collapsing shrinks the
+  // container, and resetting on that would expand it again — a loop that
+  // keeps the trail and everything beside it moving.
   useEffect(() => {
     const el = containerRef.current;
     if (!autoCollapse || !el) {
       return undefined;
     }
 
-    const remeasure = () => {
+    let lastWidth = -1;
+    const reset = () => {
       setFittedCount(items.length);
       requestMeasure();
     };
-    const observer = new ResizeObserver(remeasure);
+    const observer = new ResizeObserver(([entry]) => {
+      const width = entry?.contentRect.width ?? el.clientWidth;
+      if (width > lastWidth) {
+        reset();
+      } else if (width < lastWidth) {
+        requestMeasure();
+      }
+      lastWidth = width;
+    });
     observer.observe(el);
-    document.fonts?.ready.then(remeasure).catch(() => undefined);
+    document.fonts?.ready.then(reset).catch(() => undefined);
 
     return () => observer.disconnect();
   }, [autoCollapse, items.length]);
@@ -339,7 +356,8 @@ export const Breadcrumbs = ({
                   type={type}
                   onAction={onAction}
                 />
-              ) : item.href || (onAction && !isCurrent) ? (
+              ) : !item.isDisabled &&
+                (item.href || (onAction && !isCurrent)) ? (
                 // React Aria disables the physical last crumb, so clear its
                 // context when href marks that crumb as a destination.
                 <LinkContext.Provider value={{}}>

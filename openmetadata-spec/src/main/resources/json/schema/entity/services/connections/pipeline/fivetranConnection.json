@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/fivetranConnection.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "FivetranConnection",
   "description": "Fivetran Metadata Database Connection Config",
   "type": "object",
@@ -23,7 +23,8 @@
     "apiKey": {
       "title": "Fivetran API Key",
       "description": "Fivetran API Key.",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "hostPort": {
       "expose": true,
@@ -44,6 +45,11 @@
       "description": "Fivetran API Limit For Pagination.",
       "type": "integer",
       "default": 1000
+    },
+    "logSchema": {
+      "title": "Fivetran Platform Connector Schema",
+      "description": "Destination schema holding the Fivetran Platform Connector log table, used to extract per-phase run status. Leave empty to read the schema name from the Fivetran API.",
+      "type": "string"
     },
     "pipelineFilterPattern": {
       "description": "Regex exclude pipelines.",

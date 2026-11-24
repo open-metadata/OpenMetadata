@@ -20,7 +20,8 @@
           "type": "custom",
           "char_filter": [],
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         }
       },
@@ -30,6 +31,7 @@
           "filter": [
             "word_delimiter_filter",
             "lowercase",
+            "asciifolding",
             "om_stemmer",
             "om_plural_stemmer"
           ]
@@ -38,7 +40,8 @@
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "asciifolding"
           ]
         },
         "om_compound_analyzer": {
@@ -46,6 +49,7 @@
           "filter": [
             "compound_word_delimiter_graph",
             "lowercase",
+            "asciifolding",
             "flatten_graph"
           ]
         }
@@ -247,15 +251,69 @@
       },
       "descriptionSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Ingested": {
+            "type": "integer"
+          },
+          "Suggested": {
+            "type": "integer"
+          }
+        }
       },
       "tagSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Generated": {
+            "type": "integer"
+          }
+        }
       },
       "tierSources": {
         "type": "object",
-        "dynamic": false
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Generated": {
+            "type": "integer"
+          }
+        }
       },
       "domains": {
         "properties": {

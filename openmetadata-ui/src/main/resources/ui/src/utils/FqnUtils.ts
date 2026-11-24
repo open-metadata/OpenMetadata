@@ -47,20 +47,16 @@ export const getPartialNameFromFQN = (
  * @return {string} The partial name derived from the FQN.
  */
 
-export const getPartialNameFromTableFQN = (
-  fqn: string,
-  fqnParts: Array<FqnPart> = [],
-  joinSeparator = '/'
-): string => {
-  if (!fqn) {
-    return '';
-  }
-  const splitFqn = Fqn.split(fqn);
+// FQN parts that ignore all other requested parts and instead return a single
+// slice of the split FQN. Returns undefined when none of these parts apply.
+const getSlicedTableFqnPart = (
+  splitFqn: string[],
+  fqnParts: Array<FqnPart>
+): string | undefined => {
   // if nested column is requested, then ignore all the other
   // parts and just return the nested column name
   if (fqnParts.includes(FqnPart.NestedColumn)) {
     // Remove the first 4 parts (service, database, schema, table)
-
     return splitFqn.slice(4).join(FQN_SEPARATOR_CHAR);
   }
 
@@ -84,26 +80,50 @@ export const getPartialNameFromTableFQN = (
     return splitFqn.splice(-1).join(FQN_SEPARATOR_CHAR);
   }
 
+  return undefined;
+};
+
+// Ordered mapping of a positional FQN part to its index in the split FQN. The
+// part is included only when requested and the FQN is long enough to hold it.
+const TABLE_FQN_POSITIONAL_PARTS: Array<{ part: FqnPart; index: number }> = [
+  { part: FqnPart.Service, index: 0 },
+  { part: FqnPart.Database, index: 1 },
+  { part: FqnPart.Schema, index: 2 },
+  { part: FqnPart.Table, index: 3 },
+  { part: FqnPart.Column, index: 4 },
+];
+
+const buildPartialTableName = (
+  splitFqn: string[],
+  fqnParts: Array<FqnPart>,
+  joinSeparator: string
+): string => {
   const arrPartialName = [];
-  if (splitFqn.length > 0) {
-    if (fqnParts.includes(FqnPart.Service)) {
-      arrPartialName.push(splitFqn[0]);
-    }
-    if (fqnParts.includes(FqnPart.Database) && splitFqn.length > 1) {
-      arrPartialName.push(splitFqn[1]);
-    }
-    if (fqnParts.includes(FqnPart.Schema) && splitFqn.length > 2) {
-      arrPartialName.push(splitFqn[2]);
-    }
-    if (fqnParts.includes(FqnPart.Table) && splitFqn.length > 3) {
-      arrPartialName.push(splitFqn[3]);
-    }
-    if (fqnParts.includes(FqnPart.Column) && splitFqn.length > 4) {
-      arrPartialName.push(splitFqn[4]);
+  for (const { part, index } of TABLE_FQN_POSITIONAL_PARTS) {
+    if (fqnParts.includes(part) && splitFqn.length > index) {
+      arrPartialName.push(splitFqn[index]);
     }
   }
 
   return arrPartialName.join(joinSeparator);
+};
+
+export const getPartialNameFromTableFQN = (
+  fqn: string,
+  fqnParts: Array<FqnPart> = [],
+  joinSeparator = '/'
+): string => {
+  if (!fqn) {
+    return '';
+  }
+  const splitFqn = Fqn.split(fqn);
+
+  const slicedPart = getSlicedTableFqnPart(splitFqn, fqnParts);
+  if (slicedPart !== undefined) {
+    return slicedPart;
+  }
+
+  return buildPartialTableName(splitFqn, fqnParts, joinSeparator);
 };
 
 export const getTableFQNFromColumnFQN = (columnFQN: string): string => {

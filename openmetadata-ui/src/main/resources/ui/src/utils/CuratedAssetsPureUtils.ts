@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,17 +11,13 @@
  *  limitations under the License.
  */
 
-import { Config, Utils as QbUtils } from '@react-awesome-query-builder/antd';
 import { isEmpty } from 'lodash';
 import { Bucket } from 'Models';
 import Qs from 'qs';
 import { CURATED_ASSETS_LIST } from '../constants/AdvancedSearch.constants';
 import { EntityType } from '../enums/entity.enum';
 import type { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
-import {
-  getEntityTypeAggregationFilter,
-  getJsonTreeFromQueryFilter,
-} from './QueryBuilderPureUtils';
+import { getExploreQueryFilterParam } from './queryBuilder/url';
 import { getExplorePath } from './RouterUtils';
 
 // Query filter strings that are considered empty
@@ -45,6 +41,25 @@ interface ElasticsearchBoolQuery {
 }
 
 /* eslint-disable @typescript-eslint/no-use-before-define */
+// A must/should clause is valid when it is absent, or a non-empty array of valid conditions.
+function isValidRequiredClause(clause?: ElasticsearchCondition[]): boolean {
+  if (!Array.isArray(clause)) {
+    return true;
+  }
+
+  return clause.length > 0 && clause.every(isValidCondition);
+}
+
+function isValidMustNotClause(
+  mustNot?: ElasticsearchCondition | ElasticsearchCondition[]
+): boolean {
+  if (Array.isArray(mustNot)) {
+    return mustNot.every(isValidCondition);
+  }
+
+  return !mustNot || isValidCondition(mustNot);
+}
+
 function isValidBoolQuery(boolQuery: ElasticsearchBoolQuery): boolean {
   if (!boolQuery) {
     return false;
@@ -52,33 +67,11 @@ function isValidBoolQuery(boolQuery: ElasticsearchBoolQuery): boolean {
 
   const { must, should, must_not } = boolQuery;
 
-  if (Array.isArray(must)) {
-    if (must.length === 0) {
-      return false;
-    }
-    if (!must.every(isValidCondition)) {
-      return false;
-    }
-  }
-
-  if (Array.isArray(should)) {
-    if (should.length === 0) {
-      return false;
-    }
-    if (!should.every(isValidCondition)) {
-      return false;
-    }
-  }
-
-  if (Array.isArray(must_not)) {
-    if (!must_not.every(isValidCondition)) {
-      return false;
-    }
-  } else if (must_not && !isValidCondition(must_not)) {
-    return false;
-  }
-
-  return true;
+  return (
+    isValidRequiredClause(must) &&
+    isValidRequiredClause(should) &&
+    isValidMustNotClause(must_not)
+  );
 }
 /* eslint-enable @typescript-eslint/no-use-before-define */
 
@@ -246,11 +239,9 @@ export const getSimpleExploreURLForAssetTypes = (
 export const getExploreURLForAdvancedFilter = ({
   queryFilter,
   selectedResource,
-  config,
 }: {
   queryFilter: string;
   selectedResource: Array<string>;
-  config: Config;
 }) => {
   try {
     if (isEmpty(selectedResource)) {
@@ -284,53 +275,12 @@ export const getExploreURLForAdvancedFilter = ({
     };
 
     if (!isEmpty(queryFilterObject) && queryFilterObject.query) {
-      const tree = QbUtils.sanitizeTree(
-        QbUtils.loadTree(getJsonTreeFromQueryFilter(queryFilterObject)),
-        config
-      ).fixedTree;
-
-      if (!isEmpty(tree)) {
-        params.queryFilter = JSON.stringify(tree);
-      }
+      params.queryFilter = getExploreQueryFilterParam(queryFilterObject);
     }
 
     const queryString = Qs.stringify(params);
 
     return `${getExplorePath({})}?${queryString}`;
-  } catch {
-    return getExplorePath({});
-  }
-};
-
-export const getExploreURLWithFilters = ({
-  queryFilter,
-  selectedResource,
-  config,
-}: {
-  queryFilter: string;
-  selectedResource: Array<string>;
-  config: Config;
-}) => {
-  try {
-    const expandedResources = getExpandedResourceList(selectedResource);
-
-    const queryFilterObject = JSON.parse(queryFilter || '{}');
-
-    const qFilter = getEntityTypeAggregationFilter(
-      queryFilterObject as unknown as QueryFilterInterface,
-      expandedResources
-    );
-
-    const tree = QbUtils.sanitizeTree(
-      QbUtils.loadTree(getJsonTreeFromQueryFilter(qFilter)),
-      config
-    ).fixedTree;
-
-    const queryFilterString = !isEmpty(tree)
-      ? Qs.stringify({ queryFilter: JSON.stringify(tree) })
-      : '';
-
-    return `${getExplorePath({})}${queryFilterString}`;
   } catch {
     return getExplorePath({});
   }

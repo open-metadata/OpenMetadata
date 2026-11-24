@@ -1,14 +1,15 @@
 {
   "$id": "https://open-metadata.org/schema/entity/data/table.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Table",
   "$comment": "@om-entity-type",
   "description": "A `Table` entity organizes data in rows and columns and is defined in a `Database Schema`.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.data.Table",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface",
-    "org.openmetadata.schema.ColumnsEntityInterface"
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
+    "org.openmetadata.schema.ColumnsEntityInterface",
+    "org.openmetadata.schema.CreationAudited"
   ],
   "definitions": {
     "profileSampleType": {
@@ -32,13 +33,15 @@
         "SecureView",
         "MaterializedView",
         "Iceberg",
+        "DeltaLake",
         "Local",
         "Partitioned",
         "Foreign",
         "Transient",
         "Stream",
         "Stage",
-        "SemanticView"
+        "SemanticView",
+        "Sharded"
       ],
       "javaEnums": [
         {
@@ -63,6 +66,9 @@
           "name": "Iceberg"
         },
         {
+          "name": "DeltaLake"
+        },
+        {
           "name": "Local"
         },
         {
@@ -82,6 +88,9 @@
         },
         {
           "name": "SemanticView"
+        },
+        {
+          "name": "Sharded"
         }
       ]
     },
@@ -469,6 +478,9 @@
             "description": "Data for a single row of the table within the same order as columns fields.",
             "type": "array"
           }
+        },
+        "executionSource": {
+          "$ref": "../../type/tableExecutionSource.json"
         }
       },
       "additionalProperties": false
@@ -664,6 +676,9 @@
         },
         "cardinalityDistribution": {
           "$ref": "#/definitions/cardinalityDistribution"
+        },
+        "executionSource": {
+          "$ref": "../../type/tableExecutionSource.json"
         }
       },
       "required": [
@@ -938,6 +953,9 @@
         },
         "profileSampleType": {
           "$ref": "#/definitions/profileSampleType"
+        },
+        "executionSource": {
+          "$ref": "../../type/tableExecutionSource.json"
         }
       },
       "required": [
@@ -1086,6 +1104,14 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "createdAt": {
+      "description": "Timestamp in Unix epoch time milliseconds corresponding to when this entity was created in OpenMetadata.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "createdBy": {
+      "description": "User or Bot who created this entity in OpenMetadata.",
+      "type": "string"
+    },
     "impersonatedBy": {
       "description": "Bot user that performed the action on behalf of the actual user.",
       "$ref": "../../type/basic.json#/definitions/impersonatedBy"
@@ -1110,6 +1136,14 @@
       "items": {
         "title": "TableConstraint",
         "$ref": "#/definitions/tableConstraint"
+      },
+      "default": null
+    },
+    "aliases": {
+      "description": "Alternate fully qualified SQL names that resolve to this table, such as SQL Server synonyms. Source-managed: the ingestion connector recomputes and overwrites this list on every run.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       },
       "default": null
     },
@@ -1336,6 +1370,9 @@
     "entityStatus": {
       "description": "Status of the Table.",
       "$ref": "../../type/status.json"
+    },
+    "tableSharding": {
+      "$ref": "../../type/tableSharding.json"
     }
   },
   "required": [

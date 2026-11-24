@@ -13,17 +13,12 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
-import {
-  ABORTED_CHART_COLOR_SCHEME,
-  FAILED_CHART_COLOR_SCHEME,
-  SUCCESS_CHART_COLOR_SCHEME,
-} from '../../../constants/Chart.constants';
+import { IncidentTimeMetricsType } from '../../../enums/DataQuality.enum';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDataQualityPagePath } from '../../../utils/RouterUtils';
-import { IncidentTimeMetricsType } from '../DataQuality.interface';
 import DataQualityDashboard from './DataQualityDashboard.component';
 
 const mockSearchQuery = jest.fn().mockResolvedValue({
@@ -112,6 +107,18 @@ jest.mock(
 );
 
 jest.mock(
+  '../../../components/common/GlossaryTermPicker/GlossaryTermPicker',
+  () =>
+    jest.fn().mockImplementation(({ label, onChange }) => (
+      <button
+        data-testid={`search-dropdown-${label}`}
+        onClick={() => onChange([{ tagFQN: 'tag1' }])}>
+        {label}
+      </button>
+    ))
+);
+
+jest.mock(
   '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component',
   () => ({
     UserTeamSelectableList: jest
@@ -129,28 +136,30 @@ jest.mock(
   })
 );
 
-jest.mock('../../../components/SearchDropdown/SearchDropdown', () =>
-  jest
-    .fn()
-    .mockImplementation(({ label, onChange, onSearch, selectedKeys }) => (
-      <div>
-        <button
-          data-testid={`search-dropdown-${label}`}
-          onClick={() => onChange([{ key: 'tag1', label: 'Tag 1' }])}>
-          {label} SearchDropdown
-        </button>
-        {onSearch && (
+jest.mock(
+  '../../../components/common/FilterSelectDropdown/FilterSelectDropdown',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ label, onChange, onSearch, selectedKeys }) => (
+        <div>
           <button
-            data-testid={`search-dropdown-search-${label}`}
-            onClick={() => onSearch('pii')}>
-            Search {label}
+            data-testid={`search-dropdown-${label}`}
+            onClick={() => onChange([{ key: 'tag1', label: 'Tag 1' }])}>
+            {label} SearchDropdown
           </button>
-        )}
-        {selectedKeys
-          .map((option: SearchDropdownOption) => option.label)
-          .join(', ')}
-      </div>
-    ))
+          {onSearch && (
+            <button
+              data-testid={`search-dropdown-search-${label}`}
+              onClick={() => onSearch('pii')}>
+              Search {label}
+            </button>
+          )}
+          {selectedKeys
+            .map((option: SearchDropdownOption) => option.label)
+            .join(', ')}
+        </div>
+      ))
 );
 jest.mock('../../../utils/AdvancedSearchUtils', () => {
   return {
@@ -394,37 +403,31 @@ describe('DataQualityDashboard', () => {
       jest.clearAllMocks();
     });
 
-    it('should pass correct color schemes to TestCaseStatusAreaChartWidget components', async () => {
+    it('should pass status, name and title to each TestCaseStatusAreaChartWidget', async () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
       await waitFor(() => {
         expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalled();
       });
 
-      // Verify success widget gets success color scheme
       expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          chartColorScheme: SUCCESS_CHART_COLOR_SCHEME,
           testCaseStatus: TestCaseStatus.Success,
           name: 'success',
           title: 'label.success',
         })
       );
 
-      // Verify aborted widget gets aborted color scheme
       expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          chartColorScheme: ABORTED_CHART_COLOR_SCHEME,
           testCaseStatus: TestCaseStatus.Aborted,
           name: 'aborted',
           title: 'label.aborted',
         })
       );
 
-      // Verify failed widget gets failed color scheme
       expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          chartColorScheme: FAILED_CHART_COLOR_SCHEME,
           testCaseStatus: TestCaseStatus.Failed,
           name: 'failed',
           title: 'label.failed',
@@ -474,12 +477,17 @@ describe('DataQualityDashboard', () => {
       // Check open incident widget
       expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          incidentStatusType: TestCaseResolutionStatusTypes.New,
+          incidentStatusTypes: [
+            TestCaseResolutionStatusTypes.New,
+            TestCaseResolutionStatusTypes.ACK,
+            TestCaseResolutionStatusTypes.Assigned,
+          ],
           name: 'open-incident',
           title: 'label.open-incident-plural',
+          description: 'message.open-incident-card-description',
           redirectPath: expect.objectContaining({
             pathname: '/incident-manager',
-            search: expect.stringContaining('testCaseResolutionStatusType=New'),
+            search: expect.not.stringContaining('testCaseResolutionStatusType'),
           }),
         })
       );
@@ -487,9 +495,10 @@ describe('DataQualityDashboard', () => {
       // Check resolved incident widget
       expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          incidentStatusType: TestCaseResolutionStatusTypes.Resolved,
+          incidentStatusTypes: [TestCaseResolutionStatusTypes.Resolved],
           name: 'resolved-incident',
           title: 'label.resolved-incident-plural',
+          description: 'message.resolved-incident-card-description',
           redirectPath: expect.objectContaining({
             pathname: '/incident-manager',
             search: expect.stringContaining(
@@ -513,6 +522,7 @@ describe('DataQualityDashboard', () => {
           incidentMetricType: IncidentTimeMetricsType.TIME_TO_RESPONSE,
           name: 'response-time',
           title: 'label.response-time',
+          description: 'message.response-time-card-description',
         })
       );
 
@@ -522,6 +532,7 @@ describe('DataQualityDashboard', () => {
           incidentMetricType: IncidentTimeMetricsType.TIME_TO_RESOLUTION,
           name: 'resolution-time',
           title: 'label.resolution-time',
+          description: 'message.resolution-time-card-description',
         })
       );
     });
@@ -1407,23 +1418,6 @@ describe('DataQualityDashboard', () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
       fireEvent.click(screen.getByTestId('search-dropdown-search-label.tag'));
-
-      await waitFor(() => {
-        const wrappedCalls = mockSearchQuery.mock.calls.filter(
-          (args: unknown[]) =>
-            (args[0] as Record<string, unknown>).query === '*pii*'
-        );
-
-        expect(wrappedCalls.length).toBeGreaterThanOrEqual(1);
-      });
-    });
-
-    it('calls searchQuery with *text* when glossary term search text is non-empty', async () => {
-      render(<DataQualityDashboard />, { wrapper: MemoryRouter });
-
-      fireEvent.click(
-        screen.getByTestId('search-dropdown-search-label.glossary-term')
-      );
 
       await waitFor(() => {
         const wrappedCalls = mockSearchQuery.mock.calls.filter(

@@ -35,7 +35,7 @@ const EntityPill: React.FC<EntityPillProps> = ({
   return (
     <EntityPopOverCard entityFQN={fullyQualifiedName} entityType={entityType}>
       <Badge
-        className="tw:bg-gray-blue-50 tw:border-gray-blue-100"
+        className="tw:bg-utility-gray-blue-50 tw:border-utility-gray-blue-100"
         size="lg"
         type="modern">
         <span className="tw:flex tw:items-center tw:w-5 tw:h-5 tw:mr-1.5">

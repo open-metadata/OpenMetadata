@@ -2,8 +2,8 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.open-metadata/openmetadata-mcp",
   "title": "OpenMetadata",
-  "description": "Official OpenMetadata MCP: governed context and business semantics for AI assistants and agents.",
-  "version": "1.1.0",
+  "description": "Official OpenMetadata MCP: 21 read and write tools for search, lineage, data quality, governance.",
+  "version": "1.1.1",
   "repository": {
     "url": "https://github.com/open-metadata/OpenMetadata",
     "source": "github",

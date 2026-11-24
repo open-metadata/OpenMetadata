@@ -13,11 +13,9 @@
 This module provides authentication utilities for Databricks and Unity Catalog connections.
 """
 
-from typing import Union  # noqa: I001
 from urllib.parse import quote_plus
 
 from databricks.sdk.core import Config, azure_service_principal, oauth_service_principal
-
 from metadata.generated.schema.entity.services.connections.database.databricks.azureAdSetup import (
     AzureAdSetup,
 )
@@ -41,9 +39,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.databricksPi
     DatabricksPipelineConnection,
 )
 
-DatabricksAuthConnection = Union[  # noqa: UP007
-    DatabricksConnection, DatabricksPipelineConnection, UnityCatalogConnection
-]
+DatabricksAuthConnection = DatabricksConnection | DatabricksPipelineConnection | UnityCatalogConnection
 
 
 # Databricks and Unity Catalog both dial the workspace over HTTPS; the gate
@@ -53,7 +49,7 @@ DEFAULT_WORKSPACE_PORT = 443
 # Both connection schemas default `scheme` to this. Codegen emits a separate enum
 # per schema, so the two are distinct types carrying the same members.
 DEFAULT_SCHEME = DatabricksScheme.databricks.value
-Scheme = Union[DatabricksScheme, UnityCatalogScheme]  # noqa: UP007
+Scheme = DatabricksScheme | UnityCatalogScheme
 
 
 def normalize_host_port(host_port: str) -> str:

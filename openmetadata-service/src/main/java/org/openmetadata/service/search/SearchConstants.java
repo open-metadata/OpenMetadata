@@ -40,4 +40,6 @@ public class SearchConstants {
   // Default sorting configuration
   public static final String DEFAULT_SORT_FIELD = "_score";
   public static final String DEFAULT_SORT_ORDER = "desc";
+  public static final String GLOSSARY_ASSET_SORT_FIELD = "id.keyword";
+  public static final String GLOSSARY_ASSET_SORT_ORDER = "asc";
 }

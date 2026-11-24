@@ -3,31 +3,41 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets;
 import static org.openmetadata.service.apps.bundles.insights.DataInsightsApp.getDataStreamName;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.END_TIMESTAMP_KEY;
 import static org.openmetadata.service.apps.bundles.insights.utils.TimestampUtils.START_TIMESTAMP_KEY;
+import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext.PARENT_TABLE_IDS_KEY;
+import static org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext.SNAPSHOT_TIMESTAMP_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getInitialStatsForEntities;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getSearchIndexFields;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.ResultList;
@@ -45,6 +55,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.exception.SearchIndexException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchIndexSink;
 import org.openmetadata.service.search.opensearch.OpenSearchIndexSink;
@@ -63,7 +74,10 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
   private final int retentionDays = 30;
   private final Long startTimestamp;
   private final Long endTimestamp;
+  private final long snapshotTimestamp;
   private final int batchSize;
+  private final boolean backfillRun;
+  private final TestCaseSnapshotStore testCaseSnapshots;
   private final SearchRepository searchRepository;
   private final CollectionDAO collectionDAO;
   private final List<PaginatedEntitiesSource> sources = new ArrayList<>();
@@ -74,6 +88,7 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
   private DataInsightsEntityEnricherProcessor entityEnricher;
   private Processor entityProcessor;
   private Sink searchIndexSink;
+  private DataInsightsExtensions extensions;
   @Getter private final WorkflowStats workflowStats = new WorkflowStats("DataAssetsWorkflow");
 
   private volatile boolean stopped = false;
@@ -116,6 +131,11 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
     }
 
     this.batchSize = batchSize;
+    this.backfillRun = backfill.isPresent();
+    this.testCaseSnapshots =
+        new TestCaseSnapshotStore(
+            searchRepository.getSearchClient(), searchRepository.getClusterAlias());
+    this.snapshotTimestamp = timestamp;
     this.searchRepository = searchRepository;
     this.collectionDAO = collectionDAO;
     this.entityTypes = entityTypes;
@@ -134,11 +154,14 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
         .filter(
             entityType ->
                 dataAssetsConfig.getEntities().equals(Set.of(ALL_ENTITIES))
-                    || dataAssetsConfig.getEntities().contains(entityType))
+                    || dataAssetsConfig.getEntities().contains(entityType)
+                    || (Entity.TEST_CASE.equals(entityType)
+                        && dataAssetsConfig.getEntities().contains(Entity.TABLE)))
         .filter(
             entityType ->
                 entityTypesToProcess.equals(Set.of(ALL_ENTITIES))
                     || entityTypesToProcess.contains(entityType))
+        .sorted(Comparator.comparing(entityType -> !Entity.TEST_CASE.equals(entityType)))
         .forEach(
             entityType -> {
               List<String> fields = getSearchIndexFields(entityType);
@@ -186,7 +209,13 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
 
   private Set<String> getEntityTypesToProcess() {
     if (dataAssetsConfig.getServiceFilter() != null) {
-      return Entity.getEntityTypeInService(dataAssetsConfig.getServiceFilter().getServiceType());
+      final Set<String> selected =
+          new HashSet<>(
+              Entity.getEntityTypeInService(dataAssetsConfig.getServiceFilter().getServiceType()));
+      if (selected.contains(Entity.TABLE)) {
+        selected.add(Entity.TEST_CASE);
+      }
+      return selected;
     } else {
       return Set.of(ALL_ENTITIES);
     }
@@ -224,6 +253,30 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
     }
     LOG.info("[Data Insights] Processing Data Assets Insights.");
     initialize();
+    DataInsightsExtension.RunContext runContext =
+        new DataInsightsExtension.RunContext(
+            UUID.randomUUID().toString(),
+            System.currentTimeMillis(),
+            snapshotTimestamp,
+            collectionDAO,
+            searchRepository,
+            dataAssetsConfig,
+            () -> stopped);
+    try (DataInsightsExtensions runExtensions = DataInsightsExtensions.open(runContext)) {
+      this.extensions = runExtensions;
+      processSources();
+      if (!stopped && !workflowStats.hasFailed()) {
+        runExtensions.complete();
+      }
+    } catch (CancellationException ex) {
+      stopped = true;
+      LOG.info("[Data Insights] Data Assets workflow stopped: {}", ex.getMessage());
+    } finally {
+      this.extensions = null;
+    }
+  }
+
+  private void processSources() throws SearchIndexException {
     Map<String, Object> contextData = new HashMap<>();
 
     contextData.put(START_TIMESTAMP_KEY, startTimestamp);
@@ -236,10 +289,20 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
       if (stopped) {
         break;
       }
-      deleteBasedOnDataRetentionPolicy(
-          getDataStreamName(searchRepository.getClusterAlias(), source.getEntityType()));
-      deleteDataBeforeInserting(
-          getDataStreamName(searchInterface.getClusterAlias(), source.getEntityType()));
+      final boolean testCases = Entity.TEST_CASE.equals(source.getEntityType());
+      if (testCases && backfillRun) {
+        continue;
+      }
+      if (testCases) {
+        beginTestCaseCapture();
+        contextData.put(SNAPSHOT_TIMESTAMP_KEY, snapshotTimestamp);
+      } else {
+        contextData.remove(SNAPSHOT_TIMESTAMP_KEY);
+        deleteBasedOnDataRetentionPolicy(
+            getDataStreamName(searchRepository.getClusterAlias(), source.getEntityType()));
+        deleteDataBeforeInserting(
+            getDataStreamName(searchInterface.getClusterAlias(), source.getEntityType()));
+      }
       contextData.put(
           DATA_STREAM_KEY,
           getDataStreamName(searchInterface.getClusterAlias(), source.getEntityType()));
@@ -250,6 +313,9 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
               dataInsightsSearchConfiguration, source.getEntityType()));
 
       processSource(source, Map.copyOf(contextData), budget);
+      if (testCases && !stopped && !workflowStats.hasFailed()) {
+        completeTestCaseCapture();
+      }
     }
   }
 
@@ -264,6 +330,8 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
       throws SearchIndexException {
     Semaphore concurrencyLimit = new Semaphore(budget);
     ConcurrentLinkedQueue<TaggedOperation<?>> opsQueue = new ConcurrentLinkedQueue<>();
+    int sinkFailuresBefore = searchIndexSink.getStats().getFailedRecords();
+    String terminalFailure = null;
 
     try (ExecutorService sourceExecutor = Executors.newVirtualThreadPerTaskExecutor()) {
       this.executor = sourceExecutor;
@@ -271,12 +339,13 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
       String keysetCursor = null;
       while (!stopped) {
         try {
-          ResultList<? extends EntityInterface> batch = source.readNextKeyset(keysetCursor);
+          ResultList<? extends EntityInterface<?>> batch = source.readNextKeyset(keysetCursor);
           keysetCursor = batch.getPaging().getAfter();
 
           if (batch.getData().isEmpty()) {
             if (!batch.getErrors().isEmpty()) {
-              source.updateStats(0, batch.getErrors().size());
+              int readErrorCount = batch.getErrors().size();
+              source.updateStats(0, readErrorCount);
             }
             if (keysetCursor == null) {
               break;
@@ -284,9 +353,14 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
             continue;
           }
 
-          record EntityFuture(EntityInterface entity, Future<Void> future) {}
+          final TestCaseSnapshotStore.Coverage coverage = loadTestCaseCoverage(source, batch);
+          final Map<String, Object> batchContext = new HashMap<>(contextData);
+          batchContext.put(PARENT_TABLE_IDS_KEY, testCaseParentIds(source, batch));
+          final Map<String, Object> enrichmentContext = Map.copyOf(batchContext);
+          extensions.beforeBatch(batch.getData());
+          record EntityFuture(EntityInterface<?> entity, Future<Void> future) {}
           List<EntityFuture> entityFutures = new ArrayList<>();
-          for (EntityInterface entity : batch.getData()) {
+          for (EntityInterface<?> entity : batch.getData()) {
             entityFutures.add(
                 new EntityFuture(
                     entity,
@@ -295,7 +369,11 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
                           concurrencyLimit.acquire();
                           try {
                             List<Map<String, Object>> enriched =
-                                entityEnricher.enrichSingle(entity, contextData);
+                                entityEnricher.enrichSingle(entity, enrichmentContext);
+                            if (Entity.TABLE.equals(source.getEntityType())) {
+                              enriched.forEach(coverage::enrich);
+                            }
+                            enriched.forEach(extensions::enrich);
                             List<?> bulkOps =
                                 (List<?>) entityProcessor.process(enriched, contextData);
                             EntityReference ref = entity.getEntityReference();
@@ -327,6 +405,10 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
 
           batchFailed += batch.getErrors().size();
           source.updateStats(batchSuccess, batchFailed);
+          if (batchFailed > 0) {
+            workflowStats.addFailure(
+                "Failed to snapshot %d entities from %s".formatted(batchFailed, source.getName()));
+          }
 
           if (keysetCursor == null) {
             break;
@@ -334,12 +416,12 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
         } catch (SearchIndexException ex) {
           source.updateStats(
               ex.getIndexingError().getSuccessCount(), ex.getIndexingError().getFailedCount());
-          String errorMessage =
-              String.format("Failed processing Data from %s: %s", source.getName(), ex);
-          workflowStats.addFailure(errorMessage);
+          terminalFailure = "search indexing error: " + ex.getMessage();
           break;
         } catch (InterruptedException ex) {
           Thread.currentThread().interrupt();
+          stopped = true;
+          terminalFailure = "asset scan was interrupted";
           break;
         }
       }
@@ -350,9 +432,88 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
     try {
       drainAndFlush(opsQueue);
     } finally {
+      recordSourceFailure(source, sinkFailuresBefore, terminalFailure);
       updateWorkflowStats(source.getName(), source.getStats());
       mergeEnricherStepStats();
     }
+  }
+
+  private String serviceFilter() {
+    return dataAssetsConfig.getServiceFilter() == null
+        ? null
+        : dataAssetsConfig.getServiceFilter().getServiceName();
+  }
+
+  private void beginTestCaseCapture() throws SearchIndexException {
+    try {
+      testCaseSnapshots.beginCapture(
+          snapshotTimestamp, serviceFilter(), dataAssetsConfig.getRetention());
+    } catch (IOException e) {
+      throw snapshotFailure(e);
+    }
+  }
+
+  private void completeTestCaseCapture() throws SearchIndexException {
+    try {
+      testCaseSnapshots.completeCapture(snapshotTimestamp, serviceFilter());
+    } catch (IOException e) {
+      throw snapshotFailure(e);
+    }
+  }
+
+  private TestCaseSnapshotStore.Coverage loadTestCaseCoverage(
+      PaginatedEntitiesSource source, ResultList<? extends EntityInterface<?>> batch)
+      throws SearchIndexException {
+    try {
+      return Entity.TABLE.equals(source.getEntityType())
+          ? testCaseSnapshots.loadCoverage(
+              batch.getData().stream().map(Table.class::cast).toList(),
+              startTimestamp,
+              endTimestamp)
+          : new TestCaseSnapshotStore.Coverage(Map.of());
+    } catch (IOException e) {
+      throw new SearchIndexException(
+          snapshotError(e).withSuccessCount(0).withFailedCount(batch.getData().size()));
+    }
+  }
+
+  private Map<String, UUID> testCaseParentIds(
+      PaginatedEntitiesSource source, ResultList<? extends EntityInterface<?>> batch) {
+    if (!Entity.TEST_CASE.equals(source.getEntityType())) {
+      return Map.of();
+    }
+    final List<String> fqns =
+        batch.getData().stream()
+            .map(TestCase.class::cast)
+            .map(testCase -> EntityLink.parse(testCase.getEntityLink()).getEntityFQN())
+            .distinct()
+            .toList();
+    return collectionDAO.tableDAO().findReferencesByFqns(fqns, Include.NON_DELETED).stream()
+        .collect(
+            Collectors.toUnmodifiableMap(
+                EntityReference::getFullyQualifiedName, EntityReference::getId));
+  }
+
+  private static SearchIndexException snapshotFailure(IOException cause) {
+    return new SearchIndexException(snapshotError(cause));
+  }
+
+  private static IndexingError snapshotError(IOException cause) {
+    return new IndexingError().withMessage("Test case snapshot failed: " + cause.getMessage());
+  }
+
+  private void recordSourceFailure(
+      PaginatedEntitiesSource source, int sinkFailuresBefore, String terminalFailure) {
+    int sourceFailures = source.getStats().getFailedRecords();
+    int searchRejections =
+        Math.max(0, searchIndexSink.getStats().getFailedRecords() - sinkFailuresBefore);
+    if (sourceFailures == 0 && searchRejections == 0 && terminalFailure == null) {
+      return;
+    }
+    String detail = terminalFailure == null ? "" : "; " + terminalFailure;
+    workflowStats.addFailure(
+        "Data Insights source %s failed (%d source/process errors, %d search rejections%s)"
+            .formatted(source.getName(), sourceFailures, searchRejections, detail));
   }
 
   /**
@@ -380,7 +541,11 @@ public class DataAssetsWorkflow implements DataInsightsWorkflow {
       batch.add(tagged);
     }
     if (!batch.isEmpty()) {
+      int failedBefore = searchIndexSink.getStats().getFailedRecords();
       searchIndexSink.write(batch);
+      if (searchIndexSink.getStats().getFailedRecords() > failedBefore) {
+        workflowStats.addFailure("Search rejected Data Insights snapshot documents");
+      }
     }
   }
 

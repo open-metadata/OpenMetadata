@@ -185,7 +185,7 @@ public final class AIApplications {
     }
 
     public AIApplicationFinder includeAll() {
-      includes.addAll(Arrays.asList("owners", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 

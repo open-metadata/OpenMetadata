@@ -15,6 +15,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -107,11 +108,69 @@ public class GlossaryTermRelationSettingsIT {
       assertNotNull(relationType.get("category"), "category should exist for " + name);
       assertNotNull(relationType.get("isSymmetric"), "isSymmetric should exist for " + name);
       assertNotNull(relationType.get("isTransitive"), "isTransitive should exist for " + name);
+      JsonNode cardinalityNode = relationType.get("cardinality");
+      assertNotNull(cardinalityNode, "cardinality should exist for " + name);
+      assertFalse(cardinalityNode.isNull(), "cardinality should not be null for " + name);
     }
 
     assertTrue(hasRelatedTo, "Should have 'relatedTo' relation type");
     assertTrue(hasSynonym, "Should have 'synonym' relation type");
     assertTrue(hasBroader, "Should have 'broader' relation type");
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ)
+  void test_systemRelationTypesAreUnboundedManyToMany() throws Exception {
+    JsonNode settings = getSettings();
+    JsonNode relationTypes = settings.get("config_value").get("relationTypes");
+
+    Set<String> systemNames =
+        Set.of(
+            "relatedTo",
+            "synonym",
+            "antonym",
+            "broader",
+            "narrower",
+            "partOf",
+            "hasPart",
+            "calculatedFrom",
+            "usedToCalculate",
+            "seeAlso");
+
+    Set<String> verified = new HashSet<>();
+    for (JsonNode type : relationTypes) {
+      String name = type.get("name").asText();
+      if (!systemNames.contains(name)) {
+        continue;
+      }
+      verified.add(name);
+
+      JsonNode cardinality = type.get("cardinality");
+      assertNotNull(cardinality, "cardinality should exist for " + name);
+      assertFalse(cardinality.isNull(), "cardinality should not be null for " + name);
+      assertEquals(
+          "MANY_TO_MANY",
+          cardinality.asText(),
+          "System relation '" + name + "' must be MANY_TO_MANY (unbounded, no enforcement)");
+
+      // MANY_TO_MANY carries no bounds - sourceMax/targetMax must stay null so no cardinality
+      // cap is enforced on terms that already have many of these relations.
+      JsonNode sourceMax = type.get("sourceMax");
+      JsonNode targetMax = type.get("targetMax");
+      assertTrue(
+          sourceMax == null || sourceMax.isNull(),
+          "System relation '" + name + "' must have null sourceMax, got: " + sourceMax);
+      assertTrue(
+          targetMax == null || targetMax.isNull(),
+          "System relation '" + name + "' must have null targetMax, got: " + targetMax);
+    }
+
+    Set<String> missing = new HashSet<>(systemNames);
+    missing.removeAll(verified);
+    assertTrue(
+        missing.isEmpty(), "All 10 system relation types must be present. Missing: " + missing);
   }
 
   @Test
@@ -167,12 +226,14 @@ public class GlossaryTermRelationSettingsIT {
     assertEquals(200, response.statusCode(), "Usage counts API should return 200");
     assertNotNull(response.body(), "Response body should not be null");
 
-    @SuppressWarnings("unchecked")
-    Map<String, Integer> usageCounts =
+    List<org.openmetadata.schema.type.RelationshipTypeUsage> usageCounts =
         MAPPER.readValue(
             response.body(),
-            new com.fasterxml.jackson.core.type.TypeReference<Map<String, Integer>>() {});
+            new com.fasterxml.jackson.core.type.TypeReference<
+                List<org.openmetadata.schema.type.RelationshipTypeUsage>>() {});
     assertNotNull(usageCounts, "Usage counts should be parseable");
+    usageCounts.forEach(
+        usage -> assertNotNull(usage.getRelationshipType(), "Usage rows must name their type"));
     LOG.info("Usage counts: {}", usageCounts);
   }
 

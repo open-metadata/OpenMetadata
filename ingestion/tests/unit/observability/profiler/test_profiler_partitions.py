@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-from typing import Optional, cast
+from typing import cast
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -29,6 +29,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sampler.partition import get_partition_details
 from metadata.workflow.profiler import ProfilerWorkflow
@@ -86,8 +87,9 @@ MOCK_DATABASE = Database(
 
 
 class MockTable(BaseModel):
-    tablePartition: Optional[TablePartition]  # noqa: N815, UP045
-    tableProfilerConfig: Optional[TableProfilerConfig]  # noqa: N815, UP045
+    fullyQualifiedName: FullyQualifiedEntityName = FullyQualifiedEntityName("service.db.schema.table")  # noqa: N815
+    tablePartition: TablePartition | None  # noqa: N815
+    tableProfilerConfig: TableProfilerConfig | None  # noqa: N815
     serviceType: DatabaseServiceType = DatabaseServiceType.BigQuery  # noqa: N815
 
     class Config:
@@ -95,8 +97,9 @@ class MockTable(BaseModel):
 
 
 class MockRedshiftTable(BaseModel):
-    tablePartition: Optional[TablePartition]  # noqa: N815, UP045
-    tableProfilerConfig: Optional[TableProfilerConfig]  # noqa: N815, UP045
+    fullyQualifiedName: FullyQualifiedEntityName = FullyQualifiedEntityName("service.db.schema.table")  # noqa: N815
+    tablePartition: TablePartition | None  # noqa: N815
+    tableProfilerConfig: TableProfilerConfig | None  # noqa: N815
     serviceType: DatabaseServiceType = DatabaseServiceType.Redshift  # noqa: N815
 
     class Config:
@@ -116,16 +119,9 @@ class ProfilerPartitionUnitTest(TestCase):
     @patch("google.auth.default")
     @patch("sqlalchemy.engine.base.Engine.connect")
     @patch("sqlalchemy_bigquery._helpers.create_bigquery_client")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        mock_create_bigquery_client,
-        mock_connect,
-        auth_default,
-        validate_service_name,
-        mock_test_connection,
-    ):
-        super().__init__(methodName)
+    def setUp(
+        self, mock_create_bigquery_client, mock_connect, auth_default, validate_service_name, mock_test_connection
+    ) -> None:
         mock_test_connection.return_value = True
         validate_service_name.return_value = True
         auth_default.return_value = (None, MOCK_GET_SOURCE_CONNECTION)
@@ -150,7 +146,7 @@ class ProfilerPartitionUnitTest(TestCase):
 
         if resp:
             assert resp.partitionColumnName == "e"
-            assert resp.partitionInterval == 1
+            assert resp.partitionInterval == 3
             assert not resp.partitionValues
         else:
             assert False  # noqa: B011
@@ -191,7 +187,7 @@ class ProfilerPartitionUnitTest(TestCase):
 
         if resp:
             assert resp.partitionColumnName == "_PARTITIONDATE"
-            assert resp.partitionInterval == 1
+            assert resp.partitionInterval == 3
             assert not resp.partitionValues
         else:
             assert False  # noqa: B011
@@ -231,7 +227,7 @@ class ProfilerPartitionUnitTest(TestCase):
 
         if resp:
             assert resp.partitionColumnName == "_PARTITIONTIME"
-            assert resp.partitionInterval == 1
+            assert resp.partitionInterval == 24
             assert not resp.partitionValues
         else:
             assert False  # noqa: B011

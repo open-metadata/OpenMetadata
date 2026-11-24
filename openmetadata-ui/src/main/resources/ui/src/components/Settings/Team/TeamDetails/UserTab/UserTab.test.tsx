@@ -10,10 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { Team } from '../../../../../generated/entity/teams/team';
+import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { MOCK_MARKETING_TEAM } from '../../../../../mocks/Teams.mock';
 import { getUsers } from '../../../../../rest/userAPI';
 import { UserTab } from './UserTab.component';
@@ -29,15 +35,43 @@ const props: UserTabProps = {
   onAddUser: jest.fn(),
   onRemoveUser: mockOnRemoveUser,
 };
-jest.mock('../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
-});
 jest.mock('../../../../common/NextPrevious/NextPrevious', () => {
-  return jest.fn().mockImplementation(() => <div>NextPrevious</div>);
+  return jest
+    .fn()
+    .mockImplementation(
+      ({
+        pagingHandler,
+      }: {
+        pagingHandler: (params: { currentPage: number }) => void;
+      }) => (
+        <button
+          data-testid="next-page"
+          onClick={() => pagingHandler({ currentPage: 2 })}>
+          NextPrevious
+        </button>
+      )
+    );
 });
 jest.mock('../../../../common/SearchBarComponent/SearchBar.component', () => {
-  return jest.fn().mockImplementation(() => <div>Searchbar</div>);
+  return jest
+    .fn()
+    .mockImplementation(({ onSearch }: { onSearch?: (t: string) => void }) => (
+      <>
+        <button data-testid="user-searchbar" onClick={() => onSearch?.('ali')}>
+          Searchbar
+        </button>
+        <input
+          aria-label="Search users"
+          onChange={(event) => onSearch?.(event.target.value)}
+        />
+      </>
+    ));
 });
+jest.mock('../../../../../rest/searchAPI', () => ({
+  searchQuery: jest
+    .fn()
+    .mockResolvedValue({ hits: { hits: [], total: { value: 0 } } }),
+}));
 jest.mock(
   '../../../../common/EntityPageInfos/ManageButton/ManageButton',
   () => {
@@ -71,6 +105,7 @@ jest.mock(
 jest.mock('../../../../../utils/Users.util', () => ({
   commonUserDetailColumns: jest.fn().mockImplementation(() => [
     { title: 'label.users', dataIndex: 'users' },
+    { title: 'label.name', dataIndex: 'name' },
     {
       title: 'label.team-plural',
       dataIndex: 'teams',
@@ -118,7 +153,11 @@ describe('UserTab', () => {
       </BrowserRouter>
     );
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('Loader should visible if data is loading', async () => {
@@ -178,6 +217,367 @@ describe('UserTab', () => {
 
       expect(await screen.findByTestId('export-button')).toBeInTheDocument();
       expect(screen.queryByTestId('import-button')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Non-Group team behavior', () => {
+    const nonGroupTeam = {
+      ...MOCK_MARKETING_TEAM,
+      teamType: TeamType.Department,
+      descendantTeams: [{ id: 'sub-group-1', type: 'team' }],
+    } as Team;
+
+    it('should show the export option but hide import and add-user for a non-Group team', async () => {
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            currentTeam={nonGroupTeam}
+            permission={{ EditAll: true } as OperationPermission}
+          />
+        </BrowserRouter>
+      );
+
+      // Export lets a non-Group team export the users rolled up from its sub-groups.
+      expect(await screen.findByTestId('export-button')).toBeInTheDocument();
+      // Adding users (import / add) is only allowed on Group teams.
+      expect(screen.queryByTestId('import-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('add-new-user')).not.toBeInTheDocument();
+    });
+
+    it('should show the add-user action for a Group team', async () => {
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            currentTeam={
+              { ...MOCK_MARKETING_TEAM, teamType: TeamType.Group } as Team
+            }
+            permission={{ EditAll: true } as OperationPermission}
+          />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByTestId('add-new-user')).toBeInTheDocument();
+      expect(screen.getByTestId('import-button')).toBeInTheDocument();
+    });
+
+    it('should scope the users search to the team and its descendant teams', async () => {
+      const { searchQuery } = jest.requireMock('../../../../../rest/searchAPI');
+      render(
+        <BrowserRouter>
+          <UserTab {...props} currentTeam={nonGroupTeam} />
+        </BrowserRouter>
+      );
+
+      fireEvent.click(await screen.findByTestId('user-searchbar'));
+
+      await waitFor(() => expect(searchQuery).toHaveBeenCalled());
+      const queryFilter = JSON.stringify(
+        searchQuery.mock.calls[0][0].queryFilter
+      );
+
+      // The team itself and its descendant team are both in the teams.id filter.
+      expect(queryFilter).toContain(nonGroupTeam.id);
+      expect(queryFilter).toContain('sub-group-1');
+    });
+  });
+
+  describe('Search paging', () => {
+    afterEach(() => {
+      globalThis.history.replaceState({}, '', '/');
+      (getUsers as jest.Mock).mockResolvedValue({
+        data: [{ id: 'test', name: 'testing' }],
+        paging: { total: 10 },
+      });
+      jest
+        .requireMock('../../../../../rest/searchAPI')
+        .searchQuery.mockResolvedValue({
+          hits: { hits: [], total: { value: 0 } },
+        });
+    });
+
+    it('fetches the next search page once and does not reload the unfiltered team list', async () => {
+      const { searchQuery } = jest.requireMock('../../../../../rest/searchAPI');
+      searchQuery.mockResolvedValue({
+        hits: {
+          hits: [{ _source: { id: 'u1', name: 'ali' } }],
+          total: { value: 50 },
+        },
+      });
+
+      render(
+        <BrowserRouter>
+          <UserTab {...props} />
+        </BrowserRouter>
+      );
+
+      fireEvent.click(await screen.findByTestId('user-searchbar'));
+
+      await waitFor(() =>
+        expect(searchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({ query: 'ali', pageNumber: 1 })
+        )
+      );
+
+      (getUsers as jest.Mock).mockClear();
+      searchQuery.mockClear();
+
+      fireEvent.click(await screen.findByTestId('next-page'));
+
+      await waitFor(() =>
+        expect(searchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({ query: 'ali', pageNumber: 2 })
+        )
+      );
+
+      expect(searchQuery).toHaveBeenCalledTimes(1);
+      expect(getUsers).not.toHaveBeenCalled();
+    });
+
+    it('starts a search on page 1 without requesting the previous page', async () => {
+      globalThis.history.replaceState(
+        {},
+        '',
+        '/?currentPage=2&cursorType=after&cursorValue=team-cursor'
+      );
+      const { searchQuery } = jest.requireMock('../../../../../rest/searchAPI');
+      searchQuery.mockResolvedValue({
+        hits: {
+          hits: [{ _source: { id: 'u1', name: 'fresh-user' } }],
+          total: { value: 50 },
+        },
+      });
+
+      render(
+        <BrowserRouter>
+          <UserTab {...props} />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByText('testing')).toBeInTheDocument();
+
+      (getUsers as jest.Mock).mockClear();
+      searchQuery.mockClear();
+
+      fireEvent.click(screen.getByTestId('user-searchbar'));
+
+      expect(await screen.findByText('fresh-user')).toBeInTheDocument();
+      expect(
+        searchQuery.mock.calls.map(
+          ([request]: [{ pageNumber: number }]) => request.pageNumber
+        )
+      ).toEqual([1]);
+      expect(getUsers).not.toHaveBeenCalled();
+
+      const params = new URLSearchParams(globalThis.location.search);
+
+      expect(params.get('currentPage') ?? '1').toBe('1');
+      expect(params.has('cursorValue')).toBe(false);
+    });
+
+    it('clears a search on a later page with one request for the first team page', async () => {
+      const { searchQuery } = jest.requireMock('../../../../../rest/searchAPI');
+      searchQuery.mockResolvedValue({
+        hits: {
+          hits: [{ _source: { id: 'u1', name: 'search-user' } }],
+          total: { value: 50 },
+        },
+      });
+
+      render(
+        <BrowserRouter>
+          <UserTab {...props} />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByText('testing')).toBeInTheDocument();
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'Search users' }), {
+        target: { value: 'ali' },
+      });
+
+      expect(await screen.findByText('search-user')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('next-page'));
+      await waitFor(() =>
+        expect(
+          new URLSearchParams(globalThis.location.search).get('currentPage')
+        ).toBe('2')
+      );
+      await waitFor(() =>
+        expect(searchQuery).toHaveBeenLastCalledWith(
+          expect.objectContaining({ pageNumber: 2 })
+        )
+      );
+
+      (getUsers as jest.Mock).mockClear().mockResolvedValue({
+        data: [{ id: 'u2', name: 'restored-user' }],
+        paging: { total: 10 },
+      });
+      searchQuery.mockClear();
+
+      fireEvent.change(screen.getByRole('textbox', { name: 'Search users' }), {
+        target: { value: '' },
+      });
+
+      expect(await screen.findByText('restored-user')).toBeInTheDocument();
+      expect(getUsers).toHaveBeenCalledTimes(1);
+      expect(getUsers).toHaveBeenCalledWith({
+        fields: 'roles',
+        limit: 15,
+        team: props.currentTeam.name,
+      });
+      expect(searchQuery).not.toHaveBeenCalled();
+      expect(
+        new URLSearchParams(globalThis.location.search).get('currentPage') ??
+          '1'
+      ).toBe('1');
+    });
+
+    it('keeps the newest search results when an older search resolves last', async () => {
+      const { searchQuery } = jest.requireMock('../../../../../rest/searchAPI');
+      let resolveStalePage: (value: unknown) => void = jest.fn();
+      searchQuery.mockImplementation(({ query }: { query: string }) =>
+        query === 'fresh'
+          ? Promise.resolve({
+              hits: {
+                hits: [{ _source: { id: 'u1', name: 'fresh-user' } }],
+                total: { value: 1 },
+              },
+            })
+          : new Promise((resolve) => {
+              resolveStalePage = resolve;
+            })
+      );
+
+      render(
+        <BrowserRouter>
+          <UserTab {...props} />
+        </BrowserRouter>
+      );
+
+      fireEvent.click(await screen.findByTestId('user-searchbar'));
+      await waitFor(() =>
+        expect(searchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({ query: 'ali', pageNumber: 1 })
+        )
+      );
+      fireEvent.change(screen.getByRole('textbox', { name: 'Search users' }), {
+        target: { value: 'fresh' },
+      });
+
+      expect(await screen.findByText('fresh-user')).toBeInTheDocument();
+
+      await act(async () => {
+        resolveStalePage({
+          hits: {
+            hits: [{ _source: { id: 'u2', name: 'stale-user' } }],
+            total: { value: 50 },
+          },
+        });
+      });
+
+      expect(screen.getByText('fresh-user')).toBeInTheDocument();
+      expect(screen.queryByText('stale-user')).not.toBeInTheDocument();
+    });
+  });
+
+  // Task 8 Batch 3: editUserPermission's raw `permission.EditAll || permission.EditUsers` ->
+  // can(Operation.EditUsers) (getDerivedPermissionFlags). Documented explicit-deny-wins
+  // behavior change (Task 6 Finding 1 / Task 8 Batch 2 precedent): an explicit
+  // `EditUsers: false` now wins over a bare `EditAll: true` grant, where the old raw OR
+  // granted regardless. The 'Component should render' test above already covers the
+  // EditAll-fallback grant case (permission: { EditAll: true }, no EditUsers key) via the
+  // remove-user-btn's enabled state.
+  describe('editUserPermission (explicit-deny-wins)', () => {
+    it('disables the remove-user button when EditUsers is explicitly false, even with EditAll true', async () => {
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            permission={
+              { EditAll: true, EditUsers: false } as OperationPermission
+            }
+          />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByTestId('remove-user-btn')).toBeDisabled();
+    });
+
+    it('enables the remove-user button via EditAll when EditUsers is not present', async () => {
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            permission={{ EditAll: true } as OperationPermission}
+          />
+        </BrowserRouter>
+      );
+
+      expect(await screen.findByTestId('remove-user-btn')).toBeEnabled();
+    });
+  });
+
+  // Task 8 Batch 3 review round, Finding 3 (Important): the ASSIGN ErrorPlaceHolder's
+  // `permission` prop hard-branches (`if (!permission) return <PermissionErrorPlaceholder />`),
+  // replacing the whole assign-users UI (including the Add button, which is separately
+  // disabled via its own `disabled={!editUserPermission || isTeamDeleted}`) with a misleading
+  // "no access" message. Old code passed raw, ungated `permission.EditAll ||
+  // permission.EditUsers` here. Fixed via `ungatedFlags.can(Operation.EditUsers)` instead of
+  // the deleted-gated `editUserPermission`.
+  describe('ErrorPlaceHolder permission prop (ungated for deleted teams)', () => {
+    const GROUP_TEAM = {
+      ...MOCK_MARKETING_TEAM,
+      teamType: TeamType.Group,
+    } as Team;
+
+    it('keeps the assign-users UI reachable for a deleted team when EditAll is true', async () => {
+      (getUsers as jest.Mock).mockResolvedValueOnce({
+        data: [],
+        paging: { total: 0 },
+      });
+
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            currentTeam={{ ...GROUP_TEAM, deleted: true }}
+            permission={{ EditAll: true } as OperationPermission}
+          />
+        </BrowserRouter>
+      );
+
+      expect(
+        await screen.findByTestId(/assign-error-placeholder/)
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('permission-error-placeholder')
+      ).not.toBeInTheDocument();
+    });
+
+    it('still denies via explicit deny when EditUsers is explicitly false, even with EditAll true', async () => {
+      (getUsers as jest.Mock).mockResolvedValueOnce({
+        data: [],
+        paging: { total: 0 },
+      });
+
+      render(
+        <BrowserRouter>
+          <UserTab
+            {...props}
+            currentTeam={{ ...GROUP_TEAM, deleted: true }}
+            permission={
+              { EditAll: true, EditUsers: false } as OperationPermission
+            }
+          />
+        </BrowserRouter>
+      );
+
+      expect(
+        await screen.findByTestId('permission-error-placeholder')
+      ).toBeInTheDocument();
     });
   });
 });

@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Divider, Space, Typography } from 'antd';
+import { Owner, Typography } from '@openmetadata/ui-core-components';
 import { get, isEmpty, isObject, startCase, toString } from 'lodash';
 import type { ReactNode } from 'react';
 import { Fragment, lazy } from 'react';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import type { EntityVersionButtonProps } from '../components/Entity/EntityVersionTimeLine/EntityVersionTimeline.interface';
 import { VersionButton } from '../components/Entity/EntityVersionTimeLine/VersionButton';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
@@ -30,6 +31,7 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
+  parseVersionDiffObject,
 } from './EntityDiffPureUtils';
 import {
   getAddedDiffElement,
@@ -47,14 +49,6 @@ const BulkImportVersionSummary = withSuspenseFallback(
     import(
       '../components/Entity/EntityVersionTimeLine/BulkImportVersionSummary/BulkImportVersionSummary.component'
     ).then((m) => ({ default: m.BulkImportVersionSummary }))
-  )
-);
-
-const OwnerLabel = withSuspenseFallback(
-  lazy(() =>
-    import('../components/common/OwnerLabel/OwnerLabel.component').then(
-      (m) => ({ default: m.OwnerLabel })
-    )
   )
 );
 
@@ -124,7 +118,7 @@ export const getSummary = ({
   return (
     <Fragment>
       {isDeleteUpdated?.length > 0 ? (
-        <Typography.Paragraph>
+        <Typography as="p">
           {isDeleteUpdated
             .map((field) => {
               return field.newValue
@@ -136,20 +130,20 @@ export const getSummary = ({
                   });
             })
             .join(', ')}
-        </Typography.Paragraph>
+        </Typography>
       ) : null}
       {fieldsAdded?.length > 0 ? (
-        <Typography.Paragraph>
+        <Typography as="p">
           {Pure.getSummaryText({
             isPrefix,
             fieldsChanged: fieldsAdded,
             actionType: t('label.added'),
             actionText: t('label.added-lowercase'),
           })}
-        </Typography.Paragraph>
+        </Typography>
       ) : null}
       {fieldsUpdated?.length ? (
-        <Typography.Paragraph>
+        <Typography as="div">
           {bulkImportSummary ? (
             <>
               {t('message.bulk-import-completed')}
@@ -164,17 +158,17 @@ export const getSummary = ({
               isGlossaryTerm,
             })
           )}
-        </Typography.Paragraph>
+        </Typography>
       ) : null}
       {fieldsDeleted?.length ? (
-        <Typography.Paragraph>
+        <Typography as="p">
           {Pure.getSummaryText({
             isPrefix,
             fieldsChanged: fieldsDeleted,
             actionType: t('label.removed'),
             actionText: t('label.deleted-lowercase'),
           })}
-        </Typography.Paragraph>
+        </Typography>
       ) : null}
     </Fragment>
   );
@@ -186,14 +180,23 @@ export const renderVersionButton = (
   versionHandler: (version: string) => void,
   className?: string
 ) => {
-  const currV = JSON.parse(version);
+  const currV =
+    parseVersionDiffObject<EntityVersionButtonProps['version']>(version);
+
+  if (
+    isEmpty(currV) ||
+    (typeof currV.version !== 'string' && typeof currV.version !== 'number') ||
+    !Number.isFinite(Number.parseFloat(toString(currV.version)))
+  ) {
+    return null;
+  }
 
   const majorVersionChecks = () => {
     return Pure.isMajorVersion(
-      Number.parseFloat(currV?.changeDescription?.previousVersion)
+      Number.parseFloat(toString(currV?.changeDescription?.previousVersion))
         .toFixed(1)
         .toString(),
-      Number.parseFloat(currV?.version).toFixed(1).toString()
+      Number.parseFloat(toString(currV?.version)).toFixed(1).toString()
     );
   };
 
@@ -214,57 +217,85 @@ export const renderVersionButton = (
   );
 };
 
-export const getParameterValueDiffDisplay = (
+type ParameterValueDiff = ReturnType<
+  typeof Pure.getParameterValuesDiff
+>[number];
+
+interface ParameterDiffRow {
+  label: string;
+  value: ReactNode;
+}
+
+const PARAMETER_CHANGE_ARROW = ' → ';
+
+// Token colours rather than the shared `diff-added` class, which sets its own
+// font and size, so both values take the card row's mono type.
+const addedParameterValue = (text: string) => (
+  <span className="tw:text-success-primary" data-testid="diff-added">
+    {text}
+  </span>
+);
+
+const removedParameterValue = (text: string) => (
+  <span className="tw:text-tertiary tw:line-through" data-testid="diff-removed">
+    {text}
+  </span>
+);
+
+/**
+ * A parameter's change read whole, `10000 → 12000`: a character diff glued the
+ * digits of the two numbers into one (`1000012000`).
+ */
+const getParameterDiffValue = (diff: ParameterValueDiff): ReactNode => {
+  switch (diff.status) {
+    case EntityChangeOperations.UPDATED:
+      return (
+        <>
+          {removedParameterValue(diff.oldValue)}
+          {PARAMETER_CHANGE_ARROW}
+          {addedParameterValue(diff.newValue)}
+        </>
+      );
+    case EntityChangeOperations.ADDED:
+      return addedParameterValue(diff.newValue);
+    case EntityChangeOperations.DELETED:
+      return removedParameterValue(diff.oldValue);
+    case EntityChangeOperations.NORMAL:
+    default:
+      return diff.oldValue;
+  }
+};
+
+/**
+ * The version page's parameters as Configuration card rows, each value showing
+ * its change, plus the assertion SQL's diff, which keeps a block of its own.
+ */
+export const getParameterValueDiffRows = (
   changeDescription: ChangeDescription,
   defaultValues?: TestCaseParameterValue[]
-): React.ReactNode => {
+): { rows: ParameterDiffRow[]; sqlDiff?: ReactNode } => {
   const diffs = Pure.getParameterValuesDiff(changeDescription, defaultValues);
-
-  // Separate sqlExpression from other params
   const sqlParamDiff = diffs.find((diff) => diff.name === 'sqlExpression');
-  const otherParamDiffs = diffs.filter((diff) => diff.name !== 'sqlExpression');
 
-  return (
-    <>
-      {/* Render non-sqlExpression parameters as before */}
-      <Space
-        wrap
-        className="parameter-value-container parameter-value"
-        size={6}>
-        {otherParamDiffs.length === 0 ? (
-          <Typography.Text type="secondary">
-            {t('label.no-parameter-available')}
-          </Typography.Text>
-        ) : (
-          otherParamDiffs.map((diff, index) => (
-            <Space data-testid={diff.name} key={diff.name} size={4}>
-              <Typography.Text className="parameter-label">
-                {`${diff.name}:`}
-              </Typography.Text>
-              <Typography.Text className="parameter-value-text">
-                {getDiffDisplayValue(diff)}
-              </Typography.Text>
-              {otherParamDiffs.length - 1 !== index && (
-                <Divider type="vertical" />
-              )}
-            </Space>
-          ))
-        )}
-      </Space>
-      {/* Render sqlExpression parameter separately, using inline diff in a code-style block */}
-      {sqlParamDiff && (
-        <div className="m-t-md">
-          <Typography.Text className="right-panel-label">
-            {startCase(sqlParamDiff.name)}
-          </Typography.Text>
+  return {
+    rows: diffs.reduce<ParameterDiffRow[]>((rows, diff) => {
+      if (diff.name !== 'sqlExpression') {
+        rows.push({ label: diff.name, value: getParameterDiffValue(diff) });
+      }
 
-          <div className="m-t-sm version-sql-expression-container">
-            {getDiffDisplayValue(sqlParamDiff)}
-          </div>
+      return rows;
+    }, []),
+    sqlDiff: sqlParamDiff && (
+      <>
+        <Typography className="right-panel-label">
+          {startCase(sqlParamDiff.name)}
+        </Typography>
+        <div className="m-t-sm version-sql-expression-container">
+          {getDiffDisplayValue(sqlParamDiff)}
         </div>
-      )}
-    </>
-  );
+      </>
+    ),
+  };
 };
 
 export const getComputeRowCountDiffDisplay = (
@@ -322,7 +353,14 @@ export const getOwnerVersionLabel = (
     );
 
     if (!isEmpty(owners)) {
-      return <OwnerLabel ownerDisplayName={ownerDisplayName} owners={owners} />;
+      return (
+        <Owner
+          isCompactView={false}
+          ownerDisplayName={ownerDisplayName}
+          owners={owners}
+          showLabel={false}
+        />
+      );
     }
   }
 
@@ -340,15 +378,11 @@ export const getOwnerVersionLabel = (
     });
 
     return (
-      <OwnerLabel
+      <Owner
+        isCompactView={false}
         ownerDisplayName={ownerDisplayName}
         owners={defaultItems}
-        {...(ownerField === TabSpecificField.OWNERS
-          ? {
-              isCompactView: false,
-              showLabel: false,
-            }
-          : {})}
+        showLabel={false}
       />
     );
   }

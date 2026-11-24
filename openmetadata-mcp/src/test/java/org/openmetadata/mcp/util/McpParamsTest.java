@@ -14,8 +14,10 @@
 package org.openmetadata.mcp.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -70,5 +72,33 @@ class McpParamsTest {
   void getBooleanFallsBackOnMissingAndNull() {
     assertThat(McpParams.getBoolean(new HashMap<>(), "flag", true)).isTrue();
     assertThat(McpParams.getBoolean(params("flag", null), "flag", true)).isTrue();
+  }
+
+  @Test
+  void getStringListAcceptsTheFormsAModelActuallySends() {
+    assertEquals(
+        List.of("lineage", "quality"),
+        McpParams.getStringList(Map.of("include", List.of("lineage", "quality")), "include"),
+        "the declared array form");
+    assertEquals(
+        List.of("lineage"),
+        McpParams.getStringList(Map.of("include", "lineage"), "include"),
+        "a bare string must not be read as an empty list - some clients drop the array wrapper for "
+            + "a single element, and a silently-empty include looks like the caller never asked");
+    assertEquals(
+        List.of("lineage", "quality"),
+        McpParams.getStringList(Map.of("include", "lineage, quality"), "include"),
+        "a comma-separated string is what a model writes when it is unsure of the shape");
+  }
+
+  @Test
+  void getStringListIsEmptyRatherThanNullForAbsentOrJunkInput() {
+    assertEquals(List.of(), McpParams.getStringList(Map.of(), "include"));
+    assertEquals(List.of(), McpParams.getStringList(null, "include"));
+    assertEquals(List.of(), McpParams.getStringList(Map.of("include", ""), "include"));
+    assertEquals(
+        List.of(),
+        McpParams.getStringList(Map.of("include", 42), "include"),
+        "an unusable value yields no sections rather than throwing on an optional parameter");
   }
 }

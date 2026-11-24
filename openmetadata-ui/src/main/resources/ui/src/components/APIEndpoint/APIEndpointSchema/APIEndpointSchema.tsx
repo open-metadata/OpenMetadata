@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Segmented, Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import {
+  ButtonGroup,
+  ButtonGroupItem,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -25,7 +30,13 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
+import { ColumnsType } from '../../common/Table/Table.interface';
 
+import {
+  SEGMENT_TOGGLE_GROUP_CLASS,
+  SEGMENT_TOGGLE_ITEM_CLASS,
+} from '../../../constants/SegmentToggle.constants';
 import {
   HIGHLIGHTED_ROW_SELECTOR,
   TABLE_SCROLL_VALUE,
@@ -52,6 +63,8 @@ import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getEntityDetailsUrl } from '../../../utils/RouterUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -64,10 +77,10 @@ import {
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
-import Table from '../../common/Table/Table';
+import Table from '../../common/Table/TableV2';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
@@ -115,6 +128,15 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   const { columnFqn: columnPart, fqn } = useFqn({
     type: EntityType.API_ENDPOINT,
   });
+
+  // Consumer via useGenericContext() — `permissions` stays the raw `OperationPermission`
+  // object (GenericProvider precedent). No `deleted` argument: the old raw expressions never
+  // gated on it themselves — `isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}`
+  // is a separate prop on the same components.
+  const { canEditDescription, canEditTags, canEditGlossaryTerms } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
 
   const viewTypeOptions = [
     {
@@ -286,7 +308,11 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       <div
         className="d-inline-flex gap-1 hover-icon-group vertical-align-inherit flex-column items-start"
         style={{ maxWidth: '80%' }}>
-        <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
+        <Tooltip
+          arrow
+          excludeTriggerFromTabOrder
+          title={getEntityName(record)}
+          triggerClassName="tw:inline-flex">
           <span className="break-word">
             {isVersionView ? (
               <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
@@ -296,9 +322,15 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           </span>
         </Tooltip>
         {!isVersionView && record.fullyQualifiedName && (
-          <CopyLinkButton
-            entityType={EntityType.API_ENDPOINT}
-            fieldFqn={record.fullyQualifiedName}
+          <CopyButton
+            className="hover-cell-icon"
+            isDisabled={!record.fullyQualifiedName}
+            size="xs"
+            testId="copy-field-link-button"
+            value={getEntityDetailsUrl(
+              EntityType.API_ENDPOINT,
+              record.fullyQualifiedName ?? ''
+            )}
           />
         )}
       </div>
@@ -308,7 +340,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
   const renderDataType = useCallback(
     (dataType: DataType, record: Field) => (
-      <Typography.Text>
+      <Typography className="tw:text-primary">
         {isVersionView ? (
           <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
@@ -316,7 +348,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         ) : (
           record.dataTypeDisplay ?? dataType
         )}
-      </Typography.Text>
+      </Typography>
     ),
     [isVersionView]
   );
@@ -410,9 +442,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             }}
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
-            hasEditPermission={
-              permissions.EditDescription || permissions.EditAll
-            }
+            hasEditPermission={canEditDescription}
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             onClick={() => setEditFieldDescription(record)}
@@ -430,7 +460,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={permissions.EditTags || permissions.EditAll}
+            hasTagEditAccess={canEditTags}
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             record={record}
@@ -453,9 +483,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
             entityFqn={apiEndpointDetails.fullyQualifiedName ?? ''}
             entityType={EntityType.API_ENDPOINT}
             handleTagSelection={handleFieldTagsChange}
-            hasTagEditAccess={
-              permissions.EditGlossaryTerms || permissions.EditAll
-            }
+            hasTagEditAccess={canEditGlossaryTerms}
             index={index}
             isReadOnly={Boolean(apiEndpointDetails.deleted) || isVersionView}
             record={record}
@@ -477,15 +505,19 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       theme,
       handleFieldTagsChange,
       handleFieldClick,
-      permissions,
+      canEditDescription,
+      canEditTags,
+      canEditGlossaryTerms,
       isVersionView,
       tagFilterState,
     ]
   );
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         <Table
           className={classNames('align-table-filter-left')}
           columns={columns}
@@ -500,12 +532,26 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           }}
           extraTableFilters={
             <div className="d-flex justify-between items-center w-full">
-              <Segmented
-                className="segment-toggle"
-                options={viewTypeOptions}
-                value={viewType}
-                onChange={(value) => setViewType(value as SchemaViewType)}
-              />
+              <ButtonGroup
+                disallowEmptySelection
+                className={SEGMENT_TOGGLE_GROUP_CLASS}
+                selectedKeys={[viewType]}
+                size="sm"
+                onSelectionChange={(keys) => {
+                  const selected = [...keys][0];
+                  if (selected) {
+                    setViewType(selected as SchemaViewType);
+                  }
+                }}>
+                {viewTypeOptions.map(({ label, value }) => (
+                  <ButtonGroupItem
+                    className={SEGMENT_TOGGLE_ITEM_CLASS}
+                    id={value}
+                    key={value}>
+                    {label}
+                  </ButtonGroupItem>
+                ))}
+              </ButtonGroup>
 
               <ToggleExpandButton
                 allRowKeys={schemaAllRowKeys}
@@ -523,7 +569,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
           onChange={handleTableChange}
         />
-      </Col>
+      </Grid.Item>
       {editFieldDescription && (
         <EntityAttachmentProvider
           entityFqn={editFieldDescription.fullyQualifiedName}
@@ -542,7 +588,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           />
         </EntityAttachmentProvider>
       )}
-    </Row>
+    </Grid>
   );
 };
 

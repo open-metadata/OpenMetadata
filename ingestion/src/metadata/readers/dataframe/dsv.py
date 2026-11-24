@@ -18,7 +18,7 @@ import functools
 import traceback
 from functools import singledispatchmethod
 from io import StringIO
-from typing import Any, Dict, List, Optional  # noqa: UP035
+from typing import Any
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -35,6 +35,7 @@ from metadata.generated.schema.entity.services.connections.database.datalakeConn
 from metadata.readers.dataframe.base import DataFrameReader, FileFormatException
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import AZURE_PATH, return_azure_storage_options
+from metadata.readers.file.gcs import get_gcsfs_auth_options
 from metadata.readers.models import ConfigSource
 from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import ingestion_logger
@@ -50,7 +51,7 @@ class DSVDataFrameReader(DataFrameReader):
     from any source based on its init client.
     """
 
-    def _reformat_malformed_csv_data(self, chunk_list: List, parsed_columns: List, separator: str):  # noqa: UP006
+    def _reformat_malformed_csv_data(self, chunk_list: list, parsed_columns: list, separator: str):
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         try:
@@ -102,18 +103,20 @@ class DSVDataFrameReader(DataFrameReader):
     def __init__(
         self,
         config_source: ConfigSource,
-        client: Optional[Any],  # noqa: UP045
+        client: Any | None,
         separator: str = CSV_SEPARATOR,
-        session: Optional[Any] = None,  # noqa: UP045
+        session: Any | None = None,
+        escapechar: str | None = "\\",
     ):
         self.separator = separator
+        self.escapechar = escapechar
         super().__init__(config_source, client, session=session)
 
     def read_from_pandas(
         self,
         path: str,
-        storage_options: Optional[Dict[str, Any]] = None,  # noqa: UP006, UP045
-        compression: Optional[str] = None,  # noqa: UP045
+        storage_options: dict[str, Any] | None = None,
+        compression: str | None = None,
     ) -> DatalakeColumnWrapper:
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
@@ -129,7 +132,7 @@ class DSVDataFrameReader(DataFrameReader):
                 storage_options=storage_options,
                 compression=compression,
                 encoding_errors="ignore",
-                escapechar="\\",
+                escapechar=self.escapechar,
             ) as reader:
                 for chunks in reader:
                     chunks = self._fix_malformed_quoted_chunk(chunk_list=[chunks], separator=self.separator)[0]  # noqa: PLW2901
@@ -152,7 +155,9 @@ class DSVDataFrameReader(DataFrameReader):
             compression = "gzip"
 
         path = f"gs://{bucket_name}/{key}"
-        return self.read_from_pandas(path=path, compression=compression)
+        return self.read_from_pandas(
+            path=path, storage_options=get_gcsfs_auth_options(self.client) or None, compression=compression
+        )
 
     @_read_dsv_dispatch.register
     def _(self, _: S3Config, key: str, bucket_name: str) -> DatalakeColumnWrapper:
@@ -169,7 +174,7 @@ class DSVDataFrameReader(DataFrameReader):
                     chunksize=CHUNKSIZE,
                     compression=compression,
                     encoding_errors="ignore",
-                    escapechar="\\",
+                    escapechar=self.escapechar,
                 ) as reader:
                     for chunks in reader:
                         fixed = self._fix_malformed_quoted_chunk(chunk_list=[chunks], separator=self.separator)

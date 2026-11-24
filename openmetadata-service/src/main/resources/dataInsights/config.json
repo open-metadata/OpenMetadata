@@ -7,6 +7,7 @@
       "name",
       "deleted",
       "version",
+      "updatedAt",
       "owners",
       "tags",
       "ownerName",
@@ -19,6 +20,15 @@
       "classificationTags",
       "glossaryTags",
       "entityStatus"
+    ],
+    "testCase": [
+      "entityLink",
+      "entityFQN",
+      "originEntityFQN",
+      "testSuite",
+      "testSuites",
+      "testDefinition",
+      "service"
     ],
     "table": [
       "tableType",
@@ -99,6 +109,22 @@
       "dashboard",
       "server"
     ],
+    "llmModel": [
+      "service",
+      "modelVersion"
+    ],
+    "mcpServer": [
+      "service",
+      "serverType",
+      "transportType",
+      "protocolVersion",
+      "developmentStage"
+    ],
+    "aiApplication": [
+      "applicationType",
+      "developmentStage",
+      "framework"
+    ],
     "dataProduct": [
       "experts",
       "domains",
@@ -120,6 +146,11 @@
       "parent",
       "children",
       "usageCount"
+    ],
+    "apiEndpoint": [
+      "service",
+      "serviceType",
+      "apiCollection"
     ],
     "metric": [
       "metricType",

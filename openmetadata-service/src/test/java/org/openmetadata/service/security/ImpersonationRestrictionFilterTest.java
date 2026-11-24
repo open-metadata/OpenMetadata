@@ -1,0 +1,161 @@
+package org.openmetadata.service.security;
+
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import jakarta.ws.rs.DELETE;
+import jakarta.ws.rs.PATCH;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.PUT;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ResourceInfo;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.junit.jupiter.api.Test;
+import org.openmetadata.service.resources.policies.PolicyResource;
+import org.openmetadata.service.resources.scim.ScimResource;
+import org.openmetadata.service.resources.system.SystemResource;
+import org.openmetadata.service.resources.teams.RoleResource;
+import org.openmetadata.service.resources.teams.TeamResource;
+import org.openmetadata.service.resources.teams.UserResource;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
+
+class ImpersonationRestrictionFilterTest {
+
+  @Test
+  void identityEndpointsAreBoundToTheFilter() {
+    // Impersonation lasts one request; a credential it reads, mints or revokes outlives the grant,
+    // so the whole identity surface is off-limits while the principal has been swapped. Removing
+    // the annotation from any of these reopens that surface.
+    Set<String> expected =
+        Set.of(
+            "createUser",
+            "importCsv",
+            "importCsvAsync",
+            "restoreTable",
+            "generateRandomPassword",
+            "logoutUser",
+            "generateToken",
+            "generateTokenWithId",
+            "revokeToken",
+            "getToken",
+            "getAuthenticationMechanism",
+            "changeUserPassword",
+            "getPersonalAccessToken",
+            "revokePersonalAccessToken",
+            "createAccessToken");
+
+    assertEquals(expected, identityEndpoints(UserResource.class));
+  }
+
+  @Test
+  void securityConfigurationWritesAreBoundToTheFilter() {
+    assertEquals(
+        Set.of("updateSecurityConfig", "patchSecurityConfig", "adoptDeploymentConfig"),
+        identityEndpoints(SystemResource.class));
+  }
+
+  @Test
+  void scimUserCreationIsBoundToTheFilter() {
+    assertEquals(Set.of("createUser"), identityEndpoints(ScimResource.class));
+  }
+
+  @Test
+  void policyAndRoleWritesAreBoundToTheFilter() {
+    // A policy or role write grants privileges to everyone it applies to, the impersonating bot
+    // included, so it outlives the request like a credential does.
+    for (Class<?> resource : List.of(PolicyResource.class, RoleResource.class)) {
+      Set<String> writes =
+          Arrays.stream(resource.getDeclaredMethods())
+              .filter(ImpersonationRestrictionFilterTest::isWrite)
+              .map(Method::getName)
+              .collect(Collectors.toSet());
+      assertFalse(writes.isEmpty(), resource.getSimpleName());
+      assertEquals(writes, identityEndpoints(resource), resource.getSimpleName());
+    }
+  }
+
+  @Test
+  void teamImportsAreBoundToTheFilter() {
+    // A team CSV row sets the team's default roles and policies, and the async import runs where
+    // the request's impersonation cannot be seen, so an impersonated import is refused whole.
+    assertEquals(Set.of("importCsv", "importCsvAsync"), identityEndpoints(TeamResource.class));
+  }
+
+  @Test
+  void impersonatedRequestIsDenied() throws ReflectiveOperationException {
+    ImpersonationRestrictionFilter filter = filterBoundTo("createAccessToken");
+
+    AuthorizationException denied =
+        assertThrows(
+            AuthorizationException.class,
+            () -> filter.filter(request(securityContext("alice", "impersonating-bot"))));
+
+    assertTrue(denied.getMessage().contains("identity endpoint UserResource.createAccessToken"));
+  }
+
+  @Test
+  void directRequestIsAllowed() throws ReflectiveOperationException {
+    ImpersonationRestrictionFilter filter = filterBoundTo("createAccessToken");
+
+    assertDoesNotThrow(() -> filter.filter(request(securityContext("alice", null))));
+  }
+
+  private static boolean isWrite(Method method) {
+    return method.isAnnotationPresent(POST.class)
+        || method.isAnnotationPresent(PUT.class)
+        || method.isAnnotationPresent(PATCH.class)
+        || method.isAnnotationPresent(io.dropwizard.jersey.PATCH.class)
+        || method.isAnnotationPresent(DELETE.class);
+  }
+
+  private static Set<String> identityEndpoints(Class<?> resource) {
+    return Arrays.stream(resource.getDeclaredMethods())
+        .filter(method -> method.isAnnotationPresent(IdentityEndpoint.class))
+        .map(Method::getName)
+        .collect(Collectors.toSet());
+  }
+
+  private static ImpersonationRestrictionFilter filterBoundTo(String methodName)
+      throws ReflectiveOperationException {
+    Method method =
+        Arrays.stream(UserResource.class.getDeclaredMethods())
+            .filter(candidate -> candidate.getName().equals(methodName))
+            .findFirst()
+            .orElseThrow();
+    ResourceInfo resourceInfo = mock(ResourceInfo.class);
+    when(resourceInfo.getResourceMethod()).thenReturn(method);
+    when(resourceInfo.getResourceClass()).thenAnswer(invocation -> UserResource.class);
+
+    ImpersonationRestrictionFilter filter = new ImpersonationRestrictionFilter();
+    Field field = ImpersonationRestrictionFilter.class.getDeclaredField("resourceInfo");
+    field.setAccessible(true);
+    field.set(filter, resourceInfo);
+    return filter;
+  }
+
+  private static CatalogSecurityContext securityContext(String user, String impersonatedBy) {
+    return new CatalogSecurityContext(
+        new CatalogPrincipal(user, user + "@example.com"),
+        "https",
+        CatalogSecurityContext.OPENID_AUTH,
+        Set.of(),
+        false,
+        impersonatedBy);
+  }
+
+  private static ContainerRequestContext request(CatalogSecurityContext securityContext) {
+    ContainerRequestContext requestContext = mock(ContainerRequestContext.class);
+    when(requestContext.getSecurityContext()).thenReturn(securityContext);
+    return requestContext;
+  }
+}

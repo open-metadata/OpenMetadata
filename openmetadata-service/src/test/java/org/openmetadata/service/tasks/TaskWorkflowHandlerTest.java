@@ -13,7 +13,14 @@
 
 package org.openmetadata.service.tasks;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -21,33 +28,52 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskAvailableTransition;
+import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
+import org.openmetadata.service.tasks.TaskFormExecutionResolver.ActionType;
+import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 /**
  * Unit tests for TaskWorkflowHandler.
@@ -70,6 +96,65 @@ class TaskWorkflowHandlerTest {
   void testInstanceNotNull() {
     TaskWorkflowHandler handler = TaskWorkflowHandler.getInstance();
     assertNotNull(handler);
+  }
+
+  /**
+   * A {@code requiresComment=true} transition is a UI hint only — the backend must NOT 400 a
+   * commentless reject. Backend enforcement is DataAccessRequest-only (TaskResource); every other
+   * task type, metric approvals included, relies on the UI honoring the hint. #30896 added a global
+   * transition-based guard here that regressed every non-DAR reject spec (tables, dashboards,
+   * incidents, suggestions); this test locks the commentless path open through the full resolveTask
+   * flow.
+   */
+  @Test
+  void testRejectWithRequiresCommentTransitionAllowsMissingComment() {
+    UUID taskId = UUID.randomUUID();
+    TaskAvailableTransition rejectTransition =
+        new TaskAvailableTransition()
+            .withId("reject")
+            .withResolutionType(TaskResolutionType.Rejected)
+            .withRequiresComment(true);
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval)
+            .withAbout(new EntityReference().withType(Entity.TABLE))
+            .withAvailableTransitions(List.of(rejectTransition));
+    Task refreshedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Open);
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("about"));
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
+          .thenAnswer(invocation -> invocation.getArgument(1));
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(true);
+      when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(true);
+      when(workflowHandler.isAwaitingAdditionalVotes(taskId)).thenReturn(true);
+
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      when(taskRepository.getFields(anyString())).thenReturn(fields);
+      when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
+
+      Task result =
+          assertDoesNotThrow(
+              () ->
+                  TaskWorkflowHandler.getInstance()
+                      .resolveTask(
+                          task, "reject", TaskResolutionType.Rejected, null, null, null, "alice"));
+
+      assertSame(refreshedTask, result);
+    }
+  }
+
+  @Test
+  void testDefaultRuntimeTaskReadinessWaitIsBoundedBelowOneSecond() {
+    assertTrue(TaskWorkflowHandler.DEFAULT_RUNTIME_TASK_READINESS_WAIT_MILLIS < 1_000L);
   }
 
   @Test
@@ -124,6 +209,7 @@ class TaskWorkflowHandlerTest {
       workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
       when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
           .thenAnswer(invocation -> invocation.getArgument(1));
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(true);
       when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(true);
       when(workflowHandler.isAwaitingAdditionalVotes(taskId)).thenReturn(true);
 
@@ -136,7 +222,8 @@ class TaskWorkflowHandlerTest {
               .resolveTask(task, "approve", TaskResolutionType.Approved, null, null, null, "alice");
 
       assertSame(refreshedTask, result);
-      verify(taskRepository, never()).resolveTask(any(), any(TaskResolution.class), anyString());
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString(), any());
       verify(workflowHandler).isAwaitingAdditionalVotes(taskId);
     }
   }
@@ -173,12 +260,147 @@ class TaskWorkflowHandlerTest {
                           task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
 
       assertTrue(exception.getMessage().contains(taskId.toString()));
-      verify(taskRepository, never()).resolveTask(any(), any(TaskResolution.class), anyString());
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString(), any());
     }
   }
 
   @Test
-  void testResolveWorkflowTaskFallbackRejectsAlreadyResolvedTask() {
+  void testResolveWorkflowTaskWaitsForRuntimeTaskBeforeTransformingVariables() {
+    UUID taskId = UUID.randomUUID();
+    TaskAvailableTransition continueTransition =
+        new TaskAvailableTransition()
+            .withId("continue")
+            .withTargetTaskStatus(TaskEntityStatus.InProgress);
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval)
+            .withAbout(new EntityReference().withType(Entity.METRIC))
+            .withAvailableTransitions(List.of(continueTransition));
+    Task refreshedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.InProgress);
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("about"));
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(false, true);
+      when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
+          .thenAnswer(invocation -> invocation.getArgument(1));
+      when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(true);
+
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      when(taskRepository.getFields(anyString())).thenReturn(fields);
+      when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
+
+      Task result =
+          new TaskWorkflowHandler(3, 0)
+              .resolveTask(task, "continue", null, null, null, null, "alice");
+
+      assertSame(refreshedTask, result);
+      var invocationOrder = Mockito.inOrder(workflowHandler);
+      invocationOrder.verify(workflowHandler, Mockito.times(2)).hasActiveRuntimeTask(taskId);
+      invocationOrder.verify(workflowHandler).transformToNodeVariables(eq(taskId), any());
+      invocationOrder.verify(workflowHandler).resolveTask(eq(taskId), any());
+    }
+  }
+
+  @Test
+  void testResolveWorkflowTaskDoesNotFinalizeWhenRuntimeTaskRemainsUnavailable() {
+    UUID taskId = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval)
+            .withAbout(new EntityReference().withType(Entity.METRIC));
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(false);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  new TaskWorkflowHandler(3, 0)
+                      .resolveTask(
+                          task,
+                          "reject",
+                          TaskResolutionType.Rejected,
+                          null,
+                          null,
+                          "Missing definition details",
+                          "alice"));
+
+      assertTrue(exception.getMessage().contains("unavailable"));
+      verify(workflowHandler, Mockito.times(3)).hasActiveRuntimeTask(taskId);
+      verify(workflowHandler, never()).transformToNodeVariables(any(), any());
+      verify(workflowHandler, never()).resolveTask(any(), any());
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString(), any());
+    }
+  }
+
+  @Test
+  void testMetricWorkflowDoesNotFallbackWhenRuntimeTaskDisappearsDuringResolution() {
+    UUID taskId = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval)
+            .withAbout(new EntityReference().withType(Entity.METRIC));
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(true, false);
+      when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
+          .thenAnswer(invocation -> invocation.getArgument(1));
+      when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(false);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+
+      TaskStateConflictException exception =
+          assertThrows(
+              TaskStateConflictException.class,
+              () ->
+                  new TaskWorkflowHandler(1, 0)
+                      .resolveTask(
+                          task,
+                          "reject",
+                          TaskResolutionType.Rejected,
+                          null,
+                          null,
+                          "Missing definition details",
+                          "alice"));
+
+      assertTrue(exception.getMessage().contains("disappeared"));
+      verify(workflowHandler, Mockito.times(2)).hasActiveRuntimeTask(taskId);
+      verify(workflowHandler).transformToNodeVariables(eq(taskId), any());
+      verify(workflowHandler).resolveTask(eq(taskId), any());
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString(), any());
+    }
+  }
+
+  @Test
+  void testNonMetricWorkflowFallbackRejectsAlreadyResolvedTask() {
     UUID taskId = UUID.randomUUID();
     Task task =
         new Task()
@@ -209,18 +431,254 @@ class TaskWorkflowHandlerTest {
                           task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
 
       assertTrue(exception.getMessage().contains("already in status"));
-      verify(taskRepository, never()).resolveTask(any(), any(TaskResolution.class), anyString());
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString(), any());
+    }
+  }
+
+  @Test
+  void testRunningWorkflowRefusesToCloseATaskItHasNotFinishedCreating() {
+    UUID taskId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(instanceId)
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval);
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+    WorkflowInstanceRepository instances = mock(WorkflowInstanceRepository.class);
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      when(workflowHandler.transformToNodeVariables(eq(taskId), any())).thenReturn(null);
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(false);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(instances);
+      when(instances.isRunning(instanceId)).thenReturn(true);
+
+      TaskStateConflictException exception =
+          assertThrows(
+              TaskStateConflictException.class,
+              () ->
+                  new TaskWorkflowHandler(1, 0)
+                      .resolveTask(
+                          task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
+
+      assertTrue(exception.getMessage().contains("still preparing"));
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString(), any());
+    }
+  }
+
+  @Test
+  void testResolveWaitsForTheRuntimeTaskItsRunningWorkflowIsStillCommitting() {
+    UUID taskId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(instanceId)
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval);
+    Task refreshedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Open);
+    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("about"));
+    // The task row is listed before Flowable commits the runtime task: the first lookup misses
+    // and every lookup after the commit finds it.
+    AtomicInteger flowableLookups = new AtomicInteger();
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+    WorkflowInstanceRepository instances = mock(WorkflowInstanceRepository.class);
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      when(workflowHandler.hasActiveRuntimeTask(taskId))
+          .thenAnswer(invocation -> flowableLookups.incrementAndGet() > 1);
+      when(workflowHandler.transformToNodeVariables(eq(taskId), any()))
+          .thenAnswer(
+              invocation ->
+                  flowableLookups.incrementAndGet() > 1 ? invocation.getArgument(1) : null);
+      when(workflowHandler.resolveTask(eq(taskId), any())).thenReturn(true);
+      when(workflowHandler.isAwaitingAdditionalVotes(taskId)).thenReturn(true);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(instances);
+      when(instances.isRunning(instanceId)).thenReturn(true);
+      when(taskRepository.getFields(anyString())).thenReturn(fields);
+      when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
+
+      Task result =
+          new TaskWorkflowHandler(3, 0)
+              .resolveTask(task, "approve", TaskResolutionType.Approved, null, null, null, "alice");
+
+      assertSame(refreshedTask, result);
+      verify(workflowHandler).resolveTask(eq(taskId), any());
+    }
+  }
+
+  @Test
+  void testRejectionIsNotWrittenToARuntimeTaskThatNeverBecameVisible() {
+    UUID taskId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(instanceId)
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval);
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+    WorkflowInstanceRepository instances = mock(WorkflowInstanceRepository.class);
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(false);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(instances);
+      when(instances.isRunning(instanceId)).thenReturn(true);
+
+      TaskStateConflictException exception =
+          assertThrows(
+              TaskStateConflictException.class,
+              () ->
+                  new TaskWorkflowHandler(3, 0)
+                      .resolveTask(
+                          task,
+                          "reject",
+                          TaskResolutionType.Rejected,
+                          null,
+                          null,
+                          "Missing definition details",
+                          "alice"));
+
+      // Flowable drops variables set on a runtime task it cannot see, so a rejection reason
+      // written now would be lost if the task committed before the resolve reached it.
+      assertTrue(exception.getMessage().contains("still preparing"));
+      verify(workflowHandler, never()).setProcessVariable(any(), anyString(), any());
+      verify(workflowHandler, never()).transformToNodeVariables(any(), any());
+    }
+  }
+
+  @Test
+  void testRuntimeTaskAppearingAfterAMissedLookupAsksTheCallerToRetry() {
+    UUID taskId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(instanceId)
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval);
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+    WorkflowInstanceRepository instances = mock(WorkflowInstanceRepository.class);
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      // The variable lookup ran before Flowable committed; the runtime task is visible by the time
+      // the failure is classified. Nothing reached the workflow, so the caller can safely retry.
+      when(workflowHandler.transformToNodeVariables(eq(taskId), any())).thenReturn(null);
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(true);
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(instances);
+      when(instances.isRunning(instanceId)).thenReturn(true);
+
+      TaskStateConflictException exception =
+          assertThrows(
+              TaskStateConflictException.class,
+              () ->
+                  new TaskWorkflowHandler(1, 0)
+                      .resolveTask(
+                          task, "approve", TaskResolutionType.Approved, null, null, null, "alice"));
+
+      assertTrue(exception.getMessage().contains("still preparing"));
+      verify(workflowHandler, never()).resolveTask(any(), any());
+      verify(taskRepository, never())
+          .resolveTask(any(), any(TaskResolution.class), any(), anyString());
+    }
+  }
+
+  @Test
+  void testNonMetricWorkflowPreservesDirectResolutionFallback() {
+    UUID taskId = UUID.randomUUID();
+    UUID instanceId = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(taskId)
+            .withWorkflowInstanceId(instanceId)
+            .withStatus(TaskEntityStatus.Open)
+            .withType(TaskEntityType.RequestApproval);
+    WorkflowInstanceRepository instances = mock(WorkflowInstanceRepository.class);
+    Task storedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Completed);
+    EntityReference resolvedBy =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName("alice");
+    EntityUtil.Fields fields = new EntityUtil.Fields(Set.of("resolution"));
+
+    WorkflowHandler workflowHandler = mock(WorkflowHandler.class);
+    TaskRepository taskRepository = mock(TaskRepository.class);
+
+    try (MockedStatic<WorkflowHandler> workflowMock = Mockito.mockStatic(WorkflowHandler.class);
+        MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      workflowMock.when(WorkflowHandler::getInstance).thenReturn(workflowHandler);
+      when(workflowHandler.transformToNodeVariables(eq(taskId), any())).thenReturn(null);
+      when(workflowHandler.resolveTask(taskId, null)).thenReturn(false);
+      when(workflowHandler.hasActiveRuntimeTask(taskId)).thenReturn(false);
+
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TASK)).thenReturn(taskRepository);
+      // An instance that has ended can no longer resolve its task, so the task closes directly.
+      entityMock
+          .when(() -> Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+          .thenReturn(instances);
+      when(instances.isRunning(instanceId)).thenReturn(false);
+      entityMock
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
+          .thenReturn(resolvedBy);
+      when(taskRepository.resolveTask(
+              eq(task), any(TaskResolution.class), any(), eq("alice"), isNull()))
+          .thenReturn(storedTask);
+      when(taskRepository.getFields(anyString())).thenReturn(fields);
+      when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(storedTask);
+
+      Task result =
+          new TaskWorkflowHandler(1, 0)
+              .resolveTask(task, "approve", TaskResolutionType.Approved, null, null, null, "alice");
+
+      assertSame(storedTask, result);
+      verify(taskRepository)
+          .resolveTask(eq(task), any(TaskResolution.class), any(), eq("alice"), isNull());
     }
   }
 
   @Test
   void testResolveStandaloneTaskReturnsRefreshedResolvedTask() {
     UUID taskId = UUID.randomUUID();
+    TaskAvailableTransition resolveIncident =
+        new TaskAvailableTransition()
+            .withId("complete")
+            .withResolutionType(TaskResolutionType.Completed)
+            .withRequiresComment(true);
     Task task =
         new Task()
             .withId(taskId)
             .withStatus(TaskEntityStatus.Open)
-            .withType(TaskEntityType.CustomTask);
+            .withType(TaskEntityType.CustomTask)
+            .withAvailableTransitions(List.of(resolveIncident));
     Task storedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Completed);
     Task refreshedTask = new Task().withId(taskId).withStatus(TaskEntityStatus.Completed);
     EntityReference resolvedBy =
@@ -239,7 +697,8 @@ class TaskWorkflowHandlerTest {
       entityMock
           .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
           .thenReturn(resolvedBy);
-      when(taskRepository.resolveTask(eq(task), any(TaskResolution.class), eq("alice")))
+      when(taskRepository.resolveTask(
+              eq(task), any(TaskResolution.class), eq(resolveIncident), eq("alice"), isNull()))
           .thenReturn(storedTask);
       when(taskRepository.getFields(anyString())).thenReturn(fields);
       when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(refreshedTask);
@@ -247,10 +706,18 @@ class TaskWorkflowHandlerTest {
       Task result =
           TaskWorkflowHandler.getInstance()
               .resolveTask(
-                  task, "complete", TaskResolutionType.Completed, null, null, null, "alice");
+                  task,
+                  "complete",
+                  TaskResolutionType.Completed,
+                  null,
+                  null,
+                  "Resolution details",
+                  "alice");
 
       assertSame(refreshedTask, result);
-      verify(taskRepository).resolveTask(eq(task), any(TaskResolution.class), eq("alice"));
+      verify(taskRepository)
+          .resolveTask(
+              eq(task), any(TaskResolution.class), eq(resolveIncident), eq("alice"), isNull());
       verify(workflowHandler).hasActiveRuntimeTask(taskId);
     }
   }
@@ -280,7 +747,8 @@ class TaskWorkflowHandlerTest {
       entityMock
           .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
           .thenReturn(resolvedBy);
-      when(taskRepository.resolveTask(eq(task), any(TaskResolution.class), eq("alice")))
+      when(taskRepository.resolveTask(
+              eq(task), any(TaskResolution.class), isNull(), eq("alice"), isNull()))
           .thenReturn(storedTask);
       when(taskRepository.getFields(anyString())).thenReturn(fields);
       when(taskRepository.get(isNull(), eq(taskId), eq(fields))).thenReturn(storedTask);
@@ -296,7 +764,37 @@ class TaskWorkflowHandlerTest {
                       resolution.getType() == TaskResolutionType.Approved
                           && resolution.getResolvedBy() == resolvedBy
                           && resolution.getResolvedAt() != null),
-              eq("alice"));
+              isNull(),
+              eq("alice"),
+              isNull());
+    }
+  }
+
+  @Test
+  void testApprovedChangeRequestTaskLeavesTheEntityToTheCommitStep() throws Exception {
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withType(TaskEntityType.RequestApproval)
+            .withAbout(new EntityReference().withId(UUID.randomUUID()).withType(Entity.GLOSSARY))
+            .withPayload(Map.of(ChangePreviewUtils.CHANGE_REQUEST_ID_KEY, UUID.randomUUID()));
+
+    Method applyEntityChanges =
+        TaskWorkflowHandler.class.getDeclaredMethod(
+            "applyEntityChanges",
+            Task.class,
+            boolean.class,
+            String.class,
+            Object.class,
+            String.class);
+    applyEntityChanges.setAccessible(true);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      applyEntityChanges.invoke(TaskWorkflowHandler.getInstance(), task, true, null, null, "alice");
+
+      entityMock.verify(
+          () -> Entity.getEntity(any(EntityReference.class), anyString(), any(Include.class)),
+          never());
     }
   }
 
@@ -317,7 +815,10 @@ class TaskWorkflowHandlerTest {
             .withName("customer_events")
             .withColumns(List.of(profile));
 
-    Task task = new Task().withId(UUID.randomUUID());
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withAbout(new EntityReference().withId(table.getId()).withType(Entity.TABLE));
     Map<String, String> payload =
         Map.of(
             "suggestionType", "Description",
@@ -355,7 +856,10 @@ class TaskWorkflowHandlerTest {
             .withFullyQualifiedName("svc.db.schema.orders")
             .withColumns(List.of(customerId));
 
-    Task task = new Task().withId(UUID.randomUUID());
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withAbout(new EntityReference().withId(table.getId()).withType(Entity.TABLE));
     Map<String, String> payload =
         Map.of(
             "suggestionType", "Tag",
@@ -384,5 +888,267 @@ class TaskWorkflowHandlerTest {
     assertTrue(
         parentTags == null || parentTags.isEmpty(),
         "Column tag suggestion must not tag the parent table");
+  }
+
+  private static List<String> applyColumnTagUpdate(
+      List<TagLabel> columnTags, Map<String, Object> payload, List<TagLabel> newValue)
+      throws Exception {
+    return applyColumnTagUpdate(
+        columnTags,
+        payload,
+        newValue,
+        new TaskExecutionAction(
+            ActionType.MERGE_TAGS, null, null, null, null, null, null, null, null));
+  }
+
+  private static List<String> applyColumnTagUpdate(
+      List<TagLabel> columnTags,
+      Map<String, Object> payload,
+      List<TagLabel> newValue,
+      TaskExecutionAction action)
+      throws Exception {
+    Column email = new Column().withName("email").withTags(new ArrayList<>(columnTags));
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("my_table")
+            .withFullyQualifiedName("svc.db.schema.my_table")
+            .withColumns(List.of(email));
+
+    Method applyMergeTagsAction =
+        TaskWorkflowHandler.class.getDeclaredMethod(
+            "applyMergeTagsAction",
+            Task.class,
+            EntityInterface.class,
+            EntityRepository.class,
+            String.class,
+            String.class,
+            Object.class,
+            TaskExecutionAction.class);
+    applyMergeTagsAction.setAccessible(true);
+    applyMergeTagsAction.invoke(
+        TaskWorkflowHandler.getInstance(),
+        new Task()
+            .withId(UUID.randomUUID())
+            .withAbout(new EntityReference().withId(table.getId()).withType(Entity.TABLE)),
+        table,
+        mock(EntityRepository.class),
+        "admin",
+        JsonUtils.pojoToJson(newValue),
+        payload,
+        action);
+
+    return table.getColumns().getFirst().getTags().stream().map(TagLabel::getTagFQN).toList();
+  }
+
+  private static TagLabel tag(String fqn) {
+    return new TagLabel().withTagFQN(fqn).withSource(TagLabel.TagSource.CLASSIFICATION);
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_replacesTheColumnTags() throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath", "columns.email.tags",
+            "operation", "Replace",
+            "tagsToAdd", List.of(tag("Tier.B")),
+            "tagsToRemove", List.of(tag("Tier.A")),
+            "currentTags", List.of(tag("Tier.A")));
+
+    assertEquals(
+        List.of("Tier.B"),
+        applyColumnTagUpdate(List.of(tag("Tier.A")), payload, List.of(tag("Tier.B"))));
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_keepsTagsAddedAfterTheTask() throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath", "columns.email.tags",
+            "operation", "Replace",
+            "tagsToAdd", List.of(tag("Tier.B")),
+            "tagsToRemove", List.of(tag("Tier.A")),
+            "currentTags", List.of(tag("Tier.A")));
+
+    // PII.Sensitive was added to the column after the task was created, so the task never saw it
+    assertEquals(
+        Set.of("Tier.B", "PII.Sensitive"),
+        Set.copyOf(
+            applyColumnTagUpdate(
+                List.of(tag("Tier.A"), tag("PII.Sensitive")), payload, List.of(tag("Tier.B")))));
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_dropsALiveTagFromTheSameExclusiveClassification()
+      throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath", "columns.email.tags",
+            "operation", "Replace",
+            "tagsToAdd", List.of(tag("Tier.B")),
+            "tagsToRemove", List.of(tag("Tier.A")),
+            "currentTags", List.of(tag("Tier.A")));
+
+    // Tier.A was swapped for Tier.C after the task was created, and PII.Sensitive was added
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () -> Entity.getEntityByName(Entity.CLASSIFICATION, "Tier", "", Include.NON_DELETED))
+          .thenReturn(new Classification().withMutuallyExclusive(true));
+      entityMock
+          .when(() -> Entity.getEntityByName(Entity.CLASSIFICATION, "PII", "", Include.NON_DELETED))
+          .thenReturn(new Classification().withMutuallyExclusive(false));
+
+      assertEquals(
+          Set.of("Tier.B", "PII.Sensitive"),
+          Set.copyOf(
+              applyColumnTagUpdate(
+                  List.of(tag("Tier.C"), tag("PII.Sensitive")), payload, List.of(tag("Tier.B")))));
+    }
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_readsTheSnapshotFromTheConfiguredField()
+      throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath",
+            "columns.email.tags",
+            "operation",
+            "Replace",
+            "tagsToAdd",
+            List.of(tag("Tier.B")),
+            "seenTags",
+            List.of(tag("Tier.A")));
+    TaskExecutionAction action =
+        new TaskExecutionAction(
+            ActionType.MERGE_TAGS, null, null, "seenTags", null, null, null, null, null);
+
+    assertEquals(
+        Set.of("Tier.B", "PII.Sensitive"),
+        Set.copyOf(
+            applyColumnTagUpdate(
+                List.of(tag("Tier.A"), tag("PII.Sensitive")),
+                payload,
+                List.of(tag("Tier.B")),
+                action)));
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_removesWhatTheReviewerDropped() throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath",
+            "columns.email.tags",
+            "operation",
+            "Remove",
+            "tagsToRemove",
+            List.of(tag("PII.Sensitive")),
+            "currentTags",
+            List.of(tag("PII.Sensitive"), tag("Tier.A")));
+
+    assertEquals(
+        List.of("Tier.A"),
+        applyColumnTagUpdate(
+            List.of(tag("PII.Sensitive"), tag("Tier.A")), payload, List.of(tag("Tier.A"))));
+  }
+
+  @Test
+  void aRejectionWithoutItsOwnCommentUsesTheReviewersLatestTaskComment() {
+    EntityReference karan = new EntityReference().withName("karan").withType("user");
+    EntityReference owner = new EntityReference().withName("qaowner").withType("user");
+    List<TaskComment> comments =
+        List.of(
+            new TaskComment().withMessage("Earlier note").withAuthor(karan).withCreatedAt(1L),
+            new TaskComment().withMessage("Owner reply").withAuthor(owner).withCreatedAt(3L),
+            new TaskComment()
+                .withMessage("Add the refresh schedule")
+                .withAuthor(karan)
+                .withCreatedAt(2L));
+
+    assertEquals(
+        "Add the refresh schedule", TaskWorkflowHandler.latestCommentBy("karan", comments));
+    assertNull(TaskWorkflowHandler.latestCommentBy("admin", comments));
+    assertNull(TaskWorkflowHandler.latestCommentBy("karan", null));
+  }
+
+  // The write runs inside the task's request, whose response is the task, so the entity's own
+  // change event must be recorded here or alerts and the audit log never see the change.
+  @Test
+  void anApprovedChangeIsSavedAndRecordedAsTheEntitysChangeEvent() throws Exception {
+    Table table = new Table().withId(UUID.randomUUID()).withName("orders").withDescription("old");
+    String before = JsonUtils.pojoToJson(table);
+    table.setDescription("approved");
+    EntityRepository<?> repository = repositoryAnswering(table, EventType.ENTITY_UPDATED);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    CollectionDAO collectionDAO = collectionDAOWith(changeEventDAO);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      saveChange(table, repository, "steward", before);
+
+      ArgumentCaptor<String> inserted = ArgumentCaptor.forClass(String.class);
+      verify(changeEventDAO).insert(inserted.capture());
+      ChangeEvent event = JsonUtils.readValue(inserted.getValue(), ChangeEvent.class);
+      assertEquals(EventType.ENTITY_UPDATED, event.getEventType());
+      assertEquals(table.getId(), event.getEntityId());
+      assertEquals("steward", event.getUserName());
+    }
+  }
+
+  // A write that changed nothing, or that is held until someone approves it, records no event.
+  @Test
+  void aWriteThatChangedNothingRecordsNoEvent() throws Exception {
+    Table table = new Table().withId(UUID.randomUUID()).withName("orders").withDescription("old");
+    String before = JsonUtils.pojoToJson(table);
+    table.setDescription("approved");
+    EntityRepository<?> repository = repositoryAnswering(table, EventType.ENTITY_NO_CHANGE);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    CollectionDAO collectionDAO = collectionDAOWith(changeEventDAO);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      saveChange(table, repository, "steward", before);
+
+      verify(changeEventDAO, never()).insert(anyString());
+    }
+  }
+
+  @Test
+  void anUnchangedEntityIsNotSaved() throws Exception {
+    Table table = new Table().withId(UUID.randomUUID()).withName("orders").withDescription("old");
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    saveChange(table, repository, "steward", JsonUtils.pojoToJson(table));
+
+    verifyNoInteractions(repository);
+  }
+
+  private static EntityRepository<?> repositoryAnswering(Table patched, EventType changeType) {
+    EntityRepository<?> repository = mock(EntityRepository.class);
+    Mockito.doReturn(new PatchResponse<>(Response.Status.OK, patched, changeType))
+        .when(repository)
+        .patch(any(), any(UUID.class), anyString(), any(JsonPatch.class), any(), any());
+    return repository;
+  }
+
+  private static CollectionDAO collectionDAOWith(CollectionDAO.ChangeEventDAO changeEventDAO) {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    return collectionDAO;
+  }
+
+  private static void saveChange(
+      Table table, EntityRepository<?> repository, String user, String before) throws Exception {
+    Method saveChange =
+        TaskWorkflowHandler.class.getDeclaredMethod(
+            "saveChange",
+            EntityInterface.class,
+            EntityRepository.class,
+            String.class,
+            String.class,
+            ChangeSource.class);
+    saveChange.setAccessible(true);
+    saveChange.invoke(TaskWorkflowHandler.getInstance(), table, repository, user, before, null);
   }
 }

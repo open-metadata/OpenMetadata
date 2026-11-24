@@ -18,6 +18,8 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import { uploadDriveFile } from '../../../rest/assetAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import UploadDocumentModal from './UploadDocumentModal.component';
@@ -31,8 +33,10 @@ jest.mock('utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-let mockOnDropFiles: ((files: FileList) => void) | undefined;
-let mockOnSizeLimitExceed: ((files: FileList) => void) | undefined;
+let mockOnDropFiles: (files: FileList) => void = (_files: FileList) =>
+  undefined;
+let mockOnSizeLimitExceed: (files: FileList) => void = (_files: FileList) =>
+  undefined;
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest.fn(
@@ -176,8 +180,8 @@ describe('UploadDocumentModal', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockOnDropFiles = undefined;
-    mockOnSizeLimitExceed = undefined;
+    mockOnDropFiles = (_files: FileList) => undefined;
+    mockOnSizeLimitExceed = (_files: FileList) => undefined;
     uuidCounter = 0;
     Object.defineProperty(globalThis, 'crypto', {
       value: { randomUUID: () => `test-uuid-${++uuidCounter}` },
@@ -223,7 +227,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'test.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'test.pdf')));
     });
 
     expect(screen.getByText('test.pdf')).toBeInTheDocument();
@@ -233,7 +237,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'test.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'test.pdf')));
     });
 
     const attachBtn = screen.getByText(/attach-file-plural/i);
@@ -245,7 +249,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'remove-me.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'remove-me.pdf')));
     });
 
     expect(screen.getByText('remove-me.pdf')).toBeInTheDocument();
@@ -278,7 +282,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'test.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'test.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -289,11 +293,29 @@ describe('UploadDocumentModal', () => {
     );
   });
 
+  it('uploads under the picked domain', async () => {
+    useDomainStore.setState({ activeDomain: 'Alpha' });
+    (uploadDriveFile as jest.Mock).mockResolvedValue({ id: 'asset-1' });
+
+    render(<UploadDocumentModal {...defaultProps} />);
+
+    act(() => {
+      mockOnDropFiles(makeFileList(new File(['content'], 'test.pdf')));
+    });
+
+    fireEvent.click(screen.getByText(/attach-file-plural/i));
+
+    await waitFor(() =>
+      expect((uploadDriveFile as jest.Mock).mock.calls[0][2]).toBe('Alpha')
+    );
+    useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
+  });
+
   it('shows the failed state for a file that exceeds the size limit', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnSizeLimitExceed!(
+      mockOnSizeLimitExceed(
         makeFileList(new File(['x'.repeat(6 * 1024 * 1024)], 'huge.pdf'))
       );
     });
@@ -312,7 +334,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -334,7 +356,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -355,7 +377,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));
@@ -377,7 +399,7 @@ describe('UploadDocumentModal', () => {
     render(<UploadDocumentModal {...defaultProps} />);
 
     act(() => {
-      mockOnDropFiles!(makeFileList(new File(['content'], 'fail.pdf')));
+      mockOnDropFiles(makeFileList(new File(['content'], 'fail.pdf')));
     });
 
     fireEvent.click(screen.getByText(/attach-file-plural/i));

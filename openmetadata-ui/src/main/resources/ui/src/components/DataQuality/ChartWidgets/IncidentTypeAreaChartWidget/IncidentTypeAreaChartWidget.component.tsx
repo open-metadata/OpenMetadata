@@ -11,28 +11,50 @@
  *  limitations under the License.
  */
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, last } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchCountOfIncidentStatusTypeByDays } from '../../../../rest/dataQualityDashboardAPI';
-import { CustomAreaChartData } from '../../../Visualisations/Chart/Chart.interface';
 import CustomAreaChart from '../../../Visualisations/Chart/CustomAreaChart.component';
 import { IncidentTypeAreaChartWidgetProps } from '../../DataQuality.interface';
 import '../chart-widgets.less';
+import { EMPTY_CHART_DATA } from '../ChartWidgets.constants';
 
 const IncidentTypeAreaChartWidget = ({
-  incidentStatusType,
+  incidentStatusTypes,
   title,
+  description,
   name,
   chartFilter,
   redirectPath,
   height,
 }: IncidentTypeAreaChartWidgetProps) => {
-  const [isChartLoading, setIsChartLoading] = useState(true);
-  const [chartData, setChartData] = useState<CustomAreaChartData[]>([]);
+  const { data: chartData = EMPTY_CHART_DATA, isLoading: isChartLoading } =
+    useQuery({
+      queryKey: [
+        'dq-dashboard',
+        'incident-status-count',
+        incidentStatusTypes,
+        chartFilter,
+      ],
+      queryFn: async () => {
+        const { data } = await fetchCountOfIncidentStatusTypeByDays(
+          incidentStatusTypes,
+          chartFilter
+        );
+
+        return data.map((item) => ({
+          timestamp: +item.timestamp,
+          count: +item.stateId,
+        }));
+      },
+    });
 
   const bodyElement = useMemo(() => {
+    // The headline is the latest daily bucket, not a total.
+    // ADR:2026-11-16-incident-cards-describe-their-counts-as-daily-activity
     const latestValue = last(chartData)?.count ?? 0;
 
     return (
@@ -50,33 +72,24 @@ const IncidentTypeAreaChartWidget = ({
           weight="semibold">
           {latestValue}
         </Typography>
-        <CustomAreaChart data={chartData} height={height} name={name} />
+        <CustomAreaChart
+          ariaLabel={title}
+          data={chartData}
+          height={height}
+          name={name}
+        />
+        <div className="tw:mt-4">
+          <Typography
+            as="p"
+            color="secondary"
+            data-testid="widget-description"
+            size="text-xs">
+            {description}
+          </Typography>
+        </div>
       </>
     );
-  }, [title, chartData, name, height]);
-
-  const getCountOfIncidentStatus = async () => {
-    setIsChartLoading(true);
-    try {
-      const { data } = await fetchCountOfIncidentStatusTypeByDays(
-        incidentStatusType,
-        chartFilter
-      );
-      const updatedData = data.map((item) => ({
-        timestamp: +item.timestamp,
-        count: +item.stateId,
-      }));
-      setChartData(updatedData);
-    } catch {
-      setChartData([]);
-    } finally {
-      setIsChartLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    getCountOfIncidentStatus();
-  }, [chartFilter, incidentStatusType]);
+  }, [title, description, chartData, name, height]);
 
   if (isChartLoading) {
     return (
@@ -84,7 +97,7 @@ const IncidentTypeAreaChartWidget = ({
         className={classNames('custom-chart-background', {
           'chart-widget-link-no-underline': !isUndefined(redirectPath),
         })}
-        data-testid={`incident-${incidentStatusType}-type-area-chart-widget-container`}>
+        data-testid={`incident-${incidentStatusTypes[0]}-type-area-chart-widget-container`}>
         <Skeleton height={120} width="100%" />
       </Card>
     );
@@ -95,7 +108,7 @@ const IncidentTypeAreaChartWidget = ({
       className={classNames('custom-chart-background', {
         'chart-widget-link-no-underline': !isUndefined(redirectPath),
       })}
-      data-testid={`incident-${incidentStatusType}-type-area-chart-widget-container`}>
+      data-testid={`incident-${incidentStatusTypes[0]}-type-area-chart-widget-container`}>
       {redirectPath ? (
         <Link to={redirectPath}>{bodyElement}</Link>
       ) : (

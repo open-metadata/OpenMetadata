@@ -3,6 +3,7 @@ package org.openmetadata.it.drive;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -17,29 +18,52 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.StreamSupport;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
 import org.openmetadata.schema.api.data.MoveContextFileRequest;
+import org.openmetadata.schema.api.tasks.ResolveTask;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryDispute;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileSourceType;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.test.util.RestClient;
+import org.openmetadata.sdk.test.util.SdkClients;
 import org.openmetadata.sdk.test.util.TestNamespace;
 import org.openmetadata.sdk.test.util.TestNamespaceExtension;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.jdbi3.ContextFileRepository;
+import org.openmetadata.service.util.RequestEntityCache;
 
 @ExtendWith(TestNamespaceExtension.class)
 class ContextFileIT {
 
   private static final String FILE_PATH = "v1/contextCenter/drive/files";
   private static final String FOLDER_PATH = "v1/contextCenter/drive/folders";
+  private static final String MEMORY_PATH = "v1/contextCenter/memories";
+  private static final String TASK_PATH = "v1/tasks";
 
   private ContextFile createFile(RestClient rest, CreateContextFile request)
       throws HttpResponseException {
@@ -55,6 +79,86 @@ class ContextFileIT {
     return rest.create(FOLDER_PATH, request, Folder.class);
   }
 
+  /**
+   * Creates a knowledge pill linked to {@code file} the way extraction would, without needing a
+   * model: the MENTIONED_IN edge the delete cascade walks comes from sourceEntity + sourceType.
+   */
+  private ContextMemory createExtractedMemory(RestClient rest, String name, ContextFile file)
+      throws HttpResponseException {
+    return rest.create(
+        MEMORY_PATH,
+        new CreateContextMemory()
+            .withName(name)
+            .withTitle(name)
+            .withQuestion("What does " + name + " state?")
+            .withAnswer("It states " + name + ".")
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withSourceEntity(file.getEntityReference()),
+        ContextMemory.class);
+  }
+
+  /** HTTP status of an {@code include=all} read — 404 means the row is really gone, not tombstoned. */
+  private int memoryStatusIncludingDeleted(RestClient rest, UUID memoryId) {
+    try (Response response = rest.rawGet(MEMORY_PATH + "/" + memoryId + "?include=all")) {
+      return response.getStatus();
+    }
+  }
+
+  /** Soft-deleted: an ordinary read no longer finds the memory, an {@code include=all} one does. */
+  private void assertArchived(RestClient rest, UUID memoryId) {
+    try (Response plain = rest.rawGet(MEMORY_PATH + "/" + memoryId)) {
+      assertEquals(404, plain.getStatus());
+    }
+    try (Response archived = rest.rawGet(MEMORY_PATH + "/" + memoryId + "?include=all")) {
+      assertEquals(200, archived.getStatus());
+      assertTrue(
+          JsonUtils.readTree(archived.readEntity(String.class)).get("deleted").asBoolean(),
+          "the memory is archived, not deleted");
+    }
+  }
+
+  /** The live memory: an ordinary read finds it. */
+  private ContextMemory getMemory(RestClient rest, UUID memoryId) throws HttpResponseException {
+    return rest.getById(MEMORY_PATH, memoryId, "", ContextMemory.class);
+  }
+
+  /** Holds the memory in review against {@code disputed}, as reconciliation does. */
+  private ContextMemory holdForReview(RestClient rest, ContextMemory memory, ContextMemory disputed)
+      throws HttpResponseException {
+    ContextMemory current = getMemory(rest, memory.getId());
+    ContextMemory held =
+        JsonUtils.deepCopy(current, ContextMemory.class)
+            .withEntityStatus(ContextMemoryStatus.DRAFT)
+            .withStatusReason("contradicts: the order threshold differs")
+            .withDisputes(
+                List.of(
+                    new MemoryDispute()
+                        .withMemory(disputed.getEntityReference())
+                        .withReason("Five orders against three orders")));
+    return rest.patch(
+        MEMORY_PATH, memory.getId(), JsonUtils.pojoToJson(current), held, ContextMemory.class);
+  }
+
+  /** The id of the memory's one open conflict review task. */
+  private UUID openReviewId(RestClient rest, ContextMemory memory) {
+    String path =
+        TASK_PATH
+            + "?type=MemoryConflictReview&status=Open&fields=about&aboutEntity="
+            + encode(memory.getFullyQualifiedName());
+    try (Response response = rest.rawGet(path)) {
+      assertEquals(200, response.getStatus());
+      JsonNode tasks = JsonUtils.readTree(response.readEntity(String.class)).path("data");
+      List<UUID> open =
+          StreamSupport.stream(tasks.spliterator(), false)
+              .filter(
+                  task -> memory.getId().toString().equals(task.path("about").path("id").asText()))
+              .map(task -> UUID.fromString(task.path("id").asText()))
+              .toList();
+      assertEquals(1, open.size(), "exactly one open review");
+      return open.getFirst();
+    }
+  }
+
   private List<String> listFileIds(RestClient rest, String path) {
     try (Response response = rest.rawGet(path)) {
       assertEquals(200, response.getStatus());
@@ -66,6 +170,22 @@ class ContextFileIT {
   }
 
   // --- CRUD ---
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testMetadataRequestsRejectAssetId(boolean createOrUpdate, TestNamespace ns) {
+    RestClient rest = RestClient.admin();
+    CreateContextFile request =
+        new CreateContextFile().withName(ns.prefix("metadata-file")).withAssetId("stored-asset");
+
+    try (Response response =
+        createOrUpdate ? rest.rawPut(FILE_PATH, request) : rest.rawPost(FILE_PATH, request)) {
+      assertEquals(400, response.getStatus());
+      assertEquals(
+          "File content must be assigned through the upload endpoint.",
+          JsonUtils.readTree(response.readEntity(String.class)).get("message").asText());
+    }
+  }
 
   @Test
   void testCreateContextFile(TestNamespace ns) throws HttpResponseException {
@@ -302,6 +422,186 @@ class ContextFileIT {
             });
   }
 
+  // --- Knowledge-pill cascade ---
+
+  @Test
+  void testArchivingAFileSoftDeletesItsExtractedMemories(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("archived-pills"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextMemory first = createExtractedMemory(rest, ns.prefix("pill-one"), file);
+    ContextMemory second = createExtractedMemory(rest, ns.prefix("pill-two"), file);
+    assertEquals(2, getFile(rest, file.getId(), "memoryCount").getMemoryCount());
+
+    rest.delete(FILE_PATH, file.getId());
+
+    // Archived with the file rather than deleted, so restoring the file can bring them back.
+    assertArchived(rest, first.getId());
+    assertArchived(rest, second.getId());
+  }
+
+  @Test
+  void testPermanentlyDeletingAnArchivedFileDeletesItsMemories(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("archived-then-deleted"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextMemory pill = createExtractedMemory(rest, ns.prefix("pill-six"), file);
+    rest.delete(FILE_PATH, file.getId());
+    assertArchived(rest, pill.getId());
+
+    try (Response deleteResponse =
+        rest.rawDelete(FILE_PATH + "/" + file.getId() + "?hardDelete=true")) {
+      assertEquals(202, deleteResponse.getStatus());
+    }
+
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(() -> assertEquals(404, memoryStatusIncludingDeleted(rest, pill.getId())));
+  }
+
+  @Test
+  void testHardDeleteFileLeavesNoMemoryTombstones(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("hard-delete-pills"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextMemory first = createExtractedMemory(rest, ns.prefix("pill-three"), file);
+    ContextMemory second = createExtractedMemory(rest, ns.prefix("pill-four"), file);
+
+    try (Response deleteResponse =
+        rest.rawDelete(FILE_PATH + "/" + file.getId() + "?hardDelete=true")) {
+      assertEquals(202, deleteResponse.getStatus());
+    }
+
+    // A hard delete runs the soft pass first. The pills it soft-deletes there must still be
+    // reachable by the hard pass, or they survive as permanent invisible rows.
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(
+            () -> {
+              assertEquals(404, memoryStatusIncludingDeleted(rest, first.getId()));
+              assertEquals(404, memoryStatusIncludingDeleted(rest, second.getId()));
+            });
+  }
+
+  /**
+   * Restoring the file brings back the memory its archive took, but not the ones a person deleted:
+   * before the archive, after restoring it on its own, or again while it was archived.
+   */
+  @Test
+  void testRestoringAFileKeepsTheMemoriesAPersonDeleted(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("restored-pills"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextMemory archived = createExtractedMemory(rest, ns.prefix("pill-archived"), file);
+    ContextMemory deletedFirst = createExtractedMemory(rest, ns.prefix("pill-deleted"), file);
+    ContextMemory restoredAlone = createExtractedMemory(rest, ns.prefix("pill-restored"), file);
+    ContextMemory deletedAgain = createExtractedMemory(rest, ns.prefix("pill-redeleted"), file);
+    rest.delete(MEMORY_PATH, deletedFirst.getId());
+    rest.delete(FILE_PATH, file.getId());
+    rest.restore(MEMORY_PATH, restoredAlone.getId(), ContextMemory.class);
+    rest.delete(MEMORY_PATH, restoredAlone.getId());
+    rest.delete(MEMORY_PATH, deletedAgain.getId());
+
+    rest.restore(FILE_PATH, file.getId(), ContextFile.class);
+
+    assertEquals(archived.getId(), getMemory(rest, archived.getId()).getId());
+    assertArchived(rest, deletedFirst.getId());
+    assertArchived(rest, restoredAlone.getId());
+    assertArchived(rest, deletedAgain.getId());
+    assertEquals(1, getFile(rest, file.getId(), "memoryCount").getMemoryCount());
+  }
+
+  @Test
+  void testRestoringAFolderBringsBackTheMemoriesOfItsFiles(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    Folder folder = createFolder(rest, new CreateFolder().withName(ns.prefix("restored-folder")));
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("pills-in-folder"))
+                .withFolder(folder.getFullyQualifiedName())
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextMemory pill = createExtractedMemory(rest, ns.prefix("pill-in-folder"), file);
+    rest.delete(FOLDER_PATH, folder.getId());
+    assertArchived(rest, pill.getId());
+
+    rest.restore(FOLDER_PATH, folder.getId(), Folder.class);
+
+    assertEquals(pill.getId(), getMemory(rest, pill.getId()).getId());
+    assertEquals(1, getFile(rest, file.getId(), "memoryCount").getMemoryCount());
+  }
+
+  /**
+   * Archiving cancels the review of a memory held for a conflict, so resolving it is refused rather
+   * than failing; restoring brings the memory back in review, with a fresh task.
+   */
+  @Test
+  void testRestoringAFileReopensTheReviewOfItsMemoryInReview(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("reviewed-pills"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextMemory disputed =
+        rest.create(
+            MEMORY_PATH,
+            new CreateContextMemory()
+                .withName(ns.prefix("pill-disputed"))
+                .withTitle(ns.prefix("pill-disputed"))
+                .withQuestion("Who qualifies as a customer?")
+                .withAnswer("Customers need at least five orders."),
+            ContextMemory.class);
+    ContextMemory held =
+        holdForReview(
+            rest, createExtractedMemory(rest, ns.prefix("pill-in-review"), file), disputed);
+    UUID review = openReviewId(rest, held);
+    rest.delete(FILE_PATH, file.getId());
+    try (Response refused =
+        rest.rawPost(
+            TASK_PATH + "/" + review + "/resolve",
+            new ResolveTask()
+                .withTransitionId("approve")
+                .withResolutionType(TaskResolutionType.Approved))) {
+      assertEquals(400, refused.getStatus(), "the archive cancelled the review");
+    }
+
+    rest.restore(FILE_PATH, file.getId(), ContextFile.class);
+
+    ContextMemory restored = getMemory(rest, held.getId());
+    assertEquals(ContextMemoryStatus.DRAFT, restored.getEntityStatus());
+    assertEquals(
+        List.of(disputed.getId()),
+        restored.getDisputes().stream().map(dispute -> dispute.getMemory().getId()).toList());
+    assertNotEquals(review, openReviewId(rest, restored), "a fresh review");
+  }
+
   // --- File in Folder ---
 
   @Test
@@ -401,6 +701,226 @@ class ContextFileIT {
     ContextFile updated = rest.patch(FILE_PATH, file.getId(), original, file, ContextFile.class);
 
     assertEquals(ProcessingStatus.Processed, updated.getProcessingStatus());
+  }
+
+  @Test
+  void testSharingChangeIsStored(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("sharing-test"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+
+    String original = JsonUtils.pojoToJson(file);
+    file.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    rest.patch(FILE_PATH, file.getId(), original, file, ContextFile.class);
+
+    ContextFile stored = getFile(rest, file.getId(), "");
+    assertNotNull(stored.getShareConfig(), "A sharing change must survive a re-read");
+    assertEquals(MemoryVisibility.PRIVATE, stored.getShareConfig().getVisibility());
+  }
+
+  @Test
+  void testListingCountsOnlyFilesTheCallerMaySee(TestNamespace ns) throws Exception {
+    RestClient admin = RestClient.admin();
+    User owner = DriveTestUsers.createUser(ns, "o-list");
+    User reader = DriveTestUsers.createUser(ns, "r-list");
+    Folder folder = createFolder(admin, new CreateFolder().withName(ns.prefix("listing-total")));
+    ContextFile orgWide = createFile(admin, ownedFileIn(folder, ns.prefix("a-org-wide"), owner));
+    ContextFile privateFile = createFile(admin, ownedFileIn(folder, ns.prefix("b-private"), owner));
+    String original = JsonUtils.pojoToJson(privateFile);
+    privateFile.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    privateFile.setExtractedText("Extracted text the counts never read");
+    admin.patch(FILE_PATH, privateFile.getId(), original, privateFile, ContextFile.class);
+    assertEquals(
+        privateFile.getExtractedText(), getFile(admin, privateFile.getId(), "").getExtractedText());
+    RestClient readerRest = RestClient.forUser(reader.getEmail(), new String[] {});
+
+    // One file per page: every page reports the same total, including the page that hides nothing
+    // itself, and so does a count-only read.
+    List<String> listed = new ArrayList<>();
+    String after = null;
+    for (int page = 0; page < 2; page++) {
+      JsonNode onePerPage = listFiles(readerRest, folder.getId(), 1, after);
+      assertEquals(1, onePerPage.get("paging").get("total").asInt(), "total on page " + page);
+      onePerPage.get("data").forEach(node -> listed.add(node.get("id").asText()));
+      after = onePerPage.get("paging").path("after").asText(null);
+    }
+    assertEquals(List.of(orgWide.getId().toString()), listed);
+    assertEquals(
+        1, listFiles(readerRest, folder.getId(), 0, null).get("paging").get("total").asInt());
+    assertEquals(1, folderChildrenCount(readerRest, folder.getId()), "folder badge");
+
+    RestClient ownerRest = RestClient.forUser(owner.getEmail(), new String[] {});
+    assertEquals(
+        2, listFiles(ownerRest, folder.getId(), 1, null).get("paging").get("total").asInt());
+    assertEquals(2, folderChildrenCount(ownerRest, folder.getId()), "owner's folder badge");
+  }
+
+  @Test
+  void testCountsAgreeWithTheListingForEverySharing(TestNamespace ns) throws Exception {
+    RestClient admin = RestClient.admin();
+    Team team =
+        SdkClients.adminClient()
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("share-team"))
+                    .withTeamType(CreateTeam.TeamType.GROUP));
+    User owner = DriveTestUsers.createUser(ns, "o-share");
+    User teamMember = DriveTestUsers.createUser(ns, "t-share", List.of(team.getId()));
+    User named = DriveTestUsers.createUser(ns, "n-share");
+    User stranger = DriveTestUsers.createUser(ns, "s-share");
+    Folder parent = createFolder(admin, new CreateFolder().withName(ns.prefix("sharing-parent")));
+    Folder folder =
+        createFolder(
+            admin,
+            new CreateFolder()
+                .withName(ns.prefix("sharing-counts"))
+                .withParent(parent.getFullyQualifiedName()));
+    sharedFileIn(admin, folder, ns.prefix("a-unset"), owner, null);
+    sharedFileIn(
+        admin,
+        folder,
+        ns.prefix("b-entity"),
+        owner,
+        new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
+    sharedFileIn(
+        admin,
+        folder,
+        ns.prefix("c-private"),
+        owner,
+        new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    sharedFileIn(admin, folder, ns.prefix("d-team"), owner, sharedWith(team.getEntityReference()));
+    sharedFileIn(
+        admin, folder, ns.prefix("e-named"), owner, sharedWith(named.getEntityReference()));
+
+    Map<User, Integer> expected = Map.of(owner, 5, teamMember, 3, named, 3, stranger, 2);
+    for (Map.Entry<User, Integer> entry : expected.entrySet()) {
+      RestClient rest = RestClient.forUser(entry.getKey().getEmail(), new String[] {});
+      int visible = entry.getValue();
+      String who = entry.getKey().getName();
+      assertEquals(visible, listFiles(rest, folder.getId(), 100, null).get("data").size(), who);
+      assertEquals(
+          visible,
+          listFiles(rest, folder.getId(), 1, null).get("paging").get("total").asInt(),
+          who + " total");
+      assertEquals(visible, folderChildrenCount(rest, folder.getId()), who + " folder badge");
+      assertEquals(visible, subfolderChildrenCount(rest, parent.getId()), who + " in contents");
+    }
+  }
+
+  private void sharedFileIn(
+      RestClient admin, Folder folder, String name, User owner, MemoryShareConfig share)
+      throws Exception {
+    ContextFile file = createFile(admin, ownedFileIn(folder, name, owner));
+    if (share != null) {
+      String original = JsonUtils.pojoToJson(file);
+      file.setShareConfig(share);
+      admin.patch(FILE_PATH, file.getId(), original, file, ContextFile.class);
+    }
+  }
+
+  private static MemoryShareConfig sharedWith(EntityReference principal) {
+    return new MemoryShareConfig()
+        .withVisibility(MemoryVisibility.SHARED)
+        .withSharedWith(List.of(new MemorySharedPrincipal().withPrincipal(principal)));
+  }
+
+  private static int folderChildrenCount(RestClient rest, UUID folderId) {
+    try (Response response = rest.rawGet(FOLDER_PATH + "/" + folderId + "?fields=childrenCount")) {
+      assertEquals(200, response.getStatus());
+      return JsonUtils.readTree(response.readEntity(String.class)).get("childrenCount").asInt();
+    }
+  }
+
+  /** The {@code childrenCount} of the only subfolder in a folder's contents. */
+  private static int subfolderChildrenCount(RestClient rest, UUID parentId) {
+    try (Response response = rest.rawGet(FOLDER_PATH + "/" + parentId + "/contents")) {
+      assertEquals(200, response.getStatus());
+      JsonNode contents = JsonUtils.readTree(response.readEntity(String.class));
+      return contents.get("folders").get(0).get("childrenCount").asInt();
+    }
+  }
+
+  private static CreateContextFile ownedFileIn(Folder folder, String name, User owner) {
+    return new CreateContextFile()
+        .withName(name)
+        .withFolder(folder.getFullyQualifiedName())
+        .withOwners(List.of(owner.getEntityReference()))
+        .withProcessingStatus(ProcessingStatus.Uploaded);
+  }
+
+  private static JsonNode listFiles(RestClient rest, UUID folderId, int limit, String after) {
+    String page = after == null ? "" : "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8);
+    try (Response response =
+        rest.rawGet(FILE_PATH + "?folderId=" + folderId + "&limit=" + limit + page)) {
+      assertEquals(200, response.getStatus());
+      return JsonUtils.readTree(response.readEntity(String.class));
+    }
+  }
+
+  @Test
+  void testProcessingUpdateKeepsConsolidatedMetadataEdits(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    ContextFile file =
+        createFile(rest, new CreateContextFile().withName(ns.prefix("processing-edit")));
+    ContextFileRepository repository =
+        (ContextFileRepository) Entity.getEntityRepository(Entity.CONTEXT_FILE);
+    try {
+      ContextFile analyzing =
+          JsonUtils.deepCopy(file, ContextFile.class)
+              .withProcessingStatus(ProcessingStatus.Analyzing);
+      repository.updateIfCurrent(null, file, analyzing, Entity.ADMIN_USER_NAME);
+      ContextFile snapshot =
+          repository.get(null, file.getId(), repository.getFields(""), Include.NON_DELETED, false);
+      ContextFile edited =
+          rest.patch(
+              FILE_PATH,
+              file.getId(),
+              JsonUtils.pojoToJson(snapshot),
+              JsonUtils.deepCopy(snapshot, ContextFile.class)
+                  .withDescription("Current description")
+                  .withShareConfig(
+                      new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)),
+              ContextFile.class);
+      assertEquals(snapshot.getVersion(), edited.getVersion());
+      ContextFile result =
+          JsonUtils.deepCopy(snapshot, ContextFile.class)
+              .withProcessingStatus(ProcessingStatus.Processed)
+              .withExtractedText("Extracted text");
+
+      assertThrows(
+          PreconditionFailedException.class,
+          () -> repository.updateIfCurrent(null, snapshot, result, Entity.ADMIN_USER_NAME));
+
+      RequestEntityCache.invalidate(Entity.CONTEXT_FILE, file.getId(), null);
+      ContextFile current =
+          repository.get(null, file.getId(), repository.getFields(""), Include.NON_DELETED, false);
+      repository.updateIfCurrent(
+          null,
+          current,
+          JsonUtils.deepCopy(current, ContextFile.class)
+              .withProcessingStatus(ProcessingStatus.Processed)
+              .withExtractedText("Extracted text"),
+          Entity.ADMIN_USER_NAME);
+      ContextFile stored = getFile(rest, file.getId(), "");
+      assertEquals("Current description", stored.getDescription());
+      assertEquals(MemoryVisibility.PRIVATE, stored.getShareConfig().getVisibility());
+      assertEquals("Extracted text", stored.getExtractedText());
+      assertEquals(ProcessingStatus.Processed, stored.getProcessingStatus());
+      User readerUser = DriveTestUsers.createUser(ns, "processing-reader");
+      RestClient reader = RestClient.forUser(readerUser.getEmail(), new String[] {});
+      try (Response response = reader.rawGet(FILE_PATH + "/" + file.getId());
+          Response download = reader.rawGet(FILE_PATH + "/" + file.getId() + "/download")) {
+        assertEquals(403, response.getStatus());
+        assertEquals(403, download.getStatus());
+      }
+    } finally {
+      RequestEntityCache.clear();
+    }
   }
 
   // --- Permissions ---
@@ -565,6 +1085,41 @@ class ContextFileIT {
     HttpResponseException ex =
         assertThrows(HttpResponseException.class, () -> moveFile(rest, file.getId(), bogus));
     assertEquals(404, ex.getStatusCode());
+  }
+
+  @Test
+  void testCreateSameNameAsArchivedFileReturnsActionableError(TestNamespace ns)
+      throws HttpResponseException {
+    // A deleted file is archived (soft-deleted) and keeps its name reserved so it stays
+    // restorable. Re-adding a same-name file to the same folder must fail with an actionable
+    // message pointing to the Archive, not the generic DB "Entity already exists" 409. Enforced
+    // at the create chokepoint, so it holds for the direct create path too (not just upload/move).
+    RestClient rest = RestClient.admin();
+    Folder folder = createFolder(rest, new CreateFolder().withName(ns.prefix("archive-folder")));
+    String sharedName = ns.prefix("report");
+
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(sharedName)
+                .withFileType(ContextFileType.PDF)
+                .withFolder(folder.getFullyQualifiedName())
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    rest.delete(FILE_PATH, file.getId()); // soft-delete -> archived, name still reserved
+
+    CreateContextFile duplicate =
+        new CreateContextFile()
+            .withName(sharedName)
+            .withFileType(ContextFileType.PDF)
+            .withFolder(folder.getFullyQualifiedName())
+            .withProcessingStatus(ProcessingStatus.Uploaded);
+    HttpResponseException ex =
+        assertThrows(HttpResponseException.class, () -> createFile(rest, duplicate));
+    assertEquals(400, ex.getStatusCode());
+    assertTrue(
+        ex.getMessage().contains("in the Archive"),
+        "Expected an actionable Archive message, got: " + ex.getMessage());
   }
 
   @Test

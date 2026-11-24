@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 /* eslint-disable */
-const $RefParser = require('@apidevtools/json-schema-ref-parser');
+// Its js-yaml 4 pin in package.json: ADR:2026-11-17-ref-parser-js-yaml-resolution-precedes-bare-js-yaml
+const { $RefParser } = require('@apidevtools/json-schema-ref-parser');
 const path = require('path');
 const fs = require('fs');
 const fse = require('fs-extra');
@@ -22,14 +23,31 @@ const cwd = process.cwd();
 const schemaDir =
   '../../../../../openmetadata-spec/src/main/resources/json/schema';
 
-const globalParserOptions = {
-  continueOnError: true,
-  dereference: {
-    circular: true,
+// Passed on every call: $RefParser ignores options given to its constructor.
+// Under 2020-12 it resolves `$ref`s against `$id`, and many spec `$id`s do not
+// match their file path, so drop them and resolve relative to the file instead.
+const parserOptions = {
+  parse: {
+    json: {
+      parse: ({ data }) =>
+        removeObjectByKey(JSON.parse(data.toString()), '$id'),
+    },
   },
 };
 
-const parser = new $RefParser(globalParserOptions);
+const parser = new $RefParser();
+
+// Every failure below is collected rather than thrown, so that one bad schema
+// does not hide the rest. The process still exits non-zero if this is non-empty:
+// the generated output under src/jsons is committed, and main() clears each
+// destination directory before regenerating it, so a silently swallowed error
+// would surface as a *deleted* schema that CI would happily commit.
+const failures = [];
+
+function recordFailure(context, err) {
+  failures.push(`${context}: ${err.message ?? err}`);
+  console.error(`[parse-schema] ${context}`, err);
+}
 
 // Function to recursively remove any object by key
 function removeObjectByKey(obj, keyToRemove) {
@@ -53,19 +71,27 @@ async function parseSchema(filePath, destPath, shouldDereference = false) {
     const fileName = path.basename(filePath);
     process.chdir(fileDir);
 
-    let parsedSchema = await parser.parse(fileName);
+    let parsedSchema = await parser.parse(fileName, parserOptions);
     if (shouldDereference || fileName.startsWith('dbt')) {
-      parsedSchema = await parser.dereference(parsedSchema);
+      parsedSchema = await parser.dereference(parsedSchema, parserOptions);
     }
-    const api = await parser.bundle(parsedSchema);
+    const api = await parser.bundle(parsedSchema, parserOptions);
     const dirname = `${cwd}/${path.dirname(destPath)}`;
-    const updatedAPIWithoutID = removeObjectByKey(api, '$id');
+    // `$id` is already dropped at read time (parserOptions). `$schema` is stripped
+    // because what lands here is a dereferenced bundle, not the spec document it
+    // came from, where a nested `$schema` is not even a keyword position.
+    // It matters more than tidiness though -- these bundles are fed to
+    // @rjsf/validator-ajv8, whose Ajv only carries the draft-07 meta-schema, and Ajv
+    // fails closed on a dialect it does not know: one `no schema with key or ref ...`
+    // error and every field silently stops being validated. Dropping the declaration
+    // keeps Ajv on its default dialect, which is what these forms have always used.
+    const updatedAPIWithoutID = removeObjectByKey(api, '$schema');
 
     if (!fs.existsSync(dirname)) {
       try {
         fs.mkdirSync(dirname, { recursive: true });
       } catch (err) {
-        console.log(err);
+        recordFailure(`mkdir ${dirname}`, err);
       }
     }
     fs.writeFileSync(
@@ -73,7 +99,7 @@ async function parseSchema(filePath, destPath, shouldDereference = false) {
       JSON.stringify(updatedAPIWithoutID, null, 2)
     );
   } catch (err) {
-    console.log(err);
+    recordFailure(`parse ${filePath}`, err);
   } finally {
     process.chdir(cwd);
   }
@@ -103,7 +129,7 @@ function copySourceFiles(rootDir) {
   try {
     fse.copySync(schemaDir, `${rootDir}/schema`);
   } catch (err) {
-    console.error(err);
+    recordFailure(`copy ${schemaDir} -> ${rootDir}/schema`, err);
   }
 }
 
@@ -121,7 +147,7 @@ async function main(rootDir, srcDir, destDir, shouldDereference = false) {
 
     await traverseDirectory(playDir, playDir, destDir, shouldDereference);
   } catch (err) {
-    console.log(err);
+    recordFailure(`generate ${destDir}`, err);
   } finally {
     // Cleanup: Remove the temporary directory
     if (fs.existsSync(rootDir)) {
@@ -161,11 +187,11 @@ async function parseApplicationSchemas() {
         process.chdir(fileDir);
 
         // Parse and dereference the schema
-        let parsedSchema = await parser.parse(file);
-        parsedSchema = await parser.dereference(parsedSchema);
+        let parsedSchema = await parser.parse(file, parserOptions);
+        parsedSchema = await parser.dereference(parsedSchema, parserOptions);
 
-        // Remove $id fields
-        const updatedSchema = removeObjectByKey(parsedSchema, '$id');
+        // Same as parseSchema above: `$schema` would put Ajv on a dialect it cannot load.
+        const updatedSchema = removeObjectByKey(parsedSchema, '$schema');
 
         // Change back to original directory
         process.chdir(originalCwd);
@@ -174,22 +200,24 @@ async function parseApplicationSchemas() {
         fs.writeFileSync(destPath, JSON.stringify(updatedSchema, null, 2));
         console.log(`Processed ApplicationSchema: ${file}`);
       } catch (err) {
-        console.error(`Error processing ${file}:`, err.message);
+        recordFailure(`parse ApplicationSchema ${file}`, err);
         process.chdir(cwd);
       }
     }
   } catch (err) {
-    console.error('Error parsing Application schemas:', err);
+    recordFailure('generate src/jsons/applicationSchemas', err);
   }
 }
 
 // Execute the parsing for connection and ingestion schemas
 async function runParsers() {
-  // For connection schemas
+  // For connection schemas — written to public/ so Vite ships them as static
+  // assets (fetched at runtime via loadConnectionSchema) instead of pulling
+  // them through the Rollup module graph.
   await main(
     'connTemp',
     'schema/entity/services/connections',
-    'src/jsons/connectionSchemas/connections',
+    'public/jsons/connectionSchemas/connections',
     true
   );
 
@@ -230,4 +258,18 @@ async function runParsers() {
   }
 }
 
-runParsers();
+runParsers()
+  .catch((err) => {
+    recordFailure('runParsers', err);
+  })
+  .finally(() => {
+    if (failures.length > 0) {
+      console.error(
+        `\n[parse-schema] failed to generate ${failures.length} schema(s):`
+      );
+      failures.forEach((failure) => console.error(`  - ${failure}`));
+      // Non-zero exit: the caller must not treat a partially generated
+      // src/jsons as an intentional change set.
+      process.exitCode = 1;
+    }
+  });

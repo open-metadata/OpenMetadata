@@ -87,4 +87,20 @@ describe('KPILatestResultsV1', () => {
 
     expect(await findByTestId(kpi, 'kpi-success')).toBeInTheDocument();
   });
+
+  it('colours each KPI from the chart palette, matching its line', async () => {
+    const { container } = render(
+      <KPILatestResultsV1 kpiLatestResultsRecord={mockProps} />
+    );
+
+    expect(container.querySelector('.kpi-days-section')).toHaveStyle({
+      backgroundColor: '#100000@0.1',
+      color: '#100000',
+    });
+    expect(screen.getAllByRole('progressbar')[0].firstElementChild).toHaveStyle(
+      {
+        backgroundColor: '#100000',
+      }
+    );
+  });
 });

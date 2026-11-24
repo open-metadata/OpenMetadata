@@ -32,7 +32,20 @@ jest.mock('../../components/MyData/LeftSidebar/LeftSidebar.component', () =>
 );
 
 jest.mock('../../components/Settings/Users/Users.component', () =>
-  jest.fn().mockReturnValue(<p>User Component</p>)
+  jest.fn().mockImplementation(({ updateUserDetails, afterDeleteAction }) => (
+    <div>
+      <p>User Component</p>
+      <button
+        onClick={() =>
+          updateUserDetails({ defaultPersona: undefined }, 'defaultPersona')
+        }>
+        UserComponentSaveButton
+      </button>
+      <button onClick={() => afterDeleteAction(false)}>
+        UserComponentAfterDeleteActionButton
+      </button>
+    </div>
+  ))
 );
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
@@ -71,29 +84,24 @@ jest.mock('../../rest/userAPI', () => ({
     ),
 }));
 
-jest.mock('../../rest/feedsAPI', () => ({
-  getFeedsWithFilter: jest.fn().mockImplementation(() =>
-    Promise.resolve({
-      data: {
-        data: [],
-      },
-    })
-  ),
-  postFeedById: jest.fn(),
-}));
-
-describe.skip('Test the User Page', () => {
+describe('Test the User Page', () => {
   it('Should call getUserByName  API on load', async () => {
     render(<UserPage />, { wrapper: MemoryRouter });
 
+    // `extension` is load-bearing, not cosmetic: the Custom Properties tab rebuilds the
+    // whole extension object from what it was handed, so fetching without it makes editing
+    // one property wipe every other stored value.
     expect(getUserByName).toHaveBeenCalledWith('xyz', {
       fields: [
         'profile',
         'roles',
         'teams',
         'personas',
+        'lastActivityTime',
+        'lastLoginTime',
         'defaultPersona',
         'domains',
+        'extension',
       ],
       include: 'all',
     });
@@ -245,6 +253,7 @@ describe('UserPage - Activity Time Fields', () => {
         'lastLoginTime',
         'defaultPersona',
         'domains',
+        'extension',
       ],
       include: 'all',
     });

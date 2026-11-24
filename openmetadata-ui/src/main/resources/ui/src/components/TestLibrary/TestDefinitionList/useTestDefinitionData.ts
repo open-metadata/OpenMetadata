@@ -12,7 +12,7 @@
  */
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   EntityType,
@@ -32,7 +32,10 @@ export interface UseTestDefinitionDataProps {
   handlePagingChange: UsePagingInterface['handlePagingChange'];
   pagingCursor: UsePagingInterface['pagingCursor'];
   urlFilters: Record<string, string[]>;
-  urlParams: { entityType?: string; testPlatforms?: string };
+  urlParams: { entityType?: string; testPlatforms?: string; q?: string };
+  /** Already validated against the sortable columns by useTestDefinitionFilters. */
+  sortField: string;
+  sortOrder: 'asc' | 'desc';
   fetchTestDefinitionPermissions: (
     definitions: TestDefinition[]
   ) => Promise<void>;
@@ -52,15 +55,28 @@ export const useTestDefinitionData = ({
   pagingCursor,
   urlFilters,
   urlParams,
+  sortField,
+  sortOrder,
   fetchTestDefinitionPermissions,
 }: UseTestDefinitionDataProps) => {
   const { t } = useTranslation();
 
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // Whether a page has ever been rendered. Re-sorting, filtering and searching
+  // all refetch, and blanking the table to skeletons each time reads as the
+  // whole page reloading. Only the first load has nothing to show, so only the
+  // first load gets skeletons; a refetch keeps the previous rows on screen.
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  // Sequence number of the newest fetch. Typing in the search box issues one
+  // request per debounced term, and a slow response for an earlier term can
+  // land after a later one - leaving the list showing rows for a search the
+  // user has already moved on from. Only the newest request may write state.
+  const latestRequestRef = useRef(0);
 
   const fetchTestDefinitions = useCallback(
     async (pagingOffset?: Partial<Paging>) => {
+      const requestId = ++latestRequestRef.current;
       setIsLoading(true);
       try {
         const entityTypeFilter = urlFilters.entityType?.[0] as
@@ -69,6 +85,10 @@ export const useTestDefinitionData = ({
         const testPlatformFilter = urlFilters.testPlatforms?.[0] as
           | TestPlatform
           | undefined;
+        // The listing is cursor-paged, so the search has to run server side -
+        // filtering the current page would only ever search the rows already on
+        // screen.
+        const searchQuery = urlParams.q?.trim();
 
         const { data, paging: responsePaging } = await getListTestDefinitions({
           after: pagingOffset?.after,
@@ -76,17 +96,42 @@ export const useTestDefinitionData = ({
           limit: pageSize,
           entityType: entityTypeFilter,
           testPlatform: testPlatformFilter,
+          q: searchQuery || undefined,
+          sortField,
+          sortOrder,
         });
+        if (requestId !== latestRequestRef.current) {
+          return;
+        }
+
+        // Rendered in the order the server returned them. The keyset cursor
+        // walks the server's display-name collation, so re-sorting a page here
+        // would only reshuffle it against a sequence the next page continues.
         setTestDefinitions(data);
         handlePagingChange(responsePaging);
         fetchTestDefinitionPermissions(data);
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (requestId === latestRequestRef.current) {
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setIsLoading(false);
+        // A superseded request leaves the flag alone: the request that replaced
+        // it is still in flight and owns the spinner.
+        if (requestId === latestRequestRef.current) {
+          setIsLoading(false);
+          setHasLoadedOnce(true);
+        }
       }
     },
-    [pageSize, handlePagingChange, fetchTestDefinitionPermissions, urlFilters]
+    [
+      pageSize,
+      handlePagingChange,
+      fetchTestDefinitionPermissions,
+      urlFilters,
+      urlParams.q,
+      sortField,
+      sortOrder,
+    ]
   );
 
   useEffect(() => {
@@ -97,7 +142,15 @@ export const useTestDefinitionData = ({
     } else {
       fetchTestDefinitions();
     }
-  }, [pageSize, pagingCursor, urlParams.entityType, urlParams.testPlatforms]);
+  }, [
+    pageSize,
+    pagingCursor,
+    urlParams.entityType,
+    urlParams.testPlatforms,
+    urlParams.q,
+    sortField,
+    sortOrder,
+  ]);
 
   const handleEnableToggle = async (
     record: TestDefinition,
@@ -132,6 +185,9 @@ export const useTestDefinitionData = ({
     testDefinitions,
     setTestDefinitions,
     isLoading,
+    // The first load only. A later refetch reports through isLoading, which
+    // drives the pager and a dimmed table rather than replacing the rows.
+    isInitialLoading: isLoading && !hasLoadedOnce,
     fetchTestDefinitions,
     handleEnableToggle,
   };

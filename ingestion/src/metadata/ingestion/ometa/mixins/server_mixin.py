@@ -14,8 +14,6 @@ Mixin class containing Server and client specific methods
 To be used by OpenMetadata class
 """
 
-from typing import Optional
-
 import requests
 from requests.exceptions import JSONDecodeError
 
@@ -90,7 +88,7 @@ class OMetaServerMixin:
         return get_server_version_from_string(self._read_version(response))
 
     @staticmethod
-    def _read_version(response: Optional[requests.Response]) -> str:  # noqa: UP045
+    def _read_version(response: requests.Response | None) -> str:
         """Pull `version` out of a /system/version response, or say why we can't.
 
         This is the first call every workflow makes, so it is where a wrong
@@ -175,7 +173,7 @@ class OMetaServerMixin:
         response = self.client.put(ROUTES.get(Settings.__name__), data)
         return Settings.model_validate(response)
 
-    def get_settings_by_name(self, setting_type: SettingType) -> Optional[Settings]:  # noqa: UP045
+    def get_settings_by_name(self, setting_type: SettingType) -> Settings | None:
         """Get setting by name
 
         Returns:
@@ -186,7 +184,7 @@ class OMetaServerMixin:
             return None
         return Settings.model_validate(response)
 
-    def get_profiler_config_settings(self) -> Optional[Settings]:  # noqa: UP045
+    def get_profiler_config_settings(self) -> Settings | None:
         """Get profiler config setting
 
         Returns:

@@ -10,6 +10,7 @@ import static org.openmetadata.service.search.SearchUtils.getMaxExpansions;
 import static org.openmetadata.service.search.SearchUtils.isColumnIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataQualityIndex;
+import static org.openmetadata.service.search.SearchUtils.isOntologyIndex;
 import static org.openmetadata.service.search.SearchUtils.isServiceIndex;
 import static org.openmetadata.service.search.SearchUtils.isTimeSeriesIndex;
 
@@ -37,6 +38,7 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.CustomPropertySearchFields;
+import org.openmetadata.service.search.LuceneQuerySyntax;
 import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
@@ -69,9 +71,17 @@ public class ElasticSearchSourceBuilderFactory
   private static final String RANKING_QUERY_PREFIX = "ranking:";
 
   private final SearchSettings searchSettings;
+  private final boolean matchesPrivateFields;
 
   public ElasticSearchSourceBuilderFactory(SearchSettings searchSettings) {
+    this(searchSettings, true);
+  }
+
+  /** {@code matchesPrivateFields} false keeps a free-text user search off the email fields. */
+  public ElasticSearchSourceBuilderFactory(
+      SearchSettings searchSettings, boolean matchesPrivateFields) {
     this.searchSettings = searchSettings;
+    this.matchesPrivateFields = matchesPrivateFields;
   }
 
   private AssetTypeConfiguration getAssetConfiguration(String indexName) {
@@ -234,9 +244,10 @@ public class ElasticSearchSourceBuilderFactory
     // The non-fuzzy branch is a multi_match, which never parses Lucene syntax; only this
     // fuzzy branch can throw on user input. Endpoints that document `q` as free text swap
     // it for simple_query_string, whose parser discards malformed syntax instead of
-    // raising a query_shard_exception.
+    // raising a query_shard_exception. Text that Lucene cannot parse takes the same route
+    // for the same reason, rather than failing the search outright (#27990).
     Query fuzzyQuery =
-        freeText
+        freeText || !LuceneQuerySyntax.isWellFormed(query)
             ? ElasticQueryBuilder.simpleQueryStringQuery(query, fuzzyFields, Operator.And)
             : ElasticQueryBuilder.queryStringQuery(
                 query,
@@ -278,7 +289,8 @@ public class ElasticSearchSourceBuilderFactory
 
   public ElasticSearchRequestBuilder buildUserOrTeamSearchBuilderV2(
       String query, int from, int size) {
-    Query queryBuilder = buildSearchQueryBuilderV2(query, UserIndex.getFields());
+    Query queryBuilder =
+        buildSearchQueryBuilderV2(query, UserIndex.getFields(matchesPrivateFields));
     return searchBuilderV2(queryBuilder, null, from, size);
   }
 
@@ -368,7 +380,7 @@ public class ElasticSearchSourceBuilderFactory
       return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size, freeText);
     }
 
-    if (isDataAssetIndex(indexName)) {
+    if (isDataAssetIndex(indexName) || isOntologyIndex(indexName)) {
       return buildDataAssetSearchBuilderV2(
           indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
@@ -549,7 +561,7 @@ public class ElasticSearchSourceBuilderFactory
   private Query buildBaseQueryV2(String query, AssetTypeConfiguration assetConfig) {
     if (query == null || query.trim().isEmpty() || query.trim().equals("*")) {
       return ElasticQueryBuilder.boolQuery().must(ElasticQueryBuilder.matchAllQuery()).build();
-    } else if (containsQuerySyntax(query)) {
+    } else if (shouldParseAsLuceneSyntax(query)) {
       return buildComplexSyntaxQueryV2(query, assetConfig);
     } else {
       return buildSimpleQueryV2(query, assetConfig);
@@ -1182,7 +1194,7 @@ public class ElasticSearchSourceBuilderFactory
       return ElasticQueryBuilder.boolQuery().must(ElasticQueryBuilder.matchAllQuery()).build();
     }
 
-    if (containsQuerySyntax(query)) {
+    if (shouldParseAsLuceneSyntax(query)) {
       return buildComplexQueryV2(query, assetConfig);
     }
 

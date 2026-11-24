@@ -10,14 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/*
- *  Copyright 2026 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- */
 import { includes, toLower } from 'lodash';
 import { Glossary } from '../../../generated/entity/data/glossary';
-import { GlossaryTermRelationType } from '../../../rest/settingConfigAPI';
+import { RelationshipType } from '../../../generated/entity/data/relationshipType';
 import { OntologyNode } from '../OntologyExplorer.interface';
 
 export interface GraphSearchHighlightInput {
@@ -51,14 +46,16 @@ export function ontologyEdgeKey(edge: EdgeForSearch): string {
 
 /**
  * Single search box: highlights nodes, glossaries, and relation types whose
- * text matches (union), plus incident edges and glossary group combos.
+ * text matches. Entity matches remain the only bright nodes while their
+ * incident edges retain context; relation matches also highlight both edge
+ * endpoints.
  */
 export function computeGraphSearchHighlight(
   nodes: OntologyNode[],
   edges: EdgeForSearch[],
   rawQuery: string,
   glossaries: Glossary[],
-  relationTypes: GlossaryTermRelationType[]
+  relationTypes: RelationshipType[]
 ): GraphSearchHighlightInput | null {
   const query = normalize(rawQuery.trim());
   if (!query) {
@@ -69,8 +66,12 @@ export function computeGraphSearchHighlight(
   const highlightedGlossaryIds = new Set<string>();
 
   nodes.forEach((n) => {
-    if (
+    const matchesNodeIdentity =
+      textMatches(query, n.id) ||
       textMatches(query, n.label) ||
+      textMatches(query, n.originalLabel);
+    if (
+      matchesNodeIdentity ||
       textMatches(query, n.fullyQualifiedName) ||
       textMatches(query, n.description)
     ) {
@@ -79,13 +80,12 @@ export function computeGraphSearchHighlight(
   });
 
   glossaries.forEach((g) => {
-    if (
-      g.id &&
-      (textMatches(query, g.name) ||
-        textMatches(query, g.displayName) ||
-        textMatches(query, g.fullyQualifiedName) ||
-        textMatches(query, g.description))
-    ) {
+    const matchesGlossaryText =
+      textMatches(query, g.name) ||
+      textMatches(query, g.displayName) ||
+      textMatches(query, g.fullyQualifiedName) ||
+      textMatches(query, g.description);
+    if (g.id && matchesGlossaryText) {
       highlightedGlossaryIds.add(g.id);
     }
   });
@@ -134,7 +134,7 @@ export function computeGraphSearchHighlight(
   const highlightedNodeIds = new Set<string>(entityMatchedNodeIds);
   edges.forEach((e) => {
     const key = ontologyEdgeKey(e);
-    if (highlightedEdgeKeys.has(key)) {
+    if (relationMatchedEdgeKeys.has(key)) {
       highlightedNodeIds.add(e.from);
       highlightedNodeIds.add(e.to);
     }

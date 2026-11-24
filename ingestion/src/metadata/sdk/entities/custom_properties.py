@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union, cast  # noqa: UP035
+from typing import Any, Generic, TypeVar, cast
 from uuid import UUID  # noqa: TC003
 
 from metadata.generated.schema.entity.data.glossary import Glossary
@@ -20,12 +20,12 @@ TEntity = TypeVar("TEntity", bound=BaseModel)  # pylint: disable=invalid-name
 class CustomPropertyUpdater(Generic[TEntity]):
     """Mutable builder that applies custom property updates through the API."""
 
-    entity_type: Type[TEntity]  # noqa: UP006
+    entity_type: type[TEntity]
     identifier: str
     is_fqn: bool = False
-    properties: Dict[str, Any] = field(default_factory=dict)  # noqa: UP006
+    properties: dict[str, Any] = field(default_factory=dict)
     clear_all_flag: bool = False
-    _client_override: Optional[OMetaClient] = field(default=None, init=False, repr=False)  # noqa: UP045
+    _client_override: OMetaClient | None = field(default=None, init=False, repr=False)
 
     @staticmethod
     def _get_client() -> OMetaClient:
@@ -39,7 +39,7 @@ class CustomPropertyUpdater(Generic[TEntity]):
         self.properties[key] = value
         return self
 
-    def with_properties(self, properties: Dict[str, Any]) -> "CustomPropertyUpdater[TEntity]":  # noqa: UP006, UP037
+    def with_properties(self, properties: dict[str, Any]) -> "CustomPropertyUpdater[TEntity]":  # noqa: UP037
         """Set multiple custom property values in one call."""
         self.properties.update(properties)
         return self
@@ -86,7 +86,7 @@ class CustomPropertyUpdater(Generic[TEntity]):
             setattr(working, "extension", None)  # noqa: B010
         elif self.properties:
             existing = getattr(current, "extension", None)
-            root: Dict[str, Any] = dict(getattr(existing, "root", {}) or {})  # noqa: UP006
+            root: dict[str, Any] = dict(getattr(existing, "root", {}) or {})
             root.update(self.properties)
             setattr(working, "extension", basic.EntityExtension(root=root))  # noqa: B010
 
@@ -102,14 +102,14 @@ class CustomProperties:
     """Factory helpers for custom property updates."""
 
     @staticmethod
-    def update(entity_type: Type[TEntity], identifier: Union[UuidLike, UUID]) -> CustomPropertyUpdater[TEntity]:  # noqa: UP006, UP007
+    def update(entity_type: type[TEntity], identifier: UuidLike | UUID) -> CustomPropertyUpdater[TEntity]:
         """Create an updater targeting the provided entity identifier."""
         root = getattr(identifier, "root", None)
         identifier_str = str(root) if root is not None else str(identifier)
         return CustomPropertyUpdater(entity_type, identifier_str, is_fqn=False)
 
     @staticmethod
-    def update_by_name(entity_type: Type[TEntity], fqn: str) -> CustomPropertyUpdater[TEntity]:  # noqa: UP006
+    def update_by_name(entity_type: type[TEntity], fqn: str) -> CustomPropertyUpdater[TEntity]:
         """Create an updater referencing an entity by FQN."""
         return CustomPropertyUpdater(entity_type, fqn, is_fqn=True)
 
@@ -118,7 +118,7 @@ class TableCustomProperties:
     """Table-specific convenience wrappers."""
 
     @staticmethod
-    def update(identifier: Union[UuidLike, UUID]) -> CustomPropertyUpdater[Any]:  # noqa: UP007
+    def update(identifier: UuidLike | UUID) -> CustomPropertyUpdater[Any]:
         return CustomProperties.update(Table, identifier)
 
     @staticmethod
@@ -130,7 +130,7 @@ class GlossaryCustomProperties:
     """Glossary-specific convenience wrappers."""
 
     @staticmethod
-    def update(identifier: Union[UuidLike, UUID]) -> CustomPropertyUpdater[Any]:  # noqa: UP007
+    def update(identifier: UuidLike | UUID) -> CustomPropertyUpdater[Any]:
         return CustomProperties.update(Glossary, identifier)
 
     @staticmethod

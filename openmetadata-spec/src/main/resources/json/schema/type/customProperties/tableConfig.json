@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/customProperties/tableConfig.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "TableConfig",
   "description": "Custom property configuration for table-type property where all column data types are strings.",
   "type": "object",
@@ -14,7 +14,6 @@
         "description": "The name of the column."
       },
       "minItems": 1,
-      "maxItems": 3,
       "uniqueItems": true
     },
     "minColumns": {
@@ -24,8 +23,7 @@
     },
     "maxColumns": {
       "type": "integer",
-      "default": 3,
-      "$comment": "For internal use only: Maximum number of columns."
+      "$comment": "Deprecated: no longer enforced; kept so previously stored configs still validate."
     }
   },
   "required": ["columns"],

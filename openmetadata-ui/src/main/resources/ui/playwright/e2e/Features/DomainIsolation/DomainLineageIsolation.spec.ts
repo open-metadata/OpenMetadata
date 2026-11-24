@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { migratedTo } from '../../../constant/migration';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
@@ -45,7 +47,7 @@ const test = base.extend<{
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -54,7 +56,7 @@ const test = base.extend<{
   userAPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await userA.login(page);
+      await userA.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -63,7 +65,7 @@ const test = base.extend<{
   userBPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await userB.login(page);
+      await userB.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -75,8 +77,6 @@ const fqnOf = (table: TableClass) =>
   table.entityResponseData?.fullyQualifiedName ?? '';
 
 test.describe('Domain isolation - lineage graph @domain-isolation', () => {
-  test.slow(true);
-
   test.beforeAll(
     'Setup domains, tables, lineage, users and role binding',
     async ({ browser }) => {
@@ -121,6 +121,17 @@ test.describe('Domain isolation - lineage graph @domain-isolation', () => {
     }
   );
 
+  // `enableAccessControl` is global and other specs turn it off; re-assert it per test.
+  test.beforeEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await enableDisableSearchRBAC(apiContext, true);
+    } finally {
+      await afterAction();
+    }
+  });
+
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
@@ -143,43 +154,57 @@ test.describe('Domain isolation - lineage graph @domain-isolation', () => {
     }
   });
 
-  test('userA sees tableA but not the cross-tenant tableB node', async ({
-    userAPage,
-  }) => {
-    await tableA.visitEntityPage(userAPage);
-    await visitLineageTab(userAPage);
+  test(
+    'userA sees tableA but not the cross-tenant tableB node',
+    migratedTo.javaIT(
+      'DomainIsolationIT#test_lineage_restrictedUserSeesOnlyOwnDomainNodes'
+    ),
+    async ({ userAPage }) => {
+      await tableA.visitEntityPage(userAPage);
+      await visitLineageTab(userAPage);
 
-    await expect(
-      userAPage.getByTestId(`lineage-node-${fqnOf(tableA)}`)
-    ).toBeVisible();
-    await expect(
-      userAPage.getByTestId(`lineage-node-${fqnOf(tableB)}`)
-    ).toHaveCount(0);
-  });
+      await expect(
+        userAPage.getByTestId(`lineage-node-${fqnOf(tableA)}`)
+      ).toBeVisible();
+      await expect(
+        userAPage.getByTestId(`lineage-node-${fqnOf(tableB)}`)
+      ).toHaveCount(0);
+    }
+  );
 
-  test('userB sees tableB but not the cross-tenant tableA node', async ({
-    userBPage,
-  }) => {
-    await tableB.visitEntityPage(userBPage);
-    await visitLineageTab(userBPage);
+  test(
+    'userB sees tableB but not the cross-tenant tableA node',
+    migratedTo.javaIT(
+      'DomainIsolationIT#test_lineage_restrictedUserSeesOnlyOwnDomainNodes'
+    ),
+    async ({ userBPage }) => {
+      await tableB.visitEntityPage(userBPage);
+      await visitLineageTab(userBPage);
 
-    await expect(
-      userBPage.getByTestId(`lineage-node-${fqnOf(tableB)}`)
-    ).toBeVisible();
-    await expect(
-      userBPage.getByTestId(`lineage-node-${fqnOf(tableA)}`)
-    ).toHaveCount(0);
-  });
+      await expect(
+        userBPage.getByTestId(`lineage-node-${fqnOf(tableB)}`)
+      ).toBeVisible();
+      await expect(
+        userBPage.getByTestId(`lineage-node-${fqnOf(tableA)}`)
+      ).toHaveCount(0);
+    }
+  );
 
-  test('admin sees both nodes in the lineage graph', async ({ adminPage }) => {
-    await tableA.visitEntityPage(adminPage);
-    await visitLineageTab(adminPage);
+  test(
+    'admin sees both nodes in the lineage graph',
+    migratedTo.javaIT(
+      'DomainIsolationIT#test_lineage_restrictedUserSeesOnlyOwnDomainNodes'
+    ),
+    async ({ adminPage }) => {
+      await tableA.visitEntityPage(adminPage);
+      await visitLineageTab(adminPage);
 
-    await expect(
-      adminPage.getByTestId(`lineage-node-${fqnOf(tableA)}`)
-    ).toBeVisible();
-    await expect(
-      adminPage.getByTestId(`lineage-node-${fqnOf(tableB)}`)
-    ).toBeVisible();
-  });
+      await expect(
+        adminPage.getByTestId(`lineage-node-${fqnOf(tableA)}`)
+      ).toBeVisible();
+      await expect(
+        adminPage.getByTestId(`lineage-node-${fqnOf(tableB)}`)
+      ).toBeVisible();
+    }
+  );
 });

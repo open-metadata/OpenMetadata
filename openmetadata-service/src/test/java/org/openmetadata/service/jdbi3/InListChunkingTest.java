@@ -31,13 +31,13 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.service.jdbi3.CollectionDAO.DataQualityDataTimeSeriesDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityExtensionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
-import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.TestCaseResultTimeSeriesDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO;
+import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityExtensionDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipDAO;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.DataQualityDataTimeSeriesDAO;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestCaseResultTimeSeriesDAO;
 
 /**
  * Outcome tests for the IN-list chunking that keeps bulk delete / restore queries under the

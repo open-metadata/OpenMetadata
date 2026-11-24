@@ -27,9 +27,16 @@ export type DomainLabelProps = {
   entityFqn: string;
   entityId: string;
   textClassName?: string;
+  /** Class for the "Domains" heading rendered in `headerLayout`. */
+  labelClassName?: string;
   showDomainHeading?: boolean;
   multiple?: boolean;
   onUpdate?: (domain: EntityReference | EntityReference[]) => Promise<void>;
   userData?: User;
   headerLayout?: boolean;
+  /**
+   * Chrome around the chips + picker. `default` is the inline/header layout;
+   * `profile-card` is the icon + divider card used on the user profile page.
+   */
+  variant?: 'default' | 'card' | 'widget';
 };

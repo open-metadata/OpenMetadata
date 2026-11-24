@@ -1,18 +1,14 @@
-from typing import (  # noqa: UP035
+from collections.abc import Iterable, Sequence
+from typing import (
     TYPE_CHECKING,
     Any,
-    Dict,
-    Iterable,
-    List,
     Optional,
-    Sequence,
-    Set,
-    Tuple,
     cast,
     final,
 )
 
 if TYPE_CHECKING:
+    from presidio_analyzer import RecognizerResult
     from presidio_analyzer.nlp_engine import NlpEngine
 
 from metadata.generated.schema.entity.classification.tag import Tag
@@ -59,8 +55,8 @@ class TagScorer:
         self,
         sample_data: Sequence[Any],
         run_column_analysis: bool = False,
-        _column_data_type: Optional[DataType] = None,  # noqa: UP045
-    ) -> List[ScoredTag]:  # noqa: UP006
+        _column_data_type: DataType | None = None,
+    ) -> list[ScoredTag]:
         str_values = preprocess_values(sample_data)
 
         unique_values = set(str_values)
@@ -71,7 +67,7 @@ class TagScorer:
         if not has_valid_content and not run_column_analysis:
             return []
 
-        results: List[ScoredTag] = []  # noqa: UP006
+        results: list[ScoredTag] = []
         for analyzer in self._analyzers:
             analysis = analyzer.analyze(
                 str_values=str_values if has_valid_content else [],
@@ -93,17 +89,10 @@ class TagScorer:
 
         return results
 
-    def _build_recognizer_metadata(
-        self,
-        analysis: TagAnalysis,
-    ) -> Optional[TagLabelRecognizerMetadata]:  # noqa: UP045
-        if not analysis.recognizer_results:
-            return None
-
-        first_result = analysis.recognizer_results[0]
-        recognition_metadata = cast(Dict[str, str], first_result.recognition_metadata)  # noqa: TC006, UP006
-
-        recognizer_name = recognition_metadata.get(
+    @staticmethod
+    def _recognizer_name(result: "RecognizerResult") -> str:
+        recognition_metadata = cast(dict[str, str], result.recognition_metadata)  # noqa: TC006
+        return recognition_metadata.get(
             presidio_constants.RECOGNIZER_METADATA_NAME,
             recognition_metadata.get(
                 presidio_constants.RECOGNIZER_METADATA_IDENTIFIER,
@@ -111,8 +100,23 @@ class TagScorer:
             ),
         )
 
-        patterns_matched: Set[Tuple[str, str, float]] = set()  # noqa: UP006
+    def _build_recognizer_metadata(
+        self,
+        analysis: TagAnalysis,
+    ) -> TagLabelRecognizerMetadata | None:
+        if not analysis.recognizer_results:
+            return None
+
+        # Use the result with the highest score — that is the result responsible for
+        # analysis.score (which is the max), not necessarily the first in the list.
+        best_result = max(analysis.recognizer_results, key=lambda r: r.score)
+        recognizer_name = self._recognizer_name(best_result)
+
+        # Only report the patterns of the recognizer the metadata is attributed to.
+        patterns_matched: set[tuple[str, str, float]] = set()
         for result in analysis.recognizer_results:
+            if self._recognizer_name(result) != recognizer_name:
+                continue
             if result.analysis_explanation and result.analysis_explanation.pattern:
                 patterns_matched.add(
                     (
@@ -164,7 +168,7 @@ class ScoreTagsForColumnService:
         self._nlp_engine = nlp_engine
         self._language = language
 
-    def __call__(self, column: Column, data: Sequence[Any], tags_to_analyze: List[Tag]) -> List[ScoredTag]:  # noqa: UP006
+    def __call__(self, column: Column, data: Sequence[Any], tags_to_analyze: list[Tag]) -> list[ScoredTag]:
         # Create analyzers for remaining candidate tags
         tag_analyzers = (
             TagAnalyzer(

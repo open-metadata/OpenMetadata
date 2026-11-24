@@ -4,15 +4,18 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.settings.SettingsType.APP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.AUTHORIZER_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATION_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.SPARQL_QUERY_SETTINGS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -30,6 +33,7 @@ import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.InternalServerErrorException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
@@ -39,13 +43,17 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.ServiceUnavailableException;
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -58,9 +66,11 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.schema.api.rdf.SavedSparqlQuery;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.EmailRequest;
@@ -68,46 +78,66 @@ import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.AdoptDeploymentConfigRequest;
+import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.system.SecurityValidationResponse;
+import org.openmetadata.schema.system.SettingSource;
+import org.openmetadata.schema.system.SettingsSourceResponse;
+import org.openmetadata.schema.system.TestLoginCredentialsRequest;
 import org.openmetadata.schema.system.TestLoginResult;
+import org.openmetadata.schema.system.TestLoginSession;
+import org.openmetadata.schema.system.TestLoginStartRequest;
 import org.openmetadata.schema.system.TestLoginTokenRequest;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.RelationshipTypeUsage;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.apps.bundles.mcp.McpToolRegistry;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CacheMetrics;
 import org.openmetadata.service.cache.CacheProvider;
-import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.config.source.LocalSettingsRefresher;
+import org.openmetadata.service.config.source.SettingsSecrets;
+import org.openmetadata.service.config.source.SettingsSourceService;
+import org.openmetadata.service.exception.AuthenticationException;
+import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.exception.SettingsManagedByEnvironmentException;
 import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
+import org.openmetadata.service.jdbi3.StoredSecurityConfiguration;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.monitoring.LatencyPhase;
+import org.openmetadata.service.ontology.LegacyRelationshipTypeMapper;
+import org.openmetadata.service.ontology.LegacyRelationshipTypeSynchronizer;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.LogicOps;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
-import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.auth.ActiveProviderValidator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.auth.TestLoginCandidates;
+import org.openmetadata.service.security.auth.TestLoginRoundTrip;
 import org.openmetadata.service.security.auth.TestLoginService;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -126,6 +156,7 @@ import org.openmetadata.service.util.email.EmailUtil;
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
   private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
+  private static final String ENTITY_RULES_LIST_POINTER = "/entitySemantics";
 
   // Settings that hold no secrets and that the UI must read to render entity pages for every
   // authenticated user — glossary term relation types populate the Related Terms dropdown and the
@@ -134,6 +165,7 @@ public class SystemResource {
       Set.of(
           LINEAGE_SETTINGS.value().toLowerCase(Locale.ROOT),
           GLOSSARY_TERM_RELATION_SETTINGS.value().toLowerCase(Locale.ROOT),
+          GLOSSARY_SETTINGS.value().toLowerCase(Locale.ROOT),
           // appConfiguration is read by every user at boot (fallback-chain resolution),
           // not just admins; PATCH remains admin-only.
           APP_CONFIGURATION.value().toLowerCase(Locale.ROOT));
@@ -148,8 +180,6 @@ public class SystemResource {
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
-  private PipelineServiceClientInterface pipelineServiceClient;
-  private JwtFilter jwtFilter;
   private SearchSettings defaultSearchSettingsCache = new SearchSettings();
   private final SearchSettingsHandler searchSettingsHandler = new SearchSettingsHandler();
 
@@ -160,14 +190,6 @@ public class SystemResource {
 
   public void initialize(OpenMetadataApplicationConfig config) {
     this.applicationConfig = config;
-    this.pipelineServiceClient =
-        PipelineServiceClientFactory.createPipelineServiceClient(
-            config.getPipelineServiceClientConfiguration());
-
-    this.jwtFilter =
-        new JwtFilter(
-            SecurityConfigurationManager.getCurrentAuthConfig(),
-            SecurityConfigurationManager.getCurrentAuthzConfig());
   }
 
   public static class SettingsList extends ResultList<Settings> {
@@ -239,7 +261,7 @@ public class SystemResource {
       for (Settings setting : allConfigs.getData()) {
         if (setting.getConfigType() != AUTHENTICATION_CONFIGURATION
             && setting.getConfigType() != AUTHORIZER_CONFIGURATION) {
-          filteredSettings.add(setting);
+          filteredSettings.add(forResponse(setting));
         }
       }
     }
@@ -268,17 +290,97 @@ public class SystemResource {
       @Parameter(description = "Name of the setting", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    String settingName = canonicalSettingName(name);
     // Restrict access to authentication and authorizer configurations
-    if (name.equalsIgnoreCase(AUTHENTICATION_CONFIGURATION.value())
-        || name.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
+    if (settingName.equals(AUTHENTICATION_CONFIGURATION.value())
+        || settingName.equals(AUTHORIZER_CONFIGURATION.value())) {
       throw new SystemSettingsException(
           "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
 
-    if (!isUserReadableSetting(name)) {
+    if (!isUserReadableSetting(settingName)) {
       authorizer.authorizeAdmin(securityContext);
     }
-    return systemRepository.getConfigWithKey(name);
+    Settings settings = systemRepository.getConfigWithKey(settingName);
+    // The lookup compares with the database collation, which on MySQL ignores accents, so it can
+    // answer with a row of another name than the one the checks above were made for.
+    if (settings != null
+        && settings.getConfigType() != null
+        && !settings.getConfigType().value().equals(settingName)) {
+      throw new SystemSettingsException(String.format("Setting %s was not found", name));
+    }
+    return forResponse(settings);
+  }
+
+  /** The defined setting name {@code name} refers to, ignoring case; any other name unchanged. */
+  private static String canonicalSettingName(String name) {
+    return Arrays.stream(SettingsType.values())
+        .map(SettingsType::value)
+        .filter(value -> SecurityUtil.sameIdentifier(value, name))
+        .findFirst()
+        .orElse(name);
+  }
+
+  /** The persisted search settings, so validation can tell a newly added highlight field from one this cluster already carried. */
+  private SearchSettings storedSearchSettings() {
+    SearchSettings result = null;
+    Settings stored = systemRepository.getConfigWithKey(SettingsType.SEARCH_SETTINGS.value());
+    if (stored != null && stored.getConfigValue() != null) {
+      result = JsonUtils.convertValue(stored.getConfigValue(), SearchSettings.class);
+    }
+    return result;
+  }
+
+  /**
+   * Derives {@code allowedFields[].highlight} from the index mapping on the way out.
+   *
+   * <p>Annotating on read rather than at seed time is deliberate: the stored settings are written by
+   * several paths — {@code SettingsCache.initialize} loads the seed itself, and older clusters
+   * persisted their settings before this flag existed — so anything that relies on the stored value
+   * being annotated is one new write path away from serving {@code false} for every field, which
+   * would disable every highlight toggle in the UI. Derived here, the served flag is correct
+   * regardless of what is in the database.
+   *
+   * <p>Which makes this a response-boundary concern, not a read-path one, and it must be applied at
+   * <em>every</em> boundary that hands back searchSettings — the same way {@code EntityResource}
+   * stamps {@code href} on create/update/patch/delete and not just on GET. Annotating only the
+   * single-setting GET is what shipped first, and it left the save path serving {@code false} for
+   * every field: the UI writes the PUT response straight into app state, so one Save greyed out
+   * every highlight toggle on the page until the next reload.
+   *
+   * <p>Always annotates a copy. In-place would be a live hazard rather than a stylistic one:
+   * {@code mergeSearchSettings} hands the merged settings the default's own {@code allowedFields}
+   * list, so mutating it would write the derived flag onto {@code defaultSearchSettingsCache} and
+   * leak it into every later read.
+   */
+  private Settings forResponse(Settings settings) {
+    Settings result = settings;
+    if (settings != null
+        && settings.getConfigType() == SettingsType.SEARCH_SETTINGS
+        && settings.getConfigValue() != null) {
+      SearchSettings searchSettings =
+          JsonUtils.convertValue(settings.getConfigValue(), SearchSettings.class);
+      searchSettingsHandler.annotateHighlightableFields(searchSettings);
+      result =
+          new Settings().withConfigType(settings.getConfigType()).withConfigValue(searchSettings);
+    }
+    return result;
+  }
+
+  /** {@link #forResponse(Settings)} for the write paths, which return an already-built response. */
+  private Response forResponse(Response response) {
+    Response result = response;
+    if (response.getEntity() instanceof Settings settings) {
+      result = Response.fromResponse(response).entity(forResponse(settings)).build();
+    }
+    return result;
+  }
+
+  /** {@link #forResponse(Settings)} for the reset path, which returns a bare {@link SearchSettings}. */
+  private SearchSettings forResponse(SearchSettings searchSettings) {
+    SearchSettings result = JsonUtils.deepCopy(searchSettings, SearchSettings.class);
+    searchSettingsHandler.annotateHighlightableFields(result);
+    return result;
   }
 
   @GET
@@ -395,7 +497,7 @@ public class SystemResource {
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
     int usageCount =
-        glossaryTermRepository.getRelationTypeUsageCounts().getOrDefault(existing.getName(), 0);
+        relationTypeUsage(existing.getName(), glossaryTermRepository.getRelationTypeUsageCounts());
     if (usageCount > 0) {
       throw new SystemSettingsException(
           String.format(
@@ -447,6 +549,56 @@ public class SystemResource {
                 nullOrEmpty(rule.getIgnoredEntities())
                     || !rule.getIgnoredEntities().contains(entityType))
         .toList();
+  }
+
+  @PATCH
+  @Path("/settings/entityRulesSettings/rules/{ruleName}")
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  @Operation(
+      operationId = "patchEntityRule",
+      summary = "Patch one Data Asset Rule",
+      description =
+          "Update one Data Asset Rule, found by name, using JsonPatch. Paths are relative to the "
+              + "rule (for example /enabled), so rules the caller never read are preserved. The "
+              + "patch may not rename, add or remove rules. The write uses compare-and-set: if the "
+              + "stored rules changed while the server applied the patch, the request fails with "
+              + "412 Precondition Failed instead of overwriting the newer value.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"),
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Updated Settings",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Settings.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Invalid patch, or a patch that renames, adds or removes rules"),
+        @ApiResponse(responseCode = "404", description = "Rule not found"),
+        @ApiResponse(
+            responseCode = "412",
+            description = "The stored rules changed while the patch was applied")
+      })
+  public Response patchEntityRule(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the rule to patch", schema = @Schema(type = "string"))
+          @PathParam("ruleName")
+          String ruleName,
+      @RequestBody(
+              description = "JsonPatch with operations relative to the rule",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {@ExampleObject("[{op:replace, path:/enabled, value:false}]")}))
+          JsonPatch patch) {
+    authorizer.authorizeAdmin(securityContext);
+    return forResponse(
+        systemRepository.patchSettingItem(
+            SettingsType.ENTITY_RULES_SETTINGS, ENTITY_RULES_LIST_POINTER, ruleName, patch));
   }
 
   @GET
@@ -549,17 +701,12 @@ public class SystemResource {
                     schema = @Schema(implementation = Settings.class)))
       })
   public Settings getProfilerConfigurationSetting(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Entity type for which to get the global profiler configuration",
-              schema = @Schema(type = "string"))
-          @QueryParam("entityType")
-          @DefaultValue("table")
-          String entityType) {
-    ResourceContext resourceContext = new ResourceContext(entityType);
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    // One global setting, so one resource decides it: a caller-chosen type would let a policy on
+    // tables be stepped around by asking as another type.
+    ResourceContext resourceContext = new ResourceContext(Entity.TABLE);
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
   }
@@ -582,6 +729,70 @@ public class SystemResource {
   public Response getCustomLogicOps(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return Response.ok().entity(LogicOps.getCustomOpsKeys()).build();
+  }
+
+  @GET
+  @Path("/settings/source")
+  @Operation(
+      operationId = "getSettingsSource",
+      summary = "Where settings take their values from",
+      description =
+          "For each setting that exists both in the deployment configuration and in the database: "
+              + "its source (AUTO, ENV or DB), the fields the deployment owns, and the deployment "
+              + "values the stored setting overrides.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings source",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SettingsSourceResponse.class)))
+      })
+  public SettingsSourceResponse getSettingsSource(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    return settingsSourceService().status();
+  }
+
+  @POST
+  @Path("/settings/source/{configType}/adopt")
+  @IdentityEndpoint
+  @Operation(
+      operationId = "adoptDeploymentConfig",
+      summary = "Use the deployment configuration for stored settings",
+      description =
+          "Replaces stored values of a setting with the values from the deployment configuration. "
+              + "Without paths, every field listed as overridden is replaced.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Settings source after the change",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SettingSource.class))),
+        @ApiResponse(
+            responseCode = "409",
+            description = "The deployment configuration already owns the setting")
+      })
+  public SettingSource adoptDeploymentConfig(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Setting to change", schema = @Schema(type = "string"))
+          @PathParam("configType")
+          String configType,
+      AdoptDeploymentConfigRequest request) {
+    authorizer.authorizeAdmin(securityContext);
+    SettingsType settingsType = SettingsType.fromValue(configType);
+    SettingsSourceService service = settingsSourceService();
+    service.adopt(settingsType, request == null ? null : request.getPaths());
+    return service
+        .status(settingsType)
+        .orElseThrow(() -> new NotFoundException(configType + " has no deployment configuration"));
+  }
+
+  private SettingsSourceService settingsSourceService() {
+    return new SettingsSourceService(
+        Entity.getCollectionDAO().systemDAO(), systemRepository, new LocalSettingsRefresher());
   }
 
   @PUT
@@ -618,6 +829,7 @@ public class SystemResource {
       SearchSettings incomingSearchSettings =
           JsonUtils.convertValue(settingName.getConfigValue(), SearchSettings.class);
       searchSettingsHandler.validateGlobalSettings(incomingSearchSettings.getGlobalSettings());
+      searchSettingsHandler.validateHighlightFields(incomingSearchSettings, storedSearchSettings());
       SearchSettings mergedSettings =
           searchSettingsHandler.mergeSearchSettings(defaultSearchSettings, incomingSearchSettings);
       settingName.setConfigValue(mergedSettings);
@@ -631,13 +843,20 @@ public class SystemResource {
                   mergedSettings.getGlobalSettings().getKeywordWeight(),
                   mergedSettings.getGlobalSettings().getSemanticWeight());
         } catch (Exception e) {
-          LOG.error("Failed to update hybrid search pipeline", e);
-          throw new SystemSettingsException(
-              "Failed to update hybrid search pipeline: " + e.getMessage());
+          // Refreshing the named pipeline is a cluster-scoped write, so it fails outright on a
+          // deployment whose search role is confined to its own <clusterAlias>* prefix. Failing
+          // the whole settings save on that made search settings unsaveable there. The weights
+          // being saved here are the ones hybrid search reads per query, so they take effect
+          // regardless of whether the stored pipeline could be refreshed.
+          LOG.warn(
+              "Saved search settings but could not refresh the named hybrid search pipeline; "
+                  + "the new weights still apply to hybrid queries",
+              e);
         }
       }
     }
 
+    LegacyRelationshipTypeUpdate relationshipTypeUpdate = null;
     if (GLOSSARY_TERM_RELATION_SETTINGS
         .value()
         .equalsIgnoreCase(settingName.getConfigType().toString())) {
@@ -647,11 +866,67 @@ public class SystemResource {
       GlossaryTermRelationSettingsUtil.validateUniqueNames(relationSettings);
       settingName.setConfigValue(relationSettings);
       validateGlossaryTermRelationSettingsUpdate(settingName);
+      relationshipTypeUpdate = relationshipTypeUpdate(relationSettings);
+    }
+    if (SPARQL_QUERY_SETTINGS.value().equalsIgnoreCase(settingName.getConfigType().toString())) {
+      SparqlQuerySettings querySettings =
+          JsonUtils.convertValue(settingName.getConfigValue(), SparqlQuerySettings.class);
+      validateSparqlQuerySettings(querySettings);
+      settingName.setConfigValue(querySettings);
     }
     Response response = systemRepository.createOrUpdate(settingName);
     SettingsCache.invalidateSettings(settingName.getConfigType().value());
+    synchronizeRelationshipTypes(
+        relationshipTypeUpdate, uriInfo, securityContext, response.getStatusInfo().getFamily());
 
-    return response;
+    return forResponse(response);
+  }
+
+  private LegacyRelationshipTypeUpdate relationshipTypeUpdate(
+      GlossaryTermRelationSettings updated) {
+    return new LegacyRelationshipTypeUpdate(previousRelationshipTypeSettings(), updated);
+  }
+
+  private GlossaryTermRelationSettings previousRelationshipTypeSettings() {
+    Settings previousSetting =
+        systemRepository.getConfigWithKey(GLOSSARY_TERM_RELATION_SETTINGS.value());
+    return previousSetting == null
+        ? new GlossaryTermRelationSettings().withRelationTypes(List.of())
+        : JsonUtils.convertValue(
+            previousSetting.getConfigValue(), GlossaryTermRelationSettings.class);
+  }
+
+  private static LegacyRelationshipTypeUpdate patchedRelationshipTypeUpdate(
+      GlossaryTermRelationSettings previous, Response response) {
+    LegacyRelationshipTypeUpdate update = null;
+    if (previous != null && response.getEntity() instanceof Settings settings) {
+      GlossaryTermRelationSettings updated =
+          JsonUtils.convertValue(settings.getConfigValue(), GlossaryTermRelationSettings.class);
+      update = new LegacyRelationshipTypeUpdate(previous, updated);
+    }
+    return update;
+  }
+
+  private static boolean isRelationshipTypeSetting(String settingName) {
+    return GLOSSARY_TERM_RELATION_SETTINGS.value().equalsIgnoreCase(settingName);
+  }
+
+  private static void synchronizeRelationshipTypes(
+      LegacyRelationshipTypeUpdate update,
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      Response.Status.Family responseFamily) {
+    if (update != null && responseFamily == Response.Status.Family.SUCCESSFUL) {
+      RelationshipTypeRepository repository =
+          (RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE);
+      LegacyRelationshipTypeSynchronizer synchronizer =
+          new LegacyRelationshipTypeSynchronizer(repository);
+      synchronizer.synchronize(
+          update.previous(),
+          update.updated(),
+          uriInfo,
+          securityContext.getUserPrincipal().getName());
+    }
   }
 
   @PUT
@@ -688,7 +963,7 @@ public class SystemResource {
       throw new SystemSettingsException("Resetting of setting '" + name + "' is not supported.");
     }
     SearchSettings settings = loadDefaultSearchSettings(true);
-    return Response.ok(settings).build();
+    return Response.ok(forResponse(settings)).build();
   }
 
   @PUT
@@ -761,7 +1036,32 @@ public class SystemResource {
     }
 
     authorizer.authorizeAdmin(securityContext);
-    return systemRepository.patchSetting(settingName, patch);
+    GlossaryTermRelationSettings previous =
+        isRelationshipTypeSetting(settingName) ? previousRelationshipTypeSettings() : null;
+    Response response = patchSetting(settingName, patch);
+    LegacyRelationshipTypeUpdate relationshipTypeUpdate =
+        patchedRelationshipTypeUpdate(previous, response);
+    synchronizeRelationshipTypes(
+        relationshipTypeUpdate, uriInfo, securityContext, response.getStatusInfo().getFamily());
+    return forResponse(response);
+  }
+
+  private Response patchSetting(String settingName, JsonPatch patch) {
+    Response response =
+        isRelationshipTypeSetting(settingName)
+            ? systemRepository.patchGlossaryTermRelationSettings(
+                patch, this::preparePatchedRelationshipTypeSettings)
+            : systemRepository.patchSetting(settingName, patch);
+    return response;
+  }
+
+  private GlossaryTermRelationSettings preparePatchedRelationshipTypeSettings(
+      GlossaryTermRelationSettings updated) {
+    normalizeGlossaryTermRelationSettings(updated);
+    Settings settings =
+        new Settings().withConfigType(GLOSSARY_TERM_RELATION_SETTINGS).withConfigValue(updated);
+    validateGlossaryTermRelationSettingsUpdate(settings);
+    return updated;
   }
 
   @GET
@@ -781,12 +1081,15 @@ public class SystemResource {
       })
   public EntitiesCount listEntitiesCount(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
+    // Catalog-wide counts ignore the caller's domain and view restrictions.
+    authorizer.authorizeAdminOrBot(securityContext);
     ListFilter filter = new ListFilter(include);
     return systemRepository.getAllEntitiesCount(filter);
   }
@@ -808,12 +1111,14 @@ public class SystemResource {
       })
   public ServicesCount listServicesCount(
       @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
       @Parameter(
               description = "Include all, deleted, or non-deleted entities.",
               schema = @Schema(implementation = Include.class))
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
+    authorizer.authorizeAdminOrBot(securityContext);
     ListFilter filter = new ListFilter(include);
     return systemRepository.getAllServicesCount(filter);
   }
@@ -834,8 +1139,11 @@ public class SystemResource {
                     mediaType = "application/json",
                     schema = @Schema(implementation = ServicesCount.class)))
       })
-  public ValidationResponse validate() {
-    return systemRepository.validateSystem(applicationConfig, pipelineServiceClient, jwtFilter);
+  public ValidationResponse validate(@Context SecurityContext securityContext) {
+    // The report names the database URL, search host and pipeline service endpoint, and each call
+    // runs live probes against them, including billed embedding requests.
+    authorizer.authorizeAdminOrBot(securityContext);
+    return systemRepository.validateSystem(applicationConfig);
   }
 
   @GET
@@ -878,38 +1186,24 @@ public class SystemResource {
       })
   public SecurityConfiguration getSecurityConfig(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    SecurityConfiguration originalConfig =
-        SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+    // Masked for every caller, bots included: no client needs the stored secrets back.
+    return maskedCopy(SecurityConfigurationManager.getInstance().getCurrentSecurityConfig());
+  }
 
-    // Create a deep copy to avoid mutating the original shared objects
-    String configJson = JsonUtils.pojoToJson(originalConfig);
-    SecurityConfiguration config = JsonUtils.readValue(configJson, SecurityConfiguration.class);
-
-    // Apply password masking if needed - only to the copy
-    if (authorizer.shouldMaskPasswords(securityContext)) {
-      // Mask OIDC configuration if present
-      if (config.getAuthenticationConfiguration() != null
-          && config.getAuthenticationConfiguration().getOidcConfiguration() != null) {
-        config
-            .getAuthenticationConfiguration()
-            .getOidcConfiguration()
-            .setSecret(PasswordEntityMasker.PASSWORD_MASK);
-      }
-
-      // Mask LDAP configuration if present
-      if (config.getAuthenticationConfiguration() != null
-          && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
-        config
-            .getAuthenticationConfiguration()
-            .getLdapConfiguration()
-            .setDnAdminPassword(PasswordEntityMasker.PASSWORD_MASK);
-      }
+  /** A copy with the secrets masked, as an admin reads the configuration. */
+  static SecurityConfiguration maskedCopy(SecurityConfiguration config) {
+    SecurityConfiguration copy =
+        JsonUtils.readValue(JsonUtils.pojoToJson(config), SecurityConfiguration.class);
+    if (copy.getAuthenticationConfiguration() != null) {
+      SettingsSecrets.maskInPlace(
+          AUTHENTICATION_CONFIGURATION, copy.getAuthenticationConfiguration());
     }
-    return config;
+    return copy;
   }
 
   @PUT
   @Path("/security/config")
+  @IdentityEndpoint
   @Operation(
       operationId = "updateSecurityConfig",
       summary = "Update complete security configuration",
@@ -926,44 +1220,155 @@ public class SystemResource {
   public Response updateSecurityConfig(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid SecurityConfiguration securityConfig) {
+      SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
 
     try {
+      StoredSecurityConfiguration stored = systemRepository.getStoredSecurityConfiguration();
+      SecurityConfiguration previous = configurationOf(stored);
+      preserveMaskedSecuritySecrets(securityConfig, previous);
+      systemRepository.assertSecurityConfigurationWritable(securityConfig);
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
+      validateConfigurationOfActiveProvider(securityConfig);
+      requireApplicable(securityConfig);
 
-      // Auto-populate publicKeyUrls for OIDC confidential clients before saving
-      systemRepository.autoPopulatePublicKeyUrlsIfNeeded(authConfig);
+      // Refresh publicKeyUrls from discovery for OIDC confidential clients before saving
+      systemRepository.syncPublicKeyUrlsFromDiscovery(authConfig);
 
-      // Update both configurations in a transaction
-      Settings authSettings =
-          new Settings().withConfigType(AUTHENTICATION_CONFIGURATION).withConfigValue(authConfig);
+      storeAndApply(securityConfig, stored, previous);
 
-      Settings authzSettings =
-          new Settings()
-              .withConfigType(AUTHORIZER_CONFIGURATION)
-              .withConfigValue(securityConfig.getAuthorizerConfiguration());
-
-      // Save both to database
-      systemRepository.createOrUpdate(authSettings);
-      systemRepository.createOrUpdate(authzSettings);
-
-      // Invalidate both caches
-      SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
-      SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
-
-      // Reload entire security system
-      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
-
-      return Response.ok(securityConfig).build();
+      return Response.ok(getSecurityConfig(securityContext)).build();
+    } catch (PreconditionFailedException e) {
+      // Another save changed the configuration since it was read or while this one was applied.
+      catchUpWithStoredSecurityConfiguration();
+      throw e;
+    } catch (WebApplicationException | SettingsManagedByEnvironmentException e) {
+      // Raised before anything is written (validation, or a setting the deployment configuration
+      // owns), or with what a save the server could not apply left behind. Rethrow so the mapper
+      // answers with that status; a failure of the writes themselves is neither, and still
+      // surfaces as a 5xx below.
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
       throw new RuntimeException("Failed to update security configuration: " + e.getMessage());
     }
   }
 
+  private void validateConfigurationOfActiveProvider(SecurityConfiguration securityConfig) {
+    ActiveProviderValidator.validate(
+        securityConfig, securityConfig.getAuthenticationConfiguration());
+  }
+
+  /** The checks a save without the full validation still makes: no network is involved. */
+  private void requireApplicable(SecurityConfiguration securityConfig) {
+    FieldError error = systemRepository.applicabilityError(securityConfig);
+    if (error != null) {
+      throw new BadRequestException(
+          String.format(
+              "Invalid security configuration: %s: %s", error.getField(), error.getError()));
+    }
+  }
+
+  /**
+   * Stores {@code updated} over {@code stored}, the rows this request read, compared and set, and
+   * switches the security system to it. One this server cannot apply, such as a directory that
+   * refuses the bind or a keystore it cannot read, is put back to {@code previous} and refused
+   * with the reason, so no server runs it, now or at its next start
+   * (ADR:2026-11-12-a-security-configuration-save-applies-in-full-or-is-refused).
+   */
+  private void storeAndApply(
+      SecurityConfiguration updated,
+      StoredSecurityConfiguration stored,
+      SecurityConfiguration previous) {
+    StoredSecurityConfiguration written =
+        stored == null
+            ? systemRepository.storeSecurityConfiguration(updated)
+            : systemRepository.updateSecurityConfigurationIfCurrent(updated, stored);
+    SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
+    SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
+    try {
+      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+    } catch (AuthenticationException notApplied) {
+      throw refusalOf(written, stored, previous, ExceptionUtils.getRootCauseMessage(notApplied));
+    }
+  }
+
+  /**
+   * Undoes {@code written}, a save this server could not apply, but only while the rows still hold
+   * it, and answers for what is left: 400 when it was undone, 412 when another save replaced it
+   * meanwhile and was kept, 500 when undoing it failed and the refused configuration may still be
+   * stored.
+   */
+  private WebApplicationException refusalOf(
+      final StoredSecurityConfiguration written,
+      final StoredSecurityConfiguration stored,
+      final SecurityConfiguration previous,
+      final String reason) {
+    try {
+      putBack(written, stored, previous);
+    } catch (PreconditionFailedException savedMeanwhile) {
+      LOG.warn(
+          "Kept a security configuration saved while one that could not be applied ({}) was in"
+              + " progress",
+          reason);
+      return new PreconditionFailedException(
+          String.format(
+              "The security configuration could not be applied (%s), and another save changed"
+                  + " it meanwhile; that save was kept. Read the configuration again.",
+              reason),
+          savedMeanwhile);
+    } catch (RuntimeException putBackFailed) {
+      LOG.error(
+          "A security configuration that could not be applied ({}) may still be stored: putting"
+              + " the previous one back failed",
+          reason,
+          putBackFailed);
+      return new InternalServerErrorException(
+          String.format(
+              "The security configuration could not be applied (%s), and putting the previous one"
+                  + " back failed, so the refused configuration may still be stored. Save a"
+                  + " working configuration again.",
+              reason),
+          putBackFailed);
+    }
+    return new BadRequestException(
+        "The security configuration could not be applied, so it was not saved: " + reason);
+  }
+
+  /**
+   * Puts the rows {@code written} replaced back as they were read. When a row was missing there
+   * were none to put back, so the configuration this server runs, {@code previous}, is stored as
+   * any other write is.
+   */
+  private void putBack(
+      final StoredSecurityConfiguration written,
+      final StoredSecurityConfiguration stored,
+      final SecurityConfiguration previous) {
+    if (stored == null) {
+      systemRepository.updateSecurityConfigurationIfCurrent(previous, written);
+    } else {
+      systemRepository.restoreSecurityConfigurationIfCurrent(stored, written);
+    }
+  }
+
+  /**
+   * Applies what another save stored while this one was in progress, so the admin's next read
+   * shows it. The conflict is what the caller has to learn about, so a failure to apply that save
+   * here is logged rather than answered.
+   */
+  private static void catchUpWithStoredSecurityConfiguration() {
+    SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
+    SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
+    try {
+      SecurityConfigurationManager.getInstance().reloadIfStoredChanged();
+    } catch (RuntimeException notApplied) {
+      LOG.warn("Could not apply the security configuration another save stored", notApplied);
+    }
+  }
+
   @PATCH
   @Path("/security/config")
+  @IdentityEndpoint
   @Operation(
       operationId = "patchSecurityConfig",
       summary = "Patch security configuration",
@@ -988,24 +1393,26 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
-      SecurityConfiguration originalConfig =
-          SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+      StoredSecurityConfiguration stored = systemRepository.getStoredSecurityConfiguration();
+      SecurityConfiguration currentConfig = configurationOf(stored);
 
-      String configJson = JsonUtils.pojoToJson(originalConfig);
-      SecurityConfiguration currentConfig =
-          JsonUtils.readValue(configJson, SecurityConfiguration.class);
+      // The patch works on the configuration as the admin reads it, so a copy or move from a secret
+      // moves the mask; the secrets come back below where that is safe.
+      SecurityConfiguration maskedConfig = maskedCopy(currentConfig);
+      JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, maskedConfig);
 
-      JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, currentConfig);
-
-      JsonValue patched = JsonUtils.applyPatch(currentConfig, filteredPatch);
+      JsonValue patched = JsonUtils.applyPatch(maskedConfig, filteredPatch);
       String jsonString = patched.toString();
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
+      preserveMaskedSecuritySecrets(updatedConfig, currentConfig);
+      // A field the deployment owns cannot change whatever the validation would say about it.
+      systemRepository.assertSecurityConfigurationWritable(updatedConfig);
 
       String currentUsername = SecurityUtil.getUserName(securityContext);
       SecurityValidationResponse validationResponse =
-          systemRepository.validateSecurityConfiguration(
-              updatedConfig, applicationConfig, currentUsername);
+          systemRepository.validateSecurityConfigurationChange(
+              currentConfig, updatedConfig, applicationConfig, currentUsername);
 
       boolean isValidConfig =
           validationResponse.getStatus() == SecurityValidationResponse.Status.SUCCESS;
@@ -1027,27 +1434,57 @@ public class SystemResource {
 
         return Response.status(Response.Status.BAD_REQUEST).entity(validationResponse).build();
       }
-      Settings authSettings =
-          new Settings()
-              .withConfigType(AUTHENTICATION_CONFIGURATION)
-              .withConfigValue(updatedConfig.getAuthenticationConfiguration());
-
-      Settings authzSettings =
-          new Settings()
-              .withConfigType(AUTHORIZER_CONFIGURATION)
-              .withConfigValue(updatedConfig.getAuthorizerConfiguration());
-
-      systemRepository.createOrUpdate(authSettings);
-      systemRepository.createOrUpdate(authzSettings);
-
-      SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
-      SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
-
-      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+      storeAndApply(updatedConfig, stored, currentConfig);
       return Response.noContent().build();
+    } catch (PreconditionFailedException e) {
+      // Another server, the CLI or an administration job changed the configuration since it was
+      // read, or while this save was being applied.
+      catchUpWithStoredSecurityConfiguration();
+      throw e;
+    } catch (WebApplicationException | SettingsManagedByEnvironmentException e) {
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to patch security configuration", e);
       throw new RuntimeException("Failed to patch security configuration: " + e.getMessage());
+    }
+  }
+
+  /** What is stored, falling back to this server's copy when the rows are missing. */
+  private static SecurityConfiguration configurationOf(StoredSecurityConfiguration stored) {
+    return stored == null
+        ? JsonUtils.deepCopy(
+            SecurityConfigurationManager.getInstance().getCurrentSecurityConfig(),
+            SecurityConfiguration.class)
+        : stored.configuration();
+  }
+
+  /**
+   * Gives back the stored secrets a client sent masked or left out, but only while the setting each
+   * one is used with is unchanged, so a write never sends a stored secret somewhere new. A secret
+   * still masked after that has to be entered again
+   * (ADR:2026-11-03-security-config-writes-never-move-a-stored-secret).
+   */
+  static void preserveMaskedSecuritySecrets(
+      SecurityConfiguration updated, SecurityConfiguration original) {
+    if (updated == null || updated.getAuthenticationConfiguration() == null) {
+      return;
+    }
+    AuthenticationConfiguration originalAuthentication =
+        original == null ? null : original.getAuthenticationConfiguration();
+    SettingsSecrets.rejectForeignEncryptedSecrets(
+        AUTHENTICATION_CONFIGURATION,
+        updated.getAuthenticationConfiguration(),
+        originalAuthentication);
+    if (originalAuthentication != null) {
+      TestLoginCandidates.restoreLiveSecretsInPlace(updated, original);
+    }
+    Set<String> withheld =
+        SettingsSecrets.maskedSecrets(
+            AUTHENTICATION_CONFIGURATION, updated.getAuthenticationConfiguration());
+    if (!withheld.isEmpty()) {
+      throw new BadRequestException(
+          String.format(
+              "Enter %s again: the setting it is used with changed.", String.join(", ", withheld)));
     }
   }
 
@@ -1067,11 +1504,15 @@ public class SystemResource {
                     schema = @Schema(implementation = SecurityValidationResponse.class)))
       })
   public SecurityValidationResponse validateSecurityConfig(
-      @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
+      @Context SecurityContext securityContext, SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
+    // Scope bean validation to the active provider, as the PUT does. This is the first call the SSO
+    // form makes on save, so a cascade into an inactive provider's partially-filled block would
+    // reject the request here, before the PUT is ever reached.
+    validateConfigurationOfActiveProvider(securityConfig);
     String currentUsername = SecurityUtil.getUserName(securityContext);
     return systemRepository.validateSecurityConfiguration(
-        securityConfig, applicationConfig, currentUsername);
+        withLiveSecretsRestored(securityConfig), applicationConfig, currentUsername);
   }
 
   @POST
@@ -1100,6 +1541,115 @@ public class SystemResource {
         request.getSecurityConfiguration(), request.getIdToken());
   }
 
+  @POST
+  @Path("/security/test-login/start")
+  @Operation(
+      operationId = "testLoginStart",
+      summary = "Start an interactive Test Login against a candidate security configuration",
+      description =
+          "Admin-only. Starts a real sign-in round-trip against a candidate (unsaved) configuration "
+              + "for providers whose live login runs on the server: confidential-client OIDC, SAML, "
+              + "LDAP and Basic. Returns either an authorization URL to open in a popup or a request "
+              + "for credentials; poll the result endpoint for the outcome. Never changes the live "
+              + "configuration, creates a user, issues a token or starts a session.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test login session",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestLoginSession.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Invalid candidate, or a public-client OIDC provider (tested with validate-token)")
+      })
+  public TestLoginSession testLoginStart(
+      @Context SecurityContext securityContext, TestLoginStartRequest request) {
+    authorizer.authorizeAdmin(securityContext);
+    SecurityConfiguration candidate = requireTestLoginCandidate(request);
+    // Scope bean validation to the active provider, as the validate and PUT endpoints do.
+    validateConfigurationOfActiveProvider(candidate);
+    return TestLoginRoundTrip.getInstance()
+        .start(SecurityUtil.getUserName(securityContext), withLiveSecretsRestored(candidate));
+  }
+
+  @GET
+  @Path("/security/test-login/result/{testSessionId}")
+  @Operation(
+      operationId = "testLoginResult",
+      summary = "Get the outcome of a Test Login",
+      description =
+          "Admin-only, and only for the admin who started the test. Returns the staged outcome of a "
+              + "Test Login, or a pending timeline while the sign-in is still in progress.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test login result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestLoginResult.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Unknown or expired test, or one started by another admin")
+      })
+  public TestLoginResult testLoginResult(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id returned when the test login was started")
+          @PathParam("testSessionId")
+          String testSessionId) {
+    authorizer.authorizeAdmin(securityContext);
+    return TestLoginRoundTrip.getInstance()
+        .result(SecurityUtil.getUserName(securityContext), testSessionId);
+  }
+
+  @POST
+  @Path("/security/test-login/credentials")
+  @Operation(
+      operationId = "testLoginCredentials",
+      summary = "Complete an LDAP or Basic Test Login with credentials",
+      description =
+          "Admin-only, and only for the admin who started the test. Verifies the credentials "
+              + "against the candidate configuration exactly as login would, without provisioning a "
+              + "user, issuing a token, starting a session, or counting a failed attempt against the "
+              + "account. Each test completes once, and attempts are rate-limited per admin.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Test login result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestLoginResult.class))),
+        @ApiResponse(responseCode = "400", description = "The test is not waiting for credentials"),
+        @ApiResponse(responseCode = "404", description = "Unknown or expired test"),
+        @ApiResponse(responseCode = "429", description = "Too many credential test logins")
+      })
+  public TestLoginResult testLoginCredentials(
+      @Context SecurityContext securityContext, @Valid TestLoginCredentialsRequest request) {
+    authorizer.authorizeAdmin(securityContext);
+    return TestLoginRoundTrip.getInstance()
+        .submitCredentials(SecurityUtil.getUserName(securityContext), request);
+  }
+
+  /**
+   * The SSO form only ever holds the saved secrets masked, so its checks and its Test Login would
+   * otherwise send the mask to the provider or directory and always fail.
+   */
+  private static SecurityConfiguration withLiveSecretsRestored(SecurityConfiguration candidate) {
+    return TestLoginCandidates.withLiveSecretsRestored(
+        candidate, SecurityConfigurationManager.getInstance().getCurrentSecurityConfig());
+  }
+
+  private static SecurityConfiguration requireTestLoginCandidate(TestLoginStartRequest request) {
+    if (request == null || request.getSecurityConfiguration() == null) {
+      throw new BadRequestException("A candidate securityConfiguration is required.");
+    }
+    return request.getSecurityConfiguration();
+  }
+
   @GET
   @Path("/mcp/config")
   @Operation(
@@ -1124,6 +1674,30 @@ public class SystemResource {
       return Response.ok(mcpSettings.getConfigValue()).build();
     }
     return Response.status(Response.Status.NOT_FOUND).entity("MCP configuration not found").build();
+  }
+
+  @GET
+  @Path("/mcp/tools")
+  @Operation(
+      operationId = "listMCPTools",
+      summary = "List the MCP server's tools",
+      description =
+          "Names of the tools this MCP server registered at startup, including tools a "
+              + "distribution adds and before read-only mode or disabled tools are applied. "
+              + "The settings form offers these as the tools an admin can disable.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Tool names",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(type = "string")))),
+        @ApiResponse(responseCode = "403", description = "Forbidden")
+      })
+  public List<String> listMCPTools(@Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    return McpToolRegistry.getToolNames();
   }
 
   @PUT
@@ -1199,6 +1773,8 @@ public class SystemResource {
       SecurityConfigurationManager.getInstance().reloadSecuritySystem();
 
       return Response.ok(mcpConfig).build();
+    } catch (SettingsManagedByEnvironmentException e) {
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to update MCP configuration", e);
       return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
@@ -1380,7 +1956,7 @@ public class SystemResource {
     if (id == null && normalizedFqn != null) {
       try {
         EntityRepository<?> repository = Entity.getEntityRepository(type);
-        EntityInterface resolved = repository.findByName(normalizedFqn, Include.ALL, false);
+        EntityInterface<?> resolved = repository.findByName(normalizedFqn, Include.ALL, false);
         if (resolved != null) {
           id = resolved.getId();
         }
@@ -1444,23 +2020,76 @@ public class SystemResource {
 
     GlossaryTermRepository glossaryTermRepository =
         (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
-    Map<String, Integer> usageCounts = glossaryTermRepository.getRelationTypeUsageCounts();
+    List<RelationshipTypeUsage> usageCounts = glossaryTermRepository.getRelationTypeUsageCounts();
 
     List<String> inUseRelationTypes =
         removedRelationTypes.stream()
-            .filter(name -> usageCounts.getOrDefault(name, 0) > 0)
+            .filter(name -> relationTypeUsage(name, usageCounts) > 0)
             .toList();
 
     if (!inUseRelationTypes.isEmpty()) {
       StringBuilder message = new StringBuilder("Cannot delete relation types that are in use: ");
       for (String relationTypeName : inUseRelationTypes) {
-        int count = usageCounts.get(relationTypeName);
+        int count = relationTypeUsage(relationTypeName, usageCounts);
         message.append(
             String.format("%s (%d usage%s), ", relationTypeName, count, count == 1 ? "" : "s"));
       }
       message.setLength(message.length() - 2);
       throw new SystemSettingsException(message.toString());
     }
+    // The setting is saved before its types are deleted, so a delete the guard would refuse has to
+    // be refused here, while nothing is written yet.
+    ((RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE))
+        .requireRemovableTogether(
+            removedRelationTypes,
+            new LegacyRelationshipTypeMapper(Clock.systemUTC())
+                .map(newConfig, Entity.ADMIN_USER_NAME));
+  }
+
+  private static int relationTypeUsage(
+      String relationTypeName, List<RelationshipTypeUsage> usageCounts) {
+    return usageCounts.stream()
+        .filter(usage -> relationTypeName.equals(usage.getRelationshipType().getName()))
+        .mapToInt(RelationshipTypeUsage::getCount)
+        .findFirst()
+        .orElse(0);
+  }
+
+  private void validateSparqlQuerySettings(SparqlQuerySettings settings) {
+    if (settings == null || settings.getQueryTemplates() == null) {
+      throw new SystemSettingsException("SPARQL query templates are required");
+    }
+    if (settings.getQueryTemplates().size() > 50) {
+      throw new SystemSettingsException("At most 50 SPARQL query templates are allowed");
+    }
+
+    Set<UUID> queryIds = new HashSet<>();
+    for (SavedSparqlQuery query : settings.getQueryTemplates()) {
+      if (query == null || query.getId() == null || !queryIds.add(query.getId())) {
+        throw new SystemSettingsException("SPARQL query template IDs must be present and unique");
+      }
+      String name = query.getName() == null ? "" : query.getName().trim();
+      if (name.isEmpty() || name.length() > 256) {
+        throw new SystemSettingsException(
+            "SPARQL query template names must contain 1 to 256 characters");
+      }
+      String queryBody = query.getQuery() == null ? "" : query.getQuery().trim();
+      if (queryBody.isEmpty() || queryBody.length() > 100000) {
+        throw new SystemSettingsException(
+            "SPARQL query template bodies must contain 1 to 100000 characters");
+      }
+      if (query.getFormat() == null
+          || query.getInference() == null
+          || query.getSavedAt() == null
+          || query.getSavedAt() < 0) {
+        throw new SystemSettingsException("SPARQL query template metadata is incomplete");
+      }
+      query.setName(name);
+    }
+  }
+
+  private void normalizeGlossaryTermRelationSettings(GlossaryTermRelationSettings settings) {
+    GlossaryTermRelationSettingsUtil.normalize(settings);
   }
 
   private boolean isUserReadableSetting(String name) {
@@ -1486,7 +2115,9 @@ public class SystemResource {
         }
       }
     }
-
     throw new NotFoundException(String.format("Relation type '%s' was not found.", name));
   }
+
+  private record LegacyRelationshipTypeUpdate(
+      GlossaryTermRelationSettings previous, GlossaryTermRelationSettings updated) {}
 }

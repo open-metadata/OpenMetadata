@@ -1,13 +1,13 @@
 {
   "$id": "https://open-metadata.org/schema/entity/events/notificationTemplate.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "NotificationTemplate",
   "$comment": "@om-entity-type",
   "description": "A NotificationTemplate defines the default formatting template for notifications of a specific entity type.",
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.events.NotificationTemplate",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface"
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"
   ],
   "properties": {
     "id": {

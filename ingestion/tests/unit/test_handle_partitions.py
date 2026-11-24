@@ -10,7 +10,6 @@
 #  limitations under the License.
 
 import unittest
-from typing import Optional
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
@@ -88,8 +87,8 @@ MOCK_SCHEMA = [
 class MockTable(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
-    time_partitioning: Optional[TimePartitioning] = None  # noqa: UP045
-    range_partitioning: Optional[RangePartitioning] = None  # noqa: UP045
+    time_partitioning: TimePartitioning | None = None
+    range_partitioning: RangePartitioning | None = None
     schema_: list = MOCK_SCHEMA
 
     @property
@@ -165,16 +164,7 @@ class BigqueryUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id")
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection")
     @patch("metadata.ingestion.source.database.common_db_source.create_connection")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        get_connection_common,
-        test_connection,
-        set_project_id,
-        create_generic_connection,
-        client,
-    ) -> None:
-        super().__init__(methodName)
+    def setUp(self, get_connection_common, test_connection, set_project_id, create_generic_connection, client) -> None:
         get_connection_common.return_value = Mock()
         client.return_value = Mock()
         create_generic_connection.return_value = Mock()

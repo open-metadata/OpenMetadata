@@ -27,6 +27,21 @@ export interface User {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
+     * The domain the user selects in the navbar to scope list views. Persisted so the global
+     * (navbar) domain filter is applied from the start of the session; it narrows lists only
+     * and never restricts access.
+     */
+    defaultDomain?: EntityReference;
+    /**
      * Default Persona for the user from list of personas.
      */
     defaultPersona?: EntityReference;
@@ -51,6 +66,10 @@ export interface User {
      */
     email: string;
     /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
+    /**
      * External identifier from identity provider (used for SCIM).
      */
     externalId?: string;
@@ -70,6 +89,13 @@ export interface User {
      * Unique identifier that identifies a user entity instance.
      */
     id: string;
+    /**
+     * Subject ('sub') claim recorded from the identity provider on first email-first login.
+     * Email addresses can be reassigned to a new person; binding the immutable subject lets a
+     * later login with the same address but a different subject be rejected instead of
+     * inheriting the previous owner's account. Distinct from externalId, which SCIM owns.
+     */
+    identityProviderSubject?: string;
     /**
      * Bot user that performed the action on behalf of the actual user.
      */
@@ -99,6 +125,11 @@ export interface User {
      * If the User has verified the mail
      */
     isEmailVerified?: boolean;
+    /**
+     * When true indicates the user is accessing the product for the first time. Turns false
+     * once the user first reaches the home page.
+     */
+    isFirstTimeUser?: boolean;
     /**
      * Last time the user was active in the system.
      */
@@ -329,7 +360,10 @@ export interface Idp {
      */
     entityId: string;
     /**
-     * X509 Certificate
+     * IdP signing certificate(s): a PEM certificate or concatenated PEM bundle; a single base64
+     * DER certificate is also accepted. Saving requires at least one currently valid
+     * certificate. At runtime every configured certificate is trusted, including expired and
+     * future rollover ones, so remove a retired key explicitly.
      */
     idpX509Certificate?: string;
     /**
@@ -371,11 +405,12 @@ export interface Security {
      */
     signSpMetadata?: boolean;
     /**
-     * Only accept valid signed and encrypted assertions if the relevant flags are set
+     * Enable strict SAML protocol checks and the Want Messages Signed / Want Assertions Signed
+     * policies. Require Encrypted Assertions applies independently of strict mode.
      */
     strictMode?: boolean;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * Lifetime in seconds of the OpenMetadata JWT issued after SAML authentication.
      */
     tokenValidity?: number;
     /**
@@ -383,7 +418,9 @@ export interface Security {
      */
     validateXml?: boolean;
     /**
-     * SP requires the assertion received to be encrypted.
+     * Reject plaintext assertions even when Strict Mode is off. Optional and disabled by
+     * default. Requires an SP private key and matching certificate; configure token encryption
+     * at the IdP too. Providing an SP key alone does not require encryption.
      */
     wantAssertionEncrypted?: boolean;
     /**
@@ -499,12 +536,16 @@ export interface FieldChange {
 }
 
 /**
- * Default Persona for the user from list of personas.
+ * The domain the user selects in the navbar to scope list views. Persisted so the global
+ * (navbar) domain filter is applied from the start of the session; it narrows lists only
+ * and never restricts access.
  *
  * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * Default Persona for the user from list of personas.
  *
  * Domain the User belongs to. This is inherited by the team the user belongs to.
  *
@@ -569,6 +610,16 @@ export interface PersonaPreferences {
      */
     appMode?: AppMode;
     /**
+     * Route path users of this persona land on when they open the app (e.g. `/explore`). Unset
+     * means Home (My Data).
+     */
+    defaultLandingPage?: string;
+    /**
+     * Layout each page with a view toggle opens in for users of this persona. A page without an
+     * entry opens in Table view. Only Domains offers Tree.
+     */
+    defaultViewModes?: DefaultViewModes;
+    /**
      * User's personal customizations for the landing page.
      */
     landingPageSettings?: LandingPageSettings;
@@ -590,6 +641,26 @@ export interface PersonaPreferences {
 export enum AppMode {
     AI = "AI",
     Classic = "classic",
+}
+
+/**
+ * Layout each page with a view toggle opens in for users of this persona. A page without an
+ * entry opens in Table view. Only Domains offers Tree.
+ */
+export interface DefaultViewModes {
+    dataProducts?:      PageViewMode;
+    domains?:           PageViewMode;
+    learningResources?: PageViewMode;
+    subDomains?:        PageViewMode;
+}
+
+/**
+ * Layout a page with a view toggle opens in.
+ */
+export enum PageViewMode {
+    Card = "card",
+    Table = "table",
+    Tree = "tree",
 }
 
 /**

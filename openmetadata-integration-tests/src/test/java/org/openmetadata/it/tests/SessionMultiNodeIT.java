@@ -30,11 +30,13 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
 
 @Tag("session")
+@Tag("multi-node")
 @ExtendWith(TestNamespaceExtension.class)
 // Gated to DB-backed sessions. The assertions here read directly from the user_session table
 // (sessionCountForUser, loadSession, persistSession), which produce no rows when SessionService
@@ -44,6 +46,8 @@ import org.openmetadata.service.security.session.UserSession;
     value = "org.openmetadata.it.bootstrap.TestSuiteBootstrap#isRedisEnabled",
     disabledReason = "Sessions live in Redis on this profile; see SessionRedisMultiNodeIT")
 class SessionMultiNodeIT {
+  private static final String USER_REFRESH_TOKENS =
+      " WHERE userId = :userId AND tokenType = 'REFRESH_TOKEN'";
 
   @Test
   void refreshAndLogoutAreSharedAcrossNodes(TestNamespace ns) throws Exception {
@@ -181,23 +185,75 @@ class SessionMultiNodeIT {
     assertEquals(401, meOnBAfterLogout.statusCode(), meOnBAfterLogout.body());
   }
 
+  /**
+   * Rewriting the session's provider stands in for switching the server's: the predicate compares
+   * the two, and switching the shared IT server's provider would break concurrently running tests.
+   */
   @Test
-  void refreshReturnsRetryAfterWhenLeaseIsHeldAcrossNodes(TestNamespace ns) throws Exception {
+  void pushFeedHandshakeRejectsASessionIssuedByAProviderNoLongerConfigured(TestNamespace ns)
+      throws Exception {
     SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
     User user = createUser(ns);
 
     SessionCookies cookies = new SessionCookies();
     HttpClient client = HttpClient.newHttpClient();
 
-    login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
-    UserSession currentSession = loadSession(cookies.get("OM_SESSION"));
+    JsonNode loginResponse =
+        login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    String accessToken = loginResponse.get("accessToken").asText();
+    HttpResponse<String> handshakeBeforeSwitch =
+        pushFeedHandshake(client, cookies, cluster.nodeBBaseUrl());
+    assertEquals(200, handshakeBeforeSwitch.statusCode(), handshakeBeforeSwitch.body());
+
+    UserSession current = loadSession(cookies.get("OM_SESSION"));
     persistSession(
+        current.toBuilder()
+            .provider(AuthProvider.GOOGLE.value())
+            .updatedAt(System.currentTimeMillis())
+            .version(safeVersion(current) + 1)
+            .build());
+
+    HttpResponse<String> apiOnB =
+        getRawWithBearer(
+            client, accessToken, cluster.nodeBBaseUrl() + "/api/v1/users/loggedInUser");
+    assertEquals(401, apiOnB.statusCode(), apiOnB.body());
+    HttpResponse<String> handshakeAfterSwitch =
+        pushFeedHandshake(client, cookies, cluster.nodeBBaseUrl());
+    assertEquals(401, handshakeAfterSwitch.statusCode(), handshakeAfterSwitch.body());
+  }
+
+  @Test
+  void apiRequestsRemainAuthenticatedWhileAnotherNodeHoldsTheRefreshLease(TestNamespace ns)
+      throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+
+    SessionCookies cookies = new SessionCookies();
+    HttpClient client = HttpClient.newHttpClient();
+
+    final JsonNode loginResponse =
+        login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    UserSession currentSession = loadSession(cookies.get("OM_SESSION"));
+    final UserSession leasedSession =
         currentSession.toBuilder()
             .status(SessionStatus.REFRESHING)
-            .refreshLeaseUntil(System.currentTimeMillis() + 10_000)
+            .refreshLeaseUntil(System.currentTimeMillis() + 30_000)
             .updatedAt(System.currentTimeMillis())
             .version(safeVersion(currentSession) + 1)
-            .build());
+            .build();
+    persistSession(leasedSession);
+
+    final HttpResponse<String> meOnB =
+        getRawWithBearer(
+            client,
+            loginResponse.get("accessToken").asText(),
+            cluster.nodeBBaseUrl() + "/api/v1/users/loggedInUser");
+    assertEquals(200, meOnB.statusCode(), meOnB.body());
+    assertEquals(user.getId().toString(), JsonUtils.readTree(meOnB.body()).get("id").asText());
+    final UserSession afterRead = loadSession(leasedSession.getId());
+    assertEquals(SessionStatus.REFRESHING, afterRead.getStatus());
+    assertEquals(leasedSession.getRefreshLeaseUntil(), afterRead.getRefreshLeaseUntil());
+    assertEquals(leasedSession.getVersion(), afterRead.getVersion());
 
     HttpResponse<String> response =
         postRaw(client, cookies, cluster.nodeBBaseUrl() + "/api/v1/auth/refresh", null);
@@ -306,6 +362,23 @@ class SessionMultiNodeIT {
         getRawWithBearer(
             client, accessToken, cluster.nodeBBaseUrl() + "/api/v1/users/loggedInUser");
     assertEquals(401, apiOnB.statusCode(), apiOnB.body());
+  }
+
+  @Test
+  void expiredRefreshTokenIsRejectedWithoutEchoingIt(TestNamespace ns) throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+
+    SessionCookies cookies = new SessionCookies();
+    HttpClient client = HttpClient.newHttpClient();
+    login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    String refreshToken = expireRefreshTokens(user);
+
+    HttpResponse<String> refresh =
+        postRaw(client, cookies, cluster.nodeABaseUrl() + "/api/v1/auth/refresh", null);
+
+    assertEquals(401, refresh.statusCode(), refresh.body());
+    assertFalse(refresh.body().contains(refreshToken), refresh.body());
   }
 
   @Test
@@ -455,6 +528,16 @@ class SessionMultiNodeIT {
     return client.send(request, HttpResponse.BodyHandlers.ofString());
   }
 
+  private HttpResponse<String> pushFeedHandshake(
+      HttpClient client, SessionCookies cookies, String baseUrl) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/push/feed/?EIO=4&transport=polling"))
+            .header("Cookie", cookies.asHeaderValue())
+            .GET()
+            .build();
+    return client.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
   private UserSession loadSession(String sessionId) {
     String json =
         TestSuiteBootstrap.getJdbi()
@@ -481,6 +564,26 @@ class SessionMultiNodeIT {
                   .bind("id", session.getId())
                   .bind("json", JsonUtils.pojoToJson(session))
                   .execute();
+            });
+  }
+
+  private String expireRefreshTokens(User user) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle -> {
+              String sql =
+                  isPostgres(handle)
+                      ? "UPDATE user_tokens SET json = jsonb_set(json, '{expiryDate}', '1000')"
+                      : "UPDATE user_tokens SET json = JSON_SET(json, '$.expiryDate', 1000)";
+              handle
+                  .createUpdate(sql + USER_REFRESH_TOKENS)
+                  .bind("userId", user.getId().toString())
+                  .execute();
+              return handle
+                  .createQuery("SELECT token FROM user_tokens" + USER_REFRESH_TOKENS)
+                  .bind("userId", user.getId().toString())
+                  .mapTo(String.class)
+                  .one();
             });
   }
 

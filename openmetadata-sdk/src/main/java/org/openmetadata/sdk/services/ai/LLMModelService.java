@@ -22,4 +22,10 @@ public class LLMModelService extends EntityServiceBase<org.openmetadata.schema.e
     return httpClient.execute(
         HttpMethod.POST, basePath, request, org.openmetadata.schema.entity.ai.LLMModel.class);
   }
+
+  public org.openmetadata.schema.entity.ai.LLMModel upsert(CreateLLMModel request)
+      throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.PUT, basePath, request, org.openmetadata.schema.entity.ai.LLMModel.class);
+  }
 }

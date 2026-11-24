@@ -9,6 +9,7 @@ import static org.openmetadata.service.search.SearchUtils.getMaxExpansions;
 import static org.openmetadata.service.search.SearchUtils.isColumnIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataAssetIndex;
 import static org.openmetadata.service.search.SearchUtils.isDataQualityIndex;
+import static org.openmetadata.service.search.SearchUtils.isOntologyIndex;
 import static org.openmetadata.service.search.SearchUtils.isServiceIndex;
 import static org.openmetadata.service.search.SearchUtils.isTimeSeriesIndex;
 
@@ -29,6 +30,8 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.CustomPropertySearchFields;
+import org.openmetadata.service.search.HighlightFieldClassifier;
+import org.openmetadata.service.search.LuceneQuerySyntax;
 import org.openmetadata.service.search.SearchRankingHelper;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
@@ -60,11 +63,6 @@ public class OpenSearchSourceBuilderFactory
   private static final String INDEX_ALL = "all";
   private static final String INDEX_DATA_ASSET = "dataAsset";
 
-  // OpenSearch maps the `extension` custom-properties object as flat_object (OsUtils transforms
-  // flattened -> flat_object). flat_object has no analyzer, so asking the highlighter to highlight
-  // `extension` or any `extension.*` subfield throws "no associated analyzer" and fails the whole
-  // shard (a 500 on the search). Elasticsearch tolerates it, so this guard is OpenSearch-only.
-  private static final String FLATTENED_EXTENSION_FIELD = "extension";
   private static final String MINIMUM_SHOULD_MATCH = "2<70%";
   private static final float DEFAULT_TIE_BREAKER = 0.3f;
   private static final float DEFAULT_BOOST = 1.0f;
@@ -72,6 +70,7 @@ public class OpenSearchSourceBuilderFactory
   private static final String RANKING_QUERY_PREFIX = "ranking:";
 
   private final SearchSettings searchSettings;
+  private final boolean matchesPrivateFields;
 
   // Cache the expensive composite configuration
   private volatile AssetTypeConfiguration cachedCompositeConfig = null;
@@ -79,7 +78,14 @@ public class OpenSearchSourceBuilderFactory
   private static final long CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
   public OpenSearchSourceBuilderFactory(SearchSettings searchSettings) {
+    this(searchSettings, true);
+  }
+
+  /** {@code matchesPrivateFields} false keeps a free-text user search off the email fields. */
+  public OpenSearchSourceBuilderFactory(
+      SearchSettings searchSettings, boolean matchesPrivateFields) {
     this.searchSettings = searchSettings;
+    this.matchesPrivateFields = matchesPrivateFields;
   }
 
   public SearchSettings getSearchSettings() {
@@ -262,9 +268,10 @@ public class OpenSearchSourceBuilderFactory
     // The non-fuzzy branch is a multi_match, which never parses Lucene syntax; only this
     // fuzzy branch can throw on user input. Endpoints that document `q` as free text swap
     // it for simple_query_string, whose parser discards malformed syntax instead of
-    // raising a query_shard_exception.
+    // raising a query_shard_exception. Text that Lucene cannot parse takes the same route
+    // for the same reason, rather than failing the search outright (#27990).
     Query fuzzyQuery =
-        freeText
+        freeText || !LuceneQuerySyntax.isWellFormed(query)
             ? OpenSearchQueryBuilder.simpleQueryStringQuery(query, fuzzyFields, Operator.And)
             : OpenSearchQueryBuilder.queryStringQuery(
                 query,
@@ -305,7 +312,8 @@ public class OpenSearchSourceBuilderFactory
   }
 
   public OpenSearchRequestBuilder buildUserOrTeamSearchBuilderV2(String query, int from, int size) {
-    Query queryBuilder = buildSearchQueryBuilderV2(query, UserIndex.getFields());
+    Query queryBuilder =
+        buildSearchQueryBuilderV2(query, UserIndex.getFields(matchesPrivateFields));
     return searchBuilderV2(queryBuilder, null, from, size);
   }
 
@@ -356,7 +364,7 @@ public class OpenSearchSourceBuilderFactory
       return buildDataQualitySearchBuilderV2(indexName, searchQuery, fromOffset, size, freeText);
     }
 
-    if (isDataAssetIndex(indexName)) {
+    if (isDataAssetIndex(indexName) || isOntologyIndex(indexName)) {
       return buildDataAssetSearchBuilderV2(
           indexName, searchQuery, fromOffset, size, includeExplain, includeAggregations);
     }
@@ -482,7 +490,7 @@ public class OpenSearchSourceBuilderFactory
       return OpenSearchQueryBuilder.boolQuery()
           .must(OpenSearchQueryBuilder.matchAllQuery())
           .build();
-    } else if (containsQuerySyntax(query)) {
+    } else if (shouldParseAsLuceneSyntax(query)) {
       return buildComplexSyntaxQueryV2(query, assetConfig);
     } else {
       return buildSimpleQueryV2(query, assetConfig);
@@ -496,7 +504,7 @@ public class OpenSearchSourceBuilderFactory
           .build();
     }
 
-    if (containsQuerySyntax(query)) {
+    if (shouldParseAsLuceneSyntax(query)) {
       return buildComplexQueryV2(query, assetConfig);
     }
 
@@ -771,22 +779,18 @@ public class OpenSearchSourceBuilderFactory
     OpenSearchHighlightBuilder hb = new OpenSearchHighlightBuilder();
     hb.preTags(PRE_TAG);
     hb.postTags(POST_TAG);
+    // A mapped field with no analyzer (flat_object, which OsUtils rewrites `flattened` to) fails
+    // the
+    // highlight shard with "no associated analyzer" — a 500 on the search — unlike an unmapped
+    // field,
+    // which the highlighter silently skips. Elasticsearch tolerates it, so this guard is
+    // OpenSearch-only; the save-time check in SearchSettingsHandler is the engine-independent one.
     for (String field : listOrEmpty(fields)) {
-      if (!isFlattenedExtensionField(field)) {
+      if (!HighlightFieldClassifier.isHighlightUnsafeField(field)) {
         hb.field(field, org.openmetadata.service.search.EntityBuilderConstant.MAX_ANALYZED_OFFSET);
       }
     }
     return hb.build();
-  }
-
-  // The flat_object `extension` field (and its `extension.*` subfields) has no analyzer on
-  // OpenSearch; a mapped no-analyzer field fails the highlight shard, unlike an unmapped field
-  // which
-  // the highlighter silently skips. Drop it so a configured extension highlight field never 500s.
-  private static boolean isFlattenedExtensionField(String field) {
-    return field != null
-        && (field.equals(FLATTENED_EXTENSION_FIELD)
-            || field.startsWith(FLATTENED_EXTENSION_FIELD + "."));
   }
 
   public OpenSearchRequestBuilder getSearchSourceBuilderV2(

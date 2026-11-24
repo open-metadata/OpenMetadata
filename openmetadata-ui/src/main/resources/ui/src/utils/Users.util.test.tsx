@@ -10,7 +10,73 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isMaskedEmail } from './UsersPureUtils';
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { MASKED_EMAIL } from '../constants/User.constants';
+import { User } from '../generated/entity/teams/user';
+import { useApplicationStore } from '../hooks/useApplicationStore';
+import { getUserByName } from '../rest/userAPI';
+import { userCellRenderer } from './Users.util';
+import { getUserIdentifier, isMaskedEmail } from './UsersPureUtils';
+
+jest.mock('../rest/userAPI', () => ({
+  getUserByName: jest.fn(),
+}));
+
+const mockGetUserByName = getUserByName as jest.MockedFunction<
+  typeof getUserByName
+>;
+
+describe('User Utils -- userCellRenderer', () => {
+  beforeEach(() => {
+    useApplicationStore.setState({ userProfilePics: {} });
+    mockGetUserByName.mockReset();
+  });
+
+  it('shows the display name once the user loads, in the real card', async () => {
+    mockGetUserByName.mockResolvedValue({
+      id: '1',
+      name: 'jdoe',
+      displayName: 'John Doe',
+      email: 'jdoe@example.com',
+    } as User);
+
+    render(<>{userCellRenderer({ id: '1', name: 'jdoe', type: 'user' })}</>, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(await screen.findByText('John Doe')).toBeInTheDocument();
+    expect(screen.getByTestId('jdoe')).toHaveAttribute(
+      'href',
+      expect.stringContaining('jdoe')
+    );
+  });
+
+  it('falls back to the login when the user has no display name', async () => {
+    mockGetUserByName.mockRejectedValue({ response: { status: 404 } });
+
+    render(<>{userCellRenderer({ id: '1', name: 'jdoe', type: 'user' })}</>, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(await screen.findByTestId('jdoe')).toHaveTextContent('jdoe');
+  });
+});
+
+describe('User Utils -- getUserIdentifier', () => {
+  it('returns the email when it is visible', () => {
+    expect(getUserIdentifier({ name: 'jdoe', email: 'jdoe@example.com' })).toBe(
+      'jdoe@example.com'
+    );
+  });
+
+  it('falls back to the login when the email is masked or missing', () => {
+    expect(getUserIdentifier({ name: 'jdoe', email: MASKED_EMAIL })).toBe(
+      'jdoe'
+    );
+    expect(getUserIdentifier({ name: 'jdoe', email: '' })).toBe('jdoe');
+  });
+});
 
 describe('User Utils -- isMaskedEmail', () => {
   it('should return true for masked email', () => {

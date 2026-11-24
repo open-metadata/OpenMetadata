@@ -16,31 +16,29 @@ package org.openmetadata.service.util;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.ContractSLA;
 import org.openmetadata.schema.api.data.ContractSecurity;
-import org.openmetadata.schema.api.data.MaxLatency;
 import org.openmetadata.schema.api.data.Policy;
-import org.openmetadata.schema.api.data.RefreshFrequency;
-import org.openmetadata.schema.api.data.Retention;
 import org.openmetadata.schema.entity.data.DataContract;
-import org.openmetadata.schema.entity.datacontract.odcs.ODCSAuthoritativeDefinition;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
-import org.openmetadata.schema.entity.datacontract.odcs.ODCSDescription;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSElementExtension;
-import org.openmetadata.schema.entity.datacontract.odcs.ODCSLogicalTypeOptions;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueCategory;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSRole;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSSchemaElement;
-import org.openmetadata.schema.entity.datacontract.odcs.ODCSSlaProperty;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSTeamMember;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
@@ -50,8 +48,13 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.datacontract.odcs.ODCSExportService;
+import org.openmetadata.service.datacontract.odcs.ODCSImportIssues;
+import org.openmetadata.service.datacontract.odcs.ODCSPreservedFields;
+import org.openmetadata.service.datacontract.odcs.ODCSShapeNormalizer;
+import org.openmetadata.service.datacontract.odcs.ODCSSlaMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +64,9 @@ import org.slf4j.LoggerFactory;
  */
 public class ODCSConverter {
   private static final Logger LOG = LoggerFactory.getLogger(ODCSConverter.class);
-  private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final ObjectMapper MAPPER =
+      new ObjectMapper().setSerializationInclusion(JsonInclude.Include.NON_NULL);
+  private static final String OWNER_ROLE = "owner";
 
   private ODCSConverter() {}
 
@@ -72,81 +77,42 @@ public class ODCSConverter {
    * @return ODCSDataContract in ODCS v3.1.0 format
    */
   public static ODCSDataContract toODCS(DataContract contract) {
-    ODCSDataContract odcs = new ODCSDataContract();
+    return toODCS(contract, List.of());
+  }
 
-    odcs.setApiVersion(ODCSDataContract.OdcsApiVersion.V_3_1_0);
-    odcs.setKind(ODCSDataContract.OdcsKind.DATA_CONTRACT);
-    odcs.setId(
-        contract.getId() != null ? contract.getId().toString() : UUID.randomUUID().toString());
-    odcs.setName(contract.getName());
-    odcs.setVersion(contract.getVersion() != null ? contract.getVersion().toString() : "1.0.0");
-    odcs.setStatus(mapContractStatusToODCS(contract.getEntityStatus()));
+  /**
+   * Export an OpenMetadata DataContract to ODCS v3.1.0 format, adding quality rules that are not
+   * stored on the contract, such as the ones describing its own test cases.
+   *
+   * @param contract The OpenMetadata DataContract to export
+   * @param additionalQualityRules Rules exported after the contract's stored ODCS rules
+   * @return ODCSDataContract in ODCS v3.1.0 format
+   */
+  public static ODCSDataContract toODCS(
+      DataContract contract, List<ODCSQualityRule> additionalQualityRules) {
+    return MAPPER.convertValue(
+        toODCSDocument(contract, additionalQualityRules), ODCSDataContract.class);
+  }
 
-    if (contract.getDescription() != null) {
-      ODCSDescription desc = new ODCSDescription();
-      desc.setPurpose(contract.getDescription());
-      odcs.setDescription(desc);
+  public static JsonNode toODCSDocument(
+      DataContract contract, List<ODCSQualityRule> additionalQualityRules) {
+    return toODCSDocument(contract, additionalQualityRules, Set.of());
+  }
+
+  public static JsonNode toODCSDocument(
+      DataContract contract,
+      List<ODCSQualityRule> additionalQualityRules,
+      Set<String> managedNames) {
+    return ODCSExportService.document(contract, additionalQualityRules, managedNames);
+  }
+
+  private static JsonNode captureBaseline(DataContract contract, String sourceTable) {
+    ObjectNode applied = (ObjectNode) ODCSExportService.importBaseline(contract, sourceTable);
+    ODCSShapeNormalizer.projectArrayItemsForReader(applied);
+    if (contract.getOdcsQualityRules() != null && !contract.getOdcsQualityRules().isEmpty()) {
+      applied.set("quality", MAPPER.valueToTree(contract.getOdcsQualityRules()));
     }
-
-    if (contract.getEntity() != null) {
-      odcs.setDomain(extractDomainFromEntity(contract.getEntity()));
-      odcs.setDataProduct(contract.getEntity().getFullyQualifiedName());
-    }
-
-    // ODCS v3.1.0: Schema is an array of objects (tables/datasets), each with properties (columns)
-    // Wrap columns in a parent object representing the entity
-    if (contract.getSchema() != null && !contract.getSchema().isEmpty()) {
-      ODCSSchemaElement tableObject = new ODCSSchemaElement();
-      String entityName =
-          contract.getEntity() != null && contract.getEntity().getName() != null
-              ? contract.getEntity().getName()
-              : contract.getName();
-      tableObject.setName(entityName);
-      tableObject.setLogicalType(ODCSSchemaElement.LogicalType.OBJECT);
-      tableObject.setPhysicalType("table");
-      if (contract.getEntity() != null && contract.getEntity().getDescription() != null) {
-        tableObject.setDescription(contract.getEntity().getDescription());
-      }
-      tableObject.setProperties(convertSchemaToODCS(contract.getSchema()));
-
-      List<ODCSSchemaElement> schemaObjects = new ArrayList<>();
-      schemaObjects.add(tableObject);
-      odcs.setSchema(schemaObjects);
-    }
-
-    if (contract.getOwners() != null && !contract.getOwners().isEmpty()) {
-      odcs.setTeam(convertOwnersToTeam(contract.getOwners()));
-    }
-
-    if (contract.getSecurity() != null) {
-      odcs.setRoles(convertSecurityToRoles(contract.getSecurity()));
-    }
-
-    if (contract.getSla() != null) {
-      odcs.setSlaProperties(convertSLAToODCS(contract.getSla()));
-    }
-
-    if (contract.getCreatedAt() != null) {
-      odcs.setContractCreatedTs(new Date(contract.getCreatedAt()));
-    }
-
-    List<String> tags = new ArrayList<>();
-    if (contract.getTermsOfUse() != null) {
-      tags.add("terms-of-use");
-    }
-    if (!tags.isEmpty()) {
-      odcs.setTags(tags);
-    }
-
-    if (!nullOrEmpty(contract.getOdcsQualityRules())) {
-      distributeQualityRules(odcs, contract.getOdcsQualityRules());
-    }
-
-    if (!nullOrEmpty(contract.getOdcsElementExtensions())) {
-      distributeElementExtensions(odcs, contract.getOdcsElementExtensions());
-    }
-
-    return odcs;
+    return applied;
   }
 
   /**
@@ -175,6 +141,27 @@ public class ODCSConverter {
    */
   public static DataContract fromODCS(
       ODCSDataContract odcs, EntityReference entityRef, String objectName) {
+    return fromODCS(odcs, entityRef, objectName, ODCSImportIssues.discarding());
+  }
+
+  /**
+   * Import an ODCS data contract, recording in {@code issues} what the import changes or leaves
+   * out: owners that do not resolve and SLA properties the contract SLA cannot represent.
+   */
+  public static DataContract fromODCS(
+      ODCSDataContract odcs,
+      EntityReference entityRef,
+      String objectName,
+      ODCSImportIssues issues) {
+    return fromODCS(odcs, entityRef, objectName, issues, MAPPER.valueToTree(odcs));
+  }
+
+  public static DataContract fromODCS(
+      ODCSDataContract odcs,
+      EntityReference entityRef,
+      String objectName,
+      ODCSImportIssues issues,
+      JsonNode original) {
     validateRequiredODCSFields(odcs);
 
     DataContract contract = new DataContract();
@@ -207,8 +194,8 @@ public class ODCSConverter {
       contract.setSchema(columns);
     }
 
-    if (odcs.getTeam() != null && !odcs.getTeam().isEmpty()) {
-      contract.setOwners(convertTeamToOwners(odcs.getTeam()));
+    if (odcs.getTeam() != null && !nullOrEmpty(odcs.getTeam().getMembers())) {
+      contract.setOwners(convertTeamToOwners(odcs.getTeam().getMembers(), issues));
     }
 
     if (odcs.getRoles() != null && !odcs.getRoles().isEmpty()) {
@@ -216,14 +203,18 @@ public class ODCSConverter {
     }
 
     if (odcs.getSlaProperties() != null && !odcs.getSlaProperties().isEmpty()) {
-      contract.setSla(convertODCSSLAToContract(odcs.getSlaProperties()));
+      contract.setSla(ODCSSlaMapper.toContractSla(odcs.getSlaProperties(), issues));
     }
 
-    List<ODCSQualityRule> allQualityRules = collectAllQualityRules(odcs);
+    String importedObject = importedSchemaObjectName(odcs, entityRef, objectName).orElse(null);
+    List<ODCSQualityRule> allQualityRules = collectAllQualityRules(odcs, importedObject);
     if (!allQualityRules.isEmpty()) {
       contract.setOdcsQualityRules(allQualityRules);
     }
 
+    contract.setOdcsPreservedFields(
+        ODCSPreservedFields.capture(
+            original, captureBaseline(contract, importedObject), importedObject));
     List<ODCSElementExtension> elementExtensions = collectElementExtensions(odcs);
     if (!elementExtensions.isEmpty()) {
       contract.setOdcsElementExtensions(elementExtensions);
@@ -265,89 +256,92 @@ public class ODCSConverter {
   }
 
   /**
+   * Name of the schema object whose properties become the contract's columns: the one named
+   * {@code objectName}, else the one named like the entity, else the first. Empty when the schema
+   * lists columns directly instead of objects.
+   *
+   * @throws IllegalArgumentException if {@code objectName} names no object of the schema
+   */
+  public static Optional<String> importedSchemaObjectName(
+      ODCSDataContract odcs, EntityReference entityRef, String objectName) {
+    return selectSchemaObject(listOrEmpty(odcs.getSchema()), entityRef, objectName)
+        .map(ODCSSchemaElement::getName);
+  }
+
+  /**
    * Extract columns from ODCS schema, handling both single-object and multi-object schemas. For
    * multi-object schemas, selects the object matching entityRef name or objectName parameter.
    */
   private static List<Column> extractColumnsFromODCSSchema(
       List<ODCSSchemaElement> schema, EntityReference entityRef, String objectName) {
-    if (schema == null || schema.isEmpty()) {
-      return new ArrayList<>();
-    }
-
-    // Check if schema contains object-type elements (tables/datasets)
-    // Note: properties is initialized to empty ArrayList by default, so check for non-empty
-    List<ODCSSchemaElement> objectElements =
-        schema.stream()
-            .filter(
-                e ->
-                    e.getLogicalType() == ODCSSchemaElement.LogicalType.OBJECT
-                        || (e.getProperties() != null && !e.getProperties().isEmpty()))
-            .collect(Collectors.toList());
-
-    if (objectElements.isEmpty()) {
+    List<Column> columns;
+    if (schemaObjects(schema).isEmpty()) {
       // Legacy format: schema contains columns directly (not wrapped in objects)
-      return convertODCSSchemaToColumns(schema);
+      columns = convertODCSSchemaToColumns(schema);
+    } else {
+      columns =
+          selectSchemaObject(schema, entityRef, objectName)
+              .map(object -> convertODCSSchemaToColumns(object.getProperties()))
+              .orElseGet(ArrayList::new);
     }
-
-    // Multi-object or single-object schema: find the right object
-    ODCSSchemaElement targetObject = null;
-
-    // If objectName is explicitly specified, use it
-    if (objectName != null && !objectName.isEmpty()) {
-      targetObject =
-          objectElements.stream()
-              .filter(e -> objectName.equalsIgnoreCase(e.getName()))
-              .findFirst()
-              .orElse(null);
-
-      if (targetObject == null) {
-        throw new IllegalArgumentException(
-            "Schema object '"
-                + objectName
-                + "' not found in ODCS contract. "
-                + "Available objects: "
-                + objectElements.stream().map(ODCSSchemaElement::getName).toList());
-      }
-    }
-
-    // Try to match by entity name
-    if (targetObject == null && entityRef != null && entityRef.getName() != null) {
-      String entityName = entityRef.getName();
-      targetObject =
-          objectElements.stream()
-              .filter(e -> entityName.equalsIgnoreCase(e.getName()))
-              .findFirst()
-              .orElse(null);
-    }
-
-    // Fall back to first object
-    if (targetObject == null) {
-      targetObject = objectElements.get(0);
-      if (objectElements.size() > 1) {
-        LOG.info(
-            "ODCS contract has {} schema objects. Using first object '{}'. "
-                + "Use objectName parameter to select a specific object.",
-            objectElements.size(),
-            targetObject.getName());
-      }
-    }
-
-    // Extract properties (columns) from the selected object
-    if (targetObject.getProperties() != null) {
-      return convertODCSSchemaToColumns(targetObject.getProperties());
-    }
-
-    return new ArrayList<>();
+    return columns;
   }
 
-  private static ODCSDataContract.OdcsStatus mapContractStatusToODCS(EntityStatus status) {
-    if (status == null) return ODCSDataContract.OdcsStatus.DRAFT;
-    return switch (status) {
-      case APPROVED -> ODCSDataContract.OdcsStatus.ACTIVE;
-      case ARCHIVED -> ODCSDataContract.OdcsStatus.RETIRED;
-      case DEPRECATED -> ODCSDataContract.OdcsStatus.DEPRECATED;
-      case DRAFT, IN_REVIEW, REJECTED, UNPROCESSED -> ODCSDataContract.OdcsStatus.DRAFT;
-    };
+  private static List<ODCSSchemaElement> schemaObjects(List<ODCSSchemaElement> schema) {
+    // Note: properties is initialized to empty ArrayList by default, so check for non-empty
+    return schema.stream()
+        .filter(
+            e ->
+                e.getLogicalType() == ODCSSchemaElement.LogicalType.OBJECT
+                    || (e.getProperties() != null && !e.getProperties().isEmpty()))
+        .collect(Collectors.toList());
+  }
+
+  private static Optional<ODCSSchemaElement> selectSchemaObject(
+      List<ODCSSchemaElement> schema, EntityReference entityRef, String objectName) {
+    List<ODCSSchemaElement> objectElements = schemaObjects(schema);
+    Optional<ODCSSchemaElement> selected = Optional.empty();
+    if (!objectElements.isEmpty()) {
+      selected =
+          Optional.of(
+              nullOrEmpty(objectName)
+                  ? objectMatchingEntityOrFirst(objectElements, entityRef)
+                  : namedObject(objectElements, objectName));
+    }
+    return selected;
+  }
+
+  private static ODCSSchemaElement namedObject(
+      List<ODCSSchemaElement> objectElements, String objectName) {
+    return objectElements.stream()
+        .filter(e -> objectName.equalsIgnoreCase(e.getName()))
+        .findFirst()
+        .orElseThrow(
+            () ->
+                new IllegalArgumentException(
+                    "Schema object '"
+                        + objectName
+                        + "' not found in ODCS contract. "
+                        + "Available objects: "
+                        + objectElements.stream().map(ODCSSchemaElement::getName).toList()));
+  }
+
+  private static ODCSSchemaElement objectMatchingEntityOrFirst(
+      List<ODCSSchemaElement> objectElements, EntityReference entityRef) {
+    String entityName = entityRef == null ? null : entityRef.getName();
+    ODCSSchemaElement target =
+        objectElements.stream()
+            .filter(e -> entityName != null && entityName.equalsIgnoreCase(e.getName()))
+            .findFirst()
+            .orElse(objectElements.get(0));
+    if (objectElements.size() > 1 && target == objectElements.get(0)) {
+      LOG.info(
+          "ODCS contract has {} schema objects. Using first object '{}'. "
+              + "Use objectName parameter to select a specific object.",
+          objectElements.size(),
+          target.getName());
+    }
+    return target;
   }
 
   private static EntityStatus mapODCSStatusToContract(ODCSDataContract.OdcsStatus status) {
@@ -357,93 +351,6 @@ public class ODCSConverter {
       case DEPRECATED -> EntityStatus.DEPRECATED;
       case RETIRED -> EntityStatus.ARCHIVED;
       case PROPOSED, DRAFT -> EntityStatus.DRAFT;
-    };
-  }
-
-  private static String extractDomainFromEntity(EntityReference entity) {
-    if (entity == null || entity.getFullyQualifiedName() == null) return null;
-    String fqn = entity.getFullyQualifiedName();
-    String[] parts = fqn.split("\\.");
-    if (parts.length >= 2) {
-      return parts[0] + "." + parts[1];
-    }
-    return parts[0];
-  }
-
-  private static List<ODCSSchemaElement> convertSchemaToODCS(List<Column> columns) {
-    if (columns == null) return new ArrayList<>();
-    return columns.stream().map(ODCSConverter::convertColumnToODCS).collect(Collectors.toList());
-  }
-
-  private static ODCSSchemaElement convertColumnToODCS(Column column) {
-    ODCSSchemaElement element = new ODCSSchemaElement();
-    element.setName(column.getName());
-    element.setPhysicalName(column.getName());
-    element.setDescription(column.getDescription());
-    element.setLogicalType(mapDataTypeToLogicalType(column.getDataType()));
-    element.setPhysicalType(column.getDataType() != null ? column.getDataType().toString() : null);
-
-    if (column.getConstraint() != null) {
-      element.setPrimaryKey(column.getConstraint() == ColumnConstraint.PRIMARY_KEY);
-      element.setUnique(column.getConstraint() == ColumnConstraint.UNIQUE);
-      element.setRequired(column.getConstraint() == ColumnConstraint.NOT_NULL);
-    }
-
-    if (column.getDataLength() != null) {
-      ODCSLogicalTypeOptions options = new ODCSLogicalTypeOptions();
-      options.setMaxLength(column.getDataLength());
-      element.setLogicalTypeOptions(options);
-    }
-
-    if (column.getTags() != null && !column.getTags().isEmpty()) {
-      List<String> tags =
-          column.getTags().stream().map(TagLabel::getTagFQN).collect(Collectors.toList());
-      element.setTags(tags);
-
-      for (TagLabel tag : column.getTags()) {
-        String tagFqn = tag.getTagFQN();
-        if (tagFqn != null && tagFqn.toLowerCase().contains("pii")) {
-          element.setClassification("PII");
-          break;
-        } else if (tagFqn != null && tagFqn.toLowerCase().contains("sensitive")) {
-          element.setClassification("sensitive");
-          break;
-        } else if (tagFqn != null && tagFqn.toLowerCase().contains("confidential")) {
-          element.setClassification("confidential");
-          break;
-        } else if (tagFqn != null && tagFqn.toLowerCase().contains("restricted")) {
-          element.setClassification("restricted");
-          break;
-        }
-      }
-    }
-
-    if (column.getChildren() != null && !column.getChildren().isEmpty()) {
-      element.setProperties(convertSchemaToODCS(column.getChildren()));
-    }
-
-    return element;
-  }
-
-  private static ODCSSchemaElement.LogicalType mapDataTypeToLogicalType(ColumnDataType dataType) {
-    if (dataType == null) return ODCSSchemaElement.LogicalType.STRING;
-    return switch (dataType) {
-      case INT, SMALLINT, TINYINT, BYTEINT -> ODCSSchemaElement.LogicalType.INTEGER;
-      case BIGINT -> ODCSSchemaElement.LogicalType.LONG;
-      case FLOAT -> ODCSSchemaElement.LogicalType.FLOAT;
-      case DOUBLE -> ODCSSchemaElement.LogicalType.DOUBLE;
-      case DECIMAL, NUMERIC -> ODCSSchemaElement.LogicalType.DECIMAL;
-      case NUMBER -> ODCSSchemaElement.LogicalType.NUMBER;
-      case BOOLEAN -> ODCSSchemaElement.LogicalType.BOOLEAN;
-      case DATE, DATETIME -> ODCSSchemaElement.LogicalType.DATE;
-      case TIMESTAMP, TIMESTAMPZ -> ODCSSchemaElement.LogicalType.TIMESTAMP;
-      case TIME -> ODCSSchemaElement.LogicalType.TIME;
-      case ARRAY -> ODCSSchemaElement.LogicalType.ARRAY;
-      case MAP, STRUCT, JSON -> ODCSSchemaElement.LogicalType.OBJECT;
-      case BLOB, BYTEA, BINARY, VARBINARY, LONGBLOB, MEDIUMBLOB -> ODCSSchemaElement.LogicalType
-          .BYTES;
-      case TEXT, MEDIUMTEXT, CLOB, NTEXT -> ODCSSchemaElement.LogicalType.TEXT;
-      default -> ODCSSchemaElement.LogicalType.STRING;
     };
   }
 
@@ -460,6 +367,12 @@ public class ODCSConverter {
     column.setDescription(element.getDescription());
     column.setDataType(
         mapLogicalTypeToDataType(element.getLogicalType(), element.getPhysicalType()));
+
+    if (column.getDataType() == ColumnDataType.ARRAY && element.getItems() != null) {
+      column.setArrayDataType(
+          mapLogicalTypeToDataType(
+              element.getItems().getLogicalType(), element.getItems().getPhysicalType()));
+    }
 
     if (Boolean.TRUE.equals(element.getPrimaryKey())) {
       column.setConstraint(ColumnConstraint.PRIMARY_KEY);
@@ -511,36 +424,39 @@ public class ODCSConverter {
     };
   }
 
-  private static List<ODCSTeamMember> convertOwnersToTeam(List<EntityReference> owners) {
-    if (owners == null) return new ArrayList<>();
-    return owners.stream()
-        .map(
-            owner -> {
-              ODCSTeamMember member = new ODCSTeamMember();
-              member.setUsername(owner.getName());
-              member.setName(
-                  owner.getDisplayName() != null ? owner.getDisplayName() : owner.getName());
-              member.setRole("owner");
-              return member;
-            })
-        .collect(Collectors.toList());
-  }
-
-  private static List<EntityReference> convertTeamToOwners(List<ODCSTeamMember> team) {
-    if (team == null) return new ArrayList<>();
-
+  private static List<EntityReference> convertTeamToOwners(
+      List<ODCSTeamMember> members, ODCSImportIssues issues) {
     List<EntityReference> owners = new ArrayList<>();
-    for (ODCSTeamMember member : team) {
-      if (!"owner".equalsIgnoreCase(member.getRole())) {
-        continue;
-      }
-
-      EntityReference ref = resolveTeamMemberToEntity(member);
-      if (ref != null) {
-        owners.add(ref);
+    for (int index = 0; index < members.size(); index++) {
+      ODCSTeamMember member = members.get(index);
+      String path = "team.members[" + index + "]";
+      if (!OWNER_ROLE.equalsIgnoreCase(member.getRole())) {
+        issues.warning(
+            ODCSImportIssueCategory.TEAM,
+            "role",
+            path + ".role",
+            "Team members whose role is not `owner` are not imported; OpenMetadata keeps the contract's owners.");
+      } else {
+        addOwner(owners, member, path, issues);
       }
     }
     return owners;
+  }
+
+  private static void addOwner(
+      List<EntityReference> owners, ODCSTeamMember member, String path, ODCSImportIssues issues) {
+    EntityReference ref = resolveTeamMemberToEntity(member);
+    if (ref == null) {
+      issues.warning(
+          ODCSImportIssueCategory.TEAM,
+          "username",
+          path,
+          String.format(
+              "Owner `%s` is not an OpenMetadata user or team, so the contract does not get this owner.",
+              member.getUsername() != null ? member.getUsername() : member.getName()));
+    } else {
+      owners.add(ref);
+    }
   }
 
   private static EntityReference resolveTeamMemberToEntity(ODCSTeamMember member) {
@@ -588,33 +504,6 @@ public class ODCSConverter {
     return null;
   }
 
-  private static List<ODCSRole> convertSecurityToRoles(ContractSecurity security) {
-    List<ODCSRole> roles = new ArrayList<>();
-
-    if (security.getPolicies() != null) {
-      for (Policy policy : security.getPolicies()) {
-        ODCSRole role = new ODCSRole();
-        role.setRole(policy.getAccessPolicy() != null ? policy.getAccessPolicy() : "data-consumer");
-        role.setAccess(ODCSRole.Access.READ);
-
-        if (policy.getIdentities() != null) {
-          role.setFirstLevelApprovers(new ArrayList<>(policy.getIdentities()));
-        }
-
-        roles.add(role);
-      }
-    }
-
-    if (security.getDataClassification() != null) {
-      ODCSRole classificationRole = new ODCSRole();
-      classificationRole.setRole("classification-" + security.getDataClassification());
-      classificationRole.setDescription("Data classification: " + security.getDataClassification());
-      roles.add(classificationRole);
-    }
-
-    return roles;
-  }
-
   private static ContractSecurity convertRolesToSecurity(List<ODCSRole> roles) {
     ContractSecurity security = new ContractSecurity();
     List<Policy> policies = new ArrayList<>();
@@ -625,8 +514,8 @@ public class ODCSConverter {
       } else {
         Policy policy = new Policy();
         policy.setAccessPolicy(role.getRole());
-        if (role.getFirstLevelApprovers() != null) {
-          policy.setIdentities(new ArrayList<>(role.getFirstLevelApprovers()));
+        if (!nullOrEmpty(role.getFirstLevelApprovers())) {
+          policy.setIdentities(splitApprovers(role.getFirstLevelApprovers()));
         }
         policies.add(policy);
       }
@@ -639,100 +528,12 @@ public class ODCSConverter {
     return security;
   }
 
-  private static List<ODCSSlaProperty> convertSLAToODCS(ContractSLA sla) {
-    List<ODCSSlaProperty> properties = new ArrayList<>();
-
-    if (sla.getRefreshFrequency() != null) {
-      ODCSSlaProperty prop = new ODCSSlaProperty();
-      prop.setProperty("freshness"); // ODCS uses "freshness"
-      prop.setValue(String.valueOf(sla.getRefreshFrequency().getInterval()));
-      if (sla.getRefreshFrequency().getUnit() != null) {
-        prop.setUnit(sla.getRefreshFrequency().getUnit().value());
-      }
-      properties.add(prop);
-    }
-
-    if (sla.getMaxLatency() != null) {
-      ODCSSlaProperty prop = new ODCSSlaProperty();
-      prop.setProperty("latency"); // ODCS uses "latency"
-      prop.setValue(String.valueOf(sla.getMaxLatency().getValue()));
-      if (sla.getMaxLatency().getUnit() != null) {
-        prop.setUnit(sla.getMaxLatency().getUnit().value());
-      }
-      properties.add(prop);
-    }
-
-    if (sla.getRetention() != null) {
-      ODCSSlaProperty prop = new ODCSSlaProperty();
-      prop.setProperty("retention");
-      prop.setValue(String.valueOf(sla.getRetention().getPeriod()));
-      if (sla.getRetention().getUnit() != null) {
-        prop.setUnit(sla.getRetention().getUnit().value());
-      }
-      properties.add(prop);
-    }
-
-    if (sla.getAvailabilityTime() != null) {
-      ODCSSlaProperty prop = new ODCSSlaProperty();
-      prop.setProperty("availabilityTime");
-      prop.setValue(sla.getAvailabilityTime());
-      if (sla.getTimezone() != null) {
-        prop.setValueExt(sla.getTimezone().value());
-      }
-      properties.add(prop);
-    }
-
-    return properties;
-  }
-
-  private static ContractSLA convertODCSSLAToContract(List<ODCSSlaProperty> slaProperties) {
-    ContractSLA sla = new ContractSLA();
-    sla.setTimezone(null);
-
-    for (ODCSSlaProperty prop : slaProperties) {
-      if (prop.getProperty() == null) continue;
-
-      switch (prop.getProperty().toLowerCase()) {
-        case "freshness", "refreshfrequency" -> {
-          // ODCS uses "freshness", OpenMetadata uses "refreshFrequency"
-          RefreshFrequency rf = new RefreshFrequency();
-          rf.setInterval(parseInteger(prop.getValue()));
-          if (prop.getUnit() != null) {
-            rf.setUnit(RefreshFrequency.Unit.fromValue(normalizeTimeUnit(prop.getUnit())));
-          }
-          sla.setRefreshFrequency(rf);
-        }
-        case "latency", "maxlatency" -> {
-          // ODCS uses "latency", OpenMetadata uses "maxLatency"
-          MaxLatency ml = new MaxLatency();
-          ml.setValue(parseInteger(prop.getValue()));
-          if (prop.getUnit() != null) {
-            ml.setUnit(MaxLatency.Unit.fromValue(normalizeTimeUnit(prop.getUnit())));
-          }
-          sla.setMaxLatency(ml);
-        }
-        case "retention" -> {
-          Retention ret = new Retention();
-          ret.setPeriod(parseInteger(prop.getValue()));
-          if (prop.getUnit() != null) {
-            ret.setUnit(Retention.Unit.fromValue(normalizeTimeUnit(prop.getUnit())));
-          }
-          sla.setRetention(ret);
-        }
-        case "availabilitytime" -> {
-          sla.setAvailabilityTime(prop.getValue());
-          if (prop.getValueExt() != null) {
-            try {
-              sla.setTimezone(ContractSLA.Timezone.fromValue(prop.getValueExt()));
-            } catch (IllegalArgumentException ignored) {
-              // Invalid timezone, ignore
-            }
-          }
-        }
-      }
-    }
-
-    return sla;
+  /** ODCS types the approvers as one string; the policy keeps them as a list. */
+  private static List<String> splitApprovers(String approvers) {
+    return Arrays.stream(approvers.split(","))
+        .map(String::trim)
+        .filter(identity -> !identity.isEmpty())
+        .collect(Collectors.toList());
   }
 
   private static UUID parseUUID(String id) {
@@ -744,31 +545,8 @@ public class ODCSConverter {
     }
   }
 
-  private static Integer parseInteger(String value) {
-    if (value == null) return 0;
-    try {
-      return Integer.parseInt(value);
-    } catch (NumberFormatException e) {
-      return 0;
-    }
-  }
-
-  private static String normalizeTimeUnit(String unit) {
-    if (unit == null) return null;
-    String lower = unit.toLowerCase().trim();
-    return switch (lower) {
-      case "hours", "hrs", "h" -> "hour";
-      case "days", "d" -> "day";
-      case "weeks", "wks", "w" -> "week";
-      case "months", "mos" -> "month";
-      case "years", "yrs", "y" -> "year";
-      case "minutes", "mins", "m" -> "minute";
-      case "seconds", "secs", "s" -> "second";
-      default -> lower;
-    };
-  }
-
-  private static List<ODCSQualityRule> collectAllQualityRules(ODCSDataContract odcs) {
+  private static List<ODCSQualityRule> collectAllQualityRules(
+      ODCSDataContract odcs, String selectedObject) {
     List<ODCSQualityRule> allRules = new ArrayList<>();
 
     if (odcs.getQuality() != null && !odcs.getQuality().isEmpty()) {
@@ -777,7 +555,11 @@ public class ODCSConverter {
 
     if (odcs.getSchema() != null) {
       for (ODCSSchemaElement schemaObject : odcs.getSchema()) {
-        collectQualityRulesFromElement(schemaObject, allRules);
+        if (selectedObject != null && !selectedObject.equals(schemaObject.getName())) continue;
+        boolean table =
+            schemaObject.getLogicalType() == ODCSSchemaElement.LogicalType.OBJECT
+                || !nullOrEmpty(schemaObject.getProperties());
+        collectQualityRulesFromElement(schemaObject, allRules, table ? null : "");
       }
     }
 
@@ -785,12 +567,18 @@ public class ODCSConverter {
   }
 
   private static void collectQualityRulesFromElement(
-      ODCSSchemaElement element, List<ODCSQualityRule> allRules) {
+      ODCSSchemaElement element, List<ODCSQualityRule> allRules, String parentPath) {
+    String columnPath =
+        parentPath == null
+            ? element.getName()
+            : parentPath.isEmpty()
+                ? FullyQualifiedName.quoteName(element.getName())
+                : FullyQualifiedName.add(parentPath, element.getName());
     if (element.getQuality() != null && !element.getQuality().isEmpty()) {
       for (ODCSQualityRule rule : element.getQuality()) {
         if (rule.getColumn() == null || rule.getColumn().isEmpty()) {
           ODCSQualityRule copy = copyQualityRule(rule);
-          copy.setColumn(element.getName());
+          copy.setColumn(columnPath);
           allRules.add(copy);
         } else {
           allRules.add(rule);
@@ -800,61 +588,13 @@ public class ODCSConverter {
 
     if (element.getProperties() != null) {
       for (ODCSSchemaElement property : element.getProperties()) {
-        collectQualityRulesFromElement(property, allRules);
+        collectQualityRulesFromElement(property, allRules, parentPath == null ? "" : columnPath);
       }
     }
   }
 
   private static ODCSQualityRule copyQualityRule(ODCSQualityRule source) {
     return MAPPER.convertValue(source, ODCSQualityRule.class);
-  }
-
-  private static void distributeQualityRules(
-      ODCSDataContract odcs, List<ODCSQualityRule> allRules) {
-    List<ODCSQualityRule> topLevelRules = new ArrayList<>();
-
-    for (ODCSQualityRule rule : allRules) {
-      if (rule.getColumn() == null || rule.getColumn().isEmpty()) {
-        topLevelRules.add(rule);
-      } else if (odcs.getSchema() != null) {
-        boolean placed = placeRuleInSchema(odcs.getSchema(), rule);
-        if (!placed) {
-          topLevelRules.add(rule);
-        }
-      } else {
-        topLevelRules.add(rule);
-      }
-    }
-
-    odcs.setQuality(topLevelRules.isEmpty() ? null : topLevelRules);
-  }
-
-  private static boolean placeRuleInSchema(
-      List<ODCSSchemaElement> schemaElements, ODCSQualityRule rule) {
-    ODCSSchemaElement target = findSchemaElement(schemaElements, rule.getColumn());
-    if (target != null) {
-      if (target.getQuality() == null) {
-        target.setQuality(new ArrayList<>());
-      }
-      target.getQuality().add(rule);
-    }
-    return target != null;
-  }
-
-  private static ODCSSchemaElement findSchemaElement(
-      List<ODCSSchemaElement> schemaElements, String name) {
-    ODCSSchemaElement found = null;
-    for (ODCSSchemaElement element : schemaElements) {
-      if (name.equals(element.getName())) {
-        found = element;
-      } else if (element.getProperties() != null) {
-        found = findSchemaElement(element.getProperties(), name);
-      }
-      if (found != null) {
-        break;
-      }
-    }
-    return found;
   }
 
   /**
@@ -913,92 +653,15 @@ public class ODCSConverter {
   }
 
   /**
-   * Reattaches preserved attributes to the elements they came from. An anchor that matches nothing
-   * in the exported schema — which happens for object-level attributes, because the exported object
-   * is renamed after the OpenMetadata entity — falls back to the contract level rather than being
-   * dropped, mirroring how an unplaceable quality rule falls back to the contract-level quality
-   * block.
-   */
-  private static void distributeElementExtensions(
-      ODCSDataContract odcs, List<ODCSElementExtension> extensions) {
-    List<ODCSAuthoritativeDefinition> contractDefinitions = new ArrayList<>();
-
-    for (ODCSElementExtension extension : extensions) {
-      boolean placed =
-          !nullOrEmpty(extension.getElement())
-              && odcs.getSchema() != null
-              && applyElementExtension(odcs.getSchema(), extension);
-      if (!placed && !nullOrEmpty(extension.getAuthoritativeDefinitions())) {
-        contractDefinitions.addAll(extension.getAuthoritativeDefinitions());
-      }
-    }
-
-    if (!contractDefinitions.isEmpty()) {
-      odcs.setAuthoritativeDefinitions(contractDefinitions);
-    }
-  }
-
-  private static boolean applyElementExtension(
-      List<ODCSSchemaElement> schemaElements, ODCSElementExtension extension) {
-    ODCSSchemaElement target = findSchemaElement(schemaElements, extension.getElement());
-    if (target == null) {
-      LOG.debug(
-          "No exported schema element named '{}'; its ODCS attributes fall back to contract level",
-          extension.getElement());
-    } else {
-      if (!nullOrEmpty(extension.getAuthoritativeDefinitions())) {
-        target.setAuthoritativeDefinitions(extension.getAuthoritativeDefinitions());
-      }
-      if (!nullOrEmpty(extension.getTransformSourceObjects())) {
-        target.setTransformSourceObjects(extension.getTransformSourceObjects());
-      }
-    }
-    return target != null;
-  }
-
-  /**
-   * Normalizes ODCS input to handle flexible representations. Converts: - team from object form
-   * {members: [...]} to array form [...] - roles' firstLevelApprovers and secondLevelApprovers from
-   * scalar strings to arrays
+   * Normalizes ODCS input to handle flexible representations without reporting the changes, for
+   * callers like the parse endpoint that return no import report: a team written in the deprecated
+   * ODCS v3.0.2 bare-array form into the v3.1.0 object form, legacy arrays of approvers back into
+   * the conformant scalar strings, and the legacy map-form customProperties into the ODCS array
+   * form. Import endpoints that report use {@link ODCSShapeNormalizer#normalize} instead.
    */
   public static void normalizeODCSInput(JsonNode rootNode) {
     if (rootNode == null || !rootNode.isObject()) return;
-    ObjectNode root = (ObjectNode) rootNode;
-
-    normalizeTeamField(root);
-    normalizeApproverFields(root);
-  }
-
-  private static void normalizeTeamField(ObjectNode root) {
-    JsonNode teamNode = root.get("team");
-    if (teamNode == null || !teamNode.isObject()) return;
-
-    JsonNode membersNode = teamNode.get("members");
-    if (membersNode != null && membersNode.isArray()) {
-      root.set("team", membersNode);
-    }
-  }
-
-  private static void normalizeApproverFields(ObjectNode root) {
-    JsonNode rolesNode = root.get("roles");
-    if (rolesNode == null || !rolesNode.isArray()) return;
-
-    for (JsonNode roleNode : rolesNode) {
-      if (!roleNode.isObject()) continue;
-      ObjectNode role = (ObjectNode) roleNode;
-
-      wrapScalarAsArray(role, "firstLevelApprovers");
-      wrapScalarAsArray(role, "secondLevelApprovers");
-    }
-  }
-
-  private static void wrapScalarAsArray(ObjectNode node, String fieldName) {
-    JsonNode field = node.get(fieldName);
-    if (field != null && field.isTextual()) {
-      ArrayNode array = node.arrayNode();
-      array.add(field.asText());
-      node.set(fieldName, array);
-    }
+    ODCSShapeNormalizer.normalize((ObjectNode) rootNode, ODCSImportIssues.discarding());
   }
 
   private static void validateRequiredODCSFields(ODCSDataContract odcs) {
@@ -1034,6 +697,17 @@ public class ODCSConverter {
    * @param imported The imported DataContract from ODCS
    * @return Merged DataContract
    */
+  private static Object mergeNativeExtensions(Object existing, Object imported) {
+    if (imported == null) return existing;
+    if (existing == null) return imported;
+    ObjectNode merged = (ObjectNode) JsonUtils.valueToTree(existing);
+    JsonNode incoming = JsonUtils.valueToTree(imported);
+    incoming
+        .fields()
+        .forEachRemaining(field -> merged.set(field.getKey(), field.getValue().deepCopy()));
+    return JsonUtils.treeToValue(merged, Object.class);
+  }
+
   public static DataContract smartMerge(DataContract existing, DataContract imported) {
     if (existing == null) return imported;
     if (imported == null) return existing;
@@ -1075,19 +749,28 @@ public class ODCSConverter {
     merged.setTermsOfUse(
         imported.getTermsOfUse() != null ? imported.getTermsOfUse() : existing.getTermsOfUse());
 
-    merged.setExtension(
-        imported.getExtension() != null ? imported.getExtension() : existing.getExtension());
+    merged.setExtension(mergeNativeExtensions(existing.getExtension(), imported.getExtension()));
 
     merged.setOdcsQualityRules(
         !nullOrEmpty(imported.getOdcsQualityRules())
             ? imported.getOdcsQualityRules()
             : existing.getOdcsQualityRules());
 
+    merged.setQualityExpectations(
+        mergeQualityExpectations(
+            existing.getQualityExpectations(), imported.getQualityExpectations()));
+
+    merged.setSemantics(
+        !nullOrEmpty(imported.getSemantics()) ? imported.getSemantics() : existing.getSemantics());
+
     merged.setOdcsElementExtensions(
         !nullOrEmpty(imported.getOdcsElementExtensions())
             ? imported.getOdcsElementExtensions()
             : existing.getOdcsElementExtensions());
 
+    merged.setOdcsPreservedFields(
+        ODCSPreservedFields.merge(
+            existing.getOdcsPreservedFields(), imported.getOdcsPreservedFields()));
     merged.setVersion(existing.getVersion());
     merged.setCreatedAt(existing.getCreatedAt());
     merged.setCreatedBy(existing.getCreatedBy());
@@ -1139,8 +822,25 @@ public class ODCSConverter {
     // Leaving null would read as "not specified" and be carried forward on the next write.
     replaced.setOdcsQualityRules(listOrEmpty(imported.getOdcsQualityRules()));
     replaced.setOdcsElementExtensions(listOrEmpty(imported.getOdcsElementExtensions()));
+    replaced.setOdcsPreservedFields(
+        imported.getOdcsPreservedFields() == null
+            ? MAPPER.createObjectNode()
+            : imported.getOdcsPreservedFields());
+    replaced.setQualityExpectations(listOrEmpty(imported.getQualityExpectations()));
 
     return replaced;
+  }
+
+  /**
+   * Test cases the contract links today stay linked; the ones the import produced are added, and a
+   * test case linked by both is kept once, in the position it already had.
+   */
+  private static List<EntityReference> mergeQualityExpectations(
+      List<EntityReference> existing, List<EntityReference> imported) {
+    Map<UUID, EntityReference> byId = new LinkedHashMap<>();
+    listOrEmpty(existing).forEach(reference -> byId.putIfAbsent(reference.getId(), reference));
+    listOrEmpty(imported).forEach(reference -> byId.putIfAbsent(reference.getId(), reference));
+    return byId.isEmpty() ? existing : new ArrayList<>(byId.values());
   }
 
   private static ContractSLA mergeSLA(ContractSLA existing, ContractSLA imported) {
@@ -1163,46 +863,9 @@ public class ODCSConverter {
             : existing.getAvailabilityTime());
     merged.setTimezone(
         imported.getTimezone() != null ? imported.getTimezone() : existing.getTimezone());
+    merged.setColumnName(
+        imported.getColumnName() != null ? imported.getColumnName() : existing.getColumnName());
 
     return merged;
-  }
-
-  /**
-   * Maps ODCS quality metric to OpenMetadata test definition name. This mapping is provided for
-   * documentation and future use when creating test cases from ODCS quality rules.
-   *
-   * @param metric ODCS quality metric
-   * @return OpenMetadata test definition name or null if no direct mapping exists
-   */
-  public static String mapODCSMetricToTestDefinition(ODCSQualityRule.OdcsQualityMetric metric) {
-    if (metric == null) return null;
-    return switch (metric) {
-      case NULL_VALUES -> "columnValuesToBeNotNull";
-      case ROW_COUNT -> "tableRowCountToEqual";
-      case UNIQUE_VALUES -> "columnValuesToBeUnique";
-      case MISSING_VALUES -> "columnValuesMissingCountToBeEqual";
-      case COMPLETENESS -> "columnValuesToBeNotNull";
-      default -> null;
-    };
-  }
-
-  /**
-   * Maps OpenMetadata test definition name to ODCS quality metric. This mapping is provided for
-   * documentation and future use when exporting test cases to ODCS quality rules.
-   *
-   * @param testDefinitionName OpenMetadata test definition name
-   * @return ODCS quality metric or null if no direct mapping exists
-   */
-  public static ODCSQualityRule.OdcsQualityMetric mapTestDefinitionToODCSMetric(
-      String testDefinitionName) {
-    if (testDefinitionName == null) return null;
-    return switch (testDefinitionName.toLowerCase()) {
-      case "columnvaluestobenotnull" -> ODCSQualityRule.OdcsQualityMetric.NULL_VALUES;
-      case "tablerowcounttoequal", "tablerowcounttobebetween" -> ODCSQualityRule.OdcsQualityMetric
-          .ROW_COUNT;
-      case "columnvaluestobeunique" -> ODCSQualityRule.OdcsQualityMetric.UNIQUE_VALUES;
-      case "columnvaluesmissingcounttobeequal" -> ODCSQualityRule.OdcsQualityMetric.MISSING_VALUES;
-      default -> null;
-    };
   }
 }

@@ -22,7 +22,8 @@ import userEvent from '@testing-library/user-event';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { useFqn } from '../../hooks/useFqn';
 import {
   addDataModelFollower,
@@ -31,13 +32,13 @@ import {
   removeDataModelFollower,
   updateDataModelVotes,
 } from '../../rest/dataModelsAPI';
+import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { showErrorToast } from '../../utils/ToastUtils';
 import DataModelsPage from './DataModelPage.component';
 import {
   CREATE_THREAD,
   DATA_MODEL_DELETED,
   ERROR,
-  ERROR_PLACEHOLDER,
   FETCH_ENTITY_PERMISSION_ERROR,
   FOLLOW_DATA_MODEL,
   TOGGLE_DELETE,
@@ -45,22 +46,41 @@ import {
   UPDATE_VOTE,
 } from './mocks/DataModelPage.mock';
 
-const mockGetEntityPermissionByFqn = jest.fn().mockImplementation(() => ({
-  ViewAll: true,
-  ViewBasic: true,
-}));
 const mockUpdateTierTag = jest.fn();
 const ENTITY_MISSING_ERROR = 'Entity missing error.';
+
+// Permissions now come from useEntityPermissions (Task 8 Batch 9) rather than an
+// imperative usePermissionProvider().getEntityPermissionByFqn call — mock the hook
+// directly, mirroring MetricDetailsPage.test.tsx's approach.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
     currentUser: mockUserData,
   })),
 }));
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>{ERROR_PLACEHOLDER}</div>)
-);
 
 jest.mock(
   '../../components/Dashboard/DataModel/DataModels/DataModelDetails.component',
@@ -106,12 +126,6 @@ jest.mock('../../components/common/Loader/Loader', () => ({
   PageLoader: jest
     .fn()
     .mockImplementation(() => <div data-testid="loader">Loader</div>),
-}));
-
-jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
-  usePermissionProvider: jest.fn().mockImplementation(() => ({
-    getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
-  })),
 }));
 
 jest.mock('../../hooks/useFqn', () => ({
@@ -192,10 +206,7 @@ describe('DataModelPage component', () => {
     (addDataModelFollower as jest.Mock).mockResolvedValue({});
     (removeDataModelFollower as jest.Mock).mockResolvedValue({});
     (updateDataModelVotes as jest.Mock).mockResolvedValue({});
-    mockGetEntityPermissionByFqn.mockResolvedValue({
-      ViewAll: true,
-      ViewBasic: true,
-    });
+    setMockPermissions({ ViewAll: true, ViewBasic: true });
   });
 
   it('should render necessary elements', async () => {
@@ -298,13 +309,17 @@ describe('DataModelPage component', () => {
   });
 
   it('error when rendering component', async () => {
-    mockGetEntityPermissionByFqn.mockRejectedValueOnce(ERROR);
+    setMockPermissions({}, { error: ERROR });
 
     await act(async () => {
       renderPage();
     });
 
-    expect(await screen.findByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
     expect(showErrorToast).toHaveBeenCalledWith(FETCH_ENTITY_PERMISSION_ERROR);
   });
 
@@ -321,10 +336,15 @@ describe('DataModelPage component', () => {
     });
 
     expect(useFqn).toHaveBeenCalled();
-    expect(mockGetEntityPermissionByFqn).toHaveBeenCalledWith(
+    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
       ResourceEntity.DASHBOARD_DATA_MODEL,
-      'testFqn'
+      'testFqn',
+      expect.objectContaining({ enabled: true })
     );
-    expect(await screen.findByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 });

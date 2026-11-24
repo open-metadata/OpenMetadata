@@ -13,8 +13,6 @@
 IOMETE lineage module.
 """
 
-from typing import Optional
-
 from metadata.generated.schema.entity.services.connections.database.iometeConnection import (
     IometeConnection,
 )
@@ -31,7 +29,7 @@ logger = ingestion_logger()
 
 class IometeLineageSource(LineageSource):
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: IometeConnection = config.serviceConnection.root.config
         if not isinstance(connection, IometeConnection):

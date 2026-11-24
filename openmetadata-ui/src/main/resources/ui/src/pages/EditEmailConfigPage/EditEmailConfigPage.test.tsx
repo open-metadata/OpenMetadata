@@ -10,8 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MASKED_PASSWORD_VALUE } from '../../constants/Secrets.constants';
+import { SettingType } from '../../generated/settings/settings';
+import {
+  ConfigSourceMode,
+  SettingSource,
+  SettingType as SourceSettingType,
+} from '../../generated/system/settingsSourceResponse';
 import EditEmailConfigPage from './EditEmailConfigPage.component';
 
 const ERROR = 'ERROR';
@@ -19,6 +27,12 @@ const ENTITY_FETCH_ERROR = 'server.entity-fetch-error';
 const ENTITY_UPDATING_ERROR = 'server.entity-updating-error';
 const UPDATE_ENTITY_SUCCESS = 'server.update-entity-success';
 const ACTIVE_FIELD = 'activeField';
+const EMAIL_CONFIG = {
+  password: MASKED_PASSWORD_VALUE,
+  senderMail: 'before@example.com',
+  serverEndpoint: 'smtp.example.com',
+  serverPort: 587,
+};
 
 jest.mock('../../components/common/ServiceDocPanel/ServiceDocPanel', () =>
   jest.fn(({ activeField }) => (
@@ -50,16 +64,25 @@ jest.mock(
 jest.mock(
   '../../components/Settings/Email/EmailConfigForm/EmailConfigForm.component',
   () =>
-    jest.fn().mockImplementation(({ onCancel, onFocus, onSubmit }) => (
-      <>
-        EmailConfigForm
-        <button onClick={onCancel}>Cancel EmailConfigForm</button>
-        <button onClick={() => onFocus({ target: { id: ACTIVE_FIELD } })}>
-          Focus EmailConfigForm
-        </button>
-        <button onClick={onSubmit}>Submit EmailConfigForm</button>
-      </>
-    ))
+    jest
+      .fn()
+      .mockImplementation(
+        ({ emailConfigValues, managedFields, onCancel, onFocus, onSubmit }) => (
+          <>
+            EmailConfigForm
+            <span data-testid="managed-fields">
+              {JSON.stringify(managedFields)}
+            </span>
+            <button onClick={onCancel}>Cancel EmailConfigForm</button>
+            <button onClick={() => onFocus({ target: { id: ACTIVE_FIELD } })}>
+              Focus EmailConfigForm
+            </button>
+            <button onClick={() => onSubmit(emailConfigValues)}>
+              Submit EmailConfigForm
+            </button>
+          </>
+        )
+      )
 );
 
 const mockNavigate = jest.fn();
@@ -70,20 +93,23 @@ jest.mock('react-router-dom', () => ({
 
 const mockGetSettingsConfigFromConfigType = jest.fn().mockResolvedValue({
   data: {
-    config_value: {
-      customLogoUrlPath: 'https://custom-logo.png',
-      customMonogramUrlPath: 'https://custom-monogram.png',
-    },
+    config_value: EMAIL_CONFIG,
   },
 });
 
 const mockUpdateSettingsConfig = jest.fn().mockResolvedValue({});
+const mockGetSettingsSource = jest.fn();
+const mockAdoptDeploymentConfig = jest.fn();
 
 jest.mock('../../rest/settingConfigAPI', () => ({
   getSettingsConfigFromConfigType: jest.fn(() =>
     mockGetSettingsConfigFromConfigType()
   ),
-  updateSettingsConfig: jest.fn(() => mockUpdateSettingsConfig()),
+  updateSettingsConfig: jest.fn((...args) => mockUpdateSettingsConfig(...args)),
+  getSettingsSource: jest.fn(() => mockGetSettingsSource()),
+  adoptDeploymentConfig: jest.fn((...args) =>
+    mockAdoptDeploymentConfig(...args)
+  ),
 }));
 
 jest.mock('../../utils/RouterUtils', () => ({
@@ -106,10 +132,36 @@ const mockProps = {
   pageTitle: 'edit-email-config',
 };
 
+const emailSource = (overrides: Partial<SettingSource>): SettingSource => ({
+  configType: SourceSettingType.EmailConfiguration,
+  source: ConfigSourceMode.Auto,
+  sourceVariable: 'EMAIL_CONFIG_SOURCE',
+  editable: true,
+  ...overrides,
+});
+
+const renderPage = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <EditEmailConfigPage {...mockProps} />
+    </QueryClientProvider>
+  );
+};
+
 describe('EditEmailConfigPage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetSettingsSource.mockResolvedValue({ settings: [] });
+    mockAdoptDeploymentConfig.mockResolvedValue({});
+  });
+
   it('should contain all necessary elements', async () => {
     await act(async () => {
-      render(<EditEmailConfigPage {...mockProps} />);
+      renderPage();
     });
 
     expect(mockGetSettingsConfigFromConfigType).toHaveBeenCalled();
@@ -121,7 +173,7 @@ describe('EditEmailConfigPage', () => {
 
   it('actions check', async () => {
     await act(async () => {
-      render(<EditEmailConfigPage {...mockProps} />);
+      renderPage();
     });
 
     // Focus EmailConfigForm
@@ -164,7 +216,7 @@ describe('EditEmailConfigPage', () => {
     mockGetSettingsConfigFromConfigType.mockRejectedValueOnce(ERROR);
     mockUpdateSettingsConfig.mockRejectedValueOnce(ERROR);
 
-    render(<EditEmailConfigPage {...mockProps} />);
+    renderPage();
 
     await waitFor(() => {
       expect(mockShowErrorToast).toHaveBeenCalledWith(
@@ -187,5 +239,89 @@ describe('EditEmailConfigPage', () => {
         ENTITY_UPDATING_ERROR
       );
     });
+  });
+
+  it('does not submit the masked password sentinel', async () => {
+    renderPage();
+
+    await screen.findByText('EmailConfigForm');
+    await act(async () => {
+      userEvent.click(
+        screen.getByRole('button', {
+          name: 'Submit EmailConfigForm',
+        })
+      );
+    });
+
+    await waitFor(() => expect(mockUpdateSettingsConfig).toHaveBeenCalled());
+    const submittedSettings = mockUpdateSettingsConfig.mock.calls[0][0];
+
+    expect(submittedSettings).toEqual({
+      config_type: SettingType.EmailConfiguration,
+      config_value: {
+        senderMail: EMAIL_CONFIG.senderMail,
+        serverEndpoint: EMAIL_CONFIG.serverEndpoint,
+        serverPort: EMAIL_CONFIG.serverPort,
+      },
+    });
+  });
+
+  it('should leave every field editable when the deployment owns none', async () => {
+    renderPage();
+
+    expect(await screen.findByTestId('managed-fields')).toHaveTextContent('[]');
+    expect(
+      screen.queryByTestId('settings-source-banner')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should lock the fields the deployment configuration owns', async () => {
+    mockGetSettingsSource.mockResolvedValue({
+      settings: [
+        emailSource({
+          source: ConfigSourceMode.Env,
+          editable: false,
+          managedPaths: ['/senderMail', '/password', '/templates'],
+        }),
+      ],
+    });
+    renderPage();
+
+    expect(
+      await screen.findByTestId('settings-source-env-alert')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('managed-fields')).toHaveTextContent(
+      '["password","senderMail"]'
+    );
+  });
+
+  it('should reload the configuration once deployment values are adopted', async () => {
+    mockGetSettingsSource.mockResolvedValue({
+      settings: [
+        emailSource({
+          overriddenFields: [
+            { path: '/serverPort', envVariable: 'SMTP_SERVER_PORT' },
+          ],
+        }),
+      ],
+    });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderPage();
+
+    await user.click(await screen.findByTestId('use-deployment-value-button'));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'label.use-deployment-value',
+      })
+    );
+
+    await waitFor(() => {
+      expect(mockGetSettingsConfigFromConfigType).toHaveBeenCalledTimes(2);
+    });
+
+    expect(mockAdoptDeploymentConfig).toHaveBeenCalledWith(
+      SourceSettingType.EmailConfiguration,
+      ['/serverPort']
+    );
   });
 });

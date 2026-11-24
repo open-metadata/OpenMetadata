@@ -52,7 +52,7 @@ const ClassificationFormDrawer: FC<ClassificationFormDrawerProps> = ({
       className="tw:z-999"
       data-testid="classification-form-drawer"
       isOpen={open}
-      width={480}
+      width="40%"
       onOpenChange={handleOpenChange}>
       {({ close }) => (
         <>

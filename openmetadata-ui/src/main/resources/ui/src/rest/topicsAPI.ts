@@ -13,18 +13,18 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingWithoutTotal, RestoreRequestType } from 'Models';
-import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
+import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
-import { Topic } from '../generated/entity/data/topic';
+import { Field, Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
+import { QueryVote } from '../interface/entity/vote.interface';
+import { ServicePageData } from '../interface/platform/service.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/topics';
 
@@ -139,6 +139,40 @@ export const updateTopicVotes = async (id: string, data: QueryVote) => {
   const response = await APIClient.put<QueryVote, AxiosResponse<Topic>>(
     `${BASE_URL}/${id}/vote`,
     data
+  );
+
+  return response.data;
+};
+
+export interface TopicSchemaFieldParams {
+  limit?: number;
+  offset?: number;
+  fields?: string;
+  include?: Include;
+  q?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+// 'schema' keeps fields in stored order (the endpoint's own default sorts by name).
+// See ADR:2026-11-16-topic-schema-field-search-returns-flat-rows.
+const schemaFieldSortParams = (sortOrder?: 'asc' | 'desc') =>
+  sortOrder ? { sortBy: 'name', sortOrder } : { sortBy: 'schema' };
+
+export const getTopicSchemaFieldsByFQN = async (
+  fqn: string,
+  params?: TopicSchemaFieldParams
+) => {
+  const { q, sortOrder, ...rest } = params ?? {};
+  const response = await APIClient.get<PagingResponse<Field[]>>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}/columns${q ? '/search' : ''}`,
+    {
+      params: {
+        ...rest,
+        ...(q && { q }),
+        ...schemaFieldSortParams(sortOrder),
+        include: rest.include ?? Include.All,
+      },
+    }
   );
 
   return response.data;

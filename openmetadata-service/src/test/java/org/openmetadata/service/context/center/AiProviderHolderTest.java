@@ -1,0 +1,96 @@
+/*
+ * Copyright 2024 Collate.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.openmetadata.service.context.center;
+
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.Mockito.mock;
+
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.service.clients.llm.LlmConfigHolder;
+import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.llm.LLMCompletionClient;
+import org.openmetadata.service.llm.NoopCompletionClient;
+
+class AiProviderHolderTest {
+
+  @AfterEach
+  void resetHolders() {
+    AiProviderHolder.reset();
+    LlmConfigHolder.initialize(null);
+    LLMClientHolder.initialize(null);
+  }
+
+  @Test
+  void fallsBackToLlmProviderWhenUnconfigured() {
+    AiProvider provider = AiProviderHolder.get();
+
+    assertInstanceOf(LlmAiProvider.class, provider);
+  }
+
+  @Test
+  void usesInjectedProviderForTesting() {
+    AiProvider injected = mock(AiProvider.class);
+
+    AiProviderHolder.setForTesting(injected);
+
+    assertSame(injected, AiProviderHolder.get());
+  }
+
+  @Test
+  void resolvesProviderNamedByLlmConfiguration() {
+    LlmConfigHolder.initialize(
+        new LLMConfiguration().withAiProviderClass(FakeProvider.class.getName()));
+    AiProviderHolder.reset();
+
+    assertInstanceOf(FakeProvider.class, AiProviderHolder.get());
+  }
+
+  @Test
+  void fallsBackToLlmProviderWhenConfiguredClassMissing() {
+    LlmConfigHolder.initialize(
+        new LLMConfiguration().withAiProviderClass("org.openmetadata.does.NotExist"));
+    AiProviderHolder.reset();
+
+    assertInstanceOf(LlmAiProvider.class, AiProviderHolder.get());
+  }
+
+  @Test
+  void fallsBackToLlmProviderWhenConfiguredClassIsNotAProvider() {
+    // A class that exists but does not implement AiProvider must fall back, never crash the
+    // service: the ClassCastException from the cast is not a ReflectiveOperationException.
+    LlmConfigHolder.initialize(new LLMConfiguration().withAiProviderClass("java.lang.String"));
+    AiProviderHolder.reset();
+
+    assertInstanceOf(LlmAiProvider.class, AiProviderHolder.get());
+  }
+
+  /** OSS judges duplicate facts with the shared LLM client; a distribution may supply its own. */
+  @Test
+  void theBuiltInProviderJudgesDuplicatesWithTheSharedLlmClient() {
+    LLMCompletionClient shared = new NoopCompletionClient();
+    LLMClientHolder.setForTesting(shared);
+
+    assertSame(shared, new LlmAiProvider().duplicateJudge().orElseThrow());
+  }
+
+  public static final class FakeProvider implements AiProvider {
+    @Override
+    public DocumentMemoryExtractor documentExtractor() {
+      return null;
+    }
+  }
+}

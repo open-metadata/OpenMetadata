@@ -1,17 +1,21 @@
 {
   "$id": "https://open-metadata.org/schema/events/api/eventsRecord.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Event Subscription Events Record",
   "description": "Schema defining the response for event subscription events record, including total, pending, successful, and failed event counts for a specific alert.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.events.EventsRecord",
   "properties": {
+    "enabled": {
+      "description": "Whether the alert is enabled. A disabled alert is not running: it reads and sends no events until it is enabled again, and then it starts from the latest event.",
+      "type": "boolean"
+    },
     "totalEventsCount": {
       "description": "Count of total events (pendingEventsCount + successfulEventsCount + failedEventsCount) for specific alert.",
       "existingJavaType": "java.lang.Long"
     },
     "pendingEventsCount": {
-      "description": "Count of pending events for specific alert.",
+      "description": "Count of events the alert will still process. Always 0 for a disabled alert, because enabling it starts from the latest event.",
       "existingJavaType": "java.lang.Long"
     },
     "successfulEventsCount": {
@@ -21,6 +25,11 @@
     "failedEventsCount": {
       "description": "Count of failed events for specific alert.",
       "existingJavaType": "java.lang.Long"
+    },
+    "countsAreLowerBound": {
+      "description": "True when more events are unread than one request evaluates, so pendingEventsCount and totalEventsCount count only the first unread events.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

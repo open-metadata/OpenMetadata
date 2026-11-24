@@ -13,6 +13,7 @@ import io.github.jamsesso.jsonlogic.evaluator.JsonLogicExpression;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -29,6 +30,7 @@ public class LogicOps {
   public enum CustomLogicOps {
     LENGTH("length"),
     CONTAINS("contains"),
+    IS_PROPERTY_SET("isPropertySet"),
     IS_REVIEWER("isReviewer"),
     IS_OWNER("isOwner"),
     IS_UPDATED_BEFORE("isUpdatedBefore"),
@@ -49,6 +51,7 @@ public class LogicOps {
   }
 
   private static void addCustomPublicOps(JsonLogic jsonLogic) {
+    jsonLogic.addOperation(CustomLogicOps.IS_PROPERTY_SET.key, LogicOps::isPropertySet);
     jsonLogic.addOperation(
         CustomLogicOps.LENGTH.key,
         (args) -> {
@@ -146,6 +149,25 @@ public class LogicOps {
             return JsonLogicUtils.evaluateIsUpdatedAfter(evaluator, arguments, data);
           }
         });
+  }
+
+  private static boolean isPropertySet(final Object[] arguments) {
+    if (arguments.length != 2
+        || !(arguments[0] instanceof Map<?, ?> values)
+        || !(arguments[1] instanceof String key)) {
+      return false;
+    }
+    final Object value = values.get(key);
+    if (value instanceof String text) {
+      return !text.isBlank();
+    }
+    if (value instanceof List<?> list) {
+      return !list.isEmpty();
+    }
+    if (value instanceof Map<?, ?> map) {
+      return !map.isEmpty();
+    }
+    return value != null;
   }
 
   /**

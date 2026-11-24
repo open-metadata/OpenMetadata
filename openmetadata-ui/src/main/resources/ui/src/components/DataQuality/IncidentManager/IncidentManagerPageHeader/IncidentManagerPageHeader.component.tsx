@@ -11,23 +11,24 @@
  *  limitations under the License.
  */
 import {
+  Owner,
   Skeleton,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Link03 } from '@openmetadata/ui-core-components/icons';
 import { isUndefined } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as InternalLinkIcon } from '../../../../assets/svg/InternalIcons.svg';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { HeaderDotSeparator } from '../../../../utils/DataAssetsHeader.utils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { DomainLabel } from '../../../common/DomainLabel/DomainLabel.component';
-import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { ProfilerTabPath } from '../../../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../Severity/Severity.component';
 import TestCaseIncidentManagerStatus from '../TestCaseStatus/TestCaseIncidentManagerStatus.component';
@@ -42,9 +43,11 @@ const HeaderField = ({
   children: React.ReactNode;
 }) => (
   <div className="tw:flex tw:flex-col tw:gap-1.5">
+    {/* min-h-6 matches the label row of fields that carry an edit button
+        (status, severity), so every value starts on the same line. */}
     <Typography
       as="span"
-      className="tw:whitespace-nowrap tw:text-secondary"
+      className="tw:flex tw:min-h-6 tw:items-center tw:whitespace-nowrap tw:text-secondary"
       size="text-sm"
       weight="medium">
       {label}
@@ -128,7 +131,7 @@ const IncidentManagerPageHeader = ({
                 data-testid="incident-task-link"
                 to={taskLinkInfo.path}>
                 {taskLinkInfo.label}
-                <InternalLinkIcon className="text-grey-muted" width="14px" />
+                <Link03 className="text-grey-muted" size={14} />
               </Link>
             </HeaderField>
           </>
@@ -143,20 +146,20 @@ const IncidentManagerPageHeader = ({
         />
         <HeaderDotSeparator />
         <div className="tw:min-w-0" data-testid="assignee">
-          <OwnerLabel
-            className="header-owner-heading"
+          <Owner
+            showDashPlaceholder
             hasPermission={hasEditStatusPermission}
             isCompactView={false}
-            multiple={{
-              user: false,
-              team: false,
-            }}
             owners={details?.assignee ? [details.assignee] : []}
             placeHolder={t('label.assignee')}
-            tooltipText={t('label.edit-entity', {
-              entity: t('label.assignee'),
-            })}
-            onUpdate={handleAssigneeUpdate}
+            selectorContent={
+              <UserTeamSelectableList
+                hasPermission={Boolean(hasEditStatusPermission)}
+                multiple={{ user: false, team: false }}
+                owner={details?.assignee ? [details.assignee] : []}
+                onUpdate={handleAssigneeUpdate}
+              />
+            }
           />
         </div>
         <HeaderDotSeparator />
@@ -204,25 +207,31 @@ const IncidentManagerPageHeader = ({
         entityId={testCaseData?.id ?? ''}
         entityType={EntityType.TEST_CASE}
         hasPermission={hasEditDomainPermission}
+        labelClassName="tw:text-secondary!"
         multiple={false}
-        textClassName="render-domain-lebel-style"
+        textClassName="render-domain-lebel-style tw:text-secondary!"
         onUpdate={handleDomainUpdate}
       />
       <HeaderDotSeparator />
-      <OwnerLabel
+      <Owner
         showDashPlaceholder
         avatarSize={24}
-        className="header-owner-heading"
         hasPermission={hasEditOwnerPermission}
         isCompactView={false}
         maxVisibleOwners={3}
-        multiple={{
-          user: canAddMultipleUserOwners,
-          team: canAddMultipleTeamOwner,
-        }}
         ownerDisplayName={ownerDisplayName}
         owners={testCaseData?.owners ?? ownerRef}
-        onUpdate={onOwnerUpdate}
+        selectorContent={
+          <UserTeamSelectableList
+            hasPermission={Boolean(hasEditOwnerPermission)}
+            multiple={{
+              user: canAddMultipleUserOwners,
+              team: canAddMultipleTeamOwner,
+            }}
+            owner={testCaseData?.owners ?? ownerRef}
+            onUpdate={onOwnerUpdate}
+          />
+        }
       />
       {!isVersionPage && statusDetails}
       {tableFqn && (
@@ -239,7 +248,7 @@ const IncidentManagerPageHeader = ({
                 ProfilerTabPath.DATA_QUALITY
               )}>
               {getNameFromFQN(tableFqn)}
-              <InternalLinkIcon className="text-grey-muted" width="14px" />
+              <Link03 className="text-grey-muted" size={14} />
             </Link>
           </HeaderField>
         </>

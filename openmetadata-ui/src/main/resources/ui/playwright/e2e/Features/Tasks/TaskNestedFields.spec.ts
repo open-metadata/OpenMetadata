@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
 import { DashboardDataModelClass } from '../../../support/entity/DashboardDataModelClass';
 import { MlModelClass } from '../../../support/entity/MlModelClass';
 import { SearchIndexClass } from '../../../support/entity/SearchIndexClass';
+import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 
@@ -132,7 +132,7 @@ test.describe('Task Resolution - ApiEndpoint Schema Fields', () => {
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
-            fieldPath: `requestSchema::${fieldPath}::description`,
+            fieldPath: `requestSchema.schemaFields.${fieldPath}.description`,
             newDescription: newDescription,
           },
         },
@@ -215,7 +215,7 @@ test.describe('Task Resolution - ApiEndpoint Schema Fields', () => {
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
-            fieldPath: `responseSchema::${fieldPath}::description`,
+            fieldPath: `responseSchema.schemaFields.${fieldPath}.description`,
             newDescription: newDescription,
           },
         },
@@ -314,7 +314,7 @@ test.describe('Task Resolution - DashboardDataModel Columns', () => {
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
-            fieldPath: `columns::${columnName}::description`,
+            fieldPath: `columns.${columnName}.description`,
             newDescription: newDescription,
           },
         },
@@ -423,7 +423,7 @@ test.describe('Task Resolution - MlModel Features', () => {
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
-            fieldPath: `mlFeatures::${featureName}::description`,
+            fieldPath: `mlFeatures.${featureName}.description`,
             newDescription: newDescription,
           },
         },
@@ -562,7 +562,7 @@ test.describe('Task Resolution - SearchIndex Fields', () => {
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
-            fieldPath: `fields::${fieldPath}::description`,
+            fieldPath: `fields.${fieldPath}.description`,
             newDescription: newDescription,
           },
         },
@@ -670,7 +670,7 @@ test.describe('Task Resolution - SearchIndex Fields', () => {
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
-            fieldPath: `fields::${nestedFieldPath}::description`,
+            fieldPath: `fields.${nestedFieldPath}.description`,
             newDescription: newDescription,
           },
         },

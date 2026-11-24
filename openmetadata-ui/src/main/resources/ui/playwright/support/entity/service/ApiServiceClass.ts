@@ -15,6 +15,7 @@ import { Operation } from 'fast-json-patch';
 import { SERVICE_TYPE } from '../../../constant/service';
 import {
   createOrFetch,
+  deleteFixtureEntity,
   okJson,
   withNotFoundRetry,
 } from '../../../utils/apiResponse';
@@ -22,8 +23,9 @@ import { uuid } from '../../../utils/common';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import { EntityTypeEndpoint, ResponseDataType } from '../Entity.interface';
 import { EntityClass } from '../EntityClass';
+import type { ParentNode, ParentSnapshot } from '../ParentChain';
 
-export class ApiServiceClass extends EntityClass {
+export class ApiServiceClass extends EntityClass implements ParentNode {
   entity = {
     name: `pw-api-service-${uuid()}`,
     serviceType: 'Rest',
@@ -39,6 +41,7 @@ export class ApiServiceClass extends EntityClass {
   };
 
   entityResponseData: ResponseDataType = {} as ResponseDataType;
+  readonly parentLevel = 'service' as const;
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.ApiService);
@@ -97,8 +100,27 @@ export class ApiServiceClass extends EntityClass {
     );
   }
 
+  isCreated() {
+    return Boolean(this.entityResponseData?.id);
+  }
+
+  forget() {
+    this.entityResponseData = {} as ResponseDataType;
+  }
+
+  parentSnapshot(): ParentSnapshot {
+    return { service: this.entityResponseData };
+  }
+
+  rootDeletePath() {
+    return `/api/v1/services/apiServices/name/${encodeURIComponent(
+      this.entityResponseData?.fullyQualifiedName ?? ''
+    )}`;
+  }
+
   async delete(apiContext: APIRequestContext) {
-    const serviceResponse = await apiContext.delete(
+    const serviceResponse = await deleteFixtureEntity(
+      apiContext,
       `/api/v1/services/apiServices/name/${encodeURIComponent(
         this.entityResponseData?.['fullyQualifiedName']
       )}?recursive=true&hardDelete=true`

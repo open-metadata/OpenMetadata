@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import { render, waitFor, within } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
@@ -23,6 +23,9 @@ import { MOCK_EMPTY_USER_DATA, MOCK_USER_DATA } from './MockUserPageData';
 import UserListPageV1 from './UserListPageV1';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  // Spread the real module: TableV2 pulls Table/Button/Dropdown/Typography
+  // from here, and a wholesale mock leaves them undefined.
+  ...jest.requireActual('@openmetadata/ui-core-components'),
   Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Popover: jest
     .fn()
@@ -68,6 +71,9 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => {
 });
 
 jest.mock('react-router-dom', () => ({
+  Link: jest
+    .fn()
+    .mockImplementation(({ children, to }) => <a href={to}>{children}</a>),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
 }));
 
@@ -116,7 +122,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-jest.mock('../../components/common/Table/Table', () => {
+jest.mock('../../components/common/Table/TableV2', () => {
   return jest
     .fn()
     .mockImplementation(
@@ -150,17 +156,6 @@ jest.mock(
   }
 );
 
-jest.mock(
-  '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(({ type }) => (
-        <div data-testid={`error-placeholder-${type}`}>ErrorPlaceHolder</div>
-      ));
-  }
-);
-
 jest.mock('../../components/common/DeleteWidget/DeleteEntityModal', () => {
   return jest.fn().mockImplementation(() => <div>DeleteEntityModal</div>);
 });
@@ -171,7 +166,7 @@ describe('Test UserListPage component', () => {
   beforeAll(() => {
     // Get reference to mocked Table component
     mockTableComponent = jest.requireMock(
-      '../../components/common/Table/Table'
+      '../../components/common/Table/TableV2'
     );
   });
 
@@ -199,7 +194,7 @@ describe('Test UserListPage component', () => {
     const deletedSwitch = await findByTestId('show-deleted');
 
     expect(deletedSwitch).toBeInTheDocument();
-    expect(deletedSwitch).not.toBeChecked();
+    expect(within(deletedSwitch).getByRole('switch')).not.toBeChecked();
 
     expect(getUsers).toHaveBeenCalled();
   });
@@ -213,7 +208,7 @@ describe('Test UserListPage component', () => {
 
     const { findByTestId } = render(<UserListPageV1 />);
 
-    const errorPlaceholder = await findByTestId('error-placeholder-CREATE');
+    const errorPlaceholder = await findByTestId(/create-error-placeholder/);
 
     expect(errorPlaceholder).toBeInTheDocument();
     expect(getUsers).toHaveBeenCalledWith({
@@ -239,7 +234,7 @@ describe('Test UserListPage component', () => {
     const deletedSwitch = await findByTestId('show-deleted');
 
     expect(deletedSwitch).toBeInTheDocument();
-    expect(deletedSwitch).toHaveAttribute('aria-checked', 'false');
+    expect(within(deletedSwitch).getByRole('switch')).not.toBeChecked();
 
     await act(async () => {
       (useTableFilters as jest.Mock).mockImplementationOnce(() => ({
@@ -253,7 +248,7 @@ describe('Test UserListPage component', () => {
     expect(mockSetFilters).toHaveBeenCalledWith({
       isDeleted: true,
     });
-    expect(deletedSwitch).toHaveAttribute('aria-checked', 'true');
+    expect(within(deletedSwitch).getByRole('switch')).toBeChecked();
   });
 
   it('should call getUser with deleted flag when filter is applied', async () => {

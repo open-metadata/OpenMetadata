@@ -22,6 +22,7 @@ import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import com.auth0.jwt.interfaces.Claim;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Invocation;
@@ -36,16 +37,21 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.WebServiceException;
@@ -58,12 +64,39 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 public final class SecurityUtil {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String ISSUER_CLAIM = "iss";
+  public static final String EMAIL_VERIFIED_CLAIM = "email_verified";
+  // A login body is an email and a password, so a larger one is refused before it is parsed.
+  // ADR:2026-11-02-password-login-bodies-are-capped-at-16-kib
+  public static final int MAX_LOGIN_BODY_BYTES = 16 * 1024;
 
   private SecurityUtil() {}
 
+  /**
+   * Whether two user names, emails or email domains identify the same thing. Compares the {@link
+   * Locale#ROOT} lower-case forms, the normalization names get when they are stored, so a token
+   * that carries the original casing still matches. {@link String#equalsIgnoreCase} must not be
+   * used for this: it also compares upper-case forms, which equates characters such as {@code ı}
+   * with {@code i} and {@code ſ} with {@code s}, so two different stored names would compare
+   * equal.
+   */
+  public static boolean sameIdentifier(String first, String second) {
+    return first != null
+        && second != null
+        && first.toLowerCase(Locale.ROOT).equals(second.toLowerCase(Locale.ROOT));
+  }
+
+  /**
+   * The authentication filters build the principal from the account name, so the name is used whole:
+   * a user named {@code admin/x} is not the user {@code admin}.
+   */
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
-    return principal == null ? null : principal.getName().split("[/@]")[0];
+    return principal == null ? null : principal.getName();
+  }
+
+  public static boolean isImpersonated(SecurityContext securityContext) {
+    return securityContext instanceof CatalogSecurityContext catalogSecurityContext
+        && catalogSecurityContext.impersonatedUser() != null;
   }
 
   public static String getImpersonatedByUser(SecurityContext securityContext) {
@@ -104,8 +137,27 @@ public final class SecurityUtil {
   }
 
   public static String getDomain(OpenMetadataApplicationConfig config) {
-    String principalDomain = config.getAuthorizerConfiguration().getPrincipalDomain();
+    return getDomain(config.getAuthorizerConfiguration());
+  }
+
+  /** The principal domain of {@code authorizer}, or the default when it sets none. */
+  public static String getDomain(AuthorizerConfiguration authorizer) {
+    String principalDomain = authorizer == null ? null : authorizer.getPrincipalDomain();
     return CommonUtil.nullOrEmpty(principalDomain) ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain;
+  }
+
+  public static String resolvePrincipalDomain(
+      String principalDomain, Set<String> allowedEmailDomains, Set<String> allowedDomains) {
+    if (!nullOrEmpty(principalDomain)) {
+      return principalDomain;
+    }
+    if (allowedEmailDomains != null && !allowedEmailDomains.isEmpty()) {
+      return allowedEmailDomains.stream().sorted().findFirst().orElse(null);
+    }
+    if (allowedDomains != null && !allowedDomains.isEmpty()) {
+      return allowedDomains.stream().sorted().findFirst().orElse(null);
+    }
+    return null;
   }
 
   public static Invocation.Builder addHeaders(WebTarget target, Map<String, String> headers) {
@@ -141,7 +193,7 @@ public final class SecurityUtil {
       String jwtClaim = getFirstMatchJwtClaim(jwtPrincipalClaimsOrder, claims);
       userName = jwtClaim.contains("@") ? jwtClaim.split("@")[0] : jwtClaim;
     }
-    return userName.toLowerCase();
+    return userName.toLowerCase(Locale.ROOT);
   }
 
   public static String findEmailFromClaims(
@@ -165,12 +217,118 @@ public final class SecurityUtil {
       }
     } else {
       String jwtClaim = getFirstMatchJwtClaim(jwtPrincipalClaimsOrder, claims);
-      email =
-          jwtClaim.contains("@")
-              ? jwtClaim
-              : String.format("%s@%s", jwtClaim, defaulPrincipalClaim);
+      if (jwtClaim.contains("@")) {
+        email = jwtClaim;
+      } else if (!nullOrEmpty(defaulPrincipalClaim)) {
+        email = String.format("%s@%s", jwtClaim, defaulPrincipalClaim);
+      } else {
+        throw new AuthenticationException(
+            String.format(
+                "JWT claim value '%s' is not an email address and no domain is configured. "
+                    + "Configure 'emailClaim' for direct email resolution, "
+                    + "or set 'allowedEmailDomains' / 'principalDomain' for domain construction.",
+                jwtClaim));
+      }
     }
-    return email.toLowerCase();
+    return email.toLowerCase(Locale.ROOT);
+  }
+
+  public static String extractEmailFromClaim(Map<String, ?> claims, String emailClaim) {
+    if (nullOrEmpty(emailClaim)) {
+      throw new AuthenticationException("Authentication failed: emailClaim is not configured");
+    }
+
+    Object claimValue = claims.get(emailClaim);
+    String claimString = getClaimOrObject(claimValue);
+
+    if (claimValue == null || claimString.isEmpty()) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: email claim '%s' not found in token", emailClaim));
+    }
+
+    String email = claimString.toLowerCase(Locale.ROOT);
+
+    if (!email.contains("@") || !isValidEmail(email)) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: invalid email format in claim '%s'", emailClaim));
+    }
+
+    return email;
+  }
+
+  public static String extractDisplayNameFromClaim(Map<String, ?> claims, String displayNameClaim) {
+    if (!nullOrEmpty(displayNameClaim)) {
+      Object claimValue = claims.get(displayNameClaim);
+      if (claimValue != null) {
+        String value = getClaimOrObject(claimValue);
+        if (!nullOrEmpty(value)) {
+          return value.trim();
+        }
+      }
+    }
+    return extractDisplayNameFromClaims(claims);
+  }
+
+  public static boolean isEmailRegistrationDomainAllowed(
+      String email, Set<String> allowedRegistrationDomains) {
+    if (allowedRegistrationDomains == null
+        || allowedRegistrationDomains.isEmpty()
+        || allowedRegistrationDomains.contains("all")) {
+      return true;
+    }
+    if (email == null || !email.contains("@")) {
+      return false;
+    }
+    String domain = email.substring(email.indexOf('@') + 1);
+    return allowedRegistrationDomains.stream().anyMatch(d -> sameIdentifier(d, domain));
+  }
+
+  /**
+   * Boundary guard for the email-first flows. Every downstream consumer splits on '@' (username
+   * generation, bot/user domains, domain enforcement), so a value that is not an email must be
+   * rejected here as an authentication failure rather than surfacing later as a 500.
+   */
+  public static String requireEmailWithDomain(String email) {
+    if (nullOrEmpty(email) || !isValidEmail(email.toLowerCase(Locale.ROOT))) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: '%s' is not a valid email address", email));
+    }
+    return email.toLowerCase(Locale.ROOT);
+  }
+
+  /**
+   * Rejects a token whose identity provider explicitly marked the email unverified. Absent claims
+   * are accepted: many providers omit email_verified entirely, and email-first identity must keep
+   * working for them. Shared by the request path and the OIDC login callback so an unverified
+   * address cannot be mapped onto an existing account through either route.
+   */
+  public static void validateEmailVerifiedClaim(Map<String, ?> claims, String email) {
+    Object claimValue = claims == null ? null : claims.get(EMAIL_VERIFIED_CLAIM);
+    if (claimValue == null) {
+      return;
+    }
+    String value =
+        claimValue instanceof Claim claim
+            ? String.valueOf(claim.as(Object.class))
+            : String.valueOf(claimValue);
+    if ("false".equalsIgnoreCase(value)) {
+      throw new AuthenticationException(
+          String.format(
+              "Authentication failed: email '%s' is not verified by the identity provider", email));
+    }
+  }
+
+  /**
+   * The {@code email} definition in {@code openmetadata-spec .../type/basic.json}. The two must
+   * agree — a stricter check here would let an account be created through the API and then refuse
+   * to authenticate it, which is what a locale-specific address (apostrophes, accented characters)
+   * would have hit. Each part stops at the first separator it cannot contain, so matching is linear
+   * in the input (ADR:2026-11-03-input-parsing-is-bounded).
+   */
+  private static final Pattern EMAIL = Pattern.compile("^\\S[^\\s@]*@\\S[^\\s.]*\\.\\S+$");
+
+  public static boolean isValidEmail(String email) {
+    return EMAIL.matcher(email).matches();
   }
 
   public static String getClaimOrObject(Object obj) {
@@ -179,7 +337,9 @@ public final class SecurityUtil {
     }
 
     if (obj instanceof Claim c) {
-      return c.asString();
+      // asString() returns null for a non-string claim (boolean, number, array); callers treat
+      // the result as a plain string, so normalize that to empty rather than handing back null.
+      return c.asString() == null ? StringUtils.EMPTY : c.asString();
     } else if (obj instanceof String s) {
       return s;
     }
@@ -322,8 +482,10 @@ public final class SecurityUtil {
    */
   public static Map<String, String> buildPrincipalClaimsMapping(
       List<String> jwtPrincipalClaimsMapping) {
+    // Split on the first colon only, so a claim name that itself contains a colon is kept whole
+    // rather than truncated (the pre-#28780 behaviour) or dropped by the length filter below.
     return listOrEmpty(jwtPrincipalClaimsMapping).stream()
-        .map(s -> s.split(":"))
+        .map(s -> s.split(":", 2))
         .filter(parts -> parts.length == 2)
         .collect(Collectors.toMap(s -> s[0], s -> s[1]));
   }
@@ -391,7 +553,8 @@ public final class SecurityUtil {
       if (nullOrEmpty(expectedDomains)) {
         expectedDomains = nullOrEmpty(principalDomain) ? Set.of() : Set.of(principalDomain);
       }
-      if (expectedDomains.stream().noneMatch(domain::equalsIgnoreCase)) {
+      String tokenDomain = domain;
+      if (expectedDomains.stream().noneMatch(d -> sameIdentifier(d, tokenDomain))) {
         throw AuthenticationException.invalidEmailMessage(domain, expectedDomains);
       }
     }
@@ -403,6 +566,37 @@ public final class SecurityUtil {
     response.setCharacterEncoding("UTF-8");
     response.getOutputStream().print(message);
     response.getOutputStream().flush();
+  }
+
+  /**
+   * Reads the login request of the basic and LDAP login endpoints, which need no credentials.
+   * Reads at most one byte past {@link #MAX_LOGIN_BODY_BYTES} and returns null for a longer body,
+   * which the handlers answer as an invalid request.
+   */
+  public static LoginRequest parseLoginRequest(HttpServletRequest req) throws IOException {
+    if (!"POST".equalsIgnoreCase(req.getMethod())) {
+      // GET requests are not supported for security reasons
+      throw new IllegalArgumentException("GET method not supported for login. Use POST method.");
+    }
+    byte[] body = req.getInputStream().readNBytes(MAX_LOGIN_BODY_BYTES + 1);
+    return body.length > MAX_LOGIN_BODY_BYTES ? null : readLoginRequest(body);
+  }
+
+  private static LoginRequest readLoginRequest(byte[] body) {
+    LoginRequest loginRequest =
+        JsonUtils.readValue(new String(body, StandardCharsets.UTF_8), LoginRequest.class);
+
+    // Decode base64 password as per existing api/v1/users/login behavior
+    if (loginRequest.getPassword() != null) {
+      byte[] decodedBytes;
+      try {
+        decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
+      } catch (Exception ex) {
+        throw new IllegalArgumentException("Password needs to be encoded in Base-64.");
+      }
+      loginRequest.withPassword(new String(decodedBytes));
+    }
+    return loginRequest;
   }
 
   public static void writeErrorResponse(HttpServletResponse response, int status, String message)
@@ -512,24 +706,32 @@ public final class SecurityUtil {
       throw new IllegalArgumentException("Redirect URI is required");
     }
 
+    String normalizedRedirect = redirectUri.trim();
+    if (normalizedRedirect.startsWith("//")) {
+      throw new IllegalArgumentException("Redirect URI must be same-origin");
+    }
+
+    URI candidate = parseRedirectUri(normalizedRedirect);
+    if (candidate.getRawFragment() != null) {
+      throw new IllegalArgumentException("Redirect URI must not contain a fragment");
+    }
+    if (candidate.getRawUserInfo() != null) {
+      throw new IllegalArgumentException("Redirect URI must not contain user-info");
+    }
+
     List<URI> trustedUris =
         new ArrayList<>(
             trustedRedirects == null
                 ? List.of()
                 : trustedRedirects.stream()
                     .filter(StringUtils::isNotBlank)
+                    .map(String::trim)
                     .map(SecurityUtil::parseTrustedRedirectUri)
                     .toList());
     if (trustedUris.isEmpty()) {
       throw new IllegalArgumentException("No trusted redirect URI is configured");
     }
 
-    String normalizedRedirect = redirectUri.trim();
-    if (normalizedRedirect.startsWith("//")) {
-      throw new IllegalArgumentException("Redirect URI must be same-origin");
-    }
-
-    URI candidate = parseTrustedRedirectUri(normalizedRedirect);
     List<URI> normalizedCandidates;
     if (!candidate.isAbsolute()) {
       String rawPath = candidate.getRawPath();
@@ -538,12 +740,9 @@ public final class SecurityUtil {
       }
       normalizedCandidates =
           trustedUris.stream()
-              .map(trustedUri -> parseTrustedRedirectUri(canonicalize(trustedUri, candidate)))
+              .map(trustedUri -> parseRedirectUri(canonicalize(trustedUri, candidate)))
               .toList();
     } else {
-      if (!nullOrEmpty(candidate.getRawUserInfo())) {
-        throw new IllegalArgumentException("Redirect URI must not contain user-info");
-      }
       normalizedCandidates = List.of(candidate.normalize());
     }
 
@@ -591,6 +790,19 @@ public final class SecurityUtil {
     return redirectUri + "#" + fragment;
   }
 
+  public static void sendRedirectWithToken(
+      HttpServletResponse response,
+      String redirectUri,
+      String accessToken,
+      String email,
+      String name)
+      throws IOException {
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("Pragma", "no-cache");
+    response.setHeader("Referrer-Policy", "no-referrer");
+    response.sendRedirect(buildRedirectWithToken(redirectUri, accessToken, email, name));
+  }
+
   public static Set<String> trustedRedirects(String... trustedRedirects) {
     LinkedHashSet<String> redirects = new LinkedHashSet<>();
     if (trustedRedirects == null) {
@@ -604,7 +816,49 @@ public final class SecurityUtil {
     return redirects;
   }
 
+  /**
+   * The scheme and authority of a configured absolute URL, or {@code null} for anything else.
+   *
+   * <p>Anchors OpenMetadata's own fixed paths on the host an operator configured, rather than on
+   * whatever host a request claims to be.
+   */
+  public static String originOf(String configuredUrl) {
+    URI uri = parseOrNull(configuredUrl);
+    boolean hasOrigin = uri != null && uri.isAbsolute() && StringUtils.isNotBlank(uri.getHost());
+    return hasOrigin ? schemeAndAuthority(uri) : null;
+  }
+
+  private static String schemeAndAuthority(URI uri) {
+    try {
+      return new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), null, null, null)
+          .toString();
+    } catch (URISyntaxException e) {
+      LOG.warn("Could not derive an origin from URL [{}]", uri, e);
+      return null;
+    }
+  }
+
+  private static URI parseOrNull(String value) {
+    try {
+      return StringUtils.isBlank(value) ? null : new URI(value.trim());
+    } catch (URISyntaxException e) {
+      LOG.warn("Ignoring unparseable URL [{}]", value);
+      return null;
+    }
+  }
+
   private static URI parseTrustedRedirectUri(String value) {
+    URI trustedUri = parseRedirectUri(value);
+    if (trustedUri.getRawUserInfo() != null) {
+      throw new IllegalArgumentException("Trusted redirect URI must not contain user-info");
+    }
+    if (trustedUri.getRawFragment() != null) {
+      throw new IllegalArgumentException("Trusted redirect URI must not contain a fragment");
+    }
+    return trustedUri;
+  }
+
+  private static URI parseRedirectUri(String value) {
     try {
       return new URI(value);
     } catch (URISyntaxException e) {
@@ -634,5 +888,58 @@ public final class SecurityUtil {
       return uri.getPort();
     }
     return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
+  }
+
+  public static void validateEmailDomain(String email, List<String> allowedEmailDomains) {
+    if (allowedEmailDomains == null || allowedEmailDomains.isEmpty()) {
+      return;
+    }
+
+    String normalizedEmail = requireEmailWithDomain(email);
+
+    String domain = normalizedEmail.substring(normalizedEmail.indexOf("@") + 1);
+
+    boolean allowed = allowedEmailDomains.stream().anyMatch(d -> sameIdentifier(d, domain));
+
+    if (!allowed) {
+      throw new AuthenticationException(
+          String.format("Authentication failed: domain '%s' not in allowed list", domain));
+    }
+  }
+
+  public static void validateConfiguredEmailDomain(
+      String email,
+      List<String> allowedEmailDomains,
+      String principalDomain,
+      Set<String> allowedDomains,
+      Boolean enforcePrincipalDomain) {
+    validateEmailDomain(
+        email,
+        configuredEmailDomains(
+            allowedEmailDomains, principalDomain, allowedDomains, enforcePrincipalDomain));
+  }
+
+  /**
+   * The email domains a principal may belong to, or an empty list when every domain is allowed.
+   * {@code allowedEmailDomains} wins; otherwise the deprecated {@code enforcePrincipalDomain}
+   * restricts to {@code allowedDomains}, falling back to {@code principalDomain}. Shared by the
+   * login-time check above and the check applied when a user is created, so both accept exactly
+   * the same domains.
+   */
+  public static List<String> configuredEmailDomains(
+      List<String> allowedEmailDomains,
+      String principalDomain,
+      Set<String> allowedDomains,
+      Boolean enforcePrincipalDomain) {
+    if (!nullOrEmpty(allowedEmailDomains)) {
+      return allowedEmailDomains;
+    }
+    if (!Boolean.TRUE.equals(enforcePrincipalDomain)) {
+      return List.of();
+    }
+    if (!nullOrEmpty(allowedDomains)) {
+      return new ArrayList<>(allowedDomains);
+    }
+    return List.of(nullOrEmpty(principalDomain) ? DEFAULT_PRINCIPAL_DOMAIN : principalDomain);
   }
 }

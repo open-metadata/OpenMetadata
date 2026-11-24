@@ -32,7 +32,13 @@ public abstract class McpTestBase {
   protected static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
   protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private static final long TOKEN_TTL_SECONDS = 3600;
   protected static String authToken;
+
+  protected static String tokenFor(String userName) {
+    String email = userName + "@test.openmetadata.org";
+    return JwtAuthProvider.tokenFor(email, email, new String[] {}, TOKEN_TTL_SECONDS);
+  }
 
   protected static void initAuth() throws Exception {
     authToken =
@@ -211,6 +217,21 @@ public abstract class McpTestBase {
             .uri(URI.create(baseUrl + "/api/v1/" + path))
             .header("Authorization", token)
             .DELETE()
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  protected static HttpResponse<String> putResponse(String path, Object body, String token)
+      throws Exception {
+    String baseUrl = TestSuiteBootstrap.getBaseUrl();
+    String jsonBody = OBJECT_MAPPER.writeValueAsString(body);
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + "/api/v1/" + path))
+            .header("Content-Type", "application/json")
+            .header("Authorization", token)
+            .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
             .timeout(Duration.ofSeconds(30))
             .build();
     return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());

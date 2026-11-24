@@ -11,12 +11,28 @@
  *  limitations under the License.
  */
 
-import { findByTestId, render } from '@testing-library/react';
+import { Avatar } from '@openmetadata/ui-core-components';
+import { findByTestId, render, screen } from '@testing-library/react';
+import userClassBase from '../../../utils/UserClassBase';
 import ProfilePicture from './ProfilePicture';
 
-jest.mock('../AvatarComponent/Avatar', () => {
-  return jest.fn().mockImplementation(() => <div>Avatar</div>);
-});
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Avatar: jest.fn(({ src, 'data-testid': testId, ...props }) =>
+    src ? (
+      <img alt="" data-testid="profile-image" src={src} />
+    ) : (
+      <div data-testid={testId ?? 'profile-avatar'} {...props} />
+    )
+  ),
+}));
+
+jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({ permissions: {} }),
+}));
+
+jest.mock('../../../utils/PermissionsUtils', () => ({
+  userPermissions: { hasViewPermissions: () => true },
+}));
 
 jest.mock('../../../utils/UserDataUtils', () => {
   return {
@@ -29,7 +45,7 @@ jest.mock('../../../utils/UserDataUtils', () => {
 
 const mockUseUserProfile = jest.fn().mockReturnValue(['', false, {}]);
 jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
-  useUserProfile: () => mockUseUserProfile(),
+  useUserProfile: (args: unknown) => mockUseUserProfile(args),
 }));
 
 const mockData = {
@@ -57,5 +73,197 @@ describe('Test ProfilePicture component', () => {
     const profileImage = await findByTestId(container, 'profile-image');
 
     expect(profileImage).toBeInTheDocument();
+  });
+
+  it('draws the themed team icon, not an image, for a team', async () => {
+    // useUserProfile hands teams the static icon URL; it must not become an <img>.
+    mockUseUserProfile.mockReturnValue(['/teams-grey.svg', false, {}]);
+
+    const { container, queryByTestId } = render(
+      <ProfilePicture {...mockData} isTeam width="36" />
+    );
+
+    const avatar = await findByTestId(container, 'profile-avatar');
+
+    expect(queryByTestId('profile-image')).not.toBeInTheDocument();
+    expect(avatar).toHaveClass('tw:text-fg-secondary');
+  });
+
+  it('draws the agent icon on a plain circle and fetches no picture for an agent', () => {
+    mockUseUserProfile.mockClear().mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(
+      <>
+        <ProfilePicture {...mockData} />
+        <ProfilePicture
+          isAgent
+          displayName="Glossary Agent"
+          name=""
+          width="20"
+        />
+      </>
+    );
+
+    expect(mockUseUserProfile).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ permission: true })
+    );
+    expect(mockUseUserProfile).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ permission: false })
+    );
+    expect((Avatar as jest.Mock).mock.calls[1][0]).toEqual(
+      expect.objectContaining({
+        colorVariant: 'plain',
+        'data-testid': 'agent-avatar',
+        placeholderIcon: expect.any(Function),
+        size: 'xs',
+      })
+    );
+  });
+
+  it('forwards a defined size straight to the Avatar', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} size="sm" />);
+
+    expect((Avatar as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ size: 'sm' })
+    );
+  });
+
+  it('maps the legacy numeric width to the nearest defined size', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} width="40" />);
+
+    expect((Avatar as jest.Mock).mock.calls[0][0]).toEqual(
+      expect.objectContaining({ size: 'md' })
+    );
+  });
+
+  it('paints the ring in the fill hue only when asked to', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} matchRingToFill />);
+    render(<ProfilePicture {...mockData} />);
+
+    const [matched, plain] = (Avatar as jest.Mock).mock.calls.map(
+      ([props]) => props
+    );
+    const ringClass = 'tw:border-[hsl(var(--avatar-hue)_70%_80%)]';
+
+    expect(matched.className).toContain(ringClass);
+    expect(plain.className).not.toContain(ringClass);
+  });
+
+  it('carries the hue as a CSS variable so the tint can follow the theme', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.style).toEqual({
+      '--avatar-hue': expect.any(Number),
+    });
+    expect(props.className).toContain(
+      'tw:bg-[hsl(var(--avatar-hue)_100%_92%)]'
+    );
+    expect(props.className).toContain(
+      'tw:dark:bg-[hsl(var(--avatar-hue)_40%_22%)]'
+    );
+  });
+
+  it('draws no outline, ring or tinted border when borderless', () => {
+    mockUseUserProfile.mockReturnValue(['', false, {}]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} borderless matchRingToFill />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.contrastBorder).toBe(false);
+    expect(props.colorVariant).toBe('neutral');
+    expect(props.className).not.toContain(
+      'tw:border-[hsl(var(--avatar-hue)_70%_80%)]'
+    );
+    expect(props.className).toContain(
+      'tw:bg-[hsl(var(--avatar-hue)_100%_92%)]'
+    );
+  });
+
+  it('draws a bot logo on a transparent surface with no outline or tint', () => {
+    mockUseUserProfile.mockReturnValue([
+      '/bot-logo.svg',
+      false,
+      { isBot: true },
+    ]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} className="custom" />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.src).toBe('/bot-logo.svg');
+    expect(props.initials).toBe('T');
+    expect(props.contrastBorder).toBe(false);
+    expect(props.style).toEqual({ backgroundColor: 'transparent' });
+    expect(props.className).toBe('custom');
+  });
+
+  it('draws a registered bot icon instead of the logo and initials', () => {
+    const { Avatar: RealAvatar } = jest.requireActual(
+      '@openmetadata/ui-core-components'
+    );
+    const mockAvatar = Avatar as jest.Mock;
+    const mockedAvatarImpl = mockAvatar.getMockImplementation();
+    mockAvatar.mockImplementation(RealAvatar);
+    const getBotIcon = jest
+      .spyOn(userClassBase, 'getBotIcon')
+      .mockReturnValue(() => <svg data-testid="bot-icon" />);
+    mockUseUserProfile.mockReturnValue([
+      '/bot-logo.svg',
+      false,
+      { isBot: true, name: 'collateaiapplicationbot' },
+    ]);
+
+    const { container } = render(<ProfilePicture {...mockData} />);
+
+    expect(screen.getByTestId('bot-icon')).toBeInTheDocument();
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.queryByText('T')).not.toBeInTheDocument();
+
+    getBotIcon.mockRestore();
+    mockAvatar.mockImplementation(mockedAvatarImpl);
+  });
+
+  it('keeps the tinted, outlined avatar for a bot without a logo', () => {
+    mockUseUserProfile.mockReturnValue(['', false, { isBot: true }]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.contrastBorder).toBe(true);
+    expect(props.style).toEqual({ '--avatar-hue': expect.any(Number) });
+  });
+
+  it('keeps the outline on a user photo', () => {
+    mockUseUserProfile.mockReturnValue(['/photo.jpg', false, { isBot: false }]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(props.src).toBe('/photo.jpg');
+    expect(props.contrastBorder).toBe(true);
   });
 });

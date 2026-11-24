@@ -12,7 +12,7 @@
  */
 
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { FilterFunnel01 } from '@untitledui/icons';
+import { NoFilterFunnel } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { NoFilteredResultsPlaceholderProps } from './EmptyPlaceholder.interface';
 import { resolveSingleAction } from './EmptyPlaceholder.utils';
@@ -43,8 +43,11 @@ const NoFilteredResultsPlaceholder = ({
         'clear-filters',
         t('label.clear-filter-plural')
       )}
-      description={description ?? t('message.nothing-matches-current-filter')}
-      icon={icon ?? <FilterFunnel01 className="tw:text-secondary" />}
+      description={
+        description ??
+        (title ? undefined : t('message.nothing-matches-current-filter'))
+      }
+      icon={icon ?? <NoFilterFunnel />}
       title={title ?? t('label.no-result-for-these-filter-plural')}
       variant="blank"
       {...props}

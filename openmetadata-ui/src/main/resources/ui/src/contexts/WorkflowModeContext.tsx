@@ -12,6 +12,7 @@
  */
 
 import React, { createContext, ReactNode, useContext } from 'react';
+import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
 import {
   useWorkflowMode,
   UseWorkflowModeReturn,
@@ -20,7 +21,7 @@ import {
 interface WorkflowModeContextProps {
   children: ReactNode;
   workflowFqn?: string;
-  workflowDefinition?: any;
+  workflowDefinition?: WorkflowDefinition;
 }
 
 const WorkflowModeContext = createContext<UseWorkflowModeReturn | undefined>(

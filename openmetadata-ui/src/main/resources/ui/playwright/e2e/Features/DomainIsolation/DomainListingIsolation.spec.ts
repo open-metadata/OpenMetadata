@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { migratedTo } from '../../../constant/migration';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
+import { expect, test as base } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
@@ -22,6 +24,7 @@ import {
   searchDomainInListing,
 } from '../../../utils/domainIsolationUtils';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { waitForSearchIndexed } from '../../../utils/polling';
 import { enableDisableSearchRBAC } from '../../../utils/searchRBAC';
 import { sidebarClick } from '../../../utils/sidebar';
 
@@ -42,7 +45,7 @@ const test = base.extend<{
   adminPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await adminUser.login(page);
+      await adminUser.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -51,7 +54,7 @@ const test = base.extend<{
   userAPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await userA.login(page);
+      await userA.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -60,7 +63,7 @@ const test = base.extend<{
   userBPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     try {
-      await userB.login(page);
+      await userB.signIn(page);
       await use(page);
     } finally {
       await page.close();
@@ -79,8 +82,6 @@ const openDomainListing = async (page: Page) => {
 };
 
 test.describe('Domain isolation - domain listing page @domain-isolation', () => {
-  test.slow(true);
-
   test.beforeAll(
     'Setup domains, users and role binding',
     async ({ browser }) => {
@@ -95,6 +96,18 @@ test.describe('Domain isolation - domain listing page @domain-isolation', () => 
         await tenantA.create(apiContext);
         await tenantB.create(apiContext);
 
+        // The listing page is served entirely by `index=domain`, so a domain
+        // that exists but has not been indexed yet is simply not on the page.
+        // Nothing else in this setup waits on the indexer, which leaves every
+        // assertion here racing it. Wait as admin, before search RBAC is on,
+        // so this only ever gates on indexing.
+        await waitForSearchIndexed(apiContext, tenantA.data.name, 'domain', {
+          matchBy: 'nameOrDisplayName',
+        });
+        await waitForSearchIndexed(apiContext, tenantB.data.name, 'domain', {
+          matchBy: 'nameOrDisplayName',
+        });
+
         await assignDomainOnlyAccess(apiContext, userA, [tenantA]);
         await assignDomainOnlyAccess(apiContext, userB, [tenantB]);
 
@@ -104,6 +117,17 @@ test.describe('Domain isolation - domain listing page @domain-isolation', () => 
       }
     }
   );
+
+  // `enableAccessControl` is global and other specs turn it off; re-assert it per test.
+  test.beforeEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await enableDisableSearchRBAC(apiContext, true);
+    } finally {
+      await afterAction();
+    }
+  });
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -120,33 +144,45 @@ test.describe('Domain isolation - domain listing page @domain-isolation', () => 
     }
   });
 
-  test('userA sees only tenantA on the domains listing page', async ({
-    userAPage,
-  }) => {
-    await openDomainListing(userAPage);
+  test(
+    'userA sees only tenantA on the domains listing page',
+    migratedTo.javaIT(
+      'DomainIsolationIT#test_domainSearch_restrictedUserSeesOnlyOwnDomains'
+    ),
+    async ({ userAPage }) => {
+      await openDomainListing(userAPage);
 
-    await expect(userAPage.getByTestId(tenantA.data.name)).toBeVisible();
-    await expect(userAPage.getByTestId(tenantB.data.name)).toHaveCount(0);
-  });
+      await expect(userAPage.getByTestId(tenantA.data.name)).toBeVisible();
+      await expect(userAPage.getByTestId(tenantB.data.name)).toHaveCount(0);
+    }
+  );
 
-  test('userB sees only tenantB on the domains listing page', async ({
-    userBPage,
-  }) => {
-    await openDomainListing(userBPage);
+  test(
+    'userB sees only tenantB on the domains listing page',
+    migratedTo.javaIT(
+      'DomainIsolationIT#test_domainSearch_restrictedUserSeesOnlyOwnDomains'
+    ),
+    async ({ userBPage }) => {
+      await openDomainListing(userBPage);
 
-    await expect(userBPage.getByTestId(tenantB.data.name)).toBeVisible();
-    await expect(userBPage.getByTestId(tenantA.data.name)).toHaveCount(0);
-  });
+      await expect(userBPage.getByTestId(tenantB.data.name)).toBeVisible();
+      await expect(userBPage.getByTestId(tenantA.data.name)).toHaveCount(0);
+    }
+  );
 
-  test('admin sees both tenants on the domains listing page', async ({
-    adminPage,
-  }) => {
-    await openDomainListing(adminPage);
+  test(
+    'admin sees both tenants on the domains listing page',
+    migratedTo.javaIT(
+      'DomainIsolationIT#test_entityTypeCounts_respectPermissionsAndCachePrincipal'
+    ),
+    async ({ adminPage }) => {
+      await openDomainListing(adminPage);
 
-    await searchDomainInListing(adminPage, tenantA);
-    await expect(adminPage.getByTestId(tenantA.data.name)).toBeVisible();
+      await searchDomainInListing(adminPage, tenantA);
+      await expect(adminPage.getByTestId(tenantA.data.name)).toBeVisible();
 
-    await searchDomainInListing(adminPage, tenantB);
-    await expect(adminPage.getByTestId(tenantB.data.name)).toBeVisible();
-  });
+      await searchDomainInListing(adminPage, tenantB);
+      await expect(adminPage.getByTestId(tenantB.data.name)).toBeVisible();
+    }
+  );
 });

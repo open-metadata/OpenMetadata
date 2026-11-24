@@ -11,14 +11,21 @@
  *  limitations under the License.
  */
 
-import { LinkOutlined } from '@ant-design/icons';
-import { Alert, Button, Spin } from 'antd';
+import {
+  Alert,
+  Box,
+  Button,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LearningResource } from '../../../rest/learningResourceAPI';
 import { getSanitizeContent } from '../../../utils/sanitize.utils';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import './article-viewer.less';
 
@@ -70,7 +77,12 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ resource }) => {
     return (
       <div className="article-viewer-wrapper">
         <div className="article-viewer-loading">
-          <Spin size="large" tip={t('label.loading-article')} />
+          <Box align="center" direction="col" gap={2}>
+            <Loader />
+            <Typography className="tw:text-brand-secondary">
+              {t('label.loading-article')}
+            </Typography>
+          </Box>
         </div>
       </div>
     );
@@ -81,22 +93,21 @@ export const ArticleViewer: React.FC<ArticleViewerProps> = ({ resource }) => {
       <div className="article-viewer-wrapper">
         <div className="article-viewer-error">
           <Alert
-            showIcon
-            action={
+            rightContent={
               <Button
-                href={resource.source.url}
-                icon={<LinkOutlined />}
+                color="link-color"
+                href={getSafeHttpUrl(resource.source.url)}
+                iconLeading={LinkExternal01}
                 rel="noopener noreferrer"
-                size="small"
-                target="_blank"
-                type="link">
+                size="sm"
+                target="_blank">
                 {t('label.open-original')}
               </Button>
             }
-            description={error}
-            message={t('message.failed-to-load-article')}
-            type="error"
-          />
+            title={t('message.failed-to-load-article')}
+            variant="error">
+            {error}
+          </Alert>
         </div>
       </div>
     );

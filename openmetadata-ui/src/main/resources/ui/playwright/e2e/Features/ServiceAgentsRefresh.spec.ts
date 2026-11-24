@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Response, test } from '@playwright/test';
+import { Response } from '@playwright/test';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { expect, test } from '../../support/fixtures/base';
 import { getEncodedFqn } from '../../utils/entity';
 
 // use the admin user to login
@@ -64,7 +65,8 @@ test.describe('Service Agents refresh', () => {
     });
 
     await page.goto(
-      `/service/databaseServices/${getEncodedFqn(serviceFqn)}/agents/metadata`
+      `/service/databaseServices/${getEncodedFqn(serviceFqn)}/agents/metadata`,
+      { waitUntil: 'domcontentloaded' }
     );
     await page.getByTestId('data-assets-header').waitFor();
 

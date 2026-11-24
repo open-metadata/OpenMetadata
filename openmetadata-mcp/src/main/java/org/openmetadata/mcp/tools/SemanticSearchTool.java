@@ -1,5 +1,7 @@
 package org.openmetadata.mcp.tools;
 
+import com.google.common.annotations.VisibleForTesting;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -7,17 +9,30 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.mcp.util.VectorPagingContract;
+import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.VectorSearchParameters;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
@@ -59,8 +74,49 @@ public class SemanticSearchTool implements McpTool {
   /** Sentinel unit meaning "see customUnitOfMeasurement" rather than a unit in its own right. */
   private static final String UNIT_OF_MEASUREMENT_OTHER = "OTHER";
 
-  /** Read-side ceiling on the metric expression a summary carries. */
-  private static final int MAX_METRIC_CODE_CHARS = 1000;
+  private static final int MAX_COLUMN_NAMES = 60;
+  private static final String METRIC_HIERARCHY_FIELDS = "parent,childrenCount,metricGroup";
+  private final PersonaSearchScope.Provider personaSearchScopeProvider;
+  private final HitVisibility hitVisibility;
+  private final MetricHierarchy metricHierarchy;
+
+  /** Whether the caller may view the entity a search hit belongs to. */
+  @FunctionalInterface
+  interface HitVisibility {
+    boolean isViewable(
+        Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> hit);
+  }
+
+  /** The named metrics with their parent, children count and group loaded. */
+  @FunctionalInterface
+  interface MetricHierarchy {
+    List<Metric> load(List<String> metricNames);
+  }
+
+  public SemanticSearchTool() {
+    this(PersonaSearchScope::resolve);
+  }
+
+  @VisibleForTesting
+  SemanticSearchTool(PersonaSearchScope.Provider personaSearchScopeProvider) {
+    this(personaSearchScopeProvider, SemanticSearchTool::isViewable);
+  }
+
+  @VisibleForTesting
+  SemanticSearchTool(
+      PersonaSearchScope.Provider personaSearchScopeProvider, HitVisibility hitVisibility) {
+    this(personaSearchScopeProvider, hitVisibility, SemanticSearchTool::loadMetricHierarchy);
+  }
+
+  @VisibleForTesting
+  SemanticSearchTool(
+      PersonaSearchScope.Provider personaSearchScopeProvider,
+      HitVisibility hitVisibility,
+      MetricHierarchy metricHierarchy) {
+    this.personaSearchScopeProvider = personaSearchScopeProvider;
+    this.hitVisibility = hitVisibility;
+    this.metricHierarchy = metricHierarchy;
+  }
 
   @Override
   public Map<String, Object> execute(
@@ -71,7 +127,9 @@ public class SemanticSearchTool implements McpTool {
     String query = (String) params.get("query");
     String paramError = validateParams(query, params);
     if (paramError != null) {
-      return errorResponse(paramError);
+      Map<String, Object> rejected = errorResponse(paramError);
+      rejected.put(McpResponseTrim.STATUS_CODE_KEY, Response.Status.BAD_REQUEST.getStatusCode());
+      return rejected;
     }
 
     if (!Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
@@ -98,15 +156,58 @@ public class SemanticSearchTool implements McpTool {
     threshold = Math.min(Math.max(threshold, 0.0), 1.0);
 
     Map<String, List<String>> filters = parseFilters(params);
+    Optional<PersonaSearchScope> personaScope = personaSearchScope(securityContext, params);
+    VectorSearchParameters searchParameters =
+        new VectorSearchParameters(
+            query,
+            filters,
+            size,
+            from,
+            k,
+            threshold,
+            null,
+            null,
+            personaScope.map(PersonaSearchScope::queryFilter).orElse(null));
 
     try {
       VectorSearchResponse response =
-          vectorService.search(query, filters, size, from, k, threshold);
-      return buildResponse(query, response, size, from);
+          search(vectorService, searchParameters, personaScope.isPresent());
+      Map<String, Object> result =
+          buildResponse(
+              query,
+              response,
+              size,
+              from,
+              hit -> hitVisibility.isViewable(authorizer, securityContext, hit));
+      personaScope.ifPresent(scope -> scope.annotate(result));
+      return result;
     } catch (Exception e) {
       LOG.error("Semantic search failed: {}", e.getMessage(), e);
-      return errorResponse("Semantic search failed: " + McpResponseTrim.safeMessage(e));
+      return errorResponse(failureMessage(e));
     }
+  }
+
+  private Optional<PersonaSearchScope> personaSearchScope(
+      CatalogSecurityContext securityContext, Map<String, Object> params) {
+    return McpParams.getBoolean(params, "ignorePersonaScope", false)
+        ? Optional.empty()
+        : personaSearchScopeProvider.resolve(securityContext);
+  }
+
+  private static VectorSearchResponse search(
+      VectorIndexService vectorService,
+      VectorSearchParameters parameters,
+      boolean personaScopeApplied) {
+    if (!personaScopeApplied) {
+      return vectorService.search(
+          parameters.query(),
+          parameters.filters(),
+          parameters.size(),
+          parameters.from(),
+          parameters.k(),
+          parameters.threshold());
+    }
+    return vectorService.search(parameters);
   }
 
   /**
@@ -168,8 +269,18 @@ public class SemanticSearchTool implements McpTool {
         "SemanticSearchTool does not support limits enforcement.");
   }
 
+  /**
+   * Vector search indexes every entity and applies no access policy of its own, so results the
+   * caller may not view are dropped before anything is counted: {@code returnedCount}, {@code
+   * totalFound} and every message describe only what the caller sees. The cursor alone counts the
+   * dropped hits, so the next page starts after them instead of handing them back.
+   */
   private Map<String, Object> buildResponse(
-      String query, VectorSearchResponse response, int requestedSize, int from) {
+      String query,
+      VectorSearchResponse response,
+      int requestedSize,
+      int from,
+      Predicate<Map<String, Object>> isViewable) {
     Map<String, Object> result = new HashMap<>();
     result.put("query", query);
     result.put("tookMillis", response.getTookMillis());
@@ -182,26 +293,152 @@ public class SemanticSearchTool implements McpTool {
       return result;
     }
 
-    List<Map<String, Object>> cleanedResults = collapseByParent(response.getHits());
+    List<Map<String, Object>> ranked = collapseByParent(response.getHits());
+    List<ViewableHit> viewable = viewableHits(ranked, isViewable);
+    List<Map<String, Object>> cleanedResults = viewable.stream().map(ViewableHit::hit).toList();
+    attachMetricHierarchy(cleanedResults);
 
     result.put("results", cleanedResults);
     result.put("returnedCount", cleanedResults.size());
-    result.put("totalFound", cleanedResults.size());
     result.put(
         "usage",
         "To get full details for any result, call get_entity_details with the result's exact 'entityType' and 'fullyQualifiedName' values.");
 
-    int rawCount = cleanedResults.size();
     fitResultsToBudget(result, cleanedResults);
+    int consumed = consumedThrough(ranked.size(), viewable, returnedCount(result));
     VectorPagingContract.attach(
         result,
-        from,
-        rawCount,
-        requestedSize,
+        new VectorPagingContract.Window(from, ranked.size(), consumed, requestedSize),
         response,
         "Showing %d results. Pass 'nextCursor' to fetch the next page, or refine your query. "
             + "Adjust 'threshold' to filter by similarity score.");
+    addParentTotal(result, from);
     return result;
+  }
+
+  /**
+   * The vector index carries no metric hierarchy, so a parent metric and its variants came back as
+   * unrelated hits. It is read from the entity store, in the shape search_metadata returns: a chunk
+   * is rewritten only when its embedded text changes, so a count kept there would go stale.
+   */
+  private void attachMetricHierarchy(List<Map<String, Object>> hits) {
+    List<Map<String, Object>> metricHits =
+        hits.stream().filter(SemanticSearchTool::isMetricHit).toList();
+    if (!metricHits.isEmpty()) {
+      Map<String, Metric> byName =
+          metricHierarchy.load(metricHits.stream().map(SemanticSearchTool::fqnOf).toList()).stream()
+              .collect(Collectors.toMap(Metric::getFullyQualifiedName, Function.identity()));
+      metricHits.forEach(hit -> putHierarchy(hit, byName.get(fqnOf(hit))));
+    }
+  }
+
+  private static List<Metric> loadMetricHierarchy(List<String> metricNames) {
+    MetricRepository repository = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+    return repository.getByNames(
+        null, metricNames, repository.getFields(METRIC_HIERARCHY_FIELDS), Include.NON_DELETED);
+  }
+
+  private static boolean isMetricHit(Map<String, Object> hit) {
+    return Entity.METRIC.equals(hit.get("entityType")) && hit.get("fullyQualifiedName") != null;
+  }
+
+  private static String fqnOf(Map<String, Object> hit) {
+    return hit.get("fullyQualifiedName").toString();
+  }
+
+  private static void putHierarchy(Map<String, Object> hit, Metric metric) {
+    if (metric != null) {
+      putReference(hit, "parent", metric.getParent());
+      hit.put("childrenCount", metric.getChildrenCount());
+      putReference(hit, "metricGroup", metric.getMetricGroup());
+    }
+  }
+
+  private static void putReference(Map<String, Object> hit, String key, EntityReference reference) {
+    if (reference != null) {
+      hit.put(key, McpResponseTrim.slimRef(JsonUtils.getMap(reference)));
+    }
+  }
+
+  /** A hit the caller may view, with its position among every hit the page ranked. */
+  @VisibleForTesting
+  record ViewableHit(Map<String, Object> hit, int rank) {}
+
+  private static List<ViewableHit> viewableHits(
+      List<Map<String, Object>> ranked, Predicate<Map<String, Object>> isViewable) {
+    List<ViewableHit> viewable = new ArrayList<>();
+    for (int rank = 0; rank < ranked.size(); rank++) {
+      if (isViewable.test(ranked.get(rank))) {
+        viewable.add(new ViewableHit(ranked.get(rank), rank));
+      }
+    }
+    return viewable;
+  }
+
+  /**
+   * Ranked hits this page used up: all of them, unless the response budget kept fewer viewable hits
+   * than there were - then the ones up to the last viewable hit kept, the dropped hits before it
+   * included.
+   */
+  @VisibleForTesting
+  static int consumedThrough(int rankedCount, List<ViewableHit> viewable, int kept) {
+    int consumed = rankedCount;
+    if (kept < viewable.size()) {
+      consumed = kept == 0 ? 0 : viewable.get(kept - 1).rank() + 1;
+    }
+    return consumed;
+  }
+
+  private static int returnedCount(Map<String, Object> result) {
+    return result.get("returnedCount") instanceof Number number ? number.intValue() : 0;
+  }
+
+  private static boolean isViewable(
+      Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> hit) {
+    EntityReference entity =
+        new EntityReference()
+            .withType(Objects.toString(hit.get("entityType"), null))
+            .withId(uuidOrNull(hit.get("parentId")))
+            .withFullyQualifiedName(Objects.toString(hit.get("fullyQualifiedName"), null));
+    return new ViewPermissionFilter(authorizer).canView(securityContext, entity);
+  }
+
+  private static UUID uuidOrNull(Object value) {
+    UUID id = null;
+    if (value != null) {
+      try {
+        id = UUID.fromString(value.toString());
+      } catch (IllegalArgumentException e) {
+        LOG.debug("Search hit carries a parentId that is not a UUID: {}", value);
+      }
+    }
+    return id;
+  }
+
+  /**
+   * Publishes {@code totalFound} in the same unit as everything else here: entities.
+   *
+   * <p>{@code VectorSearchResponse.totalHits} counts chunks, not entities - the vector service
+   * indexes several chunks per entity - while {@code results}, {@code returnedCount}, {@code size},
+   * {@code from} and {@code nextCursor} all count parents. Reporting it made eight matching tables
+   * read as {@code totalFound: 96}.
+   *
+   * <p>So report what is known: once paging stops, {@code from + returnedCount} is exact. While it
+   * continues, the same figure is a lower bound and is labelled as one. {@code from} is the cursor
+   * position, so for a caller who cannot view every hit it still holds the ones dropped on earlier
+   * pages - which the cursor already reveals - but never those dropped from this one.
+   */
+  @VisibleForTesting
+  static void addParentTotal(Map<String, Object> result, int from) {
+    int returned = returnedCount(result);
+    result.put("totalFound", from + returned);
+    if (Boolean.TRUE.equals(result.get(McpResponseTrim.HAS_MORE_KEY))) {
+      result.put("totalFoundIsLowerBound", Boolean.TRUE);
+      result.put(
+          "totalFoundNote",
+          "'totalFound' counts the entities seen so far, not the whole corpus - more exist. Page"
+              + " with 'nextCursor' until 'hasMore' is absent to get the exact count.");
+    }
   }
 
   /**
@@ -277,15 +514,19 @@ public class SemanticSearchTool implements McpTool {
     copyIfPresent(hit, cleaned, "name");
     copyIfPresent(hit, cleaned, "displayName");
     copyIfPresent(hit, cleaned, "serviceType");
-    copyIfPresent(hit, cleaned, "service");
-    copyIfPresent(hit, cleaned, "database");
-    copyIfPresent(hit, cleaned, "databaseSchema");
-    copyIfPresent(hit, cleaned, "owners");
-    copyIfPresent(hit, cleaned, "tier");
-    copyIfPresent(hit, cleaned, "tags");
-    copyIfPresent(hit, cleaned, "domains");
-    copyIfPresent(hit, cleaned, "columns");
-    copyIfPresent(hit, cleaned, "certification");
+    copySlim(hit, cleaned, "service", McpResponseTrim::slimRef);
+    copySlim(hit, cleaned, "database", McpResponseTrim::slimRef);
+    copySlim(hit, cleaned, "databaseSchema", McpResponseTrim::slimRef);
+    copySlim(hit, cleaned, "owners", McpResponseTrim::slimRefs);
+    copySlim(hit, cleaned, "domains", McpResponseTrim::slimRefs);
+    copySlim(hit, cleaned, "tier", McpResponseTrim::slimTag);
+    copySlim(hit, cleaned, "tags", McpResponseTrim::slimTag);
+    copyColumnNames(hit, cleaned);
+    copySlim(
+        hit,
+        cleaned,
+        "certification",
+        value -> McpResponseTrim.slimCertification(value, System.currentTimeMillis()));
     // Metric facts: a metric summary without its expression, granularity, type and unit cannot be
     // told apart from a similarly named metric, which forced a per-result get_entity_details call.
     copyMetricExpression(hit, cleaned);
@@ -319,13 +560,7 @@ public class SemanticSearchTool implements McpTool {
    */
   private static void copyMetricExpression(Map<String, Object> hit, Map<String, Object> cleaned) {
     if (hit.get("metricExpression") instanceof Map<?, ?> expression) {
-      Map<String, Object> summary = new HashMap<>(expression.size());
-      expression.forEach((key, value) -> summary.put(String.valueOf(key), value));
-      Object code = summary.get("code");
-      if (code instanceof String sql) {
-        summary.put("code", McpResponseTrim.truncate(sql, MAX_METRIC_CODE_CHARS));
-      }
-      cleaned.put("metricExpression", summary);
+      cleaned.put("metricExpression", McpResponseTrim.cappedMetricExpression(expression));
     }
   }
 
@@ -339,6 +574,54 @@ public class SemanticSearchTool implements McpTool {
     Object customUnit = hit.get("customUnitOfMeasurement");
     if (UNIT_OF_MEASUREMENT_OTHER.equals(cleaned.get("unitOfMeasurement")) && customUnit != null) {
       cleaned.put("unitOfMeasurement", customUnit);
+    }
+  }
+
+  /** Copies a field through a slimming function, skipping absent fields. */
+  private void copySlim(
+      Map<String, Object> hit,
+      Map<String, Object> cleaned,
+      String field,
+      UnaryOperator<Object> slim) {
+    Object value = hit.get(field);
+    if (value != null) {
+      cleaned.put(field, slim.apply(value));
+    }
+  }
+
+  /**
+   * Emits column <em>names</em> rather than full column objects, matching {@code search_metadata}.
+   * Full {@code columns} was most of a 10-hit response - per-column descriptions that do not help
+   * choose between assets. Names still answer "does this table have a customer_id column?", and
+   * {@code get_entity_details} stays the way to get the detail.
+   */
+  private void copyColumnNames(Map<String, Object> hit, Map<String, Object> cleaned) {
+    if (hit.get("columns") instanceof List<?> columns && !columns.isEmpty()) {
+      List<Object> names =
+          columns.stream()
+              .map(column -> column instanceof Map<?, ?> map ? map.get("name") : column)
+              .filter(Objects::nonNull)
+              .toList();
+      if (!names.isEmpty()) {
+        putCappedColumnNames(cleaned, names);
+      }
+    }
+  }
+
+  /**
+   * Caps the column-name list on a search hit.
+   *
+   * <p>One hit carrying ~1000 generated names pushed a response past the client's display budget and
+   * cost the caller most of its results. Nobody picks an asset by its 900th column, so cap the list
+   * and say when it was cut.
+   */
+  private static void putCappedColumnNames(Map<String, Object> cleaned, List<Object> names) {
+    if (names.size() <= MAX_COLUMN_NAMES) {
+      cleaned.put("columnNames", names);
+    } else {
+      cleaned.put("columnNames", names.subList(0, MAX_COLUMN_NAMES));
+      cleaned.put("totalColumns", names.size());
+      cleaned.put("columnNamesTruncated", Boolean.TRUE);
     }
   }
 
@@ -386,6 +669,24 @@ public class SemanticSearchTool implements McpTool {
     }
 
     return Collections.emptyMap();
+  }
+
+  /**
+   * Describes a failure as what it actually was.
+   *
+   * <p>This used to hardcode {@code serverFault = true} and tell every caller to stop using the
+   * tool, so a bad {@code filters} value or an unparseable cursor was reported as a backend outage -
+   * telling the caller its arguments were fine when they were the problem.
+   */
+  private static String failureMessage(Exception e) {
+    boolean backendFault =
+        DefaultToolContext.isServerFault(DefaultToolContext.resolveStatusCode(e));
+    String advice =
+        backendFault
+            ? " Semantic search depends on an embedding backend; when it is unavailable, use"
+                + " search_metadata with a queryFilter instead of retrying this tool."
+            : " This is a problem with the arguments, not the backend - correct them and retry.";
+    return "Semantic search failed: " + McpResponseTrim.summarizeFailure(e, backendFault) + advice;
   }
 
   private Map<String, Object> errorResponse(String message) {

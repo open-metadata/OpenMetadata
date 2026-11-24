@@ -1,17 +1,22 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
+import es.co.elastic.clients.elasticsearch._types.SortOrder;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.CalendarInterval;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
+import es.co.elastic.clients.elasticsearch._types.aggregations.TermsAggregation;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.json.JsonData;
+import es.co.elastic.clients.util.NamedValue;
+import es.co.elastic.clients.util.ObjectBuilder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -22,6 +27,7 @@ import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
+import org.openmetadata.service.search.DataInsightMetricFilter;
 
 public class ElasticSearchLineChartAggregator
     implements ElasticSearchDynamicChartAggregatorInterface {
@@ -36,6 +42,72 @@ public class ElasticSearchLineChartAggregator
       this.holders = holders;
       this.formula = formula;
     }
+  }
+
+  /**
+   * Configures the categorical axis.
+   *
+   * <p>A terms axis picks its top N by raw document count, which is neither the population a metric
+   * filters to nor the number the chart plots. {@code orderKeys} name the filter wrappers that
+   * {@code populateDateHistogram} actually built, so the axis instead ranks each category by how
+   * many documents it contributed to the metric.
+   *
+   * <p>Ranking on the wrapper's document count rather than the metric's own value is what makes
+   * this safe for every function: an empty {@code min} reads as larger than any real minimum and an
+   * empty {@code sum} is zero, so ordering by either would float the empty categories to the top. A
+   * document count is never negative, and is zero exactly when the wrapper matched nothing in that
+   * category: another metric counts it, or this metric's {@code q=} finds nothing there. Such a
+   * category sorts last, where it cannot displace one that has data.
+   */
+  private static ObjectBuilder<TermsAggregation> termsAxis(
+      TermsAggregation.Builder builder,
+      String field,
+      String include,
+      String exclude,
+      List<String> orderKeys) {
+    TermsAggregation.Builder axis = builder.field(field).size(100);
+    if (include != null) {
+      axis = axis.include(inc -> inc.regexp(include));
+    }
+    if (exclude != null) {
+      axis = axis.exclude(exc -> exc.regexp(exclude));
+    }
+    if (!orderKeys.isEmpty()) {
+      axis = axis.order(orderKeys.stream().map(key -> NamedValue.of(key, SortOrder.Desc)).toList());
+    }
+    return axis;
+  }
+
+  /** Attaches sub-aggregations only when there are any, so an empty map is never serialized. */
+  private static ObjectBuilder<Aggregation> withSubAggregations(
+      Aggregation.Builder.ContainerBuilder container, Map<String, Aggregation> subAggregations) {
+    return subAggregations.isEmpty() ? container : container.aggregations(subAggregations);
+  }
+
+  /** Whether the x-axis holds categories rather than the snapshot timeline. */
+  private static boolean hasCategoricalAxis(LineChart lineChart) {
+    return lineChart.getxAxisField() != null
+        && !lineChart.getxAxisField().equals(DataInsightSystemChartRepository.TIMESTAMP_FIELD);
+  }
+
+  /** The documents some metric counts, or null when a metric counts every document. */
+  private static Query chartPopulation(List<LineChartMetric> metrics) {
+    List<String> filters = DataInsightMetricFilter.populationFilters(metrics);
+    return filters.isEmpty() ? null : anyOf(filters);
+  }
+
+  private static Query anyOf(List<String> filters) {
+    List<Query> clauses =
+        filters.stream().map(ElasticSearchDynamicChartAggregatorInterface::queryFromJson).toList();
+    return clauses.size() == 1
+        ? clauses.get(0)
+        : Query.of(q -> q.bool(b -> b.should(clauses).minimumShouldMatch("1")));
+  }
+
+  private static Query withinPopulation(Query range, Query population) {
+    return population == null
+        ? range
+        : Query.of(q -> q.bool(b -> b.filter(range).filter(population)));
   }
 
   @Override
@@ -65,97 +137,50 @@ public class ElasticSearchLineChartAggregator
               ? null
               : lineChart.getExcludeXAxisField();
 
-      if (lineChart.getxAxisField() != null
-          && !lineChart.getxAxisField().equals(DataInsightSystemChartRepository.TIMESTAMP_FIELD)) {
-        Aggregation termsAgg =
-            Aggregation.of(
-                a -> {
-                  var tb = a.terms(t -> t.field(lineChart.getxAxisField()).size(100));
-                  if (finalIncludeTerms != null) {
-                    tb =
-                        a.terms(
-                            t ->
-                                t.field(lineChart.getxAxisField())
-                                    .size(100)
-                                    .include(inc -> inc.regexp(finalIncludeTerms)));
-                  }
-                  if (finalExcludeTerms != null) {
-                    tb =
-                        a.terms(
-                            t -> {
-                              var builder = t.field(lineChart.getxAxisField()).size(100);
-                              if (finalIncludeTerms != null) {
-                                builder = builder.include(inc -> inc.regexp(finalIncludeTerms));
-                              }
-                              return builder.exclude(exc -> exc.regexp(finalExcludeTerms));
-                            });
-                  }
-                  return tb;
-                });
-
-        metricAggregations.put(metricName, termsAgg);
-        startTime = end - MILLISECONDS_IN_DAY;
-
-      } else {
-        Aggregation dateHistogramAgg =
-            Aggregation.of(
-                a ->
-                    a.dateHistogram(
-                        dh ->
-                            dh.field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
-                                .calendarInterval(CalendarInterval.Day)));
-        metricAggregations.put(metricName, dateHistogramAgg);
-      }
-
       metricFormulaHolder.put(
           metricName,
           new MetricFormulaHolder(
               metric.getFormula(),
               ElasticSearchDynamicChartAggregatorInterface.getFormulaList(metric.getFormula())));
 
-      Map<String, Aggregation> subAggregations = new HashMap<>();
-      populateDateHistogram(
-          metric.getFunction(),
-          metric.getFormula(),
-          metric.getField(),
-          metric.getFilter(),
-          subAggregations,
-          metricName,
-          formulas);
+      final Map<String, Aggregation> subAggregations = new HashMap<>();
+      final List<String> orderKeys =
+          populateDateHistogram(
+              metric.getFunction(),
+              metric.getFormula(),
+              metric.getField(),
+              metric.getFilter(),
+              subAggregations,
+              metricName,
+              formulas);
 
-      Aggregation currentAgg = metricAggregations.get(metricName);
-      if (!subAggregations.isEmpty()) {
-        if (currentAgg.isTerms()) {
-          // Rebuild terms aggregation with sub-aggregations, preserving include/exclude filters
-          final String fieldName = currentAgg.terms().field();
-          final int size = currentAgg.terms().size() != null ? currentAgg.terms().size() : 100;
-          metricAggregations.put(
-              metricName,
-              Aggregation.of(
-                  a ->
-                      a.terms(
-                              t -> {
-                                var builder = t.field(fieldName).size(size);
-                                if (finalIncludeTerms != null) {
-                                  builder = builder.include(inc -> inc.regexp(finalIncludeTerms));
-                                }
-                                if (finalExcludeTerms != null) {
-                                  builder = builder.exclude(exc -> exc.regexp(finalExcludeTerms));
-                                }
-                                return builder;
-                              })
-                          .aggregations(subAggregations)));
-        } else if (currentAgg._kind().name().equals("DateHistogram")) {
-          // Rebuild date histogram aggregation with sub-aggregations
-          final String fieldName = currentAgg.dateHistogram().field();
-          final CalendarInterval interval = currentAgg.dateHistogram().calendarInterval();
-          metricAggregations.put(
-              metricName,
-              Aggregation.of(
-                  a ->
-                      a.dateHistogram(dh -> dh.field(fieldName).calendarInterval(interval))
-                          .aggregations(subAggregations)));
-        }
+      if (hasCategoricalAxis(lineChart)) {
+        metricAggregations.put(
+            metricName,
+            Aggregation.of(
+                a ->
+                    withSubAggregations(
+                        a.terms(
+                            t ->
+                                termsAxis(
+                                    t,
+                                    lineChart.getxAxisField(),
+                                    finalIncludeTerms,
+                                    finalExcludeTerms,
+                                    orderKeys)),
+                        subAggregations)));
+        startTime = end - MILLISECONDS_IN_DAY;
+      } else {
+        metricAggregations.put(
+            metricName,
+            Aggregation.of(
+                a ->
+                    withSubAggregations(
+                        a.dateHistogram(
+                            dh ->
+                                dh.field(DataInsightSystemChartRepository.TIMESTAMP_FIELD)
+                                    .calendarInterval(CalendarInterval.Day)),
+                        subAggregations)));
       }
 
       if (lineChart.getGroupBy() != null) {
@@ -200,8 +225,10 @@ public class ElasticSearchLineChartAggregator
     }
 
     SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder().size(0);
-
     final long finalStartTime = startTime;
+    // After the loop, so a filter populateDateHistogram refused has already failed the request.
+    Query population =
+        hasCategoricalAxis(lineChart) ? chartPopulation(lineChart.getMetrics()) : null;
     if (!live) {
       Query rangeQuery =
           Query.of(
@@ -218,9 +245,10 @@ public class ElasticSearchLineChartAggregator
                                           es.co.elastic.clients.json.JsonData.of(
                                               String.valueOf(end))))));
 
-      searchRequestBuilder.query(rangeQuery);
+      searchRequestBuilder.query(withinPopulation(rangeQuery, population));
       searchRequestBuilder.index(DataInsightSystemChartRepository.getDataInsightsSearchIndex());
     } else {
+      Optional.ofNullable(population).ifPresent(searchRequestBuilder::query);
       searchRequestBuilder.index(
           DataInsightSystemChartRepository.getLiveSearchIndex(lineChart.getSearchIndex()));
     }

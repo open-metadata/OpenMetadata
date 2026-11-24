@@ -18,9 +18,9 @@ import shutil
 import traceback
 import zipfile
 from collections import defaultdict
+from contextlib import suppress
 from functools import singledispatch
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 from metadata.clients.aws_client import AWSClient
 from metadata.clients.azure_client import AzureClient
@@ -45,14 +45,17 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
 )
 from metadata.readers.file.config_source_factory import get_reader
 from metadata.readers.file.local import LocalReader
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import (
+    get_gcp_impersonate_credentials_or_none,
+    set_google_credentials,
+)
 from metadata.utils.logger import utils_logger
 from metadata.utils.s3_utils import list_s3_objects
 
 logger = utils_logger()
 
 
-def get_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:  # noqa: UP006, UP045
+def get_prefix_config(config) -> tuple[str | None, str | None]:
     """
     Return (bucket, prefix) tuple
     """
@@ -64,7 +67,13 @@ def get_prefix_config(config) -> Tuple[Optional[str], Optional[str]]:  # noqa: U
     return None, None
 
 
-def get_blobs_grouped_by_dir(blobs: List[str]) -> Dict[str, List[str]]:  # noqa: UP006
+def _ensure_extract_dir(path: str | None) -> None:
+    if path is None:
+        raise PowerBIFileConfigException("PowerBI .pbit extraction directory is not configured")
+    Path(path).mkdir(parents=True, exist_ok=True)
+
+
+def get_blobs_grouped_by_dir(blobs: list[str]) -> dict[str, list[str]]:
     """
     Method to group the objs by the dir
     """
@@ -94,10 +103,10 @@ def _safe_local_path(extract_dir: str, blob: str) -> str:
 
 
 def download_pbit_files(
-    blob_grouped_by_directory: Dict,  # noqa: UP006
+    blob_grouped_by_directory: dict,
     config,
     client,
-    bucket_name: Optional[str],  # noqa: UP045
+    bucket_name: str | None,
     extract_dir: str,
 ):
     """
@@ -122,7 +131,23 @@ def download_pbit_files(
             reader.download(path=blob, local_file_path=local_file_path, **kwargs)
 
 
-def _get_datamodel_schema_list(path: str) -> Optional[List[DataModelSchema]]:  # noqa: UP006, UP045
+def _extract_pbit(zip_ref: zipfile.ZipFile, extract_dir: str) -> None:
+    """Extract a .pbit archive, skipping any member whose path escapes ``extract_dir``.
+
+    A .pbit is a ZIP whose member names are attacker-controlled when the file comes
+    from a shared bucket or folder. ``extractall`` happens to rewrite ``..`` and
+    absolute names today, but validating each member keeps the guarantee explicit
+    and reports the crafted entry instead of silently relocating it.
+    """
+    base = Path(extract_dir).resolve()
+    for member in zip_ref.infolist():
+        if not (base / member.filename).resolve().is_relative_to(base):
+            logger.warning("Skipping .pbit entry that escapes the extract directory: %r", member.filename)
+            continue
+        zip_ref.extract(member, base)
+
+
+def _get_datamodel_schema_list(path: str) -> list[DataModelSchema] | None:
     """
     Method maps the json to datamodel schema model
     """
@@ -150,7 +175,7 @@ def _get_datamodel_schema_list(path: str) -> Optional[List[DataModelSchema]]:  #
     return datamodel_schema_list
 
 
-def get_datamodel_schema_files_from_pbit(path: str) -> Optional[List[DataModelSchema]]:  # noqa: UP006, UP045
+def get_datamodel_schema_files_from_pbit(path: str) -> list[DataModelSchema] | None:
     """
     Method to unzip the locally saved pbit files and get the schema files
     """
@@ -158,12 +183,17 @@ def get_datamodel_schema_files_from_pbit(path: str) -> Optional[List[DataModelSc
         reader = LocalReader(path)
         file_paths = reader.get_local_files(search_key=".pbit")
 
-        # Iterate over the file paths
         for file_path in file_paths:
-            # Open each pbit file
-            with zipfile.ZipFile(file_path, "r") as zip_ref:
-                # Extract all files in the specified folder
-                zip_ref.extractall(f"{path}/extracted/{file_path.split('/')[-1].split('.')[0]}")
+            # One unreadable .pbit must not drop the schemas of the others. Damaged
+            # archives fail during extraction with many types (BadZipFile, zlib.error,
+            # EOFError, RuntimeError for encrypted entries, NotImplementedError for
+            # unsupported compression), so any failure skips only this file.
+            try:
+                with zipfile.ZipFile(file_path, "r") as zip_ref:
+                    _extract_pbit(zip_ref, f"{path}/extracted/{file_path.split('/')[-1].split('.')[0]}")
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Skipping .pbit file %s: %s", file_path, exc)
 
         return _get_datamodel_schema_list(path)
 
@@ -186,6 +216,7 @@ def get_pbit_files(config):
 @get_pbit_files.register
 def _(config: S3Config):
     try:
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
 
         client = AWSClient(config.securityConfig).get_client(service_name="s3")
@@ -220,6 +251,7 @@ def _(config: S3Config):
 @get_pbit_files.register
 def _(config: AzureConfig):
     try:
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
 
         client = AzureClient(config.securityConfig).create_blob_client()
@@ -249,18 +281,21 @@ def _(config: AzureConfig):
 
     except Exception as exc:
         logger.debug(traceback.format_exc())
-        raise PowerBIFileConfigException(f"Error fetching .pbit files from Azure: {exc}")  # noqa: B904
+        raise PowerBIFileConfigException(  # noqa: B904
+            f"Error fetching .pbit files from Azure: {exc}"
+        )
 
 
 @get_pbit_files.register
 def _(config: GCSConfig):
     try:
+        _ensure_extract_dir(config.pbitFilesExtractDir)
         bucket_name, prefix = get_prefix_config(config)
         from google.cloud import storage  # pylint: disable=import-outside-toplevel
 
         set_google_credentials(gcp_credentials=config.securityConfig)
 
-        client = storage.Client()
+        client = storage.Client(credentials=get_gcp_impersonate_credentials_or_none(config.securityConfig))
         if not bucket_name:
             buckets = client.list_buckets()
         else:
@@ -312,7 +347,7 @@ class PowerBiFileClient:
     def __init__(self, config: PowerBIConnection):
         self.config = config
 
-    def get_data_model_schema_mappings(self) -> Optional[List[DataModelSchema]]:  # noqa: UP006, UP045
+    def get_data_model_schema_mappings(self) -> list[DataModelSchema] | None:
         """
         Get the data model schema mappings
         """
@@ -322,4 +357,8 @@ class PowerBiFileClient:
         """
         Method to remove the files after ingestion is completed
         """
-        shutil.rmtree(self.config.pbitFilesSource.pbitFilesExtractDir)
+        source = self.config.pbitFilesSource
+        extract_dir = source.pbitFilesExtractDir if source is not None else None
+        if extract_dir is not None:
+            with suppress(FileNotFoundError):
+                shutil.rmtree(extract_dir)

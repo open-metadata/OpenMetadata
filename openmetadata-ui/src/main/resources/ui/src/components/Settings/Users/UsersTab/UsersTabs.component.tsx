@@ -10,19 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Modal, Tooltip } from 'antd';
+import { ButtonUtility, SimpleModal } from '@openmetadata/ui-core-components';
+import { MinusCircle } from '@openmetadata/ui-core-components/icons';
 import { isNil } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconRemove } from '../../../../assets/svg/ic-remove.svg';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getUserById } from '../../../../rest/userAPI';
 import { commonUserDetailColumns } from '../../../../utils/Users.util';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Table from '../../../common/Table/Table';
+import CreatePlaceholder from '../../../common/EmptyPlaceholder/CreatePlaceholder';
+import Table from '../../../common/Table/TableV2';
 
 interface UsersTabProps {
   users: EntityReference[];
@@ -95,19 +94,15 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
       render: (_: string, record: User) => {
         return (
           onRemoveUser && (
-            <Tooltip
-              title={t('label.remove-entity', {
+            <ButtonUtility
+              data-testid="remove-user-btn"
+              icon={MinusCircle}
+              size="lg"
+              tooltip={t('label.remove-entity', {
                 entity: t('label.user'),
-              })}>
-              <Button
-                data-testid="remove-user-btn"
-                icon={
-                  <IconRemove height={16} name={t('label.remove')} width={16} />
-                }
-                type="text"
-                onClick={() => handleRemoveButtonClick(record)}
-              />
-            </Tooltip>
+              })}
+              onClick={() => handleRemoveButtonClick(record)}
+            />
           )
         );
       },
@@ -131,15 +126,16 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
         loading={isDetailsLoading}
         locale={{
           emptyText: (
-            <ErrorPlaceHolder
-              permission
-              className="p-y-md border-none"
-              heading={t('label.user')}
-              permissionValue={t('label.create-entity', {
-                entity: t('label.user'),
-              })}
-              type={ERROR_PLACEHOLDER_TYPE.ASSIGN}
-            />
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <CreatePlaceholder
+                permission
+                data-testid={`assign-error-placeholder-${t('label.user')}`}
+                heading={t('label.user')}
+                permissionValue={t('label.create-entity', {
+                  entity: t('label.user'),
+                })}
+              />
+            </div>
           ),
         }}
         pagination={false}
@@ -147,11 +143,11 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
         size="small"
       />
       {Boolean(removeUserDetails?.state) && (
-        <Modal
+        <SimpleModal
           cancelText={t('label.cancel')}
           data-testid="remove-confirmation-modal"
+          isOpen={Boolean(removeUserDetails?.state)}
           okText={t('label.confirm')}
-          open={Boolean(removeUserDetails?.state)}
           title={t('label.removing-user')}
           onCancel={handleRemoveCancel}
           onOk={handleRemoveConfirm}>
@@ -160,7 +156,7 @@ export const UsersTab = ({ users, onRemoveUser }: UsersTabProps) => {
               entity: removeUserDetails?.user.name,
             }),
           })}
-        </Modal>
+        </SimpleModal>
       )}
     </>
   );

@@ -12,7 +12,7 @@
  */
 
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@untitledui/icons';
+import { NoSearch } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { EmptyPlaceholderVariantProps } from './EmptyPlaceholder.interface';
 
@@ -34,9 +34,10 @@ const NoSearchResultsPlaceholder = ({
   return (
     <EmptyPlaceholder
       description={
-        description ?? t('message.check-spelling-or-try-shorter-term')
+        description ??
+        (title ? undefined : t('message.check-spelling-or-try-shorter-term'))
       }
-      icon={icon ?? <SearchLg className="tw:text-secondary" />}
+      icon={icon ?? <NoSearch />}
       title={title ?? t('label.no-matching-result-plural')}
       variant="blank"
       {...props}

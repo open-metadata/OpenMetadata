@@ -36,6 +36,15 @@ const mockPropsUser: DeleteWidgetModalProps = {
 };
 
 const mockOnLogoutHandler = jest.fn();
+const mockHandleOnAsyncEntityDeleteConfirm = jest
+  .fn()
+  .mockResolvedValue(undefined);
+
+jest.mock('../../../context/AsyncDeleteProvider/AsyncDeleteProvider', () => ({
+  useAsyncDeleteProvider: () => ({
+    handleOnAsyncEntityDeleteConfirm: mockHandleOnAsyncEntityDeleteConfirm,
+  }),
+}));
 
 jest.mock('../../../rest/miscAPI', () => ({
   deleteEntity: jest.fn().mockImplementation(() =>
@@ -101,6 +110,32 @@ describe('DeleteEntityModal', () => {
     expect(deleteEntity).toHaveBeenCalled();
   });
 
+  it.each([false, true])(
+    'deletes ontology properties through their collection endpoint (permanent: %s)',
+    async (permanent) => {
+      render(
+        <DeleteEntityModal
+          {...mockProps}
+          entityType={EntityType.ONTOLOGY_PROPERTY}
+        />
+      );
+
+      if (permanent) {
+        fireEvent.click(await screen.findByTestId('hard-delete'));
+      }
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('confirm-button'));
+      });
+
+      expect(deleteEntity).toHaveBeenCalledWith(
+        'ontologyProperties',
+        mockProps.entityId,
+        false,
+        permanent
+      );
+    }
+  );
+
   it('should call onCancel when discard is clicked', async () => {
     render(<DeleteEntityModal {...mockProps} />);
 
@@ -131,5 +166,26 @@ describe('DeleteEntityModal', () => {
     });
 
     expect(mockOnLogoutHandler).toHaveBeenCalled();
+  });
+
+  it('passes onDeleteFailure to the async delete so callers can undo optimistic state', async () => {
+    const onDeleteFailure = jest.fn();
+    const afterDeleteAction = jest.fn();
+    render(
+      <DeleteEntityModal
+        {...mockProps}
+        isAsyncDelete
+        afterDeleteAction={afterDeleteAction}
+        onDeleteFailure={onDeleteFailure}
+      />
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-button'));
+    });
+
+    expect(mockHandleOnAsyncEntityDeleteConfirm).toHaveBeenCalledWith(
+      expect.objectContaining({ afterDeleteAction, onDeleteFailure })
+    );
   });
 });

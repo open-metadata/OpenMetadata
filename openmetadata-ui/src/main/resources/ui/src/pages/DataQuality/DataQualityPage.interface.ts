@@ -11,20 +11,13 @@
  *  limitations under the License.
  */
 
-import { EntityType } from '../../enums/entity.enum';
-import { TestCaseType } from '../../enums/TestSuite.enum';
-import { TestCaseStatus, TestSummary } from '../../generated/tests/testCase';
+import { DataQualityPageTabs } from '../../enums/DataQuality.enum';
+import { TestSummary } from '../../generated/tests/testCase';
 
-export enum DataQualityPageTabs {
-  TEST_SUITES = 'test-suites',
-  TEST_CASES = 'test-cases',
-  DASHBOARD = 'dashboard',
-}
-
-export enum DataQualitySubTabs {
-  TABLE_SUITES = 'table-suites',
-  BUNDLE_SUITES = 'bundle-suites',
-}
+export {
+  DataQualityPageTabs,
+  DataQualitySubTabs,
+} from '../../enums/DataQuality.enum';
 
 export interface DataQualityContextInterface {
   isTestCaseSummaryLoading: boolean;
@@ -37,21 +30,3 @@ export interface DataQualityContextInterface {
     canCreateBundleSuite?: boolean;
   };
 }
-
-export type DataQualityDashboardChartFilters = {
-  ownerFqn?: string;
-  tags?: string[];
-  tier?: string[];
-  certification?: string[];
-  dataProductFqns?: string[];
-  startTs?: number;
-  endTs?: number;
-  entityFQN?: string;
-  entityType?: EntityType;
-  serviceName?: string;
-  testPlatforms?: string[];
-  dataQualityDimension?: string;
-  testCaseStatus?: TestCaseStatus | TestCaseStatus[];
-  testCaseType?: TestCaseType;
-  domainFqn?: string;
-};

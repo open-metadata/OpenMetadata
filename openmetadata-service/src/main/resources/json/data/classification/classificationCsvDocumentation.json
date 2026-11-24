@@ -1,0 +1,105 @@
+{
+  "summary": "Classification CSV file is used for importing and exporting tags of an **existing** classification.",
+  "headers": [
+    {
+      "name": "parent",
+      "required": false,
+      "description": "Fully qualified name of the parent tag. If the tag being created is at the root of the classification without any parent tag, leave this as empty.",
+      "examples": [
+        "`\"\"` or empty, if the tag is at the root of the classification.",
+        "`PII.Sensitive` as parent to create a tag `SSN` under it."
+      ]
+    },
+    {
+      "name": "name",
+      "required": true,
+      "description": "The name of the tag being created.",
+      "examples": [
+        "`Sensitive`, `NonSensitive`"
+      ]
+    },
+    {
+      "name": "displayName",
+      "required": false,
+      "description": "Display name for the tag.",
+      "examples": [
+        "`Sensitive Data`, `Non Sensitive`"
+      ]
+    },
+    {
+      "name": "description",
+      "required": false,
+      "description": "Description for the tag in Markdown format.",
+      "examples": [
+        "`Personally identifiable information` as defined by the **Legal Team**."
+      ]
+    },
+    {
+      "name": "reviewers",
+      "required": false,
+      "description": "Reviewers as 'user:name' pairs, separated by ';'.",
+      "examples": [
+        "`user:john`",
+        "`user:john;user:adam`"
+      ]
+    },
+    {
+      "name": "owner",
+      "required": false,
+      "description": "Owners as 'type:name' pairs, separated by ';'. Use the prefix 'team' for a team owner and 'user' for a user owner.",
+      "examples": [
+        "`team:marketing`",
+        "`user:john`",
+        "`team:marketing;user:john`"
+      ]
+    },
+    {
+      "name": "tagStatus",
+      "required": false,
+      "description": "Status of the tag. Allowed values `Draft`, `In Review`, `Approved`, `Deprecated`, or `Rejected`.",
+      "examples": [
+        "`Draft`",
+        "`Approved`",
+        "`Deprecated`"
+      ]
+    },
+    {
+      "name": "color",
+      "required": false,
+      "description": "Hex color code to customize the appearance of the tag in UI.",
+      "examples": [
+        "`#FF5733` - Red color",
+        "`#00FF00` - Green color",
+        "`#0000FF` - Blue color",
+        "`#123456` - Custom color"
+      ]
+    },
+    {
+      "name": "iconURL",
+      "required": false,
+      "description": "URL to an icon image to display with the tag.",
+      "examples": [
+        "`https://example.com/icon.png`",
+        "`https://example.com/icons/tag-icon.svg`",
+        "`https://cdn.example.com/classification/icon.jpg`"
+      ]
+    },
+    {
+      "name": "domains",
+      "required": false,
+      "description": "Fully qualified names of the domains the tag belongs to, separated by ';'.",
+      "examples": [
+        "Marketing", "Sales;Operations"
+      ]
+    },
+    {
+      "name": "mutuallyExclusive",
+      "required": false,
+      "description": "Set to `true` when the children tags under this tag are mutually exclusive, so an entity can be labelled with only one of them. Defaults to `false`.",
+      "examples": [
+        "`true`",
+        "`false`"
+      ]
+    }
+  ]
+}

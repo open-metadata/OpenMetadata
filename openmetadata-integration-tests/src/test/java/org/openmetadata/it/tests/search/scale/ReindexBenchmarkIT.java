@@ -2,9 +2,6 @@ package org.openmetadata.it.tests.search.scale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
@@ -15,9 +12,11 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.bench.BenchmarkMetrics;
 import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.factories.SeedData;
+import org.openmetadata.it.factories.SizeFactor;
 import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchAssertions;
@@ -31,8 +30,8 @@ import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.service.Entity;
 
 /**
- * Reindex throughput benchmark — seeds 10k tables, runs reindex three times
- * (discarding the first as warm-up), and emits per-run metrics to
+ * Reindex throughput benchmark — seeds 10k tables ({@link SizeFactor} scales them), runs reindex
+ * three times (discarding the first as warm-up), and emits per-run metrics to
  * {@code target/benchmark/reindex-benchmark.json}.
  *
  * <p>Tagged {@code @scale} so it's excluded from PR runs; the nightly workflow
@@ -45,7 +44,7 @@ import org.openmetadata.service.Entity;
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class ReindexBenchmarkIT {
 
-  private static final int SEED_TABLES = 10_000;
+  private static final int SEED_TABLES = SizeFactor.scale(10_000);
   private static final int COLUMNS_PER_TABLE = 5;
   private static final int LOAD_WORKERS = 16;
   private static final int WARMUP_RUNS = 1;
@@ -127,12 +126,7 @@ class ReindexBenchmarkIT {
     return rt.totalMemory() - rt.freeMemory();
   }
 
-  static void writeMetrics(final Map<String, Object> metrics, final String filename)
-      throws Exception {
-    final Path dir = Path.of("target", "benchmark");
-    Files.createDirectories(dir);
-    new ObjectMapper()
-        .writerWithDefaultPrettyPrinter()
-        .writeValue(dir.resolve(filename).toFile(), metrics);
+  static void writeMetrics(final Object metrics, final String filename) throws Exception {
+    BenchmarkMetrics.write(metrics, filename);
   }
 }

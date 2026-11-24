@@ -10,14 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, PageLayout } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
+import DeprecatedFeatureBadge from '../../components/common/DeprecatedFeatureBadge/DeprecatedFeatureBadge';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import {
   getGlossaryHomeCrumb,
   getHomeCrumb,
 } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
-import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import ColumnGrid from './ColumnGrid/ColumnGrid.component';
@@ -31,14 +32,21 @@ const ColumnBulkOperations = () => {
     { label: t('label.column-bulk-operations') },
   ];
 
+  const deprecatedBadge = (
+    <DeprecatedFeatureBadge featureName={t('label.column-bulk-operations')} />
+  );
+
   return (
     <PageLayoutV1
       pageTitle={t('label.column-bulk-operations')}
       variant={isAiMode ? 'compact' : 'default'}>
       <div
-        className={classNames('tw:flex tw:flex-col', { 'tw:gap-4': isAiMode })}>
+        className={classNames('tw:flex tw:flex-col', {
+          'tw:gap-4': isAiMode,
+        })}>
         {isAiMode ? (
-          <HeaderShell
+          <PageLayout.PageHeader
+            badge={deprecatedBadge}
             breadcrumb={
               <HeaderBreadcrumb
                 noMargin
@@ -47,13 +55,19 @@ const ColumnBulkOperations = () => {
               />
             }
             className="tw:mb-0!"
-            padding="comfortable"
             subtitle={t('message.column-bulk-operations-subtitle')}
             title={t('label.column-bulk-operations')}
             variant="gradient"
           />
         ) : (
-          <HeaderBreadcrumb items={breadcrumbItems} showHome={false} />
+          <Box align="center" className="tw:mb-3" gap={2}>
+            <HeaderBreadcrumb
+              noMargin
+              items={breadcrumbItems}
+              showHome={false}
+            />
+            {deprecatedBadge}
+          </Box>
         )}
         <ColumnGrid />
       </div>

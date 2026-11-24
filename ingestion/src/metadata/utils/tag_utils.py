@@ -14,7 +14,7 @@ Tag utils Module
 
 import functools
 import traceback
-from typing import Iterable, List, Optional, Type, Union  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.generated.schema.api.classification.createClassification import (
     CreateClassificationRequest,
@@ -34,6 +34,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     ProviderType,
 )
+from metadata.generated.schema.type.status import EntityStatus
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -52,13 +53,13 @@ logger = ingestion_logger()
 
 # pylint: disable=too-many-arguments
 def get_ometa_tag_and_classification(
-    tags: List[str],  # noqa: UP006
+    tags: list[str],
     classification_name: str,
     tag_description: str,
     classification_description: str,
     include_tags: bool = True,
-    tag_fqn: Optional[FullyQualifiedEntityName] = None,  # noqa: UP045
-    metadata: Optional[OpenMetadata] = None,  # noqa: UP045
+    tag_fqn: FullyQualifiedEntityName | None = None,
+    metadata: OpenMetadata | None = None,
     system_tags: bool = False,
 ) -> Iterable[Either[OMetaTagAndClassification]]:
     """
@@ -134,9 +135,9 @@ def get_ometa_tag_and_classification(
 def get_tag_label(
     metadata: OpenMetadata,
     tag_name: str,
-    classification_name: Optional[str],  # noqa: UP045
-    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,  # noqa: UP006, UP007
-) -> Optional[TagLabel]:  # noqa: UP045
+    classification_name: str | None,
+    tag_type: type[Tag] | type[GlossaryTerm] = Tag,
+) -> TagLabel | None:
     """
     Returns the tag label if the tag is created
     """
@@ -163,6 +164,13 @@ def get_tag_label(
 
         # Check if the tag exists
         tag = metadata.get_by_name(entity=tag_type, fqn=tag_fqn)
+        # The server keeps a newly applied term that is not Approved hidden until it is approved.
+        if tag_type == GlossaryTerm and tag and tag.entityStatus not in (None, EntityStatus.Approved):
+            logger.info(
+                "Glossary term '%s' is %s, not Approved. It will show on the asset once it is approved.",
+                tag_fqn,
+                tag.entityStatus.value,
+            )
         if tag:
             return TagLabel(
                 tagFQN=TagFQN(tag_fqn),
@@ -181,11 +189,11 @@ def get_tag_label(
 
 def get_tag_labels(
     metadata: OpenMetadata,
-    tags: List[str],  # noqa: UP006
-    classification_name: Optional[str] = None,  # noqa: UP045
+    tags: list[str],
+    classification_name: str | None = None,
     include_tags: bool = True,
-    tag_type: Union[Type[Tag], Type[GlossaryTerm]] = Tag,  # noqa: UP006, UP007
-) -> Optional[List[TagLabel]]:  # noqa: UP006, UP045
+    tag_type: type[Tag] | type[GlossaryTerm] = Tag,
+) -> list[TagLabel] | None:
     """
     Method to create tag labels from the collected tags
     """

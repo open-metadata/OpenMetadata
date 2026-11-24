@@ -306,6 +306,16 @@ export interface PersonaPreferences {
      */
     appMode?: AppMode;
     /**
+     * Route path users of this persona land on when they open the app (e.g. `/explore`). Unset
+     * means Home (My Data).
+     */
+    defaultLandingPage?: string;
+    /**
+     * Layout each page with a view toggle opens in for users of this persona. A page without an
+     * entry opens in Table view. Only Domains offers Tree.
+     */
+    defaultViewModes?: DefaultViewModes;
+    /**
      * User's personal customizations for the landing page.
      */
     landingPageSettings?: LandingPageSettings;
@@ -327,6 +337,26 @@ export interface PersonaPreferences {
 export enum AppMode {
     AI = "AI",
     Classic = "classic",
+}
+
+/**
+ * Layout each page with a view toggle opens in for users of this persona. A page without an
+ * entry opens in Table view. Only Domains offers Tree.
+ */
+export interface DefaultViewModes {
+    dataProducts?:      PageViewMode;
+    domains?:           PageViewMode;
+    learningResources?: PageViewMode;
+    subDomains?:        PageViewMode;
+}
+
+/**
+ * Layout a page with a view toggle opens in.
+ */
+export enum PageViewMode {
+    Card = "card",
+    Table = "table",
+    Tree = "tree",
 }
 
 /**

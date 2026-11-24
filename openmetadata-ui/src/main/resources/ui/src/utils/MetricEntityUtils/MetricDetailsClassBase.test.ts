@@ -10,13 +10,49 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
+import {
+  DetailPageWidgetKeys,
+  GlossaryTermDetailPageWidgetKeys,
+} from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
-import metricDetailsClassBase from './MetricDetailsClassBase';
+import { MetricDetailsClassBase } from './MetricDetailsClassBase';
+
+jest.mock('./MetricUtils', () => ({
+  getMetricDetailsPageTabs: jest.fn(),
+  getMetricWidgetsFromKey: jest.fn(),
+}));
 
 describe('MetricDetailsClassBase', () => {
-  it('stacks dimensions and measures inside the wide left panel', () => {
-    const layout = metricDetailsClassBase.getDefaultLayout(EntityTabs.OVERVIEW);
+  const metricDetails = new MetricDetailsClassBase();
+
+  it('exposes exactly the five primary Metric tabs', () => {
+    const tabs = metricDetails.getMetricDetailPageTabsIds();
+
+    expect(tabs.map(({ id }) => id)).toEqual([
+      EntityTabs.OVERVIEW,
+      EntityTabs.LINEAGE,
+      EntityTabs.ASSETS,
+      EntityTabs.ACTIVITY_FEED,
+      EntityTabs.CUSTOM_PROPERTIES,
+    ]);
+    expect(
+      tabs.find(({ id }) => id === EntityTabs.ACTIVITY_FEED)?.displayName
+    ).toBe('label.activity-feed-and-task-plural');
+  });
+
+  it('keeps custom properties inside the Overview layout', () => {
+    expect(
+      metricDetails
+        .getDefaultLayout(EntityTabs.OVERVIEW)
+        .some(({ i }) => i === DetailPageWidgetKeys.CUSTOM_PROPERTIES)
+    ).toBe(true);
+    expect(
+      metricDetails.getDefaultLayout(EntityTabs.CUSTOM_PROPERTIES)
+    ).toEqual([]);
+  });
+
+  it('stacks the hierarchy and definition widgets inside the wide left panel', () => {
+    const layout = metricDetails.getDefaultLayout(EntityTabs.OVERVIEW);
     const leftPanel = layout.find(
       (widget) => widget.i === DetailPageWidgetKeys.LEFT_PANEL
     );
@@ -27,30 +63,41 @@ describe('MetricDetailsClassBase', () => {
 
     expect(childKeys).toEqual([
       DetailPageWidgetKeys.DESCRIPTION,
-      DetailPageWidgetKeys.METRIC_DIMENSIONS,
-      DetailPageWidgetKeys.METRIC_MEASURES,
+      DetailPageWidgetKeys.METRIC_HIERARCHY,
+      DetailPageWidgetKeys.METRIC_DEFINITION,
     ]);
   });
 
-  it('offers both widgets in the customization widget list', () => {
-    const widgetKeys = metricDetailsClassBase
+  it('shows and offers the Reviewers widget so approval-workflow reviewers are editable', () => {
+    const layout = metricDetails.getDefaultLayout(EntityTabs.OVERVIEW);
+    const widgetKeys = metricDetails
       .getCommonWidgetList()
       .map((widget) => widget.fullyQualifiedName);
 
-    expect(widgetKeys).toContain(DetailPageWidgetKeys.METRIC_DIMENSIONS);
-    expect(widgetKeys).toContain(DetailPageWidgetKeys.METRIC_MEASURES);
+    expect(
+      layout.some(({ i }) => i === GlossaryTermDetailPageWidgetKeys.REVIEWER)
+    ).toBe(true);
+    expect(widgetKeys).toContain(GlossaryTermDetailPageWidgetKeys.REVIEWER);
+    expect(
+      metricDetails.getWidgetHeight(GlossaryTermDetailPageWidgetKeys.REVIEWER)
+    ).toBe(2);
   });
 
-  it('returns a configured height for both widgets', () => {
+  it('does not offer dimensions or measures in the customization widget list', () => {
+    const widgetKeys = metricDetails
+      .getCommonWidgetList()
+      .map((widget) => widget.fullyQualifiedName);
+
+    expect(widgetKeys).not.toContain(DetailPageWidgetKeys.METRIC_DIMENSIONS);
+    expect(widgetKeys).not.toContain(DetailPageWidgetKeys.METRIC_MEASURES);
+  });
+
+  it('returns a configured height for the hierarchy and definition widgets', () => {
     expect(
-      metricDetailsClassBase.getWidgetHeight(
-        DetailPageWidgetKeys.METRIC_DIMENSIONS
-      )
+      metricDetails.getWidgetHeight(DetailPageWidgetKeys.METRIC_HIERARCHY)
     ).toBeGreaterThan(1);
     expect(
-      metricDetailsClassBase.getWidgetHeight(
-        DetailPageWidgetKeys.METRIC_MEASURES
-      )
+      metricDetails.getWidgetHeight(DetailPageWidgetKeys.METRIC_DEFINITION)
     ).toBeGreaterThan(1);
   });
 });

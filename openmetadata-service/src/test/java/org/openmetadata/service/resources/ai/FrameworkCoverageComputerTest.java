@@ -37,7 +37,7 @@ class FrameworkCoverageComputerTest {
   void computeReportsPerControlStatusFromMatchingRemediationActions() {
     AIGovernanceFramework framework = new AIGovernanceFramework().withName("EU_AI_Act");
     List<AIFrameworkControl> controls = List.of(control("art-10"), control("art-14"));
-    List<EntityInterface> assets =
+    List<EntityInterface<?>> assets =
         List.of(
             compliantApplication("claimsCopilot", remediation("art-10", RemediationStatus.Open)),
             compliantApplication("financeCopilot"));

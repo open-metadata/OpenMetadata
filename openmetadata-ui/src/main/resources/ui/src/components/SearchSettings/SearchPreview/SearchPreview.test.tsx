@@ -18,7 +18,7 @@ import SearchPreview from './SearchPreview';
 jest.mock('lodash', () => ({
   ...jest.requireActual('lodash'),
   debounce: jest.fn((fn) => {
-    const mockFn = function (...args: any[]) {
+    const mockFn = function (...args: unknown[]) {
       return fn(...args);
     };
     mockFn.cancel = jest.fn();
@@ -78,10 +78,6 @@ jest.mock('react-i18next', () => ({
 jest.mock('../../../rest/searchAPI', () => ({
   searchPreview: jest.fn(),
 }));
-
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>);
-});
 
 jest.mock('../../common/NextPrevious/NextPrevious', () => {
   return jest.fn().mockImplementation(() => <div>NextPrevious</div>);

@@ -27,6 +27,7 @@ import {
   formatServerContent,
   setEditorContent,
 } from '../../utils/BlockEditorUtils';
+import { getLanguageDirection } from '../../utils/i18next/i18nextUtil';
 import Banner from '../common/Banner/Banner';
 import { useEntityAttachment } from '../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import BarMenu from './BarMenu/BarMenu';
@@ -39,13 +40,17 @@ import {
 } from './BlockEditor.interface';
 import EditorSlots from './EditorSlots';
 import './Extensions/File/file-node.less';
-import { slashMenuPluginKey } from './Extensions/slash-command';
+import { slashMenuPluginKey } from './Extensions/slash-command/slashCommand';
 import { useCustomEditor } from './hooks/useCustomEditor';
+
+const PROSEMIRROR_EDITABLE_SELECTOR = '.ProseMirror[contenteditable="true"]';
 
 const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   (
     {
       content = '',
+      ariaLabel,
+      variant = 'document',
       editable = true,
       menuType = 'bubble',
       autoFocus,
@@ -70,12 +75,20 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
     } = useEntityAttachment();
 
     const editorWrapperRef = useRef<HTMLDivElement>(null);
+    // Read by editorProps.attributes, which ProseMirror recomputes on every
+    // view update, so the role follows setEditable below.
+    const editableRef = useRef(editable);
+    editableRef.current = editable;
 
     const extensions =
       blockEditorExtensionsClassBase.getExtensions(extensionOptions);
 
     const editor = useCustomEditor({
       ...EDITOR_OPTIONS,
+      // Born read-only when it is a viewer: an editable editor whose content
+      // lands with the cursor after "@name" opens the mention popup, and the
+      // later setEditable(false) never closes it, leaving it pinned top-left.
+      editable,
       extensions,
       onUpdate({ editor }) {
         handleErrorMessage?.(undefined);
@@ -87,10 +100,18 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         onFocus?.();
       },
       editorProps: {
-        attributes: {
-          class: 'om-block-editor',
+        // tiptap v3 gives every editor role="textbox". A read-only viewer is
+        // not a text field, so it keeps the generic semantics it had on v2.
+        attributes: () => ({
+          class: classNames('om-block-editor', {
+            'tw:min-h-24': variant === 'comment',
+            'tw:[&>p:last-child]:pb-[30vh]':
+              variant === 'document' && editableRef.current,
+          }),
+          ...(ariaLabel ? { 'aria-label': ariaLabel } : {}),
           ...(autoFocus ? { autofocus: 'true' } : {}),
-        },
+          ...(editableRef.current ? {} : { role: 'presentation' }),
+        }),
         handleDOMEvents: {
           paste: (view, event) => {
             const items = Array.from(event.clipboardData?.items || []);
@@ -142,7 +163,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
       if (hasFiles) {
         const editorElement = document.querySelector(
-          '.ProseMirror[contenteditable="true"]'
+          PROSEMIRROR_EDITABLE_SELECTOR
         );
         if (editorElement) {
           (editorElement as HTMLElement).classList.add('drag-over');
@@ -152,7 +173,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
 
     const handleDragLeave = (e: React.DragEvent) => {
       const editorElement = document.querySelector(
-        '.ProseMirror[contenteditable="true"]'
+        PROSEMIRROR_EDITABLE_SELECTOR
       );
       // Only remove class if we're leaving the editor area
       if (editorElement && !editorElement.contains(e.relatedTarget as Node)) {
@@ -168,7 +189,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       e.preventDefault();
 
       const editorElement = document.querySelector(
-        '.ProseMirror[contenteditable="true"]'
+        PROSEMIRROR_EDITABLE_SELECTOR
       );
       if (editorElement) {
         (editorElement as HTMLElement).classList.remove('drag-over');
@@ -269,8 +290,9 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       if (!editorWrapper) {
         return;
       }
-      editorWrapper.setAttribute('dir', i18n.dir());
-      editorWrapper.style.textAlign = i18n.dir() === 'rtl' ? 'right' : 'left';
+      const direction = getLanguageDirection(i18n);
+      editorWrapper.setAttribute('dir', direction);
+      editorWrapper.style.textAlign = direction === 'rtl' ? 'right' : 'left';
     }, [i18n]);
 
     return (
@@ -305,7 +327,12 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
           placeholder={placeholder}
           onMouseDown={editorSlots.current?.onMouseDown}
         />
-        <EditorSlots editor={editor} menuType={menuType} ref={editorSlots} />
+        <EditorSlots
+          editable={editable}
+          editor={editor}
+          menuType={menuType}
+          ref={editorSlots}
+        />
       </div>
     );
   }

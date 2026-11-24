@@ -17,7 +17,7 @@ to the OM API.
 import json
 import traceback
 from functools import singledispatchmethod
-from typing import Any, Optional, TypeVar, Union
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 from requests.exceptions import HTTPError
@@ -83,6 +83,7 @@ from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.basic import TestCaseResult
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testCaseResolutionStatus import (
+    Severities,
     TestCaseResolutionStatus,
 )
 from metadata.generated.schema.tests.testSuite import TestSuite
@@ -99,6 +100,7 @@ from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import (
+    OMetaDeleteLineageBySource,
     OMetaFQNLineageRequest,
     OMetaLineageRequest,
 )
@@ -135,7 +137,7 @@ from metadata.ingestion.source.pipeline.pipeline_service import (
 )
 from metadata.pii.types import ClassifiableEntityType
 from metadata.profiler.api.models import ProfilerResponse
-from metadata.sampler.models import SamplerResponse
+from metadata.sampler.models import SamplerResponse, limit_stored_rows
 from metadata.utils.fqn import get_query_checksum
 from metadata.utils.logger import get_log_name, ingestion_logger
 
@@ -158,14 +160,14 @@ DUPLICATE_QUERY_CONSTRAINTS = (
 )
 
 
-def is_duplicate_query_conflict(message: Optional[str]) -> bool:  # noqa: UP045
+def is_duplicate_query_conflict(message: str | None) -> bool:
     """Whether a failed bulk-query response is an already-present (duplicate) query."""
     lowered = (message or "").lower()
     return any(constraint in lowered for constraint in DUPLICATE_QUERY_CONSTRAINTS)
 
 
 class MetadataRestSinkConfig(ConfigModel):
-    api_endpoint: Optional[str] = None  # noqa: UP045
+    api_endpoint: str | None = None
     bulk_sink_batch_size: int = 100
     enable_async_pipeline: bool = True
     async_pipeline_workers: int = 2
@@ -209,7 +211,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config = MetadataRestSinkConfig.model_validate(config_dict)
         return cls(config, metadata)
@@ -458,7 +460,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
         return self._record_query_flush_result(result)
 
-    def _record_query_flush_result(self, result: Optional[BulkOperationResult]) -> Either[Entity]:  # noqa: UP045
+    def _record_query_flush_result(self, result: BulkOperationResult | None) -> Either[Entity]:
         """Record a query bulk response. Already-present queries are reported as warnings
         (not failures) so a lineage run is not marked failed over queries that lost no
         metadata. Any other failure is still recorded as a failure."""
@@ -616,6 +618,12 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         )
 
     @_run_dispatch.register
+    def delete_lineage_by_source(self, record: OMetaDeleteLineageBySource) -> Either[str]:
+        self._delete_lineage_by_source_reference(record.entity, record.source.value)
+        # Nothing was ingested, so nothing is counted as scanned.
+        return Either(right=None)  # pyright: ignore[reportCallIssue]
+
+    @_run_dispatch.register
     def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[str]:
         """
         Writes the override lineage for the given lineage request.
@@ -688,7 +696,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                 result = query_result
         return result  # pyright: ignore[reportCallIssue]
 
-    def _create_role(self, create_role: CreateRoleRequest) -> Optional[Role]:  # noqa: UP045
+    def _create_role(self, create_role: CreateRoleRequest) -> Role | None:
         """
         Internal helper method for write_user
         """
@@ -702,7 +710,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
         return None
 
-    def _create_team(self, create_team: CreateTeamRequest) -> Optional[Team]:  # noqa: UP045
+    def _create_team(self, create_team: CreateTeamRequest) -> Team | None:
         """
         Internal helper method for write_user
         """
@@ -882,11 +890,27 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         """
         Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
-        self.metadata.add_test_case_results(
+        result = self.metadata.add_test_case_results(
             record.test_case_results,
             record.test_case_name,
         )
+        if record.incident_severity is not None:
+            self._set_sample_incident_severity(TestCaseResult.model_validate(result), record.incident_severity)
         return Either(right=record.test_case_results)
+
+    def _set_sample_incident_severity(self, result: TestCaseResult, severity: Severities) -> None:
+        if result.incidentId is None:
+            raise ValueError("Sample test failure did not create an incident to set severity on")
+        path = f"{self.metadata.get_suffix(TestCase)}/testCaseIncidentStatus"
+        response = self.metadata.client.get(f"{path}/stateId/{model_str(result.incidentId)}")
+        history = response.get("data", []) if isinstance(response, dict) else []
+        if not history:
+            raise ValueError(f"No history found for sample incident {model_str(result.incidentId)}")
+        latest = max(history, key=lambda status: status["timestamp"])
+        self.metadata.client.patch(
+            f"{path}/{latest['id']}",
+            data=json.dumps([{"op": "add", "path": "/severity", "value": severity.value}]),
+        )
 
     @_run_dispatch.register
     def write_test_case_results(self, record: TestCaseResultResponse):
@@ -950,7 +974,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(left=None, right=record)
 
     @_run_dispatch.register
-    def write_topic_sample_data(self, record: OMetaTopicSampleData) -> Either[Union[TopicSampleData, Topic]]:  # noqa: UP007
+    def write_topic_sample_data(self, record: OMetaTopicSampleData) -> Either[TopicSampleData | Topic]:
         """
         Use the /dataQuality/testCases endpoint to ingest sample test suite
         """
@@ -967,7 +991,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
     @_run_dispatch.register
     def write_search_index_sample_data(
         self, record: OMetaIndexSampleData
-    ) -> Either[Union[SearchIndexSampleData, SearchIndex]]:  # noqa: UP007
+    ) -> Either[SearchIndexSampleData | SearchIndex]:
         """
         Ingest Search Index Sample Data
         """
@@ -1063,7 +1087,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
         if record.sample_data and record.sample_data.store:
             try:
-                success = self._ingest_entity_sample_data(entity, sample_data=record.sample_data.data)
+                success = self._ingest_entity_sample_data(
+                    entity, sample_data=limit_stored_rows(record.sample_data.data)
+                )
                 if not success:
                     self.status.failed(
                         StackTraceError(

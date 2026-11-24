@@ -72,15 +72,32 @@ $$note
 Access to `system.access` tables is restricted by default. These grants must be executed by an **account administrator** in the Databricks account console. Regular workspace admins cannot grant access to system tables.
 $$
 
+To also show the SQL that produced each lineage edge, grant access to the query history:
+
+```sql
+GRANT USE CATALOG ON CATALOG system TO '<user_or_service_principal>';
+GRANT USE SCHEMA ON SCHEMA system.query TO '<user_or_service_principal>';
+GRANT SELECT ON TABLE system.query.history TO '<user_or_service_principal>';
+```
+
+$$note
+The SQL Query of an edge is the latest statement recorded for that source-target pair
+within the lineage lookback window, so a single statement may not explain every column
+mapping of the edge. Databricks only records the statement for queries run on a SQL
+warehouse, and its text can be empty or `<REDACTED>` depending on the principal's access
+and the workspace's encryption settings. Lineage is always ingested; when the query
+history cannot be read, it is ingested without SQL and a message is logged.
+$$
+
 ### Usage & Lineage
 
 $$note
-To get Query Usage and Lineage details, you need a Databricks Premium account, since we will be extracting this information from your SQL Warehouse's history API.
+To get Query Usage details, you need a Databricks Premium account, since we will be extracting this information from your SQL Warehouse's history API.
 $$
 
 ### Profiler & Data Quality
 
-Executing the profiler workflow or data quality tests requires the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
+Executing the profiler workflow or data quality tests requires the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/profiler-workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/quality" target="_blank">here</a>.
 
 You can find further information on the Unity Catalog connector in the <a href="https://docs.open-metadata.org/connectors/database/unity-catalog" target="_blank">docs</a>.
 

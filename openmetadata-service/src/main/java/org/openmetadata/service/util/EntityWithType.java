@@ -27,16 +27,16 @@ import org.openmetadata.schema.EntityInterface;
  */
 @NoArgsConstructor
 public class EntityWithType {
-  @Getter @Setter @JsonUnwrapped private EntityInterface entity;
+  @Getter @Setter @JsonUnwrapped private EntityInterface<?> entity;
 
   @Getter @Setter private String entityType;
 
-  public EntityWithType(EntityInterface entity, String entityType) {
+  public EntityWithType(EntityInterface<?> entity, String entityType) {
     this.entity = entity;
     this.entityType = entityType;
   }
 
-  public static EntityWithType from(EntityInterface entity) {
+  public static EntityWithType from(EntityInterface<?> entity) {
     return new EntityWithType(entity, entity.getEntityReference().getType());
   }
 }

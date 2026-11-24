@@ -12,10 +12,9 @@
 Sampling Models
 """
 
-from typing import Any, Optional, TypeVar, Union
+from typing import Annotated, Any, TypeVar
 
 from pydantic import Field, model_validator
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.config.common import ConfigModel
 from metadata.generated.schema.entity.data.table import (
@@ -23,9 +22,6 @@ from metadata.generated.schema.entity.data.table import (
     PartitionProfilerConfig,
     Table,
     TableData,
-)
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    SampleDataStorageConfig,
 )
 from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
@@ -36,6 +32,7 @@ from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.models.table_metadata import ColumnTag
 from metadata.pii.types import ClassifiableEntityType
+from metadata.utils.constants import SAMPLE_DATA_MAX_STORED_COUNT
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -44,28 +41,28 @@ class BaseProfileConfig(ConfigModel):
     """base profile config"""
 
     fullyQualifiedName: FullyQualifiedEntityName  # noqa: N815
-    profileSample: Optional[Union[float, int]] = None  # noqa: N815, UP007, UP045
-    profileSampleType: Optional[ProfileSampleType] = None  # noqa: N815, UP045
-    samplingMethodType: Optional[SamplingMethodType] = None  # noqa: N815, UP045
-    sampleDataCount: Optional[int] = 100  # noqa: N815, UP045
-    randomizedSample: Optional[bool] = True  # noqa: N815, UP045
-    profileSampleConfig: Optional[ProfileSampleConfig] = None  # noqa: N815, UP045
+    profileSample: float | int | None = None  # noqa: N815
+    profileSampleType: ProfileSampleType | None = None  # noqa: N815
+    samplingMethodType: SamplingMethodType | None = None  # noqa: N815
+    sampleDataCount: int | None = None  # noqa: N815
+    randomizedSample: bool | None = True  # noqa: N815
+    profileSampleConfig: ProfileSampleConfig | None = None  # noqa: N815
 
 
 class ColumnConfig(ConfigModel):
     """Column config for profiler"""
 
-    excludeColumns: Optional[list[str]] = None  # noqa: N815, UP045
-    includeColumns: Optional[list[ColumnProfilerConfig]] = None  # noqa: N815, UP045
+    excludeColumns: list[str] | None = None  # noqa: N815
+    includeColumns: list[ColumnProfilerConfig] | None = None  # noqa: N815
 
 
 class TableConfig(BaseProfileConfig):
     """table profile config"""
 
-    profileQuery: Optional[str] = None  # noqa: N815, UP045
-    partitionConfig: Optional[PartitionProfilerConfig] = None  # noqa: N815, UP045
-    columnConfig: Optional[ColumnConfig] = None  # noqa: N815, UP045
-    randomizedSample: Optional[bool] = False  # noqa: N815, UP045
+    profileQuery: str | None = None  # noqa: N815
+    partitionConfig: PartitionProfilerConfig | None = None  # noqa: N815
+    columnConfig: ColumnConfig | None = None  # noqa: N815
+    randomizedSample: bool | None = False  # noqa: N815
 
     @classmethod
     def from_database_and_schema_config(cls, config: "DatabaseAndSchemaConfig", table_fqn: str):
@@ -83,8 +80,6 @@ class TableConfig(BaseProfileConfig):
 class DatabaseAndSchemaConfig(BaseProfileConfig):
     """schema profile config"""
 
-    sampleDataStorageConfig: Optional[SampleDataStorageConfig] = None  # noqa: N815, UP045
-
 
 class SampleData(BaseModel):
     """TableData wrapper to handle ephemeral SampleData"""
@@ -93,12 +88,17 @@ class SampleData(BaseModel):
     store: Annotated[bool, Field(False, description="Is the sample data should be stored or not")]
 
 
+def limit_stored_rows(table_data: TableData) -> TableData:
+    """Classification can read more rows than are persisted; trim to the stored cap before persisting."""
+    return table_data.model_copy(update={"rows": (table_data.rows or [])[:SAMPLE_DATA_MAX_STORED_COUNT]})
+
+
 class SamplerResponse(ConfigModel):
     """PII & Sampler Workflow Response. For a given entity, return all the tags and sample data"""
 
     entity: ClassifiableEntityType
-    sample_data: Optional[SampleData] = None  # noqa: UP045
-    column_tags: Optional[list[ColumnTag]] = None  # noqa: UP045
+    sample_data: SampleData | None = None
+    column_tags: list[ColumnTag] | None = None
 
     @model_validator(mode="before")
     @classmethod

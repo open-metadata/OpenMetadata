@@ -49,6 +49,12 @@ export interface CreateDataContract {
      */
     odcsElementExtensions?: OdcsElementExtension[];
     /**
+     * ODCS metadata without a native OpenMetadata mapping, retained as a generic JSON document
+     * for export. Native fields remain authoritative. Omission on PUT preserves it; an empty
+     * object clears it.
+     */
+    odcsPreservedFields?: { [key: string]: any };
+    /**
      * ODCS quality rules for round-trip compatibility with ODCS export.
      */
     odcsQualityRules?: OdcsQualityRule[];
@@ -149,8 +155,10 @@ export interface EntityReference {
 }
 
 /**
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -210,6 +218,11 @@ export interface OdcsAuthoritativeDefinition {
  */
 export interface OdcsQualityRule {
     /**
+     * Arguments of a library metric (ODCS 3.1.0), e.g. the valid values or the pattern of an
+     * `invalidValues` check.
+     */
+    arguments?: OdcsQualityRuleArguments;
+    /**
      * External rule documentation.
      */
     authoritativeDefinitions?: OdcsAuthoritativeDefinition[];
@@ -222,9 +235,9 @@ export interface OdcsQualityRule {
      */
     column?: string;
     /**
-     * Additional execution properties.
+     * Additional execution properties, each as a {property, value} pair.
      */
-    customProperties?: { [key: string]: any };
+    customProperties?: OdcsCustomProperty[];
     /**
      * Rule documentation.
      */
@@ -237,6 +250,12 @@ export interface OdcsQualityRule {
      * Vendor name (soda, greatExpectations, etc.).
      */
     engine?: string;
+    /**
+     * Stable identifier of the rule (ODCS 3.1.0). When the rule is turned into an OpenMetadata
+     * test case, the id becomes the test case name, so re-importing the same rule updates that
+     * test case instead of creating another one.
+     */
+    id?: string;
     /**
      * Vendor-specific configuration.
      */
@@ -317,6 +336,49 @@ export interface OdcsQualityRule {
      * Static value list.
      */
     validValues?: string[];
+    [property: string]: any;
+}
+
+/**
+ * Arguments of a library metric (ODCS 3.1.0), e.g. the valid values or the pattern of an
+ * `invalidValues` check.
+ *
+ * Arguments of an ODCS 3.1.0 library metric. Open, because each metric defines its own
+ * arguments.
+ */
+export interface OdcsQualityRuleArguments {
+    /**
+     * Values that count as missing on top of null (`missingValues` metric).
+     */
+    missingValues?: string[];
+    /**
+     * Regex a property must match (`invalidValues` metric).
+     */
+    pattern?: string;
+    /**
+     * Properties a table-level check applies to, e.g. the columns of a composite
+     * `duplicateValues` check.
+     */
+    properties?: string[];
+    /**
+     * Values a property may take (`invalidValues` metric).
+     */
+    validValues?: string[];
+    [property: string]: any;
+}
+
+/**
+ * Custom property key-value pair.
+ */
+export interface OdcsCustomProperty {
+    /**
+     * Property name (camelCase).
+     */
+    property?: string;
+    /**
+     * Property value. ODCS allows any JSON value.
+     */
+    value?: any;
     [property: string]: any;
 }
 
@@ -617,7 +679,8 @@ export interface ColumnProfile {
     /**
      * No.of Rows that contain duplicates in a column.
      */
-    duplicateCount?: number;
+    duplicateCount?:  number;
+    executionSource?: TableExecutionSource;
     /**
      * First quartile of a column.
      */
@@ -755,6 +818,16 @@ export interface CustomMetricProfile {
      * Profiling results for the metric.
      */
     value?: number;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
 }
 
 export interface HistogramClass {

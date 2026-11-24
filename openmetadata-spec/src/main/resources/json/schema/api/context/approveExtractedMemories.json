@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/api/context/approveExtractedMemories.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ApproveExtractedMemories",
+  "description": "Request to approve the memories extracted from one Context Center document.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.context.ApproveExtractedMemories",
+  "properties": {
+    "source": {
+      "description": "The document, a context file or a page, whose Unprocessed extracted memories to approve.",
+      "$ref": "../../type/entityReference.json"
+    },
+    "approvable": {
+      "description": "The memories to approve, as the preview listed them. A memory that changed since, or that approval would no longer approve, is not approved; a memory the list does not name is left untouched.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/memoryConflictReviewResolution.json#/definitions/comparedMemory"
+      }
+    }
+  },
+  "required": ["source", "approvable"],
+  "additionalProperties": false
+}

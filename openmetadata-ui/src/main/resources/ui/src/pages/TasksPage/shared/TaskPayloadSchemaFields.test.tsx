@@ -24,18 +24,32 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
-import { act } from 'react';
-import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { act, ReactNode } from 'react';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../../generated/type/tagLabel';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import TaskPayloadSchemaFields from './TaskPayloadSchemaFields';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Box: ({ children }: any) => <div>{children}</div>,
-  Button: ({ children, onPress }: any) => (
-    <button onClick={onPress}>{children}</button>
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Badge: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+  Box: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  Button: ({
+    children,
+    onPress,
+  }: {
+    children?: ReactNode;
+    onPress?: () => void;
+  }) => <button onClick={onPress}>{children}</button>,
+  Typography: ({ children }: { children?: ReactNode }) => (
+    <span>{children}</span>
   ),
-  Typography: ({ children }: any) => <span>{children}</span>,
 }));
 
 jest.mock('./DescriptionTabs', () => ({
@@ -57,15 +71,15 @@ jest.mock('./TagsTabs', () => ({
       onClick={() =>
         onChange([
           {
-            labelType: 'Manual',
+            labelType: LabelType.Manual,
             source: TagSource.Classification,
-            state: 'Confirmed',
+            state: State.Confirmed,
             tagFQN: 'Classification.PersonalData.Personal',
           },
           {
-            labelType: 'Manual',
+            labelType: LabelType.Manual,
             source: TagSource.Classification,
-            state: 'Confirmed',
+            state: State.Confirmed,
             tagFQN: 'PII.Sensitive',
           },
         ])
@@ -82,9 +96,9 @@ jest.mock('./TagSuggestion', () =>
       onClick={() =>
         onChange([
           {
-            labelType: 'Manual',
+            labelType: LabelType.Manual,
             source: TagSource.Classification,
-            state: 'Confirmed',
+            state: State.Confirmed,
             tagFQN: 'Tier.Tier1',
           },
         ])
@@ -95,20 +109,78 @@ jest.mock('./TagSuggestion', () =>
 );
 
 const PERSONAL_TAG: TagLabel = {
-  labelType: 'Manual',
+  labelType: LabelType.Manual,
   source: TagSource.Classification,
-  state: 'Confirmed',
+  state: State.Confirmed,
   tagFQN: 'Classification.PersonalData.Personal',
 };
 
 const CONFIDENTIAL_TAG: TagLabel = {
-  labelType: 'Manual',
+  labelType: LabelType.Manual,
   source: TagSource.Classification,
-  state: 'Confirmed',
+  state: State.Confirmed,
   tagFQN: 'Classification.PersonalData.Confidential',
 };
 
 describe('TaskPayloadSchemaFields', () => {
+  it('edits a rich-text resolution comment without dropping its content', async () => {
+    const onChange = jest.fn();
+    const createRange = document.createRange;
+    const rangeSpy = jest
+      .spyOn(document, 'createRange')
+      .mockImplementation(() => {
+        const range = createRange();
+        range.getBoundingClientRect = () => new DOMRect();
+
+        return range;
+      });
+    document.elementFromPoint = jest.fn(() => null);
+    document.elementsFromPoint = jest.fn(() => []);
+    try {
+      render(
+        <TaskPayloadSchemaFields
+          payload={{ comment: '' }}
+          schema={{
+            type: 'object',
+            properties: { comment: { type: 'string', title: 'Comment' } },
+          }}
+          uiSchema={{ comment: { 'ui:widget': 'richtext' } }}
+          onChange={onChange}
+        />
+      );
+      await userEvent
+        .setup({ advanceTimers: jest.advanceTimersByTime })
+        .type(screen.getByRole('textbox', { name: 'Comment' }), 'Resolved');
+      await waitFor(() =>
+        expect(onChange).toHaveBeenLastCalledWith({
+          comment: '<p>Resolved</p>',
+        })
+      );
+    } finally {
+      rangeSpy.mockRestore();
+    }
+  });
+
+  it('associates required schema fields with their accessible labels', () => {
+    render(
+      <TaskPayloadSchemaFields
+        payload={{ reviewNotes: '' }}
+        schema={{
+          type: 'object',
+          required: ['reviewNotes'],
+          properties: {
+            reviewNotes: { title: 'Review Notes', type: 'string' },
+          },
+        }}
+        onChange={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByRole('textbox', { name: /Review Notes/ })
+    ).toBeRequired();
+  });
+
   it('updates description payload fields through the schema widget', () => {
     const onChange = jest.fn();
     const schema: JsonSchemaObject = {
@@ -186,9 +258,9 @@ describe('TaskPayloadSchemaFields', () => {
       currentTags: [PERSONAL_TAG, CONFIDENTIAL_TAG],
       tagsToAdd: [
         {
-          labelType: 'Manual',
+          labelType: LabelType.Manual,
           source: TagSource.Classification,
-          state: 'Confirmed',
+          state: State.Confirmed,
           tagFQN: 'PII.Sensitive',
         },
       ],
@@ -306,6 +378,57 @@ describe('TaskPayloadSchemaFields', () => {
     expect(screen.getByText('Reviewed and approved')).toBeInTheDocument();
     expect(screen.getByText(PERSONAL_TAG.tagFQN)).toBeInTheDocument();
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  describe('tagSelector on a string field (TagSuggestion seed)', () => {
+    const TAG_SUGGESTION_SCHEMA: JsonSchemaObject = {
+      type: 'object',
+      properties: {
+        suggestedValue: { title: 'Suggested Tags (JSON)', type: 'string' },
+      },
+    };
+    const TAG_SUGGESTION_UI_SCHEMA: JsonSchemaObject = {
+      suggestedValue: { 'ui:widget': 'tagSelector' },
+    };
+
+    it('reads the JSON string as tags', () => {
+      render(
+        <TaskPayloadSchemaFields
+          mode="read"
+          payload={{ suggestedValue: JSON.stringify([PERSONAL_TAG]) }}
+          schema={TAG_SUGGESTION_SCHEMA}
+          uiSchema={TAG_SUGGESTION_UI_SCHEMA}
+        />
+      );
+
+      expect(screen.getByText(PERSONAL_TAG.tagFQN)).toBeInTheDocument();
+    });
+
+    it('writes edited tags back as a JSON string', () => {
+      const onChange = jest.fn();
+
+      render(
+        <TaskPayloadSchemaFields
+          payload={{ suggestedValue: JSON.stringify([PERSONAL_TAG]) }}
+          schema={TAG_SUGGESTION_SCHEMA}
+          uiSchema={TAG_SUGGESTION_UI_SCHEMA}
+          onChange={onChange}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('tag-selector'));
+
+      expect(onChange).toHaveBeenCalledWith({
+        suggestedValue: JSON.stringify([
+          {
+            labelType: LabelType.Manual,
+            source: TagSource.Classification,
+            state: State.Confirmed,
+            tagFQN: 'Tier.Tier1',
+          },
+        ]),
+      });
+    });
   });
 
   describe('ClampedText in read mode', () => {

@@ -16,7 +16,7 @@ import { RecentlySearchedData, RecentlyViewedData } from 'Models';
 import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { PAGE_SIZE_BASE } from '../../constants/constants';
+import { GRID_PAGE_SIZE_BASE, PAGE_SIZE_BASE } from '../../constants/constants';
 import { deleteUserPreference, putUserPreference } from '../../rest/userAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useApplicationStore } from '../useApplicationStore';
@@ -30,11 +30,17 @@ export interface UserPreferences {
   isSidebarCollapsed: boolean;
   selectedEntityTableColumns: Record<string, string[]>;
   globalPageSize: number;
+  globalGridPageSize: number;
   recentlyViewed: RecentlyViewedData[];
   recentlySearched: RecentlySearchedData[];
   recentlyViewedQuickLinks: RecentlyViewedData[];
   marketplaceRecentSearches: MarketplaceRecentSearchEntry[];
   connectionsViewMode?: 'grid' | 'list';
+  /**
+   * Persisted natural-language-search toggle — remembers the user's last
+   * NLP on/off choice on the Explore search bar across sessions.
+   */
+  isNLPActive?: boolean;
   /**
    * Boot-time app-mode preference — the "open in this mode when I log in"
    * checkbox in the app-mode switcher. `null` means "no explicit preference,
@@ -42,6 +48,14 @@ export interface UserPreferences {
    * checkbox writes this field; runtime mode-switching does NOT touch it.
    */
   appMode: string | null;
+  timeFormat?: '12h' | '24h';
+  /**
+   * Whether the entity Lineage tab draws temporary tables between two tables
+   * (the lineage config dialog). Unset means shown.
+   */
+  showLineageTempTables?: boolean;
+  /** Whether the Ontology Studio health card is collapsed to its one-line strip. */
+  isOntologyHealthMinimized?: boolean;
 }
 
 interface Store {
@@ -58,6 +72,7 @@ const defaultPreferences: UserPreferences = {
   isSidebarCollapsed: false,
   selectedEntityTableColumns: {},
   globalPageSize: PAGE_SIZE_BASE,
+  globalGridPageSize: GRID_PAGE_SIZE_BASE,
   recentlyViewed: [],
   recentlySearched: [],
   recentlyViewedQuickLinks: [],
@@ -293,6 +308,28 @@ async function flushPendingPatch(
  * the one-shot migration call from `hydrateBackendSyncedPreferences`), the
  * last known server value is used instead.
  */
+function resolvePreviousValue(
+  key: string,
+  previous?: Partial<UserPreferences>
+): unknown {
+  const serverFallback = (serverKnown as Record<string, unknown>)[key] ?? null;
+
+  return previous && key in previous
+    ? (previous as Record<string, unknown>)[key] ?? null
+    : serverFallback;
+}
+
+function queuePatchKey(
+  key: string,
+  value: unknown,
+  previous?: Partial<UserPreferences>
+): void {
+  if (!previousValues.has(key)) {
+    previousValues.set(key, resolvePreviousValue(key, previous));
+  }
+  pendingPatch.set(key, value ?? null);
+}
+
 export function syncBackendKeys(
   userName: string,
   userId: string,
@@ -304,22 +341,10 @@ export function syncBackendKeys(
     if (!BACKEND_SYNCED_KEYS.has(key as keyof UserPreferences)) {
       continue;
     }
-    if (!previousValues.has(key)) {
-      const serverFallback =
-        (serverKnown as Record<string, unknown>)[key] ?? null;
-      const previousValue =
-        previous && key in previous
-          ? (previous as Record<string, unknown>)[key] ?? null
-          : serverFallback;
-      previousValues.set(key, previousValue);
-    }
-    pendingPatch.set(key, value ?? null);
+    queuePatchKey(key, value, previous);
     queued = true;
   }
-  if (!queued) {
-    return;
-  }
-  if (flushTimer !== null) {
+  if (!queued || flushTimer !== null) {
     return;
   }
   flushTimer = setTimeout(() => {

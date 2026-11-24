@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import '@testing-library/jest-dom/extend-expect';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { DataQualityReport } from '../../../../generated/tests/dataQualityReport';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { fetchTestCaseStatusMetricsByDays } from '../../../../rest/dataQualityDashboardAPI';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { AreaChartColorScheme } from '../../../Visualisations/Chart/Chart.interface';
 import { TestCaseStatusAreaChartWidgetProps } from '../../DataQuality.interface';
 import TestCaseStatusAreaChartWidget from './TestCaseStatusAreaChartWidget.component';
@@ -29,30 +30,17 @@ jest.mock('../../../../rest/dataQualityDashboardAPI', () => ({
 // Mock the CustomAreaChart component
 jest.mock('../../../Visualisations/Chart/CustomAreaChart.component', () =>
   jest.fn().mockImplementation((props) => (
-    <div data-testid="custom-area-chart">
+    <div data-aria-label={props.ariaLabel} data-testid="custom-area-chart">
       <div>CustomAreaChart</div>
       <div data-testid="chart-name">{props.name}</div>
       <div data-testid="chart-height">{props.height}</div>
-      <div data-testid="chart-color-scheme">
-        {JSON.stringify(props.colorScheme)}
-      </div>
+      <div data-testid="chart-status">{props.status}</div>
       <div data-testid="chart-data">{JSON.stringify(props.data)}</div>
     </div>
   ))
 );
 
 // Mock SVG icons
-jest.mock('../../../../assets/svg/ic-check.svg', () => ({
-  ReactComponent: (props: React.SVGProps<SVGSVGElement>) => (
-    <svg data-testid="success-icon" {...props} />
-  ),
-}));
-
-jest.mock('../../../../assets/svg/ic-warning-2.svg', () => ({
-  ReactComponent: (props: React.SVGProps<SVGSVGElement>) => (
-    <svg data-testid="failed-icon" {...props} />
-  ),
-}));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Skeleton: ({
@@ -119,7 +107,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
   });
 
   it('should render the component with basic props', async () => {
-    render(<TestCaseStatusAreaChartWidget {...defaultProps} />);
+    renderWithQueryClient(<TestCaseStatusAreaChartWidget {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByText(defaultProps.title)).toBeInTheDocument();
@@ -138,7 +126,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
       data: [...mockChartData.data].reverse(),
     });
 
-    render(<TestCaseStatusAreaChartWidget {...defaultProps} />);
+    renderWithQueryClient(<TestCaseStatusAreaChartWidget {...defaultProps} />);
 
     await waitFor(() => {
       expect(screen.getByTestId('total-value')).toHaveTextContent('15');
@@ -154,7 +142,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
   });
 
   it('should show loading state initially', () => {
-    render(<TestCaseStatusAreaChartWidget {...defaultProps} />);
+    renderWithQueryClient(<TestCaseStatusAreaChartWidget {...defaultProps} />);
 
     // With Skeleton loading pattern, the widget card is replaced by Skeleton during loading
     expect(
@@ -163,7 +151,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
   });
 
   it('should call fetchTestCaseStatusMetricsByDays on mount', async () => {
-    render(<TestCaseStatusAreaChartWidget {...defaultProps} />);
+    renderWithQueryClient(<TestCaseStatusAreaChartWidget {...defaultProps} />);
 
     await waitFor(() => {
       expect(mockFetchTestCaseStatusMetricsByDays).toHaveBeenCalledWith(
@@ -182,7 +170,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
       tier: ['tier1'],
     };
 
-    render(
+    renderWithQueryClient(
       <TestCaseStatusAreaChartWidget {...defaultProps} chartFilter={filters} />
     );
 
@@ -196,7 +184,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
 
   it('should render with custom height', async () => {
     const customHeight = 300;
-    render(
+    renderWithQueryClient(
       <TestCaseStatusAreaChartWidget {...defaultProps} height={customHeight} />
     );
 
@@ -205,29 +193,48 @@ describe('TestCaseStatusAreaChartWidget', () => {
     });
   });
 
-  it('should render with custom color scheme', async () => {
+  it.each([
+    [TestCaseStatus.Success, 'success'],
+    [TestCaseStatus.Failed, 'failed'],
+    [TestCaseStatus.Aborted, 'warning'],
+  ])(
+    'should colour the chart from test case status %s',
+    async (testCaseStatus, status) => {
+      renderWithQueryClient(
+        <TestCaseStatusAreaChartWidget
+          {...defaultProps}
+          testCaseStatus={testCaseStatus}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('chart-status')).toHaveTextContent(status);
+      });
+    }
+  );
+
+  it('should ignore chartColorScheme, which Collate still passes', async () => {
     const colorScheme: AreaChartColorScheme = {
       gradientStartColor: '#FF0000',
       gradientEndColor: '#FF8888',
       strokeColor: '#00FF00',
     };
 
-    render(
+    renderWithQueryClient(
       <TestCaseStatusAreaChartWidget
         {...defaultProps}
         chartColorScheme={colorScheme}
+        testCaseStatus={TestCaseStatus.Failed}
       />
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('chart-color-scheme')).toHaveTextContent(
-        JSON.stringify(colorScheme)
-      );
+      expect(screen.getByTestId('chart-status')).toHaveTextContent('failed');
     });
   });
 
   it('should render success icon when showIcon is true and status is Success', async () => {
-    render(
+    renderWithQueryClient(
       <TestCaseStatusAreaChartWidget
         {...defaultProps}
         showIcon
@@ -256,7 +263,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
   });
 
   it('should render failed icon when showIcon is true and status is Failed', async () => {
-    render(
+    renderWithQueryClient(
       <TestCaseStatusAreaChartWidget
         {...defaultProps}
         showIcon
@@ -283,7 +290,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
   });
 
   it('should not render icon when showIcon is false', async () => {
-    render(
+    renderWithQueryClient(
       <TestCaseStatusAreaChartWidget {...defaultProps} showIcon={false} />
     );
 
@@ -303,7 +310,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
   it('should render as a link when redirectPath is provided', async () => {
     const redirectPath = '/test-cases/failed';
 
-    render(
+    renderWithQueryClient(
       <MemoryRouter>
         <TestCaseStatusAreaChartWidget
           {...defaultProps}
@@ -325,7 +332,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
   });
 
   it('should not render as a link when redirectPath is not provided', async () => {
-    render(<TestCaseStatusAreaChartWidget {...defaultProps} />);
+    renderWithQueryClient(<TestCaseStatusAreaChartWidget {...defaultProps} />);
 
     // Wait for loading to complete
     await waitFor(() => {
@@ -340,7 +347,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
       new Error('API Error')
     );
 
-    render(<TestCaseStatusAreaChartWidget {...defaultProps} />);
+    renderWithQueryClient(<TestCaseStatusAreaChartWidget {...defaultProps} />);
 
     // Wait for loading to complete
     await waitFor(() => {
@@ -353,7 +360,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
   });
 
   it('should update chart data when chartFilter changes', async () => {
-    const { rerender } = render(
+    const { rerender } = renderWithQueryClient(
       <TestCaseStatusAreaChartWidget {...defaultProps} />
     );
 
@@ -383,7 +390,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
   });
 
   it('should transform API data correctly', async () => {
-    render(<TestCaseStatusAreaChartWidget {...defaultProps} />);
+    renderWithQueryClient(<TestCaseStatusAreaChartWidget {...defaultProps} />);
 
     // Wait for loading to complete
     await waitFor(() => {
@@ -406,7 +413,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
       metadata: { dimensions: [] },
     });
 
-    render(<TestCaseStatusAreaChartWidget {...defaultProps} />);
+    renderWithQueryClient(<TestCaseStatusAreaChartWidget {...defaultProps} />);
 
     // Wait for loading to complete
     await waitFor(() => {
@@ -425,7 +432,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
     ];
 
     for (const status of statuses) {
-      const { unmount } = render(
+      const { unmount } = renderWithQueryClient(
         <TestCaseStatusAreaChartWidget
           {...defaultProps}
           testCaseStatus={status}
@@ -443,7 +450,9 @@ describe('TestCaseStatusAreaChartWidget', () => {
   });
 
   it('should apply correct CSS classes for typography', async () => {
-    render(<TestCaseStatusAreaChartWidget {...defaultProps} showIcon />);
+    renderWithQueryClient(
+      <TestCaseStatusAreaChartWidget {...defaultProps} showIcon />
+    );
 
     // Wait for loading to complete
     await waitFor(() => {
@@ -461,7 +470,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
   });
 
   it('should apply correct CSS classes for typography without icon', async () => {
-    render(
+    renderWithQueryClient(
       <TestCaseStatusAreaChartWidget {...defaultProps} showIcon={false} />
     );
 
@@ -488,7 +497,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
     };
     const height = 250;
 
-    render(
+    renderWithQueryClient(
       <TestCaseStatusAreaChartWidget
         {...defaultProps}
         chartColorScheme={colorScheme}
@@ -503,8 +512,9 @@ describe('TestCaseStatusAreaChartWidget', () => {
       expect(screen.getByTestId('chart-height')).toHaveTextContent(
         height.toString()
       );
-      expect(screen.getByTestId('chart-color-scheme')).toHaveTextContent(
-        JSON.stringify(colorScheme)
+      expect(screen.getByTestId('custom-area-chart')).toHaveAttribute(
+        'data-aria-label',
+        defaultProps.title
       );
     });
   });
@@ -517,7 +527,7 @@ describe('TestCaseStatusAreaChartWidget', () => {
 
     mockFetchTestCaseStatusMetricsByDays.mockReturnValue(delayedPromise);
 
-    render(<TestCaseStatusAreaChartWidget {...defaultProps} />);
+    renderWithQueryClient(<TestCaseStatusAreaChartWidget {...defaultProps} />);
 
     // During loading, the card widget is not rendered (Skeleton takes its place)
     expect(
@@ -534,5 +544,56 @@ describe('TestCaseStatusAreaChartWidget', () => {
         screen.getByTestId('test-case-Success-area-chart-widget')
       ).toBeInTheDocument();
     });
+  });
+
+  it('should keep the latest chartFilter data when a stale request resolves last', async () => {
+    const release: Record<number, () => void> = {};
+    const gates: Record<number, Promise<void>> = {
+      1: new Promise((resolve) => {
+        release[1] = resolve;
+      }),
+      100: new Promise((resolve) => {
+        release[100] = resolve;
+      }),
+    };
+    mockFetchTestCaseStatusMetricsByDays.mockImplementation(
+      async (_status, filters) => {
+        await gates[filters?.startTs ?? 0];
+
+        return {
+          data: [
+            {
+              timestamp: '1625097600000',
+              'testCase.fullyQualifiedName': String(filters?.startTs),
+            },
+          ],
+          metadata: { dimensions: [] },
+        };
+      }
+    );
+
+    const { rerender } = renderWithQueryClient(
+      <TestCaseStatusAreaChartWidget
+        {...defaultProps}
+        chartFilter={{ startTs: 1, endTs: 10 }}
+      />
+    );
+    rerender(
+      <TestCaseStatusAreaChartWidget
+        {...defaultProps}
+        chartFilter={{ startTs: 100, endTs: 200 }}
+      />
+    );
+
+    await act(async () => release[100]());
+
+    expect(await screen.findByTestId('total-value')).toHaveTextContent('100');
+
+    await act(async () => release[1]());
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
+
+    expect(screen.getByTestId('total-value')).toHaveTextContent('100');
   });
 });

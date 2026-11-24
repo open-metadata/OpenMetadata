@@ -72,7 +72,7 @@ jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewNew', () =>
   ))
 );
 
-jest.mock('../../../common/Table/Table', () =>
+jest.mock('../../../common/Table/TableV2', () =>
   jest.fn(({ columns, dataSource }) => (
     <div data-testid="table">
       <div data-testid="table-columns">{JSON.stringify(columns.length)}</div>
@@ -481,7 +481,9 @@ describe('DirectoryVersion', () => {
       const permissionsWithUndefinedViewCustomFields = {
         ...ENTITY_PERMISSIONS,
       };
-      delete (permissionsWithUndefinedViewCustomFields as any).ViewCustomFields;
+      delete (
+        permissionsWithUndefinedViewCustomFields as Record<string, unknown>
+      ).ViewCustomFields;
 
       renderDirectoryVersion({
         entityPermissions: permissionsWithUndefinedViewCustomFields,

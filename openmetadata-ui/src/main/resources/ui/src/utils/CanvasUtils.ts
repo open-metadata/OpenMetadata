@@ -12,7 +12,7 @@
  */
 import type { Edge, Node, Viewport } from 'reactflow';
 import { Position } from 'reactflow';
-import { EntityChildren } from '../components/Entity/EntityLineage/NodeChildren/NodeChildren.interface';
+import type { ExportData } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import {
   COLUMN_NODE_HEIGHT,
   LINEAGE_CHILD_ITEMS_PER_PAGE,
@@ -24,7 +24,9 @@ import {
 } from '../constants/Lineage.constants';
 import { EntityType } from '../enums/entity.enum';
 import { useLineageStore } from '../hooks/useLineageStore';
+import { EntityChildren } from '../interface/lineage.interface';
 import { getEdgePathData } from './EntityLineageEdgeUtils';
+import { getExportViewportForNodes } from './EntityLineageLayoutUtils';
 import { getEntityChildrenAndLabel } from './EntityLineageNodeUtils';
 
 export interface BoundingBox {
@@ -64,6 +66,21 @@ export function setupCanvas(
   return ctx;
 }
 
+const BASE_HEIGHT_ENTITY_TYPES: string[] = [
+  EntityType.METRIC,
+  EntityType.DRIVE_SERVICE,
+  EntityType.DATABASE_SERVICE,
+  EntityType.MESSAGING_SERVICE,
+  EntityType.METADATA_SERVICE,
+  EntityType.DASHBOARD_SERVICE,
+  EntityType.PIPELINE_SERVICE,
+  EntityType.MLMODEL_SERVICE,
+  EntityType.STORAGE_SERVICE,
+  EntityType.SEARCH_SERVICE,
+  EntityType.SECURITY_SERVICE,
+  EntityType.API_SERVICE,
+];
+
 const getBaseNodeHeightFromType = (
   entityType: string,
   isRootNode: boolean,
@@ -73,22 +90,8 @@ const getBaseNodeHeightFromType = (
 
   let baseHeight = childrenPresent ? NODE_HEIGHT_WITH_CHILDREN : NODE_HEIGHT;
 
-  switch (entityType) {
-    case EntityType.METRIC:
-    case EntityType.DRIVE_SERVICE:
-    case EntityType.DATABASE_SERVICE:
-    case EntityType.MESSAGING_SERVICE:
-    case EntityType.METADATA_SERVICE:
-    case EntityType.DASHBOARD_SERVICE:
-    case EntityType.PIPELINE_SERVICE:
-    case EntityType.MLMODEL_SERVICE:
-    case EntityType.STORAGE_SERVICE:
-    case EntityType.SEARCH_SERVICE:
-    case EntityType.SECURITY_SERVICE:
-    case EntityType.API_SERVICE:
-      baseHeight = NODE_BASE_HEIGHT;
-
-      break;
+  if (BASE_HEIGHT_ENTITY_TYPES.includes(entityType)) {
+    baseHeight = NODE_BASE_HEIGHT;
   }
 
   return isRootNode ? baseHeight + 10 : baseHeight;
@@ -253,19 +256,33 @@ function getColumnLineageCoordinates(
   };
 }
 
+// The expand / collapse handles sit at `top: min(58px, 50%)` of the node
+// (custom-node.less `.react-flow .lineage-node-handle`); node edges meet them.
+const NODE_HANDLE_MAX_TOP = 58;
+
+const getNodeAnchorY = (node: Node, isColumnLineage: boolean) => {
+  const computedHeight = getNodeHeight(node, isColumnLineage, 0);
+  // Temp table nodes carry no handles and have a fixed height.
+  if (node.data?.node?.isTempTable) {
+    return node.position.y + computedHeight / 2;
+  }
+
+  return (
+    node.position.y +
+    Math.min(NODE_HANDLE_MAX_TOP, (node.height ?? computedHeight) / 2)
+  );
+};
+
 function getEntityLineageCoordinates(
   sourceNode: Node,
   targetNode: Node,
   isColumnLineage: boolean
 ): EdgeCoordinates {
-  const sourceHeight = getNodeHeight(sourceNode, isColumnLineage, 0);
-  const targetHeight = getNodeHeight(targetNode, isColumnLineage, 0);
-
   return {
     sourceX: sourceNode.position.x + (sourceNode.width ?? 0),
-    sourceY: sourceNode.position.y + sourceHeight / 2,
-    targetX: targetNode.position.x - 10,
-    targetY: targetNode.position.y + targetHeight / 2,
+    sourceY: getNodeAnchorY(sourceNode, isColumnLineage),
+    targetX: targetNode.position.x,
+    targetY: getNodeAnchorY(targetNode, isColumnLineage),
   };
 }
 
@@ -658,6 +675,31 @@ export const clearPathDataCache = (): void => {
   pathDataCache.clear();
 };
 
+function drawEdgeArrowMarker(
+  ctx: CanvasRenderingContext2D,
+  pathData: EdgePathData,
+  strokeColor: string
+): void {
+  const { sourceX, sourceY, targetX, targetY, edgePath } = pathData;
+
+  if (
+    targetX === undefined ||
+    targetY === undefined ||
+    sourceX === undefined ||
+    sourceY === undefined
+  ) {
+    return;
+  }
+
+  drawArrowMarker(
+    ctx,
+    targetX,
+    targetY,
+    getBezierEndTangentAngle(edgePath, sourceX, sourceY, targetX, targetY),
+    strokeColor
+  );
+}
+
 export function drawEdgesForExport(
   edges: Edge[],
   nodeMap: Map<string, Node>,
@@ -710,29 +752,61 @@ export function drawEdgesForExport(
     ctx.stroke(new Path2D(pathData.edgePath));
     ctx.setLineDash([]);
 
-    if (
-      pathData.targetX !== undefined &&
-      pathData.targetY !== undefined &&
-      pathData.sourceX !== undefined &&
-      pathData.sourceY !== undefined
-    ) {
-      drawArrowMarker(
-        ctx,
-        pathData.targetX,
-        pathData.targetY,
-        getBezierEndTangentAngle(
-          pathData.edgePath,
-          pathData.sourceX,
-          pathData.sourceY,
-          pathData.targetX,
-          pathData.targetY
-        ),
-        strokeColor
-      );
-    }
+    drawEdgeArrowMarker(ctx, pathData, strokeColor);
   }
 
   ctx.restore();
 
   return canvas;
 }
+
+/**
+ * The PNG options shared by the lineage exports: the frame, the edge overlay
+ * drawn in that frame, and the hooks that mount every node for the capture.
+ */
+export const getLineagePngExportOptions = (
+  nodes: Node[],
+  edges: Edge[]
+): Required<
+  Pick<
+    ExportData,
+    'getViewport' | 'renderEdgesOverlay' | 'beforeCapture' | 'afterCapture'
+  >
+> => ({
+  getViewport: (imageWidth, imageHeight) =>
+    getExportViewportForNodes(nodes, imageWidth, imageHeight),
+  renderEdgesOverlay: (
+    imageWidth,
+    imageHeight,
+    padding,
+    pixelRatio,
+    viewport
+  ) => {
+    if (!viewport) {
+      return null;
+    }
+    const nodeMap = new Map(nodes.map((node) => [node.id, node]));
+    const { columnsInCurrentPages } = useLineageStore.getState();
+
+    return drawEdgesForExport(
+      edges,
+      nodeMap,
+      viewport,
+      imageWidth,
+      imageHeight,
+      padding,
+      pixelRatio,
+      columnsInCurrentPages
+    );
+  },
+  // The canvases leave off-screen nodes out of the DOM. Mount them for the
+  // capture, which clones the DOM, so the image holds every node and not only
+  // the ones in view.
+  beforeCapture: async () => {
+    useLineageStore.getState().setRenderAllNodes(true);
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve))
+    );
+  },
+  afterCapture: () => useLineageStore.getState().setRenderAllNodes(false),
+});

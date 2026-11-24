@@ -10,27 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page, Response } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import {
+  RUN_TEST_CASE_BUTTON_TEST_ID,
   TEST_CASE_LAST_RUN_BANNER_TEST_IDS,
   type TestCaseLastRunBannerStatus,
 } from '../constant/dataQuality';
 import { TableClass } from '../support/entity/TableClass';
+import { okJson } from './apiResponse';
 import {
   fetchCompletedCsvAsyncJobResult,
   getApiContext,
+  redirectToHomePage,
   toastNotification,
   uuid,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { expectBreadcrumbToContainAncestor } from './headerBreadcrumbUtils';
 import {
   fillTagDetails,
   pressKeyXTimes,
   startCsvPreviewAndWaitForGrid,
   suppressCsvJobsTray,
 } from './importUtils';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 export const getFailedRowsData = (table: TableClass) => {
   const columns = table.entity.columns.map((col) => col.name);
@@ -140,46 +145,54 @@ export const submitTestCaseForm = async (page: Page) => {
 };
 
 export const waitForPermissionsResponse = (page: Page) =>
-  page.waitForResponse((res) => {
-    const url = res.url();
-    return (
-      url.includes('/api/v1/permissions') &&
-      !url.includes('/api/v1/permissions/table/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
-    );
-  });
+  waitForResponseWithStatus(
+    page,
+    (res) => {
+      const url = res.url();
+      return (
+        url.includes('/api/v1/permissions') &&
+        !url.includes('/api/v1/permissions/table/name/') &&
+        res.request().method() === 'GET'
+      );
+    },
+    200
+  );
 
 export const waitForTableEntityPermissionsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/api/v1/permissions/table/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const waitForTestCaseListResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/dataQuality/testCases/search/list') &&
-      res.status() === 200
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testCases/search/list'),
+    200
   );
 
 export const waitForTestCaseDetailsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/api/v1/dataQuality/testCases/name/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const waitForTestSuiteListResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       (res.url().includes('/api/v1/dataQuality/testSuites') ||
         res.url().includes('/api/v1/dataQuality/testSuites/search/list')) &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 /**
@@ -209,15 +222,19 @@ export const confirmIngestionPipelineHardDelete = async (page: Page) => {
 
 export const visitTestSuitesPage = async (page: Page) => {
   const listPromise = waitForTestSuiteListResponse(page);
-  await page.goto('/data-quality/test-suites');
+  await page.goto('/data-quality/test-suites', {
+    waitUntil: 'domcontentloaded',
+  });
   await listPromise;
 };
 
 export const waitForTestSuiteDetailsResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/dataQuality/testSuites/') &&
-      res.status() === 200
+      res.request().method() === 'GET' &&
+      res.url().includes('/api/v1/dataQuality/testSuites/'),
+    200
   );
 
 export const visitTestSuiteDetailsPage = async (
@@ -225,16 +242,19 @@ export const visitTestSuiteDetailsPage = async (
   suiteFqn: string
 ) => {
   const detailsPromise = waitForTestSuiteDetailsResponse(page);
-  await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`);
+  await page.goto(`/test-suites/${encodeURIComponent(suiteFqn)}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await detailsPromise;
 };
 
 export const waitForFailedRowsSampleResponse = (page: Page) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (res) =>
       res.url().includes('/failedRowsSample') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.request().method() === 'GET',
+    200
   );
 
 export const visitDataQualityTab = async (page: Page, table: TableClass) => {
@@ -267,20 +287,17 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     name: tableName,
   } = table.entityResponseData;
 
-  if (!service || !database || !databaseSchema) {
+  if (!service?.name || !database?.name || !databaseSchema?.name) {
     throw new Error(
       `Table metadata (service, database, or databaseSchema) is missing for ${table.entity.name}`
     );
   }
 
-  // The detail page renders a compact asset trail built from the table FQN
-  // (service > ... > table > test case): the middle crumbs (database and
-  // schema) are collapsed into the "..." menu and labels use entity names.
+  // The detail page starts with Observability, so service/database/schema
+  // ancestors may be collapsed while the table remains an inline link.
   const breadcrumb = page.getByTestId('breadcrumb');
 
-  await expect(
-    breadcrumb.getByRole('link', { name: service.name })
-  ).toBeVisible();
+  await expectBreadcrumbToContainAncestor(page, service.name);
   await expect(breadcrumb.getByRole('link', { name: tableName })).toBeVisible();
 
   await breadcrumb
@@ -296,11 +313,11 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
 
   await page.keyboard.press('Escape');
 
-  const tableResponsePromise = page.waitForResponse(
+  const tableResponsePromise = waitForResponseWithStatus(
+    page,
     (res) =>
-      res.url().includes('/api/v1/tables/') &&
-      res.request().method() === 'GET' &&
-      res.status() === 200
+      res.url().includes('/api/v1/tables/') && res.request().method() === 'GET',
+    200
   );
   const testCaseResponsePromise = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list?*fields=*'
@@ -316,7 +333,7 @@ export const findSystemTestDefinition = async (page: Page) => {
       response.request().method() === 'GET'
   );
 
-  await page.goto('/test-library');
+  await page.goto('/test-library', { waitUntil: 'domcontentloaded' });
   let response = await responsePromise;
   let data = await response.json();
 
@@ -380,7 +397,9 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
   const testCaseListResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list*'
   );
-  await page.goto(`/test-suites/${testSuiteFqn}`);
+  await page.goto(`/test-suites/${testSuiteFqn}`, {
+    waitUntil: 'domcontentloaded',
+  });
   await testCaseListResponse;
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('manage-button').waitFor({
@@ -393,7 +412,9 @@ export const visitTestSuitePage = async (page: Page, testSuiteFqn: string) => {
  * @param page - Playwright page object
  */
 export const navigateToGlobalDataQuality = async (page: Page) => {
-  await page.goto('/data-quality/test-cases');
+  await page.goto('/data-quality/test-cases', {
+    waitUntil: 'domcontentloaded',
+  });
   await page.getByTestId('manage-button').waitFor();
 };
 
@@ -497,7 +518,7 @@ export const verifyPageAccess = async (
   const permissionResponse = page.waitForResponse((response) =>
     response.url().includes('api/v1/permissions')
   );
-  await page.goto(url);
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
   await permissionResponse;
   await waitForAllLoadersToDisappear(page);
 
@@ -795,7 +816,7 @@ export const performE2EExportImportFlow = async (
     });
 
     const cellDetails = page.locator('.rdg-cell-details');
-    await expect(cellDetails.nth(0)).toContainText('Entity created');
+    await expect(cellDetails.nth(0)).toContainText('Entity updated');
     await expect(cellDetails.nth(1)).toContainText('Entity created');
     await expect(cellDetails.nth(2)).toContainText(
       '#FIELD_REQUIRED: Field 1 is required'
@@ -842,7 +863,8 @@ export const performE2EExportImportFlow = async (
     await expect(page.locator('.rdg-header-row')).toBeVisible();
 
     // Update display name for first test case (existing test case)
-    await page.locator('.rdg-row').nth(0).click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- test-case grid rows are keyed by the test case id, not a row index
+    await page.locator('.rdg-row').first().click();
     const displayNameCell1 = page
       .locator('.rdg-row')
       .nth(0)
@@ -862,7 +884,8 @@ export const performE2EExportImportFlow = async (
     await page.keyboard.press('Enter');
 
     // First test case - add tag
-    await page.locator('.rdg-row').nth(0).click();
+    // eslint-disable-next-line om-playwright/no-positional-locator -- test-case grid rows are keyed by the test case id, not a row index
+    await page.locator('.rdg-row').first().click();
     await page
       .locator('.rdg-row')
       .nth(0)
@@ -880,8 +903,8 @@ export const performE2EExportImportFlow = async (
     });
 
     const cellDetails = page.locator('.rdg-cell-details');
-    await expect(cellDetails.nth(0)).toContainText('Entity created');
-    await expect(cellDetails.nth(1)).toContainText('Entity created');
+    await expect(cellDetails.nth(0)).toContainText('Entity updated');
+    await expect(cellDetails.nth(1)).toContainText('Entity updated');
 
     // Click Update button
     const bulkEditUpdateResponse = page.waitForResponse(
@@ -908,4 +931,221 @@ export const performE2EExportImportFlow = async (
     await expect(page.getByText(/ - Updated via Bulk Edit/)).toBeVisible();
     await expect(page.getByText(/ - Bulk Edited/)).toBeVisible();
   });
+};
+
+/**
+ * Open a test case's details page and wait for it to settle.
+ *
+ * App mode is the caller's choice — seed it (see `enableAiAppMode`) before
+ * calling this, so the helper stays usable from either mode's specs and
+ * `playwright/utils` keeps its one-way dependency on `playwright/e2e`.
+ */
+export const openTestCaseDetailsPage = async (
+  page: Page,
+  testCaseFqn: string
+): Promise<void> => {
+  await redirectToHomePage(page);
+  await page.goto(
+    `/observability/test-case/${encodeURIComponent(
+      testCaseFqn
+    )}/test-case-results`,
+    { waitUntil: 'domcontentloaded' }
+  );
+  await waitForAllLoadersToDisappear(page);
+
+  await expect(page.getByTestId('test-case-detail-page')).toBeVisible();
+};
+
+export const createTableWithTestCase = async (
+  apiContext: APIRequestContext
+) => {
+  const table = new TableClass();
+  await table.create(apiContext);
+  await table.createTestCase(apiContext);
+
+  return table;
+};
+
+/**
+ * Unscheduled on purpose: a scheduled DAG can start a run of its own as soon as
+ * it is deployed, which would disable Run now before the test clicks it.
+ */
+export const createUnscheduledTestSuitePipeline = async (
+  apiContext: APIRequestContext,
+  table: TableClass
+) => {
+  const createResponse = await apiContext.post(
+    '/api/v1/services/ingestionPipelines',
+    {
+      data: {
+        name: `pw-run-test-case-pipeline-${uuid()}`,
+        pipelineType: 'TestSuite',
+        airflowConfig: {},
+        service: { id: table.testSuiteResponseData.id, type: 'testSuite' },
+        sourceConfig: {
+          config: {
+            type: 'TestSuite',
+            entityFullyQualifiedName:
+              table.entityResponseData.fullyQualifiedName,
+          },
+        },
+      },
+    }
+  );
+  expect(createResponse.status()).toBe(201);
+  const { id, name } = await createResponse.json();
+
+  return { id: id as string, name: name as string };
+};
+
+export const patchIngestionPipeline = async (
+  apiContext: APIRequestContext,
+  pipelineId: string,
+  path: string,
+  value: unknown
+) => {
+  const patchResponse = await apiContext.patch(
+    `/api/v1/services/ingestionPipelines/${pipelineId}`,
+    {
+      data: [{ op: 'add', path, value }],
+      headers: { 'Content-Type': 'application/json-patch+json' },
+    }
+  );
+  expect(patchResponse.status()).toBe(200);
+};
+
+export const isPipelinePermissionResponse =
+  (pipelineName: string) => (response: Response) =>
+    response.url().includes('/api/v1/permissions/ingestionPipeline/name/') &&
+    response.url().includes(pipelineName);
+
+export const isRunTestCaseResponse = (response: Response) =>
+  response.url().endsWith('/api/v1/services/ingestionPipelines/run') &&
+  response.request().method() === 'POST';
+
+export const expectRunTestCaseDisabledWithReason = async (
+  page: Page,
+  reason: string
+) => {
+  const reasonTrigger = page.getByRole('group', { name: reason });
+
+  await expect(page.getByTestId(RUN_TEST_CASE_BUTTON_TEST_ID)).toBeDisabled();
+  await expect(reasonTrigger).toBeVisible();
+
+  // React Aria opens a tooltip on hover only once a pointer press has happened on
+  // the page, which a freshly loaded page has not seen; keyboard focus opens it
+  // regardless, and reaching the reason by keyboard is what the wrapper is for.
+  await reasonTrigger.focus();
+
+  await expect(page.getByRole('tooltip')).toHaveText(reason);
+};
+
+/**
+ * Creates a table-level test definition plus one test case that uses it, runs
+ * `check` once the test case search index lists it under that definition (the
+ * details panel reads its linked test cases from that index), and always cleans
+ * up whatever was created, even when a step fails part-way.
+ */
+export const withTestDefinitionAndTestCase = async (
+  page: Page,
+  check: (data: {
+    definitionFqn: string;
+    testCaseName: string;
+  }) => Promise<void>
+) => {
+  const { apiContext, afterAction } = await getApiContext(page);
+  const table = new TableClass();
+  let definitionId: string | undefined;
+
+  try {
+    const definition = await okJson<{ id: string; fullyQualifiedName: string }>(
+      await apiContext.post('/api/v1/dataQuality/testDefinitions', {
+        data: {
+          name: `pwTestDefinitionDetails${uuid()}`,
+          description: 'Playwright test definition details',
+          entityType: 'TABLE',
+          testPlatforms: ['OpenMetadata'],
+        },
+      }),
+      'withTestDefinitionAndTestCase'
+    );
+    definitionId = definition.id;
+    const testCase = await table.createTestCase(apiContext, {
+      testDefinition: definition.fullyQualifiedName,
+      parameterValues: [],
+    });
+
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            '/api/v1/dataQuality/testCases/search/list',
+            { params: { testDefinition: definition.fullyQualifiedName } }
+          );
+
+          return (await response.json()).paging?.total;
+        },
+        { timeout: 60_000 }
+      )
+      .toBe(1);
+
+    await check({
+      definitionFqn: definition.fullyQualifiedName,
+      testCaseName: testCase.name,
+    });
+  } finally {
+    if (table.entityResponseData?.id) {
+      await table.delete(apiContext);
+    }
+    if (definitionId) {
+      await apiContext.delete(
+        `/api/v1/dataQuality/testDefinitions/${definitionId}?hardDelete=true&recursive=true`
+      );
+    }
+    await afterAction();
+  }
+};
+
+/**
+ * Opens the Test Library at `libraryPath`, searches for the definition and
+ * clicks its name, then checks the details panel lists `testCaseName` and
+ * closes it.
+ */
+export const openTestDefinitionDetailsFromLibrary = async (
+  page: Page,
+  libraryPath: string,
+  definitionFqn: string,
+  testCaseName: string
+) => {
+  await page.goto(libraryPath, { waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
+
+  const searchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+      response.url().includes(`q=${definitionFqn}`)
+  );
+  await page.getByTestId('test-definition-search').fill(definitionFqn);
+  await searchResponse;
+
+  const testCasesResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+      response.url().includes(`testDefinition=${definitionFqn}`)
+  );
+  await page.getByRole('button', { name: definitionFqn, exact: true }).click();
+  await testCasesResponse;
+
+  const panel = page.getByRole('dialog', { name: 'Test Definition' });
+  await expect(panel.getByTestId('test-definition-overview')).toContainText(
+    'Playwright test definition details'
+  );
+  await expect(
+    panel.getByRole('link', { name: testCaseName, exact: true })
+  ).toBeVisible();
+  // The panel opens over the list, so the URL stays on the Test Library.
+  await expect(page).toHaveURL(new RegExp(`${libraryPath}(\\?|$)`));
+
+  await panel.getByRole('button', { name: 'Close' }).click();
+  await expect(panel).not.toBeVisible();
 };

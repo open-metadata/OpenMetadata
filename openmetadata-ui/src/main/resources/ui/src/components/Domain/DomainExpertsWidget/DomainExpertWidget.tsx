@@ -10,20 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { cloneDeep, includes, isEmpty, isEqual } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import type { Domain } from '../../../generated/entity/domains/domain';
-import { Operation } from '../../../generated/entity/policies/policy';
 import type { EntityReference } from '../../../generated/tests/testCase';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
-import { getPrioritizedEditPermission } from '../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
@@ -45,15 +42,23 @@ export const DomainExpertWidget = () => {
   } = useGenericContext<Domain>();
   const { t } = useTranslation();
 
-  const { editOwnerPermission, editAllPermission } = useMemo(
-    () => ({
-      editOwnerPermission:
-        permissions &&
-        getPrioritizedEditPermission(permissions, Operation.EditOwners),
-      editAllPermission: permissions?.EditAll,
-    }),
-    [permissions]
-  );
+  // Named-flag derivation (Task 8 prop-contract migration): `permissions` is the raw
+  // OperationPermission from useGenericContext(), non-optional per GenericContextType — the
+  // old `permissions &&` guard was defensive dead code. No `deleted` argument: `Domain` has no
+  // `deleted` field (confirmed against the generated type) and the old code never gated on
+  // one. `editOwnerPermission` is a pure rename of the already-prioritized
+  // getPrioritizedEditPermission(permissions, Operation.EditOwners) call. `editAllPermission`
+  // maps the raw, EditAll-only `permissions?.EditAll` read onto `canEditAll` — canEditAll is
+  // exactly `Boolean(permissions[Operation.EditAll]) && !deleted`, i.e. the same value, per
+  // PermissionDerivation.ts's "EditAll-only" mapping rule (not a prioritization change).
+  const { editOwnerPermission, editAllPermission } = useMemo(() => {
+    const flags = getDerivedPermissionFlags(permissions);
+
+    return {
+      editOwnerPermission: flags.canEditOwners,
+      editAllPermission: flags.canEditAll,
+    };
+  }, [permissions]);
 
   const handleExpertsUpdate = async (data: Array<EntityReference>) => {
     if (!isEqual(data, domain.experts)) {
@@ -79,18 +84,24 @@ export const DomainExpertWidget = () => {
     !isVersionView && editOwnerPermission ? (
       <UserSelectableList
         hasPermission
-        popoverProps={{ placement: 'topLeft' }}
+        popoverProps={{ placement: 'top start' }}
         selectedUsers={domain.experts ?? []}
         onUpdate={handleExpertsUpdate}>
         {isEmpty(domain.experts) ? (
-          <WidgetPlusButton
+          <ButtonUtility
             data-testid="Add"
-            title={t('label.add-entity', { entity: t('label.expert-plural') })}
+            icon={Plus}
+            tooltip={t('label.add-entity', {
+              entity: t('label.expert-plural'),
+            })}
           />
         ) : (
-          <WidgetEditButton
+          <ButtonUtility
             data-testid="edit-expert-button"
-            title={t('label.edit-entity', { entity: t('label.expert-plural') })}
+            icon={Edit01}
+            tooltip={t('label.edit-entity', {
+              entity: t('label.expert-plural'),
+            })}
           />
         )}
       </UserSelectableList>

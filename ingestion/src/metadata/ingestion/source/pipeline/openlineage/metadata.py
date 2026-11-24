@@ -15,25 +15,34 @@ OpenLineage source to extract metadata from Kafka or Kinesis events
 
 import json
 import re
+import threading
 import time
 import traceback
 from collections import defaultdict
+from collections.abc import Callable, Iterable, Iterator
+from contextlib import contextmanager
 from itertools import groupby, product
-from typing import Any, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import Any
 from urllib.parse import quote, urlparse
 
-from cachetools import LRUCache
+from cachetools import LRUCache, TTLCache
 
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kafkaBrokerConfig import (
     Kafka as KafkaBrokerConfig,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.openlineage.kinesisBrokerConfig import (
     Kinesis as KinesisBrokerConfig,
+)
+from metadata.generated.schema.entity.services.connections.pipeline.openlineage.natsBrokerConfig import (
+    Nats as NatsBrokerConfig,
 )
 from metadata.generated.schema.entity.services.connections.pipeline.openLineageConnection import (
     OpenLineageConnection,
@@ -59,6 +68,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
     EventType,
@@ -105,6 +115,13 @@ logger = ingestion_logger()
 # The cache is reset for every event and capped at this size, so it can never
 # grow without bound or exhaust memory.
 RESOLUTION_CACHE_MAXSIZE = 1000
+
+# Every event re-resolves its datasets against each candidate service, so a
+# table missing from one of them would cost a request per event. Misses are
+# remembered only briefly, so a table ingested during a long run still becomes
+# visible.
+MISSING_ENTITY_CACHE_MAXSIZE = 1000
+MISSING_ENTITY_CACHE_TTL_SECONDS = 300
 
 # Kinesis Producer Library (KPL) aggregated-record framing.
 # When the OpenLineage Kinesis transport runs with AggregationEnabled, KPL packs
@@ -179,6 +196,20 @@ def deaggregate_kinesis_record(data: bytes) -> list[bytes]:
     return payloads
 
 
+DEFAULT_NATS_POOL_TIMEOUT = 1.0
+DEFAULT_NATS_SESSION_TIMEOUT = 30
+DEFAULT_NATS_BATCH_SIZE = 100
+DEFAULT_NATS_ACK_WAIT = 60
+# Floor for the keep-alive heartbeat, so a short ackWait cannot turn the refresh into a
+# tight loop of control messages against the server
+MIN_NATS_KEEPALIVE_INTERVAL = 1.0
+
+
+def _nats_setting(configured: Any, default: Any) -> Any:
+    """The configured value, or the default when a code-built config left it unset."""
+    return default if configured is None else configured
+
+
 class OpenlineageSource(PipelineServiceSource):
     """
     Implements the necessary methods of PipelineServiceSource to facilitate registering OpenLineage pipelines with
@@ -194,11 +225,11 @@ class OpenlineageSource(PipelineServiceSource):
     """
 
     _db_service_names_warned: bool = False
-    _service_cache: Dict[str, str]  # noqa: UP006
-    _current_pipeline_service: Optional[str] = None  # noqa: UP045
+    _service_cache: dict[str, str]
+    _current_pipeline_service: str | None = None
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: OpenLineageConnection = config.serviceConnection.root.config
@@ -215,16 +246,19 @@ class OpenlineageSource(PipelineServiceSource):
             ownership_update_mode=self.source_config.ownershipUpdateMode,
         )
         self._entity_cache: LRUCache = LRUCache(maxsize=10000)
+        self._missing_entity_cache: TTLCache = TTLCache(
+            maxsize=MISSING_ENTITY_CACHE_MAXSIZE, ttl=MISSING_ENTITY_CACHE_TTL_SECONDS
+        )
         self._namespace_to_service_cache: LRUCache = LRUCache(maxsize=10000)
         self._resolution_cache: LRUCache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
-        self._db_service_type_map: Dict[str, str] = self._build_db_service_type_map()  # noqa: UP006
+        self._db_service_type_map: dict[str, str] = self._build_db_service_type_map()
 
     def close(self) -> None:
         super().close()
         self.metadata.close()
 
     @staticmethod
-    def _get_entity_details(data: Dict) -> EntityDetails:  # noqa: UP006
+    def _get_entity_details(data: dict) -> EntityDetails:
         """
         Determine whether an OpenLineage dataset is a topic or a table.
 
@@ -243,7 +277,7 @@ class OpenlineageSource(PipelineServiceSource):
         return EntityDetails(entity_type="table")
 
     @staticmethod
-    def _parse_dotted_table_name(name: str) -> Optional[TableDetails]:  # noqa: UP045
+    def _parse_dotted_table_name(name: str) -> TableDetails | None:
         """
         Parse a dot-separated name used by SQL engines.
 
@@ -270,7 +304,7 @@ class OpenlineageSource(PipelineServiceSource):
         )
 
     @staticmethod
-    def _parse_table_identity(namespace: str, name: str) -> Optional[TableDetails]:  # noqa: UP045
+    def _parse_table_identity(namespace: str, name: str) -> TableDetails | None:
         """
         Parse a single OpenLineage ``(namespace, name)`` identity to a table.
 
@@ -296,7 +330,7 @@ class OpenlineageSource(PipelineServiceSource):
         return parsed or OpenlineageSource._parse_dotted_table_name(name)
 
     @staticmethod
-    def _symlink_identifiers(data: Dict) -> List[Dict]:  # noqa: UP006
+    def _symlink_identifiers(data: dict) -> list[dict]:
         """
         Safely extract the symlink identifier dictionaries from a dataset.
 
@@ -315,7 +349,7 @@ class OpenlineageSource(PipelineServiceSource):
         return [identifier for identifier in identifiers if isinstance(identifier, dict)]
 
     @staticmethod
-    def _raw_table_identities(data: Dict) -> List[Tuple[str, str]]:  # noqa: UP006
+    def _raw_table_identities(data: dict) -> list[tuple[str, str]]:
         """
         Ordered raw ``(namespace, name)`` identity candidates for a dataset.
 
@@ -333,7 +367,7 @@ class OpenlineageSource(PipelineServiceSource):
         # (versus a missing key) is also normalized to an empty string. Without
         # this, a malformed symlink with ``"namespace": null`` would propagate
         # ``None`` into ``_parse_table_identity`` and crash on ``startswith``.
-        identities: List[Tuple[str, str]] = [  # noqa: UP006
+        identities: list[tuple[str, str]] = [
             (identifier.get("namespace") or "", identifier.get("name") or "")
             for identifier in OpenlineageSource._symlink_identifiers(data)
             if identifier.get("type") != SymlinkType.LOCATION.value
@@ -342,14 +376,14 @@ class OpenlineageSource(PipelineServiceSource):
         return identities
 
     @classmethod
-    def _iter_table_candidates(cls, data: Dict) -> List[Tuple[TableDetails, str]]:  # noqa: UP006
+    def _iter_table_candidates(cls, data: dict) -> list[tuple[TableDetails, str]]:
         """
         Parsed, de-duplicated table candidates in resolution priority order.
 
         Each entry is ``(table_details, namespace)`` where namespace is the
         identity's own namespace (used for namespace-aware service lookup).
         """
-        candidates: List[Tuple[TableDetails, str]] = []  # noqa: UP006
+        candidates: list[tuple[TableDetails, str]] = []
         seen: set = set()
         for namespace, name in cls._raw_table_identities(data):
             details = cls._parse_table_identity(namespace, name)
@@ -367,7 +401,7 @@ class OpenlineageSource(PipelineServiceSource):
                 candidates.append((details, namespace))
         return candidates
 
-    def _resolve_table(self, data: Dict) -> Optional[ResolvedTable]:  # noqa: UP006, UP045
+    def _resolve_table(self, data: dict) -> ResolvedTable | None:
         """
         Resolve an OpenLineage dataset to an existing OpenMetadata table.
 
@@ -390,7 +424,7 @@ class OpenlineageSource(PipelineServiceSource):
         self._resolution_cache[cache_key] = resolved
         return resolved
 
-    def _resolve_table_uncached(self, data: Dict, ol_name: str) -> Optional[ResolvedTable]:  # noqa: UP006, UP045
+    def _resolve_table_uncached(self, data: dict, ol_name: str) -> ResolvedTable | None:
         """
         Run candidate-based resolution for :meth:`_resolve_table`.
 
@@ -406,7 +440,7 @@ class OpenlineageSource(PipelineServiceSource):
             self._log_unresolvable_dataset(data, ol_name)
             return None
 
-        attempts: List[str] = []  # noqa: UP006
+        attempts: list[str] = []
         for details, namespace in candidates:
             table_fqn = self._get_table_fqn(details, namespace=namespace)
             if table_fqn:
@@ -420,7 +454,7 @@ class OpenlineageSource(PipelineServiceSource):
         return None
 
     @staticmethod
-    def _log_unresolvable_dataset(data: Dict, ol_name: str) -> None:  # noqa: UP006
+    def _log_unresolvable_dataset(data: dict, ol_name: str) -> None:
         symlinks = OpenlineageSource._symlink_identifiers(data)
         logger.warning(
             f"OpenLineage dataset '{ol_name}' has no resolvable table identity "
@@ -430,7 +464,7 @@ class OpenlineageSource(PipelineServiceSource):
         )
 
     @staticmethod
-    def _log_unmatched_dataset(ol_name: str, attempts: List[str]) -> None:  # noqa: UP006
+    def _log_unmatched_dataset(ol_name: str, attempts: list[str]) -> None:
         logger.warning(
             f"OpenLineage dataset '{ol_name}' matched no table in configured services. "
             f"Tried {len(attempts)} candidate(s): {'; '.join(attempts)}. Ensure the "
@@ -439,7 +473,7 @@ class OpenlineageSource(PipelineServiceSource):
         )
 
     @staticmethod
-    def _get_topic_details(data: Dict) -> TopicDetails:  # noqa: UP006
+    def _get_topic_details(data: dict) -> TopicDetails:
         """
         Extract topic name and broker hostname from an OpenLineage event.
 
@@ -468,7 +502,7 @@ class OpenlineageSource(PipelineServiceSource):
         return TopicDetails(name=name, broker_hostname=broker_hostname)
 
     @staticmethod
-    def _parse_glue_table_name(name: str) -> Optional[TableDetails]:  # noqa: UP045
+    def _parse_glue_table_name(name: str) -> TableDetails | None:
         """
         Parse AWS Glue OL dataset name: ``table/{database}/{table}``.
 
@@ -486,7 +520,7 @@ class OpenlineageSource(PipelineServiceSource):
         return TableDetails(name=parts[-1].strip("`").lower(), schema=parts[-2].strip("`").lower())
 
     @staticmethod
-    def _parse_slash_table_name(name: str) -> Optional[TableDetails]:  # noqa: UP045
+    def _parse_slash_table_name(name: str) -> TableDetails | None:
         """
         Parse slash-separated ``{database}/{table}`` OL dataset names.
 
@@ -499,10 +533,10 @@ class OpenlineageSource(PipelineServiceSource):
         parts = name.split("/")
         if len(parts) < 2:
             return None
-        return TableDetails(name=parts[-1].lower(), schema=parts[-2].lower())
+        return TableDetails(name=parts[-1].strip("`").lower(), schema=parts[-2].strip("`").lower())
 
     @staticmethod
-    def _parse_cosmos_table_name(namespace: str, name: str) -> Optional[TableDetails]:  # noqa: UP045
+    def _parse_cosmos_table_name(namespace: str, name: str) -> TableDetails | None:
         """
         Parse Azure Cosmos DB OL dataset names.
 
@@ -519,16 +553,46 @@ class OpenlineageSource(PipelineServiceSource):
         return TableDetails(name=coll_match.group(1).lower(), schema=db_match.group(1).lower())
 
     def _get_by_name_cached(self, entity_class, fqn_str: str, **kwargs):
-        """Wrapper around metadata.get_by_name with in-memory caching."""
+        """Wrapper around metadata.get_by_name with in-memory caching.
+
+        The cache key includes the requested ``fields`` so a call asking for
+        e.g. ``fields=["columns"]`` never gets served a stale response cached
+        by an earlier, differently-fielded call for the same entity.
+
+        An entity that does not exist is remembered for a short time,
+        regardless of the requested fields.
+        """
         if not hasattr(self, "_entity_cache"):
             return self.metadata.get_by_name(entity_class, fqn_str, **kwargs)
-        key = f"{entity_class.__name__}:{fqn_str}"
-        if key not in self._entity_cache:
-            result = self.metadata.get_by_name(entity_class, fqn_str, **kwargs)
-            if result is not None:
-                self._entity_cache[key] = result
-            return result
-        return self._entity_cache[key]
+        fields_key = ",".join(sorted(kwargs.get("fields") or []))
+        key = f"{entity_class.__name__}:{fqn_str}:{fields_key}"
+        if key in self._entity_cache:
+            return self._entity_cache[key]
+        missing_key = f"{entity_class.__name__}:{fqn_str}"
+        if missing_key in self._missing_entity_cache:
+            return None
+        result = self.metadata.get_by_name(entity_class, fqn_str, **kwargs)
+        if result is None:
+            self._missing_entity_cache[missing_key] = True
+        else:
+            self._entity_cache[key] = result
+        return result
+
+    @staticmethod
+    def _match_column_fqn(table, table_fqn: str, field_name: str) -> str | None:
+        """
+        Resolve an OpenLineage field name to the FQN of the real stored column, case-insensitively.
+
+        The stored FQN cannot be rebuilt from the column name: a fetched name has its reserved
+        characters decoded (`a>b` is stored as `a__reserved__arrow__b`), and a dot in it is quoted
+        in the FQN (`"c.d"`). The server silently drops an entry that matches no real column.
+        A sharded table has no column to fall back to, so an unmatched field resolves to None.
+        """
+        lower = field_name.lower()
+        for column in getattr(table, "columns", None) or []:
+            if column.name.root.lower() == lower:
+                return model_str(column.fullyQualifiedName)
+        return None if table and table.tableType == TableType.Sharded else f"{table_fqn}.{lower}"
 
     def _build_db_service_type_map(self):
         """Build a map of {service_name: DatabaseServiceType} filtered to configured dbServiceNames."""
@@ -543,7 +607,7 @@ class OpenlineageSource(PipelineServiceSource):
                 logger.debug(f"Could not fetch DB service: {service_name}")
         return type_map
 
-    def _resolve_db_services_for_namespace(self, namespace: str) -> Optional[List[str]]:  # noqa: UP006, UP045
+    def _resolve_db_services_for_namespace(self, namespace: str) -> list[str] | None:
         """
         Resolve which DB services to search for a given OL dataset namespace.
 
@@ -584,7 +648,7 @@ class OpenlineageSource(PipelineServiceSource):
             self._namespace_to_service_cache[namespace] = result
         return result
 
-    def _get_table_fqn(self, table_details: TableDetails, namespace: Optional[str] = None) -> Optional[str]:  # noqa: UP045
+    def _get_table_fqn(self, table_details: TableDetails, namespace: str | None = None) -> str | None:
         if not self.get_db_service_names():
             if not self._db_service_names_warned:
                 logger.warning(
@@ -616,7 +680,7 @@ class OpenlineageSource(PipelineServiceSource):
             logger.warning(f"Failed to get FQN for table {table_details.name}: {traceback.format_exc()}")
             return None
 
-    def _get_table_fqn_from_om(self, table_details: TableDetails, services: Optional[List[str]] = None) -> str:  # noqa: UP006, UP045
+    def _get_table_fqn_from_om(self, table_details: TableDetails, services: list[str] | None = None) -> str:
         """
         Looks for matching Table entity in OM across all configured DB services.
         Raises AmbiguousServiceException if the table exists in multiple services
@@ -625,15 +689,26 @@ class OpenlineageSource(PipelineServiceSource):
         resolved = services is not None
         found = []
         for db_service in services or self.get_db_service_names():
-            result = fqn.build(
-                metadata=self.metadata,
-                entity_type=Table,
-                service_name=db_service,
-                database_name=table_details.database,
-                schema_name=table_details.schema,
-                table_name=table_details.name,
-            )
-            if result:
+            key = ("TableReference", db_service, table_details.database, table_details.schema, table_details.name)
+            if hasattr(self, "_missing_entity_cache") and key in self._missing_entity_cache:
+                continue
+            if hasattr(self, "_entity_cache") and key in self._entity_cache:
+                matches = (self._entity_cache[key],)
+            else:
+                matches = get_table_binding_resolution(self.metadata, db_service).resolve(
+                    TableReference(table_details.database, table_details.schema, table_details.name),
+                    service_name=db_service,
+                    lookup=TableLookup.FQN,
+                )
+                if not matches and hasattr(self, "_missing_entity_cache"):
+                    self._missing_entity_cache[key] = True
+            if len(matches) > 1:
+                raise AmbiguousServiceException("Dataset reference resolves to multiple tables")
+            result = model_str(matches[0].fullyQualifiedName) if matches else None
+            if result and matches:
+                if hasattr(self, "_entity_cache"):
+                    self._entity_cache[f"Table:{result}:"] = matches[0]
+                    self._entity_cache[key] = matches[0]
                 if not resolved:
                     return result
                 found.append(result)
@@ -646,7 +721,7 @@ class OpenlineageSource(PipelineServiceSource):
             return found[0]
         raise FQNNotFoundException(f"Table FQN not found for {table_details}")
 
-    def _build_broker_to_service_map(self) -> Dict[str, str]:  # noqa: UP006
+    def _build_broker_to_service_map(self) -> dict[str, str]:
         """
         Build a cache mapping broker hostnames to messaging service FQNs.
         Reads each messaging service's connection config to extract bootstrapServers.
@@ -678,7 +753,7 @@ class OpenlineageSource(PipelineServiceSource):
 
         return self._broker_to_service
 
-    def _find_service_fqn_by_broker(self, broker_hostname: str) -> Optional[str]:  # noqa: UP045
+    def _find_service_fqn_by_broker(self, broker_hostname: str) -> str | None:
         """
         Find the messaging service FQN whose bootstrapServers contains the given broker hostname.
 
@@ -688,7 +763,7 @@ class OpenlineageSource(PipelineServiceSource):
         broker_map = self._build_broker_to_service_map()
         return broker_map.get(broker_hostname)
 
-    def _get_topic_entity(self, topic_details: TopicDetails) -> Optional[Topic]:  # noqa: UP045
+    def _get_topic_entity(self, topic_details: TopicDetails) -> Topic | None:
         """
         Look up a Topic entity by finding the messaging service from the broker hostname,
         then constructing the topic FQN as {service_fqn}.{topic_name}.
@@ -740,8 +815,8 @@ class OpenlineageSource(PipelineServiceSource):
     def _filter_event_by_types(
         cls,
         event: OpenLineageEvent,
-        event_types: List[EventType],  # noqa: UP006
-    ) -> Optional[OpenLineageEvent]:  # noqa: UP045
+        event_types: list[EventType],
+    ) -> OpenLineageEvent | None:
         """
         returns event if it's of one of the particular event_types.
         for example - for lineage events we will be only looking for EventType.COMPLETE event type.
@@ -753,7 +828,7 @@ class OpenlineageSource(PipelineServiceSource):
         return event if event.event_type in event_types else None
 
     @classmethod
-    def _get_ol_table_name(cls, table: Dict) -> str:  # noqa: UP006
+    def _get_ol_table_name(cls, table: dict) -> str:
         """
         Build a stable per-dataset key from the namespace and name.
 
@@ -770,7 +845,7 @@ class OpenlineageSource(PipelineServiceSource):
             name = name[1:]
         return f"{namespace}/{name}"
 
-    def _build_ol_name_to_fqn_map(self, tables: List):  # noqa: UP006
+    def _build_ol_name_to_fqn_map(self, tables: list):
         # Register every raw identity (top-level plus each non-LOCATION symlink)
         # under the same resolved FQN. Different OL emitters reference the
         # same dataset in columnLineage.inputFields by either the top-level
@@ -796,8 +871,8 @@ class OpenlineageSource(PipelineServiceSource):
     @classmethod
     def _create_output_lineage_dict(
         cls,
-        lineage_info: List[Tuple[str, str, str, str]],  # noqa: UP006
-    ) -> Dict[str, Dict[str, List[ColumnLineage]]]:  # noqa: UP006
+        lineage_info: list[tuple[str, str, str, str]],
+    ) -> dict[str, dict[str, list[ColumnLineage]]]:
         result = defaultdict(lambda: defaultdict(list))
         for (output_table, input_table, output_column), group in groupby(lineage_info, lambda x: x[:3]):
             input_columns = [input_col for _, _, _, input_col in group]
@@ -806,8 +881,8 @@ class OpenlineageSource(PipelineServiceSource):
 
         return result
 
-    def _get_column_lineage(self, inputs: List, outputs: List) -> Dict[str, Dict[str, List[ColumnLineage]]]:  # noqa: UP006
-        _result: List = []  # noqa: UP006
+    def _get_column_lineage(self, inputs: list, outputs: list) -> dict[str, dict[str, list[ColumnLineage]]]:
+        _result: list = []
 
         ol_name_to_fqn_map = self._build_ol_name_to_fqn_map(inputs + outputs)
 
@@ -820,6 +895,7 @@ class OpenlineageSource(PipelineServiceSource):
             if not resolved:
                 continue
             output_table_fqn = resolved.fqn
+            output_table_entity = self._get_by_name_cached(Table, output_table_fqn, fields=["columns"])
             # Tolerate a missing, null, or wrongly typed facets/columnLineage/
             # fields field at any level, mirroring the symlinks-facet
             # defensiveness so a single malformed event never aborts the run.
@@ -841,12 +917,19 @@ class OpenlineageSource(PipelineServiceSource):
                     # bogus 'None.column' identifier downstream.
                     if not input_table_fqn:
                         continue
+                    input_table_entity = self._get_by_name_cached(Table, input_table_fqn, fields=["columns"])
+                    output_column = self._match_column_fqn(output_table_entity, output_table_fqn, field_name)
+                    input_column = self._match_column_fqn(
+                        input_table_entity, input_table_fqn, input_field.get("field", "")
+                    )
+                    if not output_column or not input_column:
+                        continue
                     _result.append(  # output table, input table, output column, input column
                         (
                             output_table_fqn,
                             input_table_fqn,
-                            f"{output_table_fqn}.{field_name.lower()}",
-                            f"{input_table_fqn}.{input_field.get('field', '').lower()}",
+                            output_column,
+                            input_column,
                         )
                     )
 
@@ -959,7 +1042,7 @@ class OpenlineageSource(PipelineServiceSource):
     def _cleanup_pipeline_as_node_edges(
         self,
         pipeline_entity: Pipeline,
-        event_entity_map: Dict[str, str],  # noqa: UP006
+        event_entity_map: dict[str, str],
     ) -> None:
         """
         When a pipeline transitions from single-sided (pipeline-as-node) to both-sided
@@ -1020,8 +1103,8 @@ class OpenlineageSource(PipelineServiceSource):
 
         inputs, outputs = pipeline_details.inputs, pipeline_details.outputs
 
-        input_edges: List[LineageNode] = []  # noqa: UP006
-        output_edges: List[LineageNode] = []  # noqa: UP006
+        input_edges: list[LineageNode] = []
+        output_edges: list[LineageNode] = []
 
         for spec in [(inputs, input_edges), (outputs, output_edges)]:
             entities, entity_list = spec
@@ -1157,7 +1240,7 @@ class OpenlineageSource(PipelineServiceSource):
                 )
             )
 
-    def get_pipelines_list(self) -> Optional[List[Any]]:  # noqa: UP006, UP045
+    def get_pipelines_list(self) -> list[Any] | None:
         """Get List of all pipelines"""
         broker = self.service_connection.brokerConfig
 
@@ -1165,50 +1248,68 @@ class OpenlineageSource(PipelineServiceSource):
             yield from self._poll_kafka(broker)
         elif isinstance(broker, KinesisBrokerConfig):
             yield from self._poll_kinesis(broker)
+        elif isinstance(broker, NatsBrokerConfig):
+            # the base class annotates this producer as a list; the Kafka and Kinesis
+            # branches above carry the same suppression through the pyright baseline
+            yield from self._poll_nats(broker)  # pyright: ignore[reportReturnType]
         else:
             raise InvalidSourceException(f"Unsupported broker config type: {type(broker)}")
 
     def _poll_kafka(self, broker: KafkaBrokerConfig) -> Iterable[OpenLineageEvent]:
-        """Poll events from Kafka topic."""
+        """Poll events from Kafka topic.
+
+        A message's offset is stored only when the topology resumes this generator,
+        that is once the event it carries has been processed. The consumer commits
+        stored offsets in the background and on close, so a run that stops mid-event
+        reads that event again next time instead of losing it.
+        """
         try:
             consumer = self.client
             session_active = True
             empty_msg_cnt = 0
             pool_timeout = broker.poolTimeout
+            # Next unprocessed offset per partition. Nothing polls while the topology
+            # processes an event, so a long one outlasts max.poll.interval.ms and the
+            # consumer is evicted from its group. It drops the offset stored meanwhile
+            # and, once rejoined, hands back events this run already processed.
+            next_offsets: dict[int, int] = {}
             while session_active:
                 message = consumer.poll(timeout=pool_timeout)
-                if message is None:
-                    logger.debug("no new messages")
+                if message is None or message.error():
+                    if message is None:
+                        logger.debug("no new messages")
+                    else:
+                        logger.warning(f"Kafka consumer error: {message.error()}")
                     empty_msg_cnt += 1
                     if empty_msg_cnt * pool_timeout > broker.sessionTimeout:
-                        session_active = False
-                elif message.error():
-                    logger.warning(f"Kafka consumer error: {message.error()}")
-                    empty_msg_cnt += 1
-                    if empty_msg_cnt * pool_timeout > self.service_connection.sessionTimeout:
                         session_active = False
                 else:
                     logger.debug(f"new message {message.value()}")
                     empty_msg_cnt = 0
-                    try:
-                        _result = message_to_open_lineage_event(json.loads(message.value()))
-                        result = self._filter_event_by_types(
-                            _result,
-                            [EventType.COMPLETE, EventType.RUNNING, EventType.START],
-                        )
-                        if result:
-                            yield result
-                    except Exception as e:
-                        logger.warning(f"Failed to parse OpenLineage event from Kafka message: {e}")
-                        logger.debug(traceback.format_exc())
+                    partition, offset = message.partition(), message.offset()
+                    if offset < next_offsets.get(partition, 0):
+                        logger.debug("Skipping offset %s of partition %s, already processed", offset, partition)
+                    else:
+                        try:
+                            _result = message_to_open_lineage_event(json.loads(message.value()))
+                            result = self._filter_event_by_types(
+                                _result,
+                                [EventType.COMPLETE, EventType.RUNNING, EventType.START],
+                            )
+                            if result:
+                                yield result
+                        except Exception as e:
+                            logger.warning(f"Failed to parse OpenLineage event from Kafka message: {e}")
+                            logger.debug(traceback.format_exc())
+                        next_offsets[partition] = offset + 1
+                    consumer.store_offsets(message=message)
 
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from Kafka: {str(e)}")  # noqa: B904, RUF010
 
         finally:
-            # Close down consumer to commit final offsets.
-            # @todo address this
+            # Commits the offsets stored for processed events and leaves the group.
             consumer.close()
 
     def _poll_kinesis(self, broker: KinesisBrokerConfig) -> Iterable[OpenLineageEvent]:
@@ -1280,6 +1381,133 @@ class OpenlineageSource(PipelineServiceSource):
         except Exception as e:
             logger.debug(traceback.format_exc())
             raise InvalidSourceException(f"Failed to read from Kinesis: {str(e)}")  # noqa: B904, RUF010
+
+    def _poll_nats(self, broker: NatsBrokerConfig) -> Iterable[OpenLineageEvent]:
+        """Poll events from a NATS JetStream stream until the stream goes quiet."""
+        try:
+            client = self.client
+            # the schema defaults these, but a config built in code can leave them unset;
+            # `or` would also swallow a deliberate sessionTimeout of 0, which means "one
+            # empty fetch ends the run". poolTimeout and batchSize cannot be 0: the schema
+            # rejects them, because a zero wait never advances idle_time
+            pool_timeout = _nats_setting(broker.poolTimeout, DEFAULT_NATS_POOL_TIMEOUT)
+            session_timeout = _nats_setting(broker.sessionTimeout, DEFAULT_NATS_SESSION_TIMEOUT)
+            batch_size = _nats_setting(broker.batchSize, DEFAULT_NATS_BATCH_SIZE)
+            # A reused durable keeps its own ackWait and the configured one is only
+            # warned about, so pacing the keep-alive off the config would leave the
+            # heartbeat slower than the deadline the server is actually applying
+            ack_wait = getattr(client, "effective_ack_wait", None)
+            if ack_wait is None:
+                ack_wait = _nats_setting(broker.ackWait, DEFAULT_NATS_ACK_WAIT)
+
+            idle_time = 0.0
+            while idle_time <= session_timeout:
+                messages = client.fetch(batch_size, timeout=pool_timeout)
+                if not messages:
+                    logger.debug("no new messages")
+                    idle_time += pool_timeout
+                    continue
+
+                idle_time = 0.0
+                yield from self._consume_nats_batch(client, messages, ack_wait)
+
+        except Exception as e:
+            logger.debug(traceback.format_exc())
+            raise InvalidSourceException(f"Failed to read from NATS: {str(e)}")  # noqa: B904, RUF010
+
+    def _consume_nats_batch(self, client: Any, messages: list[Any], ack_wait: float) -> Iterator[OpenLineageEvent]:
+        """Yield the ingestible events of one fetched batch, acknowledging each as it goes."""
+        # One heartbeat for the whole batch, not one per message: the timers all
+        # start together at the fetch, so refreshing the remainder on every
+        # message meant N(N-1)/2 blocking round trips -- about 4,950 for the
+        # default batch of 100 -- paid even when the pipeline kept up
+        with self._batch_keepalive(client, messages, ack_wait) as leaving_batch:
+            for message in messages:
+                parsed = self._parse_nats_event(message)
+                if parsed:
+                    yield parsed
+
+                # Dropped from the heartbeat first, so a refresh is never sent for
+                # a message that has already been acknowledged
+                leaving_batch(message)
+
+                # Acknowledged once the connector has handed the event on. The
+                # ingestion pipeline reports its own failures in the run status and
+                # does not report them back here, so redelivery covers a run that
+                # died mid-batch, not an event the pipeline rejected.
+                try:
+                    client.ack(message)
+                except Exception as e:
+                    # The event stays unacknowledged and comes back next run; that
+                    # is better than losing the rest of this batch
+                    logger.warning("Failed to acknowledge a NATS message: %s", e)
+                    logger.debug(traceback.format_exc())
+
+    def _parse_nats_event(self, message: Any) -> OpenLineageEvent | None:
+        """The event a NATS message carries, or None when it is unparseable or filtered out."""
+        try:
+            event = message_to_open_lineage_event(json.loads(message.data))
+            return self._filter_event_by_types(
+                event,
+                [EventType.COMPLETE, EventType.RUNNING, EventType.START],
+            )
+        except Exception as e:
+            logger.warning("Failed to parse OpenLineage event from NATS message: %s", e)
+            logger.debug(traceback.format_exc())
+            return None
+
+    @contextmanager
+    def _batch_keepalive(self, client: Any, messages: list[Any], ack_wait: float) -> Iterator[Callable[[Any], None]]:
+        """Refresh the batch's acknowledgement timers while it is being processed.
+
+        The timers all start together at the fetch, and this generator is suspended at its
+        `yield` for as long as the pipeline works on an event, so nothing of ours runs in
+        that window. Without a refresh, a pipeline slower than `ackWait` has its events
+        redelivered while they are still being processed -- duplicating the lineage write
+        and spending `maxDeliver` attempts on a run that never failed.
+
+        Nothing is sent until the batch has been held for half of `ackWait`, so a batch
+        that keeps up costs no control traffic at all.
+
+        The yielded callable drops a message from the heartbeat. Callers use it before
+        acknowledging, which is what keeps a refresh from racing the acknowledgement of
+        the same message.
+        """
+        pending: dict[int, Any] = {id(message): message for message in messages}
+        lock = threading.Lock()
+        stop = threading.Event()
+        # Below the deadline as well as above the floor: the schema allows an ackWait of
+        # 1, where the floor alone would schedule the first refresh at the very moment
+        # the server gives up on the message
+        interval = min(max(ack_wait / 2.0, MIN_NATS_KEEPALIVE_INTERVAL), ack_wait * 0.8)
+
+        def _leaving_batch(message: Any) -> None:
+            with lock:
+                pending.pop(id(message), None)
+
+        def _heartbeat() -> None:
+            while not stop.wait(interval):
+                with lock:
+                    still_waiting = list(pending.values())
+                if still_waiting:
+                    self._keep_batch_alive(client, still_waiting)
+
+        thread = threading.Thread(target=_heartbeat, name="openmetadata-nats-keepalive", daemon=True)
+        thread.start()
+        try:
+            yield _leaving_batch
+        finally:
+            stop.set()
+            thread.join(timeout=interval)
+
+    @staticmethod
+    def _keep_batch_alive(client: Any, pending: list[Any]) -> None:
+        """Reset the acknowledgement timer of the events still waiting in the batch."""
+        for message in pending:
+            try:
+                client.in_progress(message)
+            except Exception as e:
+                logger.debug("Could not extend the NATS acknowledgement timer: %s", e)
 
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:
         return OpenlineageSource._render_pipeline_name(pipeline_details)

@@ -10,10 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DashboardClass } from '../../support/entity/DashboardClass';
+import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import {
   getEncodedFqn,
@@ -24,6 +27,7 @@ import {
   expandSchemaInExploreTree,
   expandServiceInExploreTree,
 } from '../../utils/explore';
+import { isAggregationResponse } from '../../utils/searchAggregation';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -32,24 +36,23 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 // (ElasticSearchAggregationManager orders by _key ASC), so a name starting with
 // a digit guarantees these services land within that bucket regardless of how
 // many other `pw-*` services have accumulated.
-const table = new TableClass(undefined, undefined, {
-  name: `0-pw-database-service-${uuid()}`,
+const table = new TableClass({
+  service: new DatabaseServiceClass(`0-pw-database-service-${uuid()}`),
 });
-const dashboard = new DashboardClass(`0-pw-dashboard-service-${uuid()}`);
+const dashboard = new DashboardClass({
+  service: new DashboardServiceClass(`0-pw-dashboard-service-${uuid()}`),
+});
 
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.
 const expandTreeNode = async (page: Page, titleTestId: string) => {
-  const switcher = page
-    .locator('.ant-tree-treenode')
-    .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
-    .first()
-    .locator('.ant-tree-switcher');
+  const row = page
+    .getByTestId('explore-tree')
+    .getByRole('row')
+    .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) });
 
   const isExpanded = async () =>
-    ((await switcher.getAttribute('class')) ?? '').includes(
-      'ant-tree-switcher_open'
-    );
+    (await row.getAttribute('aria-expanded')) === 'true';
 
   if (await isExpanded()) {
     return;
@@ -70,22 +73,24 @@ const expandTreeNode = async (page: Page, titleTestId: string) => {
     .waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query?') ||
-        (response.url().endsWith('/api/v1/search/aggregate') &&
-          response.request().method() === 'POST'),
+        isAggregationResponse(response, {
+          field: 'service.displayName.keyword',
+          value: null,
+        }),
       { timeout: 15_000 }
     )
     .catch(() => undefined);
 
-  await switcher.locator('svg').first().click({ timeout: 10_000 });
+  await row.getByTestId('tree-expand-btn').click({ timeout: 10_000 });
   await res;
-  await expect(switcher).toHaveClass(/ant-tree-switcher_open/);
+  await expect(row).toHaveAttribute('aria-expanded', 'true');
   await waitForAllLoadersToDisappear(page);
 };
 
 const rootTreeNode = (page: Page, titleTestId: string) =>
   page
     .getByTestId(`explore-tree-title-${titleTestId}`)
-    .locator('xpath=ancestor::*[contains(@class, "ant-tree-treenode")]');
+    .locator('xpath=ancestor::*[@role="row"]');
 
 const goToExplore = async (page: Page) => {
   await redirectToHomePage(page);
@@ -109,7 +114,7 @@ const selectDataAssetType = async (page: Page, optionKey: string) => {
   const applyRes = page.waitForResponse(
     '/api/v1/search/query?*index=dataAsset*'
   );
-  await page.getByTestId(`${optionKey}-checkbox`).check();
+  await page.getByTestId('drop-down-menu').getByTestId(optionKey).click();
   await applyRes;
   await page.keyboard.press('Escape');
   await waitForAllLoadersToDisappear(page);
@@ -120,6 +125,24 @@ const removeQueryChip = async (page: Page, chipKey: string) => {
     '/api/v1/search/query?*index=dataAsset*'
   );
   await page.getByTestId(`remove-chip-${chipKey}`).click();
+  await clearRes;
+  await waitForAllLoadersToDisappear(page);
+};
+
+const selectTreeNode = async (page: Page, titleTestId: string) => {
+  const browseRes = page.waitForResponse(
+    '/api/v1/search/query?*index=dataAsset*'
+  );
+  await page.getByTestId(`explore-tree-title-${titleTestId}`).click();
+  await browseRes;
+  await waitForAllLoadersToDisappear(page);
+};
+
+const removeBrowseChip = async (page: Page, chipKey: string) => {
+  const clearRes = page.waitForResponse(
+    '/api/v1/search/query?*index=dataAsset*'
+  );
+  await page.getByTestId(`remove-browse-chip-${chipKey}`).click();
   await clearRes;
   await waitForAllLoadersToDisappear(page);
 };
@@ -338,20 +361,13 @@ test.describe(
           `explore-tree-title-${table.service.serviceType.toLowerCase()}`
         );
 
-        // The browse rebuild collapses the tree and can detach the row
-        // mid-click; retry expand → click until the chip confirms the select.
-        await expect(async () => {
-          if (!(await serviceTitle.isVisible())) {
-            await expandTreeNode(page, 'Databases');
-          }
-          await expect(serviceTitle).toBeVisible({ timeout: 10_000 });
-          await serviceTitle.click({ timeout: 10_000 });
-          await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible(
-            {
-              timeout: 5000,
-            }
-          );
-        }).toPass({ timeout: 60000 });
+        await waitForAllLoadersToDisappear(page);
+        if (!(await serviceTitle.isVisible())) {
+          await expandTreeNode(page, 'Databases');
+        }
+        await expect(serviceTitle).toBeVisible();
+        await serviceTitle.click();
+        await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
 
         await waitForAllLoadersToDisappear(page);
 
@@ -359,11 +375,13 @@ test.describe(
         await expect(page.getByTestId('clear-all-chips')).toBeVisible();
         await expect(page.getByTestId('clear-filters')).toHaveCount(0);
 
-        await expect(rootTreeNode(page, 'Databases')).not.toHaveClass(
-          /ant-tree-treenode-disabled/
+        await expect(rootTreeNode(page, 'Databases')).not.toHaveAttribute(
+          'aria-disabled',
+          'true'
         );
-        await expect(rootTreeNode(page, 'Dashboards')).toHaveClass(
-          /ant-tree-treenode-disabled/
+        await expect(rootTreeNode(page, 'Dashboards')).toHaveAttribute(
+          'aria-disabled',
+          'true'
         );
         expect(page.url()).toContain('browsePath');
       });
@@ -379,8 +397,9 @@ test.describe(
         await expect(
           page.getByTestId('browse-chip-serviceType')
         ).not.toBeVisible();
-        await expect(rootTreeNode(page, 'Dashboards')).not.toHaveClass(
-          /ant-tree-treenode-disabled/
+        await expect(rootTreeNode(page, 'Dashboards')).not.toHaveAttribute(
+          'aria-disabled',
+          'true'
         );
       });
     });
@@ -438,10 +457,126 @@ test.describe(
       });
 
       await test.step('the selected schema stays highlighted', async () => {
-        await expect(rootTreeNode(page, schemaName)).toHaveClass(
-          /ant-tree-treenode-selected/
+        await expect(rootTreeNode(page, schemaName)).toHaveAttribute(
+          'aria-selected',
+          'true'
         );
       });
+    });
+
+    test('removing browse chips keeps the tree expanded to the remaining path', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const serviceName = table.serviceResponseData.name;
+      const dbName = table.databaseResponseData.name;
+      const schemaName = table.schemaResponseData.name;
+
+      await drillToSchema(page);
+      await selectTreeNode(page, schemaName);
+
+      await test.step('removing the schema chip leaves the database expanded and highlighted', async () => {
+        await removeBrowseChip(page, 'databaseSchema.displayName');
+
+        await expect(
+          page.getByTestId('browse-chip-database.displayName')
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`explore-tree-title-${serviceName}`)
+        ).toBeVisible();
+        await expect(rootTreeNode(page, dbName)).toHaveAttribute(
+          'aria-selected',
+          'true'
+        );
+      });
+
+      await test.step('removing the database chip leaves the service expanded and highlighted', async () => {
+        await removeBrowseChip(page, 'database.displayName');
+
+        await expect(
+          page.getByTestId('browse-chip-service.displayName.keyword')
+        ).toBeVisible();
+        await expect(rootTreeNode(page, serviceName)).toHaveAttribute(
+          'aria-selected',
+          'true'
+        );
+      });
+    });
+
+    test('removing the schema chip under an entity-type leaf keeps the database expanded', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const dbName = table.databaseResponseData.name;
+
+      await drillToSchema(page);
+      await selectTreeNode(page, 'table');
+      await removeBrowseChip(page, 'databaseSchema.displayName');
+
+      await expect(
+        page.getByTestId('remove-chip-entityType.keyword-table')
+      ).toBeVisible();
+      await expect(rootTreeNode(page, dbName)).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
+    test('reloading a browse deep link expands the tree to the browsed schema', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const serviceName = table.serviceResponseData.name;
+      const schemaName = table.schemaResponseData.name;
+
+      await drillToSchema(page);
+      await selectTreeNode(page, schemaName);
+
+      const reloadRes = page.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await page.reload();
+      await reloadRes;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(
+        page.getByTestId(`explore-tree-title-${serviceName}`)
+      ).toBeVisible();
+      await expect(rootTreeNode(page, schemaName)).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
+    });
+
+    test('reloading a dashboard service browse link expands the Dashboards branch', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const serviceName = dashboard.serviceResponseData.name;
+
+      await expandTreeNode(page, 'Dashboards');
+      await expandTreeNode(page, 'superset');
+      await selectTreeNode(page, serviceName);
+
+      const reloadRes = page.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await page.reload();
+      await reloadRes;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(rootTreeNode(page, 'Dashboards')).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
+      await expect(rootTreeNode(page, serviceName)).toHaveAttribute(
+        'aria-selected',
+        'true'
+      );
     });
 
     test('selecting the Tables leaf highlights the leaf, not its parent schema', async ({
@@ -466,11 +601,13 @@ test.describe(
       await browseRes;
       await waitForAllLoadersToDisappear(page);
 
-      await expect(rootTreeNode(page, 'table')).toHaveClass(
-        /ant-tree-treenode-selected/
+      await expect(rootTreeNode(page, 'table')).toHaveAttribute(
+        'aria-selected',
+        'true'
       );
-      await expect(rootTreeNode(page, schemaName)).not.toHaveClass(
-        /ant-tree-treenode-selected/
+      await expect(rootTreeNode(page, schemaName)).not.toHaveAttribute(
+        'aria-selected',
+        'true'
       );
     });
   }
@@ -485,10 +622,12 @@ test.describe(
         page.getByTestId('explore-tree-title-Governance')
       ).toBeVisible();
       await page
-        .locator('.ant-tree-treenode', {
+        .getByTestId('explore-tree')
+        .getByRole('row')
+        .filter({
           has: page.getByTestId('explore-tree-title-Governance'),
         })
-        .locator('.ant-tree-switcher')
+        .getByTestId('tree-expand-btn')
         .click();
     };
 

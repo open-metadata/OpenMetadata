@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -18,14 +19,19 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.LLMModelTestFactory;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -39,6 +45,7 @@ import org.openmetadata.service.Entity;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Execution(ExecutionMode.SAME_THREAD)
+@ExtendWith(TestNamespaceExtension.class)
 public class McpToolsValidationIT extends McpTestBase {
 
   private static Table testTable;
@@ -163,6 +170,43 @@ public class McpToolsValidationIT extends McpTestBase {
               JsonNode result = executeToolCall(toolCall);
               validateSearchMetadataResponse(result, "mcp_val_table");
             });
+  }
+
+  /** Default search keeps the dataAsset types and adds LLM models, which are outside that alias. */
+  @Test
+  @Order(23)
+  void testSearchMetadataWithoutEntityTypeFindsTablesAndLlmModels(TestNamespace ns)
+      throws Exception {
+    LLMModel model = LLMModelTestFactory.createGPT(ns);
+    List<String> fqns =
+        List.of(
+            model.getFullyQualifiedName().toLowerCase(Locale.ROOT),
+            testTable.getFullyQualifiedName().toLowerCase(Locale.ROOT));
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("queryFilter", Map.of("terms", Map.of("fullyQualifiedName", fqns)));
+    arguments.put("size", 5);
+    Awaitility.await("MCP search without entityType should find the table and the new LLM model")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              JsonNode result =
+                  executeToolCall(McpTestUtils.createToolCallRequest("search_metadata", arguments));
+              JsonNode response =
+                  OBJECT_MAPPER.readTree(result.get("content").get(0).get("text").asText());
+              assertFoundAs(response, model.getName(), Entity.LLM_MODEL);
+              assertFoundAs(response, testTable.getName(), Entity.TABLE);
+            });
+  }
+
+  private void assertFoundAs(JsonNode response, String name, String entityType) {
+    JsonNode match = findResultByName(response, name);
+    assertThat(match)
+        .withFailMessage(
+            "Expected %s '%s' in default search results: %s",
+            entityType, name, response.get("results"))
+        .isNotNull();
+    assertThat(match.get("entityType").asText()).isEqualTo(entityType);
   }
 
   @Test
@@ -297,7 +341,6 @@ public class McpToolsValidationIT extends McpTestBase {
   @Order(9)
   void testCreateLineageMissingParams() throws Exception {
     Map<String, Object> arguments = new HashMap<>();
-    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
     Map<String, Object> toolCall = McpTestUtils.createToolCallRequest("create_lineage", arguments);
 
     JsonNode result = executeToolCall(toolCall);
@@ -398,7 +441,6 @@ public class McpToolsValidationIT extends McpTestBase {
     arguments.put("name", "some_test");
     arguments.put("fqn", testTable.getFullyQualifiedName());
     arguments.put("parameterValues", List.of());
-    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
     Map<String, Object> toolCall =
         McpTestUtils.createToolCallRequest("create_test_case", arguments);
 
@@ -475,9 +517,9 @@ public class McpToolsValidationIT extends McpTestBase {
   @Order(17)
   void testCreateMetricMissingExpression() throws Exception {
     Map<String, Object> arguments = new HashMap<>();
+    arguments.put("entityType", "metric");
     arguments.put("name", "incomplete_metric");
-    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
-    Map<String, Object> toolCall = McpTestUtils.createToolCallRequest("create_metric", arguments);
+    Map<String, Object> toolCall = McpTestUtils.createToolCallRequest("create_entity", arguments);
 
     JsonNode result = executeToolCall(toolCall);
     assertThat(result.has("isError")).isTrue();
@@ -591,7 +633,6 @@ public class McpToolsValidationIT extends McpTestBase {
     arguments.put("limit", limit);
     arguments.put("entityType", entityType);
     arguments.put("includeDeleted", includeDeleted);
-    arguments.put("Authorization", McpTestUtils.createAuthorizationHeader("test-token"));
 
     return McpTestUtils.createToolCallRequest("search_metadata", arguments);
   }
@@ -719,13 +760,19 @@ public class McpToolsValidationIT extends McpTestBase {
     assertThat(firstResult.has("text")).isTrue();
     String responseText = firstResult.get("text").asText();
 
-    JsonNode entityData = OBJECT_MAPPER.readTree(responseText).get("entity");
+    // The patched entity is returned flat, the same shape the create_* tools return. It used to be
+    // wrapped in an "entity" key because the raw PatchResponse was serialized as-is.
+    JsonNode entityData = OBJECT_MAPPER.readTree(responseText);
     assertThat(entityData.has("id")).isTrue();
     assertThat(entityData.has("description")).isTrue();
     assertThat(entityData.get("description").asText())
         .contains("Updated description via MCP patch tool");
     assertThat(entityData.has("fullyQualifiedName")).isTrue();
     assertThat(entityData.get("fullyQualifiedName").asText()).isEqualTo(patchedEntity);
+    assertThat(entityData.path("_operation").asText())
+        .withFailMessage("Patch response payload: %s", responseText)
+        .isEqualTo("updated");
+    assertThat(entityData.has("version")).isTrue();
   }
 
   private void validateLineageResponse(JsonNode result, String expectedEntityFqn) throws Exception {

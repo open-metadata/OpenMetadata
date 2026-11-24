@@ -31,7 +31,13 @@ import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.drive.SftpConnection;
+import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
+import org.openmetadata.schema.services.connections.messaging.NatsConnection;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth;
 import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
+import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
+import org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
 
@@ -72,6 +78,26 @@ public class DBSecretsManagerTest {
     testDecryptServiceConnection();
   }
 
+  /**
+   * A secret behind a {@code oneOf} used to reach the database in the clear: the property is
+   * generated as a bare {@code Object}, so the encryption walk skipped the map Jackson left there.
+   */
+  @Test
+  void testEncryptSecretNestedInAOneOfProperty() {
+    SftpConnection connection =
+        new SftpConnection()
+            .withHost("sftp.example.com")
+            .withAuthType(
+                new SftpBasicAuth().withUsername("sftp-user").withPassword(DECRYPTED_VALUE));
+
+    SftpConnection encrypted =
+        (SftpConnection)
+            secretsManager.encryptServiceConnectionConfig(
+                connection, "Sftp", "test", ServiceType.DRIVE);
+
+    assertEquals(ENCRYPTED_VALUE, ((SftpBasicAuth) encrypted.getAuthType()).getPassword());
+  }
+
   @Test
   void testEncryptServiceConnectionWithoutPassword() {
     SklearnConnection connection = new SklearnConnection();
@@ -87,6 +113,46 @@ public class DBSecretsManagerTest {
     Object actualConfig =
         secretsManager.decryptServiceConnectionConfig(connection, Sklearn.value(), ML_MODEL);
     assertNotSame(connection, actualConfig);
+  }
+
+  @Test
+  void testEncryptNatsMessagingConnectionToken() {
+    // authType is a `oneOf` and so is generated as Object; left as a LinkedHashMap the
+    // reflection walk never reaches the token and it is stored in the clear
+    NatsConnection connection =
+        new NatsConnection()
+            .withNatsServers("nats://localhost:4222")
+            .withAuthType(new NatsTokenAuth().withToken(DECRYPTED_VALUE));
+
+    Object actualConfig =
+        secretsManager.encryptServiceConnectionConfig(
+            connection, "Nats", "test", ServiceType.MESSAGING);
+
+    assertEquals(
+        ENCRYPTED_VALUE,
+        JsonUtils.convertValue(((NatsConnection) actualConfig).getAuthType(), NatsTokenAuth.class)
+            .getToken());
+  }
+
+  @Test
+  void testEncryptOpenLineageNatsBrokerToken() {
+    OpenLineageConnection connection =
+        new OpenLineageConnection()
+            .withBrokerConfig(
+                new NatsBrokerConfig()
+                    .withNatsServers("nats://localhost:4222")
+                    .withStreamName("OPENLINEAGE")
+                    .withAuthType(new NatsTokenAuth().withToken(DECRYPTED_VALUE)));
+
+    Object actualConfig =
+        secretsManager.encryptServiceConnectionConfig(
+            connection, "OpenLineage", "test", ServiceType.PIPELINE);
+
+    NatsBrokerConfig brokerConfig =
+        (NatsBrokerConfig) ((OpenLineageConnection) actualConfig).getBrokerConfig();
+    assertEquals(
+        ENCRYPTED_VALUE,
+        JsonUtils.convertValue(brokerConfig.getAuthType(), NatsTokenAuth.class).getToken());
   }
 
   @Test

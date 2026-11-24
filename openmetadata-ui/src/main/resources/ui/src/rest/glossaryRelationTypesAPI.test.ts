@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import APIClient from '.';
 import {
   GlossaryTermRelationType,
   RelationCategory,
 } from '../generated/configuration/glossaryTermRelationSettings';
+import APIClient from './axiosClient';
 import {
   createGlossaryTermRelationType,
   deleteGlossaryTermRelationType,
@@ -23,7 +23,7 @@ import {
   updateGlossaryTermRelationType,
 } from './glossaryAPI';
 
-jest.mock('.');
+jest.mock('./axiosClient');
 
 const relationType: GlossaryTermRelationType = {
   name: 'dependsOn',

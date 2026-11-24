@@ -105,7 +105,7 @@ class ContextManager:
             return getattr(instance, context_enum.value)
 
     @classmethod
-    def dump_contexts(cls) -> Optional[dict[str, Any]]:  # noqa: UP045
+    def dump_contexts(cls) -> dict[str, Any] | None:
         """
         Dump all available contexts as a dictionary: {contextName: content}
         Assumes each context is a Pydantic object.

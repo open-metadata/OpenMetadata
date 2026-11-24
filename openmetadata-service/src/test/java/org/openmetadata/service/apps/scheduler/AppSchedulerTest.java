@@ -108,6 +108,21 @@ class AppSchedulerTest {
     return appScheduler;
   }
 
+  @Test
+  void testOnDemandDispatchFailureIsReturnedToTheCaller() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    SchedulerException unavailable = new SchedulerException("job store unavailable");
+    when(mockScheduler.getJobDetail(any(JobKey.class))).thenThrow(unavailable);
+
+    UnhandledServerException failure =
+        assertThrows(
+            UnhandledServerException.class,
+            () -> appScheduler.triggerOnDemandApplication(testApp, Map.of()));
+
+    assertTrue(failure.getMessage().contains("Could not queue application " + testApp.getName()));
+    assertEquals(unavailable, failure.getCause());
+  }
+
   // --- Tests for getUniqueJobIdentifier ---
 
   @Test
@@ -191,6 +206,48 @@ class AppSchedulerTest {
   }
 
   @Test
+  void onDemandRunCarriesTheTriggeringPrincipalToTheJob() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App concurrentApp = concurrentApp();
+    Map<String, Object> config = new HashMap<>();
+    config.put("workflowName", UUID.randomUUID().toString());
+
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class))).thenReturn(null);
+
+    appScheduler.triggerOnDemandApplication(concurrentApp, config, "alice");
+
+    ArgumentCaptor<JobDetail> jobCaptor = ArgumentCaptor.forClass(JobDetail.class);
+    verify(mockScheduler).scheduleJob(jobCaptor.capture(), any(Trigger.class));
+    assertEquals("alice", jobCaptor.getValue().getJobDataMap().get(AppScheduler.TRIGGERED_BY_KEY));
+  }
+
+  @Test
+  void runsWithNoRequestingPrincipalLeaveTheJobUnstamped() throws Exception {
+    AppScheduler appScheduler = createSchedulerWithMock();
+    App concurrentApp = concurrentApp();
+    Map<String, Object> config = new HashMap<>();
+    config.put("workflowName", UUID.randomUUID().toString());
+
+    when(mockScheduler.scheduleJob(any(JobDetail.class), any(Trigger.class))).thenReturn(null);
+
+    appScheduler.triggerOnDemandApplication(concurrentApp, config);
+
+    ArgumentCaptor<JobDetail> jobCaptor = ArgumentCaptor.forClass(JobDetail.class);
+    verify(mockScheduler).scheduleJob(jobCaptor.capture(), any(Trigger.class));
+    assertNull(jobCaptor.getValue().getJobDataMap().get(AppScheduler.TRIGGERED_BY_KEY));
+  }
+
+  private static App concurrentApp() {
+    return new App()
+        .withId(UUID.randomUUID())
+        .withName("QueryRunner")
+        .withFullyQualifiedName("QueryRunner")
+        .withClassName("org.openmetadata.service.resources.apps.TestApp")
+        .withAllowConcurrentExecution(true)
+        .withRuntime(new ScheduledExecutionContext().withEnabled(true));
+  }
+
+  @Test
   void testConcurrentApp_withoutUniqueId_fallsBackToBlocking() throws Exception {
     AppScheduler appScheduler = createSchedulerWithMock();
 
@@ -252,7 +309,7 @@ class AppSchedulerTest {
     when(mockScheduler.getCurrentlyExecutingJobs()).thenReturn(List.of(mockExecContext));
 
     assertThrows(
-        UnhandledServerException.class,
+        AppAlreadyRunningException.class,
         () -> appScheduler.triggerOnDemandApplication(nonConcurrentApp, new HashMap<>()));
 
     verify(mockScheduler, never()).scheduleJob(any(JobDetail.class), any(Trigger.class));
@@ -341,7 +398,7 @@ class AppSchedulerTest {
                 when(repo.getLatestAppRunsOptional(any(App.class)))
                     .thenReturn(Optional.of(activeRun)))) {
       assertThrows(
-          UnhandledServerException.class,
+          AppAlreadyRunningException.class,
           () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
     }
 
@@ -367,7 +424,7 @@ class AppSchedulerTest {
                 when(repo.getLatestAppRunsOptional(any(App.class)))
                     .thenReturn(Optional.of(erroredRun)))) {
       assertThrows(
-          UnhandledServerException.class,
+          AppAlreadyRunningException.class,
           () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
     }
 
@@ -394,7 +451,7 @@ class AppSchedulerTest {
         .thenThrow(new ObjectAlreadyExistsException("running"));
 
     assertThrows(
-        UnhandledServerException.class,
+        AppAlreadyRunningException.class,
         () -> appScheduler.triggerOnDemandApplication(concurrentApp, config));
 
     verify(mockScheduler, never()).deleteJob(any(JobKey.class));
@@ -484,7 +541,7 @@ class AppSchedulerTest {
         .thenThrow(new ObjectAlreadyExistsException("duplicate job key"));
 
     assertThrows(
-        UnhandledServerException.class,
+        AppAlreadyRunningException.class,
         () -> appScheduler.triggerOnDemandApplication(app, new HashMap<>()));
   }
 

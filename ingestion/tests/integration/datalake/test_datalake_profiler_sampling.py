@@ -12,7 +12,7 @@
 """
 Integration tests for Datalake profiler with dynamic sampling configurations.
 Tests static, dynamic smart, and dynamic threshold sampling via ProfilerWorkflow.
-Requires a running OpenMetadata server and MinIO container.
+Requires a running OpenMetadata server and S3 container.
 """
 
 from copy import deepcopy

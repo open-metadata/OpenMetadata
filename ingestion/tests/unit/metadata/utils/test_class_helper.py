@@ -8,6 +8,7 @@ from metadata.generated.schema.entity.services.mlmodelService import MlModelServ
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.utils.class_helper import (
+    get_reference_type_from_service_type,
     get_service_class_from_service_type,
     get_service_type_from_source_type,
 )
@@ -46,3 +47,34 @@ def test_get_service_type_from_source_type(source_type: str, expected_service_ty
 def test_get_service_class_from_service_type(service_type: ServiceType, expected_service_class: object):
     actual_service_class = get_service_class_from_service_type(service_type)
     assert actual_service_class == expected_service_class
+
+
+@pytest.mark.parametrize(
+    ("service_type", "expected_reference"),
+    [
+        (ServiceType.Api, "apiService"),
+        (ServiceType.Database, "databaseService"),
+        (ServiceType.Dashboard, "dashboardService"),
+        (ServiceType.Pipeline, "pipelineService"),
+        (ServiceType.Messaging, "messagingService"),
+        (ServiceType.MlModel, "mlmodelService"),
+        (ServiceType.Metadata, "metadataService"),
+        (ServiceType.Search, "searchService"),
+        (ServiceType.Storage, "storageService"),
+        (ServiceType.Security, "securityService"),
+        (ServiceType.Mcp, "mcpService"),
+    ],
+)
+def test_get_reference_type_from_service_type(service_type: ServiceType, expected_reference: str):
+    actual_reference = get_reference_type_from_service_type(service_type)
+    assert actual_reference == expected_reference
+
+
+@pytest.mark.parametrize("service_type", [ServiceType.Drive, ServiceType.LLM])
+def test_get_reference_type_from_service_type_unmapped_raises_value_error(service_type: ServiceType):
+    """A ServiceType without a SERVICE_TYPE_REF entry must raise a descriptive ValueError
+    instead of silently returning None (which previously surfaced as an opaque
+    pydantic ValidationError downstream when building the EntityReference)."""
+    with pytest.raises(ValueError) as exc_info:
+        get_reference_type_from_service_type(service_type)
+    assert str(exc_info.value) == f"Cannot find Service Type reference for service {service_type}"

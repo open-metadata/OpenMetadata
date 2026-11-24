@@ -14,7 +14,7 @@ Base source for the data quality used to instantiate a data quality runner with 
 """
 
 from copy import deepcopy
-from typing import Optional, cast
+from typing import cast
 
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
@@ -79,7 +79,7 @@ class BaseTestSuiteRunner:
         self.ometa_client = ometa_client
 
     @property
-    def interface(self) -> Optional[TestSuiteInterface]:  # noqa: UP045
+    def interface(self) -> TestSuiteInterface | None:
         return self._interface
 
     @interface.setter

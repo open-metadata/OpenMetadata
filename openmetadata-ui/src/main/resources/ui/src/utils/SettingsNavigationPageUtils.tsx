@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { TreeDataNode } from 'antd';
 import { NavigationItem } from '../generated/system/ui/uiCustomization';
+import { NavigationTreeNode } from '../interface/sidebar.interface';
 
 export const getNavigationItems = (
-  treeData: TreeDataNode[],
+  treeData: NavigationTreeNode[],
   hiddenKeys: string[]
 ): NavigationItem[] => {
   return treeData.map((item) => {
@@ -26,4 +26,68 @@ export const getNavigationItems = (
       children: getNavigationItems(item.children ?? [], hiddenKeys),
     } as NavigationItem;
   });
+};
+
+// Icons are React components, so clone the hierarchy without serializing them.
+const structuredCloneNavigation = (
+  nodes: NavigationTreeNode[]
+): NavigationTreeNode[] =>
+  nodes.map((node) => ({
+    ...node,
+    children: node.children
+      ? structuredCloneNavigation(node.children)
+      : undefined,
+  }));
+
+export const moveNavigationItem = (
+  treeData: NavigationTreeNode[],
+  sourceKey: string,
+  targetKey: string | undefined,
+  dropPosition: 'before' | 'after' | 'on'
+): NavigationTreeNode[] => {
+  const next = structuredCloneNavigation(treeData);
+  const find = (
+    nodes: NavigationTreeNode[],
+    key: string
+  ): { nodes: NavigationTreeNode[]; index: number } | undefined => {
+    for (let index = 0; index < nodes.length; index++) {
+      if (nodes[index].key === key) {
+        return { nodes, index };
+      }
+      const found = find(nodes[index].children ?? [], key);
+      if (found) {
+        return found;
+      }
+    }
+
+    return undefined;
+  };
+  const source = find(next, sourceKey);
+  if (!source || sourceKey === targetKey) {
+    return treeData;
+  }
+  const [item] = source.nodes.splice(source.index, 1);
+  if (targetKey === undefined) {
+    next.push(item);
+
+    return next;
+  }
+  // Removing the source also removes its descendants; an absent target therefore
+  // rejects dropping a parent into its own subtree without losing any items.
+  const target = find(next, targetKey);
+  if (!target) {
+    return treeData;
+  }
+  if (dropPosition === 'on') {
+    const parent = target.nodes[target.index];
+    parent.children = [item, ...(parent.children ?? [])];
+  } else {
+    target.nodes.splice(
+      target.index + (dropPosition === 'after' ? 1 : 0),
+      0,
+      item
+    );
+  }
+
+  return next;
 };

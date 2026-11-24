@@ -11,55 +11,14 @@
  *  limitations under the License.
  */
 import { isNil, startCase } from 'lodash';
+import { useCallback } from 'react';
 import { create } from 'zustand';
+import {
+  LimitConfig,
+  ResourceLimit,
+} from '../../interface/platform/limits.interface';
 import { getLimitByResource } from '../../rest/limitsAPI';
-
-const ERROR_SUB_HEADER =
-  'You have used {{currentCount}} out of {{limit}} of the {{resource}} resource.';
-
-export interface ResourceLimit {
-  featureLimitStatuses: Array<{
-    configuredLimit: {
-      name: string;
-      maxVersions?: number;
-      disableFields?: Array<string>;
-      disabledFields?: Array<string>;
-      limits: {
-        softLimit: number;
-        hardLimit: number;
-      };
-    };
-    limitReached: boolean;
-    currentCount: number;
-    name: string;
-  }>;
-}
-
-export type LimitConfig = {
-  enable: boolean;
-  limits: {
-    config: {
-      version: string;
-      plan: string;
-      installationType: string;
-      deployment: string;
-      companyName: string;
-      domain: string;
-      instances: number;
-      featureLimits: Array<{
-        name: string;
-        maxVersions: number;
-        versionHistory: number;
-        limits: {
-          softLimit: number;
-          hardLimit: number;
-        };
-        disableFields: Array<string>;
-        pipelineSchedules?: Array<string>;
-      }>;
-    };
-  };
-};
+import i18n from '../../utils/i18next/LocalUtil';
 
 export type BannerDetails = {
   header: string;
@@ -67,6 +26,74 @@ export type BannerDetails = {
   type: 'warning' | 'danger';
   softLimitExceed?: boolean;
   hardLimitExceed?: boolean;
+};
+
+const buildDisabledResourceLimit = (
+  resource: string
+): ResourceLimit['featureLimitStatuses'][number] => ({
+  name: resource,
+  limitReached: false,
+  currentCount: -1,
+  configuredLimit: {
+    name: resource,
+    maxVersions: 0,
+    disableFields: [],
+    limits: {
+      softLimit: -1,
+      hardLimit: -1,
+    },
+  },
+});
+
+const getLimitThresholdPercentage = (
+  limits: { softLimit: number; hardLimit: number },
+  hardLimitExceed: boolean
+) => {
+  if (limits.hardLimit <= 0) {
+    return 100;
+  }
+  const threshold = hardLimitExceed ? limits.hardLimit : limits.softLimit;
+
+  return Math.round((threshold / limits.hardLimit) * 100);
+};
+
+const maybeShowLimitBanner = (
+  rLimit: ResourceLimit['featureLimitStatuses'][number],
+  resource: string,
+  plan: string,
+  showBanner: boolean,
+  setBannerDetails: (details: BannerDetails | null) => void
+): void => {
+  const {
+    configuredLimit: { limits },
+    currentCount,
+    limitReached,
+  } = rLimit;
+
+  const softLimitExceed =
+    limits.softLimit !== -1 && currentCount >= limits.softLimit;
+  const hardLimitExceed =
+    limits.hardLimit !== -1 && currentCount >= limits.hardLimit;
+  const isAnyLimitExceeded = softLimitExceed || hardLimitExceed || limitReached;
+
+  if (!isAnyLimitExceeded || !showBanner) {
+    return;
+  }
+
+  const resourceLabel =
+    resource === 'metric' ? i18n.t('label.metric') : startCase(resource);
+
+  setBannerDetails({
+    header: i18n.t('server.entity-limit-reached', {
+      entity: resourceLabel,
+    }),
+    type: hardLimitExceed ? 'danger' : 'warning',
+    subheader: `${currentCount}/${
+      limits.hardLimit
+    } (${plan}, ${getLimitThresholdPercentage(limits, hardLimitExceed)}%)`,
+    softLimitExceed,
+    hardLimitExceed,
+  });
 };
 
 /**
@@ -113,63 +140,59 @@ export const useLimitStore = create<{
   ) => {
     const { setResourceLimit, resourceLimit, setBannerDetails, config } = get();
 
-    let rLimit = resourceLimit[resource];
     if (config?.enable === false) {
-      return {
-        name: resource,
-        limitReached: false,
-        currentCount: -1,
-        configuredLimit: {
-          name: resource,
-          maxVersions: 0,
-          disableFields: [],
-          limits: {
-            softLimit: -1,
-            hardLimit: -1,
-          },
-        },
-      } as ResourceLimit['featureLimitStatuses'][number];
+      return buildDisabledResourceLimit(resource);
     }
 
+    let rLimit = resourceLimit[resource];
     if (isNil(rLimit) || force) {
       const limit = await getLimitByResource(resource);
+      const status = limit?.featureLimitStatuses?.[0];
 
-      setResourceLimit(resource, limit.featureLimitStatuses[0]);
-      rLimit = limit.featureLimitStatuses[0];
+      // No status means limits are off: OSS answers the per-feature call with an
+      // empty body. `config` can still be null here when AppContainer's
+      // getLimitConfig call failed (fetchAppConfigurations swallows the error).
+      if (isNil(status)) {
+        return buildDisabledResourceLimit(resource);
+      }
+
+      setResourceLimit(resource, status);
+      rLimit = status;
     }
 
     if (rLimit) {
-      const {
-        configuredLimit: { limits },
-        currentCount,
-        limitReached,
-      } = rLimit;
-
-      const softLimitExceed =
-        limits.softLimit !== -1 && currentCount >= limits.softLimit;
-      const hardLimitExceed =
-        limits.hardLimit !== -1 && currentCount >= limits.hardLimit;
-
       const plan = config?.limits?.config.plan ?? 'FREE';
-
-      (softLimitExceed || hardLimitExceed || limitReached) &&
-        showBanner &&
-        setBannerDetails({
-          header: `You have reached ${
-            hardLimitExceed ? '100%' : '75%'
-          } of your ${plan} Plan usage limit.`,
-          type: hardLimitExceed ? 'danger' : 'warning',
-          subheader: ERROR_SUB_HEADER.replace(
-            '{{currentCount}}',
-            currentCount + ''
-          )
-            .replace('{{resource}}', startCase(resource))
-            .replace('{{limit}}', limits.hardLimit + ''),
-          softLimitExceed,
-          hardLimitExceed,
-        });
+      maybeShowLimitBanner(
+        rLimit,
+        resource,
+        plan,
+        showBanner,
+        setBannerDetails
+      );
     }
 
     return rLimit;
   },
 }));
+
+/**
+ * Whether a resource's hard limit blocks new entries, using the same rule as
+ * `LimitWrapper`: limits apply only when enabled and counted (-1 = unlimited).
+ */
+export const useIsLimitReached = () => {
+  const { config, resourceLimit } = useLimitStore();
+
+  return useCallback(
+    (resource?: string) => {
+      const limit = resource ? resourceLimit[resource] : undefined;
+
+      return Boolean(
+        config?.enable && limit?.currentCount !== -1 && limit?.limitReached
+      );
+    },
+    [config?.enable, resourceLimit]
+  );
+};
+
+// Re-exported because consumers outside this repository import it from this path.
+export type { ResourceLimit } from '../../interface/platform/limits.interface';

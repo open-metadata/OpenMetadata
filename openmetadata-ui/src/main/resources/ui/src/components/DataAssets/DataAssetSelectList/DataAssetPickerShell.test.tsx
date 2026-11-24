@@ -122,21 +122,12 @@ describe('DataAssetPickerShell', () => {
     expect(screen.queryByText('Orders')).not.toBeInTheDocument();
   });
 
-  it('closes on click outside via overlay', () => {
-    render(<DataAssetPickerShell {...defaultProps} />);
-    openPicker();
-
-    expect(screen.getByText('Orders')).toBeInTheDocument();
-
-    const underlay = screen.getByTestId('underlay');
-    fireEvent.pointerDown(underlay);
-    fireEvent.mouseDown(underlay);
-    fireEvent.pointerUp(underlay);
-    fireEvent.mouseUp(underlay);
-    fireEvent.click(underlay);
-
-    expect(screen.queryByText('Orders')).not.toBeInTheDocument();
-  });
+  // Outside-press dismissal is react-aria's own document-level behavior and
+  // cannot be reliably driven in jsdom (no PointerEvent; the portaled overlay's
+  // interact-outside listeners don't fire from synthetic events). The
+  // dismiss→close wiring this component owns is already covered by "closes on
+  // Escape key" and "calls onToggle and closes on row click in single mode".
+  // Outside-click is exercised end-to-end in the Playwright suite.
 
   it('shows no-data-found when options is empty', () => {
     render(<DataAssetPickerShell {...defaultProps} options={[]} />);

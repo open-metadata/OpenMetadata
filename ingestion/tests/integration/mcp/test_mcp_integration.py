@@ -42,6 +42,7 @@ from metadata.generated.schema.entity.services.mcpService import (
     McpServiceType,
 )
 from metadata.generated.schema.type.basic import EntityName
+from metadata.ingestion.source.mcp.client import McpProtocolError
 from metadata.ingestion.source.mcp.connection import McpConnectionManager
 
 
@@ -225,6 +226,39 @@ class TestMcpConnectionManagerIntegration:
         assert "filesystem" in server_names
         assert "memory" in server_names
 
+    def test_stdio_direct_connection_rejected(self):
+        """Stdio servers are still discovered/cataloged but never connected.
+
+        Stdio (local subprocess) transport is not supported; the connector does
+        not start a local process for a discovered server.
+        """
+        connection = McpConnection(
+            type=McpType.Mcp,
+            discoveryMethod=DiscoveryMethod.DirectConnection,
+            servers=[
+                McpServerConfig(
+                    name="local-stdio",
+                    transport=TransportType.Stdio,
+                    command="npx",
+                    args=["-y", "@modelcontextprotocol/server-memory"],
+                ),
+            ],
+        )
+        manager = McpConnectionManager(connection)
+
+        # Discovery still yields the record (governance cataloging is retained).
+        servers = manager.discover_servers()
+        assert len(servers) == 1
+        assert servers[0].transport == "Stdio"
+
+        # Connecting is refused with an actionable migration message.
+        with pytest.raises(McpProtocolError) as exc_info:
+            manager.connect_to_server(servers[0])
+        assert "no longer supported" in str(exc_info.value)
+
+        # The graceful test path reports the failure rather than executing.
+        assert manager.test_server_connection(servers[0]) is False
+
 
 class TestMcpIngestionWorkflow:
     """Tests for MCP ingestion workflow execution"""
@@ -287,13 +321,16 @@ class TestMcpIngestionWorkflow:
         assert created_service.name.root == self.service_name
 
 
-@pytest.mark.skip(reason="Requires running MCP server")
+@pytest.mark.skip(reason="Requires running HTTP MCP server")
 class TestMcpE2EWithRealServer:
     """
     End-to-end tests with a real MCP server.
 
-    To run these tests:
-    1. Start an MCP server (e.g., npx -y @modelcontextprotocol/server-memory)
+    Stdio transport is not supported, so MCP servers are reached over HTTP by
+    URL. The client POSTs JSON-RPC to ``<url>/mcp``. To run these tests:
+    1. Expose an MCP server over StreamableHTTP at an HTTP URL. A stdio-only
+       server can be fronted with a stdio-to-HTTP proxy (e.g. mcp-proxy) that
+       serves the StreamableHTTP endpoint; set ``url`` to that base URL.
     2. Run with: pytest -v tests/integration/mcp/test_mcp_integration.py::TestMcpE2EWithRealServer
     """
 
@@ -322,10 +359,12 @@ class TestMcpE2EWithRealServer:
 
     def test_e2e_with_memory_server(self):
         """
-        Test full E2E flow with the MCP memory server.
+        Test full E2E flow with an HTTP-exposed MCP memory server.
 
-        Requires: npx -y @modelcontextprotocol/server-memory
+        Requires an HTTP MCP endpoint, e.g.:
+          mcp-proxy --sse-port 8096 -- npx -y @modelcontextprotocol/server-memory
         """
+        server_url = "http://localhost:8096"
         service_request = CreateMcpServiceRequest(
             name=EntityName(self.service_name),
             serviceType=McpServiceType.Mcp,
@@ -336,9 +375,8 @@ class TestMcpE2EWithRealServer:
                     servers=[
                         McpServerConfig(
                             name="memory-server",
-                            transport=TransportType.Stdio,
-                            command="npx",
-                            args=["-y", "@modelcontextprotocol/server-memory"],
+                            transport=TransportType.StreamableHTTP,
+                            url=server_url,
                         ),
                     ],
                     fetchTools=True,
@@ -357,9 +395,8 @@ class TestMcpE2EWithRealServer:
             servers=[
                 McpServerConfig(
                     name="memory-server",
-                    transport=TransportType.Stdio,
-                    command="npx",
-                    args=["-y", "@modelcontextprotocol/server-memory"],
+                    transport=TransportType.StreamableHTTP,
+                    url=server_url,
                 ),
             ],
         )

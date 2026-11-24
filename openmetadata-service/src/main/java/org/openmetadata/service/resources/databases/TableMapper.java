@@ -20,15 +20,18 @@ public class TableMapper implements EntityMapper<Table, CreateTable> {
                 .withLocationPath(create.getLocationPath())
                 .withTableConstraints(create.getTableConstraints())
                 .withTablePartition(create.getTablePartition())
+                .withTableSharding(create.getTableSharding())
                 .withTableType(create.getTableType())
                 .withFileFormat(create.getFileFormat())
                 .withSchemaDefinition(create.getSchemaDefinition())
                 .withTableProfilerConfig(create.getTableProfilerConfig())
+                .withAliases(create.getAliases())
                 .withDatabaseSchema(
                     getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema())))
         .withDatabaseSchema(getEntityReference(Entity.DATABASE_SCHEMA, create.getDatabaseSchema()))
         .withRetentionPeriod(create.getRetentionPeriod())
-        .withSourceHash(create.getSourceHash());
+        .withSourceHash(create.getSourceHash())
+        .withCertification(create.getCertification());
   }
 
   public CustomMetric createCustomMetricToEntity(CreateCustomMetric create, String user) {

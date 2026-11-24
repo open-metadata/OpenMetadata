@@ -1,0 +1,125 @@
+#  Copyright 2026 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+# Guardrail for `.github/playwright/impact-map.generated.json`.
+#
+# The Playwright PR planner reads this file alongside the hand-authored
+# `impact-map.json` to route "if source X changes, run these specs". The
+# generated half is a deterministic function of the current tree (spec
+# imports + testId cross-reference), so drift means the committed file
+# no longer matches what the generator would produce — usually because
+# a spec, a shared helper, or a `data-testid` string changed and the
+# author did not regenerate.
+#
+# Same-repository PRs regenerate and report drift without writing to the branch.
+# Forks retain the planner's unmapped-code fallback to the full suite.
+# The merge queue does not regenerate this map because its refs are read-only.
+
+name: Playwright impact-map drift
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/**/*.spec.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/**/*.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/**/*.tsx'
+      - '.github/scripts/generate_playwright_impact_map.py'
+      - '.github/playwright/impact-map.generated.json'
+  workflow_dispatch:
+
+concurrency:
+  group: playwright-impact-map-drift-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  impact-map-drift:
+    name: Playwright impact-map drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Regenerate impact map
+        run: python3 .github/scripts/generate_playwright_impact_map.py
+
+      - name: Check for drift
+        id: git-check
+        continue-on-error: true
+        run: |
+          git add .github/playwright/impact-map.generated.json
+          git diff --cached --quiet
+
+      - name: Summarise the diff
+        id: summarise
+        if: steps.git-check.outcome != 'success'
+        run: |
+          # Cap the job summary so it stays readable. The full
+          # file is a single JSON line — a raw diff would be unreadable — so
+          # count the affected entries semantically instead.
+          python3 - <<'PY' > "$RUNNER_TEMP/summary.txt"
+          import json, subprocess, os
+          path = ".github/playwright/impact-map.generated.json"
+          # HEAD is the committed version; working tree is the regenerated one.
+          old = json.loads(subprocess.check_output(["git", "show", f"HEAD:{path}"]))
+          new = json.loads(open(path).read())
+          old_by_src = {s: set(e["specs"]) for e in old["mappings"] for s in e["sources"]}
+          new_by_src = {s: set(e["specs"]) for e in new["mappings"] for s in e["sources"]}
+          added   = sorted(new_by_src.keys() - old_by_src.keys())
+          removed = sorted(old_by_src.keys() - new_by_src.keys())
+          changed = sorted(
+              s for s in old_by_src.keys() & new_by_src.keys()
+              if old_by_src[s] != new_by_src[s]
+          )
+          print(f"- source entries: {len(old_by_src)} → {len(new_by_src)}")
+          print(f"- {len(added)} added, {len(removed)} removed, {len(changed)} changed spec-list")
+          def sample(rows, label, max_lines=10):
+              if not rows:
+                  return
+              print(f"\n{label}:")
+              for r in rows[:max_lines]:
+                  print(f"  {r}")
+              if len(rows) > max_lines:
+                  print(f"  … and {len(rows) - max_lines} more")
+          sample(added, "New source→spec entries")
+          sample(removed, "Removed source→spec entries")
+          sample(changed, "Entries whose spec list changed")
+          PY
+          {
+            echo 'summary<<SUMMARY_EOF'
+            cat "$RUNNER_TEMP/summary.txt"
+            echo 'SUMMARY_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Report impact-map drift
+        if: steps.git-check.outcome != 'success'
+        env:
+          DRIFT_SUMMARY: ${{ steps.summarise.outputs.summary }}
+        run: |
+          echo "$DRIFT_SUMMARY" >> "$GITHUB_STEP_SUMMARY"
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          Run `python3 .github/scripts/generate_playwright_impact_map.py` and commit the refreshed map.
+          EOF
+          echo "::error::Playwright impact map is stale. Regenerate it locally and commit the result."
+          exit 1

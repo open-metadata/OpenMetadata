@@ -138,7 +138,7 @@ class SnapshotMaterializerTest {
     assertTrue(((Long) snap.get(TIMESTAMP_KEY)) <= now, "@timestamp <= now");
   }
 
-  private EntityInterface stubEntity() {
+  private EntityInterface<?> stubEntity() {
     return mock(EntityInterface.class);
   }
 }

@@ -1,0 +1,27 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyPackList.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyPackList",
+  "description": "Ontology library catalogue.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyPackList",
+  "properties": {
+    "packs": {
+      "type": "array",
+      "items": {
+        "$ref": "ontologyPackManifest.json"
+      },
+      "default": []
+    },
+    "installations": {
+      "description": "Native ontologies the caller may view that installed a listed pack, one record per ontology and pack.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyPackInstallationRecord.json"
+      },
+      "default": []
+    }
+  },
+  "required": ["packs"],
+  "additionalProperties": false
+}

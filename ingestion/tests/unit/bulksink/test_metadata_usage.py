@@ -14,12 +14,23 @@ Unit tests for MetadataUsageBulkSink error handling
 
 import json
 import os
+import sys
 import tempfile
+from datetime import date, datetime
+from io import StringIO
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+import pytest
+
+from metadata.entity_resolution.engine import EntityResolver
+from metadata.entity_resolution.table import TableResolver
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.generated.schema.metadataIngestion.workflow import BulkSink
 from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     SqlQuery,
@@ -34,7 +45,10 @@ from metadata.ingestion.bulksink.metadata_usage import (
     MetadataUsageSinkConfig,
 )
 from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.mixins.es_mixin import FqnSearchResult
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
+from metadata.utils.time_utils import datetime_to_timestamp
+from metadata.workflow.usage import UsageWorkflow
 
 
 def create_api_error(status_code: int, message: str) -> APIError:
@@ -372,3 +386,357 @@ class TestHandleQueryCostErrorHandling(TestCase):
             5,
             "All 5 cost records should be published",
         )
+
+
+def _usage_record_line() -> str:
+    return json.dumps(create_table_usage().model_dump_json()) + "\n"
+
+
+def _metadata_for_usage_resolution(table: Table):
+    metadata = MagicMock()
+    entities = {table.fullyQualifiedName.root: table}
+    published = []
+    joins = []
+
+    def get_by_name(*, fqn, **_kwargs):
+        return entities.get(fqn)
+
+    metadata.get_by_name.side_effect = get_by_name
+    metadata.publish_table_usage.side_effect = lambda entity, request: published.append((entity.id, request.count))
+    metadata.publish_frequently_joined_with.side_effect = lambda entity, request: joins.append((entity.id, request))
+    return metadata, entities, published, joins
+
+
+def test_table_usage_run_reuses_resolution_across_files_and_refreshes_next_run():
+    table = Table(
+        id=uuid4(),
+        name="test_table",
+        fullyQualifiedName="test_service.test_db.test_schema.test_table",
+        columns=[],
+    )
+    metadata, entities, published, _ = _metadata_for_usage_resolution(table)
+    sink = MetadataUsageBulkSink(
+        config=MetadataUsageSinkConfig(filename="/tmp/test_usage"),
+        metadata=metadata,
+    )
+    recreated = table.model_copy(update={"id": Table(id=uuid4(), name="test_table", columns=[]).id})
+
+    def staged_files():
+        yield StringIO(_usage_record_line() * 2)
+        entities[table.fullyQualifiedName.root] = recreated
+        yield StringIO(_usage_record_line())
+
+    sink.iterate_files = staged_files
+
+    sink.handle_table_usage()
+
+    assert published == [(table.id, 2), (table.id, 1)]
+    assert not sink.status.failures
+    sink.handle_table_usage()
+    assert published[2:] == [(recreated.id, 2), (recreated.id, 1)]
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_table_usage_run_closes_resolver_on_success_and_failure(fail):
+    table = Table(
+        id=uuid4(),
+        name="test_table",
+        fullyQualifiedName="test_service.test_db.test_schema.test_table",
+        columns=[],
+    )
+    metadata, _, published, _ = _metadata_for_usage_resolution(table)
+    sink = MetadataUsageBulkSink(
+        config=MetadataUsageSinkConfig(filename="/tmp/test_usage"),
+        metadata=metadata,
+    )
+    resolver = EntityResolver(metadata)
+
+    def broken_iteration(*_args, **_kwargs):
+        yield StringIO(_usage_record_line())
+        if fail:
+            raise RuntimeError("batch iteration failed")
+
+    sink.iterate_files = broken_iteration
+    with patch("metadata.ingestion.bulksink.metadata_usage.EntityResolver", return_value=resolver):
+        if fail:
+            with pytest.raises(RuntimeError, match="batch iteration failed"):
+                sink.handle_table_usage()
+        else:
+            sink.handle_table_usage()
+
+    assert published == [(table.id, 1)]
+    with pytest.raises(RuntimeError, match="closed"):
+        TableResolver(resolver).resolve(
+            service_names=("test_service",),
+            database_name="test_db",
+            database_schema="test_schema",
+            table_name="test_table",
+        )
+    metadata.close.assert_not_called()
+
+
+def test_usage_join_targets_use_the_same_run_resolution():
+    table = Table(
+        id=uuid4(),
+        name="test_table",
+        fullyQualifiedName="test_service.test_db.test_schema.test_table",
+        columns=[
+            {"name": "id", "dataType": "INT", "fullyQualifiedName": "test_service.test_db.test_schema.test_table.id"}
+        ],
+    )
+    metadata, entities, published, joins = _metadata_for_usage_resolution(table)
+    record = create_table_usage().model_copy(update={"joins": []})
+    joined_record = record.model_dump()
+    joined_record["joins"] = [
+        {
+            "tableColumn": {"table": "test_table", "column": "id"},
+            "joinedWith": [{"table": "test_table", "column": "id"}],
+        }
+    ]
+
+    def staged_files():
+        yield StringIO(_usage_record_line())
+        entities.pop(table.fullyQualifiedName.root)
+        yield StringIO(json.dumps(json.dumps(joined_record)) + "\n")
+
+    sink = MetadataUsageBulkSink(MetadataUsageSinkConfig(filename="/tmp/test_usage"), metadata)
+    sink.iterate_files = staged_files
+    sink.handle_table_usage()
+    assert published == [(table.id, 1), (table.id, 1)]
+    assert len(joins) == 1
+    assert joins[0][0] == table.id
+    assert (
+        joins[0][1].columnJoins[0].joinedWith[0].fullyQualifiedName.root
+        == "test_service.test_db.test_schema.test_table.id"
+    )
+    assert not sink.status.failures
+
+
+@pytest.mark.parametrize(
+    "source_type,service_type,expected_count",
+    [
+        ("clickhouse-usage", "Clickhouse", 1),
+        ("postgres-usage", "Postgres", 0),
+        ("custom-database", "CustomDatabase", 0),
+        ("query-log-usage", "Clickhouse", 1),
+    ],
+)
+def test_usage_preserves_service_specific_database_normalization(source_type, service_type, expected_count):
+    table = Table(
+        id=uuid4(), name="test_table", fullyQualifiedName="test_service.default.test_schema.test_table", columns=[]
+    )
+    metadata, _, published, _ = _metadata_for_usage_resolution(table)
+    metadata.search_fqn_candidates.return_value = FqnSearchResult((table.fullyQualifiedName.root,), 1, True)
+    workflow = UsageWorkflow.__new__(UsageWorkflow)
+    workflow.metadata = metadata
+    workflow.service_type = ServiceType.Database
+    workflow.config = SimpleNamespace(
+        source=SimpleNamespace(
+            type=source_type,
+            serviceName="test_service",
+            serviceConnection=SimpleNamespace(
+                root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value=service_type)))
+            ),
+        ),
+        bulkSink=BulkSink(type="metadata-usage", config={"filename": "/tmp/test_usage"}),
+    )
+    with patch.dict(sys.modules, {"metadata.ingestion.source.database.clickhouse.service_spec": None}):
+        sink = workflow._get_bulk_sink()
+    sink.iterate_files = lambda: iter([StringIO(_usage_record_line())])
+    sink.handle_table_usage()
+    assert published == ([(table.id, 1)] if expected_count else [])
+
+
+@pytest.mark.parametrize("failure", ["api", "overflow", "incomplete"])
+def test_failed_join_lookup_preserves_usage_queries_lifecycle_and_other_joins(failure):
+    table = Table(
+        id=uuid4(),
+        name="test_table",
+        fullyQualifiedName="test_service.test_db.test_schema.test_table",
+        columns=[
+            {"name": "id", "dataType": "INT", "fullyQualifiedName": "test_service.test_db.test_schema.test_table.id"}
+        ],
+    )
+    metadata, _, published, joins = _metadata_for_usage_resolution(table)
+    queries, lifecycles = [], []
+    metadata.ingest_entity_queries_data.side_effect = lambda *, entity, queries: published_queries(entity, queries)
+
+    def published_queries(entity, records):
+        queries.append((entity.id, [query.query.root for query in records]))
+
+    metadata.patch_life_cycle.side_effect = lambda *, entity, life_cycle: lifecycles.append((entity.id, life_cycle))
+    if failure == "api":
+        metadata.search_fqn_candidates.side_effect = create_api_error(503, "temporarily unavailable")
+    else:
+        metadata.search_fqn_candidates.return_value = FqnSearchResult((), 11 if failure == "overflow" else 1, True)
+    record = create_table_usage_with_queries().model_dump()
+    record["joins"] = [
+        {
+            "tableColumn": {"table": "test_table", "column": "id"},
+            "joinedWith": [{"table": "missing", "column": "id"}, {"table": "test_table", "column": "id"}],
+        }
+    ]
+    sink = MetadataUsageBulkSink(MetadataUsageSinkConfig(filename="/tmp/test_usage"), metadata)
+    sink.iterate_files = lambda: iter([StringIO(json.dumps(json.dumps(record)) + "\n")])
+    sink.handle_table_usage()
+    assert published == [(table.id, 1)]
+    assert queries == [(table.id, ["SELECT * FROM test_table"])]
+    assert len(lifecycles) == 1
+    assert lifecycles[0][0] == table.id
+    assert lifecycles[0][1].accessed.timestamp.root == 1702000000000
+    assert len(joins) == 1
+    assert [join.fullyQualifiedName.root for join in joins[0][1].columnJoins[0].joinedWith] == [
+        "test_service.test_db.test_schema.test_table.id"
+    ]
+    assert not sink.status.failures
+
+
+@pytest.mark.parametrize("source_type", ["bigquery-usage", "query-log-usage"])
+def test_usage_binding_resolves_physical_shards_and_join_targets(source_type):
+    family = Table(
+        id=uuid4(),
+        name="events_yyyymmdd",
+        fullyQualifiedName="test_service.test_db.test_schema.events_yyyymmdd",
+        tableType="Sharded",
+        tableSharding={
+            "prefix": "events_",
+            "suffixFormat": "YYYYMMDD",
+            "shardCount": 2,
+            "firstShardDate": "2026-01-01",
+            "lastShardDate": "2026-01-02",
+            "representative": {
+                "databaseName": "test_db",
+                "schemaName": "test_schema",
+                "tableName": "events_20260102",
+                "shardDate": "2026-01-02",
+            },
+        },
+        columns=[
+            {
+                "name": "id",
+                "dataType": "INT",
+                "fullyQualifiedName": "test_service.test_db.test_schema.events_yyyymmdd.id",
+            }
+        ],
+    )
+    metadata, _, published, joins = _metadata_for_usage_resolution(family)
+    workflow = UsageWorkflow.__new__(UsageWorkflow)
+    workflow.metadata = metadata
+    workflow.service_type = ServiceType.Database
+    workflow.config = SimpleNamespace(
+        source=SimpleNamespace(
+            type=source_type,
+            serviceName="test_service",
+            serviceConnection=SimpleNamespace(
+                root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value="BigQuery")))
+            ),
+        ),
+        bulkSink=BulkSink(type="metadata-usage", config={"filename": "/tmp/test_usage"}),
+    )
+    sink = workflow._get_bulk_sink()
+    record = create_table_usage().model_dump()
+    record["table"] = "events_20260101"
+    record["joins"] = [
+        {
+            "tableColumn": {"table": "events_20260101", "column": "id"},
+            "joinedWith": [{"table": "events_20260102", "column": "id"}],
+        }
+    ]
+    sink.iterate_files = lambda: iter([StringIO(json.dumps(json.dumps(record)) + "\n")])
+    sink.handle_table_usage()
+    assert published == [(family.id, 1)]
+    assert len(joins) == 1
+    assert joins[0][1].columnJoins[0].joinedWith[0].fullyQualifiedName.root == (
+        "test_service.test_db.test_schema.events_yyyymmdd.id"
+    )
+    assert not sink.status.failures
+
+
+# 2025-06-05 00:00:00 UTC expressed as epoch milliseconds. This is exactly the
+# value the query parser (query_parser.py) stages for an analysis date of
+# 2025-06-05 via ``datetime_to_timestamp(..., milliseconds=True)``, which
+# attaches UTC to the naive date.
+_USAGE_DATE_UTC_MS = 1749081600000
+
+
+def test_published_usage_date_is_utc_not_host_local(local_tz):
+    """UsageRequest.date must be the UTC calendar day of the staged epoch.
+
+    The staged epoch is produced by the query parser via the UTC-attaching
+    ``datetime_to_timestamp`` helper. Under ``America/New_York`` a naive
+    ``datetime.fromtimestamp`` would shift 2025-06-05 back to 2025-06-04; the
+    sink must instead decode it as UTC and publish 2025-06-05.
+    """
+    local_tz("America/New_York")
+    assert datetime_to_timestamp(datetime.strptime("2025-06-05", "%Y-%m-%d"), milliseconds=True) == _USAGE_DATE_UTC_MS
+
+    table = Table(
+        id=uuid4(),
+        name="test_table",
+        fullyQualifiedName="test_service.test_db.test_schema.test_table",
+        columns=[],
+    )
+    metadata = MagicMock()
+    entities = {table.fullyQualifiedName.root: table}
+    metadata.get_by_name.side_effect = lambda *, fqn, **_kwargs: entities.get(fqn)
+    published_usage = []
+    metadata.publish_table_usage.side_effect = lambda entity, request: published_usage.append(request)
+
+    record = create_table_usage().model_copy(update={"date": str(_USAGE_DATE_UTC_MS)})
+
+    sink = MetadataUsageBulkSink(
+        MetadataUsageSinkConfig(filename="/tmp/test_usage"),
+        metadata,
+    )
+    sink.iterate_files = lambda: iter([StringIO(json.dumps(record.model_dump_json()) + "\n")])
+    sink.handle_table_usage()
+
+    # A naive decode under America/New_York would yield "2025-06-04".
+    assert len(published_usage) == 1
+    assert published_usage[0].date == "2025-06-05"
+    assert published_usage[0].count == 1
+    assert not sink.status.failures
+
+
+def test_published_join_start_date_is_utc_not_host_local(local_tz):
+    """TableJoins.startDate must be the UTC calendar day of the staged epoch.
+
+    Under ``America/New_York`` a naive ``datetime.fromtimestamp`` would shift
+    the startDate for 2025-06-05 back to 2025-06-04; the sink must instead
+    decode it as UTC.
+    """
+    local_tz("America/New_York")
+    table = Table(
+        id=uuid4(),
+        name="test_table",
+        fullyQualifiedName="test_service.test_db.test_schema.test_table",
+        columns=[
+            {"name": "id", "dataType": "INT", "fullyQualifiedName": "test_service.test_db.test_schema.test_table.id"}
+        ],
+    )
+    metadata = MagicMock()
+    entities = {table.fullyQualifiedName.root: table}
+    metadata.get_by_name.side_effect = lambda *, fqn, **_kwargs: entities.get(fqn)
+    published_joins = []
+    metadata.publish_frequently_joined_with.side_effect = lambda entity, request: published_joins.append(request)
+
+    record = create_table_usage().model_dump()
+    record["date"] = str(_USAGE_DATE_UTC_MS)
+    record["joins"] = [
+        {
+            "tableColumn": {"table": "test_table", "column": "id"},
+            "joinedWith": [{"table": "test_table", "column": "id"}],
+        }
+    ]
+
+    sink = MetadataUsageBulkSink(
+        MetadataUsageSinkConfig(filename="/tmp/test_usage"),
+        metadata,
+    )
+    sink.iterate_files = lambda: iter([StringIO(json.dumps(json.dumps(record)) + "\n")])
+    sink.handle_table_usage()
+
+    # A naive decode under America/New_York would yield date(2025, 6, 4).
+    assert len(published_joins) == 1
+    assert published_joins[0].startDate.root == date(2025, 6, 5)
+    assert not sink.status.failures

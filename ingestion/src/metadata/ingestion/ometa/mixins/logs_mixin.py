@@ -22,11 +22,10 @@ import json
 import os
 import socket
 import time
-from typing import Optional, Union
 from uuid import UUID
 
 from metadata.ingestion.ometa.client import REST
-from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.ometa.utils import model_str, quote
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ometa_logger
 
@@ -50,7 +49,7 @@ class OMetaLogsMixin:
         run_id: UUID,
         log_content: str,
         compress: bool = False,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: float | tuple[float, float] | None = None,
     ) -> bool:
         """
         Send logs to S3 storage via OpenMetadata server endpoint.
@@ -68,7 +67,7 @@ class OMetaLogsMixin:
         try:
             # Extract the UUID string value from the object if it has a .root attribute
             # Build the API endpoint
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            url = f"/services/ingestionPipelines/logs/{quote(pipeline_fqn)}/{model_str(run_id)}"
 
             # Prepare log batch data matching Java LogBatch structure
             log_batch = {
@@ -114,7 +113,7 @@ class OMetaLogsMixin:
         log_content: str,
         enable_compression: bool = False,
         max_retries: int = 3,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: float | tuple[float, float] | None = None,
     ) -> dict:
         """
         Send logs batch to S3 storage via OpenMetadata server endpoint with retry logic.
@@ -188,12 +187,12 @@ class OMetaLogsMixin:
         pipeline_fqn: str,
         run_id: UUID,
         log_content: str,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
-        client: Optional[REST] = None,  # noqa: UP045
+        timeout: float | tuple[float, float] | None = None,
+        client: REST | None = None,
     ) -> bool:
         """Best-effort log POST: no retries, no logging. Returns True on 2xx."""
         try:
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            url = f"/services/ingestionPipelines/logs/{quote(pipeline_fqn)}/{model_str(run_id)}"
             log_batch = {
                 "logs": log_content,
                 "timestamp": int(time.time() * 1000),
@@ -214,12 +213,12 @@ class OMetaLogsMixin:
         self,
         pipeline_fqn: str,
         run_id: UUID,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
-        client: Optional[REST] = None,  # noqa: UP045
+        timeout: float | tuple[float, float] | None = None,
+        client: REST | None = None,
     ) -> bool:
         """Best-effort /close notify. Same guarantees as send_logs_batch_best_effort."""
         try:
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}/close"
+            url = f"/services/ingestionPipelines/logs/{quote(pipeline_fqn)}/{model_str(run_id)}/close"
             close_data = {
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",
                 "timestamp": int(time.time() * 1000),
@@ -249,7 +248,7 @@ class OMetaLogsMixin:
         """
         try:
             # Initialize log stream with the server
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            url = f"/services/ingestionPipelines/logs/{quote(pipeline_fqn)}/{model_str(run_id)}"
 
             init_data = {
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",
@@ -283,7 +282,7 @@ class OMetaLogsMixin:
             bool: True if stream was closed successfully, False otherwise
         """
         try:
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}/close"
+            url = f"/services/ingestionPipelines/logs/{quote(pipeline_fqn)}/{model_str(run_id)}/close"
 
             close_data = {
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",
@@ -309,7 +308,7 @@ class OMetaLogsMixin:
         run_id: UUID,
         offset: int = 0,
         limit: int = 1000,
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         """
         Retrieve logs from S3 storage for a pipeline run.
 
@@ -323,7 +322,7 @@ class OMetaLogsMixin:
             Optional[str]: Log content if available, None otherwise
         """
         try:
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            url = f"/services/ingestionPipelines/logs/{quote(pipeline_fqn)}/{model_str(run_id)}"
 
             params = {
                 "offset": offset,

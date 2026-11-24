@@ -106,7 +106,8 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId('entity-popover-card')
+      .parentElement as HTMLElement;
 
     expect(popover).toHaveStyle({
       position: 'absolute',
@@ -131,7 +132,7 @@ describe('CanvasButtonPopover', () => {
     expect(screen.getByTestId('entity-type')).toHaveTextContent('pipeline');
   });
 
-  it('renders status tag with correct class', () => {
+  it('renders status badge with correct status text', () => {
     render(
       <CanvasButtonPopover
         hoverTimeoutRef={mockHoverTimeoutRef}
@@ -143,11 +144,10 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const extraInfo = screen.getByTestId('extra-info');
-    const tag = extraInfo.querySelector('.green');
+    const badge = screen.getByTestId('pipeline-status-badge');
 
-    expect(tag).toBeInTheDocument();
-    expect(tag).toHaveTextContent('Successful');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveTextContent('Successful');
   });
 
   it('does not render status tag when pipelineStatus is not available', () => {
@@ -194,9 +194,10 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId('entity-popover-card')
+      .parentElement as HTMLElement;
 
-    fireEvent.mouseEnter(popover!);
+    fireEvent.mouseEnter(popover);
 
     expect(mockIsOverPopoverRef.current).toBe(true);
     expect(mockHoverTimeoutRef.current).toBeNull();
@@ -214,9 +215,10 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId('entity-popover-card')
+      .parentElement as HTMLElement;
 
-    fireEvent.mouseLeave(popover!);
+    fireEvent.mouseLeave(popover);
 
     expect(mockOnMouseLeave).toHaveBeenCalledTimes(1);
   });
@@ -248,11 +250,10 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const extraInfo = screen.getByTestId('extra-info');
-    const tag = extraInfo.querySelector('.red');
+    const badge = screen.getByTestId('pipeline-status-badge');
 
-    expect(tag).toBeInTheDocument();
-    expect(tag).toHaveTextContent('Failed');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveTextContent('Failed');
   });
 
   it('renders with pending status color', () => {
@@ -282,11 +283,10 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const extraInfo = screen.getByTestId('extra-info');
-    const tag = extraInfo.querySelector('.amber');
+    const badge = screen.getByTestId('pipeline-status-badge');
 
-    expect(tag).toBeInTheDocument();
-    expect(tag).toHaveTextContent('Pending');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveTextContent('Pending');
   });
 
   it('applies correct z-index and pointer events', () => {
@@ -301,7 +301,8 @@ describe('CanvasButtonPopover', () => {
       />
     );
 
-    const popover = screen.getByTestId('entity-popover-card').parentElement;
+    const popover = screen.getByTestId('entity-popover-card')
+      .parentElement as HTMLElement;
 
     expect(popover).toHaveStyle({
       pointerEvents: 'all',

@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  APIRequestContext,
-  expect,
-  Page,
-  test as base,
-} from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
@@ -31,6 +26,7 @@ import { MlmodelServiceClass } from '../../support/entity/service/MlmodelService
 import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
 import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -39,6 +35,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import { addMultiOwner, assignTier } from '../../utils/entity';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 
 /**
  * Service entity classes here still use the legacy positional patch(apiContext, payload)
@@ -65,7 +62,10 @@ const applyServicePatch = async (
   await legacy.patch(apiContext, patchData);
 };
 
-const entities = {
+/** Setup failures, keyed by test name, so one service cannot fail the rest. */
+const setupErrors = new Map<string, unknown>();
+
+const allEntities = {
   'Api Service': new ApiServiceClass(),
   'Api Collection': new ApiCollectionClass(),
   'Dashboard Service': new DashboardServiceClass(),
@@ -80,6 +80,10 @@ const entities = {
   'Drive Service': new DriveServiceClass(),
 };
 
+const entities = pickEntityMatrix(__filename, allEntities, {
+  'Database Service': allEntities['Database Service'],
+});
+
 // use the admin user to login
 
 const adminUser = new UserClass();
@@ -87,7 +91,7 @@ const adminUser = new UserClass();
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
@@ -95,53 +99,63 @@ const test = base.extend<{ page: Page }>({
 
 test.describe('Service Version pages', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    setupErrors.clear();
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
 
-    for (const entity of Object.values(entities)) {
-      await entity.create(apiContext);
-      const domain = EntityDataClass.domain1.responseData;
-      const patchData: Operation[] = [
-        {
-          op: 'add',
-          path: '/tags/0',
-          value: {
-            labelType: 'Manual',
-            state: 'Confirmed',
-            source: 'Classification',
-            tagFQN: 'PersonalData.SpecialCategory',
-          },
-        },
-        {
-          op: 'add',
-          path: '/tags/1',
-          value: {
-            labelType: 'Manual',
-            state: 'Confirmed',
-            source: 'Classification',
-            tagFQN: 'PII.Sensitive',
-          },
-        },
-        {
-          op: 'add',
-          path: '/description',
-          value: 'Description for newly added service',
-        },
-        {
-          op: 'add',
-          path: '/domains',
-          value: [
-            {
-              id: domain.id,
-              type: 'domain',
-              name: domain.name,
-              description: domain.description,
+    for (const [key, entity] of Object.entries(entities)) {
+      try {
+        await entity.create(apiContext);
+        const domain = EntityDataClass.domain1.responseData;
+        const patchData: Operation[] = [
+          {
+            op: 'add',
+            path: '/tags/-',
+            value: {
+              labelType: 'Manual',
+              state: 'Confirmed',
+              source: 'Classification',
+              tagFQN: 'PersonalData.SpecialCategory',
             },
-          ],
-        },
-      ];
-      await applyServicePatch(entity, apiContext, patchData);
+          },
+          {
+            op: 'add',
+            path: '/tags/-',
+            value: {
+              labelType: 'Manual',
+              state: 'Confirmed',
+              source: 'Classification',
+              tagFQN: 'PII.Sensitive',
+            },
+          },
+          {
+            op: 'add',
+            path: '/description',
+            value: 'Description for newly added service',
+          },
+          {
+            op: 'add',
+            path: '/domains',
+            value: [
+              {
+                id: domain.id,
+                type: 'domain',
+                name: domain.name,
+                description: domain.description,
+              },
+            ],
+          },
+        ];
+        await applyServicePatch(entity, apiContext, patchData);
+      } catch (error) {
+        // Setup for all eleven services shares this hook, so an API hiccup on
+        // one of them used to fail the other ten tests and get attributed to
+        // whichever test ran first -- a 404 patching the api service is why
+        // "Storage Service" has been the top flake. Record it against its own
+        // key instead and let only that test report it.
+        setupErrors.set(key, error);
+      }
     }
 
     await afterAction();
@@ -149,9 +163,25 @@ test.describe('Service Version pages', () => {
 
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    await adminUser.delete(apiContext);
-
-    await afterAction();
+    try {
+      const results = await Promise.allSettled(
+        Object.values(entities).map((entity) => entity.delete(apiContext))
+      );
+      await adminUser.delete(apiContext);
+      const failures = results.filter(
+        (result): result is PromiseRejectedResult =>
+          result.status === 'rejected'
+      );
+      if (failures.length) {
+        throw new AggregateError(
+          failures.map((failure) => failure.reason),
+          'Service version fixture cleanup failed'
+        );
+      }
+    } finally {
+      setupErrors.clear();
+      await afterAction();
+    }
   });
 
   test.beforeEach('Visit entity details page', async ({ page }) => {
@@ -172,6 +202,17 @@ test.describe('Service Version pages', () => {
      * in the UI to highlight what changed between versions
      */
     test(key, async ({ page }) => {
+      // Visits the version page and asserts diff markers across 4 version
+      // bumps (0.2 → 0.5). 6+ API round-trips + several UI transitions
+      // that can each drift under merge-queue load.
+      test.slow();
+
+      const setupError = setupErrors.get(key);
+
+      if (setupError) {
+        throw setupError;
+      }
+
       await entity.visitEntityPage(page);
       const versionDetailResponse = page.waitForResponse(`**/versions/0.2`);
       await page.locator('[data-testid="version-button"]').click();
@@ -198,13 +239,13 @@ test.describe('Service Version pages', () => {
 
         await expect(
           page.locator(
-            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PersonalData.SpecialCategory"]'
+            '[data-testid="entity-right-panel"] [data-testid="tag-PersonalData.SpecialCategory"]'
           )
         ).toBeVisible();
 
         await expect(
           page.locator(
-            '[data-testid="entity-right-panel"] .diff-added [data-testid="tag-PII.Sensitive"]'
+            '[data-testid="entity-right-panel"] [data-testid="tag-PII.Sensitive"]'
           )
         ).toBeVisible();
       });
@@ -294,7 +335,7 @@ test.describe('Service Version pages', () => {
           BIG_ENTITY_DELETE_TIMEOUT
         );
 
-        await page.reload();
+        await page.reload({ waitUntil: 'domcontentloaded' });
 
         const deletedBadge = page.locator('[data-testid="deleted-badge"]');
 

@@ -282,7 +282,10 @@ export const Slider = ({
               <span
                 className={cx(
                   'tw:absolute tw:top-1/2 tw:h-2 tw:-translate-y-1/2 tw:rounded-full',
-                  isDisabled ? 'tw:bg-disabled' : 'tw:bg-brand-solid'
+                  // Dark bg-disabled equals the bg-quaternary rail, so the fill drops a step.
+                  isDisabled
+                    ? 'tw:bg-disabled tw:dark:bg-disabled_subtle'
+                    : 'tw:bg-brand-solid'
                 )}
                 style={{
                   left: `${fillStart * 100}%`,

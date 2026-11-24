@@ -15,7 +15,6 @@ To be used by OpenMetadata class
 """
 
 import traceback
-from typing import Optional
 
 from metadata.generated.schema.entity.data.file import File
 from metadata.generated.schema.entity.data.table import TableData
@@ -34,7 +33,7 @@ class OMetaFileMixin:
 
     client: REST
 
-    def ingest_file_sample_data(self, file: File, sample_data: TableData) -> Optional[File]:  # noqa: UP045
+    def ingest_file_sample_data(self, file: File, sample_data: TableData) -> File | None:
         """
         PUT sample data for a file
 
@@ -75,7 +74,7 @@ class OMetaFileMixin:
 
         return None
 
-    def get_file_sample_data(self, file: File) -> Optional[File]:  # noqa: UP045
+    def get_file_sample_data(self, file: File) -> File | None:
         """
         GET call for the /sampleData endpoint for a given File
 

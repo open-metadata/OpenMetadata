@@ -1,12 +1,11 @@
 from collections import deque
-from typing import List, Union  # noqa: UP035
 
 from pydantic import BaseModel
 
 
 def assert_equal_pydantic_objects(
-    expected: Union[BaseModel, List[BaseModel]],  # noqa: UP006, UP007
-    actual: Union[BaseModel, List[BaseModel]],  # noqa: UP006, UP007
+    expected: BaseModel | list[BaseModel],
+    actual: BaseModel | list[BaseModel],
     ignore_none=True,
 ):
     """Compare 2 pydantic objects recursively and raise an AssertionError if they are not equal along with all

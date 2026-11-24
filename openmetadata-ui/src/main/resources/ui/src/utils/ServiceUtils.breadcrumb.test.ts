@@ -26,6 +26,7 @@ describe('getAddServiceEntityBreadcrumb', () => {
     );
 
     expect(category.id).toBe('category');
+    expect(category.label).toBe('label.database-plural');
     expect(category.href).toBe('/settings/services/databases');
   });
 

@@ -1,5 +1,7 @@
 package org.openmetadata.it.tests;
 
+import static java.net.HttpURLConnection.HTTP_BAD_REQUEST;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,18 +23,16 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.service.rdf.RdfUpdater;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Integration tests for Glossary Ontology Export API.
@@ -72,15 +72,17 @@ public class GlossaryOntologyExportIT {
   private static final String RDF_XML_CONTENT_TYPE = "application/rdf+xml";
   private static final String N_TRIPLES_CONTENT_TYPE = "application/n-triples";
   private static final String JSON_LD_CONTENT_TYPE = "application/ld+json";
+  private static final String INVALID_FORMAT = "invalidformat";
+  private static final String UNSUPPORTED_FORMAT_ERROR =
+      "Unsupported RDF serialization format: " + INVALID_FORMAT;
 
-  // See TestSuiteBootstrap for why we use secoresearch/fuseki:5.5.0 instead
-  // of the unmaintained stain/jena-fuseki image.
-  private static final String FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
 
   private static GenericContainer<?> localFusekiContainer;
+
+  private static boolean enabledServerRdf;
 
   @BeforeAll
   static void enableRdf() {
@@ -88,19 +90,7 @@ public class GlossaryOntologyExportIT {
     if (TestSuiteBootstrap.isFusekiEnabled()) {
       fusekiEndpoint = TestSuiteBootstrap.getFusekiEndpoint();
     } else {
-      // No FUSEKI_DATASET_1 here: that was stain-specific. The dataset is
-      // created via /$/datasets by JenaFusekiStorage.ensureDatasetExists().
-      // tmpfs keeps TDB2 writes off the container's writable layer.
-      localFusekiContainer =
-          new GenericContainer<>(DockerImageName.parse(FUSEKI_IMAGE))
-              .withExposedPorts(FUSEKI_PORT)
-              .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-              .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
-              .waitingFor(
-                  Wait.forHttp("/$/ping")
-                      .forPort(FUSEKI_PORT)
-                      .forStatusCode(200)
-                      .withStartupTimeout(Duration.ofMinutes(2)));
+      localFusekiContainer = TestSuiteBootstrap.createFusekiContainer();
       localFusekiContainer.start();
       fusekiEndpoint =
           String.format(
@@ -119,12 +109,12 @@ public class GlossaryOntologyExportIT {
     rdfConfig.setUsername("admin");
     rdfConfig.setPassword(FUSEKI_ADMIN_PASSWORD);
     rdfConfig.setDataset(FUSEKI_DATASET);
-    RdfUpdater.initialize(rdfConfig);
+    enabledServerRdf = RdfTestUtils.enableServerRdf(rdfConfig);
   }
 
   @AfterAll
   static void disableRdf() {
-    RdfUpdater.disable();
+    RdfTestUtils.disableServerRdf(enabledServerRdf);
     if (localFusekiContainer != null) {
       localFusekiContainer.stop();
       localFusekiContainer = null;
@@ -368,10 +358,10 @@ public class GlossaryOntologyExportIT {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     GlossaryTermTestFactory.createSimple(ns, glossary);
 
-    String result = exportGlossary(glossary.getId(), "invalidformat", true);
+    HttpResponse<String> response = exportGlossaryRaw(glossary.getId(), INVALID_FORMAT, true);
 
-    assertNotNull(result, "Should return result even with invalid format (defaults to turtle)");
-    assertFalse(result.isEmpty(), "Result should not be empty");
+    assertEquals(HTTP_BAD_REQUEST, response.statusCode(), response.body());
+    assertTrue(response.body().contains(UNSUPPORTED_FORMAT_ERROR), response.body());
 
     LOG.debug("Invalid format handling verified for glossary: {}", glossary.getName());
   }

@@ -16,16 +16,15 @@ import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DataContractTabMode } from '../../../constants/DataContract.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import {
   deleteContractById,
   getContractByEntityId,
 } from '../../../rest/contractAPI';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -65,8 +64,15 @@ export const ContractTab = () => {
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
   const { id, name: entityName } = entityData ?? {};
 
+  // Fetch mechanism (entity-level by id once a contract exists, else a resource-level
+  // Create check) is unchanged — only the raw `.EditAll` read is routed through the
+  // named-flag derivation, matching the KnowledgeCenterFilterPage/SchemaTablesTab
+  // precedent. Ungated: the old raw read never referenced `deleted`.
   const hasEditPermission = contract
-    ? Boolean(contractPermissions?.EditAll)
+    ? Boolean(
+        contractPermissions &&
+          getDerivedPermissionFlags(contractPermissions).canEditAll
+      )
     : Boolean(dataContractResourcePermissions?.Create);
 
   const fetchContractPermissions = async (contractId: string) => {

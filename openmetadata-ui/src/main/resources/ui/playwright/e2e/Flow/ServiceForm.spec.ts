@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, test } from '@playwright/test';
-import * as fs from 'fs';
-import * as path from 'path';
+import { APIRequestContext } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import { SERVICE_TYPE } from '../../constant/service';
 import {
@@ -27,8 +25,14 @@ import {
 } from '../../constant/serviceForm';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  getAuthContext,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
@@ -48,6 +52,19 @@ const SERVICE_NAMES = {
 };
 
 const adminUser = new UserClass();
+
+const getIngestionBotToken = async (apiContext: APIRequestContext) => {
+  const botResponse = await apiContext.get('/api/v1/bots/name/ingestion-bot');
+  expect(botResponse.status()).toBe(200);
+  const bot = await botResponse.json();
+  const tokenResponse = await apiContext.get(
+    `/api/v1/users/auth-mechanism/${bot.botUser.id}`
+  );
+  expect(tokenResponse.status()).toBe(200);
+  const token = await tokenResponse.json();
+
+  return token.config.JWTToken as string;
+};
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -74,28 +91,12 @@ test.describe(
     });
 
     test.describe('Superset', () => {
-      // Create the Certificate file for upload
-      const testCertPath = path.join(__dirname, '..', 'output', CERT_FILE);
-
-      test.beforeAll(() => {
-        const fixturesDir = path.dirname(testCertPath);
-        if (!fs.existsSync(fixturesDir)) {
-          fs.mkdirSync(fixturesDir, { recursive: true });
-        }
-
-        fs.writeFileSync(testCertPath, CERT_FILE);
-      });
-
-      test.afterAll(() => {
-        if (fs.existsSync(testCertPath)) {
-          fs.unlinkSync(testCertPath);
-        }
-      });
-
       test('Verify form selects are working properly', async ({ page }) => {
         test.slow();
 
-        await page.goto('/dashboardServices/add-service');
+        await page.goto('/dashboardServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
         await selectServiceConnector(page, 'Superset');
 
@@ -209,7 +210,9 @@ test.describe(
       test('Verify SSL cert upload with long filename and UI overflow handling', async ({
         page,
       }) => {
-        await page.goto('/dashboardServices/add-service');
+        await page.goto('/dashboardServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
         await selectServiceConnector(page, 'Superset');
 
@@ -223,26 +226,39 @@ test.describe(
           .click();
 
         // Upload the test certificate file
-        const fileInput1 = page.locator(
-          '[data-field-name="caCertificate"] input[type="file"]'
+        const caCertificateField = page.locator(
+          '[data-field-name="caCertificate"]'
         );
-        await fileInput1.setInputFiles(testCertPath);
+        // main's locator, this branch's in-memory file. Uploading a buffer
+        // keeps the name the assertion below checks under this test's control
+        // and needs no temp file on disk, so there is nothing to write in a
+        // hook or clean up afterwards.
+        await caCertificateField.locator('input[type="file"]').setInputFiles({
+          name: CERT_FILE,
+          mimeType: 'application/x-pem-file',
+          buffer: Buffer.from(CERT_FILE),
+        });
 
-        // Wait for file upload to complete
+        // An attached credential is represented by its chip, not by its content
+        // in the paste box — the two would otherwise show the same secret twice.
+        // The chip carrying the (very long) file name is what has to survive
+        // without overflowing.
         await expect(
-          page.locator('[id="root/connection/sslConfig/caCertificate"]')
-        ).toHaveValue(CERT_FILE);
+          caCertificateField.getByTestId('credential-file-name')
+        ).toHaveText(CERT_FILE);
 
-        // Verify the certificate content is sent correctly.
-        const testConnectionResponse1 = page.waitForResponse(
-          'api/v1/automations/workflows'
+        // Assert on what the form sent: caCertificate is a password field, so
+        // the server masks it in the workflow response.
+        const testConnectionRequest = page.waitForRequest(
+          (request) =>
+            request.url().endsWith('/api/v1/automations/workflows') &&
+            request.method() === 'POST'
         );
 
         await page.getByTestId('test-connection-btn').click();
 
-        const testConnection1 = await (await testConnectionResponse1).json();
+        const testConnection1 = (await testConnectionRequest).postDataJSON();
 
-        // Verify form details submission - 1
         expect(
           testConnection1.request.connection.config.connection.sslConfig
             .caCertificate
@@ -259,7 +275,9 @@ test.describe(
       }) => {
         test.slow();
 
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'BigQuery');
@@ -277,7 +295,9 @@ test.describe(
         await databaseService.create(apiContext);
         await afterAction();
 
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
         await selectServiceConnector(page, 'Databricks');
 
@@ -309,7 +329,9 @@ test.describe(
       test('Verify if string input inside oneOf config works properly', async ({
         page,
       }) => {
-        await page.goto('/dashboardServices/add-service');
+        await page.goto('/dashboardServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'Looker');
@@ -481,13 +503,187 @@ test.describe(
           page.locator(String.raw`#root\/schemaRegistryTopicSuffixName`)
         ).toHaveValue('');
       });
+
+      test('should preserve the masked SASL password when the connection is edited', async ({
+        browser,
+        page,
+      }) => {
+        await visitServiceDetailsPage(
+          page,
+          {
+            name: kafkaService.entity.name,
+            type: SERVICE_TYPE.Messaging,
+          },
+          false,
+          false
+        );
+
+        await page.getByRole('tab', { name: 'Connection' }).click();
+        await page.getByTestId('edit-connection-button').click();
+        await waitForAllLoadersToDisappear(page);
+        await waitForServiceConnectionForm(page);
+
+        const bootstrapServers = page.locator(
+          String.raw`#root\/bootstrapServers`
+        );
+        await bootstrapServers.fill('updated-bootstrap:9092');
+        await expect(bootstrapServers).toHaveValue('updated-bootstrap:9092');
+
+        const patchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/services/messagingServices') &&
+            response.request().method() === 'PATCH'
+        );
+        await page.getByTestId('next-button').click();
+        await page.getByRole('button', { name: 'Save' }).click();
+        expect((await patchResponse).status()).toBe(200);
+
+        const { apiContext, afterAction } = await createNewPage(browser);
+        try {
+          const token = await getIngestionBotToken(apiContext);
+          const ingestionBotContext = await getAuthContext(token);
+          try {
+            const serviceResponse = await ingestionBotContext.get(
+              `/api/v1/services/messagingServices/${kafkaService.entityResponseData['id']}`
+            );
+            expect(serviceResponse.status()).toBe(200);
+            const service = await serviceResponse.json();
+
+            expect(service.connection.config.bootstrapServers).toBe(
+              'updated-bootstrap:9092'
+            );
+            expect(service.connection.config.saslPassword).toBe('admin');
+          } finally {
+            await ingestionBotContext.dispose();
+          }
+        } finally {
+          await afterAction();
+        }
+      });
+    });
+
+    // Clearing `csvEscapeChar` disables CSV escaping, so the form must send an
+    // empty string instead of dropping the field and restoring the backslash
+    // default (issue #35778).
+    test.describe('Datalake', () => {
+      const datalakeService = new DatabaseServiceClass(
+        `pw-datalake-csv-escape-${uuid()}`,
+        {
+          serviceType: 'Datalake',
+          connection: {
+            config: {
+              type: 'Datalake',
+              configSource: {
+                securityConfig: {
+                  awsAccessKeyId: 'aws-access-key-id',
+                  awsSecretAccessKey: 'aws-secret-access-key',
+                  awsRegion: 'us-east-1',
+                },
+              },
+              bucketName: 'pw-bucket',
+            },
+          },
+        }
+      );
+
+      test.beforeAll('Create Datalake service', async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await datalakeService.create(apiContext);
+        await afterAction();
+      });
+
+      test.afterAll('Cleanup Datalake service', async ({ browser }) => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+        await datalakeService.delete(apiContext);
+        await afterAction();
+      });
+
+      test('should persist an empty csvEscapeChar when the field is cleared', async ({
+        browser,
+        page,
+      }) => {
+        await visitServiceDetailsPage(
+          page,
+          {
+            name: datalakeService.entity.name,
+            type: SERVICE_TYPE.Database,
+          },
+          false,
+          false
+        );
+
+        await page.getByRole('tab', { name: 'Connection' }).click();
+        await page.getByTestId('edit-connection-button').click();
+        await waitForAllLoadersToDisappear(page);
+        await waitForServiceConnectionForm(page);
+
+        await page.getByTestId('connection-section-scope').click();
+
+        const escapeInput = page.locator(String.raw`#root\/csvEscapeChar`);
+
+        await expect(escapeInput).toHaveValue('\\');
+        await escapeInput.clear();
+        await expect(escapeInput).toHaveValue('');
+
+        const patchResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/services/databaseServices') &&
+            response.request().method() === 'PATCH'
+        );
+
+        await page.getByTestId('next-button').click();
+        await page.getByRole('button', { name: 'Save' }).click();
+
+        const patch = await patchResponse;
+
+        expect(patch.status()).toBe(200);
+
+        const patchBody = patch.request().postDataJSON() as Array<{
+          op: string;
+          path: string;
+          value?: unknown;
+        }>;
+        const escapeOp = patchBody.find(
+          (op) => op.path === '/connection/config/csvEscapeChar'
+        );
+
+        expect(escapeOp?.value).toBe('');
+
+        const { apiContext, afterAction } = await createNewPage(browser);
+        try {
+          const serviceResponse = await apiContext.get(
+            `/api/v1/services/databaseServices/${datalakeService.entityResponseData['id']}`
+          );
+
+          expect(serviceResponse.status()).toBe(200);
+
+          const service = await serviceResponse.json();
+
+          expect(service.connection.config.csvEscapeChar).toBe('');
+        } finally {
+          await afterAction();
+        }
+
+        await waitForAllLoadersToDisappear(page);
+        await page.getByTestId('edit-connection-button').click();
+        await waitForAllLoadersToDisappear(page);
+        await waitForServiceConnectionForm(page);
+
+        await page.getByTestId('connection-section-scope').click();
+
+        await expect(
+          page.locator(String.raw`#root\/csvEscapeChar`)
+        ).toHaveValue('');
+      });
     });
 
     test.describe('Test Connection service name validation', () => {
       test('should show service name error and not open modal when test connection clicked without service name', async ({
         page,
       }) => {
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'Mysql');
@@ -510,7 +706,9 @@ test.describe(
       test('should include service name in missing required field count shown on test connection card', async ({
         page,
       }) => {
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'Mysql');
@@ -526,7 +724,9 @@ test.describe(
       test('should focus the service name input when test connection is clicked without a name', async ({
         page,
       }) => {
-        await page.goto('/databaseServices/add-service');
+        await page.goto('/databaseServices/add-service', {
+          waitUntil: 'domcontentloaded',
+        });
         await waitForAllLoadersToDisappear(page);
 
         await selectServiceConnector(page, 'Mysql');

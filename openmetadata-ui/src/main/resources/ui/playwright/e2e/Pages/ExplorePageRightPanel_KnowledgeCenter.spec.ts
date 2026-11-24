@@ -25,6 +25,7 @@ import {
   getEntityDisplayName,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { waitForOwnerIndexed, waitForSearchIndexed } from '../../utils/polling';
 import { performUserLogin } from '../../utils/user';
 import { OverviewPageObject } from '../PageObject/Explore/OverviewPageObject';
 import {
@@ -70,28 +71,28 @@ export const test = baseTest.extend<{
 });
 
 /**
- * Assert the owner chip is in the summary panel, re-opening the entity if it is
- * not. The panel renders owners from the Explore search document, which is
- * refreshed asynchronously after the owner PATCH — a panel that rendered before
- * that refresh will never show the chip, so waiting on it is waiting on the
- * wrong thing. Re-navigating re-reads it.
+ * Wait for the search index to carry the owner (the panel renders owners from
+ * the search document), then re-open the entity and assert the chip.
  */
 async function expectOwnerInPanel(
   page: Page,
   entityName: string,
-  ownerName: string
+  owner: UserClass
 ) {
+  await waitForOwnerIndexed(
+    page,
+    knowledgeCenter.responseData.fullyQualifiedName,
+    'page',
+    owner.responseData.id,
+    true,
+    { timeout: 90_000 }
+  );
+  await navigateToKCEntity(page, entityName);
+
   const ownerChip = page
     .locator('[data-testid="entity-summary-panel-container"]')
-    .getByTestId(ownerName);
-
-  await expect(async () => {
-    if (!(await ownerChip.isVisible())) {
-      await navigateToKCEntity(page, entityName);
-    }
-
-    await expect(ownerChip).toBeVisible({ timeout: 10_000 });
-  }).toPass({ timeout: 60_000, intervals: [2_000, 5_000] });
+    .getByTestId(owner.getUserDisplayName());
+  await expect(ownerChip).toBeVisible();
 }
 
 test.describe('Knowledge Center Right Panel Test Suite', () => {
@@ -202,7 +203,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         await expectOwnerInPanel(
           adminPage,
           getEntityDisplayName(knowledgeCenter.responseData),
-          user1.getUserDisplayName()
+          user1
         );
       });
     });
@@ -309,18 +310,26 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
         await expectOwnerInPanel(
           adminPage,
           getEntityDisplayName(knowledgeCenter.responseData),
-          user1.getUserDisplayName()
+          user1
         );
 
         await overview.removeOwner([user1.getUserDisplayName()], 'Users');
         await waitForAllLoadersToDisappear(adminPage);
 
+        await waitForOwnerIndexed(
+          adminPage,
+          knowledgeCenter.responseData.fullyQualifiedName,
+          'page',
+          user1.responseData.id,
+          false,
+          { timeout: 90_000 }
+        );
         await navigateToKCEntity(
           adminPage,
           getEntityDisplayName(knowledgeCenter.responseData)
         );
         const ownerElement = adminPage
-          .locator('.owners-section')
+          .getByTestId('owners-section')
           .getByText(user1.getUserDisplayName());
         await expect(ownerElement).not.toBeVisible();
       });
@@ -671,10 +680,13 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
       test('Should clear description for knowledgeCenter', async ({
         adminPage,
       }) => {
-        const { page: authenticatedPage, afterAction } =
-          await performAdminLogin(adminPage.context().browser()!, {
-            navigate: true,
-          });
+        const {
+          page: authenticatedPage,
+          apiContext,
+          afterAction,
+        } = await performAdminLogin(adminPage.context().browser()!, {
+          navigate: true,
+        });
         const rightPanel = new RightPanelPageObject(authenticatedPage);
         const localOverview = new OverviewPageObject(rightPanel);
 
@@ -688,9 +700,36 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
 
           const descriptionText = `Description to remove - ${uuid()}`;
           await localOverview.editDescription(descriptionText);
+          await waitForSearchIndexed(
+            apiContext,
+            knowledgeCenter.responseData.fullyQualifiedName,
+            'page',
+            {
+              timeout: 90_000,
+              queryFilter: JSON.stringify({
+                query: { match_phrase: { description: descriptionText } },
+              }),
+            }
+          );
           await localOverview.shouldShowDescriptionWithText(descriptionText);
 
           await localOverview.editDescription('');
+
+          await waitForSearchIndexed(
+            apiContext,
+            knowledgeCenter.responseData.fullyQualifiedName,
+            'page',
+            {
+              timeout: 90_000,
+              queryFilter: JSON.stringify({
+                query: {
+                  bool: {
+                    must_not: [{ match: { description: descriptionText } }],
+                  },
+                },
+              }),
+            }
+          );
 
           await navigateToKCEntity(
             authenticatedPage,
@@ -698,10 +737,7 @@ test.describe('Knowledge Center Right Panel Test Suite', () => {
           );
           await rightPanel.waitForPanelVisible();
 
-          const descElement = authenticatedPage
-            .locator('.description-section')
-            .getByText(descriptionText);
-          await expect(descElement).not.toBeVisible();
+          await localOverview.shouldShowEmptyDescription();
         } finally {
           await afterAction();
         }

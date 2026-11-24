@@ -38,11 +38,14 @@ public final class DomainAccessFilter {
 
   private DomainAccessFilter() {}
 
-  /** Returns true when the subject's view must be narrowed to its own domain hierarchy. */
+  /**
+   * Returns true when the subject's view must be narrowed to its own domain hierarchy. A bot holding
+   * the role is narrowed like any other subject; exempting bots here left a bot-authenticated caller
+   * seeing every domain's lineage and incidents even though the role had been assigned to it.
+   */
   public static boolean shouldApply(SubjectContext subjectContext) {
     return subjectContext != null
         && !subjectContext.isAdmin()
-        && !subjectContext.isBot()
         && subjectContext.hasDomainOnlyAccessRole();
   }
 
@@ -56,7 +59,7 @@ public final class DomainAccessFilter {
    * never {@code null}, whether or not any narrowing applied — callers must not rely on getting
    * their own list back.
    */
-  public static <T extends EntityInterface> List<T> retainAccessible(
+  public static <T extends EntityInterface<?>> List<T> retainAccessible(
       List<T> entities, SubjectContext subjectContext) {
     List<T> candidates = listOrEmpty(entities);
     return shouldApply(subjectContext)

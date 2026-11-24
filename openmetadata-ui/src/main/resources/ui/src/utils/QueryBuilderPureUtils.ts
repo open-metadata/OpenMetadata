@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -15,10 +15,21 @@ import type {
   Fields,
   OldJsonItem,
   OldJsonTree,
-} from '@react-awesome-query-builder/antd';
-import { isBoolean, isEmpty, isUndefined } from 'lodash';
+} from '@react-awesome-query-builder/ui';
+import {
+  identity,
+  isBoolean,
+  isEmpty,
+  isObject,
+  isString,
+  isUndefined,
+} from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
+import type {
+  EsMatchPhrase,
+  EsRegexp,
+} from '../interface/queryFilter.interface';
 import type {
   EsBoolQuery,
   EsExistsQuery,
@@ -27,6 +38,7 @@ import type {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
+import { QUERY_BUILDER_CONJUNCTION } from './queryBuilder/types';
 import { generateUUID } from './StringUtils';
 
 export const JSONLOGIC_FIELDS_TO_IGNORE_SPLIT = [
@@ -58,9 +70,11 @@ export const resolveFieldType = (
     return undefined;
   }
 
+  // Subfield keys may themselves contain dots (`strCP.keyword`), at any depth: Explore nests custom properties one
+  // level deeper than a pinned builder (`extension.table.strCP.keyword`).
   for (let i = 1; i < fieldParts.length; i++) {
-    if (i === 1 && (currentField as FieldWithSubFields)?.subfields) {
-      const remainingPath = fieldParts.slice(1).join('.');
+    if ((currentField as FieldWithSubFields)?.subfields) {
+      const remainingPath = fieldParts.slice(i).join('.');
       const remainingField = (currentField as FieldWithSubFields).subfields[
         remainingPath
       ];
@@ -88,13 +102,14 @@ export const getSelectEqualsNotEqualsProperties = (
 ) => {
   const id = generateUUID();
   const isEqualNotEqualOp = ['equal', 'not_equal'].includes(operator);
-  const valueType = isEqualNotEqualOp
-    ? isBoolean(value)
-      ? ['boolean']
-      : ['text']
-    : Array.isArray(value)
+  const equalityValueType = isBoolean(value) ? ['boolean'] : ['text'];
+  const membershipValueType = Array.isArray(value)
     ? ['multiselect']
     : ['select'];
+  const valueType = isEqualNotEqualOp ? equalityValueType : membershipValueType;
+  const listValues = Array.isArray(value)
+    ? value.map((item) => ({ key: item, value: item, children: item }))
+    : [{ key: value, value, children: value }];
 
   return {
     [id]: {
@@ -106,25 +121,12 @@ export const getSelectEqualsNotEqualsProperties = (
         valueSrc: ['value'],
         operatorOptions: null,
         valueType: valueType,
-        asyncListValues: isEqualNotEqualOp
-          ? undefined
-          : Array.isArray(value)
-          ? value.map((item) => ({ key: item, value: item, children: item }))
-          : [{ key: value, value, children: value }],
+        asyncListValues: isEqualNotEqualOp ? undefined : listValues,
       },
       id,
       path: [...parentPath, id],
     },
   };
-};
-
-export const READONLY_SETTINGS = {
-  immutableGroupsMode: true,
-  immutableFieldsMode: true,
-  immutableOpsMode: true,
-  immutableValuesMode: true,
-  canRegroup: false,
-  canRemove: false,
 };
 
 export const getSelectAnyInProperties = (
@@ -204,7 +206,7 @@ export const getCommonFieldProperties = (
       properties: {
         field,
         operator,
-        value: isUndefined(value) ? [] : [value.replaceAll(/(^\*)|(\*$)/g, '')],
+        value: isUndefined(value) ? [] : [value],
         valueSrc: isUndefined(value) ? [] : ['value'],
         operatorOptions: null,
         valueType: isUndefined(value) ? [] : ['text'],
@@ -251,129 +253,959 @@ export const getOperator = (
   }
 };
 
+type QueryFilterRecurse = (
+  parentPath: Array<string>,
+  queryFilter: QueryFieldInterface[],
+  fields?: Fields
+) => Record<string, unknown>;
+
+type QueryFilterBranchHandler = (
+  curr: QueryFieldInterface,
+  parentPath: Array<string>,
+  fields: Fields | undefined,
+  recurse: QueryFilterRecurse
+) => Record<string, unknown> | undefined;
+
+const matchDeletedTerm: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (isUndefined(curr.term?.deleted)) {
+    return undefined;
+  }
+
+  return getEqualFieldProperties(parentPath, curr.term?.deleted as boolean);
+};
+
+const matchTerm: QueryFilterBranchHandler = (curr, parentPath, fields) => {
+  if (isUndefined(curr.term)) {
+    return undefined;
+  }
+  const [field, value] = Object.entries(curr.term)[0];
+  const fieldType = resolveFieldType(fields, field);
+  const op = getOperator(fieldType, false);
+
+  return getSelectEqualsNotEqualsProperties(
+    parentPath,
+    field,
+    value as string,
+    op
+  );
+};
+
+const matchMustNotTerm: QueryFilterBranchHandler = (
+  curr,
+  parentPath,
+  fields
+) => {
+  if (isUndefined((curr.bool?.must_not as QueryFieldInterface)?.term)) {
+    return undefined;
+  }
+  const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
+  const key = Object.keys((curr.bool?.must_not as EsTerm)?.term)[0];
+  const fieldType = resolveFieldType(fields, key);
+  const op = getOperator(fieldType, true);
+
+  return getSelectEqualsNotEqualsProperties(
+    parentPath,
+    key,
+    value as string,
+    Array.isArray(value) ? 'select_not_any_in' : op
+  );
+};
+
+const matchShouldTerm: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (
+    isUndefined(
+      ((curr.bool?.should as QueryFieldInterface[])?.[0] as EsTerm)?.term
+    )
+  ) {
+    return undefined;
+  }
+
+  return getSelectAnyInProperties(parentPath, curr?.bool?.should as EsTerm[]);
+};
+
+const matchShouldMustNotTerm: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (
+    isUndefined(
+      (
+        (curr.bool?.should as QueryFieldInterface[])?.[0]?.bool
+          ?.must_not as EsTerm
+      )?.term
+    )
+  ) {
+    return undefined;
+  }
+
+  return getSelectNotAnyInProperties(
+    parentPath,
+    curr?.bool?.should as QueryFieldInterface[]
+  );
+};
+
+const matchMustNotExists: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (
+    isUndefined((curr.bool?.must_not as QueryFieldInterface)?.exists?.field)
+  ) {
+    return undefined;
+  }
+
+  return getCommonFieldProperties(
+    parentPath,
+    (curr.bool?.must_not as QueryFieldInterface)?.exists?.field as string,
+    'is_null'
+  );
+};
+
+const matchExists: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (isUndefined(curr.exists?.field)) {
+    return undefined;
+  }
+
+  return getCommonFieldProperties(
+    parentPath,
+    (curr.exists as EsExistsQuery).field,
+    'is_not_null'
+  );
+};
+
+type UnknownRecord = Record<string, unknown>;
+
+const firstEntry = (value: unknown): [string, unknown] | undefined =>
+  Object.entries((value ?? {}) as UnknownRecord)[0];
+
+const stripWildcards = (value: unknown): string =>
+  String(value ?? '').replace(/^\*|\*$/g, '');
+
+// Claims the clause only when readValue finds a string in the shape the UI writes; any
+// other ES form stays unread, so isQueryFilterFullyRepresentable keeps flagging the filter.
+const getStringValueRule = (
+  parentPath: Array<string>,
+  clause: UnknownRecord | undefined,
+  operator: string,
+  readValue: (body: unknown) => unknown
+) => {
+  const [field, body] = firstEntry(clause) ?? [];
+  const value = readValue(body);
+
+  return field && isString(value)
+    ? getCommonFieldProperties(parentPath, field, operator, value)
+    : undefined;
+};
+
+// The builder writes `like` rules as `{ value: '*value*' }`; API clients may write the shorthand
+// `'*value*'`. Nothing else is read: a prefix or case-insensitive wildcard would be rewritten
+// as a contains match on the next save.
+const readWildcardValue = (body: unknown) => {
+  const { value, ...rest } = isObject(body)
+    ? (body as UnknownRecord)
+    : { value: body };
+
+  return isString(value) && isEmpty(rest) && /^\*.*\*$/.test(value)
+    ? stripWildcards(value)
+    : undefined;
+};
+
+// Regular expression rules are saved as `{ value, case_insensitive: true }` and nothing else;
+// reading a case-sensitive or flagged regexp would widen it on the next save.
+const readRegexpValue = (body: unknown) => {
+  const {
+    value,
+    case_insensitive: caseInsensitive,
+    ...rest
+  } = isObject(body) ? (body as UnknownRecord) : {};
+
+  return caseInsensitive === true && isEmpty(rest) ? value : undefined;
+};
+
+const matchWildcard: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
+    parentPath,
+    (curr as EsWildCard).wildcard,
+    'like',
+    readWildcardValue
+  );
+
+const matchMustNotWildcard: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
+    parentPath,
+    (curr.bool?.must_not as EsWildCard)?.wildcard,
+    'not_like',
+    readWildcardValue
+  );
+
+const matchRegexp: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
+    parentPath,
+    (curr as EsRegexp).regexp,
+    'regexp',
+    readRegexpValue
+  );
+
+const matchPhrase: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
+    parentPath,
+    (curr as EsMatchPhrase).match_phrase,
+    'match_phrase',
+    identity
+  );
+
+const matchMustNotPhrase: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
+    parentPath,
+    (curr.bool?.must_not as EsMatchPhrase)?.match_phrase,
+    'not_match_phrase',
+    identity
+  );
+
+// AND-ed `must_not` terms on one field are a `Not in` rule, even with one value: read them back as the row the user
+// filled, not one `!=` row per value. A lone `!=` is written bare, never inside a `must`.
+const isMustNotTermClause = (clause: QueryFieldInterface) =>
+  !isUndefined((clause?.bool?.must_not as EsTerm)?.term);
+
+const matchMustMustNotTerm: QueryFilterBranchHandler = (curr, parentPath) => {
+  const clauses = (curr.bool as EsBoolQuery)?.must as
+    | QueryFieldInterface[]
+    | undefined;
+
+  if (!Array.isArray(clauses) || clauses.length === 0) {
+    return undefined;
+  }
+
+  if (!clauses.every(isMustNotTermClause)) {
+    return undefined;
+  }
+
+  const fieldOf = (clause: QueryFieldInterface) =>
+    Object.keys((clause.bool?.must_not as EsTerm).term)[0];
+  const field = fieldOf(clauses[0]);
+
+  // Values of different fields are separate conditions, not one multiselect.
+  if (clauses.some((clause) => fieldOf(clause) !== field)) {
+    return undefined;
+  }
+
+  return getSelectNotAnyInProperties(parentPath, clauses);
+};
+
+const matchBoolMust: QueryFilterBranchHandler = (
+  curr,
+  parentPath,
+  fields,
+  recurse
+) => {
+  if (isUndefined((curr.bool as EsBoolQuery)?.must)) {
+    return undefined;
+  }
+
+  return recurse(
+    parentPath,
+    (curr.bool as EsBoolQuery).must as QueryFieldInterface[],
+    fields
+  );
+};
+
+const CUSTOM_PROPERTIES_PATH = 'customPropertiesTyped';
+const CUSTOM_PROPERTY_NAME_KEY = `${CUSTOM_PROPERTIES_PATH}.name`;
+const CUSTOM_PROPERTY_VALUE_PREFIX = `${CUSTOM_PROPERTIES_PATH}.`;
+
+// How the value clause states its condition.
+type CustomPropertyShape =
+  | 'exists'
+  | 'term'
+  | 'wildcard'
+  | 'regexp'
+  | 'match'
+  | 'range';
+
+interface CustomPropertyClause {
+  // The property as written into `customPropertiesTyped.name`.
+  name: string;
+  shape: CustomPropertyShape;
+  // The typed value field read: `stringValue`, `longValue`, `start`, …
+  valueField?: string;
+  value?: unknown;
+  range?: Record<string, unknown>;
+  negated: boolean;
+}
+
+const asClauseArray = (value: unknown): UnknownRecord[] => {
+  if (Array.isArray(value)) {
+    return value as UnknownRecord[];
+  }
+
+  return isUndefined(value) ? [] : [value as UnknownRecord];
+};
+
+const toValueField = (key: string): string =>
+  key.startsWith(CUSTOM_PROPERTY_VALUE_PREFIX)
+    ? key.slice(CUSTOM_PROPERTY_VALUE_PREFIX.length)
+    : key;
+
+type ParsedValueClause = Pick<
+  CustomPropertyClause,
+  'shape' | 'valueField' | 'value' | 'range'
+>;
+
+// Each shape states its value differently, so the reader rides on the key.
+const VALUE_CLAUSE_READERS: Array<
+  [
+    CustomPropertyShape,
+    (body: unknown) => Pick<CustomPropertyClause, 'value' | 'range'>
+  ]
+> = [
+  // A case-insensitive term states its value as `{ value, case_insensitive }`; a plain one is the
+  // bare value. Unwrap so the rule reloads with the value, not the clause body.
+  [
+    'term',
+    (body) => ({
+      value:
+        isObject(body) && 'value' in (body as UnknownRecord)
+          ? (body as UnknownRecord).value
+          : body,
+    }),
+  ],
+  ['wildcard', (body) => ({ value: (body as { value?: unknown })?.value })],
+  ['regexp', (body) => ({ value: (body as { value?: unknown })?.value })],
+  ['match', (body) => ({ value: (body as { query?: unknown })?.query })],
+  ['range', (body) => ({ range: body as UnknownRecord })],
+];
+
+const readValueClause = (
+  clause: UnknownRecord
+): ParsedValueClause | undefined => {
+  for (const [shape, read] of VALUE_CLAUSE_READERS) {
+    const entry = firstEntry(clause[shape]);
+
+    if (entry) {
+      return { shape, valueField: toValueField(entry[0]), ...read(entry[1]) };
+    }
+  }
+
+  return undefined;
+};
+
+// Reads one `nested` custom-property query, or nothing if it is not one.
+const readNestedCustomProperty = (
+  clause: UnknownRecord | undefined
+): Omit<CustomPropertyClause, 'negated'> | undefined => {
+  const nested = clause?.nested as
+    | { path?: string; query?: UnknownRecord }
+    | undefined;
+
+  if (nested?.path !== CUSTOM_PROPERTIES_PATH || !nested.query) {
+    return undefined;
+  }
+
+  // `is_not_null` writes the name term on its own, with no value clause.
+  const bareName = (nested.query.term as UnknownRecord)?.[
+    CUSTOM_PROPERTY_NAME_KEY
+  ];
+
+  if (!isUndefined(bareName)) {
+    return { name: String(bareName), shape: 'exists' };
+  }
+
+  const must = asClauseArray((nested.query.bool as EsBoolQuery)?.must);
+  const nameClause = must.find(
+    (entry) =>
+      !isUndefined((entry.term as UnknownRecord)?.[CUSTOM_PROPERTY_NAME_KEY])
+  );
+
+  if (!nameClause) {
+    return undefined;
+  }
+
+  const name = String(
+    (nameClause.term as UnknownRecord)[CUSTOM_PROPERTY_NAME_KEY]
+  );
+  const valueClause = must.find((entry) => entry !== nameClause);
+  const parsed = valueClause ? readValueClause(valueClause) : undefined;
+
+  return parsed ? { name, ...parsed } : { name, shape: 'exists' };
+};
+
+// The clause a `bool.must` envelope wraps, minus the `entityType` scope.
+const unwrapCustomPropertyEnvelope = (
+  clause: UnknownRecord
+): UnknownRecord | undefined => {
+  const must = asClauseArray((clause.bool as EsBoolQuery)?.must);
+
+  if (must.length === 0) {
+    return undefined;
+  }
+
+  const body = must.find((entry) =>
+    isUndefined((entry.term as UnknownRecord)?.entityType)
+  );
+  const rest = must.filter((entry) => entry !== body);
+
+  return body &&
+    rest.every(
+      (entry) => !isUndefined((entry.term as UnknownRecord)?.entityType)
+    )
+    ? body
+    : undefined;
+};
+
+// A range fans out over the typed value fields; any branch describes it.
+const readCustomPropertyClause = (
+  clause: UnknownRecord | undefined,
+  negated = false
+): CustomPropertyClause | undefined => {
+  const direct = readNestedCustomProperty(clause);
+
+  if (direct) {
+    return { ...direct, negated };
+  }
+
+  const bool = clause?.bool as EsBoolQuery | undefined;
+
+  if (!bool) {
+    return undefined;
+  }
+
+  // How deeply the group formatter wraps the clause varies with the rule, so each `bool` layer is followed rather than
+  // matched at a fixed depth.
+  const nested = [
+    ...asClauseArray(unwrapCustomPropertyEnvelope(clause as UnknownRecord)),
+    ...asClauseArray(bool.should),
+  ];
+
+  for (const branch of nested) {
+    const parsed = readCustomPropertyClause(branch, negated);
+
+    if (parsed) {
+      return parsed;
+    }
+  }
+
+  if (negated) {
+    return undefined;
+  }
+
+  for (const inner of asClauseArray(bool.must_not)) {
+    const parsed = readCustomPropertyClause(inner, true);
+
+    if (parsed) {
+      return parsed;
+    }
+  }
+
+  return undefined;
+};
+
+// The config key for a property, below `extension`.
+const findExtensionField = (
+  fields: Fields | undefined,
+  name: string,
+  valueField?: string,
+  // The entity type the filter names for the property: several can declare the same property name.
+  entityType?: string
+): { key: string; scope: string } | undefined => {
+  const subfields = (fields?.extension as FieldWithSubFields | undefined)
+    ?.subfields;
+
+  if (!subfields) {
+    return undefined;
+  }
+
+  // Explore groups by entity type; a pinned builder exposes them directly.
+  const scopes: Array<[string, Fields]> = [['', subfields]];
+  Object.entries(subfields).forEach(([key, definition]) => {
+    const nested = (definition as FieldWithSubFields)?.subfields;
+
+    if (nested) {
+      scopes.push([key, nested]);
+    }
+  });
+
+  const matching = scopes.flatMap(([scope, scopeFields]) =>
+    Object.keys(scopeFields)
+      .filter((key) => key === name || key.startsWith(`${name}.`))
+      .map((key) => ({ key, scope }))
+  );
+  // A named entity type reads only its own group, or a pinned builder's ungrouped properties: falling back to another
+  // entity type's property of the same name would change what the filter searches.
+  const candidates = entityType
+    ? matching.filter(({ scope }) => scope === entityType || scope === '')
+    : matching;
+
+  if (candidates.length === 0) {
+    return undefined;
+  }
+
+  const preferred = [
+    name,
+    `${name}.keyword`,
+    ...(valueField ? [`${name}.${valueField}`] : []),
+  ];
+
+  // `is_null` writes no value field, so a property declaring two keys (a time interval's start and end) cannot be told
+  // apart.
+  return (
+    candidates.find((candidate) => preferred.includes(candidate.key)) ??
+    candidates[0]
+  );
+};
+
+// Equality and containment name themselves per field type, not per query.
+const CUSTOM_PROPERTY_EQUALITY_OPERATORS: Record<string, [string, string]> = {
+  select: ['select_equals', 'select_not_equals'],
+  multiselect: ['multiselect_equals', 'multiselect_not_equals'],
+};
+
+const CUSTOM_PROPERTY_CONTAINS_OPERATORS: Record<string, [string, string]> = {
+  select: ['like', 'not_like'],
+  multiselect: ['multiselect_contains', 'multiselect_not_contains'],
+};
+
+const pickOperator = (
+  pairs: Record<string, [string, string]>,
+  fallback: [string, string],
+  fieldType: string | undefined,
+  negated: boolean
+): string => (pairs[fieldType ?? ''] ?? fallback)[negated ? 1 : 0];
+
+const RANGE_BOUND_OPERATORS: Array<[string[], string]> = [
+  [['gte', 'lte'], 'between'],
+  [['lt'], 'less'],
+  [['lte'], 'less_or_equal'],
+  [['gt'], 'greater'],
+  [['gte'], 'greater_or_equal'],
+];
+
+const readRange = (
+  range: UnknownRecord,
+  negated: boolean
+): { operator: string; value: unknown[] } | undefined => {
+  const bounds = RANGE_BOUND_OPERATORS.find(([keys]) =>
+    keys.every((key) => !isUndefined(range[key]))
+  );
+
+  if (!bounds) {
+    return undefined;
+  }
+
+  const [keys, operator] = bounds;
+
+  return {
+    operator: operator === 'between' && negated ? 'not_between' : operator,
+    value: keys.map((key) => range[key]),
+  };
+};
+
+// A multiselect holds its choices in a single value slot, so it nests.
+const toRuleValue = (
+  fieldType: string | undefined,
+  value: unknown
+): unknown[] => (fieldType === 'multiselect' ? [[value]] : [value]);
+
+// The rule a parsed clause describes, or nothing if it describes none.
+const toCustomPropertyRule = (
+  parsed: CustomPropertyClause,
+  fieldType: string | undefined
+): { operator: string; value: unknown[] } | undefined => {
+  const { shape, negated, value, range } = parsed;
+
+  if (shape === 'exists') {
+    return { operator: negated ? 'is_null' : 'is_not_null', value: [] };
+  }
+
+  if (shape === 'range') {
+    return range ? readRange(range, negated) : undefined;
+  }
+
+  if (shape === 'wildcard') {
+    return {
+      operator: pickOperator(
+        CUSTOM_PROPERTY_CONTAINS_OPERATORS,
+        ['like', 'not_like'],
+        fieldType,
+        negated
+      ),
+      value: toRuleValue(fieldType, stripWildcards(value)),
+    };
+  }
+
+  if (shape === 'regexp') {
+    return { operator: 'regexp', value: toRuleValue(fieldType, value) };
+  }
+
+  return {
+    operator: pickOperator(
+      CUSTOM_PROPERTY_EQUALITY_OPERATORS,
+      ['equal', 'not_equal'],
+      fieldType,
+      negated
+    ),
+    value: toRuleValue(fieldType, value),
+  };
+};
+
+// Nests a rule in one `rule_group` per level of its field, the way RAQB does — the canvas draws a Field control per
+// wrapper, so a flat rule left the first control blank.
+const wrapInDrillGroups = (
+  parentPath: Array<string>,
+  levels: string[],
+  rule: OldJsonItem
+): Record<string, OldJsonItem> => {
+  const level = levels[0];
+
+  if (isUndefined(level)) {
+    return {
+      [rule.id as string]: {
+        ...rule,
+        path: [...parentPath, rule.id as string],
+      },
+    } as unknown as Record<string, OldJsonItem>;
+  }
+
+  const id = generateUUID();
+
+  return {
+    [id]: {
+      type: 'rule_group',
+      id,
+      properties: {
+        conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+        not: false,
+        field: level,
+        fieldSrc: 'field',
+      },
+      children1: wrapInDrillGroups([...parentPath, id], levels.slice(1), rule),
+      path: [...parentPath, id],
+    } as OldJsonItem,
+  } as Record<string, OldJsonItem>;
+};
+
+// A rule holding several values (`Any in`, `Not in`, an enum's multiselect) is written as one clause per value under a
+// single `should` (any of) or `must` (all of / none of); the operator follows from that, the clause shape and the
+// field type.
+type MultiValueOccurrence = 'must' | 'should';
+type MultiValueShape = Extract<CustomPropertyShape, 'term' | 'wildcard'>;
+
+// Field type → occurrence → clause shape → [operator, negated operator].
+const MULTI_VALUE_OPERATORS: Record<
+  string,
+  Partial<
+    Record<
+      MultiValueOccurrence,
+      Partial<Record<MultiValueShape, [string | undefined, string | undefined]>>
+    >
+  >
+> = {
+  select: {
+    should: { term: ['select_any_in', undefined] },
+    must: { term: [undefined, 'select_not_any_in'] },
+  },
+  multiselect: {
+    must: {
+      term: ['multiselect_equals', 'multiselect_not_equals'],
+      wildcard: [undefined, 'multiselect_not_contains'],
+    },
+    should: { wildcard: ['multiselect_contains', undefined] },
+  },
+};
+
+const getMultiValueOperator = (
+  fieldType: string | undefined,
+  occurrence: MultiValueOccurrence,
+  shape: CustomPropertyShape,
+  negated: boolean
+): string | undefined =>
+  MULTI_VALUE_OPERATORS[fieldType ?? '']?.[occurrence]?.[
+    shape as MultiValueShape
+  ]?.[negated ? 1 : 0];
+
+const readMultiValueCustomProperty = (
+  clause: UnknownRecord
+):
+  | {
+      parsed: CustomPropertyClause;
+      occurrence: MultiValueOccurrence;
+      values: unknown[];
+    }
+  | undefined => {
+  const bool = clause.bool as Record<string, unknown> | undefined;
+  const keys = Object.keys(bool ?? {});
+  const occurrence = keys[0];
+
+  if (keys.length !== 1 || !['must', 'should'].includes(occurrence)) {
+    return undefined;
+  }
+
+  const branches = asClauseArray(bool?.[occurrence]);
+  // Each value is its own rule clause: wrapped in an `entityType` envelope, or the bare (possibly negated) `nested`.
+  const parsedBranches = branches.map((branch) =>
+    branch.nested || branch.bool ? readCustomPropertyClause(branch) : undefined
+  );
+  const [first] = parsedBranches;
+
+  if (
+    !first ||
+    !['term', 'wildcard'].includes(first.shape) ||
+    parsedBranches.some(
+      (branch) =>
+        branch?.name !== first.name ||
+        branch.shape !== first.shape ||
+        branch.negated !== first.negated
+    )
+  ) {
+    return undefined;
+  }
+
+  return {
+    parsed: first,
+    occurrence: occurrence as MultiValueOccurrence,
+    values: parsedBranches.map((branch) =>
+      first.shape === 'wildcard' ? stripWildcards(branch?.value) : branch?.value
+    ),
+  };
+};
+
+// `extension`, then Explore's per-entity-type level.
+const MAX_DRILL_LEVELS = 2;
+
+// Each drill level (`rule_group`) the builder nests a property rule in is written as a one-clause `bool.must`.
+const stripDrillWrappers = (
+  clause: UnknownRecord,
+  levels: number
+): UnknownRecord => {
+  let current = clause;
+
+  for (let level = 0; level < levels; level++) {
+    const bool = current.bool as Record<string, unknown> | undefined;
+    const must = asClauseArray(bool?.must);
+
+    if (
+      Object.keys(bool ?? {}).length !== 1 ||
+      must.length !== 1 ||
+      !must[0].bool
+    ) {
+      break;
+    }
+    current = must[0];
+  }
+
+  return current;
+};
+
+// The first custom-property `nested` query anywhere in the clause: which property a rule is about, however deeply its
+// drill levels and per-value branches wrap it.
+const findNestedCustomProperty = (
+  clause: unknown
+): Omit<CustomPropertyClause, 'negated'> | undefined => {
+  if (!isObject(clause)) {
+    return undefined;
+  }
+
+  const direct = readNestedCustomProperty(clause as UnknownRecord);
+
+  if (direct) {
+    return direct;
+  }
+
+  for (const child of Object.values(clause as UnknownRecord)) {
+    const found = Array.isArray(child)
+      ? child.map(findNestedCustomProperty).find(Boolean)
+      : findNestedCustomProperty(child);
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+};
+
+// The entity type the writer scopes a custom-property rule to (`{ term: { entityType } }` beside its `nested` query).
+const findEntityTypeTerm = (clause: unknown): string | undefined => {
+  if (!isObject(clause)) {
+    return undefined;
+  }
+
+  const entityType = ((clause as UnknownRecord).term as UnknownRecord)
+    ?.entityType;
+
+  if (isString(entityType)) {
+    return entityType;
+  }
+
+  for (const child of Object.values(clause as UnknownRecord)) {
+    const found = Array.isArray(child)
+      ? child.map(findEntityTypeTerm).find(Boolean)
+      : findEntityTypeTerm(child);
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+};
+
+// The value type the rule's widget holds: text operators on a select property edit a text value, and `Any in` / `Not
+// in` hold a list of choices.
+const TEXT_VALUE_OPERATORS = new Set(['like', 'not_like', 'regexp']);
+const LIST_VALUE_OPERATORS = new Set(['select_any_in', 'select_not_any_in']);
+
+const getRuleValueType = (
+  rule: { operator: string },
+  fieldType: string | undefined
+): string => {
+  if (TEXT_VALUE_OPERATORS.has(rule.operator)) {
+    return 'text';
+  }
+  if (LIST_VALUE_OPERATORS.has(rule.operator)) {
+    return 'multiselect';
+  }
+
+  return fieldType ?? 'text';
+};
+
+// The operator and value a property rule's clause states: one clause per value under a `must`/`should` (Any in, Not
+// in, an enum's multiselect), or a single clause.
+const readCustomPropertyRule = (
+  clause: UnknownRecord,
+  drillLevels: number,
+  fieldType: string | undefined
+): { operator: string; value: unknown[] } | undefined => {
+  const multiValue = readMultiValueCustomProperty(
+    stripDrillWrappers(clause, drillLevels)
+  );
+  const multiValueOperator =
+    multiValue &&
+    getMultiValueOperator(
+      fieldType,
+      multiValue.occurrence,
+      multiValue.parsed.shape,
+      multiValue.parsed.negated
+    );
+
+  if (multiValueOperator) {
+    return { operator: multiValueOperator, value: [multiValue.values] };
+  }
+
+  const single = readCustomPropertyClause(clause);
+
+  return single ? toCustomPropertyRule(single, fieldType) : undefined;
+};
+
+const matchCustomProperty: QueryFilterBranchHandler = (
+  curr,
+  parentPath,
+  fields
+) => {
+  const clause = curr as unknown as UnknownRecord;
+  const located = findNestedCustomProperty(clause);
+
+  if (!located) {
+    return undefined;
+  }
+
+  const found = findExtensionField(
+    fields,
+    located.name,
+    located.valueField,
+    findEntityTypeTerm(clause)
+  );
+
+  if (!found) {
+    // A property rule the config has no field for is dropped whole: left unclaimed, the `bool.must` reader would
+    // descend into it and read its bare `nested` query without the entity type beside it, under another entity type.
+    const isPropertyRule =
+      readCustomPropertyClause(clause) ||
+      readMultiValueCustomProperty(
+        stripDrillWrappers(clause, MAX_DRILL_LEVELS)
+      );
+
+    return isPropertyRule ? {} : undefined;
+  }
+
+  const extension = EntityReferenceFields.EXTENSION as string;
+  // Explore's per-entity-type grouping adds a level between `extension` and the property; a pinned builder has none.
+  const levels = found.scope
+    ? [extension, `${extension}.${found.scope}`]
+    : [extension];
+  const field = [...levels.slice(-1), found.key].join('.');
+  const fieldType = resolveFieldType(fields, field);
+  const rule = readCustomPropertyRule(clause, levels.length, fieldType);
+
+  if (!rule) {
+    return undefined;
+  }
+
+  const id = generateUUID();
+
+  return wrapInDrillGroups(parentPath, levels, {
+    type: 'rule',
+    id,
+    properties: {
+      field,
+      operator: rule.operator,
+      value: rule.value,
+      valueSrc: rule.value.map(() => 'value'),
+      operatorOptions: null,
+      valueType: rule.value.map(() => getRuleValueType(rule, fieldType)),
+    },
+  } as OldJsonItem);
+};
+
+// Order matters: mirrors the original if/else-if cascade — first matching handler wins, exactly like the original
+// exclusive branches.
+const QUERY_FILTER_BRANCH_HANDLERS: QueryFilterBranchHandler[] = [
+  matchCustomProperty,
+  matchDeletedTerm,
+  matchTerm,
+  matchMustNotTerm,
+  matchShouldTerm,
+  matchShouldMustNotTerm,
+  matchMustMustNotTerm,
+  matchMustNotExists,
+  matchExists,
+  matchWildcard,
+  matchMustNotWildcard,
+  matchRegexp,
+  matchPhrase,
+  matchMustNotPhrase,
+  matchBoolMust,
+];
+
+const withoutCustomPropertyScope = (
+  queryFilter: QueryFieldInterface[]
+): QueryFieldInterface[] => {
+  const isEntityTypeScope = (clause: QueryFieldInterface) =>
+    !isUndefined(
+      ((clause as unknown as UnknownRecord).term as UnknownRecord)?.entityType
+    );
+
+  const hasCustomProperty = queryFilter.some(
+    (clause) =>
+      !isEntityTypeScope(clause) &&
+      !isUndefined(readCustomPropertyClause(clause as unknown as UnknownRecord))
+  );
+
+  return hasCustomProperty
+    ? queryFilter.filter((clause) => !isEntityTypeScope(clause))
+    : queryFilter;
+};
+
 export const getJsonTreePropertyFromQueryFilter = (
   parentPath: Array<string>,
   queryFilter: QueryFieldInterface[],
   fields?: Fields
 ) => {
-  const convertedObj = queryFilter.reduce(
+  const convertedObj = withoutCustomPropertyScope(queryFilter).reduce(
     (acc, curr: QueryFieldInterface): Record<string, unknown> => {
-      if (!isUndefined(curr.term?.deleted)) {
-        return {
-          ...acc,
-          ...getEqualFieldProperties(parentPath, curr.term?.deleted as boolean),
-        };
-      } else if (!isUndefined(curr.term)) {
-        const [field, value] = Object.entries(curr.term)[0];
-        const fieldType = resolveFieldType(fields, field);
-        const op = getOperator(fieldType, false);
-
-        return {
-          ...acc,
-          ...getSelectEqualsNotEqualsProperties(
-            parentPath,
-            field,
-            value as string,
-            op
-          ),
-        };
-      } else if (
-        !isUndefined((curr.bool?.must_not as QueryFieldInterface)?.term)
-      ) {
-        const value = Object.values((curr.bool?.must_not as EsTerm)?.term)[0];
-        const key = Object.keys((curr.bool?.must_not as EsTerm)?.term)[0];
-        const fieldType = resolveFieldType(fields, key);
-        const op = getOperator(fieldType, true);
-
-        return {
-          ...acc,
-          ...getSelectEqualsNotEqualsProperties(
-            parentPath,
-            key,
-            value as string,
-            Array.isArray(value) ? 'select_not_any_in' : op
-          ),
-        };
-      } else if (
-        !isUndefined(
-          ((curr.bool?.should as QueryFieldInterface[])?.[0] as EsTerm)?.term
-        )
-      ) {
-        return {
-          ...acc,
-          ...getSelectAnyInProperties(
-            parentPath,
-            curr?.bool?.should as EsTerm[]
-          ),
-        };
-      } else if (
-        !isUndefined(
-          (
-            (curr.bool?.should as QueryFieldInterface[])?.[0]?.bool
-              ?.must_not as EsTerm
-          )?.term
-        )
-      ) {
-        return {
-          ...acc,
-          ...getSelectNotAnyInProperties(
-            parentPath,
-            curr?.bool?.should as QueryFieldInterface[]
-          ),
-        };
-      } else if (
-        !isUndefined(
-          (curr.bool?.must_not as QueryFieldInterface)?.exists?.field
-        )
-      ) {
-        return {
-          ...acc,
-          ...getCommonFieldProperties(
-            parentPath,
-            (curr.bool?.must_not as QueryFieldInterface)?.exists
-              ?.field as string,
-            'is_null'
-          ),
-        };
-      } else if (!isUndefined(curr.exists?.field)) {
-        return {
-          ...acc,
-          ...getCommonFieldProperties(
-            parentPath,
-            (curr.exists as EsExistsQuery).field,
-            'is_not_null'
-          ),
-        };
-      } else if (!isUndefined((curr as EsWildCard).wildcard)) {
-        return {
-          ...acc,
-          ...getCommonFieldProperties(
-            parentPath,
-            Object.keys((curr as EsWildCard).wildcard)[0],
-            'like',
-            Object.values((curr as EsWildCard).wildcard)[0]?.value
-          ),
-        };
-      } else if (!isUndefined((curr.bool?.must_not as EsWildCard)?.wildcard)) {
-        return {
-          ...acc,
-          ...getCommonFieldProperties(
-            parentPath,
-            Object.keys((curr.bool?.must_not as EsWildCard)?.wildcard)[0],
-            'not_like',
-            Object.values((curr.bool?.must_not as EsWildCard)?.wildcard)[0]
-              ?.value
-          ),
-        };
-      } else if (!isUndefined((curr.bool as EsBoolQuery)?.must)) {
-        return {
-          ...acc,
-          ...getJsonTreePropertyFromQueryFilter(
-            parentPath,
-            (curr.bool as EsBoolQuery).must as QueryFieldInterface[],
-            fields
-          ),
-        };
+      for (const matchBranch of QUERY_FILTER_BRANCH_HANDLERS) {
+        const branchResult = matchBranch(
+          curr,
+          parentPath,
+          fields,
+          getJsonTreePropertyFromQueryFilter
+        );
+        if (branchResult) {
+          return { ...acc, ...branchResult };
+        }
       }
 
       return acc;
@@ -384,33 +1216,243 @@ export const getJsonTreePropertyFromQueryFilter = (
   return convertedObj;
 };
 
+// Normalises a bool clause (`must`/`should`/`filter`/`must_not`) to an array.
+// The ES DSL allows each to be a single object or an array; the branch handlers
+// below always operate on arrays.
+const toClauseArray = (
+  clauses: QueryFieldInterface | QueryFieldInterface[] | undefined
+): QueryFieldInterface[] | undefined => {
+  if (Array.isArray(clauses)) {
+    return clauses;
+  }
+  if (clauses) {
+    return [clauses];
+  }
+
+  return undefined;
+};
+
+// Extracts the clause list, conjunction, and negation from a bool query body.
+// The backend honors `must`, `should`, `filter`, and `must_not` verbatim, but
+// the original parser only read `query.bool.must` — the shape a root-AND UI
+// group serializes to. Every other supported shape was silently discarded, so
+// rules created via the REST API (which never populates `filterJsonTree`)
+// showed an empty editor and lost their saved conditions on the first edit.
+const extractBoolClauses = (
+  bool: EsBoolQuery | undefined
+): {
+  clauses: QueryFieldInterface[] | undefined;
+  conjunction: 'AND' | 'OR';
+  not: boolean;
+  unwrapInner: boolean;
+} => {
+  if (!bool) {
+    return {
+      clauses: undefined,
+      conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+      not: false,
+      unwrapInner: false,
+    };
+  }
+
+  const mustClauses = toClauseArray(bool.must as QueryFieldInterface[]);
+  const shouldClauses = toClauseArray(bool.should as QueryFieldInterface[]);
+  const filterClauses = toClauseArray(bool.filter as QueryFieldInterface[]);
+  const mustNotClauses = toClauseArray(bool.must_not as QueryFieldInterface[]);
+
+  if (mustClauses?.length) {
+    return {
+      clauses: mustClauses,
+      conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+      not: false,
+      unwrapInner: true,
+    };
+  }
+  if (shouldClauses?.length) {
+    return {
+      clauses: shouldClauses,
+      conjunction: QUERY_BUILDER_CONJUNCTION.OR,
+      not: false,
+      unwrapInner: false,
+    };
+  }
+  if (filterClauses?.length) {
+    return {
+      clauses: filterClauses,
+      conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+      not: false,
+      unwrapInner: false,
+    };
+  }
+  if (mustNotClauses?.length) {
+    return {
+      clauses: mustNotClauses,
+      conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+      not: true,
+      unwrapInner: false,
+    };
+  }
+
+  return {
+    clauses: undefined,
+    conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+    not: false,
+    unwrapInner: false,
+  };
+};
+
+// A bare term/exists/wildcard (no bool wrapper) — the shape the integration
+// tests use for `{"query": {"term": {...}}}`. Returns the query body as a
+// single-element clause array, or undefined when the body has no leaf clause.
+const bareClause = (
+  queryBody: QueryFieldInterface
+): QueryFieldInterface[] | undefined => {
+  if (
+    queryBody.term ||
+    queryBody.exists ||
+    (queryBody as unknown as EsWildCard).wildcard
+  ) {
+    return [queryBody];
+  }
+
+  return undefined;
+};
+
+const BOOL_CLAUSE_KEYS = ['must', 'should', 'filter', 'must_not'] as const;
+
+// The backend stores the DSL `query` node verbatim; some API clients omit the
+// `query` wrapper and pass the body directly.
+const getQueryBody = (
+  queryFilter: QueryFilterInterface
+): QueryFieldInterface | undefined => {
+  const queryBody = queryFilter?.query ?? queryFilter;
+
+  return queryBody && typeof queryBody === 'object'
+    ? (queryBody as QueryFieldInterface)
+    : undefined;
+};
+
+// A root bool the tree reads only in part: a second clause kind
+// (`should` + `filter`) or a `minimum_should_match` above one.
+const hasUnreadBoolParts = (bool: EsBoolQuery | undefined): boolean => {
+  const boolRecord = (bool ?? {}) as Record<string, unknown>;
+  const clauseKinds = BOOL_CLAUSE_KEYS.filter(
+    (key) =>
+      toClauseArray(boolRecord[key] as QueryFieldInterface[] | undefined)
+        ?.length
+  ).length;
+  const minimumShouldMatch = boolRecord.minimum_should_match;
+
+  return (
+    clauseKinds > 1 ||
+    (!isUndefined(minimumShouldMatch) && String(minimumShouldMatch) !== '1')
+  );
+};
+
+// The clauses the tree is built from, and whether reading them left part of the
+// filter out (see hasUnreadBoolParts, plus siblings of the unwrapped inner `must`).
+const getRootClauses = (queryBody: QueryFieldInterface) => {
+  const bool = queryBody.bool as EsBoolQuery | undefined;
+  const { clauses: boolClauses, ...grouping } = extractBoolClauses(bool);
+  const clauses = boolClauses ?? bareClause(queryBody);
+
+  // The UI's root-AND group serializes to a double-nested
+  // `query.bool.must[0].bool.must[...]`; unwrap the inner `must` when
+  // present so the branch handlers see the actual conditions. Only safe
+  // for the `must` case — `should`/`filter`/`must_not` clauses carry
+  // their own semantics that unwrapping would lose.
+  const innerBool = grouping.unwrapInner
+    ? (clauses?.[0]?.bool as EsBoolQuery | undefined)
+    : undefined;
+  const innerMust = innerBool?.must as QueryFieldInterface[] | undefined;
+
+  const dropsInnerSiblings = Boolean(
+    innerMust &&
+      ((clauses?.length ?? 0) > 1 || Object.keys(innerBool ?? {}).length > 1)
+  );
+  const partial = hasUnreadBoolParts(bool) || dropsInnerSiblings;
+
+  return { ...grouping, clauses: innerMust ?? clauses, partial };
+};
+
+// A nested `must` group keeps whichever children it can read, so it renders only when every
+// child does; otherwise a clause the readers leave unread would drop without a warning.
+const isRenderedClause = (
+  clause: QueryFieldInterface,
+  fields?: Fields
+): boolean => {
+  const handler = QUERY_FILTER_BRANCH_HANDLERS.find(
+    (candidate) =>
+      !isEmpty(
+        candidate(clause, [], fields, getJsonTreePropertyFromQueryFilter)
+      )
+  );
+  const children =
+    handler === matchBoolMust
+      ? ((clause.bool as EsBoolQuery).must as QueryFieldInterface[])
+      : [];
+
+  return (
+    Boolean(handler) &&
+    children.every((child) => isRenderedClause(child, fields))
+  );
+};
+
+// False when getJsonTreeFromQueryFilter would leave part of `queryFilter` out of
+// its tree, so an editor seeded from that tree drops those conditions on its
+// first change. `match_all` is the empty builder, so it counts as rendered.
+export const isQueryFilterFullyRepresentable = (
+  queryFilter: QueryFilterInterface,
+  fields?: Fields
+): boolean => {
+  const queryBody = getQueryBody(queryFilter);
+  if (!queryBody) {
+    return false;
+  }
+  if ((queryBody as Record<string, unknown>).match_all) {
+    return Object.keys(queryBody).length === 1;
+  }
+  const { clauses, partial } = getRootClauses(queryBody);
+
+  return (
+    Boolean(clauses?.length) &&
+    !partial &&
+    withoutCustomPropertyScope(clauses ?? []).every((clause) =>
+      isRenderedClause(clause, fields)
+    )
+  );
+};
+
 export const getJsonTreeFromQueryFilter = (
   queryFilter: QueryFilterInterface,
   fields?: Fields
 ): OldJsonTree => {
   try {
-    const id1 = generateUUID();
-    const id2 = generateUUID();
-    const mustFilters = queryFilter?.query?.bool?.must as QueryFieldInterface[];
+    const queryBody = getQueryBody(queryFilter);
 
-    if (!mustFilters?.length) {
+    if (!queryBody) {
       return {} as OldJsonTree;
     }
 
-    const innerMust = (mustFilters[0]?.bool as EsBoolQuery)?.must as
-      | QueryFieldInterface[]
-      | undefined;
+    const { clauses, conjunction, not } = getRootClauses(queryBody);
+
+    if (!clauses?.length) {
+      return {} as OldJsonTree;
+    }
+
+    const id1 = generateUUID();
+    const id2 = generateUUID();
 
     return {
       type: 'group',
-      properties: { conjunction: 'AND', not: false },
+      properties: { conjunction: QUERY_BUILDER_CONJUNCTION.AND, not: false },
       children1: {
         [id2]: {
           type: 'group',
-          properties: { conjunction: 'AND', not: false },
+          properties: { conjunction, not },
           children1: getJsonTreePropertyFromQueryFilter(
             [id1, id2],
-            innerMust ?? mustFilters,
+            clauses,
             fields
           ),
           id: id2,
@@ -422,6 +1464,121 @@ export const getJsonTreeFromQueryFilter = (
   } catch {
     return {} as OldJsonTree;
   }
+};
+
+type BoolGroup = { conjunction: string; clauses: QueryFieldInterface[] };
+
+// A `bool` holding exactly one of `must` (AND) or `should` (OR), as the builder writes every group.
+const readBoolGroup = (clause: unknown): BoolGroup | undefined => {
+  const bool = (clause as QueryFieldInterface | undefined)?.bool as
+    | Record<string, unknown>
+    | undefined;
+  const keys = Object.keys(bool ?? {});
+  const clauses = bool?.[keys[0]];
+
+  if (
+    keys.length !== 1 ||
+    !['must', 'should'].includes(keys[0]) ||
+    !Array.isArray(clauses) ||
+    clauses.length === 0
+  ) {
+    return undefined;
+  }
+
+  return {
+    conjunction:
+      keys[0] === 'must'
+        ? QUERY_BUILDER_CONJUNCTION.AND
+        : QUERY_BUILDER_CONJUNCTION.OR,
+    clauses: clauses as QueryFieldInterface[],
+  };
+};
+
+/**
+ * The tree Explore's Advanced Search wrote `queryFilter` from. The modal builds a root conjunction over groups, each a
+ * conjunction over rules, and writes each level as a `bool` of one `must`/`should` — so the filter is read back as
+ * those groups. Anything else (a link built by another screen, an older single-group link) goes through
+ * `getJsonTreeFromQueryFilter`.
+ */
+export const getExploreJsonTreeFromQueryFilter = (
+  queryFilter: QueryFilterInterface,
+  fields?: Fields
+): OldJsonTree => {
+  const root = readBoolGroup(getQueryBody(queryFilter));
+  const groups = root?.clauses.map(readBoolGroup);
+
+  if (!root || !groups?.every(Boolean)) {
+    return getJsonTreeFromQueryFilter(queryFilter, fields);
+  }
+
+  const rootId = generateUUID();
+
+  return {
+    id: rootId,
+    type: 'group',
+    properties: { conjunction: root.conjunction, not: false },
+    children1: Object.fromEntries(
+      (groups as BoolGroup[]).map((group) => {
+        const groupId = generateUUID();
+
+        return [
+          groupId,
+          {
+            id: groupId,
+            type: 'group',
+            path: [rootId, groupId],
+            properties: { conjunction: group.conjunction, not: false },
+            children1: getJsonTreePropertyFromQueryFilter(
+              [rootId, groupId],
+              group.clauses,
+              fields
+            ),
+          } as OldJsonItem,
+        ];
+      })
+    ),
+  };
+};
+
+// The clause of `{ bool: { must: [clause] } }`, when that is all the value is.
+const getOnlyMustClause = (value: object): unknown => {
+  const { bool, ...rest } = value as { bool?: Record<string, unknown> };
+  const must = bool?.must;
+  const isOnlyMust =
+    isEmpty(rest) &&
+    Object.keys(bool ?? {}).length === 1 &&
+    Array.isArray(must);
+
+  return isOnlyMust && (must as unknown[]).length === 1
+    ? (must as unknown[])[0]
+    : undefined;
+};
+
+/**
+ * A filter with every one-clause `bool.must` replaced by its clause: such a wrapper matches exactly what its clause
+ * matches. Builders nest one per group and per custom-property drill level, so two filters that search the same way
+ * can differ only in these.
+ */
+export const withoutSingleClauseMust = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map(withoutSingleClauseMust);
+  }
+  if (!value || typeof value !== 'object') {
+    return value;
+  }
+
+  const onlyClause = getOnlyMustClause(value);
+
+  if (onlyClause) {
+    return withoutSingleClauseMust(onlyClause);
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, child]) => [
+      key,
+      withoutSingleClauseMust(child),
+    ])
+  );
 };
 
 export interface ElasticsearchQuery {
@@ -464,128 +1621,145 @@ const flattenAndClauses = (clauses: JsonLogic[]): JsonLogic[] => {
   }, []);
 };
 
-export const elasticsearchToJsonLogic = (
-  query: ElasticsearchQuery
+const buildBoolJsonLogic = (
+  boolQuery: NonNullable<ElasticsearchQuery['bool']>,
+  toJsonLogic: (query: ElasticsearchQuery) => JsonLogic
 ): JsonLogic => {
-  if (query.bool) {
-    const boolQuery = query.bool;
-    const jsonLogic: JsonLogic = {};
+  const jsonLogic: JsonLogic = {};
 
-    if (boolQuery.must) {
-      const mustClauses = boolQuery.must.map(elasticsearchToJsonLogic);
-      jsonLogic.and = flattenAndClauses(mustClauses);
-    }
-
-    if (boolQuery.should) {
-      jsonLogic.or = boolQuery.should.map(elasticsearchToJsonLogic);
-    }
-
-    if (boolQuery.filter) {
-      const filterClauses = boolQuery.filter.map(elasticsearchToJsonLogic);
-      jsonLogic.and = ((jsonLogic.and as JsonLogic[]) || []).concat(
-        flattenAndClauses(filterClauses)
-      );
-    }
-
-    if (boolQuery.must_not) {
-      const mustNotArray = Array.isArray(boolQuery.must_not)
-        ? boolQuery.must_not
-        : [boolQuery.must_not];
-
-      const mustNotClauses = mustNotArray.map((q) => ({
-        '!': elasticsearchToJsonLogic(q),
-      }));
-
-      jsonLogic.and = ((jsonLogic.and as JsonLogic[]) || []).concat(
-        flattenAndClauses(mustNotClauses)
-      );
-    }
-
-    return jsonLogic;
+  if (boolQuery.must) {
+    const mustClauses = boolQuery.must.map(toJsonLogic);
+    jsonLogic.and = flattenAndClauses(mustClauses);
   }
 
-  if (query.term) {
-    const termQuery = query.term;
-    const [field, value] = Object.entries(termQuery)[0];
-    const op = Array.isArray(value) ? 'in' : '==';
-
-    if (field.includes('.')) {
-      const [parentField, childField] = field.split('.');
-
-      const shouldIgnoreSplit =
-        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
-          parentField as EntityReferenceFields
-        ) ||
-        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
-          field as EntityReferenceFields
-        );
-
-      return shouldIgnoreSplit
-        ? { '==': [{ var: field }, value] }
-        : {
-            some: [
-              { var: parentField },
-              { [op]: [{ var: childField }, value] },
-            ],
-          };
-    }
-
-    return { '==': [{ var: field }, value] };
+  if (boolQuery.should) {
+    jsonLogic.or = boolQuery.should.map(toJsonLogic);
   }
 
-  if (query.exists) {
-    const { field } = query.exists;
+  if (boolQuery.filter) {
+    const filterClauses = boolQuery.filter.map(toJsonLogic);
+    jsonLogic.and = ((jsonLogic.and as JsonLogic[]) || []).concat(
+      flattenAndClauses(filterClauses)
+    );
+  }
 
-    if (field.includes('.')) {
-      const [parentField] = field.split('.');
+  if (boolQuery.must_not) {
+    const mustNotArray = Array.isArray(boolQuery.must_not)
+      ? boolQuery.must_not
+      : [boolQuery.must_not];
 
-      return {
-        '!!': {
-          var: JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
-            parentField as EntityReferenceFields
-          )
-            ? field
-            : parentField,
-        },
-      };
-    }
+    const mustNotClauses = mustNotArray.map((q) => ({
+      '!': toJsonLogic(q),
+    }));
+
+    jsonLogic.and = ((jsonLogic.and as JsonLogic[]) || []).concat(
+      flattenAndClauses(mustNotClauses)
+    );
+  }
+
+  return jsonLogic;
+};
+
+const buildTermJsonLogic = (
+  termQuery: NonNullable<ElasticsearchQuery['term']>
+): JsonLogic => {
+  const [field, value] = Object.entries(termQuery)[0];
+  const op = Array.isArray(value) ? 'in' : '==';
+
+  if (field.includes('.')) {
+    const [parentField, childField] = field.split('.');
+
+    const shouldIgnoreSplit =
+      JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+        parentField as EntityReferenceFields
+      ) ||
+      JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(field as EntityReferenceFields);
+
+    return shouldIgnoreSplit
+      ? { '==': [{ var: field }, value] }
+      : {
+          some: [{ var: parentField }, { [op]: [{ var: childField }, value] }],
+        };
+  }
+
+  return { '==': [{ var: field }, value] };
+};
+
+const buildExistsJsonLogic = (
+  existsQuery: NonNullable<ElasticsearchQuery['exists']>
+): JsonLogic => {
+  const { field } = existsQuery;
+
+  if (field.includes('.')) {
+    const [parentField] = field.split('.');
 
     return {
-      '!!': { var: field },
+      '!!': {
+        var: JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+          parentField as EntityReferenceFields
+        )
+          ? field
+          : parentField,
+      },
     };
   }
 
-  if (query.wildcard) {
-    const wildcardQuery = query.wildcard;
-    const field = Object.keys(wildcardQuery)[0];
-    const value = (wildcardQuery[field] as Record<string, string>).value;
+  return {
+    '!!': { var: field },
+  };
+};
 
-    if (field.includes('.')) {
-      const [parentField, childField] = field.split('.');
+const buildWildcardJsonLogic = (
+  wildcardQuery: NonNullable<ElasticsearchQuery['wildcard']>
+): JsonLogic => {
+  const field = Object.keys(wildcardQuery)[0];
+  const value = (wildcardQuery[field] as Record<string, string>).value;
 
-      if (
-        JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
-          parentField as EntityReferenceFields
-        )
-      ) {
-        return {
-          in: [{ var: field }, value],
-        };
-      }
+  if (field.includes('.')) {
+    const [parentField, childField] = field.split('.');
 
-      return {
-        some: [
-          { var: parentField },
-          {
-            in: [{ var: childField }, value],
-          },
-        ],
-      };
-    } else {
+    if (
+      JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+        parentField as EntityReferenceFields
+      )
+    ) {
       return {
         in: [{ var: field }, value],
       };
     }
+
+    return {
+      some: [
+        { var: parentField },
+        {
+          in: [{ var: childField }, value],
+        },
+      ],
+    };
+  } else {
+    return {
+      in: [{ var: field }, value],
+    };
+  }
+};
+
+export const elasticsearchToJsonLogic = (
+  query: ElasticsearchQuery
+): JsonLogic => {
+  if (query.bool) {
+    return buildBoolJsonLogic(query.bool, elasticsearchToJsonLogic);
+  }
+
+  if (query.term) {
+    return buildTermJsonLogic(query.term);
+  }
+
+  if (query.exists) {
+    return buildExistsJsonLogic(query.exists);
+  }
+
+  if (query.wildcard) {
+    return buildWildcardJsonLogic(query.wildcard);
   }
 
   throw new Error('Unsupported query format');
@@ -602,102 +1776,85 @@ const getNestedFieldKey = (configFields: Fields, searchKey: string) => {
   return null;
 };
 
-export const jsonLogicToElasticsearch = (
+type ElasticsearchConverter = (
   logic: JsonLogic,
   configFields: Fields,
   parentField?: string,
   parentOp?: JSONLOGIC_OPERATORS
+) => ElasticsearchQuery;
+
+const buildAndElasticsearch = (
+  logic: JsonLogic,
+  configFields: Fields,
+  toElasticsearch: ElasticsearchConverter
+): ElasticsearchQuery => ({
+  bool: {
+    must: [
+      {
+        bool: {
+          must: (logic.and as JsonLogic[]).map((item: JsonLogic) =>
+            toElasticsearch(item, configFields)
+          ),
+        },
+      },
+    ],
+  },
+});
+
+const buildOrElasticsearch = (
+  logic: JsonLogic,
+  configFields: Fields,
+  toElasticsearch: ElasticsearchConverter
+): ElasticsearchQuery => ({
+  bool: {
+    should: (logic.or as JsonLogic[]).map((item: JsonLogic) =>
+      toElasticsearch(item, configFields, undefined, JSONLOGIC_OPERATORS.OR)
+    ),
+  },
+});
+
+const buildNotElasticsearch = (
+  logic: JsonLogic,
+  configFields: Fields,
+  toElasticsearch: ElasticsearchConverter
+): ElasticsearchQuery => ({
+  bool: {
+    must_not: toElasticsearch(
+      logic['!'] as JsonLogic,
+      configFields,
+      undefined,
+      JSONLOGIC_OPERATORS.NOT
+    ),
+  },
+});
+
+const buildEqualsElasticsearch = (
+  logic: JsonLogic,
+  parentField?: string,
+  parentOp?: JSONLOGIC_OPERATORS
 ): ElasticsearchQuery => {
-  if (logic.and) {
+  const [field, value] = logic['=='] as [{ var: string }, unknown];
+  const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
+
+  const isOrNotOperator = [
+    JSONLOGIC_OPERATORS.OR,
+    JSONLOGIC_OPERATORS.NOT,
+  ].includes(parentOp as JSONLOGIC_OPERATORS);
+
+  const [parentKey] = field.var.split('.');
+  const isSplittableVar =
+    typeof field === 'object' && field.var && field.var.includes('.');
+
+  if (
+    isSplittableVar &&
+    !JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
+      parentKey as EntityReferenceFields
+    ) &&
+    !isOrNotOperator
+  ) {
     return {
       bool: {
         must: [
-          {
-            bool: {
-              must: (logic.and as JsonLogic[]).map((item: JsonLogic) =>
-                jsonLogicToElasticsearch(item, configFields)
-              ),
-            },
-          },
-        ],
-      },
-    };
-  }
-
-  if (logic.or) {
-    return {
-      bool: {
-        should: (logic.or as JsonLogic[]).map((item: JsonLogic) =>
-          jsonLogicToElasticsearch(
-            item,
-            configFields,
-            undefined,
-            JSONLOGIC_OPERATORS.OR
-          )
-        ),
-      },
-    };
-  }
-
-  if (logic['!']) {
-    return {
-      bool: {
-        must_not: jsonLogicToElasticsearch(
-          logic['!'] as JsonLogic,
-          configFields,
-          undefined,
-          JSONLOGIC_OPERATORS.NOT
-        ),
-      },
-    };
-  }
-
-  if (logic['==']) {
-    const [field, value] = logic['=='] as [{ var: string }, unknown];
-    const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
-
-    const isOrNotOperator = [
-      JSONLOGIC_OPERATORS.OR,
-      JSONLOGIC_OPERATORS.NOT,
-    ].includes(parentOp as JSONLOGIC_OPERATORS);
-
-    const [parentKey] = field.var.split('.');
-    if (
-      typeof field === 'object' &&
-      field.var &&
-      field.var.includes('.') &&
-      !JSONLOGIC_FIELDS_TO_IGNORE_SPLIT.includes(
-        parentKey as EntityReferenceFields
-      ) &&
-      !isOrNotOperator
-    ) {
-      return {
-        bool: {
-          must: [
-            {
-              term: {
-                [fieldVar]: value as string | number | boolean,
-              },
-            },
-          ],
-        },
-      };
-    }
-
-    return {
-      term: {
-        [fieldVar]: value as string | number | boolean,
-      },
-    };
-  }
-
-  if (logic['!=']) {
-    const [field, value] = logic['!='] as [{ var: string }, unknown];
-    const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
-
-    return {
-      bool: {
-        must_not: [
           {
             term: {
               [fieldVar]: value as string | number | boolean,
@@ -708,41 +1865,148 @@ export const jsonLogicToElasticsearch = (
     };
   }
 
-  if (logic['!!']) {
-    const field = Array.isArray(logic['!!'])
-      ? (logic['!!'][0] as { var: string }).var
-      : (logic['!!'] as { var: string }).var;
-    const fieldVal = getNestedFieldKey(configFields, field);
+  return {
+    term: {
+      [fieldVar]: value as string | number | boolean,
+    },
+  };
+};
 
-    return {
-      exists: {
-        field: fieldVal || field,
-      },
-    };
+const buildNotEqualsElasticsearch = (
+  logic: JsonLogic,
+  parentField?: string
+): ElasticsearchQuery => {
+  const [field, value] = logic['!='] as [{ var: string }, unknown];
+  const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
+
+  return {
+    bool: {
+      must_not: [
+        {
+          term: {
+            [fieldVar]: value as string | number | boolean,
+          },
+        },
+      ],
+    },
+  };
+};
+
+const buildExistsElasticsearch = (
+  logic: JsonLogic,
+  configFields: Fields
+): ElasticsearchQuery => {
+  const field = Array.isArray(logic['!!'])
+    ? (logic['!!'][0] as { var: string }).var
+    : (logic['!!'] as { var: string }).var;
+  const fieldVal = getNestedFieldKey(configFields, field);
+
+  return {
+    exists: {
+      field: fieldVal || field,
+    },
+  };
+};
+
+const buildSomeElasticsearch = (
+  logic: JsonLogic,
+  configFields: Fields,
+  toElasticsearch: ElasticsearchConverter
+): ElasticsearchQuery | undefined => {
+  const [arrayField, condition] = logic.some as [{ var: string }, JsonLogic];
+  if (typeof arrayField === 'object' && arrayField.var) {
+    return toElasticsearch(condition, configFields, arrayField.var);
   }
 
-  if (logic.some) {
-    const [arrayField, condition] = logic.some as [{ var: string }, JsonLogic];
-    if (typeof arrayField === 'object' && arrayField.var) {
-      const conditionQuery = jsonLogicToElasticsearch(
-        condition,
+  return undefined;
+};
+
+const buildInElasticsearch = (
+  logic: JsonLogic,
+  parentField?: string
+): ElasticsearchQuery => {
+  const [field, value] = logic.in as [{ var: string }, unknown];
+  const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
+
+  return {
+    term: {
+      [fieldVar]: value as string | number | boolean,
+    },
+  };
+};
+
+type JsonLogicHandler = (
+  logic: JsonLogic,
+  configFields: Fields,
+  toElasticsearch: ElasticsearchConverter,
+  parentField?: string,
+  parentOp?: JSONLOGIC_OPERATORS
+) => ElasticsearchQuery | undefined;
+
+// Order matters: mirrors the original if-cascade — first matching key wins.
+const JSON_LOGIC_HANDLERS: Array<
+  [(logic: JsonLogic) => boolean, JsonLogicHandler]
+> = [
+  [
+    (logic) => Boolean(logic.and),
+    (logic, configFields, toElasticsearch) =>
+      buildAndElasticsearch(logic, configFields, toElasticsearch),
+  ],
+  [
+    (logic) => Boolean(logic.or),
+    (logic, configFields, toElasticsearch) =>
+      buildOrElasticsearch(logic, configFields, toElasticsearch),
+  ],
+  [
+    (logic) => Boolean(logic['!']),
+    (logic, configFields, toElasticsearch) =>
+      buildNotElasticsearch(logic, configFields, toElasticsearch),
+  ],
+  [
+    (logic) => Boolean(logic['==']),
+    (logic, _configFields, _toElasticsearch, parentField, parentOp) =>
+      buildEqualsElasticsearch(logic, parentField, parentOp),
+  ],
+  [
+    (logic) => Boolean(logic['!=']),
+    (logic, _configFields, _toElasticsearch, parentField) =>
+      buildNotEqualsElasticsearch(logic, parentField),
+  ],
+  [
+    (logic) => Boolean(logic['!!']),
+    (logic, configFields) => buildExistsElasticsearch(logic, configFields),
+  ],
+  [
+    (logic) => Boolean(logic.some),
+    (logic, configFields, toElasticsearch) =>
+      buildSomeElasticsearch(logic, configFields, toElasticsearch),
+  ],
+  [
+    (logic) => Boolean(logic.in),
+    (logic, _configFields, _toElasticsearch, parentField) =>
+      buildInElasticsearch(logic, parentField),
+  ],
+];
+
+export const jsonLogicToElasticsearch = (
+  logic: JsonLogic,
+  configFields: Fields,
+  parentField?: string,
+  parentOp?: JSONLOGIC_OPERATORS
+): ElasticsearchQuery => {
+  for (const [matches, handle] of JSON_LOGIC_HANDLERS) {
+    if (matches(logic)) {
+      const result = handle(
+        logic,
         configFields,
-        arrayField.var
+        jsonLogicToElasticsearch,
+        parentField,
+        parentOp
       );
-
-      return conditionQuery;
+      if (result) {
+        return result;
+      }
     }
-  }
-
-  if (logic.in) {
-    const [field, value] = logic.in as [{ var: string }, unknown];
-    const fieldVar = parentField ? `${parentField}.${field.var}` : field.var;
-
-    return {
-      term: {
-        [fieldVar]: value as string | number | boolean,
-      },
-    };
   }
 
   throw new Error('Unsupported JSON Logic format');
@@ -768,6 +2032,22 @@ export const addEntityTypeFilter = (
         ],
       },
     });
+
+    return qFilter;
+  }
+
+  if (Array.isArray((qFilter.query?.bool as EsBoolQuery)?.should)) {
+    return {
+      ...qFilter,
+      query: {
+        bool: {
+          must: [
+            qFilter.query,
+            { term: { 'entityType.keyword': entityType } },
+          ] as QueryFieldInterface[],
+        },
+      },
+    } as QueryFilterInterface;
   }
 
   return qFilter;
@@ -810,13 +2090,59 @@ export const migrateJsonLogic = (
   };
 
   const isVarObject = (value: unknown): value is { var: string } => {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      return false;
+    }
+
     return (
-      typeof value === 'object' &&
-      value !== null &&
-      !Array.isArray(value) &&
       'var' in value &&
       typeof (value as Record<string, unknown>)['var'] === 'string'
     );
+  };
+
+  // An old table-property rule, written from the flat field it used to use.
+  const migrateTableRowsField = (node: JsonLogic): JsonLogic | undefined => {
+    if (Array.isArray(node)) {
+      return undefined;
+    }
+
+    const entries = Object.entries(node);
+
+    if (entries.length !== 1) {
+      return undefined;
+    }
+
+    const [operator, argument] = entries[0];
+    // `some` already asks about the array, and a conjunction is not a rule.
+    if (['some', 'all', 'none', 'and', 'or'].includes(operator)) {
+      return undefined;
+    }
+
+    const operand = Array.isArray(argument) ? argument[0] : argument;
+
+    if (!isVarObject(operand)) {
+      return undefined;
+    }
+
+    const match = /^(extension\..+\.rows)\.([^.]+)$/.exec(operand.var);
+
+    if (!match) {
+      return undefined;
+    }
+
+    const [, rowsPath, column] = match;
+    const columnVar = { var: column };
+
+    return {
+      some: [
+        { var: rowsPath },
+        {
+          [operator]: Array.isArray(argument)
+            ? [columnVar, ...argument.slice(1)]
+            : columnVar,
+        },
+      ],
+    } as JsonLogic;
   };
 
   const migrateNode = (node: JsonLogic): JsonLogic => {
@@ -832,6 +2158,12 @@ export const migrateJsonLogic = (
         };
       }
     }
+    const migratedRows = migrateTableRowsField(node);
+
+    if (migratedRows) {
+      return migratedRows;
+    }
+
     if (Array.isArray(node)) {
       return node.map(migrateNode) as unknown as JsonLogic;
     }
@@ -860,12 +2192,3 @@ export const getFieldsByKeys = (
 
   return filteredFields;
 };
-
-export const buildExploreUrlParams = (
-  tree: unknown,
-  qFilter?: QueryFilterInterface
-): Record<string, string> => ({
-  ...(!isEmpty(tree) && { queryFilter: JSON.stringify(tree) }),
-  ...(!isEmpty(qFilter) &&
-    qFilter?.query && { quickFilter: JSON.stringify(qFilter) }),
-});

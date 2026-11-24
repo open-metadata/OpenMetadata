@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import { renderHook, waitFor } from '@testing-library/react';
-import { FormInstance } from 'antd';
 import { act } from 'react';
 import { TEST_CASE_FILTERS } from '../../../constants/profiler.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { DataQualityPageTabs } from '../../../enums/DataQuality.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
-import { TestCaseStatus } from '../../../generated/tests/testCase';
-import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
+import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
+import { Include } from '../../../generated/type/include';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { TestCaseSearchParams } from '../DataQuality.interface';
 import { useTestCaseList, UseTestCaseListProps } from './useTestCaseList';
@@ -48,7 +48,7 @@ const buildProps = (
   selectedFilter: [...DEFAULT_SELECTED_FILTERS],
   setSelectedFilter: jest.fn(),
   searchValue: '',
-  form: { setFieldsValue: jest.fn() } as unknown as FormInstance,
+  form: { setFieldsValue: jest.fn(), resetFields: jest.fn() },
   getInitialOptions: jest.fn(),
   tab: DataQualityPageTabs.TEST_CASES,
   testCasePermission: {
@@ -211,7 +211,7 @@ describe('useTestCaseList', () => {
       ...DEFAULT_SELECTED_FILTERS,
       TEST_CASE_FILTERS.service,
     ]);
-    expect(props.form.setFieldsValue).toHaveBeenCalledWith({
+    expect(props.form?.setFieldsValue).toHaveBeenCalledWith({
       serviceName: 'sample_data',
     });
   });
@@ -223,13 +223,13 @@ describe('useTestCaseList', () => {
 
     await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
 
-    expect(props.form.setFieldsValue).toHaveBeenCalledWith({
+    expect(props.form?.setFieldsValue).toHaveBeenCalledWith({
       testCaseStatus: [TestCaseStatus.Failed],
     });
   });
 
-  it('should change the page and refetch for the requested page when the paging handler is called', async () => {
-    const { result, props } = renderList();
+  it('should change the page and fetch the requested page once the paging hook reports it', async () => {
+    const { result, props, rerender } = renderList();
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
@@ -241,15 +241,70 @@ describe('useTestCaseList', () => {
 
     expect(props.handlePageChange).toHaveBeenCalledWith(3);
 
+    props.currentPage = 3;
+    rerender();
+
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
         expect.objectContaining({ offset: 20 })
       )
     );
+
+    expect(getListTestCaseBySearch).toHaveBeenCalledTimes(2);
+  });
+
+  it('should move to the previous page after removing the last row on a later page', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [{ id: 'only-row' }],
+      paging: { total: 21 },
+    });
+    const { result, props, rerender } = renderList({ currentPage: 3 });
+
+    await waitFor(() => expect(result.current.testCase).toHaveLength(1));
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    act(() => {
+      result.current.handleAfterDeleteAction();
+    });
+
+    expect(props.handlePageChange).toHaveBeenCalledWith(2);
+
+    props.currentPage = 2;
+    rerender();
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 10 })
+      )
+    );
+  });
+
+  it('should refetch the page it stays on after removing one of several rows', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
+      data: [{ id: 'row-1' }, { id: 'row-2' }],
+      paging: { total: 22 },
+    });
+    const { result, props } = renderList({ currentPage: 3 });
+
+    await waitFor(() => expect(result.current.testCase).toHaveLength(2));
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    act(() => {
+      result.current.handleAfterDeleteAction();
+    });
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 20 })
+      )
+    );
+
+    expect(props.handlePageChange).not.toHaveBeenCalled();
+    expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1);
   });
 
   it('should persist the sort options across later fetches after sortTestCase', async () => {
-    const { result } = renderList();
+    const { result, props, rerender } = renderList();
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
@@ -269,6 +324,8 @@ describe('useTestCaseList', () => {
     act(() => {
       result.current.pagingData.pagingHandler({ currentPage: 2 });
     });
+    props.currentPage = 2;
+    rerender();
 
     await waitFor(() =>
       expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
@@ -279,6 +336,98 @@ describe('useTestCaseList', () => {
         })
       )
     );
+  });
+
+  it('should fetch non-deleted test cases by default', async () => {
+    const { result } = renderList();
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    expect(lastPayload().include).toBe(Include.NonDeleted);
+    expect(result.current.showDeleted).toBe(false);
+  });
+
+  it('should reset once and fetch the first deleted page when visibility changes', async () => {
+    const { result, props, rerender } = renderList({ currentPage: 3 });
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
+    );
+    (props.handlePageChange as jest.Mock).mockClear();
+
+    act(() => {
+      result.current.handleShowDeletedChange(true);
+    });
+
+    expect(props.handlePageChange).toHaveBeenCalledTimes(1);
+    expect(props.handlePageChange).toHaveBeenCalledWith(1);
+
+    props.currentPage = 1;
+    rerender();
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          include: Include.Deleted,
+          offset: 0,
+        })
+      )
+    );
+  });
+
+  it('should ignore a stale response after deleted visibility changes', async () => {
+    let resolveActive!: (value: {
+      data: TestCase[];
+      paging: { total: number };
+    }) => void;
+    let resolveDeleted!: (value: {
+      data: TestCase[];
+      paging: { total: number };
+    }) => void;
+    const activeResponse = new Promise((resolve) => {
+      resolveActive = resolve;
+    });
+    const deletedResponse = new Promise((resolve) => {
+      resolveDeleted = resolve;
+    });
+
+    (getListTestCaseBySearch as jest.Mock)
+      .mockReturnValueOnce(activeResponse)
+      .mockReturnValueOnce(deletedResponse);
+
+    const { result } = renderList();
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    act(() => {
+      result.current.handleShowDeletedChange(true);
+    });
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(2)
+    );
+
+    await act(async () => {
+      resolveDeleted({
+        data: [{ id: 'deleted' }] as TestCase[],
+        paging: { total: 1 },
+      });
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      resolveActive({
+        data: [{ id: 'active' }] as TestCase[],
+        paging: { total: 1 },
+      });
+      await Promise.resolve();
+    });
+
+    expect(result.current.testCase).toEqual([{ id: 'deleted' }]);
   });
 
   it('should expose a number-based pagingData wired to the injected paging bag', async () => {

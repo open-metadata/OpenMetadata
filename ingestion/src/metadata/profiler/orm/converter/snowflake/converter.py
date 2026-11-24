@@ -14,21 +14,15 @@ Converter logic to transform an OpenMetadata Table Entity for Snowflake
 to an SQLAlchemy ORM class.
 """
 
-from typing import Dict, Set  # noqa: UP035
-
 from sqlalchemy.sql.sqltypes import TypeEngine
 
 from metadata.generated.schema.entity.data.database import databaseService
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.profiler.orm.converter.common import CommonMapTypes
-from metadata.profiler.orm.registry import CustomTypes
 
 
 class SnowflakeMapTypes(CommonMapTypes):
     """Snowflake mapper, inherits from CommonMapTypes"""
-
-    def __init__(self) -> None:
-        self._TYPE_MAP.update({DataType.BINARY: CustomTypes.BYTES.value})
 
     def return_custom_type(self, col: Column, table_service_type):
         if table_service_type == databaseService.DatabaseServiceType.Snowflake and col.dataType == DataType.JSON:
@@ -39,7 +33,7 @@ class SnowflakeMapTypes(CommonMapTypes):
         return super().return_custom_type(col, table_service_type)
 
     @staticmethod
-    def map_sqa_to_om_types() -> Dict[TypeEngine, Set[DataType]]:  # noqa: UP006
+    def map_sqa_to_om_types() -> dict[TypeEngine, set[DataType]]:
         """returns an ORM type"""
         # pylint: disable=import-outside-toplevel
         from snowflake.sqlalchemy import VARIANT

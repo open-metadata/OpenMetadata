@@ -14,15 +14,16 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.search.ColumnGridIndexConfigs.NAME_KEYWORD_SUFFIX;
+import static org.openmetadata.service.search.ColumnGridIndexConfigs.TAG_FQN_SUFFIX;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
+import es.co.elastic.clients.elasticsearch._types.Script;
 import es.co.elastic.clients.elasticsearch._types.SortOrder;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
-import es.co.elastic.clients.elasticsearch._types.aggregations.CompositeAggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.CompositeAggregationSource;
 import es.co.elastic.clients.elasticsearch._types.aggregations.CompositeBucket;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsAggregate;
@@ -36,9 +37,8 @@ import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.util.NamedValue;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Base64;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -56,33 +56,45 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ColumnAggregator;
+import org.openmetadata.service.search.ColumnGridIndexConfigs;
 import org.openmetadata.service.search.ColumnMetadataGrouper;
 import org.openmetadata.service.search.ColumnMetadataGrouper.ColumnWithContext;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
 
 @Slf4j
 public class ElasticSearchColumnAggregator implements ColumnAggregator {
+  // Lower precision threshold to reduce memory usage (3000 is usually sufficient for UI display)
+  private static final int CARDINALITY_PRECISION_THRESHOLD = 3000;
+
   private final ElasticsearchClient client;
+  private final RBACConditionEvaluator rbacConditionEvaluator =
+      new RBACConditionEvaluator(new ElasticQueryBuilderFactory());
 
-  /** Index configuration with field mappings for each entity type. Uses aliases defined in indexMapping.json */
-  private static final Map<String, IndexConfig> INDEX_CONFIGS =
-      Map.of(
-          "table",
-          new IndexConfig("table", "columns", "columns.name.keyword"),
-          "dashboardDataModel",
-          new IndexConfig("dashboardDataModel", "columns", "columns.name.keyword"),
-          "topic",
-          new IndexConfig(
-              "topic", "messageSchema.schemaFields", "messageSchema.schemaFields.name.keyword"),
-          "searchIndex",
-          new IndexConfig("searchIndex", "fields", "fields.name.keyword"),
-          "container",
-          new IndexConfig("container", "dataModel.columns", "dataModel.columns.name.keyword"));
-
-  /** Simple record to hold index configuration */
-  private record IndexConfig(String indexName, String columnFieldPath, String columnNameKeyword) {}
+  /**
+   * Index configuration per entity type, derived from the child-field registry and shared with the
+   * OpenSearch aggregator so the two engines cannot drift apart. Uses aliases defined in
+   * indexMapping.json.
+   */
+  private static final Map<String, ColumnGridIndexConfigs.IndexConfig> INDEX_CONFIGS =
+      ColumnGridIndexConfigs.load();
 
   public ElasticSearchColumnAggregator(ElasticsearchClient client) {
     this.client = client;
+  }
+
+  /**
+   * The container path a type's children live under, for example {@code messageSchema.schemaFields}
+   * on a topic. Every query builder and _source reader in this class resolves through here rather
+   * than assuming {@code columns}, which only table, dashboardDataModel and worksheet use.
+   */
+  public static String resolveColumnFieldPath(String entityType) {
+    return INDEX_CONFIGS.get(entityType).columnFieldPath();
+  }
+
+  /** The keyword subfield the grid aggregates and sorts child names on. */
+  public static String resolveColumnNameKeyword(String entityType) {
+    return INDEX_CONFIGS.get(entityType).columnNameKeyword();
   }
 
   @Override
@@ -115,7 +127,20 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
             .removeIf(e -> !e.getKey().toLowerCase(Locale.ROOT).contains(pattern));
       }
 
+      // Row-level filter (metadataStatus / hasConflicts / hasMissingMetadata) acts on the
+      // aggregate status, so group everything then filter + paginate the items.
+      if (ColumnAggregator.hasRowLevelFilter(request)) {
+        List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(taggedColumns);
+        return ColumnAggregator.paginateFilteredItems(gridItems, request);
+      }
+
       return aggregateColumnsWithKnownNames(request, taggedColumns);
+    }
+
+    // Row-level filter (no tag filter): materialize all candidate columns, then filter the
+    // aggregate items and paginate in memory so counts and per-page size stay correct (#26824).
+    if (ColumnAggregator.hasRowLevelFilter(request)) {
+      return aggregateColumnsWithRowFilters(request, entityTypes);
     }
 
     // Pattern-only path (no tag filter): use terms agg with include regex
@@ -123,43 +148,36 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       return aggregateColumnsWithPattern(request, entityTypes);
     }
 
-    Map<String, List<ColumnWithContext>> allColumnsByName = new HashMap<>();
+    return aggregateColumnsWithCompositeCursor(request, entityTypes);
+  }
+
+  /**
+   * Browse path: one composite aggregation per column field. A composite after key is only valid
+   * within the field that produced it, so the cursor keeps one per field and {@link
+   * ColumnAggregator#nextBrowsePage} merges the per-field pages.
+   */
+  private ColumnGridResponse aggregateColumnsWithCompositeCursor(
+      ColumnAggregationRequest request, List<String> entityTypes) throws IOException {
+    Map<String, String> afterKeys = ColumnAggregator.decodeBrowseCursor(request.getCursor());
+    Map<String, SearchResponse<JsonData>> responsesByField = new HashMap<>();
+    Map<String, List<String>> keysByField = new HashMap<>();
     long totalUniqueColumns = 0;
     long totalOccurrences = 0;
-    String lastCursor = null;
-    boolean hasMore = false;
 
     // Group entity types by their column field path to minimize queries
     Map<String, List<String>> fieldPathToEntityTypes = groupByFieldPath(entityTypes);
 
     for (Map.Entry<String, List<String>> entry : fieldPathToEntityTypes.entrySet()) {
       String columnNameKeyword = entry.getKey();
-      List<String> groupEntityTypes = entry.getValue();
-
-      List<String> indexes = resolveIndexNames(groupEntityTypes);
-
-      String columnFieldPath = INDEX_CONFIGS.get(groupEntityTypes.getFirst()).columnFieldPath();
-
+      List<String> indexes = resolveIndexNames(entry.getValue());
       Query query = buildFilters(request, columnNameKeyword, null);
 
       try {
         SearchResponse<JsonData> response =
-            executeSearch(request, query, indexes, columnNameKeyword);
-
-        Map<String, List<ColumnWithContext>> columnsByName =
-            parseCompositeAggResults(response, columnFieldPath);
-
-        for (Map.Entry<String, List<ColumnWithContext>> colEntry : columnsByName.entrySet()) {
-          allColumnsByName
-              .computeIfAbsent(colEntry.getKey(), k -> new ArrayList<>())
-              .addAll(colEntry.getValue());
-        }
-
-        String cursor = extractCursor(response);
-        if (cursor != null) {
-          lastCursor = cursor;
-          hasMore = true;
-        }
+            executeSearch(
+                request, query, indexes, columnNameKeyword, afterKeys.get(columnNameKeyword));
+        responsesByField.put(columnNameKeyword, response);
+        keysByField.put(columnNameKeyword, compositeBucketKeys(response));
 
         if (request.getCursor() == null) {
           Map<String, Long> totals = getTotalCounts(query, indexes, columnNameKeyword);
@@ -176,6 +194,15 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       }
     }
 
+    if (request.getCursor() == null && responsesByField.size() > 1) {
+      totalUniqueColumns =
+          countNamesAcrossFields(request, responsesByField.keySet(), fieldPathToEntityTypes);
+    }
+
+    ColumnAggregator.BrowsePage page =
+        ColumnAggregator.nextBrowsePage(keysByField, afterKeys, request.getSize());
+    Map<String, List<ColumnWithContext>> allColumnsByName =
+        collectPageColumns(responsesByField, fieldPathToEntityTypes, new HashSet<>(page.names()));
     List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(allColumnsByName);
 
     if (request.getCursor() != null) {
@@ -183,8 +210,69 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       totalOccurrences = gridItems.stream().mapToInt(ColumnGridItem::getTotalOccurrences).sum();
     }
 
+    String cursor = page.hasMore() ? ColumnAggregator.encodeBrowseCursor(page.afterKeys()) : null;
     return buildResponse(
-        gridItems, lastCursor, hasMore, (int) totalUniqueColumns, (int) totalOccurrences);
+        gridItems, cursor, page.hasMore(), (int) totalUniqueColumns, (int) totalOccurrences);
+  }
+
+  /** Distinct column names across several column fields, in one cardinality aggregation. */
+  private long countNamesAcrossFields(
+      ColumnAggregationRequest request,
+      Set<String> columnNameKeywords,
+      Map<String, List<String>> fieldPathToEntityTypes)
+      throws IOException {
+    List<String> fields = List.copyOf(columnNameKeywords);
+    List<Query> fieldQueries = fields.stream().map(f -> buildFilters(request, f, null)).toList();
+    List<String> indexes =
+        resolveIndexNames(
+            fields.stream().flatMap(f -> fieldPathToEntityTypes.get(f).stream()).toList());
+    Aggregation cardinalityAgg =
+        Aggregation.of(
+            a ->
+                a.cardinality(
+                    c ->
+                        c.script(
+                                Script.of(
+                                    s ->
+                                        s.source(
+                                                script ->
+                                                    script.scriptString(
+                                                        ColumnAggregator
+                                                            .NAMES_ACROSS_FIELDS_SCRIPT))
+                                            .params(
+                                                Map.of(
+                                                    ColumnAggregator.NAMES_ACROSS_FIELDS_PARAM,
+                                                    JsonData.of(fields)))))
+                            .precisionThreshold(CARDINALITY_PRECISION_THRESHOLD)));
+    SearchRequest countRequest =
+        SearchRequest.of(
+            s ->
+                s.index(indexes)
+                    .query(q -> q.bool(b -> b.should(fieldQueries).minimumShouldMatch("1")))
+                    .aggregations(ColumnAggregator.AGG_UNIQUE_COLUMNS, cardinalityAgg)
+                    .size(0));
+    return client
+        .search(countRequest, JsonData.class)
+        .aggregations()
+        .get(ColumnAggregator.AGG_UNIQUE_COLUMNS)
+        .cardinality()
+        .value();
+  }
+
+  private Map<String, List<ColumnWithContext>> collectPageColumns(
+      Map<String, SearchResponse<JsonData>> responsesByField,
+      Map<String, List<String>> fieldPathToEntityTypes,
+      Set<String> pageKeys) {
+    return ColumnAggregator.mergeRowsByBucketKey(
+        responsesByField.entrySet().stream()
+            .map(
+                field ->
+                    parseCompositeAggResults(
+                        field.getValue(),
+                        resolveColumnFieldPath(
+                            fieldPathToEntityTypes.get(field.getKey()).getFirst()),
+                        pageKeys))
+            .toList());
   }
 
   /**
@@ -238,7 +326,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     for (Map.Entry<String, List<String>> entry : fieldPathToEntityTypes.entrySet()) {
       String columnNameKeyword = entry.getKey();
       List<String> indexes = resolveIndexNames(entry.getValue());
-      String columnFieldPath = INDEX_CONFIGS.get(entry.getValue().getFirst()).columnFieldPath();
+      String columnFieldPath = resolveColumnFieldPath(entry.getValue().getFirst());
       Query query = buildFilters(request, columnNameKeyword, null);
 
       try {
@@ -264,6 +352,84 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     String cursor = hasMore ? ColumnAggregator.encodeSearchOffset(toIndex) : null;
 
     return buildResponse(gridItems, cursor, hasMore, totalUniqueColumns, totalOccurrences);
+  }
+
+  /**
+   * Row-level-filter path (metadataStatus / hasConflicts / hasMissingMetadata, no tag filter). The
+   * filter acts on the aggregate status of a grouped column, which is only known after grouping all
+   * of a column's occurrences. We read {@code _source} for the scoped entities in one scan per
+   * field-path group (the same mechanism the tag path uses), restricting {@code _source} to the
+   * column and identity fields, then group every column and filter + paginate the items in memory.
+   * This keeps the page count and per-page size consistent with the filtered result set and reads
+   * every occurrence of each scanned entity, up to the {@code size(10000)}-entity scan cap.
+   */
+  private ColumnGridResponse aggregateColumnsWithRowFilters(
+      ColumnAggregationRequest request, List<String> entityTypes) throws IOException {
+
+    Map<String, List<String>> fieldPathToEntityTypes = groupByFieldPath(entityTypes);
+    Map<String, List<ColumnWithContext>> allColumnsByName =
+        new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+
+    for (Map.Entry<String, List<String>> entry : fieldPathToEntityTypes.entrySet()) {
+      String columnNameKeyword = entry.getKey();
+      List<String> indexes = resolveIndexNames(entry.getValue());
+      String columnFieldPath = resolveColumnFieldPath(entry.getValue().getFirst());
+      Query query = buildFilters(request, columnNameKeyword, null);
+
+      try {
+        fetchColumnsFromSource(indexes, query, columnFieldPath, allColumnsByName);
+      } catch (ElasticsearchException e) {
+        if (!isIndexNotFoundException(e)) {
+          logShardFailureDetails(e, indexes, query);
+          throw e;
+        }
+      }
+    }
+
+    ColumnAggregator.applyColumnNamePattern(allColumnsByName, request);
+
+    List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(allColumnsByName);
+    return ColumnAggregator.paginateFilteredItems(gridItems, request);
+  }
+
+  /** {@code _source} fields needed to build grid items: entity identity + the whole column tree. */
+  private List<String> statusScanSourceIncludes(String columnFieldPath) {
+    return List.of(
+        "fullyQualifiedName",
+        "entityType",
+        "displayName",
+        "service.name",
+        "database.name",
+        "databaseSchema.name",
+        columnFieldPath);
+  }
+
+  private void fetchColumnsFromSource(
+      List<String> indexes,
+      Query query,
+      String columnFieldPath,
+      Map<String, List<ColumnWithContext>> columnsByName)
+      throws IOException {
+
+    List<String> includes = statusScanSourceIncludes(columnFieldPath);
+    SearchRequest searchRequest =
+        SearchRequest.of(
+            s ->
+                s.index(indexes)
+                    .query(query)
+                    .source(src -> src.filter(f -> f.includes(includes)))
+                    .size(10000));
+
+    SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+    long totalHits = response.hits().total() != null ? response.hits().total().value() : 0;
+    if (totalHits > 10000) {
+      LOG.warn(
+          "Metadata-status source-fetch matched {} entities; only first 10000 scanned.", totalHits);
+    }
+
+    for (Hit<JsonData> hit : response.hits().hits()) {
+      extractMatchingColumnsFromHit(hit, columnFieldPath, Set.of(), true, columnsByName);
+    }
   }
 
   /**
@@ -320,7 +486,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       String columnNameKeyword = entry.getKey();
       List<String> groupEntityTypes = entry.getValue();
       List<String> indexes = resolveIndexNames(groupEntityTypes);
-      String columnFieldPath = INDEX_CONFIGS.get(groupEntityTypes.getFirst()).columnFieldPath();
+      String columnFieldPath = resolveColumnFieldPath(groupEntityTypes.getFirst());
 
       Query query = buildTagFilterQuery(request, columnNameKeyword);
 
@@ -366,7 +532,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     }
 
     for (Hit<JsonData> hit : response.hits().hits()) {
-      extractMatchingColumnsFromHit(hit, columnFieldPath, targetTags, columnsByName);
+      extractMatchingColumnsFromHit(hit, columnFieldPath, targetTags, false, columnsByName);
     }
   }
 
@@ -374,6 +540,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       Hit<JsonData> hit,
       String columnFieldPath,
       Set<String> targetTags,
+      boolean includeAllColumns,
       Map<String, List<ColumnWithContext>> columnsByName) {
     if (hit.source() == null) {
       return;
@@ -396,7 +563,8 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       if (columnsData != null && columnsData.isArray()) {
         for (JsonNode columnData : columnsData) {
           String colName = getTextField(columnData, "name");
-          if (colName != null && columnHasTargetTag(columnData, targetTags)) {
+          if (colName != null
+              && (includeAllColumns || columnHasTargetTag(columnData, targetTags))) {
             Column column = parseColumn(columnData, entityFQN);
             columnsByName
                 .computeIfAbsent(colName, k -> new ArrayList<>())
@@ -450,7 +618,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
   private Query buildTagFilterQuery(ColumnAggregationRequest request, String columnNameKeyword) {
     BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
 
-    String columnFieldPath = columnNameKeyword.replace(".name.keyword", "");
+    String columnFieldPath = columnNameKeyword.replace(NAME_KEYWORD_SUFFIX, "");
     boolBuilder.filter(Query.of(q -> q.exists(e -> e.field(columnFieldPath))));
     boolBuilder.filter(Query.of(q -> q.term(t -> t.field("deleted").value(false))));
 
@@ -461,9 +629,8 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     addSchemaFilter(boolBuilder, request);
     addDomainFilter(boolBuilder, request);
     addColumnNamePatternFilter(boolBuilder, request, columnNameKeyword);
-    addMetadataStatusFilter(boolBuilder, request, columnFieldPath);
 
-    String tagFQNField = columnNameKeyword.replace(".name.keyword", ".tags.tagFQN");
+    String tagFQNField = columnNameKeyword.replace(NAME_KEYWORD_SUFFIX, TAG_FQN_SUFFIX);
     List<String> allTags = new ArrayList<>();
 
     if (!nullOrEmpty(request.getTags())) {
@@ -479,7 +646,10 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
           Query.of(q -> q.terms(t -> t.field(tagFQNField).terms(tv -> tv.value(tagValues)))));
     }
 
-    return Query.of(q -> q.bool(boolBuilder.build()));
+    return ElasticRbacQueries.withAccessPolicies(
+        Query.of(q -> q.bool(boolBuilder.build())),
+        request.getSubjectContext(),
+        rbacConditionEvaluator);
   }
 
   private boolean isIndexNotFoundException(ElasticsearchException e) {
@@ -513,21 +683,16 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
   /** Get entity types to query - defaults to table only for performance */
   private List<String> getEntityTypesForRequest(ColumnAggregationRequest request) {
-    if (request.getEntityTypes() == null || request.getEntityTypes().isEmpty()) {
-      // Default to tables only for better performance on initial load
-      return List.of("table");
-    }
-    return request.getEntityTypes().stream().filter(INDEX_CONFIGS::containsKey).toList();
+    return ColumnGridIndexConfigs.resolveEntityTypes(request.getEntityTypes());
   }
 
   /** Group entity types by their column field path to minimize queries */
   private Map<String, List<String>> groupByFieldPath(List<String> entityTypes) {
     Map<String, List<String>> result = new HashMap<>();
     for (String entityType : entityTypes) {
-      IndexConfig config = INDEX_CONFIGS.get(entityType);
-      if (config != null) {
-        result.computeIfAbsent(config.columnNameKeyword(), k -> new ArrayList<>()).add(entityType);
-      }
+      result
+          .computeIfAbsent(resolveColumnNameKeyword(entityType), k -> new ArrayList<>())
+          .add(entityType);
     }
     return result;
   }
@@ -550,7 +715,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       List<String> columnNamesFromTagFilter) {
     BoolQuery.Builder boolBuilder = new BoolQuery.Builder();
 
-    String columnFieldPath = columnNameKeyword.replace(".name.keyword", "");
+    String columnFieldPath = columnNameKeyword.replace(NAME_KEYWORD_SUFFIX, "");
     boolBuilder.filter(Query.of(q -> q.exists(e -> e.field(columnFieldPath))));
     boolBuilder.filter(Query.of(q -> q.term(t -> t.field("deleted").value(false))));
 
@@ -562,9 +727,11 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     addDomainFilter(boolBuilder, request);
     addColumnNamePatternFilter(boolBuilder, request, columnNameKeyword);
     addTagFilters(boolBuilder, request, columnNameKeyword, columnNamesFromTagFilter);
-    addMetadataStatusFilter(boolBuilder, request, columnFieldPath);
 
-    return Query.of(q -> q.bool(boolBuilder.build()));
+    return ElasticRbacQueries.withAccessPolicies(
+        Query.of(q -> q.bool(boolBuilder.build())),
+        request.getSubjectContext(),
+        rbacConditionEvaluator);
   }
 
   private void addEntityTypeFilter(
@@ -634,8 +801,11 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
   private void addDomainFilter(BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {
     if (!nullOrEmpty(request.getDomainId())) {
+      // One domain, or a navbar pick with its sub-domains (comma-separated ids).
+      List<FieldValue> domainIds =
+          Arrays.stream(request.getDomainId().split(",")).map(FieldValue::of).toList();
       boolBuilder.filter(
-          Query.of(q -> q.term(t -> t.field("domains.id").value(request.getDomainId()))));
+          Query.of(q -> q.terms(t -> t.field("domains.id").terms(tv -> tv.value(domainIds)))));
     }
   }
 
@@ -666,7 +836,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       return;
     }
 
-    String tagFQNField = columnNameKeyword.replace(".name.keyword", ".tags.tagFQN");
+    String tagFQNField = columnNameKeyword.replace(NAME_KEYWORD_SUFFIX, TAG_FQN_SUFFIX);
     if (request.getTags() != null && !request.getTags().isEmpty()) {
       List<FieldValue> values = request.getTags().stream().map(FieldValue::of).toList();
       boolBuilder.filter(
@@ -678,62 +848,6 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       boolBuilder.filter(
           Query.of(q -> q.terms(t -> t.field(tagFQNField).terms(tv -> tv.value(values)))));
     }
-  }
-
-  private void addMetadataStatusFilter(
-      BoolQuery.Builder boolBuilder, ColumnAggregationRequest request, String columnFieldPath) {
-    if (!nullOrEmpty(request.getMetadataStatus())) {
-      Query metadataStatusQuery =
-          buildMetadataStatusFilter(request.getMetadataStatus(), columnFieldPath);
-      if (metadataStatusQuery != null) {
-        boolBuilder.filter(metadataStatusQuery);
-      }
-    }
-  }
-
-  private Query buildMetadataStatusFilter(String status, String columnFieldPath) {
-    String descField = columnFieldPath + ".description";
-    String tagsField = columnFieldPath + ".tags";
-
-    Query hasDesc = hasNonEmptyField(descField);
-    Query hasTags = existsQuery(tagsField);
-    Query noDesc = hasEmptyOrMissingField(descField);
-    Query noTags = notExistsQuery(tagsField);
-
-    return switch (status.toUpperCase()) {
-      case "MISSING" -> Query.of(q -> q.bool(b -> b.must(noDesc).must(noTags)));
-      case "INCOMPLETE" -> Query.of(
-          q ->
-              q.bool(
-                  b ->
-                      b.should(Query.of(qs -> qs.bool(bs -> bs.must(hasDesc).must(noTags))))
-                          .should(Query.of(qs -> qs.bool(bs -> bs.must(noDesc).must(hasTags))))
-                          .minimumShouldMatch("1")));
-      case "COMPLETE" -> Query.of(q -> q.bool(b -> b.must(hasDesc).must(hasTags)));
-      default -> null;
-    };
-  }
-
-  private Query existsQuery(String field) {
-    return Query.of(q -> q.exists(e -> e.field(field)));
-  }
-
-  private Query notExistsQuery(String field) {
-    return Query.of(q -> q.bool(b -> b.mustNot(existsQuery(field))));
-  }
-
-  // `wildcard(field, "?*")` matches any doc whose indexed terms include at least one token of
-  // at least one character — the analyzer-friendly equivalent of "field has non-empty value".
-  // We can't use `term(field, "")` against analyzed text fields like `columns.description`: the
-  // field's analyzer produces no tokens for the empty string and ES 7.17 rejects the term query
-  // with `search_phase_execution_exception ... all shards failed`. Caught by
-  // ColumnGridResourceIT#test_getColumnGrid_withMetadataStatusIncomplete.
-  private Query hasNonEmptyField(String field) {
-    return Query.of(q -> q.wildcard(w -> w.field(field).value("?*")));
-  }
-
-  private Query hasEmptyOrMissingField(String field) {
-    return Query.of(q -> q.bool(b -> b.mustNot(hasNonEmptyField(field))));
   }
 
   /** Phase 1: Get all matching column names using terms agg with include regex (no top_hits). */
@@ -846,12 +960,16 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
   }
 
   private SearchResponse<JsonData> executeSearch(
-      ColumnAggregationRequest request, Query query, List<String> indexes, String columnNameKeyword)
+      ColumnAggregationRequest request,
+      Query query,
+      List<String> indexes,
+      String columnNameKeyword,
+      String afterKey)
       throws IOException {
     List<NamedValue<CompositeAggregationSource>> sources = new ArrayList<>();
     sources.add(
         NamedValue.of(
-            "column_name",
+            ColumnAggregator.COMPOSITE_COLUMN_NAME,
             CompositeAggregationSource.of(
                 cas -> cas.terms(t -> t.field(columnNameKeyword).order(SortOrder.Asc)))));
 
@@ -863,9 +981,6 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     Map<String, Aggregation> subAggs = new HashMap<>();
     subAggs.put(ColumnAggregator.AGG_SAMPLE_DOCS, topHitsAgg);
 
-    Map<String, FieldValue> afterKey =
-        request.getCursor() != null ? decodeCursor(request.getCursor()) : null;
-
     Aggregation compositeAgg =
         Aggregation.of(
             a ->
@@ -874,14 +989,17 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
                           c.sources(sources);
                           c.size(request.getSize());
                           if (afterKey != null) {
-                            c.after(afterKey);
+                            c.after(
+                                Map.of(
+                                    ColumnAggregator.COMPOSITE_COLUMN_NAME,
+                                    FieldValue.of(afterKey)));
                           }
                           return c;
                         })
                     .aggregations(subAggs));
 
     Map<String, Aggregation> aggs = new HashMap<>();
-    aggs.put("unique_columns", compositeAgg);
+    aggs.put(ColumnAggregator.AGG_UNIQUE_COLUMNS, compositeAgg);
 
     SearchRequest searchRequest =
         SearchRequest.of(s -> s.index(indexes).query(query).aggregations(aggs).size(0));
@@ -889,32 +1007,43 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     return client.search(searchRequest, JsonData.class);
   }
 
+  private List<CompositeBucket> compositeBuckets(SearchResponse<JsonData> response) {
+    boolean hasComposite =
+        response.aggregations() != null
+            && response.aggregations().containsKey(ColumnAggregator.AGG_UNIQUE_COLUMNS);
+    return hasComposite
+        ? response
+            .aggregations()
+            .get(ColumnAggregator.AGG_UNIQUE_COLUMNS)
+            .composite()
+            .buckets()
+            .array()
+        : List.of();
+  }
+
+  private String bucketKey(CompositeBucket bucket) {
+    return bucket.key().get(ColumnAggregator.COMPOSITE_COLUMN_NAME).stringValue();
+  }
+
+  private List<String> compositeBucketKeys(SearchResponse<JsonData> response) {
+    return compositeBuckets(response).stream().map(this::bucketKey).toList();
+  }
+
   private Map<String, List<ColumnWithContext>> parseCompositeAggResults(
-      SearchResponse<JsonData> response, String columnFieldPath) {
-    Map<String, List<ColumnWithContext>> columnsByName = new HashMap<>();
-
-    if (response.aggregations() == null || !response.aggregations().containsKey("unique_columns")) {
-      return columnsByName;
-    }
-
-    CompositeAggregate compositeAgg = response.aggregations().get("unique_columns").composite();
-
-    if (compositeAgg == null || compositeAgg.buckets().array().isEmpty()) {
-      return columnsByName;
-    }
-
-    for (CompositeBucket bucket : compositeAgg.buckets().array()) {
-      String columnName = bucket.key().get("column_name").stringValue();
-
-      if (!bucket.aggregations().containsKey("sample_docs")) {
-        continue;
+      SearchResponse<JsonData> response, String columnFieldPath, Set<String> pageKeys) {
+    Map<String, List<ColumnWithContext>> columnsByBucketKey = new HashMap<>();
+    for (CompositeBucket bucket : compositeBuckets(response)) {
+      String columnName = bucketKey(bucket);
+      if (pageKeys.contains(columnName)
+          && bucket.aggregations().containsKey(ColumnAggregator.AGG_SAMPLE_DOCS)) {
+        TopHitsAggregate topHits =
+            bucket.aggregations().get(ColumnAggregator.AGG_SAMPLE_DOCS).topHits();
+        Map<String, List<ColumnWithContext>> bucketColumns = new HashMap<>();
+        parseBucketHits(columnName, topHits, columnFieldPath, bucketColumns);
+        bucketColumns.values().forEach(columns -> columnsByBucketKey.put(columnName, columns));
       }
-
-      TopHitsAggregate topHits = bucket.aggregations().get("sample_docs").topHits();
-      parseBucketHits(columnName, topHits, columnFieldPath, columnsByName);
     }
-
-    return columnsByName;
+    return columnsByBucketKey;
   }
 
   /** Parse top_hits from a single bucket (shared by composite and terms agg parsing). */
@@ -1042,30 +1171,13 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
     List<TagLabel> tags = new ArrayList<>();
     for (JsonNode tagData : tagsData) {
-      tags.add(parseTagLabel(tagData));
+      try {
+        tags.add(ColumnAggregator.parseTagLabel(tagData));
+      } catch (Exception e) {
+        LOG.warn("Failed to parse column tag, skipping it", e);
+      }
     }
     column.setTags(tags);
-  }
-
-  private TagLabel parseTagLabel(JsonNode tagData) {
-    TagLabel tag = new TagLabel();
-    tag.setTagFQN(getTextField(tagData, "tagFQN"));
-
-    String labelType = getTextField(tagData, "labelType");
-    if (labelType != null) {
-      tag.setLabelType(TagLabel.LabelType.fromValue(labelType));
-    }
-
-    String source = getTextField(tagData, "source");
-    if (source != null) {
-      tag.setSource(TagLabel.TagSource.fromValue(source));
-    }
-
-    String state = getTextField(tagData, "state");
-    if (state != null) {
-      tag.setState(TagLabel.State.fromValue(state));
-    }
-    return tag;
   }
 
   private void parseColumnChildren(Column column, JsonNode columnData, String columnFQN) {
@@ -1093,59 +1205,15 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     }
   }
 
-  private String extractCursor(SearchResponse<JsonData> response) {
-    if (response.aggregations() == null || !response.aggregations().containsKey("unique_columns")) {
-      return null;
-    }
-
-    CompositeAggregate compositeAgg = response.aggregations().get("unique_columns").composite();
-
-    if (compositeAgg == null
-        || compositeAgg.afterKey() == null
-        || compositeAgg.afterKey().isEmpty()) {
-      return null;
-    }
-
-    return encodeCursor(compositeAgg.afterKey());
-  }
-
-  private String encodeCursor(Map<String, FieldValue> afterKey) {
-    try {
-      Map<String, String> stringMap = new HashMap<>();
-      for (Map.Entry<String, FieldValue> entry : afterKey.entrySet()) {
-        stringMap.put(entry.getKey(), entry.getValue().stringValue());
-      }
-      String json = JsonUtils.pojoToJson(stringMap);
-      return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
-    } catch (Exception e) {
-      LOG.error("Failed to encode cursor", e);
-      return null;
-    }
-  }
-
-  private Map<String, FieldValue> decodeCursor(String cursor) {
-    try {
-      byte[] decoded = Base64.getDecoder().decode(cursor);
-      String json = new String(decoded, StandardCharsets.UTF_8);
-      Map<String, String> stringMap = JsonUtils.readValue(json, new TypeReference<>() {});
-      Map<String, FieldValue> result = new HashMap<>();
-      for (Map.Entry<String, String> entry : stringMap.entrySet()) {
-        result.put(entry.getKey(), FieldValue.of(entry.getValue()));
-      }
-      return result;
-    } catch (Exception e) {
-      LOG.error("Failed to decode cursor", e);
-      return new HashMap<>();
-    }
-  }
-
   private Map<String, Long> getTotalCounts(
       Query query, List<String> indexes, String columnNameKeyword) throws IOException {
-    // Use lower precision threshold to reduce memory usage (3000 is usually sufficient for UI
-    // display)
     Aggregation cardinalityAgg =
         Aggregation.of(
-            a -> a.cardinality(c -> c.field(columnNameKeyword).precisionThreshold(3000)));
+            a ->
+                a.cardinality(
+                    c ->
+                        c.field(columnNameKeyword)
+                            .precisionThreshold(CARDINALITY_PRECISION_THRESHOLD)));
 
     // Use value_count instead of expensive scripted_metric
     // This counts total column field values which approximates total occurrences

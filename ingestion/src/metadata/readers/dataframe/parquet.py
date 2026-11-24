@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import os  # noqa: F401
 from functools import singledispatchmethod
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -39,6 +39,7 @@ from metadata.readers.dataframe.base import (
 from metadata.readers.dataframe.common import dataframe_to_chunks
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.readers.file.adls import AZURE_PATH, return_azure_storage_options
+from metadata.readers.file.gcs import get_gcsfs_auth_options
 from metadata.readers.models import ConfigSource  # noqa: TC001
 from metadata.utils.constants import CHUNKSIZE
 from metadata.utils.logger import ingestion_logger
@@ -134,7 +135,7 @@ class ParquetDataFrameReader(DataFrameReader):
         from gcsfs import GCSFileSystem
         from pyarrow.parquet import ParquetFile
 
-        gcs = GCSFileSystem()
+        gcs = GCSFileSystem(**get_gcsfs_auth_options(self.client))
         file_path = f"gs://{bucket_name}/{key}"
 
         # Check file size to determine reading strategy
@@ -196,7 +197,7 @@ class ParquetDataFrameReader(DataFrameReader):
             if self.config_source.securityConfig.awsSecretAccessKey:
                 kwargs["secret"] = self.config_source.securityConfig.awsSecretAccessKey.get_secret_value()
             if self.config_source.securityConfig.awsSessionToken:
-                kwargs["token"] = self.config_source.securityConfig.awsSessionToken
+                kwargs["token"] = self.config_source.securityConfig.awsSessionToken.get_secret_value()
 
         client_kwargs = {}
         if self.config_source.securityConfig.endPointURL:
@@ -351,7 +352,7 @@ class ParquetDataFrameReader(DataFrameReader):
 
             return DatalakeColumnWrapper(dataframes=chunk_generator, raw_data=None, columns=None)
 
-    def _read(self, *, key: str, bucket_name: str, file_size: Optional[int] = None, **__) -> DatalakeColumnWrapper:  # noqa: UP045
+    def _read(self, *, key: str, bucket_name: str, file_size: int | None = None, **__) -> DatalakeColumnWrapper:
         self._file_size = file_size
         return self._read_parquet_dispatch(self.config_source, key=key, bucket_name=bucket_name)
 

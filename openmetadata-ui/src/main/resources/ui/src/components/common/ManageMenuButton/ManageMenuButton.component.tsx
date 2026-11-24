@@ -10,15 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  borderAfter,
-  Dropdown,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Dropdown, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import { FC, Key, ReactElement, ReactNode } from 'react';
 import { MenuItem as AriaMenuItem } from 'react-aria-components';
+import { useIsLimitReached } from '../../../context/LimitsProvider/useLimitsStore';
 
 export interface ManageMenuItem {
   key: string;
@@ -32,6 +29,11 @@ export interface ManageMenuItem {
    * LimitWrapper). Kept generic so this component stays feature-agnostic.
    */
   wrapper?: (node: ReactElement) => ReactNode;
+  /**
+   * Limit resource the item creates. A `LimitWrapper` only greys out the
+   * content, so the menu disables the item itself once that limit is reached.
+   */
+  limitResource?: string;
 }
 
 export interface ManageMenuButtonProps {
@@ -53,9 +55,13 @@ const ManageMenuButton: FC<ManageMenuButtonProps> = ({
   triggerClassName,
   popoverClassName,
 }) => {
+  const isLimitReached = useIsLimitReached();
+  const isItemDisabled = (item: ManageMenuItem) =>
+    Boolean(item.disabled) || isLimitReached(item.limitResource);
+
   const handleAction = (key: Key) => {
     const item = items.find((option) => option.key === String(key));
-    if (item && !item.disabled) {
+    if (item && !isItemDisabled(item)) {
       item.onClick();
     }
   };
@@ -63,14 +69,9 @@ const ManageMenuButton: FC<ManageMenuButtonProps> = ({
   return (
     <Dropdown.Root>
       <Dropdown.DotsButton
-        // Border on ::after: DotsButton's own outline is reserved for its focus ring.
-        className={classNames(
-          'tw:relative tw:flex tw:items-center tw:justify-center tw:rounded-lg tw:bg-primary tw:p-2 tw:shadow-xs-skeuomorphic',
-          borderAfter,
-          'tw:after:outline-primary',
-          triggerClassName
-        )}
+        className={triggerClassName}
         data-testid="manage-button"
+        size="lg"
       />
       <Dropdown.Popover
         className={classNames('tw:w-87.5 tw:p-1.5', popoverClassName)}>
@@ -109,7 +110,7 @@ const ManageMenuButton: FC<ManageMenuButtonProps> = ({
                 }
                 data-testid={item.key}
                 id={item.key}
-                isDisabled={item.disabled}
+                isDisabled={isItemDisabled(item)}
                 key={item.key}
                 textValue={isString(item.title) ? item.title : item.key}>
                 {item.wrapper ? item.wrapper(content) : content}

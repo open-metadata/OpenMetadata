@@ -55,6 +55,11 @@ import org.openmetadata.service.jdbi3.ListFilter;
  *       set hasn't justified it yet.</li>
  * </ul>
  *
+ * <p>Because invalidation is write-driven, a filter whose row set changes <em>without</em> a write
+ * can never be cached safely: see {@link ListFilter#isTimeDependent()}, which {@link #getOrCompute}
+ * treats like a bypass. The announcement window filters are the case in point — an announcement
+ * crossing its start or end time changes the count with nothing to invalidate on.
+ *
  * <p>The actual listing data is always live — {@code dao.listAfter} reads from the DB on every
  * call — only {@code paging.total} can ever be stale. Falls back transparently to the supplier
  * when Redis is disabled or unavailable.
@@ -83,7 +88,7 @@ public final class ListCountCache {
    * direct compute — listing must not fail because Redis is down.
    */
   public static int getOrCompute(String entityType, ListFilter filter, IntSupplier supplier) {
-    if (EntityCacheBypass.isSkipped()) {
+    if (EntityCacheBypass.isSkipped() || filter.isTimeDependent()) {
       return supplier.getAsInt();
     }
     CacheProvider provider = CacheBundle.getCacheProvider();
@@ -156,10 +161,11 @@ public final class ListCountCache {
    * Drop every cached filter variant for an entity type in one DEL. Wired into
    * {@code postCreate}, {@code postDelete}, and {@code restoreEntity} on {@link
    * org.openmetadata.service.jdbi3.EntityRepository EntityRepository} so {@code paging.total}
-   * reflects state changes within a round-trip rather than waiting out the TTL window. Routine
-   * updates (description, tags, owners) deliberately do not invalidate — they don't change the
-   * count, and over-invalidation would defeat the cache on heavy editing workloads. Note the
-   * commit-ordering trade-off documented at the class level.
+   * reflects state changes within a round-trip rather than waiting out the TTL window. An update
+   * invalidates only when it changes the entity's lifecycle stage, which moves it between
+   * stage-filtered listings. Routine updates (description, tags, owners) deliberately do not —
+   * they don't change the count, and over-invalidation would defeat the cache on heavy editing
+   * workloads. Note the commit-ordering trade-off documented at the class level.
    */
   public static void invalidate(String entityType) {
     if (EntityCacheBypass.isSkipped()) {

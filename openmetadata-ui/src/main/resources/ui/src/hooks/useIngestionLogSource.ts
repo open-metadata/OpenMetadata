@@ -12,15 +12,12 @@
  */
 
 import { useCallback, useMemo } from 'react';
-import {
-  getIngestionLogStreamUrl,
-  useLogStream,
-} from '../components/common/LogViewerModal/useLogStream';
-import { getLogTaskFieldForType } from '../components/ServiceAgents/utils/agentsDataMapper';
 import { PipelineType } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { LogStreamEndReason } from '../generated/entity/services/ingestionPipelines/logStreamEvent';
 import { getIngestionPipelineLogById } from '../rest/ingestionPipelineAPI';
+import { getLogTaskFieldForType } from '../utils/IngestionLogsUtils';
 import { StreamHealth } from '../utils/SseStreamUtils';
+import { getIngestionLogStreamUrl, useLogStream } from './useLogStream';
 import { usePaginatedLiveLog } from './usePaginatedLiveLog';
 
 export interface UseIngestionLogSourceParams {
@@ -32,6 +29,8 @@ export interface UseIngestionLogSourceParams {
   runId?: string;
   // The run's own state says it is still producing output.
   runActive: boolean;
+  // Read this specific finished run's log instead of the latest one.
+  pinnedRunId?: string;
 }
 
 export interface UseIngestionLogSourceResult {
@@ -48,6 +47,37 @@ export interface UseIngestionLogSourceResult {
   streamTruncated: boolean;
   streamError: string | null;
   loadMore: () => void;
+}
+
+function computeAvailability(
+  enabled: boolean,
+  ingestionFqn: string,
+  runId?: string
+): { hasLog: boolean; canStream: boolean } {
+  const hasLog = enabled && Boolean(ingestionFqn);
+  const canStream = hasLog && Boolean(runId);
+
+  return { hasLog, canStream };
+}
+
+function computeLiveState(
+  runActive: boolean,
+  runFinishedOnStream: boolean,
+  canStream: boolean,
+  streamGaveUp: boolean
+): { isLive: boolean; isStreaming: boolean } {
+  const isLive = runActive && !runFinishedOnStream;
+  const isStreaming = canStream && isLive && !streamGaveUp;
+
+  return { isLive, isStreaming };
+}
+
+function pick<T>(
+  showStreamLogs: boolean,
+  streamValue: T,
+  paginatedValue: T
+): T {
+  return showStreamLogs ? streamValue : paginatedValue;
 }
 
 /**
@@ -68,9 +98,13 @@ export const useIngestionLogSource = ({
   ingestionType,
   runId,
   runActive,
+  pinnedRunId,
 }: UseIngestionLogSourceParams): UseIngestionLogSourceResult => {
-  const hasLog = enabled && Boolean(ingestionFqn);
-  const canStream = hasLog && Boolean(runId);
+  const { hasLog, canStream } = computeAvailability(
+    enabled,
+    ingestionFqn,
+    runId
+  );
 
   const streamUrl = useMemo(
     () =>
@@ -78,37 +112,46 @@ export const useIngestionLogSource = ({
     [canStream, ingestionFqn, runId]
   );
 
+  // A pinned run is a finished one: never live, whatever the caller passes.
+  const live = runActive && !pinnedRunId;
+
   // The stream stops itself once it reaches a terminal frame, so it is safe to
   // leave `enabled` on for the whole active run — it will not reconnect after
   // the run finishes.
   const stream = useLogStream({
     streamUrl,
-    enabled: canStream && runActive,
+    enabled: canStream && live,
   });
 
   const runFinishedOnStream =
     stream.endReason === LogStreamEndReason.RunFinished;
   const streamGaveUp = stream.streamDone && !runFinishedOnStream;
 
-  const isLive = runActive && !runFinishedOnStream;
-  const isStreaming = canStream && isLive && !streamGaveUp;
+  const { isLive, isStreaming } = computeLiveState(
+    live,
+    runFinishedOnStream,
+    canStream,
+    streamGaveUp
+  );
 
   const fetchPage = useCallback(
     (cursor?: string) =>
-      getIngestionPipelineLogById(ingestionFqn, cursor).then((res) => ({
-        content: ingestionType
-          ? getLogTaskFieldForType(res.data, ingestionType)
-          : '',
-        after: res.data.after,
-        total: res.data.total,
-      })),
-    [ingestionFqn, ingestionType]
+      getIngestionPipelineLogById(ingestionFqn, cursor, pinnedRunId).then(
+        (res) => ({
+          content: ingestionType
+            ? getLogTaskFieldForType(res.data, ingestionType)
+            : '',
+          after: res.data.after,
+          total: res.data.total,
+        })
+      ),
+    [ingestionFqn, ingestionType, pinnedRunId]
   );
 
   const paginatedEnabled = hasLog && !isStreaming;
   const paginated = usePaginatedLiveLog({
     fetchPage,
-    resetKey: ingestionFqn,
+    resetKey: `${ingestionFqn}/${pinnedRunId ?? ''}`,
     enabled: paginatedEnabled,
     isLive: paginatedEnabled && isLive,
   });
@@ -120,10 +163,10 @@ export const useIngestionLogSource = ({
     Boolean(stream.logs) && (isStreaming || !paginated.logs);
 
   return {
-    logs: showStreamLogs ? stream.logs : paginated.logs,
-    loading: showStreamLogs ? stream.loading : paginated.loading,
+    logs: pick(showStreamLogs, stream.logs, paginated.logs),
+    loading: pick(showStreamLogs, stream.loading, paginated.loading),
     loadingMore: paginated.loadingMore,
-    hasMore: showStreamLogs ? false : paginated.hasMore,
+    hasMore: pick(showStreamLogs, false, paginated.hasMore),
     isLive,
     isStreaming,
     runFinishedOnStream,

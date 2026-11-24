@@ -12,18 +12,15 @@
  */
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import isEmpty from 'lodash/isEmpty';
 import isUndefined from 'lodash/isUndefined';
 import toString from 'lodash/toString';
 import { EntityTags } from 'Models';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
-import { ReactComponent as StarIcon } from '../../../../assets/svg/ic-suggestions.svg';
 import { EntityField } from '../../../../constants/Feeds.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
-import { Operation } from '../../../../generated/entity/policies/policy';
 import {
   ChangeDescription,
   TagLabel,
@@ -44,7 +41,7 @@ import {
   getEntityVersionByField,
   getEntityVersionTags,
 } from '../../../../utils/EntityVersionUtilsPure';
-import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import {
   getTagsWithoutTier,
   getTierTags,
@@ -55,14 +52,9 @@ import testCaseResultTabClassBase, {
   AdditionalComponentInterface,
 } from './TestCaseResultTabClassBase';
 
-export interface ParameterDisplayItem {
-  label?: string;
-  value: string | React.ReactNode;
-}
-
 export interface UseTestCaseResultTabResult {
   testCase: TestCase | undefined;
-  setTestCase: (testCase: TestCase) => void;
+  mergeTestCase: (testCase: TestCase) => void;
   isVersionPage: boolean;
   testDefinition: TestDefinition | undefined;
   showComputeRowCount: boolean;
@@ -73,7 +65,6 @@ export interface UseTestCaseResultTabResult {
   hasEditGlossaryTermsPermission: boolean | undefined;
   withSqlParams: TestCaseParameterValue[];
   withoutSqlParams: TestCaseParameterValue[];
-  parameterItems: ParameterDisplayItem[] | null;
   description: string | undefined;
   descriptionChangeSummaryEntry: ChangeSummaryEntry | undefined;
   updatedTags: TagLabel[];
@@ -87,6 +78,7 @@ export interface UseTestCaseResultTabResult {
   isTabExpanded: boolean;
   AlertComponent: FC | null;
   additionalComponents: AdditionalComponentInterface[];
+  shouldRenderDefaultGraph: boolean;
 }
 
 /**
@@ -100,18 +92,21 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
   const { t } = useTranslation();
   const {
     testCase: testCaseData,
-    setTestCase,
+    mergeTestCase,
     showAILearningBanner,
     testCasePermission,
     isTabExpanded,
   } = useTestCaseStore();
   const { version } = useParams<{ version: string }>();
   const isVersionPage = !isUndefined(version);
+  const isReadOnly = isVersionPage || Boolean(testCaseData?.deleted);
   const [isParameterEdit, setIsParameterEdit] = useState<boolean>(false);
   const [testDefinition, setTestDefinition] = useState<TestDefinition>();
 
   const additionalComponents =
     testCaseResultTabClassBase.getAdditionalComponents(testCaseData);
+  const shouldRenderDefaultGraph =
+    testCaseResultTabClassBase.shouldRenderDefaultGraph(testCaseData);
 
   // The test-case page mounts no GenericProvider, so the description
   // attribution must be fetched directly instead of read from context.
@@ -154,7 +149,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     hasEditTagsPermission,
     hasEditGlossaryTermsPermission,
   } = useMemo(() => {
-    return isVersionPage
+    return isReadOnly
       ? {
           hasEditPermission: false,
           hasEditDescriptionPermission: false,
@@ -162,27 +157,25 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
           hasEditGlossaryTermsPermission: false,
         }
       : {
-          hasEditPermission: testCasePermission?.EditAll,
+          // testCasePermission is undefined until the store's fetch-owner populates it (out
+          // of this file's scope); the `&&` short-circuit preserves the old
+          // `testCasePermission?.EditAll` undefined-when-absent behavior (matching the
+          // sibling fields below), rather than coercing to `false` via a DEFAULT_ENTITY_
+          // PERMISSION fallback.
+          hasEditPermission:
+            testCasePermission &&
+            getDerivedPermissionFlags(testCasePermission).canEditAll,
           hasEditDescriptionPermission:
             testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditDescription
-            ),
+            getDerivedPermissionFlags(testCasePermission).canEditDescription,
           hasEditTagsPermission:
             testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditTags
-            ),
+            getDerivedPermissionFlags(testCasePermission).canEditTags,
           hasEditGlossaryTermsPermission:
             testCasePermission &&
-            getPrioritizedEditPermission(
-              testCasePermission,
-              Operation.EditGlossaryTerms
-            ),
+            getDerivedPermissionFlags(testCasePermission).canEditGlossaryTerms,
         };
-  }, [testCasePermission, isVersionPage, getPrioritizedEditPermission]);
+  }, [testCasePermission, isReadOnly]);
 
   const { withSqlParams, withoutSqlParams } = useMemo(() => {
     const params = testCaseData?.parameterValues ?? [];
@@ -205,7 +198,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
   }, [testCaseData?.parameterValues]);
 
   const handleTagSelection = async (selectedTags: EntityTags[]) => {
-    if (!testCaseData) {
+    if (!testCaseData || isReadOnly) {
       return;
     }
     const tierTag = getTierTags(testCaseData.tags ?? []);
@@ -219,7 +212,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     if (jsonPatch.length) {
       try {
         const res = await updateTestCaseById(testCaseData.id ?? '', jsonPatch);
-        setTestCase(res);
+        mergeTestCase(res);
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -228,7 +221,7 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
 
   const handleDataProductsSave = useCallback(
     async (dataProducts: DataProduct[]) => {
-      if (!testCaseData) {
+      if (!testCaseData || isReadOnly) {
         return;
       }
 
@@ -248,44 +241,46 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
       if (patch.length) {
         try {
           const res = await updateTestCaseById(testCaseData.id ?? '', patch);
-          setTestCase(res);
+          mergeTestCase(res);
         } catch (error) {
           showErrorToast(error as AxiosError);
         }
       }
     },
-    [testCaseData, setTestCase]
+    [testCaseData, isReadOnly, mergeTestCase]
   );
 
   const handleDescriptionChange = useCallback(
     async (description: string) => {
-      if (testCaseData) {
-        const updatedTestCase = {
-          ...testCaseData,
-          description,
-        };
-        const jsonPatch = compare(testCaseData, updatedTestCase);
+      if (!testCaseData || isReadOnly) {
+        return;
+      }
 
-        if (jsonPatch.length) {
-          try {
-            const res = await updateTestCaseById(
-              testCaseData.id ?? '',
-              jsonPatch
-            );
-            setTestCase(res);
-            refetchChangeSummary();
-            showSuccessToast(
-              t('server.update-entity-success', {
-                entity: t('label.test-case'),
-              })
-            );
-          } catch (error) {
-            showErrorToast(error as AxiosError);
-          }
+      const updatedTestCase = {
+        ...testCaseData,
+        description,
+      };
+      const jsonPatch = compare(testCaseData, updatedTestCase);
+
+      if (jsonPatch.length) {
+        try {
+          const res = await updateTestCaseById(
+            testCaseData.id ?? '',
+            jsonPatch
+          );
+          mergeTestCase(res);
+          refetchChangeSummary();
+          showSuccessToast(
+            t('server.update-entity-success', {
+              entity: t('label.test-case'),
+            })
+          );
+        } catch (error) {
+          showErrorToast(error as AxiosError);
         }
       }
     },
-    [testCaseData, updateTestCaseById, setTestCase, refetchChangeSummary]
+    [testCaseData, isReadOnly, mergeTestCase, refetchChangeSummary, t]
   );
 
   const handleCancelParameter = useCallback(
@@ -334,52 +329,9 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     isVersionPage,
   ]);
 
-  const parameterItems = useMemo(() => {
-    const items: ParameterDisplayItem[] = [];
-
-    if (isVersionPage) {
-      return null;
-    }
-
-    if (testCaseData?.useDynamicAssertion) {
-      items.push({
-        value: (
-          <span
-            className="parameter-value-text tw:inline-flex"
-            data-testid="dynamic-assertion">
-            <StarIcon aria-hidden className="tw:h-3 tw:w-3 tw:mr-1 tw:mt-1" />{' '}
-            {t('label.dynamic-assertion')}
-          </span>
-        ),
-      });
-    } else if (!isEmpty(withoutSqlParams)) {
-      withoutSqlParams.forEach((param) => {
-        items.push({
-          label: param.name ?? '',
-          value: param.value ?? '',
-        });
-      });
-    }
-
-    if (showComputeRowCount) {
-      items.push({
-        label: t('label.compute-row-count'),
-        value: computeRowCountDisplay,
-      });
-    }
-
-    return items.length > 0 ? items : null;
-  }, [
-    withoutSqlParams,
-    testCaseData?.useDynamicAssertion,
-    showComputeRowCount,
-    computeRowCountDisplay,
-    isVersionPage,
-  ]);
-
   return {
     testCase: testCaseData,
-    setTestCase,
+    mergeTestCase,
     isVersionPage,
     testDefinition,
     showComputeRowCount,
@@ -390,7 +342,6 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     hasEditGlossaryTermsPermission,
     withSqlParams,
     withoutSqlParams,
-    parameterItems,
     description,
     descriptionChangeSummaryEntry: changeSummary?.['description'],
     updatedTags,
@@ -404,5 +355,6 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
     isTabExpanded,
     AlertComponent,
     additionalComponents,
+    shouldRenderDefaultGraph,
   };
 };

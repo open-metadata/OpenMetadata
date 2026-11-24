@@ -10,18 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Switch, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Toggle, Typography } from '@openmetadata/ui-core-components';
+import { Assets, NoSearch } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import { ColumnsType } from '../../../common/Table/Table.interface';
 
-import { isEmpty } from 'lodash';
+import { isEmpty, isNil } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
+  NO_DATA_PLACEHOLDER,
 } from '../../../../constants/constants';
 import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
 import { TABLE_SCROLL_VALUE } from '../../../../constants/Table.constants';
@@ -35,7 +39,6 @@ import { EntityType, TabSpecificField } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Database } from '../../../../generated/entity/data/database';
 import { DatabaseSchema } from '../../../../generated/entity/data/databaseSchema';
-import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { UsageDetails } from '../../../../generated/type/entityUsage';
 import { Include } from '../../../../generated/type/include';
 import { Paging } from '../../../../generated/type/paging';
@@ -52,12 +55,14 @@ import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsU
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import { getEntityBulkEditPath } from '../../../../utils/EntityPureUtils';
-import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from '../../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
-import { getPrioritizedViewPermission } from '../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { stringToHTML } from '../../../../utils/StringUtils';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -70,9 +75,8 @@ import {
 import { getUsagePercentile } from '../../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DisplayName from '../../../common/DisplayName/DisplayName';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../../common/Table/Table';
+import Table from '../../../common/Table/TableV2';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import { DatabaseSchemaTableProps } from './DatabaseSchemaTable.interface';
@@ -96,20 +100,21 @@ export const DatabaseSchemaTable = ({
 
   const { deleted: isDatabaseDeleted } = data ?? {};
 
+  // Resource-level permission (usePermissionProvider().permissions, not an entity-level
+  // fetch) — `permissions.databaseSchema` is itself OperationPermission-shaped, so the same
+  // named-flag derivation applies. No `deleted` argument: old code never gated this
+  // expression on isDatabaseDeleted (unlike the bulk-edit button below, which explicitly did)
+  // — preserved verbatim rather than unifying the two derivations, since unifying would
+  // silently add deleted-gating to the DisplayName edit affordance.
   const allowEditDisplayNamePermission = useMemo(() => {
     return (
       !isVersionPage &&
-      (permissions.databaseSchema.EditAll ||
-        permissions.databaseSchema.EditDisplayName)
+      getDerivedPermissionFlags(permissions.databaseSchema).canEditDisplayName
     );
   }, [permissions, isVersionPage]);
 
   const viewUsagePermission = useMemo(
-    () =>
-      getPrioritizedViewPermission(
-        permissions.databaseSchema,
-        Operation.ViewUsage
-      ),
+    () => getDerivedPermissionFlags(permissions.databaseSchema).canViewUsage,
     [permissions.databaseSchema]
   );
 
@@ -263,9 +268,11 @@ export const DatabaseSchemaTable = ({
         sorter: getColumnSorter<DatabaseSchema, 'name'>('name'),
         render: (_, record: DatabaseSchema) => (
           <DisplayName
-            displayName={stringToHTML(
+            displayName={renderHighlightedText(
               highlightSearchText(record.displayName, searchValue)
             )}
+            entityDisplayName={record.displayName}
+            entityName={record.name}
             hasEditPermission={allowEditDisplayNamePermission}
             id={record.id ?? ''}
             key={record.id}
@@ -277,7 +284,9 @@ export const DatabaseSchemaTable = ({
                   )
                 : ''
             }
-            name={stringToHTML(highlightSearchText(record.name, searchValue))}
+            name={renderHighlightedText(
+              highlightSearchText(record.name, searchValue)
+            )}
             onEditDisplayName={handleDisplayNameUpdate}
           />
         ),
@@ -297,7 +306,9 @@ export const DatabaseSchemaTable = ({
               key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
               width: 120,
               render: (text: UsageDetails) =>
-                getUsagePercentile(text?.weeklyStats?.percentileRank ?? 0),
+                isNil(text?.weeklyStats?.percentileRank)
+                  ? NO_DATA_PLACEHOLDER
+                  : getUsagePercentile(text.weeklyStats.percentileRank),
             },
           ]
         : []),
@@ -378,25 +389,44 @@ export const DatabaseSchemaTable = ({
       defaultVisibleColumns={DEFAULT_DATABASE_SCHEMA_VISIBLE_COLUMNS}
       extraTableFilters={
         <>
-          <span>
-            <Switch
-              checked={showDeletedSchemas}
+          <span className="tw:inline-flex tw:items-center">
+            <Toggle
               data-testid="show-deleted"
-              onClick={handleShowDeletedSchemas}
+              isSelected={showDeletedSchemas}
+              size="sm"
+              onChange={handleShowDeletedSchemas}
             />
-            <Typography.Text className="m-l-xs">
-              {t('label.deleted')}
-            </Typography.Text>{' '}
+            <Typography className="m-l-xs">{t('label.deleted')}</Typography>
           </span>
           {getBulkEditButton(
-            permissions.databaseSchema.EditAll && !isDatabaseDeleted,
+            getDerivedPermissionFlags(
+              permissions.databaseSchema,
+              isDatabaseDeleted
+            ).canEditAll,
             handleEditTable
           )}
         </>
       }
       loading={isLoading}
       locale={{
-        emptyText: <ErrorPlaceHolder className="m-y-md border-none" />,
+        emptyText: (
+          <div className="tw:relative tw:min-h-70">
+            {searchValue ? (
+              <NoSearchResultsPlaceholder
+                description={t('message.check-spelling-or-try-shorter-term')}
+                icon={<NoSearch />}
+                title={t('label.no-matching-result-plural')}
+              />
+            ) : (
+              <NoDataPlaceholder
+                icon={<Assets />}
+                title={t('message.no-entity-data-available', {
+                  entity: t('label.schema-plural'),
+                })}
+              />
+            )}
+          </div>
+        ),
       }}
       pagination={false}
       rowKey="id"

@@ -1,0 +1,31 @@
+{
+  "abbreviation": "FHIR",
+  "attribution": "HL7 FHIR Release 5 (5.0.0) RDF ontology, published by HL7 International under CC0 1.0 (https://hl7.org/fhir/R5/license.html). HL7 and FHIR are registered trademarks of Health Level Seven International. Redistributed without changes.",
+  "bundled": true,
+  "description": "The FHIR R5 resource and element ontology. It carries no value sets or code systems. Published verbatim.",
+  "id": "fhir",
+  "industry": "healthcare",
+  "layer": "L2",
+  "license": "CC0 1.0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "modules": [
+    {
+      "conceptCount": 1076,
+      "dependencies": [],
+      "description": "FHIR resources, data types and their elements.",
+      "format": "turtle",
+      "id": "fhir-r5",
+      "name": "FHIR R5 ontology",
+      "relationshipCount": 1509,
+      "resourcePath": "rdf/ontology-packs/fhir/fhir-r5.ttl",
+      "selectedByDefault": true,
+      "sha256": "0ced303dc994ef7a05613aca91d911ab463477ad779851a0e65195d39de5497d",
+      "sourceUrl": "https://hl7.org/fhir/R5/fhir.ttl"
+    }
+  ],
+  "name": "HL7 FHIR R5",
+  "publisher": "HL7 International",
+  "sourceUrl": "https://hl7.org/fhir/R5/rdf.html",
+  "standard": "HL7 FHIR Release 5 RDF ontology",
+  "version": "5.0.0"
+}

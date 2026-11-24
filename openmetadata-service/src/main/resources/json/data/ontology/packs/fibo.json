@@ -1,0 +1,31 @@
+{
+  "abbreviation": "FIBO",
+  "attribution": "Financial Industry Business Ontology (FIBO) production quickstart 2026Q2. Copyright 2018-2026 EDM Council Inc. Copyright 2018-2025 Object Management Group, Inc. Licensed under the MIT License. Redistributed without changes.",
+  "bundled": true,
+  "description": "The Financial Industry Business Ontology production release as one merged file, including the OMG Commons and Languages, Countries and Codes terms. Published verbatim.",
+  "id": "fibo",
+  "industry": "finance",
+  "layer": "L2",
+  "license": "MIT",
+  "licenseUrl": "https://opensource.org/licenses/MIT",
+  "modules": [
+    {
+      "conceptCount": 2413,
+      "dependencies": [],
+      "description": "All production FIBO modules merged into one ontology.",
+      "format": "turtle",
+      "id": "fibo-quickstart",
+      "name": "FIBO production quickstart",
+      "relationshipCount": 4455,
+      "resourcePath": "rdf/ontology-packs/fibo/fibo-quickstart.ttl",
+      "selectedByDefault": true,
+      "sha256": "5cd164c787cdfb2d7c1c386bc21bb3410f5963199bc547dc000a70b3c0e195b1",
+      "sourceUrl": "https://spec.edmcouncil.org/fibo/ontology/master/2026Q2/prod.fibo-quickstart.ttl"
+    }
+  ],
+  "name": "FIBO",
+  "publisher": "EDM Council and OMG",
+  "sourceUrl": "https://spec.edmcouncil.org/fibo/",
+  "standard": "Financial Industry Business Ontology, production quickstart",
+  "version": "2026Q2"
+}

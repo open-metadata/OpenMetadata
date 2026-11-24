@@ -12,7 +12,11 @@
 MSSQL constants
 """
 
-DEFAULT_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+# ISO 8601 with the 'T' separator is the only yyyy-mm-dd literal SQL Server parses
+# identically under every SET DATEFORMAT. The space-separated form is read per the
+# session's dateformat for `datetime` columns, so on a dmy server it silently swaps
+# month and day (verified on SQL Server 2022 via pyodbc, pymssql and pytds).
+DEFAULT_DATETIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 MSSQL_DATEFORMAT_DATETIME_MAP = {
     "dmy": "%d-%m-%Y %H:%M:%S",
     "dym": "%d-%Y-%m %H:%M:%S",

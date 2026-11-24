@@ -10,15 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { GraphEvent } from '@antv/g6';
+import classNames from 'classnames';
 import {
   forwardRef,
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react';
-import { useGraphDataBuilder } from './hooks/useGraphData';
+import {
+  findOntologyEdgeByGraphId,
+  useGraphDataBuilder,
+} from './hooks/useGraphData';
 import { useOntologyGraph } from './hooks/useOntologyGraph';
 import {
   fitViewWithMinZoom,
@@ -29,15 +35,19 @@ import {
   OntologyGraphHandle,
   OntologyGraphProps,
 } from './OntologyExplorer.interface';
+import PortOverlay from './PortOverlay.component';
+import { isHierarchicalRelationship } from './utils/relationshipTypeUtils';
 
-function writeNodePositions(
-  container: HTMLDivElement | null,
-  positions: Record<string, { x: number; y: number }>
-) {
-  if (container) {
-    container.dataset.nodePositions = JSON.stringify(positions);
-  }
+interface GhostNode {
+  readonly x: number;
+  readonly y: number;
+  readonly label: string;
 }
+
+type OntologyGraphG6Props = OntologyGraphProps & {
+  /** A placeholder drawn at a canvas point, e.g. where a new concept is being created. */
+  readonly ghostNode?: GhostNode;
+};
 
 function writeSearchHighlightIds(
   container: HTMLDivElement | null,
@@ -56,7 +66,9 @@ function writeSearchHighlightIds(
 function writeEdges(
   container: HTMLDivElement | null,
   edges: ReadonlyArray<{
+    edgeKind?: string;
     from: string;
+    provenance?: string;
     to: string;
     relationType: string;
     inverseRelationType?: string;
@@ -68,6 +80,8 @@ function writeEdges(
         from: e.from,
         to: e.to,
         relationType: e.relationType,
+        ...(e.edgeKind ? { edgeKind: e.edgeKind } : {}),
+        ...(e.provenance ? { provenance: e.provenance } : {}),
         ...(e.inverseRelationType
           ? { inverseRelationType: e.inverseRelationType }
           : {}),
@@ -85,7 +99,21 @@ function writeCardinalityMap(
   }
 }
 
-const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
+function writeFitViewInProgress(
+  container: HTMLDivElement | null,
+  isInProgress: boolean
+) {
+  if (!container) {
+    return;
+  }
+  if (isInProgress) {
+    container.dataset.fitViewInProgress = 'true';
+  } else {
+    delete container.dataset.fitViewInProgress;
+  }
+}
+
+const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphG6Props>(
   (
     {
       nodes: inputNodes,
@@ -99,17 +127,47 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       explorationMode = 'model',
       hierarchyCombos,
       graphSearchHighlight = null,
+      conflictEdgeKeys,
       focusNodeId,
       onNodeClick,
       onNodeDoubleClick,
       onPaneClick,
+      onCanvasDoubleClick,
+      onEdgeClick,
       onScrollNearEdge,
       nodePositions,
       relationTypes,
+      relationColors,
+      relationTypeGroups,
+      canCreateRelationType,
+      studioMode,
+      keepCanvasOnAdd,
+      isAuthoringMode,
+      isEditMode,
+      onCreateRelation,
+      checkRelation,
+      ghostNode,
     },
     ref
   ) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const fitViewSequenceRef = useRef(0);
+    const nodeLabels = useMemo(
+      () =>
+        Object.fromEntries(
+          inputNodes.map((node) => [node.id, node.originalLabel ?? node.label])
+        ),
+      [inputNodes]
+    );
+    const hierarchicalRelationTypes = useMemo(
+      () =>
+        new Set(
+          (relationTypes ?? [])
+            .filter(isHierarchicalRelationship)
+            .map((relationType) => relationType.name)
+        ),
+      [relationTypes]
+    );
 
     const [clickedEdgeId, setClickedEdgeId] = useState<string | null>(null);
 
@@ -138,46 +196,44 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       glossaryColorMap,
       hierarchyCombos: hierarchyCombos ?? [],
       graphSearchHighlight,
+      conflictEdgeKeys,
+      isEditMode: Boolean(isAuthoringMode || isEditMode),
       layoutType,
       nodePositions,
       relationTypes,
+      relationColors,
+      studioMode,
     });
 
-    const {
-      graphRef,
-      extractNodePositions,
-      suppressEdgeCheck,
-      emitPagePositions,
-    } = useOntologyGraph({
-      containerRef,
-      graphData,
-      inputNodes,
-      mergedEdgesList,
-      explorationMode,
-      settings,
-      layoutType,
-      focusNodeId,
-      selectedNodeId,
-      expandedTermIds,
-      dataSignature,
-      onNodeClick,
-      onNodeDoubleClick,
-      onPaneClick,
-      onScrollNearEdge,
-      setClickedEdgeId,
-      neighborSet,
-      glossaryColorMap,
-      computeNodeColor,
-      assetToTermMap,
-      onPositionsReady: (positions) => {
-        writeNodePositions(containerRef.current, positions);
-        if (containerRef.current && graphRef.current) {
-          containerRef.current.dataset.graphZoom = String(
-            graphRef.current.getZoom()
-          );
-        }
-      },
-    });
+    const { graphRef, extractNodePositions, suppressEdgeCheck } =
+      useOntologyGraph({
+        containerRef,
+        graphData,
+        nodePositions,
+        inputNodes,
+        mergedEdgesList,
+        explorationMode,
+        settings,
+        layoutType,
+        focusNodeId,
+        selectedNodeId,
+        expandedTermIds,
+        dataSignature,
+        onNodeClick,
+        onNodeDoubleClick,
+        onPaneClick,
+        onCanvasDoubleClick,
+        onScrollNearEdge,
+        setClickedEdgeId,
+        neighborSet,
+        glossaryColorMap,
+        computeNodeColor,
+        assetToTermMap,
+        hierarchicalRelationTypes,
+        isEditMode,
+        studioMode,
+        keepCanvasOnAdd,
+      });
 
     useImperativeHandle(
       ref,
@@ -187,10 +243,16 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           if (!graph) {
             return;
           }
-          writeNodePositions(containerRef.current, {});
+          const sequence = ++fitViewSequenceRef.current;
           suppressEdgeCheck(800);
-          await fitViewWithMinZoom(graph, 300);
-          emitPagePositions(graph);
+          writeFitViewInProgress(containerRef.current, true);
+          try {
+            await fitViewWithMinZoom(graph, 300);
+          } finally {
+            if (fitViewSequenceRef.current === sequence) {
+              writeFitViewInProgress(containerRef.current, false);
+            }
+          }
         },
         zoomIn: () => {
           suppressEdgeCheck();
@@ -247,6 +309,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           a.click();
           URL.revokeObjectURL(url);
         },
+        clearEdgeSelection: () => setClickedEdgeId(null),
       }),
       [explorationMode, extractNodePositions, graphRef, suppressEdgeCheck]
     );
@@ -265,14 +328,67 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
     }, [mergedEdgesList]);
 
     useEffect(() => {
+      const selectedEdge = findOntologyEdgeByGraphId(
+        mergedEdgesList,
+        clickedEdgeId
+      );
+      onEdgeClick?.(selectedEdge);
+    }, [clickedEdgeId, mergedEdgesList, onEdgeClick]);
+
+    useEffect(() => {
       writeCardinalityMap(containerRef.current, cardinalityLabelMap);
     }, [cardinalityLabelMap]);
 
+    const [ghostAt, setGhostAt] = useState<{ x: number; y: number }>();
+    // Follows pan and zoom, since the ghost is a DOM element over the canvas.
+    useEffect(() => {
+      const graph = graphRef.current;
+      if (!ghostNode || !graph) {
+        setGhostAt(undefined);
+
+        return undefined;
+      }
+      const place = () => {
+        const [x, y] = graph.getViewportByCanvas([ghostNode.x, ghostNode.y]);
+        setGhostAt({ x, y });
+      };
+      place();
+      graph.on(GraphEvent.AFTER_TRANSFORM, place);
+
+      return () => {
+        graph.off(GraphEvent.AFTER_TRANSFORM, place);
+      };
+    }, [ghostNode, graphRef]);
+
     return (
-      <div
-        className="tw:w-full tw:h-full tw:relative ontology-g6-container"
-        ref={containerRef}
-      />
+      <div className="tw:relative tw:h-full tw:w-full">
+        <div
+          className="tw:w-full tw:h-full tw:relative ontology-g6-container"
+          ref={containerRef}
+        />
+        {ghostNode && ghostAt ? (
+          <div
+            aria-hidden="true"
+            className={classNames(
+              'tw:pointer-events-none tw:absolute tw:z-5 tw:-translate-x-1/2 tw:-translate-y-1/2',
+              'tw:rounded-lg tw:border tw:border-dashed tw:border-brand tw:bg-brand-primary tw:px-4 tw:py-2',
+              'tw:font-body tw:text-sm tw:font-medium tw:text-brand-secondary'
+            )}
+            data-testid="ontology-ghost-node"
+            style={{ left: ghostAt.x, top: ghostAt.y }}>
+            {ghostNode.label}
+          </div>
+        ) : null}
+        <PortOverlay
+          canCreateRelationType={canCreateRelationType}
+          checkRelation={checkRelation}
+          containerRef={containerRef}
+          isEditMode={Boolean(isEditMode)}
+          nodeLabels={nodeLabels}
+          relationTypeGroups={relationTypeGroups}
+          onCreateRelation={onCreateRelation ?? (() => Promise.resolve())}
+        />
+      </div>
     );
   }
 );

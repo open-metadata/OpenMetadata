@@ -12,7 +12,7 @@
  */
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
-import { ChevronRight, RefreshCw01 } from '@untitledui/icons';
+import { ChevronRight, DotsGrid, RefreshCw01 } from '../../../icons';
 import type {
   ComponentPropsWithRef,
   ComponentType,
@@ -65,6 +65,18 @@ export interface TreeProps<T extends object>
    *
    * When `onItemMove` is set it takes precedence over a manually passed
    * `dragAndDropHooks` prop.
+   *
+   * **Each draggable `Tree.ItemContent` must render a `Tree.DragButton`** (or a
+   * raw `<Button slot="drag">`). React Aria's Tree always marks rows as
+   * `hasDragButton: true`, so keyboard and screen-reader drag initiation is
+   * delivered through the `drag` slot via `ButtonContext` and is consumed
+   * *only* if such a button is rendered. Without it, rows are natively
+   * `draggable` (mouse drag works) but Enter/Space keyboard initiation does
+   * nothing and `onItemMove` can never be fired without a pointer — a WCAG
+   * 2.1.1 (Keyboard operable) failure. In non-production builds React Aria
+   * also emits a dev warning per draggable item: *"Draggable items in a Tree
+   * must contain a `<Button slot="drag">` element so that keyboard and screen
+   * reader users can drag them."*
    */
   onItemMove?: (event: TreeItemMoveEvent) => void;
   /**
@@ -148,8 +160,8 @@ const TreeItemComponent = <T extends object>({
           state.isDisabled && 'tw:opacity-50 tw:cursor-not-allowed',
           state.isFocusVisible &&
             'tw:outline-2 tw:-outline-offset-2 tw:outline-brand-300',
-          'data-[dragging]:tw:opacity-50 data-[dragging]:tw:outline-2 data-[dragging]:tw:-outline-offset-2 data-[dragging]:tw:outline-brand-300',
-          'data-[drop-target]:tw:bg-brand-primary_alt data-[drop-target]:tw:outline-2 data-[drop-target]:tw:-outline-offset-2 data-[drop-target]:tw:outline-brand-300',
+          'tw:data-[dragging]:opacity-50 tw:data-[dragging]:outline-2 tw:data-[dragging]:-outline-offset-2 tw:data-[dragging]:outline-brand-300',
+          'tw:data-[drop-target]:bg-brand-primary tw:data-[drop-target]:outline-2 tw:data-[drop-target]:-outline-offset-2 tw:data-[drop-target]:outline-brand-300',
           typeof className === 'function' ? className(state) : className
         )
       }>
@@ -184,11 +196,96 @@ const TreeExpandButton = ({ className, ...props }: TreeExpandButtonProps) => {
           className
         )
       }
+      data-testid="tree-expand-btn"
       slot="chevron">
       <ChevronRight
         aria-hidden="true"
         className="tw:w-3.5 tw:h-3.5 tw:group-data-expanded/tree-item:rotate-90 tw:transition-transform tw:duration-200"
       />
+    </AriaButton>
+  );
+};
+
+// ---- TreeDragButton ----------------------------------------------------
+
+export interface TreeDragButtonProps
+  extends Omit<
+    ComponentPropsWithRef<typeof AriaButton>,
+    'slot' | 'className' | 'children'
+  > {
+  /** Additional CSS class name. */
+  className?: string;
+  /**
+   * Required accessible label describing the drag action (e.g. "Move").
+   * React Aria's `drag` slot provides no default label, so consumers must
+   * supply one — without it the visible grip icon is unlabeled for screen
+   * readers.
+   */
+  'aria-label': string;
+  /**
+   * Optional grip icon rendered inside the button. Defaults to `DotsGrid`.
+   * The icon is rendered with `aria-hidden="true"` so it is removed from the
+   * accessibility tree, leaving the `aria-label` as the screen-reader name.
+   */
+  icon?: ComponentType<
+    Pick<HTMLAttributes<HTMLOrSVGElement>, 'className' | 'aria-hidden'>
+  >;
+}
+
+/**
+ * An accessible drag handle button for use inside `Tree.ItemContent` when the
+ * parent `Tree` has `onItemMove` (or an equivalent `dragAndDropHooks`) wired.
+ * Renders as a React Aria `<Button slot="drag">`, the affordance React Aria's
+ * Tree requires for keyboard and screen-reader users to *initiate* a
+ * drag-and-drop reorder: pressing Enter or Space while focused on this button
+ * starts a keyboard drag session (a live region announces the
+ * drop/cancel instructions, then Arrow keys navigate to a drop target and a
+ * second Enter drops, firing `onItemMove`).
+ *
+ * Without this button the row is still natively `draggable` for mouse users,
+ * but React Aria hardcodes `hasDragButton: true` for Tree rows — the Enter /
+ * virtual-click handlers are attached to the `drag` slot via `ButtonContext`,
+ * *not* to the row itself — so keyboard-only and screen-reader users cannot
+ * start a drag.
+ *
+ * Pass an `aria-label` (e.g. "Move" via your app's i18n hook) so screen
+ * readers announce the button's purpose. The default grip icon (`DotsGrid`)
+ * is `aria-hidden`.
+ *
+ * @example
+ * ```tsx
+ * <Tree onItemMove={handleMove}>
+ *   <Tree.Item id="a" textValue="A">
+ *     <Tree.ItemContent>
+ *       <Tree.DragButton aria-label="Move" />
+ *       A
+ *     </Tree.ItemContent>
+ *   </Tree.Item>
+ * </Tree>
+ * ```
+ */
+const TreeDragButton = ({
+  className,
+  icon: Icon = DotsGrid,
+  ...props
+}: TreeDragButtonProps) => {
+  return (
+    <AriaButton
+      // `slot="drag"` must always win, so it's placed last; consumers can still
+      // override `data-testid` and any other DOM props via `...props`.
+      data-testid="tree-drag-btn"
+      {...props}
+      className={(state) =>
+        cx(
+          'tw:flex tw:items-center tw:justify-center tw:w-4 tw:h-4 tw:shrink-0',
+          'tw:rounded tw:text-fg-quaternary tw:cursor-grab',
+          'tw:transition-colors tw:duration-200 tw:ease-in-out',
+          state.isFocusVisible && 'tw:outline-2 tw:outline-brand-300',
+          className
+        )
+      }
+      slot="drag">
+      <Icon aria-hidden="true" className="tw:w-4 tw:h-4" />
     </AriaButton>
   );
 };
@@ -207,9 +304,11 @@ export interface TreeItemContentProps {
   className?: string;
   /**
    * Optional icon component rendered between the chevron and the label.
-   * Accepts any `@untitledui/icons`-compatible component.
+   * Accepts any icon component from `@openmetadata/ui-core-components/icons`.
    */
-  icon?: ComponentType<HTMLAttributes<HTMLOrSVGElement>>;
+  icon?: ComponentType<
+    Pick<HTMLAttributes<HTMLOrSVGElement>, 'className' | 'aria-hidden'>
+  >;
   /** Additional CSS class name applied to the icon. */
   iconClassName?: string;
   /**
@@ -231,6 +330,17 @@ export interface TreeItemContentProps {
    * Defaults to `false`.
    */
   showGuideLines?: boolean;
+  /**
+   * Pixels of indentation added per tree level. Defaults to `22`.
+   * Increase to align nested expand icons with parent checkboxes.
+   */
+  indentPerLevel?: number;
+  /**
+   * Caps the visual indent at this tree level. Items deeper than
+   * `maxIndentLevel` render at the same indentation as that level.
+   * Useful for flat glossary views where all terms share one indent.
+   */
+  maxIndentLevel?: number;
 }
 
 const TreeItemContentComponent = ({
@@ -241,6 +351,8 @@ const TreeItemContentComponent = ({
   showExpandIcon = true,
   showGuideLines = false,
   hasChildItems: hasChildItemsProp,
+  indentPerLevel = 22,
+  maxIndentLevel,
 }: TreeItemContentProps) => {
   return (
     <AriaTreeItemContent>
@@ -254,15 +366,21 @@ const TreeItemContentComponent = ({
               'tw:relative tw:flex tw:items-center tw:gap-3 tw:py-1.5 tw:pr-1.5',
               'tw:rounded-md tw:text-sm tw:font-medium tw:text-secondary',
               'tw:hover:bg-primary_hover',
-              'tw:group-selected/tree-item:bg-brand-primary_alt tw:group-selected/tree-item:text-brand-secondary',
+              'tw:group-selected/tree-item:bg-brand-primary tw:group-selected/tree-item:text-brand-secondary',
               className
             )}
-            style={{ marginLeft: `${(level - 1) * 16 + 2}px` }}>
+            style={{
+              marginLeft: `${
+                (Math.min(level, maxIndentLevel ?? level) - 1) *
+                  indentPerLevel +
+                2
+              }px`,
+            }}>
             {showGuideLines && level >= 2 && (
               <span
                 aria-hidden="true"
-                className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-gray-blue-100 tw:pointer-events-none"
-                style={{ left: '-10px' }}
+                className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-utility-gray-300 tw:pointer-events-none"
+                style={{ left: `${-Math.round(indentPerLevel / 2)}px` }}
               />
             )}
             {showExpandIcon && (
@@ -371,7 +489,21 @@ const TreeHeaderComponent = ({ className, children }: TreeHeaderProps) => {
  * Pass `onItemMove` to enable drag-and-drop without importing useDragAndDrop:
  * ```tsx
  * <Tree onItemMove={({ sourceKey, targetKey, dropPosition }) => { ... }}>
+ *   <Tree.Item id="a" textValue="A">
+ *     <Tree.ItemContent>
+ *       <Tree.DragButton aria-label="Move" />
+ *       A
+ *     </Tree.ItemContent>
+ *   </Tree.Item>
+ * </Tree>
  * ```
+ *
+ * When `onItemMove` is set, **every** `Tree.ItemContent` in that Tree must
+ * render a `Tree.DragButton` (or a raw `<Button slot="drag">`). Without it
+ * the row is mouse-draggable but keyboard and screen-reader users cannot
+ * initiate a reorder — React Aria hardcodes `hasDragButton: true` for Tree
+ * rows and only delivers the Enter/virtual-click drag-start handlers through
+ * the `drag` slot. See {@link TreeDragButton}.
  *
  * Pass `showGuideLines` on `Tree.ItemContent` to render vertical indent lines:
  * ```tsx
@@ -397,6 +529,7 @@ const _Tree = TreeRoot as typeof TreeRoot & {
   Section: typeof TreeSectionComponent;
   Header: typeof TreeHeaderComponent;
   ExpandButton: typeof TreeExpandButton;
+  DragButton: typeof TreeDragButton;
 };
 
 _Tree.Item = TreeItemComponent;
@@ -405,9 +538,11 @@ _Tree.LoadMoreItem = TreeLoadMoreItemComponent;
 _Tree.Section = TreeSectionComponent;
 _Tree.Header = TreeHeaderComponent;
 _Tree.ExpandButton = TreeExpandButton;
+_Tree.DragButton = TreeDragButton;
 
 export {
   _Tree as Tree,
+  TreeDragButton,
   TreeExpandButton,
   TreeHeaderComponent as TreeHeader,
   TreeItemComponent as TreeItem,

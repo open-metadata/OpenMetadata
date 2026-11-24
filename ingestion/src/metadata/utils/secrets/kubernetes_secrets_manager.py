@@ -17,7 +17,6 @@ import base64
 import os
 import traceback
 from abc import ABC
-from typing import Optional
 
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
@@ -63,7 +62,7 @@ def _() -> None:
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.airflow.value)
-def _() -> Optional[KubernetesCredentials]:  # noqa: UP045
+def _() -> KubernetesCredentials | None:
     from airflow.configuration import conf
 
     namespace = conf.get(
@@ -82,7 +81,7 @@ def _() -> Optional[KubernetesCredentials]:  # noqa: UP045
 
 
 @secrets_manager_client_loader.add(SecretsManagerClientLoader.env.value)
-def _() -> Optional[KubernetesCredentials]:  # noqa: UP045
+def _() -> KubernetesCredentials | None:
     namespace = os.getenv("KUBERNETES_NAMESPACE", _get_current_namespace())
     in_cluster = os.getenv("KUBERNETES_IN_CLUSTER", "false").lower() == "true"
     kubeconfig_path = os.getenv("KUBERNETES_KUBECONFIG_PATH")
@@ -151,7 +150,7 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
             logger.error(f"Could not get the secret value of {secret_id} due to [{exc}]")
             raise exc  # noqa: TRY201
 
-    def load_credentials(self) -> Optional[dict]:  # noqa: UP045
+    def load_credentials(self) -> dict | None:
         """Load the provider credentials based on the loader type"""
         try:
             loader_fn = secrets_manager_client_loader.registry.get(self.loader.value)

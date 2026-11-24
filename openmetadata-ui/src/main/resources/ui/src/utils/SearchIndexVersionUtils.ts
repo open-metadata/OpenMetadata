@@ -28,6 +28,9 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
   isEndsWithField,
+  isNestedNamedEntityWithTagsDiff,
+  isTagLabelDiff,
+  parseVersionDiffArray,
 } from './EntityDiffPureUtils';
 import { getTextDiff } from './EntityDiffUtils';
 import type { TagLabelWithStatus } from './EntityVersionUtils.interface';
@@ -59,11 +62,13 @@ const handleFieldTagChangeDiff = (
   fieldList: SearchIndex['fields'] = [],
   changedFieldName?: string
 ) => {
-  const oldTags: Array<TagLabel> = JSON.parse(
-    getChangedEntityOldValue(fieldsDiff) ?? '[]'
+  const oldTags = parseVersionDiffArray<TagLabel>(
+    getChangedEntityOldValue(fieldsDiff),
+    isTagLabelDiff
   );
-  const newTags: Array<TagLabel> = JSON.parse(
-    getChangedEntityNewValue(fieldsDiff) ?? '[]'
+  const newTags = parseVersionDiffArray<TagLabel>(
+    getChangedEntityNewValue(fieldsDiff),
+    isTagLabelDiff
   );
 
   fieldList?.forEach((i) => {
@@ -71,7 +76,7 @@ const handleFieldTagChangeDiff = (
       const flag: { [x: string]: boolean } = {};
       const uniqueTags: Array<TagLabelWithStatus> = [];
       const tagsDiff = getTagsDiff(oldTags, newTags);
-      [...tagsDiff, ...(i.tags as Array<TagLabelWithStatus>)].forEach(
+      [...tagsDiff, ...((i.tags ?? []) as Array<TagLabelWithStatus>)].forEach(
         (elem: TagLabelWithStatus) => {
           if (!flag[elem.tagFQN]) {
             flag[elem.tagFQN] = true;
@@ -86,35 +91,39 @@ const handleFieldTagChangeDiff = (
   return fieldList;
 };
 
+const formatAddedFieldData = (
+  arr: SearchIndex['fields'],
+  field: NonNullable<SearchIndex['fields']>[number]
+) => {
+  arr?.forEach((i) => {
+    if (isEqual(i.name, field.name)) {
+      i.tags = field.tags?.map((tag) => ({ ...tag, added: true }));
+      i.description = getTextDiff('', field.description ?? '');
+      i.dataTypeDisplay = getTextDiff('', field.dataTypeDisplay ?? '');
+      i.name = getTextDiff('', field.name);
+      i.displayName = getTextDiff('', field.displayName ?? '');
+    }
+  });
+};
+
 const handleFieldDiffAdded = (
   fieldsDiff: EntityDiffProps,
   fieldList: SearchIndex['fields'] = []
 ) => {
-  const newField: SearchIndex['fields'] = JSON.parse(
-    fieldsDiff.added?.newValue ?? '[]'
-  );
+  const newField = parseVersionDiffArray<
+    NonNullable<SearchIndex['fields']>[number]
+  >(fieldsDiff.added?.newValue, isNestedNamedEntityWithTagsDiff);
   newField?.forEach((field) => {
-    const formatFieldData = (arr: SearchIndex['fields']) => {
-      arr?.forEach((i) => {
-        if (isEqual(i.name, field.name)) {
-          i.tags = field.tags?.map((tag) => ({ ...tag, added: true }));
-          i.description = getTextDiff('', field.description ?? '');
-          i.dataTypeDisplay = getTextDiff('', field.dataTypeDisplay ?? '');
-          i.name = getTextDiff('', field.name);
-          i.displayName = getTextDiff('', field.displayName ?? '');
-        }
-      });
-    };
-    formatFieldData(fieldList);
+    formatAddedFieldData(fieldList, field);
   });
 
   return fieldList;
 };
 
 const getDeletedFields = (fieldsDiff: EntityDiffProps) => {
-  const newField: SearchIndex['fields'] = JSON.parse(
-    fieldsDiff.deleted?.oldValue ?? '[]'
-  );
+  const newField = parseVersionDiffArray<
+    NonNullable<SearchIndex['fields']>[number]
+  >(fieldsDiff.deleted?.oldValue, isNestedNamedEntityWithTagsDiff);
 
   return newField?.map((field) => ({
     ...field,
@@ -159,7 +168,7 @@ export const getUpdatedSearchIndexFields = (
       );
     } else {
       const fieldsDiff = getDiffByFieldName(
-        EntityField.TASKS,
+        EntityField.FIELDS,
         changeDescription,
         true
       );

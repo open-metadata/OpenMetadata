@@ -76,6 +76,32 @@ jest.mock('@melloware/react-logviewer', () => ({
 }));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: ({
+    children,
+    onPress,
+    className,
+    'data-testid': testId,
+    'aria-label': ariaLabel,
+    'aria-pressed': ariaPressed,
+    onClick,
+  }: {
+    children?: ReactNode;
+    onPress?: () => void;
+    className?: string;
+    'data-testid'?: string;
+    'aria-label'?: string;
+    'aria-pressed'?: boolean;
+    onClick?: () => void;
+  }) => (
+    <button
+      aria-label={ariaLabel}
+      aria-pressed={ariaPressed}
+      className={className}
+      data-testid={testId}
+      onClick={onClick ?? onPress}>
+      {children}
+    </button>
+  ),
   ModalOverlay: ({
     children,
     isOpen,
@@ -138,7 +164,7 @@ jest.mock('react-aria-components', () => ({
   ),
 }));
 
-jest.mock('@untitledui/icons', () => ({
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
   AlignLeft: () => <span data-testid="icon-wrap" />,
   ArrowDown: () => <span data-testid="icon-follow" />,
   ChevronDownDouble: () => <span data-testid="icon-jump-to-end" />,
@@ -147,7 +173,7 @@ jest.mock('@untitledui/icons', () => ({
   File02: () => <span data-testid="icon-file" />,
   Maximize01: () => <span data-testid="icon-maximize" />,
   Minimize01: () => <span data-testid="icon-minimize" />,
-  SearchMd: () => <span data-testid="icon-search" />,
+  Search: () => <span data-testid="icon-search" />,
 }));
 
 jest.mock('../../../hooks/useClipBoard', () => ({

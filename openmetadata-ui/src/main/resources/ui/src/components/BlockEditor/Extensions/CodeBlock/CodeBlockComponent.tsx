@@ -11,35 +11,22 @@
  *  limitations under the License.
  */
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Button, Tooltip } from 'antd';
-import { FC, useCallback } from 'react';
+import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../../assets/svg/icon-copy.svg';
-import { useClipboard } from '../../../../hooks/useClipBoard';
+import CopyButton from '../../../common/CopyButton/CopyButton';
 
 const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
   const { t } = useTranslation();
-  const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
-
-  const handleCopy = useCallback(async () => {
-    await onCopyToClipBoard(node.textContent);
-  }, [node, onCopyToClipBoard]);
 
   return (
-    <NodeViewWrapper as="pre" className="relative code-block">
-      <NodeViewContent as="code" />
-      <span className="code-copy-button" data-copied={hasCopied}>
-        <Tooltip
-          open={hasCopied || undefined}
-          title={hasCopied ? t('label.copied') : t('label.copy')}>
-          <Button
-            data-testid="code-block-copy-icon"
-            icon={<CopyIcon height={24} width={24} />}
-            type="text"
-            onClick={handleCopy}
-          />
-        </Tooltip>
-      </span>
+    <NodeViewWrapper as="pre" className="tw:group tw:relative code-block">
+      <NodeViewContent<'code'> as="code" />
+      <CopyButton
+        className="tw:absolute tw:top-1.5 tw:right-1.5 tw:opacity-0 tw:group-hover:opacity-60 tw:hover:opacity-100 tw:focus-visible:opacity-100"
+        testId="code-block-copy-icon"
+        tooltip={t('label.copy')}
+        value={node.textContent}
+      />
     </NodeViewWrapper>
   );
 };

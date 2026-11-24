@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
+import { Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -64,9 +64,9 @@ const DescriptionTaskFromTask: FC<DescriptionTaskFromTaskProps> = ({
     if (!oldValue && !newValue) {
       return (
         <div className="p-xs rounded-4 m-y-xss m-b-sm">
-          <Typography.Text className="text-grey-muted">
+          <Typography color="secondary">
             {t('label.no-entity', { entity: t('label.description') })}
-          </Typography.Text>
+          </Typography>
         </div>
       );
     } else {
@@ -88,9 +88,9 @@ const DescriptionTaskFromTask: FC<DescriptionTaskFromTaskProps> = ({
 
     return !newDescription && !currentDescription ? (
       <div className="no-description-suggestion-card w-full">
-        <Typography.Text className="text-grey-muted p-xs">
+        <Typography className="p-xs" color="secondary">
           {t('label.no-entity', { entity: t('label.suggestion') })}
-        </Typography.Text>
+        </Typography>
       </div>
     ) : (
       <DiffViewNew
@@ -101,6 +101,41 @@ const DescriptionTaskFromTask: FC<DescriptionTaskFromTaskProps> = ({
     );
   };
 
+  const renderRequestDescription = () => (
+    <div data-testid="request-description">
+      {isTaskActionEdit && hasEditAccess ? (
+        <RichTextEditor
+          initialValue={newDescription ?? ''}
+          placeHolder={t('label.add-entity', {
+            entity: t('label.description'),
+          })}
+          style={{ marginTop: '0px' }}
+          onTextChange={onChange}
+        />
+      ) : (
+        <div className="d-flex rounded-4 m-b-md">
+          {getSuggestedDescriptionDiff()}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderUpdateDescription = () => (
+    <div data-testid="update-description">
+      {isTaskActionEdit && hasEditAccess ? (
+        <DescriptionTabs
+          suggestion={newDescription ?? ''}
+          value={currentDescription ?? ''}
+          onChange={onChange}
+        />
+      ) : (
+        <div className={classNames('d-flex  rounded-4', customClassName)}>
+          {getSuggestedDescriptionDiff()}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="w-full" data-testid="task-description-tabs">
       <Fragment>
@@ -108,44 +143,9 @@ const DescriptionTaskFromTask: FC<DescriptionTaskFromTaskProps> = ({
           getDiffView()
         ) : (
           <div data-testid="description-task">
-            {isRequestDescription && (
-              <div data-testid="request-description">
-                {isTaskActionEdit && hasEditAccess ? (
-                  <RichTextEditor
-                    initialValue={newDescription ?? ''}
-                    placeHolder={t('label.add-entity', {
-                      entity: t('label.description'),
-                    })}
-                    style={{ marginTop: '0px' }}
-                    onTextChange={onChange}
-                  />
-                ) : (
-                  <div className="d-flex rounded-4 m-b-md">
-                    {getSuggestedDescriptionDiff()}
-                  </div>
-                )}
-              </div>
-            )}
+            {isRequestDescription && renderRequestDescription()}
 
-            {isUpdateDescription && (
-              <div data-testid="update-description">
-                {isTaskActionEdit && hasEditAccess ? (
-                  <DescriptionTabs
-                    suggestion={newDescription ?? ''}
-                    value={currentDescription ?? ''}
-                    onChange={onChange}
-                  />
-                ) : (
-                  <div
-                    className={classNames(
-                      'd-flex  rounded-4',
-                      customClassName
-                    )}>
-                    {getSuggestedDescriptionDiff()}
-                  </div>
-                )}
-              </div>
-            )}
+            {isUpdateDescription && renderUpdateDescription()}
           </div>
         )}
       </Fragment>

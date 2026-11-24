@@ -11,25 +11,19 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Button,
-  Tooltip,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Copy01 } from '@untitledui/icons';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import CopyButton from '../../../components/common/CopyButton/CopyButton';
 import type { TestCase } from '../../../generated/tests/testCase';
-import { stringToHTML } from '../../../utils/StringUtils';
+import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import type { UseTestCaseDetailPageResult } from './useTestCaseDetailPage';
 
 interface TestCaseHeaderTitleProps {
+  deleted?: TestCase['deleted'];
   displayName: UseTestCaseDetailPageResult['displayName'];
-  hasCopied: boolean;
   testCaseName: TestCase['name'];
-  onCopy: () => Promise<void>;
 }
 
 const breakableTooltipText = (text?: ReactNode) => (
@@ -37,10 +31,9 @@ const breakableTooltipText = (text?: ReactNode) => (
 );
 
 const TestCaseHeaderTitle = ({
+  deleted,
   displayName,
-  hasCopied,
   testCaseName,
-  onCopy,
 }: TestCaseHeaderTitleProps) => {
   const { t } = useTranslation();
 
@@ -57,11 +50,11 @@ const TestCaseHeaderTitle = ({
             className="tw:m-0 tw:min-w-0 tw:truncate tw:text-primary tw:text-left"
             data-testid="entity-header-display-name"
             ellipsis={{
-              tooltip: breakableTooltipText(stringToHTML(displayName)),
+              tooltip: breakableTooltipText(renderHighlightedText(displayName)),
             }}
             size="text-lg"
             weight="bold">
-            {stringToHTML(displayName)}
+            {renderHighlightedText(displayName)}
           </Typography>
         )}
         <Typography
@@ -80,27 +73,18 @@ const TestCaseHeaderTitle = ({
           {testCaseName}
         </Typography>
       </Box>
-      <Tooltip
-        placement="top"
-        title={
-          hasCopied
-            ? t('message.link-copy-to-clipboard')
-            : t('label.copy-item', {
-                item: t('label.url-uppercase'),
-              })
-        }>
-        <Button
-          aria-label={t('label.copy-item', {
-            item: t('label.url-uppercase'),
-          })}
-          color="tertiary"
-          data-testid="entity-header-copy-button"
-          iconLeading={Copy01}
-          size="xs"
-          type="button"
-          onClick={onCopy}
-        />
-      </Tooltip>
+      {deleted && (
+        <span
+          className="deleted-badge-button tw:shrink-0"
+          data-testid="deleted-badge">
+          {t('label.deleted')}
+        </span>
+      )}
+      <CopyButton
+        testId="entity-header-copy-button"
+        tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
+        value={globalThis.location.href}
+      />
     </Box>
   );
 };

@@ -32,7 +32,7 @@ import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import i18n from './i18next/LocalUtil';
 import {
   LazyCommonWidgets,
-  LazyDomainLabelV2,
+  LazyDomainLabel,
   LazyOwnerLabelV2,
 } from './LazyTagComponents';
 import { getTermQuery } from './SearchPureUtils';
@@ -126,7 +126,7 @@ class TagClassBase {
     return React.createElement(
       'div',
       { className: 'd-flex flex-column gap-5' },
-      React.createElement(LazyDomainLabelV2, {
+      React.createElement(LazyDomainLabel, {
         multiple: true,
         showDomainHeading: true,
         hasPermission: editDomainPermission,

@@ -13,6 +13,7 @@
 
 import test, { expect } from '@playwright/test';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 test.describe('Search Nightly Smoke', { tag: ['@search-nightly'] }, () => {
   test('should load global search suggestions for sample data query', async ({
@@ -24,10 +25,12 @@ test.describe('Search Nightly Smoke', { tag: ['@search-nightly'] }, () => {
 
     await expect(searchInput).toBeVisible();
 
-    const searchQueryResponse = page.waitForResponse(
+    const searchQueryResponse = waitForResponseWithStatus(
+      page,
       (response) =>
-        response.url().includes('/api/v1/search/query') &&
-        response.status() === 200
+        response.request().method() === 'GET' &&
+        response.url().includes('/api/v1/search/query'),
+      200
     );
 
     await searchInput.click();

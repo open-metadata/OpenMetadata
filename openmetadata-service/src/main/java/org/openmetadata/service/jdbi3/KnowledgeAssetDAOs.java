@@ -1,0 +1,720 @@
+/*
+ *  Copyright 2021 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.jdbi3;
+
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.schema.type.Relationship.HAS;
+import static org.openmetadata.schema.type.Relationship.OWNS;
+import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
+import org.jdbi.v3.sqlobject.CreateSqlObject;
+import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
+import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.BindMap;
+import org.jdbi.v3.sqlobject.customizer.Define;
+import org.jdbi.v3.sqlobject.statement.SqlQuery;
+import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.jdbi.BindFQN;
+import org.openmetadata.service.util.jdbi.BindJson;
+
+public interface KnowledgeAssetDAOs {
+  @CreateSqlObject
+  FolderDAO folderDAO();
+
+  @CreateSqlObject
+  ContextFileDAO contextFileDAO();
+
+  @CreateSqlObject
+  ContextFileContentDAO contextFileContentDAO();
+
+  @CreateSqlObject
+  KnowledgePageDAO knowledgePageDAO();
+
+  interface FolderDAO extends EntityDAO<org.openmetadata.schema.entity.data.Folder> {
+    @Override
+    default String getTableName() {
+      return "drive_folder";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.data.Folder> getEntityClass() {
+      return org.openmetadata.schema.entity.data.Folder.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+  }
+
+  interface ContextFileDAO extends EntityDAO<ContextFile> {
+    @Override
+    default String getTableName() {
+      return "context_file";
+    }
+
+    @Override
+    default Class<ContextFile> getEntityClass() {
+      return ContextFile.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_file SET json = :json, nameHash = :nameHash "
+                + "WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version "
+                + "AND JSON_EXTRACT(json, '$.updatedAt') = :updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_file SET json = (:json :: jsonb), nameHash = :nameHash "
+                + "WHERE id = :id AND json->>'version' = :version "
+                + "AND (json->>'updatedAt')::bigint = :updatedAt",
+        connectionType = POSTGRES)
+    int updateWithVersionAndTimestamp(
+        @Bind("id") String id,
+        @BindFQN("nameHash") String fullyQualifiedName,
+        @BindJson("json") String json,
+        @Bind("version") String version,
+        @Bind("updatedAt") Long updatedAt);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.extractionStats.sourceHash')) = :sourceHash "
+                + "AND id <> :excludeId AND (deleted = false OR deleted IS NULL) "
+                + "ORDER BY updatedAt DESC LIMIT 10",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE json->'extractionStats'->>'sourceHash' = :sourceHash "
+                + "AND id <> :excludeId AND deleted = false "
+                + "ORDER BY updatedAt DESC LIMIT 10",
+        connectionType = POSTGRES)
+    List<String> listByExtractedSourceHash(
+        @Bind("sourceHash") String sourceHash, @Bind("excludeId") String excludeId);
+
+    /** Files by id without {@code extractedText}, the largest part of a stored file. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, JSON_REMOVE(json, '$.extractedText') FROM context_file "
+                + "WHERE id IN (<ids>) <cond>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT id, json - 'extractedText' FROM context_file WHERE id IN (<ids>) <cond>",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(EntityIdJsonPairMapper.class)
+    List<EntityIdJsonPair> findByIdsWithoutExtractedText(
+        @BindList("ids") List<String> ids, @Define("cond") String cond);
+
+    default List<ContextFile> findEntitiesWithoutExtractedText(List<UUID> ids, Include include) {
+      List<String> distinctIds = ids.stream().map(UUID::toString).distinct().toList();
+      return distinctIds.isEmpty()
+          ? List.of()
+          : findByIdsWithoutExtractedText(distinctIds, getCondition(include)).stream()
+              .map(pair -> jsonToEntity(pair.json(), pair.id()))
+              .toList();
+    }
+
+    // Counts by sharing read the `visibility` column: no value or Entity is visible to everyone a
+    // policy allows, any other value only to the file's user owners and, when Shared, the
+    // principals it names (ContextFileVisibility).
+    String OWNED_BY_CALLER =
+        "SELECT o.toId FROM entity_relationship o WHERE o.fromId = :userId "
+            + "AND o.fromEntity = 'user' AND o.toEntity = 'contextFile' AND o.relation = :owns";
+    String FOLDER_FILES =
+        "FROM entity_relationship er JOIN context_file cf ON er.toId = cf.id "
+            + "WHERE er.fromId IN (<folderIds>) AND er.fromEntity = 'folder' "
+            + "AND er.toEntity = 'contextFile' AND er.relation = :contains "
+            + "AND (cf.deleted = false OR cf.deleted IS NULL) ";
+    String FILTERED_FILES = "FROM (SELECT id, visibility FROM context_file <cond>) cf WHERE ";
+
+    @SqlQuery(
+        "SELECT er.fromId, COUNT(*) "
+            + FOLDER_FILES
+            + "AND (cf.visibility IS NULL OR cf.visibility = 'Entity') GROUP BY er.fromId")
+    @RegisterRowMapper(FolderCountMapper.class)
+    List<FolderCount> countOpenFilesByFolder(
+        @BindList("folderIds") List<String> folderIds, @Bind("contains") int contains);
+
+    @SqlQuery(
+        "SELECT er.fromId, COUNT(*) "
+            + FOLDER_FILES
+            + "AND cf.visibility <> 'Entity' AND cf.id IN ("
+            + OWNED_BY_CALLER
+            + ") GROUP BY er.fromId")
+    @RegisterRowMapper(FolderCountMapper.class)
+    List<FolderCount> countOwnedRestrictedFilesByFolder(
+        @BindList("folderIds") List<String> folderIds,
+        @Bind("contains") int contains,
+        @Bind("userId") String userId,
+        @Bind("owns") int owns);
+
+    @SqlQuery(
+        "SELECT er.fromId, cf.id "
+            + FOLDER_FILES
+            + "AND cf.visibility = 'Shared' AND cf.id NOT IN ("
+            + OWNED_BY_CALLER
+            + ")")
+    @RegisterRowMapper(FolderFileMapper.class)
+    List<FolderFile> listSharedFilesNotOwnedByFolder(
+        @BindList("folderIds") List<String> folderIds,
+        @Bind("contains") int contains,
+        @Bind("userId") String userId,
+        @Bind("owns") int owns);
+
+    @SqlQuery(
+        "SELECT count(*) " + FILTERED_FILES + "cf.visibility IS NULL OR cf.visibility = 'Entity'")
+    int countOpenFiles(@BindMap Map<String, ?> params, @Define("cond") String cond);
+
+    @SqlQuery(
+        "SELECT count(*) "
+            + FILTERED_FILES
+            + "cf.visibility <> 'Entity' AND cf.id IN ("
+            + OWNED_BY_CALLER
+            + ")")
+    int countOwnedRestrictedFiles(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("userId") String userId,
+        @Bind("owns") int owns);
+
+    @SqlQuery(
+        "SELECT cf.id "
+            + FILTERED_FILES
+            + "cf.visibility = 'Shared' AND cf.id NOT IN ("
+            + OWNED_BY_CALLER
+            + ")")
+    List<String> listSharedFilesNotOwned(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("userId") String userId,
+        @Bind("owns") int owns);
+
+    record FolderCount(UUID folderId, int count) {}
+
+    record FolderFile(UUID folderId, UUID fileId) {}
+
+    class FolderCountMapper implements RowMapper<FolderCount> {
+      @Override
+      public FolderCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new FolderCount(UUID.fromString(rs.getString(1)), rs.getInt(2));
+      }
+    }
+
+    class FolderFileMapper implements RowMapper<FolderFile> {
+      @Override
+      public FolderFile map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new FolderFile(UUID.fromString(rs.getString(1)), UUID.fromString(rs.getString(2)));
+      }
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file cf "
+                + "LEFT JOIN entity_relationship er "
+                + "ON er.toId = cf.id AND er.fromEntity = 'folder' "
+                + "AND er.toEntity = 'contextFile' AND er.relation = :containsRelation "
+                + "AND er.deleted = false "
+                + "WHERE LOWER(cf.name) = LOWER(:fileName) "
+                + "AND ((:folderId IS NULL AND er.fromId IS NULL) OR er.fromId = :folderId) "
+                + "AND (:excludeId IS NULL OR cf.id <> :excludeId) "
+                + "AND (cf.deleted = false OR cf.deleted IS NULL)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file cf "
+                + "LEFT JOIN entity_relationship er "
+                + "ON er.toId = cf.id AND er.fromEntity = 'folder' "
+                + "AND er.toEntity = 'contextFile' AND er.relation = :containsRelation "
+                + "AND er.deleted = false "
+                + "WHERE LOWER(cf.name) = LOWER(:fileName) "
+                + "AND ((:folderId IS NULL AND er.fromId IS NULL) OR er.fromId = :folderId) "
+                + "AND (:excludeId IS NULL OR cf.id <> :excludeId) "
+                + "AND (cf.deleted = false OR cf.deleted IS NULL)",
+        connectionType = POSTGRES)
+    int countByFileNameInFolder(
+        @Bind("fileName") String fileName,
+        @Bind("folderId") String folderId,
+        @Bind("excludeId") String excludeId,
+        @Bind("containsRelation") int containsRelation);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.assetId')) = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file "
+                + "WHERE json ->> 'assetId' = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = POSTGRES)
+    int countByAssetId(@Bind("assetId") String assetId);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.assetId')) = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file "
+                + "WHERE json ->> 'assetId' = :assetId "
+                + "AND (deleted = false OR deleted IS NULL)",
+        connectionType = POSTGRES)
+    List<String> findByAssetId(@Bind("assetId") String assetId);
+
+    // Same lookup as above but for soft-deleted (archived) files. A soft-deleted file keeps its
+    // nameHash, so it still reserves the name against the unique constraint even though the live
+    // count ignores it (e.g. blocks a same-name upload until the archived copy is restored or
+    // permanently deleted).
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file cf "
+                + "LEFT JOIN entity_relationship er "
+                + "ON er.toId = cf.id AND er.fromEntity = 'folder' "
+                + "AND er.toEntity = 'contextFile' AND er.relation = :containsRelation "
+                + "AND er.deleted = false "
+                + "WHERE LOWER(cf.name) = LOWER(:fileName) "
+                + "AND ((:folderId IS NULL AND er.fromId IS NULL) OR er.fromId = :folderId) "
+                + "AND (:excludeId IS NULL OR cf.id <> :excludeId) "
+                + "AND cf.deleted = true",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT count(*) FROM context_file cf "
+                + "LEFT JOIN entity_relationship er "
+                + "ON er.toId = cf.id AND er.fromEntity = 'folder' "
+                + "AND er.toEntity = 'contextFile' AND er.relation = :containsRelation "
+                + "AND er.deleted = false "
+                + "WHERE LOWER(cf.name) = LOWER(:fileName) "
+                + "AND ((:folderId IS NULL AND er.fromId IS NULL) OR er.fromId = :folderId) "
+                + "AND (:excludeId IS NULL OR cf.id <> :excludeId) "
+                + "AND cf.deleted = true",
+        connectionType = POSTGRES)
+    int countArchivedByFileNameInFolder(
+        @Bind("fileName") String fileName,
+        @Bind("folderId") String folderId,
+        @Bind("excludeId") String excludeId,
+        @Bind("containsRelation") int containsRelation);
+
+    @SqlQuery("SELECT json FROM context_file <cond> ORDER BY updatedAt ASC, id ASC LIMIT :limit")
+    List<String> listByUpdatedAtAsc(
+        @BindMap Map<String, ?> params, @Define("cond") String cond, @Bind("limit") int limit);
+
+    @SqlQuery("SELECT json FROM context_file <cond> ORDER BY updatedAt DESC, id DESC LIMIT :limit")
+    List<String> listByUpdatedAtDesc(
+        @BindMap Map<String, ?> params, @Define("cond") String cond, @Bind("limit") int limit);
+
+    @SqlQuery(
+        "SELECT json FROM context_file <cond> "
+            + "AND (updatedAt > :afterUpdatedAt OR (updatedAt = :afterUpdatedAt AND id > :afterId)) "
+            + "ORDER BY updatedAt ASC, id ASC LIMIT :limit")
+    List<String> listAfterByUpdatedAtAsc(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("afterUpdatedAt") long afterUpdatedAt,
+        @Bind("afterId") String afterId);
+
+    @SqlQuery(
+        "SELECT json FROM context_file <cond> "
+            + "AND (updatedAt < :afterUpdatedAt OR (updatedAt = :afterUpdatedAt AND id < :afterId)) "
+            + "ORDER BY updatedAt DESC, id DESC LIMIT :limit")
+    List<String> listAfterByUpdatedAtDesc(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("afterUpdatedAt") long afterUpdatedAt,
+        @Bind("afterId") String afterId);
+
+    @SqlQuery(
+        "SELECT json FROM ("
+            + "SELECT updatedAt, id, json FROM context_file <cond> "
+            + "AND (updatedAt < :beforeUpdatedAt OR (updatedAt = :beforeUpdatedAt AND id < :beforeId)) "
+            + "ORDER BY updatedAt DESC, id DESC LIMIT :limit"
+            + ") last_rows_subquery ORDER BY updatedAt ASC, id ASC")
+    List<String> listBeforeByUpdatedAtAsc(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("beforeUpdatedAt") long beforeUpdatedAt,
+        @Bind("beforeId") String beforeId);
+
+    @SqlQuery(
+        "SELECT json FROM ("
+            + "SELECT updatedAt, id, json FROM context_file <cond> "
+            + "AND (updatedAt > :beforeUpdatedAt OR (updatedAt = :beforeUpdatedAt AND id > :beforeId)) "
+            + "ORDER BY updatedAt ASC, id ASC LIMIT :limit"
+            + ") last_rows_subquery ORDER BY updatedAt DESC, id DESC")
+    List<String> listBeforeByUpdatedAtDesc(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("limit") int limit,
+        @Bind("beforeUpdatedAt") long beforeUpdatedAt,
+        @Bind("beforeId") String beforeId);
+  }
+
+  interface ContextFileContentDAO
+      extends EntityDAO<org.openmetadata.schema.entity.data.ContextFileContent> {
+    @Override
+    default String getTableName() {
+      return "context_file_content";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.data.ContextFileContent> getEntityClass() {
+      return org.openmetadata.schema.entity.data.ContextFileContent.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file_content "
+                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.contextFile.id')) = :contextFileId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM context_file_content "
+                + "WHERE json->'contextFile'->>'id' = :contextFileId",
+        connectionType = POSTGRES)
+    List<String> listByContextFileId(@Bind("contextFileId") String contextFileId);
+  }
+
+  interface KnowledgePageDAO extends EntityDAO<org.openmetadata.schema.entity.data.Page> {
+    String KNOWLEDGE_PAGE_ENTITY = "page";
+
+    @Override
+    default String getTableName() {
+      return "knowledge_center";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.data.Page> getEntityClass() {
+      return org.openmetadata.schema.entity.data.Page.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE knowledge_center SET json = :json, fqnHash = :fqnHash "
+                + "WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version "
+                + "AND JSON_EXTRACT(json, '$.updatedAt') = :updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE knowledge_center SET json = (:json :: jsonb), fqnHash = :fqnHash "
+                + "WHERE id = :id AND json->>'version' = :version "
+                + "AND (json->>'updatedAt')::bigint = :updatedAt",
+        connectionType = POSTGRES)
+    int updateWithVersionAndTimestamp(
+        @Bind("id") String id,
+        @BindFQN("fqnHash") String fullyQualifiedName,
+        @BindJson("json") String json,
+        @Bind("version") String version,
+        @Bind("updatedAt") Long updatedAt);
+
+    @Override
+    default boolean supportsSoftDelete() {
+      return false;
+    }
+
+    /**
+     * When the caller supplies {@code entityId} + {@code entityType} (e.g. from a data-asset
+     * page that wants the list of knowledge pages referencing it), join against
+     * {@code entity_relationship} so that only pages whose {@code relatedEntities} contains
+     * the target entity are returned. Without this override, the base {@code EntityDAO.listAfter}
+     * ignores those params and returns every knowledge page — breaking the Knowledge
+     * Articles right-panel widget (and the corresponding playwright assertions).
+     */
+    @Override
+    default int listCount(ListFilter filter) {
+      String entityId = filter.getQueryParam("entityId");
+      String entityType = filter.getQueryParam("entityType");
+      String knowledgePageType = filter.getQueryParam("pageType");
+      String tagFQN = filter.getQueryParam("tagFQN");
+      String tagListCondition =
+          "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
+      if (nullOrEmpty(tagFQN)) {
+        tagListCondition = "";
+        tagFilterCondition = "WHERE";
+      }
+      Map<String, Object> bindMap = new HashMap<>();
+      if (!nullOrEmpty(entityId) && !nullOrEmpty(entityType)) {
+        String knowledgePageTypeQuery = getKnowledgePageTypeQuery("AND", knowledgePageType);
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship ON knowledge_center.id = entity_relationship.toId %s %s "
+                    + "entity_relationship.fromId IN (%s) %s"
+                    + "and entity_relationship.toEntity = :toEntityType %s",
+                tagListCondition,
+                tagFilterCondition,
+                entityId,
+                getRelationCondition(entityType),
+                knowledgePageTypeQuery);
+        bindMap.put("toEntityType", KNOWLEDGE_PAGE_ENTITY);
+        bindMap.put("tagFQN", tagFQN);
+        if (!nullOrEmpty(knowledgePageTypeQuery)) {
+          bindMap.put("pageType", knowledgePageType);
+        }
+        return listKnowledgePageCountByEntity(condition, bindMap);
+      } else if ((!nullOrEmpty(entityId) && nullOrEmpty(entityType))
+          || (nullOrEmpty(entityId) && !nullOrEmpty(entityType))) {
+        throw new IllegalArgumentException(
+            "Query Param Entity Id and Entity Type both needs to be provided.");
+      }
+
+      String knowledgePageQueryClause =
+          String.format(
+              "%s %s %s",
+              tagListCondition,
+              tagFilterCondition,
+              getKnowledgePageTypeQuery("", knowledgePageType));
+      return listCount(
+          getTableName(),
+          getNameHashColumn(),
+          filter.getQueryParams(),
+          getKnowledgePageWhereClause(filter, knowledgePageQueryClause));
+    }
+
+    @Override
+    default List<String> listBefore(
+        ListFilter filter, int limit, String beforeName, String beforeId) {
+      String entityId = filter.getQueryParam("entityId");
+      String entityType = filter.getQueryParam("entityType");
+      String knowledgePageType = filter.getQueryParam("pageType");
+      String tagFQN = filter.getQueryParam("tagFQN");
+      String tagListCondition =
+          "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
+      if (nullOrEmpty(tagFQN)) {
+        tagListCondition = "";
+        tagFilterCondition = "WHERE";
+      }
+      Map<String, Object> bindMap = new HashMap<>();
+      if (!nullOrEmpty(entityId) && !nullOrEmpty(entityType)) {
+        String knowledgePageTypeQuery = getKnowledgePageTypeQuery("AND", knowledgePageType);
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship ON knowledge_center.id = entity_relationship.toId %s %s entity_relationship.fromId IN (%s) "
+                    + "%s and entity_relationship.toEntity = :toEntity %s "
+                    + "and (knowledge_center.name < :beforeName OR (knowledge_center.name = :beforeName AND knowledge_center.id < :beforeId)) order by knowledge_center.name DESC,knowledge_center.id DESC LIMIT :limit",
+                tagListCondition,
+                tagFilterCondition,
+                entityId,
+                getRelationCondition(entityType),
+                knowledgePageTypeQuery);
+        bindMap.put("toEntity", KNOWLEDGE_PAGE_ENTITY);
+        bindMap.put("beforeName", beforeName);
+        bindMap.put("beforeId", beforeId);
+        bindMap.put("limit", limit);
+        bindMap.put("tagFQN", tagFQN);
+        if (!nullOrEmpty(knowledgePageTypeQuery)) {
+          bindMap.put("pageType", knowledgePageType);
+        }
+        return listBeforeKnowledgePageByEntityId(condition, bindMap);
+      } else if ((!nullOrEmpty(entityId) && nullOrEmpty(entityType))
+          || (nullOrEmpty(entityId) && !nullOrEmpty(entityType))) {
+        throw new IllegalArgumentException(
+            "Query Param Entity Id and Entity Type both needs to be provided.");
+      }
+      String knowledgePageQueryClause =
+          String.format(
+              "%s %s %s",
+              tagListCondition,
+              tagFilterCondition,
+              getKnowledgePageTypeQuery("", knowledgePageType));
+      beforeName = FullyQualifiedName.unquoteName(beforeName);
+      return listBefore(
+          getTableName(),
+          filter.getQueryParams(),
+          getKnowledgePageWhereClause(filter, knowledgePageQueryClause),
+          limit,
+          beforeName,
+          beforeId);
+    }
+
+    @Override
+    default List<String> listAfter(ListFilter filter, int limit, String afterName, String afterId) {
+      String entityId = filter.getQueryParam("entityId");
+      String entityType = filter.getQueryParam("entityType");
+      String knowledgePageType = filter.getQueryParam("pageType");
+      String tagFQN = filter.getQueryParam("tagFQN");
+      String tagListCondition =
+          "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
+      if (nullOrEmpty(tagFQN)) {
+        tagListCondition = "";
+        tagFilterCondition = "WHERE";
+      }
+      Map<String, Object> bindMap = new HashMap<>();
+      if (!nullOrEmpty(entityId) && !nullOrEmpty(entityType)) {
+        String knowledgePageTypeQuery = getKnowledgePageTypeQuery("AND", knowledgePageType);
+        String condition =
+            String.format(
+                "INNER JOIN entity_relationship ON knowledge_center.id = entity_relationship.toId %s %s entity_relationship.fromId IN (%s) "
+                    + "%s and entity_relationship.toEntity = :toEntity %s "
+                    + "and (knowledge_center.name > :afterName OR (knowledge_center.name = :afterName AND knowledge_center.id > :afterId)) order by knowledge_center.name ASC,knowledge_center.id ASC LIMIT :limit",
+                tagListCondition,
+                tagFilterCondition,
+                entityId,
+                getRelationCondition(entityType),
+                knowledgePageTypeQuery);
+        bindMap.put("toEntity", KNOWLEDGE_PAGE_ENTITY);
+        bindMap.put("afterName", afterName);
+        bindMap.put("afterId", afterId);
+        bindMap.put("limit", limit);
+        bindMap.put("tagFQN", tagFQN);
+        if (!nullOrEmpty(knowledgePageTypeQuery)) {
+          bindMap.put("pageType", knowledgePageType);
+        }
+        return listAfterKnowledgePageByEntityId(condition, bindMap);
+      } else if ((!nullOrEmpty(entityId) && nullOrEmpty(entityType))
+          || (nullOrEmpty(entityId) && !nullOrEmpty(entityType))) {
+        throw new IllegalArgumentException(
+            "Query Param Entity Id and Entity Type both needs to be provided.");
+      }
+      String knowledgePageQueryClause =
+          String.format(
+              "%s %s %s",
+              tagListCondition,
+              tagFilterCondition,
+              getKnowledgePageTypeQuery("", knowledgePageType));
+      afterName = FullyQualifiedName.unquoteName(afterName);
+      return listAfter(
+          getTableName(),
+          filter.getQueryParams(),
+          getKnowledgePageWhereClause(filter, knowledgePageQueryClause),
+          limit,
+          afterName,
+          afterId);
+    }
+
+    private String getRelationCondition(String entityType) {
+      // Users/teams "own" pages (membership-based); every other entity type reaches the page
+      // through a HAS relationship (the page's relatedEntities list).
+      String owns = String.valueOf(OWNS.ordinal());
+      String has = String.valueOf(HAS.ordinal());
+      if (entityType.equals(USER) || entityType.equals(TEAM)) {
+        return String.format(" and entity_relationship.relation = %s ", owns);
+      } else {
+        return String.format(" and entity_relationship.relation = %s ", has);
+      }
+    }
+
+    // Keeps the filter's domain condition (e.g. the navbar pick), which the base list adds itself.
+    private String getKnowledgePageWhereClause(ListFilter filter, String knowledgePageQueryClause) {
+      String where =
+          nullOrEmpty(knowledgePageQueryClause) ? "WHERE TRUE" : knowledgePageQueryClause;
+      String domainCondition = filter.getDomainCondition(getTableName());
+      return nullOrEmpty(domainCondition) ? where : where + " AND " + domainCondition;
+    }
+
+    private String getKnowledgePageTypeQuery(String clause, String type) {
+      if (!nullOrEmpty(type)) {
+        if (Boolean.TRUE.equals(
+            org.openmetadata.service.resources.databases.DatasourceConfig.getInstance()
+                .isMySQL())) {
+          return String.format(
+              " %s JSON_EXTRACT(knowledge_center.json, '$.pageType') = :pageType", clause);
+        } else {
+          return String.format(" %s knowledge_center.json->>'pageType' = :pageType", clause);
+        }
+      }
+      if ("AND".equals(clause)) {
+        return "";
+      }
+      return "TRUE";
+    }
+
+    @SqlQuery("SELECT knowledge_center.json FROM knowledge_center <cond>")
+    List<String> listAfterKnowledgePageByEntityId(
+        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+
+    @SqlQuery(
+        "SELECT json FROM (SELECT knowledge_center.name,knowledge_center.id, knowledge_center.json FROM knowledge_center <cond>) last_rows_subquery ORDER BY name,id")
+    List<String> listBeforeKnowledgePageByEntityId(
+        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+
+    @SqlQuery("SELECT count(*) FROM knowledge_center <cond> ")
+    int listKnowledgePageCountByEntity(
+        @Define("cond") String cond, @BindMap Map<String, Object> bindings);
+
+    @SqlQuery(
+        "SELECT json "
+            + "FROM knowledge_center "
+            + "WHERE id NOT IN ("
+            + "    SELECT toId FROM entity_relationship WHERE (relation = 0 AND toEntity = 'page') OR (relation = 9 AND toEntity = 'page')"
+            + ")")
+    List<String> listTopLevelPages();
+
+    @SqlQuery(
+        "SELECT kc.json "
+            + "FROM knowledge_center kc "
+            + "JOIN entity_relationship er ON kc.id = er.toId "
+            + "WHERE er.fromId = :parentId "
+            + "AND (er.relation = 9 or er.relation = 0) "
+            + "AND er.toEntity = 'page'")
+    List<String> listChildren(@Bind("parentId") String parentId);
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE knowledge_center SET json = :json, fqnHash = :fqnHash  WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE knowledge_center SET json = :json::jsonb, fqnHash = :fqnHash WHERE id = :id",
+        connectionType = POSTGRES)
+    void updateFullyQualifiedName(
+        @Bind("id") String pageId,
+        @BindJson("json") String json,
+        @BindFQN("fqnHash") String fqnHash);
+  }
+}

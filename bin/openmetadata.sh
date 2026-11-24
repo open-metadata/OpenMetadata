@@ -13,8 +13,6 @@
 # Home Dir
 base_dir=$(dirname $0)/..
 
-CATALOG_HOME=$base_dirbase_dir=$(dirname $0)/..
-
 CATALOG_HOME=$base_dir
 PID_DIR=$base_dir/logs
 LOG_DIR=$base_dir/logs
@@ -31,8 +29,14 @@ function catalogStart {
        rm -f ${PID_FILE}
        echo "Starting OpenMetadata"
        APP_CLASS="org.openmetadata.service.OpenMetadataApplication"
+       # ${OUT_FILE} is an append-mode redirect with no rotation. The console appender in
+       # conf/openmetadata.yaml emits the same lines that logback already writes to the rotated
+       # logs/openmetadata.log, so leaving it on makes catalog.log an unbounded duplicate.
+       # Silence it here; catalog.log then only collects JVM and pre-logback output.
+       # Export CONSOLE_LOG_LEVEL=TRACE before starting to get the old behaviour back.
+       export CONSOLE_LOG_LEVEL="${CONSOLE_LOG_LEVEL:-OFF}"
        cd ${CATALOG_HOME}
-       nohup ${JAVA} ${CATALOG_HEAP_OPTS} ${CATALOG_JVM_PERF_OPTS} ${CATALOG_DEBUG_OPTS} ${CATALOG_GC_LOG_OPTS} ${CATALOG_JMX_OPTS} -cp ${CLASSPATH} "${APP_CLASS}" "server" "$@" 2>>"${ERR_FILE}" 1>>"${OUT_FILE}" &
+       nohup ${JAVA} ${JAVA_TOOL_ARGS} ${CATALOG_HEAP_OPTS} ${CATALOG_JVM_PERF_OPTS} ${CATALOG_DEBUG_OPTS} ${CATALOG_GC_LOG_OPTS} ${CATALOG_JMX_OPTS} -cp ${CLASSPATH} "${APP_CLASS}" "server" "$@" 2>>"${ERR_FILE}" 1>>"${OUT_FILE}" &
        cd - &> /dev/null
        echo $! > ${PID_FILE}
        echo $(catalogStatus)
@@ -145,6 +149,26 @@ if [[ -z "${JAVA_HOME}" ]]; then
   JAVA="java"
 else
   JAVA="${JAVA_HOME}/bin/java"
+fi
+
+# As in bin/openmetadata-server-start.sh: pass JAVA_TOOL_OPTIONS in a -XX:VMOptionsFile on fd 3,
+# so neither the JVM's startup echo nor ps shows it.
+JAVA_TOOL_ARGS=""
+if [ -n "$JAVA_TOOL_OPTIONS" ]; then
+  java_tool_options_file=""
+  for tmp_dir in /dev/shm "${TMPDIR:-/tmp}"; do
+    java_tool_options_file=$(mktemp "$tmp_dir/jvm-options.XXXXXX" 2>/dev/null) && break
+  done
+  if [ -n "$java_tool_options_file" ] &&
+    printf '%s\n' "$JAVA_TOOL_OPTIONS" > "$java_tool_options_file"; then
+    exec 3< "$java_tool_options_file"
+    JAVA_TOOL_ARGS="-XX:VMOptionsFile=/dev/fd/3"
+    unset JAVA_TOOL_OPTIONS
+  else
+    echo "Warning: could not write JAVA_TOOL_OPTIONS to /dev/shm or ${TMPDIR:-/tmp}," \
+      "so the JVM will print it at startup" >&2
+  fi
+  [ -z "$java_tool_options_file" ] || rm -f "$java_tool_options_file"
 fi
 
 if [[ "x${CATALOG_HEAP_OPTS}" = "x" ]]; then

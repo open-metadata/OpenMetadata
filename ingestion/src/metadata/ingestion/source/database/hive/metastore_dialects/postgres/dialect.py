@@ -38,6 +38,17 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
     driver = "postgres"
     supports_statement_cache = False
 
+    # The metastore's Postgres DDL creates quoted upper-case identifiers: unquoted TBLS or
+    # TABLE_PARAMS would fold to lower case here and raise UndefinedTable.
+    table_providers_query = """
+        SELECT t."TBL_NAME", p."PARAM_VALUE"
+        FROM "TBLS" t
+        JOIN "DBS" d ON t."DB_ID" = d."DB_ID"
+        JOIN "TABLE_PARAMS" p ON p."TBL_ID" = t."TBL_ID"
+        WHERE d."NAME" = :schema_name
+          AND p."PARAM_KEY" = 'spark.sql.sources.provider'
+    """
+
     def get_schema_names(self, connection, **kw):
         # Equivalent to SHOW DATABASES
         schema_names = [row[0] for row in connection.execute(text('select "NAME" from "DBS";'))]
@@ -65,13 +76,17 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
             else ""
         )
 
+        # sort_order keeps the Partition Information sentinel between regular and
+        # partition rows (#26712). col_index (INTEGER_IDX) preserves metastore
+        # ordinals because filesort within a sort_order group is not stable.
         query = f"""
             WITH regular_columns AS (
-                -- Get regular table columns from COLUMNS_V2
                 SELECT 
                     col."COLUMN_NAME",
                     col."TYPE_NAME", 
-                    col."COMMENT"
+                    col."COMMENT",
+                    0 AS sort_order,
+                    col."INTEGER_IDX" AS col_index
                 FROM "COLUMNS_V2" col
                 JOIN "CDS" cds ON col."CD_ID" = cds."CD_ID"
                 JOIN "SDS" sds ON sds."CD_ID" = cds."CD_ID"
@@ -80,20 +95,25 @@ class HivePostgresMetaStoreDialect(HiveMetaStoreDialectMixin, PGDialect_psycopg2
                 {schema_join}
             ),
             partition_columns AS (
-                -- Get partition key columns from PARTITION_KEYS
                 SELECT 
                     pk."PKEY_NAME" as "COLUMN_NAME",
                     pk."PKEY_TYPE" as "TYPE_NAME",
-                    pk."PKEY_COMMENT" as "COMMENT"
+                    pk."PKEY_COMMENT" as "COMMENT",
+                    2 AS sort_order,
+                    pk."INTEGER_IDX" AS col_index
                 FROM "PARTITION_KEYS" pk
                 JOIN "TBLS" tbsl ON pk."TBL_ID" = tbsl."TBL_ID"
                     AND tbsl."TBL_NAME" = '{table_name}'
                 {schema_join}
             )
-            -- Combine regular and partition columns
-            SELECT * FROM regular_columns
-            UNION ALL
-            SELECT * FROM partition_columns
+            SELECT "COLUMN_NAME", "TYPE_NAME", "COMMENT" FROM (
+                SELECT * FROM regular_columns
+                UNION ALL
+                SELECT '# Partition Information', NULL, NULL, 1 AS sort_order, 0 AS col_index
+                UNION ALL
+                SELECT * FROM partition_columns
+            ) AS hive_cols
+            ORDER BY sort_order, col_index
         """  # noqa: W291
         return connection.execute(text(query)).fetchall()
 

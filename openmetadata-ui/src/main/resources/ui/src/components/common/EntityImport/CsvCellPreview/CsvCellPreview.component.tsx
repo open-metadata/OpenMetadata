@@ -10,6 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Box,
+  ClassificationTag,
+  GlossaryTag,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { startCase } from 'lodash';
 import type { CSSProperties } from 'react';
 import { SEMICOLON_SPLITTER } from '../../../../constants/regex.constants';
@@ -18,11 +24,18 @@ import Fqn from '../../../../utils/Fqn';
 import { removeOuterEscapes } from '../../../../utils/StringUtils';
 import './csv-cell-preview.less';
 
+// The same chips tags and glossary terms use everywhere else in the app.
+const TAG_CHIP_BY_COLUMN: Record<
+  string,
+  typeof ClassificationTag | typeof GlossaryTag
+> = {
+  tags: ClassificationTag,
+  glossaryTerms: GlossaryTag,
+  relatedTerms: GlossaryTag,
+};
+
 const CHIP_VARIANT_BY_COLUMN: Record<string, string> = {
-  tags: 'tag',
-  glossaryTerms: 'glossary',
   tiers: 'tier',
-  relatedTerms: 'glossary',
   domains: 'domain',
   dataProducts: 'product',
   extension: 'prop',
@@ -30,9 +43,6 @@ const CHIP_VARIANT_BY_COLUMN: Record<string, string> = {
 };
 
 const CHIP_FALLBACK_COLORS: Record<string, string> = {
-  tags: '#5925dc',
-  glossaryTerms: '#1570ef',
-  relatedTerms: '#1570ef',
   domains: '#1570ef',
   dataProducts: '#1570ef',
   tiers: '#5925dc',
@@ -150,54 +160,91 @@ const CsvCellPreview = ({ column, itemStyles, value }: CsvCellPreviewProps) => {
 
     if (customPropertyItems.length) {
       content = (
-        <div className="csv-cell-chips csv-cell-chips-custom-properties">
+        <Box
+          align="center"
+          className="tw:min-w-0 tw:overflow-hidden"
+          gap={2}
+          wrap="wrap">
           {customPropertyItems.map((item) => (
-            <span
-              className="csv-chip csv-chip-prop"
+            <Tooltip
+              excludeTriggerFromTabOrder
               key={item.key}
               title={`${item.label}: ${item.value}`}>
-              {item.label}: <span className="csv-chip-value">{item.value}</span>
-            </span>
+              <span className="csv-chip csv-chip-prop">
+                {item.label}:{' '}
+                <span className="csv-chip-value">{item.value}</span>
+              </span>
+            </Tooltip>
           ))}
-        </div>
+        </Box>
       );
     }
   } else if (items.length && AVATAR_COLUMNS.includes(column)) {
     content = (
-      <div className="csv-cell-chips">
+      <Box
+        align="center"
+        className="tw:min-w-0 tw:gap-1.5 tw:overflow-hidden"
+        wrap="wrap">
         {items.map((item) => {
           const { label } = parseEntity(item);
 
           return (
-            <span className="csv-owner-chip" key={item} title={label}>
-              <span className={`csv-owner-avatar ${getAvatarClass(label)}`}>
-                {getInitials(label)}
+            <Tooltip excludeTriggerFromTabOrder key={item} title={label}>
+              <span className="csv-owner-chip">
+                <span className={`csv-owner-avatar ${getAvatarClass(label)}`}>
+                  {getInitials(label)}
+                </span>
+                <span className="csv-owner-name">{label}</span>
               </span>
-              <span className="csv-owner-name">{label}</span>
-            </span>
+            </Tooltip>
           );
         })}
-      </div>
+      </Box>
+    );
+  } else if (items.length && TAG_CHIP_BY_COLUMN[column]) {
+    const TagChip = TAG_CHIP_BY_COLUMN[column];
+    // Some grid columns use a monospace cell font; tag chips are sans everywhere else.
+    content = (
+      <Box
+        align="center"
+        className="tw:min-w-0 tw:gap-1.5 tw:overflow-hidden tw:font-body"
+        wrap="wrap">
+        {items.map((item) => (
+          <TagChip
+            className={`csv-chip-${column === 'tags' ? 'tag' : 'glossary'}`}
+            color={itemStyles?.[item]}
+            key={item}
+            label={
+              column === 'glossaryTerms' ? getGlossaryTermLabel(item) : item
+            }
+            size="sm"
+            tooltip={item}
+          />
+        ))}
+      </Box>
     );
   } else if (items.length) {
     const variant = CHIP_VARIANT_BY_COLUMN[column] ?? 'default';
     content = (
-      <div className="csv-cell-chips">
+      <Box
+        align="center"
+        className="tw:min-w-0 tw:gap-1.5 tw:overflow-hidden"
+        wrap="wrap">
         {items.map((item) => {
           const label =
             column === 'glossaryTerms' ? getGlossaryTermLabel(item) : item;
 
           return (
-            <span
-              className={`csv-chip csv-chip-${variant}`}
-              key={item}
-              style={getChipStyle(column, item, itemStyles)}
-              title={item}>
-              {label}
-            </span>
+            <Tooltip excludeTriggerFromTabOrder key={item} title={item}>
+              <span
+                className={`csv-chip csv-chip-${variant}`}
+                style={getChipStyle(column, item, itemStyles)}>
+                {label}
+              </span>
+            </Tooltip>
           );
         })}
-      </div>
+      </Box>
     );
   }
 

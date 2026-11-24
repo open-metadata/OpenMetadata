@@ -13,7 +13,7 @@ Return the last DagRun logs for each task
 """
 
 import traceback
-from typing import Callable  # noqa: UP035
+from collections.abc import Callable
 
 from flask import Blueprint, Response, request
 

@@ -13,7 +13,6 @@
 Source connection handler
 """
 
-from typing import Optional, Union
 from urllib.parse import quote_plus
 
 from sqlalchemy.engine import URL, Engine
@@ -48,7 +47,7 @@ from metadata.utils.constants import THREE_MIN
 DEFAULT_SQL_SERVER_PORT = 1433
 
 
-def get_connection_url(connection: Union[AzureSQLConnectionConfig, MssqlConnection]) -> str:  # noqa: UP007
+def get_connection_url(connection: AzureSQLConnectionConfig | MssqlConnection) -> str:
     """
     Build the connection URL
     """
@@ -124,8 +123,8 @@ class AzureSQLConnection(BaseConnection[AzureSQLConnectionConfig, Engine]):
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

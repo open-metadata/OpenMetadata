@@ -14,21 +14,23 @@
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { QueryVote } from '../components/Database/TableQueries/TableQueries.interface';
 import {
   APPLICATION_JSON_CONTENT_TYPE_HEADER,
   PAGE_SIZE_MEDIUM,
+  SKIP_DOMAIN_FILTER_HEADER,
 } from '../constants/constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { BulkAssets } from '../generated/api/bulkAssets';
 import { CreateDomain } from '../generated/api/domains/createDomain';
+import { DomainStyles } from '../generated/api/domains/domainStyles';
 import { Domain, EntityReference } from '../generated/entity/domains/domain';
 import { BulkOperationResult } from '../generated/type/bulkOperationResult';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { ListParams } from '../interface/API.interface';
+import { QueryVote } from '../interface/entity/vote.interface';
 import { getEncodedFqn } from '../utils/StringUtils';
-import APIClient from './index';
+import APIClient from './axiosClient';
 
 const BASE_URL = '/domains';
 
@@ -65,6 +67,12 @@ export const patchDomains = async (id: string, patch: Operation[]) => {
     `/domains/${id}`,
     patch
   );
+
+  return response.data;
+};
+
+export const getDomainStyles = async () => {
+  const response = await APIClient.get<DomainStyles>(`${BASE_URL}/styles`);
 
   return response.data;
 };
@@ -130,25 +138,11 @@ export const removeAssetsFromDomain = async (
   return response.data;
 };
 
-export const listDomainHierarchy = async (
-  params?: ListParams,
-  signal?: AbortSignal
-) => {
-  const response = await APIClient.get<PagingResponse<Domain[]>>(
-    `${BASE_URL}/hierarchy`,
-    {
-      params,
-      signal,
-    }
-  );
-
-  return response.data;
-};
-
 export const getDomainChildrenPaginated = async (
   parentFQN?: string,
   pageSize = 15,
-  offset = 0
+  offset = 0,
+  signal?: AbortSignal
 ) => {
   const apiUrl = `${BASE_URL}/hierarchy`;
   const requestParams: Record<string, string | number | string[]> = {
@@ -163,6 +157,7 @@ export const getDomainChildrenPaginated = async (
 
   const { data } = await APIClient.get<PagingResponse<Domain[]>>(apiUrl, {
     params: requestParams,
+    signal,
   });
 
   return data;
@@ -172,7 +167,8 @@ export const searchDomains = async (
   search: string,
   page = 1,
   queryFilter?: Record<string, unknown>,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  skipDomainFilter = false
 ) => {
   const apiUrl = `/search/query?q=*${search ?? ''}*`;
 
@@ -189,9 +185,12 @@ export const searchDomains = async (
     params.query_filter = JSON.stringify(queryFilter);
   }
 
-  const { data } = await APIClient.get(apiUrl, {
+  const { data } = await APIClient.get<Domain[]>(apiUrl, {
     params,
     signal,
+    ...(skipDomainFilter && {
+      headers: { [SKIP_DOMAIN_FILTER_HEADER]: 'true' },
+    }),
   });
 
   return data;

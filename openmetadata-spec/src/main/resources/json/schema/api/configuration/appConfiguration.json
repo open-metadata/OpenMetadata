@@ -1,8 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://open-metadata.org/schema/api/configuration/appConfiguration.json",
   "title": "AppConfiguration",
-  "description": "App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).",
+  "description": "App-wide UI configuration. It exists both in the server configuration (yaml/env) and in the database, and configSource.app (APP_CONFIG_SOURCE, default DB) decides which one wins. In DB mode the stored value wins, and the server configuration only fills values the stored setting lacks.",
   "type": "object",
   "javaType": "org.openmetadata.schema.api.configuration.AppConfiguration",
   "properties": {
@@ -11,6 +11,18 @@
       "type": ["string", "null"],
       "enum": ["ai", "classic", null],
       "default": null
+    },
+    "defaultColumnOrder": {
+      "description": "Tenant-wide default order of columns in table schema views. Users can still change the order per page from the Sort menu; that choice is not saved. Null means no tenant default is configured, and columns are ordered alphabetically.",
+      "type": ["string", "null"],
+      "enum": ["alphabetical", "sourceOrder", null],
+      "default": null
+    },
+    "defaultTimeFormat": {
+      "description": "Tenant-wide default time format for UI display.",
+      "type": ["string"],
+      "enum": ["12h", "24h"],
+      "default": "12h"
     }
   },
   "additionalProperties": false

@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
+import { Typography } from '@openmetadata/ui-core-components';
 import { Operation } from 'fast-json-patch';
+import { isNil } from 'lodash';
 import { ServiceTypes } from 'Models';
 import DisplayName from '../components/common/DisplayName/DisplayName';
+import { ColumnsType } from '../components/common/Table/Table.interface';
 import { EntityName } from '../components/Modals/EntityNameModal/EntityNameModal.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { TABLE_COLUMNS_KEYS } from '../constants/TableKeys.constants';
@@ -24,7 +25,7 @@ import { ServiceCategory } from '../enums/service.enum';
 import { Database } from '../generated/entity/data/database';
 import { Directory } from '../generated/entity/data/directory';
 import { Pipeline } from '../generated/entity/data/pipeline';
-import { ServicePageData } from '../pages/ServiceDetailsPage/ServiceDetailsPage.interface';
+import { ServicePageData } from '../interface/platform/service.interface';
 import { patchApiCollection } from '../rest/apiCollectionsAPI';
 import { patchDashboardDetails } from '../rest/dashboardAPI';
 import { patchDatabaseDetails } from '../rest/databaseAPI';
@@ -34,11 +35,13 @@ import { patchPipelineDetails } from '../rest/pipelineAPI';
 import { patchSearchIndexDetails } from '../rest/SearchIndexAPI';
 import { patchContainerDetails } from '../rest/storageAPI';
 import { patchTopicDetails } from '../rest/topicsAPI';
-import { highlightSearchText } from './EntitySearchUtils';
+import {
+  highlightSearchText,
+  renderHighlightedText,
+} from './EntitySearchUtils';
 import { getColumnSorter } from './EntitySortUtils';
 import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
-import { stringToHTML } from './StringUtils';
 import {
   certificationTableObject,
   dataProductTableObject,
@@ -57,7 +60,17 @@ export const getServiceMainTabColumns = (
     entityData: EntityName,
     id?: string
   ) => Promise<void>,
-  searchValue?: string
+  searchValue?: string,
+  // Whether the current user can view usage data. Matched against the
+  // DATABASE_SERVICES branch below so that — like DatabaseSchemaTable's
+  // `viewUsagePermission`-gated column — the Usage column is hidden entirely
+  // for users without ViewUsage, instead of rendering fabricated values from
+  // the rows whose `usageSummary` the REST layer deliberately withheld
+  // (ServiceDetailsPage.fetchDatabases) or that the ES `_source` path never
+  // populated. Defaults to true so unpermissioned callers (the version-page
+  // tab) keep showing the column; the live ServiceMainTabContent caller
+  // passes the derived flag.
+  viewUsagePermission = true
 ): ColumnsType<ServicePageData> => [
   {
     title: t('label.name'),
@@ -67,14 +80,18 @@ export const getServiceMainTabColumns = (
     sorter: getColumnSorter<ServicePageData, 'name'>('name'),
     render: (_, record: ServicePageData) => (
       <DisplayName
-        displayName={stringToHTML(
+        displayName={renderHighlightedText(
           highlightSearchText(record.displayName, searchValue)
         )}
+        entityDisplayName={record.displayName}
+        entityName={record.name}
         hasEditPermission={editDisplayNamePermission}
         id={record.id}
         key={record.id}
         link={getLinkForFqn(serviceCategory, record.fullyQualifiedName ?? '')}
-        name={stringToHTML(highlightSearchText(record.name, searchValue))}
+        name={renderHighlightedText(
+          highlightSearchText(record.name, searchValue)
+        )}
         onEditDisplayName={handleDisplayNameUpdate}
       />
     ),
@@ -91,7 +108,9 @@ export const getServiceMainTabColumns = (
             scheduleInterval ? (
               <span>{scheduleInterval}</span>
             ) : (
-              <Typography.Text>{NO_DATA_PLACEHOLDER}</Typography.Text>
+              <Typography className="tw:text-primary">
+                {NO_DATA_PLACEHOLDER}
+              </Typography>
             ),
         },
       ]
@@ -102,20 +121,24 @@ export const getServiceMainTabColumns = (
   ...tagTableObject<ServicePageData>(),
   ...tierTableObject<ServicePageData>(),
   ...certificationTableObject<ServicePageData>(),
-  ...(ServiceCategory.DATABASE_SERVICES === serviceCategory
+  ...(viewUsagePermission &&
+  ServiceCategory.DATABASE_SERVICES === serviceCategory
     ? [
         {
           title: t('label.usage'),
           dataIndex: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           key: TABLE_COLUMNS_KEYS.USAGE_SUMMARY,
           width: 200,
-          render: (usageSummary: Database['usageSummary']) => (
-            <Typography.Text>
-              {getUsagePercentile(
-                usageSummary?.weeklyStats?.percentileRank ?? 0
-              )}
-            </Typography.Text>
-          ),
+          render: (usageSummary: Database['usageSummary']) =>
+            isNil(usageSummary?.weeklyStats?.percentileRank) ? (
+              <Typography className="tw:text-primary">
+                {NO_DATA_PLACEHOLDER}
+              </Typography>
+            ) : (
+              <Typography className="tw:text-primary">
+                {getUsagePercentile(usageSummary.weeklyStats.percentileRank)}
+              </Typography>
+            ),
         },
       ]
     : []),

@@ -17,7 +17,7 @@ shared no-op — the walk code carries zero progress conditionals.
 """
 
 import traceback
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set  # noqa: UP035
+from typing import TYPE_CHECKING, Any
 
 from metadata.ingestion.models.topology import (
     NodeStage,
@@ -54,7 +54,7 @@ class _Scope:
     exit — a failure (or early generator close) mid-subtree prunes without
     claiming the container completed."""
 
-    def __init__(self, registry: "ProgressRegistry", path: List[str], entity_type_name: str) -> None:  # noqa: UP006
+    def __init__(self, registry: "ProgressRegistry", path: list[str], entity_type_name: str) -> None:
         self._registry = registry
         self._path = path
         self._entity_type_name = entity_type_name
@@ -73,7 +73,7 @@ class _NoOpNodeProgress:
 
     wants_eager_count = False
 
-    def open(self, count: Optional[int]) -> None:  # noqa: UP045
+    def open(self, count: int | None) -> None:
         """No-op."""
 
     def advance_leaf(self) -> None:
@@ -97,7 +97,7 @@ class NodeProgress:
         tracker: "TopologyProgressTracker",
         node: TopologyNode,
         entity_type_name: str,
-        parent_path: List[str],  # noqa: UP006
+        parent_path: list[str],
         is_leaf: bool,
     ) -> None:
         self._tracker = tracker
@@ -133,7 +133,7 @@ class NodeProgress:
         context a stage of the just-yielded entity populated."""
         return self._reconcilable
 
-    def open(self, count: Optional[int]) -> None:  # noqa: UP045
+    def open(self, count: int | None) -> None:
         """Open this node's counter under its parent scope. An exact ``count``
         (the runner materialized the producer) additionally reconciles a
         reconcilable container's scope total toward the observed child count;
@@ -171,9 +171,9 @@ class TopologyProgressTracker:
 
     def __init__(self, source: Any) -> None:
         self._source = source
-        self._root_node_ids: Set[int] = set()  # noqa: UP006
-        self._root_ctx_keys: Optional[Set[str]] = None  # noqa: UP006,UP045
-        self._primary_stage_idx: Optional[Dict[str, NodeStage]] = None  # noqa: UP006,UP045
+        self._root_node_ids: set[int] = set()
+        self._root_ctx_keys: set[str] | None = None
+        self._primary_stage_idx: dict[str, NodeStage] | None = None
         self._totals_declared = False
 
     @property
@@ -216,7 +216,7 @@ class TopologyProgressTracker:
                 logger.warning("Progress totals declaration failed; continuing without totals: %s", exc)
                 logger.debug(traceback.format_exc())
 
-    def current_path(self, entity_type_name: Optional[str] = None) -> List[str]:  # noqa: UP006,UP045
+    def current_path(self, entity_type_name: str | None = None) -> list[str]:
         """Ancestor container labels from the node's primary-stage ``consumer``
         chain minus the service-root key, each remaining key resolved to its
         current context value.
@@ -227,7 +227,7 @@ class TopologyProgressTracker:
         ``database_schema``-not-cleared-between-siblings bug cannot occur here.
         Returns ``[]`` for the run-grain default (no ``entity_type_name``) or a
         root-level entity (empty consumer)."""
-        path: List[str] = []  # noqa: UP006
+        path: list[str] = []
         stage = self._primary_entity_stage(entity_type_name)
         if stage is not None:
             root_keys = self._root_context_keys()
@@ -239,7 +239,7 @@ class TopologyProgressTracker:
                         path.append(model_str(value))
         return path
 
-    def scope_path_for_node(self, node: TopologyNode, parent_path: List[str]) -> Optional[List[str]]:  # noqa: UP006,UP045
+    def scope_path_for_node(self, node: TopologyNode, parent_path: list[str]) -> list[str] | None:
         """The path of the container entity currently in context: its parent
         ancestors plus this node's own context value. Used to prune a scope
         from the progress tree once its children finish. ``None`` when the
@@ -252,7 +252,7 @@ class TopologyProgressTracker:
                 result = [*parent_path, model_str(value)]
         return result
 
-    def _root_context_keys(self) -> Set[str]:  # noqa: UP006
+    def _root_context_keys(self) -> set[str]:
         """Context keys owned by root topology nodes (the service level),
         derived from the topology — never a string literal. Cached; the
         topology is static."""
@@ -265,12 +265,12 @@ class TopologyProgressTracker:
             }
         return self._root_ctx_keys
 
-    def _primary_stage_index(self) -> Dict[str, NodeStage]:  # noqa: UP006
+    def _primary_stage_index(self) -> dict[str, NodeStage]:
         """Map of entity type name → that node's primary stage, built once from
         the static topology. Entity types are unique per node, so the first
         match wins on the rare collision."""
         if self._primary_stage_idx is None:
-            index: Dict[str, NodeStage] = {}  # noqa: UP006
+            index: dict[str, NodeStage] = {}
             for node in get_topology_nodes(self._source.topology):
                 stage = self._source._node_primary_stage(node)
                 if stage is not None:
@@ -278,7 +278,7 @@ class TopologyProgressTracker:
             self._primary_stage_idx = index
         return self._primary_stage_idx
 
-    def _primary_entity_stage(self, entity_type_name: Optional[str]) -> Optional[NodeStage]:  # noqa: UP045
+    def _primary_entity_stage(self, entity_type_name: str | None) -> NodeStage | None:
         result = None
         if entity_type_name is not None:
             result = self._primary_stage_index().get(entity_type_name)

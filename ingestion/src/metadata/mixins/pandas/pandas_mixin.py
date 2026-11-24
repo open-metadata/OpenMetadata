@@ -14,7 +14,8 @@ Interfaces with database for all database engine
 supporting sqlalchemy abstraction layer
 """
 
-from typing import Callable, cast  # noqa: UP035
+from collections.abc import Callable
+from typing import cast
 
 from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
     TableRowInsertedCountToBeBetweenValidator,
@@ -190,7 +191,9 @@ class PandasInterfaceMixin:
                 key=table.name.root,
                 bucket_name=table.databaseSchema.name,
                 file_extension=table.fileFormat,
+                file_size=None,
                 separator=None,
+                escapechar=service_connection_config.csvEscapeChar or None,
             ),
         )
         if data:

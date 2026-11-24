@@ -87,7 +87,7 @@ class SearchRelevancyPreviewIT {
 
   @Test
   void fieldValueBoostRanksByNumericUsage(final TestNamespace ns) {
-    final String marker = ns.uniqueShortId();
+    final String marker = RelevancyFixtures.uniqueToken("fv");
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
     final Table heavilyUsed = RelevancyFixtures.createTable(schema, marker + "a", marker, null);
     final Table rarelyUsed = RelevancyFixtures.createTable(schema, marker + "b", marker, null);
@@ -96,6 +96,7 @@ class SearchRelevancyPreviewIT {
     awaitIndexed(marker, 2);
 
     final SearchSettings boosted = SearchSettingsTestHelper.copyOf(currentSettings());
+    SearchSettingsTestHelper.clearBoosts(boosted, TABLE_INDEX);
     SearchSettingsTestHelper.addGlobalFieldValueBoost(
         boosted, USAGE_COUNT_FIELD, USAGE_SIGNAL_FACTOR);
 

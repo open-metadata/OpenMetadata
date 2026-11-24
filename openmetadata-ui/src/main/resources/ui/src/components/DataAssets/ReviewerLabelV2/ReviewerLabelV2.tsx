@@ -10,17 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TabSpecificField } from '../../../enums/entity.enum';
+import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import { ChangeDescription } from '../../../generated/type/changeEvent';
 import { getOwnerVersionLabel } from '../../../utils/EntityVersionUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 
@@ -38,14 +38,22 @@ export const ReviewerLabelV2 = <
     reviewers?: EntityReference[];
     id: string;
     changeDescription?: ChangeDescription;
+    deleted?: boolean;
   }
 >() => {
   const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
   const { t } = useTranslation();
 
-  const hasEditReviewerAccess = useMemo(() => {
-    return permissions.EditAll || permissions.EditReviewers;
-  }, [permissions]);
+  // No named `canEdit*` flag exists for `EditReviewers`, so `can(Operation.EditReviewers)` is the
+  // documented escape hatch. `deleted` gates it like every other edit on a soft-deleted entity.
+  const { can } = useMemo(
+    () => getDerivedPermissionFlags(permissions, data.deleted),
+    [permissions, data.deleted]
+  );
+  const hasEditReviewerAccess = useMemo(
+    () => can(Operation.EditReviewers),
+    [can]
+  );
 
   const { assignedReviewers, hasReviewers } = useMemo(() => {
     const inheritedReviewers: EntityReference[] = [];
@@ -82,19 +90,20 @@ export const ReviewerLabelV2 = <
           listHeight={200}
           multiple={{ user: true, team: false }}
           owner={assignedReviewers ?? []}
-          popoverProps={{ placement: 'topLeft' }}
           onUpdate={handleReviewerSave}>
           {hasReviewers ? (
-            <WidgetEditButton
+            <ButtonUtility
               data-testid="edit-reviewer-button"
-              title={t('label.edit-entity', {
+              icon={Edit01}
+              tooltip={t('label.edit-entity', {
                 entity: t('label.reviewer-plural'),
               })}
             />
           ) : (
-            <WidgetPlusButton
+            <ButtonUtility
               data-testid="Add"
-              title={t('label.add-entity', {
+              icon={Plus}
+              tooltip={t('label.add-entity', {
                 entity: t('label.reviewer-plural'),
               })}
             />

@@ -48,9 +48,6 @@ from metadata.generated.schema.entity.services.connections.database.databricksCo
 from metadata.generated.schema.entity.services.connections.database.db2Connection import (
     Db2Connection,
 )
-from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
-    DeltaLakeConnection,
-)
 from metadata.generated.schema.entity.services.connections.database.dynamoDBConnection import (
     DynamoDBConnection,
 )
@@ -271,88 +268,6 @@ def test_db2():
 
     config: WorkflowSource = WorkflowSource.model_validate(source)
     assert isinstance(config.serviceConnection.root.config, Db2Connection)
-
-
-def test_deltalake():
-    source = {
-        "type": "deltalake",
-        "serviceName": "local_deltalake",
-        "serviceConnection": {
-            "config": {
-                "configSource": {
-                    "connection": {"metastoreDb": "jdbc:mysql://localhost:3306/demo_hive"},
-                    "appName": "MyApp",
-                },
-            }
-        },
-        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
-    }
-
-    config: WorkflowSource = WorkflowSource.model_validate(source)
-    assert isinstance(config.serviceConnection.root.config, DeltaLakeConnection)
-
-    source = {
-        "type": "deltalake",
-        "serviceName": "local_deltalake",
-        "serviceConnection": {
-            "config": {
-                "configSource": {
-                    "connection": {
-                        "metastoreHostPort": "localhost:9083",
-                    },
-                    "appName": "MyApp",
-                }
-            }
-        },
-        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
-    }
-
-    config: WorkflowSource = WorkflowSource.model_validate(source)
-    assert isinstance(config.serviceConnection.root.config, DeltaLakeConnection)
-
-    source = {
-        "type": "deltalake",
-        "serviceName": "local_deltalake",
-        "serviceConnection": {
-            "config": {
-                "configSource": {
-                    "connection": {
-                        "metastoreFilePath": "/tmp/metastore.db",
-                    },
-                    "appName": "MyApp",
-                }
-            }
-        },
-        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
-    }
-
-    config: WorkflowSource = WorkflowSource.model_validate(source)
-    assert isinstance(config.serviceConnection.root.config, DeltaLakeConnection)
-
-    source = {
-        "type": "deltalake",
-        "serviceName": "local_deltalake",
-        "serviceConnection": {
-            "config": {
-                "configSource": {
-                    "connection": {
-                        "securityConfig": {
-                            "awsAccessKeyId": "access_key",
-                            "awsSecretAccessKey": "secret_key",
-                            "awsRegion": "us-east-2",
-                            "awsSessionToken": "sessionToken",
-                        }
-                    },
-                    "bucketName": "my-bucket",
-                    "prefix": "prefix",
-                }
-            }
-        },
-        "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
-    }
-
-    config: WorkflowSource = WorkflowSource.model_validate(source)
-    assert isinstance(config.serviceConnection.root.config, DeltaLakeConnection)
 
 
 def test_druid():

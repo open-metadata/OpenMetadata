@@ -204,6 +204,32 @@ describe('transformTestDefinitionFormData', () => {
       expect(patch).toEqual([{ op: 'remove', path: '/dataQualityDimension' }]);
     });
 
+    it('keeps only the dimension op for a system test definition', () => {
+      const initial = {
+        id: '1',
+        name: 'n',
+        displayName: 'Old name',
+        dataQualityDimension: 'Accuracy',
+      } as never;
+
+      const patch = buildEditPatch(
+        initial,
+        {
+          name: 'n',
+          displayName: 'New name',
+          dataQualityDimension: { id: 'Timeliness', label: 'Timeliness' },
+        },
+        { displayName: true, dataQualityDimension: true },
+        true
+      );
+
+      // Everything else is fixed on a shipped test definition, so a stray op would have the
+      // server reject the whole update.
+      expect(patch).toEqual([
+        { op: 'replace', path: '/dataQualityDimension', value: 'Timeliness' },
+      ]);
+    });
+
     it('leaves an untouched optional select alone (no spurious remove)', () => {
       const initial = {
         id: '1',

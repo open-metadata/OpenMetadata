@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
   Accordion,
   AccordionHeader,
@@ -21,6 +20,7 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, {
   forwardRef,
@@ -32,23 +32,348 @@ import React, {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactFlowProvider } from 'reactflow';
-import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { getDataProductPortsView } from '../../../rest/dataProductAPI';
+import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import {
+  getDataProductInputPorts,
+  getDataProductOutputPorts,
+  getDataProductPortsView,
+} from '../../../rest/dataProductAPI';
 import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductPureUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../common/Loader/Loader';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
-import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import {
   InputOutputPortsTabProps,
   InputOutputPortsTabRef,
 } from './InputOutputPortsTab.types';
-import { PortsLineageView } from './PortsLineageView';
-import { PortsListView, PortsListViewRef } from './PortsListView';
+import PortsLineageView from './PortsLineageView/PortsLineageView.component';
+import PortsListView from './PortsListView/PortsListView.component';
+import { PortsListViewRef } from './PortsListView/PortsListView.types';
+
+interface LineageAccordionSectionProps {
+  isLineageExpanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+  isLineageCollapsed: boolean;
+  inputPortsCount: number;
+  outputPortsCount: number;
+  isLoadingLineage: boolean;
+  assetCount: number;
+  dataProduct: DataProduct;
+  lineageInputPortsData: SearchedDataProps['data'];
+  lineageOutputPortsData: SearchedDataProps['data'];
+  isLineageFullScreen: boolean;
+  onPortClick: (port: SearchedDataProps['data'][number]['_source']) => void;
+  onToggleFullScreen: () => void;
+}
+
+const LineageAccordionSection = ({
+  isLineageExpanded,
+  onExpandedChange,
+  isLineageCollapsed,
+  inputPortsCount,
+  outputPortsCount,
+  isLoadingLineage,
+  assetCount,
+  dataProduct,
+  lineageInputPortsData,
+  lineageOutputPortsData,
+  isLineageFullScreen,
+  onPortClick,
+  onToggleFullScreen,
+}: LineageAccordionSectionProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Grid className="tw:w-full tw:shrink-0 tw:p-1" gap="4">
+      <Grid.Item span={24}>
+        <Accordion
+          allowsMultipleExpanded
+          expandedKeys={isLineageExpanded ? new Set(['lineage']) : new Set()}
+          onExpandedChange={(keys) => onExpandedChange(keys.has('lineage'))}>
+          <AccordionItem id="lineage">
+            <AccordionHeader data-testid="toggle-lineage-collapse">
+              <div className="tw:flex tw:items-baseline tw:gap-1">
+                <Typography as="span" className="tw:text-md">
+                  {t('label.port-plural')} {t('label.lineage')}
+                </Typography>
+                {isLineageCollapsed && (
+                  <Typography
+                    as="p"
+                    className="tw:text-xs tw:text-secondary tw:font-light">
+                    ({inputPortsCount} {t('label.input').toLowerCase()},{' '}
+                    {outputPortsCount} {t('label.output').toLowerCase()})
+                  </Typography>
+                )}
+              </div>
+            </AccordionHeader>
+            <AccordionPanel>
+              {isLoadingLineage ? (
+                <div
+                  className="tw:flex tw:justify-center tw:items-center"
+                  style={{ height: 250 }}>
+                  <Loader />
+                </div>
+              ) : (
+                <ReactFlowProvider>
+                  <PortsLineageView
+                    assetCount={assetCount}
+                    dataProduct={dataProduct}
+                    height={250}
+                    inputPortsData={lineageInputPortsData}
+                    isFullScreen={isLineageFullScreen}
+                    outputPortsData={lineageOutputPortsData}
+                    onPortClick={onPortClick}
+                    onToggleFullScreen={onToggleFullScreen}
+                  />
+                </ReactFlowProvider>
+              )}
+            </AccordionPanel>
+          </AccordionItem>
+        </Accordion>
+      </Grid.Item>
+    </Grid>
+  );
+};
+
+interface InputPortsAccordionSectionProps {
+  isInputPortsExpanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+  inputPortsCount: number;
+  permissions: OperationPermission;
+  /** Derived EditAll flag replacing the raw reads in this section. */
+  canEditAll: boolean;
+  dataProductFqn: string;
+  inputPortsListRef: React.RefObject<PortsListViewRef>;
+  onAddInputPort: () => void;
+  onRemovePort: () => void;
+}
+
+const InputPortsAccordionSection = ({
+  isInputPortsExpanded,
+  onExpandedChange,
+  inputPortsCount,
+  permissions,
+  canEditAll,
+  dataProductFqn,
+  inputPortsListRef,
+  onAddInputPort,
+  onRemovePort,
+}: InputPortsAccordionSectionProps) => {
+  const { t } = useTranslation();
+  const showHeaderAddButton =
+    canEditAll && isInputPortsExpanded && inputPortsCount > 0;
+
+  return (
+    <Grid.Item span={12}>
+      <Accordion
+        allowsMultipleExpanded
+        expandedKeys={
+          isInputPortsExpanded ? new Set(['input-ports']) : new Set()
+        }
+        onExpandedChange={(keys) => onExpandedChange(keys.has('input-ports'))}>
+        <AccordionItem id="input-ports">
+          <AccordionHeader data-testid="toggle-input-ports-collapse">
+            <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:gap-2">
+              <div className="tw:flex tw:items-baseline tw:gap-1">
+                <Typography as="span" className="tw:text-md">
+                  {t('label.entity-port-plural', {
+                    entity: t('label.input'),
+                  })}
+                </Typography>
+                <Typography
+                  as="p"
+                  className="tw:text-xs tw:text-secondary tw:font-light"
+                  data-testid="input-port-count">
+                  ({inputPortsCount})
+                </Typography>
+              </div>
+              {showHeaderAddButton && (
+                <Button
+                  color="link-color"
+                  data-testid="add-input-port-button"
+                  iconLeading={Plus}
+                  size="sm"
+                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                    e.stopPropagation();
+                    onAddInputPort();
+                  }}>
+                  {`${t('label.add')} ${t('label.port')}`}
+                </Button>
+              )}
+            </div>
+          </AccordionHeader>
+          <AccordionPanel>
+            <div
+              className="tw:flex tw:flex-col tw:pb-2"
+              style={{ height: 'calc(100vh - 460px)' }}>
+              {inputPortsCount === 0 ? (
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  <NoDataPlaceholder
+                    data-testid="no-input-ports-placeholder"
+                    footer={
+                      <>
+                        {canEditAll && (
+                          <Button
+                            className="tw:mt-2"
+                            color="primary"
+                            data-testid="add-input-port-button"
+                            iconLeading={Plus}
+                            onClick={onAddInputPort}>
+                            {t('label.add-entity', {
+                              entity: t('label.entity-port-plural', {
+                                entity: t('label.input'),
+                              }),
+                            })}
+                          </Button>
+                        )}
+                      </>
+                    }
+                    title={t('message.no-input-ports-added')}
+                  />
+                </div>
+              ) : (
+                <PortsListView
+                  dataProductFqn={dataProductFqn}
+                  permissions={permissions}
+                  portType="input"
+                  ref={inputPortsListRef}
+                  onRemovePort={onRemovePort}
+                />
+              )}
+            </div>
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
+    </Grid.Item>
+  );
+};
+
+interface OutputPortsAccordionSectionProps {
+  isOutputPortsExpanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+  outputPortsCount: number;
+  assetCount: number;
+  permissions: OperationPermission;
+  /** Derived EditAll flag replacing the raw reads in this section. */
+  canEditAll: boolean;
+  dataProductFqn: string;
+  outputPortsListRef: React.RefObject<PortsListViewRef>;
+  onAddOutputPort: () => void;
+  onRemovePort: () => void;
+}
+
+const OutputPortsAccordionSection = ({
+  isOutputPortsExpanded,
+  onExpandedChange,
+  outputPortsCount,
+  assetCount,
+  permissions,
+  canEditAll,
+  dataProductFqn,
+  outputPortsListRef,
+  onAddOutputPort,
+  onRemovePort,
+}: OutputPortsAccordionSectionProps) => {
+  const { t } = useTranslation();
+  const showHeaderAddButton =
+    canEditAll && isOutputPortsExpanded && outputPortsCount > 0;
+  // The no-assets copy is guidance (description); the other is a headline.
+  const emptyStateCopy =
+    assetCount === 0
+      ? { description: t('message.no-assets-for-output-ports') }
+      : { title: t('message.no-output-ports-added') };
+  const showEmptyStateAddButton = canEditAll && assetCount > 0;
+
+  return (
+    <Grid.Item span={12}>
+      <Accordion
+        allowsMultipleExpanded
+        expandedKeys={
+          isOutputPortsExpanded ? new Set(['output-ports']) : new Set()
+        }
+        onExpandedChange={(keys) => onExpandedChange(keys.has('output-ports'))}>
+        <AccordionItem id="output-ports">
+          <AccordionHeader data-testid="toggle-output-ports-collapse">
+            <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:gap-2">
+              <div className="tw:flex tw:items-baseline tw:gap-1">
+                <Typography as="span" className="tw:text-md">
+                  {t('label.entity-port-plural', {
+                    entity: t('label.output'),
+                  })}
+                </Typography>
+                <Typography
+                  as="p"
+                  className="tw:text-xs tw:text-secondary tw:font-light"
+                  data-testid="output-port-count">
+                  ({outputPortsCount})
+                </Typography>
+              </div>
+              {showHeaderAddButton && (
+                <Button
+                  color="link-color"
+                  data-testid="add-output-port-button"
+                  iconLeading={Plus}
+                  size="sm"
+                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                    e.stopPropagation();
+                    onAddOutputPort();
+                  }}>
+                  {`${t('label.add')} ${t('label.port')}`}
+                </Button>
+              )}
+            </div>
+          </AccordionHeader>
+          <AccordionPanel>
+            <div
+              className="tw:flex tw:flex-col tw:pb-2"
+              style={{ height: 'calc(100vh - 460px)' }}>
+              {outputPortsCount === 0 ? (
+                <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                  <NoDataPlaceholder
+                    data-testid="no-output-ports-placeholder"
+                    {...emptyStateCopy}
+                    footer={
+                      <>
+                        {showEmptyStateAddButton && (
+                          <Button
+                            className="tw:mt-2"
+                            color="primary"
+                            data-testid="add-output-port-button"
+                            iconLeading={Plus}
+                            onClick={onAddOutputPort}>
+                            {t('label.add-entity', {
+                              entity: t('label.entity-port-plural', {
+                                entity: t('label.output'),
+                              }),
+                            })}
+                          </Button>
+                        )}
+                      </>
+                    }
+                  />
+                </div>
+              ) : (
+                <PortsListView
+                  dataProductFqn={dataProductFqn}
+                  permissions={permissions}
+                  portType="output"
+                  ref={outputPortsListRef}
+                  onRemovePort={onRemovePort}
+                />
+              )}
+            </div>
+          </AccordionPanel>
+        </AccordionItem>
+      </Accordion>
+    </Grid.Item>
+  );
+};
 
 export const InputOutputPortsTab = forwardRef<
   InputOutputPortsTabRef,
@@ -68,6 +393,12 @@ export const InputOutputPortsTab = forwardRef<
     const { t } = useTranslation();
     const [isAddingInputPort, setIsAddingInputPort] = useState(false);
     const [isAddingOutputPort, setIsAddingOutputPort] = useState(false);
+    const [excludedFromInputPicker, setExcludedFromInputPicker] = useState<
+      string[]
+    >([]);
+    const [excludedFromOutputPicker, setExcludedFromOutputPicker] = useState<
+      string[]
+    >([]);
     const [isLineageFullScreen, setIsLineageFullScreen] = useState(false);
     const [isLineageExpanded, setIsLineageExpanded] = useState(false);
     const [isInputPortsExpanded, setIsInputPortsExpanded] = useState(true);
@@ -89,11 +420,40 @@ export const InputOutputPortsTab = forwardRef<
     const [inputPortsCount, setInputPortsCount] = useState(0);
     const [outputPortsCount, setOutputPortsCount] = useState(0);
 
-    // Compute query filter for port selection drawer
-    // Only show assets that belong to the DataProduct
-    const portQueryFilter = useMemo(() => {
-      return getQueryFilterForDataProductPorts(dataProductFqn);
-    }, [dataProductFqn]);
+    // Output ports must be assets of the data product, and an asset cannot be
+    // both an input and an output port, so each picker hides the other kind.
+    const outputPortQueryFilter = useMemo(
+      () =>
+        getQueryFilterForDataProductPorts(
+          dataProductFqn,
+          excludedFromOutputPicker
+        ),
+      [dataProductFqn, excludedFromOutputPicker]
+    );
+
+    const inputPortQueryFilter = useMemo(
+      () =>
+        excludedFromInputPicker.length > 0
+          ? {
+              query: {
+                bool: {
+                  must_not: [{ ids: { values: excludedFromInputPicker } }],
+                },
+              },
+            }
+          : undefined,
+      [excludedFromInputPicker]
+    );
+
+    // Consumer via prop (Task 8 rule 2): `permissions` is the raw OperationPermission
+    // fed straight through from DataProductUtils.tsx's `dataProductPermission`
+    // (DataProductsDetailsPage's useEntityPermissions owner, Batch 1) — contract kept
+    // raw. No `deleted` argument: old code's 4 `permissions.EditAll` reads were never
+    // gated on `deleted` (DataProduct has no `deleted` field to gate on anyway).
+    const { canEditAll } = useMemo(
+      () => getDerivedPermissionFlags(permissions),
+      [permissions]
+    );
 
     // Fetch lineage data and counts (only when lineage section is expanded, or on initial load for counts)
     const fetchLineageData = useCallback(async () => {
@@ -165,13 +525,34 @@ export const InputOutputPortsTab = forwardRef<
       refreshPorts,
     }));
 
-    const handleAddInputPort = useCallback(() => {
-      setIsAddingInputPort(true);
-    }, []);
+    // ponytail: first 1000 ports (the API max); a product past that can still
+    // list an opposite port, which the save then rejects inline.
+    // Each picker keeps its own list, so a late response for one picker can
+    // never replace the other's exclusions.
+    const fetchPortIds = useCallback(
+      async (getPorts: typeof getDataProductInputPorts) => {
+        try {
+          const { data } = await getPorts(dataProductFqn, { limit: 1000 });
 
-    const handleAddOutputPort = useCallback(() => {
+          return data.map(({ id }) => id as string);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+
+          return [];
+        }
+      },
+      [dataProductFqn]
+    );
+
+    const handleAddInputPort = useCallback(async () => {
+      setExcludedFromInputPicker(await fetchPortIds(getDataProductOutputPorts));
+      setIsAddingInputPort(true);
+    }, [fetchPortIds]);
+
+    const handleAddOutputPort = useCallback(async () => {
+      setExcludedFromOutputPicker(await fetchPortIds(getDataProductInputPorts));
       setIsAddingOutputPort(true);
-    }, []);
+    }, [fetchPortIds]);
 
     const handleInputPortSave = useCallback(async () => {
       setIsAddingInputPort(false);
@@ -230,246 +611,53 @@ export const InputOutputPortsTab = forwardRef<
       <div
         className="tw:h-full tw:flex tw:flex-col tw:gap-5 tw:items-start tw:pb-3"
         data-testid="input-output-ports-tab">
-        <Grid className="tw:w-full tw:shrink-0 tw:p-1" gap="4">
-          <Grid.Item span={24}>
-            <Accordion
-              allowsMultipleExpanded
-              expandedKeys={
-                isLineageExpanded ? new Set(['lineage']) : new Set()
-              }
-              onExpandedChange={(keys) =>
-                setIsLineageExpanded(keys.has('lineage'))
-              }>
-              <AccordionItem id="lineage">
-                <AccordionHeader data-testid="toggle-lineage-collapse">
-                  <div className="tw:flex tw:items-baseline tw:gap-1">
-                    <Typography as="span" className="tw:text-md">
-                      {t('label.port-plural')} {t('label.lineage')}
-                    </Typography>
-                    {isLineageCollapsed && (
-                      <Typography
-                        as="p"
-                        className="tw:text-xs tw:text-secondary tw:font-light">
-                        ({inputPortsCount} {t('label.input').toLowerCase()},{' '}
-                        {outputPortsCount} {t('label.output').toLowerCase()})
-                      </Typography>
-                    )}
-                  </div>
-                </AccordionHeader>
-                <AccordionPanel>
-                  {isLoadingLineage ? (
-                    <div
-                      className="tw:flex tw:justify-center tw:items-center"
-                      style={{ height: 250 }}>
-                      <Loader />
-                    </div>
-                  ) : (
-                    <ReactFlowProvider>
-                      <PortsLineageView
-                        assetCount={assetCount}
-                        dataProduct={dataProduct}
-                        height={250}
-                        inputPortsData={lineageInputPortsData}
-                        isFullScreen={isLineageFullScreen}
-                        outputPortsData={lineageOutputPortsData}
-                        onPortClick={handleLineagePortClick}
-                        onToggleFullScreen={handleToggleFullScreen}
-                      />
-                    </ReactFlowProvider>
-                  )}
-                </AccordionPanel>
-              </AccordionItem>
-            </Accordion>
-          </Grid.Item>
-        </Grid>
+        <LineageAccordionSection
+          assetCount={assetCount}
+          dataProduct={dataProduct}
+          inputPortsCount={inputPortsCount}
+          isLineageCollapsed={isLineageCollapsed}
+          isLineageExpanded={isLineageExpanded}
+          isLineageFullScreen={isLineageFullScreen}
+          isLoadingLineage={isLoadingLineage}
+          lineageInputPortsData={lineageInputPortsData}
+          lineageOutputPortsData={lineageOutputPortsData}
+          outputPortsCount={outputPortsCount}
+          onExpandedChange={setIsLineageExpanded}
+          onPortClick={handleLineagePortClick}
+          onToggleFullScreen={handleToggleFullScreen}
+        />
 
         <Grid className="tw:w-full tw:flex-1 tw:min-h-0 tw:p-1" gap="4">
-          <Grid.Item span={12}>
-            <Accordion
-              allowsMultipleExpanded
-              expandedKeys={
-                isInputPortsExpanded ? new Set(['input-ports']) : new Set()
-              }
-              onExpandedChange={(keys) =>
-                setIsInputPortsExpanded(keys.has('input-ports'))
-              }>
-              <AccordionItem id="input-ports">
-                <AccordionHeader data-testid="toggle-input-ports-collapse">
-                  <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:gap-2">
-                    <div className="tw:flex tw:items-baseline tw:gap-1">
-                      <Typography as="span" className="tw:text-md">
-                        {t('label.entity-port-plural', {
-                          entity: t('label.input'),
-                        })}
-                      </Typography>
-                      <Typography
-                        as="p"
-                        className="tw:text-xs tw:text-secondary tw:font-light"
-                        data-testid="input-port-count">
-                        ({inputPortsCount})
-                      </Typography>
-                    </div>
-                    {permissions.EditAll &&
-                      isInputPortsExpanded &&
-                      inputPortsCount > 0 && (
-                        <Button
-                          color="link-color"
-                          data-testid="add-input-port-button"
-                          iconLeading={<PlusOutlined />}
-                          size="sm"
-                          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                            e.stopPropagation();
-                            handleAddInputPort();
-                          }}>
-                          {`${t('label.add')} ${t('label.port')}`}
-                        </Button>
-                      )}
-                  </div>
-                </AccordionHeader>
-                <AccordionPanel>
-                  <div
-                    className="tw:flex tw:flex-col tw:pb-2"
-                    style={{ height: 'calc(100vh - 460px)' }}>
-                    {inputPortsCount === 0 ? (
-                      <ErrorPlaceHolder
-                        className="m-t-0"
-                        icon={
-                          <AddPlaceHolderIcon
-                            className="tw:w-16 tw:h-16"
-                            data-testid="no-input-ports-placeholder"
-                          />
-                        }
-                        size={SIZE.SMALL}
-                        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                        <Typography as="p" className="tw:text-center">
-                          {t('message.no-input-ports-added')}
-                        </Typography>
-                        {permissions.EditAll && (
-                          <Button
-                            className="tw:mt-2"
-                            color="primary"
-                            data-testid="add-input-port-button"
-                            iconLeading={<PlusOutlined />}
-                            onClick={handleAddInputPort}>
-                            {t('label.add-entity', {
-                              entity: t('label.entity-port-plural', {
-                                entity: t('label.input'),
-                              }),
-                            })}
-                          </Button>
-                        )}
-                      </ErrorPlaceHolder>
-                    ) : (
-                      <PortsListView
-                        dataProductFqn={dataProductFqn}
-                        permissions={permissions}
-                        portType="input"
-                        ref={inputPortsListRef}
-                        onRemovePort={refreshPorts}
-                      />
-                    )}
-                  </div>
-                </AccordionPanel>
-              </AccordionItem>
-            </Accordion>
-          </Grid.Item>
+          <InputPortsAccordionSection
+            canEditAll={canEditAll}
+            dataProductFqn={dataProductFqn}
+            inputPortsCount={inputPortsCount}
+            inputPortsListRef={inputPortsListRef}
+            isInputPortsExpanded={isInputPortsExpanded}
+            permissions={permissions}
+            onAddInputPort={handleAddInputPort}
+            onExpandedChange={setIsInputPortsExpanded}
+            onRemovePort={refreshPorts}
+          />
 
-          <Grid.Item span={12}>
-            <Accordion
-              allowsMultipleExpanded
-              expandedKeys={
-                isOutputPortsExpanded ? new Set(['output-ports']) : new Set()
-              }
-              onExpandedChange={(keys) =>
-                setIsOutputPortsExpanded(keys.has('output-ports'))
-              }>
-              <AccordionItem id="output-ports">
-                <AccordionHeader data-testid="toggle-output-ports-collapse">
-                  <div className="tw:flex tw:items-center tw:justify-between tw:w-full tw:gap-2">
-                    <div className="tw:flex tw:items-baseline tw:gap-1">
-                      <Typography as="span" className="tw:text-md">
-                        {t('label.entity-port-plural', {
-                          entity: t('label.output'),
-                        })}
-                      </Typography>
-                      <Typography
-                        as="p"
-                        className="tw:text-xs tw:text-secondary tw:font-light"
-                        data-testid="output-port-count">
-                        ({outputPortsCount})
-                      </Typography>
-                    </div>
-                    {permissions.EditAll &&
-                      isOutputPortsExpanded &&
-                      outputPortsCount > 0 && (
-                        <Button
-                          color="link-color"
-                          data-testid="add-output-port-button"
-                          iconLeading={<PlusOutlined />}
-                          size="sm"
-                          onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                            e.stopPropagation();
-                            handleAddOutputPort();
-                          }}>
-                          {`${t('label.add')} ${t('label.port')}`}
-                        </Button>
-                      )}
-                  </div>
-                </AccordionHeader>
-                <AccordionPanel>
-                  <div
-                    className="tw:flex tw:flex-col tw:pb-2"
-                    style={{ height: 'calc(100vh - 460px)' }}>
-                    {outputPortsCount === 0 ? (
-                      <ErrorPlaceHolder
-                        className="m-t-0"
-                        icon={
-                          <AddPlaceHolderIcon
-                            className="tw:w-16 tw:h-16"
-                            data-testid="no-output-ports-placeholder"
-                          />
-                        }
-                        size={SIZE.SMALL}
-                        type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-                        <Typography as="p" className="tw:text-center">
-                          {assetCount === 0
-                            ? t('message.no-assets-for-output-ports')
-                            : t('message.no-output-ports-added')}
-                        </Typography>
-                        {permissions.EditAll && assetCount > 0 && (
-                          <Button
-                            className="tw:mt-2"
-                            color="primary"
-                            data-testid="add-output-port-button"
-                            iconLeading={<PlusOutlined />}
-                            onClick={handleAddOutputPort}>
-                            {t('label.add-entity', {
-                              entity: t('label.entity-port-plural', {
-                                entity: t('label.output'),
-                              }),
-                            })}
-                          </Button>
-                        )}
-                      </ErrorPlaceHolder>
-                    ) : (
-                      <PortsListView
-                        dataProductFqn={dataProductFqn}
-                        permissions={permissions}
-                        portType="output"
-                        ref={outputPortsListRef}
-                        onRemovePort={refreshPorts}
-                      />
-                    )}
-                  </div>
-                </AccordionPanel>
-              </AccordionItem>
-            </Accordion>
-          </Grid.Item>
+          <OutputPortsAccordionSection
+            assetCount={assetCount}
+            canEditAll={canEditAll}
+            dataProductFqn={dataProductFqn}
+            isOutputPortsExpanded={isOutputPortsExpanded}
+            outputPortsCount={outputPortsCount}
+            outputPortsListRef={outputPortsListRef}
+            permissions={permissions}
+            onAddOutputPort={handleAddOutputPort}
+            onExpandedChange={setIsOutputPortsExpanded}
+            onRemovePort={refreshPorts}
+          />
         </Grid>
 
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
           open={isAddingInputPort}
+          queryFilter={inputPortQueryFilter}
           title={t('label.add-entity', {
             entity: t('label.entity-port-plural', { entity: t('label.input') }),
           })}
@@ -482,7 +670,7 @@ export const InputOutputPortsTab = forwardRef<
           entityFqn={dataProductFqn}
           infoBannerText={t('message.output-ports-from-data-product-assets')}
           open={isAddingOutputPort}
-          queryFilter={portQueryFilter}
+          queryFilter={outputPortQueryFilter}
           title={t('label.add-entity', {
             entity: t('label.entity-port-plural', {
               entity: t('label.output'),

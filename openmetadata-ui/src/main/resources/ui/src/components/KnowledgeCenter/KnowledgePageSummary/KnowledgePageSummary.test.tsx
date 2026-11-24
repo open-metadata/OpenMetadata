@@ -19,10 +19,9 @@ import {
 import { MOCK_KNOWLEDGE_PAGE_DATA } from '../KnowledgePages/KnowledgePages.mock';
 import KnowledgePageSummary from './KnowledgePageSummary';
 
-jest.mock('components/common/OwnerLabel/OwnerLabel.component', () => ({
-  OwnerLabel: jest.fn().mockImplementation(() => {
-    return <div>OwnerLabel</div>;
-  }),
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  Owner: jest.fn().mockReturnValue(null),
 }));
 jest.mock(
   'components/common/SummaryTagsDescription/SummaryTagsDescription.component',
@@ -92,5 +91,30 @@ describe('KnowledgePageSummary', () => {
       await screen.findByText('SummaryTagsDescription')
     ).toBeInTheDocument();
     expect(screen.getByTestId('quick-link-data')).toBeInTheDocument();
+  });
+
+  it('should neutralise a javascript: quick link url (XSS guard)', async () => {
+    render(
+      <KnowledgePageSummary
+        entityDetails={{
+          ...mockData,
+          page: {
+            url: 'javascript:alert(document.domain)',
+          },
+          pageType: PageType.QUICK_LINK,
+        }}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    // The mocked summary children render as <div>s, so the only anchor is the
+    // quick-link. getSafeHttpUrl drops the javascript: scheme, so the '#'
+    // fallback is used — React Router renders that as href="/".
+    const link = await screen.findByRole('link');
+
+    expect(link.getAttribute('href')).not.toContain('javascript:');
+    expect(link).toHaveAttribute('href', '/');
   });
 });

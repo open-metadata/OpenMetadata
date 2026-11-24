@@ -18,6 +18,7 @@ import {
   WorkflowDefinition,
 } from '../generated/governance/workflows/workflowDefinition';
 import workflowClassBase from '../utils/WorkflowClassBase';
+import { isIncidentSettingsWorkflow } from '../utils/WorkflowConfigUtils';
 
 export type WorkflowMode = 'view' | 'edit';
 
@@ -47,6 +48,38 @@ const shouldShowRunButton = (
     (cronExpression === '' || cronExpression === undefined);
 
   return isPeriodicBatchEntity && isOnDemand;
+};
+
+const getIsNoOpTrigger = (workflowDefinition?: WorkflowDefinition): boolean => {
+  const trigger = workflowDefinition?.trigger;
+  const isTriggerObject =
+    typeof trigger === 'object' && trigger !== null && !Array.isArray(trigger);
+  const triggerType = isTriggerObject ? trigger.type : undefined;
+
+  return triggerType === Type.NoOp;
+};
+
+const getWorkflowEditingState = (
+  mode: WorkflowMode,
+  workflowDefinition?: WorkflowDefinition
+) => {
+  const isViewMode = mode === 'view';
+  const isEditMode = mode === 'edit';
+  const isNoOpTrigger = getIsNoOpTrigger(workflowDefinition);
+  const editEnabled = isEditMode && !isNoOpTrigger;
+  const viewEnabled = isViewMode && !isNoOpTrigger;
+  const hasIncidentSettings = isIncidentSettingsWorkflow(workflowDefinition);
+  const settingsEditEnabled = isEditMode && hasIncidentSettings;
+
+  return {
+    isViewMode,
+    isEditMode,
+    isNoOpTrigger,
+    editEnabled,
+    viewEnabled,
+    canSave: editEnabled || settingsEditEnabled,
+    showEditButton: viewEnabled || (isViewMode && hasIncidentSettings),
+  };
 };
 
 export interface UseWorkflowModeReturn {
@@ -134,23 +167,19 @@ export const useWorkflowMode = (
   }, [internalMode, enterEditMode, enterViewMode]);
 
   const derivedStates = useMemo(() => {
-    const isViewMode = internalMode === 'view';
-    const isEditMode = internalMode === 'edit';
-    const trigger = workflowDefinition?.trigger;
-    const isTriggerObject =
-      typeof trigger === 'object' &&
-      trigger !== null &&
-      !Array.isArray(trigger);
-    const triggerType = isTriggerObject ? trigger.type : undefined;
-    const isNoOpTrigger = triggerType === Type.NoOp;
-    const caps = workflowClassBase.getCapabilities();
+    const {
+      isViewMode,
+      isEditMode,
+      isNoOpTrigger,
+      editEnabled,
+      viewEnabled,
+      canSave,
+      showEditButton,
+    } = getWorkflowEditingState(internalMode, workflowDefinition);
+    const caps = workflowClassBase.getCapabilities(workflowDefinition);
     const structural = caps.allowStructuralGraphEdits;
-    const showWorkflowNodePalette = caps.showWorkflowNodePalette;
-    const allowFullStartNodeConfiguration =
-      caps.allowFullStartNodeConfiguration;
-    const allowStartNodeFilterScheduleAndBatchEdit =
-      caps.allowStartNodeFilterScheduleAndBatchEdit;
-    const allowScheduledTrigger = caps.allowScheduledTrigger;
+
+    const deleteEnabled = viewEnabled && caps.allowDeleteWorkflow;
 
     return {
       mode: internalMode,
@@ -158,30 +187,30 @@ export const useWorkflowMode = (
       isEditMode,
       isNoOp: isNoOpTrigger,
 
-      canEdit: isEditMode && !isNoOpTrigger,
-      canSave: isEditMode && !isNoOpTrigger,
-      canDelete: isViewMode && !isNoOpTrigger && caps.allowDeleteWorkflow,
-      canDragNodes: isEditMode && structural,
+      canEdit: editEnabled,
+      canSave,
+      canDelete: deleteEnabled,
+      canDragNodes: editEnabled && structural,
       canDragNodesInViewMode: isViewMode && caps.allowViewModeDrag,
       canAccessSidebar: isEditMode,
-      allowStructuralGraphEdits: structural && isEditMode && !isNoOpTrigger,
-      showWorkflowNodePalette,
-      allowFullStartNodeConfiguration,
-      allowStartNodeFilterScheduleAndBatchEdit,
-      allowScheduledTrigger,
+      allowStructuralGraphEdits: structural && editEnabled,
+      showWorkflowNodePalette: caps.showWorkflowNodePalette && !isNoOpTrigger,
+      allowFullStartNodeConfiguration: caps.allowFullStartNodeConfiguration,
+      allowStartNodeFilterScheduleAndBatchEdit:
+        caps.allowStartNodeFilterScheduleAndBatchEdit,
+      allowScheduledTrigger: caps.allowScheduledTrigger,
 
-      showEditButton: isViewMode && !isNoOpTrigger,
-      showSaveButton: isEditMode && !isNoOpTrigger,
-      showCancelButton: isEditMode && !isNoOpTrigger,
-      showTestButton: isEditMode && !isNoOpTrigger,
-      showDeleteButton:
-        isViewMode && !isNoOpTrigger && caps.allowDeleteWorkflow,
+      showEditButton,
+      showSaveButton: canSave,
+      showCancelButton: canSave,
+      showTestButton: editEnabled,
+      showDeleteButton: deleteEnabled,
       showRunButton:
         isViewMode && !!workflowFqn && shouldShowRunButton(workflowDefinition),
 
-      isFormDisabled: isViewMode,
-      isInputDisabled: isViewMode,
-      isDropdownDisabled: isViewMode,
+      isFormDisabled: !editEnabled,
+      isInputDisabled: !editEnabled,
+      isDropdownDisabled: !editEnabled,
     };
   }, [internalMode, workflowFqn, workflowDefinition]);
 

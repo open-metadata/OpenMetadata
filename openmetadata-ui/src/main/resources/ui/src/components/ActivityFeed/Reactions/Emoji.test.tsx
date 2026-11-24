@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, waitFor } from '@testing-library/react';
+import { ReactionsVariant } from '../../../enums/reactions.enum';
 import { User } from '../../../generated/entity/teams/user';
 import { ReactionType } from '../../../generated/type/reaction';
 import Emoji from './Emoji';
@@ -98,5 +99,37 @@ describe('Test Emoji Component', () => {
     fireEvent.click(emojiButton);
 
     expect(onReactionSelect).toHaveBeenCalledWith(mockProps.reaction, 'remove');
+
+    await waitFor(() => expect(emojiButton).toBeEnabled());
+  });
+
+  // The Inbox's pill marks the viewer's own reaction with the brand tint.
+  it('Should tint the pill the viewer reacted with, and not another', async () => {
+    const { findByTestId, rerender } = render(
+      <Emoji {...mockProps} variant={ReactionsVariant.Pill} />
+    );
+
+    expect(await findByTestId('emoji-button')).toHaveClass(
+      'tw:rounded-full!',
+      'tw:bg-utility-brand-50'
+    );
+
+    rerender(
+      <Emoji
+        {...mockProps}
+        reactionList={[
+          {
+            ...mockProps.reactionList[0],
+            user: { ...mockProps.reactionList[0].user, id: 'someone-else' },
+          },
+        ]}
+        variant={ReactionsVariant.Pill}
+      />
+    );
+
+    const button = await findByTestId('emoji-button');
+
+    expect(button).toHaveClass('tw:bg-primary');
+    expect(button).not.toHaveClass('tw:bg-utility-brand-50');
   });
 });

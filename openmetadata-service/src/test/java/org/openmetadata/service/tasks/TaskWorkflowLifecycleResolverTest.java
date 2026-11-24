@@ -36,6 +36,7 @@ import org.openmetadata.schema.entity.feed.FormSchema;
 import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.entity.feed.TransitionForms;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.Config__1;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.TransitionMetadatum;
@@ -615,17 +616,16 @@ class TaskWorkflowLifecycleResolverTest {
   @Test
   void workflowStartVariablesTolerateNullOptionalFields() {
     // Only id set — every optional field null. Keys must still be present (null values), never NPE.
-    Task task = new Task().withId(UUID.randomUUID());
+    Task task = new Task().withId(UUID.randomUUID()).withPriority(null);
     Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
 
     assertEquals(true, v.get(WorkflowStartVariables.TASK_WORKFLOW_MANAGED));
-    // Priority carries the schema default (Medium) even on a bare task.
-    assertEquals(TaskPriority.Medium.value(), v.get(WorkflowStartVariables.TASK_PRIORITY));
     for (String key :
         List.of(
             WorkflowStartVariables.TASK_NAME,
             WorkflowStartVariables.TASK_TYPE,
             WorkflowStartVariables.TASK_CATEGORY,
+            WorkflowStartVariables.TASK_PRIORITY,
             WorkflowStartVariables.TASK_PAYLOAD,
             WorkflowStartVariables.TASK_CREATED_BY,
             WorkflowStartVariables.TASK_ASSIGNEES)) {
@@ -823,5 +823,27 @@ class TaskWorkflowLifecycleResolverTest {
     Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
 
     assertFalse(v.containsKey(WorkflowStartVariables.TASK_PAYLOAD_EXPIRATION_DATE));
+  }
+
+  @Test
+  void ownerAutoAssignmentIsOnWhenTheFlagIsUnset() {
+    WorkflowDefinition unsetConfig = new WorkflowDefinition();
+    assertTrue(TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled(unsetConfig));
+
+    WorkflowDefinition configWithoutFlag =
+        new WorkflowDefinition().withConfig(new WorkflowConfiguration());
+    assertTrue(TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled(configWithoutFlag));
+  }
+
+  @Test
+  void ownerAutoAssignmentIsOffOnlyWhenExplicitlyDisabled() {
+    WorkflowDefinition disabled =
+        new WorkflowDefinition()
+            .withConfig(new WorkflowConfiguration().withAutoAssignOwners(false));
+    assertFalse(TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled(disabled));
+
+    WorkflowDefinition enabled =
+        new WorkflowDefinition().withConfig(new WorkflowConfiguration().withAutoAssignOwners(true));
+    assertTrue(TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled(enabled));
   }
 }

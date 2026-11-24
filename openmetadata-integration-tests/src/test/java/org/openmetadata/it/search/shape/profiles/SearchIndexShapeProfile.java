@@ -33,7 +33,7 @@ public final class SearchIndexShapeProfile implements EntityShapeProfile {
   }
 
   @Override
-  public EntityInterface minimal(final ShapeContext ctx) {
+  public EntityInterface<?> minimal(final ShapeContext ctx) {
     return new SearchIndex()
         .withId(ctx.id())
         .withName("index")
@@ -50,7 +50,7 @@ public final class SearchIndexShapeProfile implements EntityShapeProfile {
         .build();
   }
 
-  private EntityInterface fields(final EntityInterface entity, final Rung rung) {
+  private EntityInterface<?> fields(final EntityInterface<?> entity, final Rung rung) {
     final SearchIndex index = (SearchIndex) entity;
     final List<SearchIndexField> fields = new ArrayList<>(rung.magnitude());
     for (int i = 0; i < rung.magnitude(); i++) {

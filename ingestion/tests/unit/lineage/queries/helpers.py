@@ -2,7 +2,7 @@
 Test helpers for SQL lineage testing across multiple parsers.
 """
 
-from typing import List, NamedTuple, Optional, Set, Tuple  # noqa: UP035
+from typing import NamedTuple
 
 import networkx as nx
 from collate_sqllineage.core.models import Column, SubQuery, Table
@@ -11,10 +11,8 @@ from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyz
 from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer
 from collate_sqllineage.runner import LineageRunner
 
+from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT
 from metadata.utils.timeout import timeout
-
-# max lineage parsing wait in second for each parser and graph comparisons
-LINEAGE_PARSING_TIMEOUT = 10
 
 PARSER_MAP = {
     "SqlGlot": SqlGlotLineageAnalyzer,
@@ -25,9 +23,9 @@ PARSER_MAP = {
 
 class TestColumnQualifierTuple(NamedTuple):
     column: str
-    qualifier: Optional[str]  # noqa: UP045
-    is_subquery: Optional[bool] = False  # noqa: UP045
-    subquery: Optional[str] = None  # noqa: UP045
+    qualifier: str | None
+    is_subquery: bool | None = False
+    subquery: str | None = None
 
 
 @timeout(seconds=LINEAGE_PARSING_TIMEOUT)
@@ -86,8 +84,8 @@ def _create_lineage_runner_with_timeout_for_column_lineage(
 
 def assert_table_lineage(
     lr: LineageRunner,
-    source_tables: Optional[Set[str]] = None,  # noqa: UP006, UP045
-    target_tables: Optional[Set[str]] = None,  # noqa: UP006, UP045
+    source_tables: set[str] | None = None,
+    target_tables: set[str] | None = None,
     parser_name: str = None,  # noqa: RUF013
 ):
     """
@@ -118,7 +116,7 @@ def assert_table_lineage(
 
 def assert_column_lineage(
     lr: LineageRunner,
-    column_lineages: Optional[List[Tuple[TestColumnQualifierTuple, TestColumnQualifierTuple]]] = None,  # noqa: UP006, UP045
+    column_lineages: list[tuple[TestColumnQualifierTuple, TestColumnQualifierTuple]] | None = None,
     parser_name: str = None,  # noqa: RUF013
 ):
     """
@@ -233,8 +231,8 @@ def assert_column_lineage_graphs_match(
 
 def assert_table_lineage_equal(  # noqa: C901
     sql: str,
-    source_tables: Optional[Set[str]] = None,  # noqa: UP006, UP045
-    target_tables: Optional[Set[str]] = None,  # noqa: UP006, UP045
+    source_tables: set[str] | None = None,
+    target_tables: set[str] | None = None,
     dialect: str = "ansi",
     test_sqlglot: bool = True,
     test_sqlfluff: bool = True,
@@ -400,7 +398,7 @@ def assert_table_lineage_equal(  # noqa: C901
 
 def assert_column_lineage_equal(  # noqa: C901
     sql: str,
-    column_lineages: Optional[List[Tuple[TestColumnQualifierTuple, TestColumnQualifierTuple]]] = None,  # noqa: UP006, UP045
+    column_lineages: list[tuple[TestColumnQualifierTuple, TestColumnQualifierTuple]] | None = None,
     dialect: str = "ansi",
     test_sqlglot: bool = True,
     test_sqlfluff: bool = True,

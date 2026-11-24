@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
+import { expect, test } from '../../support/fixtures/base';
 import {
   closeCertificationDropdown,
   openCertificationDropdown,
@@ -21,6 +21,7 @@ import {
   SYSTEM_CERTIFICATION_TAGS,
 } from '../../utils/certification';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { searchCertification } from '../../utils/entity';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
@@ -63,17 +64,14 @@ test.describe.serial('System Level Certification Tags', () => {
       await openCertificationDropdown(page);
 
       // Disabled Gold tag should NOT be visible
-      await expect(
-        page.getByTestId(`radio-btn-${disabledTagFqn}`)
-      ).not.toBeVisible();
+      await searchCertification(page, 'Gold');
+      await expect(page.getByTestId(disabledTagFqn)).not.toBeVisible();
 
       // Other system tags should still be visible
-      await expect(
-        page.getByTestId('radio-btn-Certification.Silver')
-      ).toBeVisible();
-      await expect(
-        page.getByTestId('radio-btn-Certification.Bronze')
-      ).toBeVisible();
+      await searchCertification(page, 'Silver');
+      await expect(page.getByTestId('Certification.Silver')).toBeVisible();
+      await searchCertification(page, 'Bronze');
+      await expect(page.getByTestId('Certification.Bronze')).toBeVisible();
 
       await closeCertificationDropdown(page);
     } finally {
@@ -96,7 +94,8 @@ test.describe.serial('System Level Certification Tags', () => {
 
       // All system certification tags should NOT be visible
       for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
-        await expect(page.getByTestId(`radio-btn-${tagFqn}`)).not.toBeVisible();
+        await searchCertification(page, tagFqn.split('.')[1]);
+        await expect(page.getByTestId(tagFqn)).not.toBeVisible();
       }
 
       await closeCertificationDropdown(page);
@@ -119,7 +118,8 @@ test.describe.serial('System Level Certification Tags', () => {
       await openCertificationDropdown(page);
 
       for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
-        await expect(page.getByTestId(`radio-btn-${tagFqn}`)).not.toBeVisible();
+        await searchCertification(page, tagFqn.split('.')[1]);
+        await expect(page.getByTestId(tagFqn)).not.toBeVisible();
       }
 
       await closeCertificationDropdown(page);
@@ -130,7 +130,8 @@ test.describe.serial('System Level Certification Tags', () => {
       await openCertificationDropdown(page);
 
       for (const tagFqn of SYSTEM_CERTIFICATION_TAGS) {
-        await expect(page.getByTestId(`radio-btn-${tagFqn}`)).toBeVisible();
+        await searchCertification(page, tagFqn.split('.')[1]);
+        await expect(page.getByTestId(tagFqn)).toBeVisible();
       }
 
       await closeCertificationDropdown(page);

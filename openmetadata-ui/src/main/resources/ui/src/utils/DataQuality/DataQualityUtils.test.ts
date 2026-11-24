@@ -11,18 +11,21 @@
  *  limitations under the License.
  */
 
+import { applyPatch, type Operation } from 'fast-json-patch';
 import { TestCaseFormType } from '../../components/DataQuality/AddDataQualityTest/AddDataQualityTest.interface';
 import { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
+import { DataQualityDimensions } from '../../enums/DataQuality.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
 import { Table } from '../../generated/entity/data/table';
 import { DataQualityReport } from '../../generated/tests/dataQualityReport';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import {
-  DataQualityDimensions,
   TestDataType,
   TestDefinition,
   TestPlatform,
 } from '../../generated/tests/testDefinition';
+import { Include } from '../../generated/type/include';
 import {
   LabelType,
   State,
@@ -47,9 +50,14 @@ import {
   getEntityLinkForColumnFilter,
   getSelectedOptionsFromKeys,
   getServiceTypeForTestDefinition,
+  getTestCaseBulkEditSearch,
+  getTestCaseExportFilters,
+  getTestCaseExportFiltersFromSearch,
   getTestCaseFiltersValue,
+  getTestCaseListFilterParams,
   getTestCaseTabPath,
   parseColumnAggregateBuckets,
+  transformToTestCaseStatusByDimension,
   transformToTestCaseStatusObject,
 } from './DataQualityPureUtils';
 jest.mock('../../constants/profiler.constant', () => ({
@@ -388,6 +396,124 @@ describe('DataQualityUtils', () => {
       );
 
       expect(result).toEqual({});
+    });
+  });
+
+  describe('getTestCaseListFilterParams', () => {
+    const params = {
+      testCaseStatus: [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+      testCaseType: 'column',
+      tier: 'Tier.Tier1',
+      tableFqn: 'sample_data.ecommerce_db.shopify.fact_sale',
+    } as unknown as TestCaseSearchParams;
+
+    it('should send the selected filters, the status and the search text', () => {
+      expect(
+        getTestCaseListFilterParams(
+          params,
+          ['testCaseType', 'tableFqn'],
+          'nulls'
+        )
+      ).toEqual({
+        testCaseType: 'column',
+        entityLink: '<#E::table::sample_data.ecommerce_db.shopify.fact_sale>',
+        testCaseStatus: [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+        q: 'nulls',
+      });
+    });
+
+    it('should drop an empty status and search text', () => {
+      expect(
+        getTestCaseListFilterParams(
+          { testCaseStatus: [] } as unknown as TestCaseSearchParams,
+          [],
+          ''
+        )
+      ).toEqual({ testCaseStatus: undefined, q: undefined });
+    });
+  });
+
+  describe('getTestCaseExportFilters', () => {
+    it('should keep only the params the export accepts', () => {
+      expect(
+        getTestCaseExportFilters({
+          testCaseStatus: TestCaseStatus.Failed,
+          q: 'nulls',
+          startTimestamp: 1720417883445,
+          endTimestamp: 1721022683445,
+          limit: 15,
+          offset: 30,
+          sortField: 'testCaseResult.timestamp',
+          fields: 'testCaseResult',
+          include: Include.Deleted,
+          includeAllTests: true,
+          includePermissions: true,
+          testSuiteId: 'suite-id',
+        } as ListTestCaseParamsBySearch)
+      ).toEqual({
+        testCaseStatus: TestCaseStatus.Failed,
+        q: 'nulls',
+        startTimestamp: 1720417883445,
+        endTimestamp: 1721022683445,
+      });
+    });
+
+    it('should drop empty values', () => {
+      expect(
+        getTestCaseExportFilters({
+          testCaseStatus: [],
+          q: '',
+          tier: undefined,
+          testCaseType: TestCaseType.all,
+        } as unknown as ListTestCaseParamsBySearch)
+      ).toEqual({ testCaseType: TestCaseType.all });
+    });
+
+    it('should return no filters for no params', () => {
+      expect(getTestCaseExportFilters()).toEqual({});
+    });
+  });
+
+  describe('getTestCaseBulkEditSearch', () => {
+    const filters = {
+      testCaseStatus: [TestCaseStatus.Failed, TestCaseStatus.Aborted],
+      entityLink: '<#E::table::sample_data.ecommerce_db.shopify.fact_sale>',
+      tags: 'PII.Sensitive',
+      q: 'nulls, a & b',
+    };
+
+    it('should round-trip the filters through the Bulk Edit URL', () => {
+      const search = getTestCaseBulkEditSearch(EntityType.TABLE, filters);
+
+      expect(new URLSearchParams(search).get('sourceEntityType')).toBe(
+        EntityType.TABLE
+      );
+      expect(getTestCaseExportFiltersFromSearch(search)).toEqual(filters);
+    });
+
+    it('should keep a single status a single value', () => {
+      expect(
+        getTestCaseExportFiltersFromSearch(
+          getTestCaseBulkEditSearch(undefined, {
+            testCaseStatus: TestCaseStatus.Failed,
+          })
+        )
+      ).toEqual({ testCaseStatus: TestCaseStatus.Failed });
+    });
+
+    it('should not add a query string without a source or filters', () => {
+      expect(getTestCaseBulkEditSearch()).toBe('');
+      expect(getTestCaseBulkEditSearch(EntityType.TEST_SUITE)).toBe(
+        '?sourceEntityType=testSuite'
+      );
+    });
+
+    it('should ignore params the export does not accept', () => {
+      expect(
+        getTestCaseExportFiltersFromSearch(
+          '?sourceEntityType=table&testCaseType=column&limit=10&currentPage=3'
+        )
+      ).toEqual({ testCaseType: 'column' });
     });
   });
 
@@ -869,7 +995,7 @@ describe('DataQualityUtils', () => {
         'originEntityFQN',
         'service.name.keyword',
         'testPlatforms',
-        'dataQualityDimension',
+        'dataQualityDimensionName',
         'testCaseResult.testCaseStatus',
         'entityLink',
         'testCaseResult.timestamp',
@@ -900,11 +1026,11 @@ describe('DataQualityUtils', () => {
 
       expect(result).toContainEqual({
         bool: {
-          must_not: [{ exists: { field: 'dataQualityDimension' } }],
+          must_not: [{ exists: { field: 'dataQualityDimensionName' } }],
         },
       });
       expect(result).not.toContainEqual({
-        term: { dataQualityDimension: DataQualityDimensions.NoDimension },
+        term: { dataQualityDimensionName: DataQualityDimensions.NoDimension },
       });
     });
 
@@ -1370,6 +1496,151 @@ describe('DataQualityUtils', () => {
       expect(hasTagsOp(patch)).toBe(false);
     });
 
+    /** The dimension as it ends up after the patch is applied to the stored test case. */
+    const applyDimensionPatch = (patch: Operation[]) =>
+      applyPatch(
+        {
+          ...baseTestCase,
+          dataQualityDimension: {
+            id: 'dim-1',
+            type: 'dataQualityDimension',
+            name: 'Accuracy',
+          },
+        },
+        patch,
+        false,
+        false
+      ).newDocument.dataQualityDimension;
+
+    it('should emit a dataQualityDimension op when another dimension is picked', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: {
+          ...baseTestCase,
+          dataQualityDimension: {
+            id: 'dim-1',
+            type: 'dataQualityDimension',
+            name: 'Accuracy',
+          },
+        },
+        value: { ...baseValue, dataQualityDimension: 'Timeliness' },
+        createTestCaseObject: {},
+        isComputeRowCountFieldVisible: false,
+      });
+
+      // Asserted on the applied result rather than the op shape: fast-json-patch emits a
+      // granular replace/remove/add per field, which is equivalent to one whole-object replace
+      // and is what the server applies either way.
+      expect(applyDimensionPatch(patch)).toEqual({
+        type: 'dataQualityDimension',
+        name: 'Timeliness',
+        fullyQualifiedName: 'Timeliness',
+      });
+    });
+
+    it('should emit a dataQualityDimension op when the dimension is cleared', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: {
+          ...baseTestCase,
+          dataQualityDimension: {
+            id: 'dim-1',
+            type: 'dataQualityDimension',
+            name: 'Accuracy',
+          },
+        },
+        // The normalizer always emits the key; an empty value means cleared.
+        value: { ...baseValue, dataQualityDimension: undefined },
+        createTestCaseObject: {},
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(patch).toContainEqual({
+        op: 'remove',
+        path: '/dataQualityDimension',
+      });
+    });
+
+    it('should keep the existing dataQualityDimension when the form omits the field', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: {
+          ...baseTestCase,
+          dataQualityDimension: {
+            id: 'dim-1',
+            type: 'dataQualityDimension',
+            name: 'Accuracy',
+          },
+        },
+        value: baseValue,
+        createTestCaseObject: {},
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(patch.some((op) => op.path === '/dataQualityDimension')).toBe(
+        false
+      );
+    });
+
+    it('should apply the dataQualityDimension picked in the parameter-only drawer', () => {
+      // The parameter box on the test case result page edits the dimension through the same
+      // parameter-only drawer, so its value has to reach the patch there as well.
+      const patch = createUpdatedTestCasePatch({
+        testCase: {
+          ...baseTestCase,
+          dataQualityDimension: {
+            id: 'dim-1',
+            type: 'dataQualityDimension',
+            name: 'Accuracy',
+          },
+        },
+        value: { ...baseValue, dataQualityDimension: 'Timeliness' },
+        createTestCaseObject: {},
+        showOnlyParameter: true,
+        isComputeRowCountFieldVisible: false,
+      });
+
+      expect(applyDimensionPatch(patch)).toEqual({
+        type: 'dataQualityDimension',
+        name: 'Timeliness',
+        fullyQualifiedName: 'Timeliness',
+      });
+    });
+
+    it('should not pin the inherited dimension as an override when only parameters are edited', () => {
+      // The field is prefilled with the definition's dimension for a test case that has
+      // none of its own; submitting that prefill back must keep it inheriting.
+      const patch = createUpdatedTestCasePatch({
+        testCase: baseTestCase,
+        value: { ...baseValue, dataQualityDimension: 'Accuracy' },
+        createTestCaseObject: {},
+        showOnlyParameter: true,
+        isComputeRowCountFieldVisible: false,
+        inheritedDimension: 'Accuracy',
+      });
+
+      expect(patch.some((op) => op.path === '/dataQualityDimension')).toBe(
+        false
+      );
+    });
+
+    it('should emit an override when the picked dimension differs from the inherited one', () => {
+      const patch = createUpdatedTestCasePatch({
+        testCase: baseTestCase,
+        value: { ...baseValue, dataQualityDimension: 'Timeliness' },
+        createTestCaseObject: {},
+        isComputeRowCountFieldVisible: false,
+        inheritedDimension: 'Accuracy',
+      });
+
+      expect(patch).toContainEqual({
+        op: 'add',
+        path: '/dataQualityDimension',
+        value: {
+          type: 'dataQualityDimension',
+          name: 'Timeliness',
+          fullyQualifiedName: 'Timeliness',
+        },
+      });
+    });
+
     it('should include fields returned by createTestCaseObject (e.g. Collate useDynamicAssertion)', () => {
       const patch = createUpdatedTestCasePatch({
         testCase: baseTestCase,
@@ -1409,6 +1680,72 @@ describe('DataQualityUtils', () => {
         )
       ).toBe(false);
       expect(patch.some((op) => op.path === '/topDimensions')).toBe(false);
+    });
+  });
+});
+
+describe('transformToTestCaseStatusByDimension', () => {
+  // The DQ report keys each aggregation row by the Elasticsearch field name, not by the
+  // bucketName, so this transform must read the same field the aggregation asked for.
+  const row = (
+    dimension: string | undefined,
+    status: string,
+    count: string
+  ) => ({
+    ...(dimension ? { dataQualityDimensionName: dimension } : {}),
+    'testCaseResult.testCaseStatus': status,
+    document_count: count,
+  });
+
+  it('should tally counts against the dimension from the renamed index field', () => {
+    const result = transformToTestCaseStatusByDimension([
+      row('Accuracy', 'success', '3'),
+      row('Accuracy', 'failed', '2'),
+      row('Completeness', 'aborted', '1'),
+    ] as DataQualityReport['data']);
+
+    expect(result).toContainEqual({
+      title: 'Accuracy',
+      success: 3,
+      failed: 2,
+      aborted: 0,
+      total: 5,
+    });
+    expect(result).toContainEqual({
+      title: 'Completeness',
+      success: 0,
+      failed: 0,
+      aborted: 1,
+      total: 1,
+    });
+  });
+
+  it('should not collapse every dimension into No Dimension', () => {
+    const result = transformToTestCaseStatusByDimension([
+      row('Accuracy', 'success', '3'),
+      row('Completeness', 'success', '4'),
+    ] as DataQualityReport['data']);
+
+    const noDimension = result.find(
+      ({ title }) => title === DataQualityDimensions.NoDimension
+    );
+
+    expect(noDimension?.total ?? 0).toBe(0);
+  });
+
+  it('should fall back to No Dimension when the row carries no dimension', () => {
+    const result = transformToTestCaseStatusByDimension([
+      row(undefined, 'failed', '7'),
+    ] as DataQualityReport['data']);
+
+    expect(
+      result.find(({ title }) => title === DataQualityDimensions.NoDimension)
+    ).toEqual({
+      title: DataQualityDimensions.NoDimension,
+      success: 0,
+      failed: 7,
+      aborted: 0,
+      total: 7,
     });
   });
 });

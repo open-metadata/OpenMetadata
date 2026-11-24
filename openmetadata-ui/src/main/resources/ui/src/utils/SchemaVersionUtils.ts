@@ -29,6 +29,8 @@ import {
   getChangedEntityName,
   getDiffByFieldName,
   isEndsWithField,
+  isNestedNamedEntityWithTagsDiff,
+  parseVersionDiffArray,
 } from './EntityDiffPureUtils';
 import { getTextDiff } from './EntityDiffUtils';
 import {
@@ -79,32 +81,38 @@ export function getNewSchemaFromSchemaDiff(
   });
 }
 
+function formatAddedSchemaFieldData(
+  arr: Array<Field>,
+  field: Field,
+  updateAll?: boolean
+) {
+  arr?.forEach((i) => {
+    if (isEqual(i.name, field.name) || updateAll) {
+      i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
+      i.description = getTextDiff('', i.description ?? '');
+      i.dataType = getTextDiff('', i.dataType ?? '') as DataTypeTopic;
+      i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
+      i.name = getTextDiff('', i.name);
+      if (!isEmpty(i.children)) {
+        formatAddedSchemaFieldData(i?.children as Array<Field>, field, true);
+      }
+    } else {
+      formatAddedSchemaFieldData(i?.children as Array<Field>, field);
+    }
+  });
+}
+
 export function createAddedSchemasDiff(
   schemaFieldsDiff: EntityDiffProps,
   schemaFields: Array<Field> = []
 ) {
-  const newField: Array<Field> = JSON.parse(
-    schemaFieldsDiff.added?.newValue ?? '[]'
+  const newField = parseVersionDiffArray<Field>(
+    schemaFieldsDiff.added?.newValue,
+    isNestedNamedEntityWithTagsDiff
   );
 
   newField.forEach((field) => {
-    const formatSchemaFieldsData = (arr: Array<Field>, updateAll?: boolean) => {
-      arr?.forEach((i) => {
-        if (isEqual(i.name, field.name) || updateAll) {
-          i.tags = i.tags?.map((tag) => ({ ...tag, added: true }));
-          i.description = getTextDiff('', i.description ?? '');
-          i.dataType = getTextDiff('', i.dataType ?? '') as DataTypeTopic;
-          i.dataTypeDisplay = getTextDiff('', i.dataTypeDisplay ?? '');
-          i.name = getTextDiff('', i.name);
-          if (!isEmpty(i.children)) {
-            formatSchemaFieldsData(i?.children as Array<Field>, true);
-          }
-        } else {
-          formatSchemaFieldsData(i?.children as Array<Field>);
-        }
-      });
-    };
-    formatSchemaFieldsData(schemaFields ?? []);
+    formatAddedSchemaFieldData(schemaFields ?? [], field);
   });
 }
 
@@ -113,8 +121,9 @@ export function addDeletedSchemasDiff(
   colList: Array<Field> = [],
   changedEntity = ''
 ) {
-  const newCol: Array<Field> = JSON.parse(
-    columnsDiff.deleted?.oldValue ?? '[]'
+  const newCol = parseVersionDiffArray<Field>(
+    columnsDiff.deleted?.oldValue,
+    isNestedNamedEntityWithTagsDiff
   );
   const newColumns = getNewFieldFromSchemaFieldDiff(newCol);
 
@@ -148,8 +157,9 @@ export function getSchemasDiff(
     createAddedSchemasDiff(schemaFieldsDiff, schemaFields);
   }
   if (schemaFieldsDiff.deleted) {
-    const newField: Array<Field> = JSON.parse(
-      schemaFieldsDiff.deleted?.oldValue ?? '[]'
+    const newField = parseVersionDiffArray<Field>(
+      schemaFieldsDiff.deleted?.oldValue,
+      isNestedNamedEntityWithTagsDiff
     );
     const newFields = getNewSchemaFromSchemaDiff(newField);
     const insertNewField = (

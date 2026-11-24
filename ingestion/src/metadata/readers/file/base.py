@@ -14,7 +14,6 @@ Base local reader
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import List, Optional, Union  # noqa: UP035
 
 from metadata.utils.logger import ingestion_logger
 
@@ -33,20 +32,20 @@ class Reader(ABC):
     """
 
     @abstractmethod
-    def read(self, path: str, **kwargs) -> Union[str, bytes]:  # noqa: UP007
+    def read(self, path: str, **kwargs) -> str | bytes:
         """
         Given a string, return a string
         """
         raise NotImplementedError("Missing read implementation")
 
     @abstractmethod
-    def _get_tree(self) -> List[str]:  # noqa: UP006
+    def _get_tree(self) -> list[str]:
         """
         Return the filenames of the root
         """
         raise NotImplementedError("Missing get_tree implementation")
 
-    def get_tree(self) -> Optional[List[str]]:  # noqa: UP006, UP045
+    def get_tree(self) -> list[str] | None:
         """
         If something happens, return None
         """

@@ -13,14 +13,13 @@
 
 import { Badge, Box } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   ChevronRight,
-  Copy01,
   Lightbulb03,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useClipboard } from '../../../hooks/useClipBoard';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import { RunAttention, RunStep } from '../AgentsPage.interface';
 import { fmtNum } from '../utils/agents.utils';
 import RunGlyph from './RunGlyph.component';
@@ -29,28 +28,66 @@ interface AttentionCardProps {
   att: RunAttention;
 }
 
-const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
+const getAttentionClasses = (isError: boolean) => ({
+  surfaceClass: isError
+    ? 'tw:bg-error-primary tw:border-utility-error-200'
+    : 'tw:bg-warning-primary tw:border-utility-warning-200',
+  dividerClass: isError
+    ? 'tw:border-utility-error-200'
+    : 'tw:border-utility-warning-200',
+  accentClass: isError
+    ? 'tw:text-utility-error-700'
+    : 'tw:text-utility-warning-700',
+  accentIconClass: isError
+    ? 'tw:text-fg-error-primary'
+    : 'tw:text-fg-warning-primary',
+});
+
+const RawLogSection: FC<{ stackLines: string[] }> = ({ stackLines }) => {
   const { t } = useTranslation();
   const [showLog, setShowLog] = useState(false);
-  const stackLines = att.stackTrace ? att.stackTrace.split('\n') : [];
-  // Only the raw logs go to the clipboard — the title, message and hint are already on screen, and
-  // pasting them into a ticket or a terminal alongside the log body is noise.
-  const { hasCopied, onCopyToClipBoard } = useClipboard(att.stackTrace ?? '');
-  const isError = att.severity === 'error';
-  const surfaceClass = isError
-    ? 'tw:bg-error-primary tw:border-utility-error-200'
-    : 'tw:bg-warning-primary tw:border-utility-warning-200';
-  const dividerClass = isError
-    ? 'tw:border-utility-error-200'
-    : 'tw:border-utility-warning-200';
-  const accentClass = isError
-    ? 'tw:text-utility-error-700'
-    : 'tw:text-utility-warning-700';
-  const accentIconClass = isError
-    ? 'tw:text-fg-error-primary'
-    : 'tw:text-fg-warning-primary';
 
   const toggleLog = () => setShowLog((s) => !s);
+
+  return (
+    <>
+      <button
+        className="tw:mt-2.5 tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:p-0 tw:text-xs tw:font-semibold tw:text-brand-tertiary"
+        type="button"
+        onClick={toggleLog}>
+        <ChevronRight
+          className={`tw:transition-transform ${showLog ? 'tw:rotate-90' : ''}`}
+          size={16}
+        />
+        {showLog ? t('label.hide-raw-logs') : t('label.show-raw-logs')}
+      </button>
+      {showLog && (
+        <div className="tw:mt-2 tw:max-h-40 tw:overflow-y-auto tw:rounded-lg tw:bg-primary-solid tw:px-3 tw:py-2.5">
+          {stackLines.map((line, idx) => (
+            <div
+              className={`tw:whitespace-pre-wrap tw:font-mono tw:text-xs tw:leading-relaxed ${
+                line.includes('ERROR')
+                  ? 'tw:text-utility-error-300'
+                  : 'tw:text-utility-success-200'
+              }`}
+              // eslint-disable-next-line react/no-array-index-key -- stack-trace lines, may repeat
+              key={idx}>
+              {line}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+};
+
+const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
+  const { t } = useTranslation();
+  // Only the raw logs go to the clipboard — the title, message and hint are already on screen.
+  const stackLines = att.stackTrace ? att.stackTrace.split('\n') : [];
+  const isError = att.severity === 'error';
+  const { surfaceClass, dividerClass, accentClass, accentIconClass } =
+    getAttentionClasses(isError);
 
   return (
     <div
@@ -58,7 +95,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
       <Box
         align="center"
         className={`tw:gap-2 tw:border-b tw:px-3 tw:py-2.5 ${dividerClass}`}>
-        <AlertTriangle className={accentIconClass} size={15} />
+        <Alert className={accentIconClass} size={15} />
         <span className="tw:text-xs tw:font-semibold tw:text-primary">
           {att.title}
         </span>
@@ -68,13 +105,12 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
         </span>
         <span className="tw:flex-1" />
         {stackLines.length > 0 && (
-          <button
-            className="tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:text-xs tw:font-medium tw:text-tertiary"
-            type="button"
-            onClick={() => onCopyToClipBoard()}>
-            <Copy01 size={13} />
-            {hasCopied ? t('label.copied') : t('label.copy')}
-          </button>
+          <CopyButton
+            label={t('label.copy')}
+            labelColor="tertiary"
+            testId="copy-attention-log"
+            value={att.stackTrace ?? ''}
+          />
         )}
       </Box>
       <div className="tw:p-3">
@@ -96,38 +132,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
             </span>
           </Box>
         )}
-        {stackLines.length > 0 && (
-          <>
-            <button
-              className="tw:mt-2.5 tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:p-0 tw:text-xs tw:font-semibold tw:text-brand-tertiary"
-              type="button"
-              onClick={toggleLog}>
-              <ChevronRight
-                className={`tw:transition-transform ${
-                  showLog ? 'tw:rotate-90' : ''
-                }`}
-                height={13}
-                width={13}
-              />
-              {showLog ? t('label.hide-raw-logs') : t('label.show-raw-logs')}
-            </button>
-            {showLog && (
-              <div className="tw:mt-2 tw:max-h-40 tw:overflow-y-auto tw:rounded-lg tw:bg-primary-solid tw:px-3 tw:py-2.5">
-                {stackLines.map((line, idx) => (
-                  <div
-                    className={`tw:whitespace-pre-wrap tw:font-mono tw:text-xs tw:leading-relaxed ${
-                      line.includes('ERROR')
-                        ? 'tw:text-utility-error-300'
-                        : 'tw:text-utility-success-200'
-                    }`}
-                    key={idx}>
-                    {line}
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+        {stackLines.length > 0 && <RawLogSection stackLines={stackLines} />}
       </div>
     </div>
   );

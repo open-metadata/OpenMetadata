@@ -17,12 +17,3 @@ export interface ChangeParentHierarchyProps {
   selectedData: GlossaryTerm;
   onCancel: () => void;
 }
-
-export interface MoveGlossaryTermWebsocketResponse {
-  jobId: string;
-  status: 'COMPLETED' | 'FAILED';
-  data?: string;
-  error?: string;
-  message: string;
-  fullyQualifiedName?: string;
-}

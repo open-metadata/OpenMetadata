@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
 import {
   assertLogViewerShowsLogs,
@@ -79,14 +81,18 @@ test.describe('App Runs History logs viewer (mocked external app)', () => {
 
     await redirectToHomePage(page);
     await mockExternalApp(page);
-    await page.goto(`/settings/apps/${appName}`);
+    await page.goto(`/settings/apps/${appName}`, {
+      waitUntil: 'domcontentloaded',
+    });
 
     await test.step('Open the logs modal from the run row', async () => {
       const recentRunsTab = page.getByRole('tab', { name: /recent run/i });
-      await expect(recentRunsTab).toBeVisible({ timeout: 30000 });
+      await expect(recentRunsTab).toBeVisible({ timeout: ACTION_TIMEOUT });
       await recentRunsTab.click();
 
-      await expect(page.getByTestId('logs').first()).toBeVisible();
+      await expect(
+        page.getByTestId('logs').filter({ visible: true })
+      ).not.toHaveCount(0);
       await page.getByTestId('logs').first().click();
     });
 

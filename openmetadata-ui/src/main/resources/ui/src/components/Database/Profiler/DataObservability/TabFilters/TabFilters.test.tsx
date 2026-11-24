@@ -69,6 +69,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
     </button>
   );
 
+  const ButtonUtility = ({
+    icon: _icon,
+    size,
+    tooltip,
+    ...props
+  }: Record<string, unknown>) => (
+    <button aria-label={tooltip as string} data-size={size} {...props} />
+  );
+
   const Tooltip = ({ children }: PropsWithChildren) => <>{children}</>;
 
   const Dropdown = {
@@ -80,6 +89,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   return {
     Button,
+    ButtonUtility,
     Dropdown,
     Tooltip,
   };
@@ -123,6 +133,7 @@ jest.mock('../../../../common/DatePickerMenu/DatePickerMenu.component', () => {
 const mockNavigate = jest.fn();
 const mockOnSettingButtonClick = jest.fn();
 const mockOnTestCaseDrawerOpen = jest.fn();
+const mockOnCustomMetricDrawerOpen = jest.fn();
 const mockUseParams = jest.fn(() => ({ subTab: 'table-profile' }));
 const mockUseCustomLocation = jest.fn(() => ({
   search: '?startTs=1711065600000&endTs=1711670399000&key=last7days',
@@ -162,6 +173,7 @@ const mockUseTableProfiler = jest.fn(() => ({
   isTableDeleted: false,
   onSettingButtonClick: mockOnSettingButtonClick,
   onTestCaseDrawerOpen: mockOnTestCaseDrawerOpen,
+  onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
   table: {
     columns: mockColumns,
   },
@@ -180,10 +192,6 @@ jest.mock(
 
 jest.mock('../../../../../hooks/useFqn', () => ({
   useFqn: jest.fn(() => ({ fqn: 'test-table-fqn' })),
-}));
-
-jest.mock('../../../../../context/TourProvider/TourProvider', () => ({
-  useTourProvider: jest.fn(() => ({ isTourOpen: false })),
 }));
 
 jest.mock('../../TableProfiler/TableProfilerProvider', () => ({
@@ -212,16 +220,7 @@ jest.mock('../../TableProfiler/ProfilerClassBase', () => ({
   },
 }));
 
-const mockGetPrioritizedEditPermission = jest.fn();
-
-jest.mock('../../../../../utils/PermissionsUtils', () => ({
-  getPrioritizedEditPermission: jest.fn(() =>
-    mockGetPrioritizedEditPermission()
-  ),
-}));
-
 jest.mock('../../../../../utils/RouterUtils', () => ({
-  getAddCustomMetricPath: jest.fn(() => '/custom-metric-path'),
   getEntityDetailsPath: jest.fn(() => '/entity-details-path'),
 }));
 
@@ -262,8 +261,7 @@ jest.mock('../../../../../hoc/LimitWrapper', () => {
 
 const renderComponent = () => {
   return render(
-    <MemoryRouter
-      future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+    <MemoryRouter>
       <TabFilters />
     </MemoryRouter>
   );
@@ -272,7 +270,6 @@ const renderComponent = () => {
 describe('TabFilters', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetPrioritizedEditPermission.mockReturnValue(true);
     mockUseCustomLocation.mockReturnValue({
       search: '?startTs=1711065600000&endTs=1711670399000&key=last7days',
       pathname: '/table/test-table/profiler',
@@ -286,6 +283,7 @@ describe('TabFilters', () => {
       isTableDeleted: false,
       onSettingButtonClick: mockOnSettingButtonClick,
       onTestCaseDrawerOpen: mockOnTestCaseDrawerOpen,
+      onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
       table: {
         columns: mockColumns,
       },
@@ -447,7 +445,6 @@ describe('TabFilters', () => {
 
   describe('Permissions', () => {
     it('should not render add button when user lacks edit permissions', () => {
-      mockGetPrioritizedEditPermission.mockReturnValue(false);
       mockUseTableProfiler.mockReturnValue({
         permissions: buildOperationPermission({
           EditDataProfile: false,
@@ -456,6 +453,7 @@ describe('TabFilters', () => {
         isTableDeleted: false,
         onSettingButtonClick: mockOnSettingButtonClick,
         onTestCaseDrawerOpen: mockOnTestCaseDrawerOpen,
+        onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
         table: { columns: [] },
       });
 
@@ -464,12 +462,9 @@ describe('TabFilters', () => {
       expect(
         screen.queryByTestId('profiler-add-table-test-btn')
       ).not.toBeInTheDocument();
-
-      mockGetPrioritizedEditPermission.mockReturnValue(true);
     });
 
     it('should not render settings button when user lacks edit permissions', () => {
-      mockGetPrioritizedEditPermission.mockReturnValue(false);
       mockUseTableProfiler.mockReturnValue({
         permissions: buildOperationPermission({
           EditDataProfile: false,
@@ -478,6 +473,7 @@ describe('TabFilters', () => {
         isTableDeleted: false,
         onSettingButtonClick: mockOnSettingButtonClick,
         onTestCaseDrawerOpen: mockOnTestCaseDrawerOpen,
+        onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
         table: { columns: [] },
       });
 
@@ -486,8 +482,6 @@ describe('TabFilters', () => {
       expect(
         screen.queryByTestId('profiler-setting-btn')
       ).not.toBeInTheDocument();
-
-      mockGetPrioritizedEditPermission.mockReturnValue(true);
     });
 
     it('should not render buttons when table is deleted', () => {
@@ -499,6 +493,7 @@ describe('TabFilters', () => {
         isTableDeleted: true,
         onSettingButtonClick: mockOnSettingButtonClick,
         onTestCaseDrawerOpen: mockOnTestCaseDrawerOpen,
+        onCustomMetricDrawerOpen: mockOnCustomMetricDrawerOpen,
         table: { columns: [] },
       });
 
@@ -609,15 +604,6 @@ describe('TabFilters', () => {
       );
     });
 
-    it('should render settings button with color="secondary"', () => {
-      renderComponent();
-
-      expect(screen.getByTestId('profiler-setting-btn')).toHaveAttribute(
-        'color',
-        'secondary'
-      );
-    });
-
     it('should render settings button with size="lg"', () => {
       renderComponent();
 
@@ -633,6 +619,25 @@ describe('TabFilters', () => {
       fireEvent.click(screen.getByTestId('profiler-setting-btn'));
 
       expect(mockOnSettingButtonClick).toHaveBeenCalledTimes(1);
+    });
+
+    it('opens the custom metric drawer for a table metric on the table profile tab', () => {
+      renderComponent();
+
+      fireEvent.click(screen.getByTestId('dropdown-item-custom-metric'));
+
+      expect(mockOnCustomMetricDrawerOpen).toHaveBeenCalledWith(false);
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('opens the custom metric drawer for a column metric on the column profile tab', () => {
+      mockUseParams.mockReturnValue({ subTab: 'column-profile' });
+
+      renderComponent();
+
+      fireEvent.click(screen.getByTestId('dropdown-item-custom-metric'));
+
+      expect(mockOnCustomMetricDrawerOpen).toHaveBeenCalledWith(true);
     });
   });
 

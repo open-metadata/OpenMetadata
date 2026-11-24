@@ -27,6 +27,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryScope;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -39,7 +42,9 @@ import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
 import org.openmetadata.schema.type.MetricUnitOfMeasurement;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
 /**
  * Unit test for the #4789 fix: {@link VectorDocBuilder#fromEntity} must emit one standalone
@@ -159,9 +164,6 @@ class VectorDocBuilderChunkTest {
       assertNotNull(doc.get("description"), "description must be denormalized onto every chunk");
       assertTrue(doc.get("fqnParts") instanceof List, "fqnParts denormalized");
       assertTrue(((List<String>) doc.get("fqnParts")).containsAll(List.of("svc", "db", "sch")));
-      List<Map<String, Object>> columns = (List<Map<String, Object>>) doc.get("columns");
-      assertNotNull(columns);
-      assertEquals("amount", columns.get(0).get("name"));
       // Filter parity so NLQ facet filters don't exclude chunk docs.
       assertEquals("Snowflake", ((Map<String, Object>) doc.get("service")).get("displayName"));
       assertEquals("db", ((Map<String, Object>) doc.get("database")).get("name"));
@@ -344,11 +346,48 @@ class VectorDocBuilderChunkTest {
 
     assertTrue(docs.size() > 1, "fixture must span multiple chunks to catch chunk-0-only stamping");
     for (Map<String, Object> doc : docs) {
+      assertEquals(ContextMemoryIndex.UNANCHORED, doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
       assertEquals(MemoryVisibility.SHARED.value(), doc.get("visibility"));
       assertEquals(List.of(sharedPrincipal.toString()), doc.get("sharedWithIds"));
       List<Map<String, Object>> owners = (List<Map<String, Object>>) doc.get("owners");
       assertEquals(ownerId.toString(), owners.get(0).get("id"), "the filter matches on owners.id");
       assertEquals("alice", owners.get(0).get("name"));
+    }
+  }
+
+  /** A filtered recall reads the kind off the chunk, so every chunk must carry it, not chunk 0. */
+  @Test
+  void chunkDocs_carryTheMemoryKindOnEveryChunk() {
+    ContextMemory memory =
+        memory(MemoryVisibility.PRIVATE)
+            .withMemoryScope(ContextMemoryScope.USER_GLOBAL)
+            .withMemoryType(ContextMemoryType.NOTE)
+            .withPinned(true)
+            .withDescription("fiscal ".repeat(900));
+
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(memory, new MockEmbeddingClient());
+
+    assertTrue(docs.size() > 1, "fixture must span multiple chunks to catch chunk-0-only stamping");
+    for (Map<String, Object> doc : docs) {
+      assertEquals("UserGlobal", doc.get(ContextMemoryIndex.FIELD_MEMORY_SCOPE));
+      assertEquals("Note", doc.get(ContextMemoryIndex.FIELD_MEMORY_TYPE));
+      assertEquals(Boolean.TRUE, doc.get(ContextMemoryIndex.FIELD_PINNED));
+    }
+  }
+
+  @Test
+  void chunkDocs_markAnchoredMemoriesOnEveryChunk() {
+    UUID anchorId = UUID.randomUUID();
+    ContextMemory memory =
+        memory(MemoryVisibility.ENTITY)
+            .withPrimaryEntity(new EntityReference().withId(anchorId).withType("table"))
+            .withDescription("revenue ".repeat(900));
+
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(memory, new MockEmbeddingClient());
+
+    assertTrue(docs.size() > 1);
+    for (Map<String, Object> doc : docs) {
+      assertEquals(anchorId.toString(), doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
     }
   }
 
@@ -371,5 +410,101 @@ class VectorDocBuilderChunkTest {
             memory(MemoryVisibility.SHARED, first, second)),
         VectorDocBuilder.computeFingerprintForEntity(
             memory(MemoryVisibility.SHARED, second, first)));
+  }
+
+  @Test
+  void chunkDocs_carryTheMemoryStatusOnEveryChunk() {
+    ContextMemory memory =
+        memory(MemoryVisibility.ENTITY).withEntityStatus(ContextMemoryStatus.DEPRECATED);
+    memory.withDescription("revenue ".repeat(900));
+
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(memory, new MockEmbeddingClient());
+
+    assertTrue(docs.size() > 1);
+    for (Map<String, Object> doc : docs) {
+      assertEquals(ContextMemoryStatus.DEPRECATED.value(), doc.get("entityStatus"));
+    }
+  }
+
+  @Test
+  void contentFingerprint_ignoresLifecycleAndAnchorFilters() {
+    ContextMemory memory = memory(MemoryVisibility.ENTITY);
+    String entityType = memory.getEntityReference().getType();
+    String preLifecycle =
+        TextChunkManager.computeFingerprint(
+            VectorDocBuilder.buildMetaLightText(memory, entityType)
+                + "|"
+                + VectorDocBuilder.buildBodyText(memory, entityType)
+                + "|"
+                + MemoryVisibility.ENTITY.value()
+                + "|");
+
+    assertEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
+    memory.setEntityStatus(ContextMemoryStatus.DEPRECATED);
+    memory.setPrimaryEntity(new EntityReference().withId(UUID.randomUUID()).withType("table"));
+    assertEquals(preLifecycle, VectorDocBuilder.computeFingerprintForEntity(memory));
+  }
+
+  /**
+   * Chunk docs must not carry the denormalized {@code columns} array. It is shared once per entity
+   * and shallow-copied onto every chunk, so a wide table stores its whole column list
+   * {@code chunkCount} times — for a field no reader projects and which downstream search excludes
+   * from {@code _source}. Asserted on every doc, since the cost is the per-chunk repetition, not
+   * the field's presence on any one of them.
+   */
+  @Test
+  void fromEntity_doesNotDenormalizeColumnsOntoChunkDocs() {
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withDescription("revenue ".repeat(900))
+            .withColumns(
+                List.of(
+                    new Column().withName("amount").withDataType(ColumnDataType.DOUBLE),
+                    new Column().withName("country").withDataType(ColumnDataType.STRING)));
+
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, new MockEmbeddingClient());
+    assertTrue(docs.size() > 1, "long body must yield multiple chunks");
+
+    for (Map<String, Object> doc : docs) {
+      assertFalse(
+          doc.containsKey("columns"),
+          "chunk " + doc.get("chunkIndex") + " must not carry a denormalized columns array");
+    }
+  }
+
+  /**
+   * Regression pin, not a red-green slice: this behavior is unchanged, so it cannot fail before the
+   * removal above. It guards the assumption that removal depends on — with the denormalized {@code
+   * columns} array gone, {@code textToEmbed} is the only thing carrying column names on a chunk
+   * doc, and it is a scored clause in the shard-fair lexical leg. If {@code buildSemanticBodyText}
+   * ever stops emitting them, column-name recall on chunk docs dies silently.
+   *
+   * <p>Caveat this does not cover: a {@link VectorDocBuilder.BodyTextExtractor} registered for
+   * {@code "table"} would bypass the default body text entirely. That cannot be asserted here —
+   * {@code BODY_TEXT_EXTRACTORS} is a static registry with no teardown, so registering a real
+   * {@code "table"} extractor would leak into every other test in the JVM run.
+   */
+  @Test
+  void textToEmbed_carriesColumnNames_soRemovingDenormalizedColumnsKeepsRecall() {
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withDescription("sales data")
+            .withColumns(
+                List.of(
+                    new Column().withName("amount").withDataType(ColumnDataType.DOUBLE),
+                    new Column().withName("country").withDataType(ColumnDataType.STRING)));
+
+    String textToEmbed =
+        (String)
+            VectorDocBuilder.fromEntity(table, new MockEmbeddingClient()).get(0).get("textToEmbed");
+
+    assertNotNull(textToEmbed);
+    assertTrue(textToEmbed.contains("amount"), "textToEmbed must carry column names");
+    assertTrue(textToEmbed.contains("country"), "textToEmbed must carry column names");
   }
 }

@@ -16,19 +16,27 @@ import hashlib
 import time
 import traceback
 from collections import defaultdict
+from collections.abc import Mapping
 from copy import deepcopy
+from dataclasses import dataclass, field
 from logging.config import DictConfigurator
-from typing import Dict, List, Optional, Tuple, Union  # noqa: UP035
 
+import sqlglot
 import sqlparse
 from cached_property import cached_property
 from collate_sqllineage import SQLPARSE_DIALECT
-from collate_sqllineage.core.models import Column, DataFunction, Location, Table
+from collate_sqllineage.core.models import Column, DataFunction, Location, SubQuery, Table
 from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
-from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyzer
+from collate_sqllineage.core.parser.sqlglot.analyzer import (
+    DIALECT_MAP,
+    DIALECT_OVERRIDES,
+    SqlGlotLineageAnalyzer,
+)
 from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer
 from collate_sqllineage.exceptions import SQLLineageException
 from collate_sqllineage.runner import LineageRunner
+from sqlglot import exp
+from sqlglot.dialects.dialect import DialectType
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
@@ -37,6 +45,7 @@ from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.tsql import rewrite_switch_statements
 from metadata.utils.helpers import (
     find_in_iter,
     get_formatted_entity_name,
@@ -66,6 +75,137 @@ LINEAGE_PARSING_TIMEOUT = 30
 LINEAGE_PARSING_MEMORY_LIMIT_MB = 100
 
 
+def _sqlglot_dialect(dialect: Dialect) -> DialectType:
+    """The sqlglot dialect the SqlGlot lineage analyzer reads `dialect` as"""
+    mapped = DIALECT_MAP.get(dialect.value, dialect.value)
+    return DIALECT_OVERRIDES.get(mapped, mapped)
+
+
+@dataclass(frozen=True)
+class CopiedColumns:
+    """
+    The output columns a query's final SELECT copies unchanged. Only such a column carries its
+    source's nested fields along by name: one an expression builds (`STRUCT(billing AS
+    address)`, a function, a CASE) may place them anywhere, and the parser reports it exactly
+    like a plain reference.
+
+    `columns` maps an output name to the top-level columns it copies (`customer`, `u.customer`)
+    and `fields` to the STRUCT fields it copies (`customer.address`), one per set-operation
+    branch; `computed` holds the output names something else produces; `star` says a plain `*`
+    copies every other column under its own name.
+    """
+
+    columns: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    fields: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    computed: frozenset[str] = frozenset()
+    star: bool = False
+
+    def copies(self, to_col: str, from_col: str, *, struct_field: bool = False) -> bool:
+        """
+        Whether the query copies `from_col` into `to_col` unchanged: a top-level column of a
+        source table, or with `struct_field` a field read through a STRUCT path.
+        """
+        target, source = to_col.lower(), from_col.lower()
+        if target in self.columns or target in self.fields:
+            return source in (self.fields if struct_field else self.columns).get(target, frozenset())
+        return not struct_field and target == source and self.star_copies(target)
+
+    def star_copies(self, name: str) -> bool:
+        """
+        Whether a star (`*`, `t.*` or `struct.*`) copies `name` unchanged: every star is plain
+        and no other item produces that name.
+        """
+        target = name.lower()
+        owned = target in self.columns or target in self.fields or target in self.computed
+        return self.star and not owned
+
+
+NOTHING_COPIED = CopiedColumns()
+
+# One SELECT item: output name, the source names it copies (None if something else builds it),
+# whether those are STRUCT fields rather than top-level columns, and for a star whether it is a
+# plain one (None if the item is not a star).
+_Item = tuple[str, frozenset[str] | None, bool, bool | None]
+
+
+def _table_qualifiers(select: exp.Select) -> set[tuple[str, ...]]:
+    """Every way the select's tables can qualify a column: by alias, or by a suffix of their path"""
+    qualifiers = set()
+    for table in select.find_all(exp.Table):
+        path = [part.lower() for part in (table.catalog, table.db, table.name) if part]
+        qualifiers.update(tuple(path[index:]) for index in range(len(path)))
+        if table.alias:
+            qualifiers.add((table.alias.lower(),))
+    return qualifiers
+
+
+def _copied_source(value: exp.Expression, qualifiers: set[tuple[str, ...]]) -> tuple[str, bool] | None:
+    """
+    What a bare reference reads, by its last name, and whether that is a STRUCT field: a column
+    qualified by nothing or by one of the select's tables (`customer`, `u.customer`) is a
+    top-level column, any other path (`customer.address`) a field. None when anything but names
+    builds the value (a function, a subscript, a CASE).
+    """
+    is_reference = isinstance(value, (exp.Column, exp.Dot)) and not value.is_star
+    if not is_reference or any(isinstance(node, (exp.Func, exp.Bracket)) for node in value.walk()):
+        return None
+    qualifier = tuple(part.name.lower() for part in value.parts[:-1]) if isinstance(value, exp.Column) else None
+    return value.name.lower(), not (qualifier == () or qualifier in qualifiers)
+
+
+def _select_item(projection: exp.Expression, qualifiers: set[tuple[str, ...]]) -> _Item:
+    """What one SELECT item copies; a star with EXCEPT, REPLACE, EXCLUDE or RENAME is not plain"""
+    if projection.is_star:
+        star = projection if isinstance(projection, exp.Star) else projection.this
+        return "*", None, False, not any(star.args.values())
+    value = projection.this if isinstance(projection, exp.Alias) else projection
+    copied = _copied_source(value, qualifiers)
+    name = projection.alias_or_name.lower()
+    return (name, frozenset([copied[0]]), copied[1], None) if copied else (name, None, False, None)
+
+
+def _items(body: exp.Expression | None) -> list[_Item] | None:
+    """
+    The items of a query's final SELECT. A set operation copies a position only when every
+    branch copies the same kind of source there; a star in a branch copies nothing.
+    """
+    if isinstance(body, exp.Subquery):
+        return _items(body.this)
+    if isinstance(body, exp.SetOperation):
+        left, right = _items(body.left), _items(body.right)
+        if left is None or right is None or len(left) != len(right):
+            return None
+        merged: list[_Item] = []
+        for (name, left_sources, left_field, _), (_, right_sources, right_field, _) in zip(left, right, strict=True):
+            sources = (
+                left_sources | right_sources if left_sources and right_sources and left_field == right_field else None
+            )
+            merged.append((name, sources, left_field, None))
+        return merged
+    if isinstance(body, exp.Select):
+        qualifiers = _table_qualifiers(body)
+        return [_select_item(projection, qualifiers) for projection in body.expressions]
+    return None
+
+
+def _copied_columns(items: list[_Item]) -> CopiedColumns:
+    """Fold SELECT items into what they copy; two outputs with the same name copy neither"""
+    columns: dict[str, frozenset[str]] = {}
+    fields: dict[str, frozenset[str]] = {}
+    computed: set[str] = set()
+    stars = [star for *_, star in items if star is not None]
+    for name, sources, is_field, star in items:
+        if star is not None:
+            continue
+        if sources is None or name in columns or name in fields or name in computed:
+            columns.pop(name, None)
+            fields.pop(name, None)
+            computed.add(name)
+        else:
+            (fields if is_field else columns)[name] = sources
+    return CopiedColumns(columns=columns, fields=fields, computed=frozenset(computed), star=bool(stars) and all(stars))
+
+
 class LineageParser:
     """
     Class that acts like a wrapper for the LineageRunner library usage
@@ -84,12 +224,18 @@ class LineageParser:
         parser_type: QueryParserType = QueryParserType.Auto,
     ):
         self.query = query
+        self.timeout_seconds = timeout_seconds
         self.query_hash = self.get_query_hash(query)
         self.query_parsing_success = True
         self.query_parsing_failure_reason = None
+        # SqlParse, the last resort, accepts SQL it cannot read and then reports no tables, so an
+        # empty result from it does not prove the query reads nothing
+        self.used_fallback_parser = False
         self.dialect = dialect
         self.masked_query = None
         self._clean_query = self.clean_raw_query(query)
+        if self._clean_query and dialect == Dialect.TSQL:
+            self._clean_query = rewrite_switch_statements(self._clean_query)
         self.parser = self._evaluate_best_parser(
             self._clean_query,
             dialect=dialect,
@@ -119,10 +265,10 @@ class LineageParser:
         Returns:
             Truncated MD5 hash of the query
         """
-        return hashlib.md5(query.encode()).hexdigest()[:length]
+        return hashlib.md5(query.encode(), usedforsecurity=False).hexdigest()[:length]
 
     @cached_property
-    def involved_tables(self) -> Optional[List[Table]]:  # noqa: UP006, UP045
+    def involved_tables(self) -> list[Table] | None:
         """
         Use the LineageRunner parser and combine
         source and intermediate tables into
@@ -146,7 +292,7 @@ class LineageParser:
             return None
 
     @cached_property
-    def intermediate_tables(self) -> List[Table]:  # noqa: UP006
+    def intermediate_tables(self) -> list[Table]:
         """
         Get a list of intermediate tables
         """
@@ -156,7 +302,7 @@ class LineageParser:
         return []
 
     @cached_property
-    def source_tables(self) -> List[Union[Table, DataFunction, Location]]:  # noqa: UP006, UP007
+    def source_tables(self) -> list[Table | DataFunction | Location]:
         """
         Get a list of source tables
         """
@@ -165,8 +311,52 @@ class LineageParser:
             return self.retrieve_tables(self.parser.source_tables)
         return []
 
+    # pylint: disable=protected-access
     @cached_property
-    def target_tables(self) -> List[Union[Table, Location]]:  # noqa: UP006, UP007
+    def has_subqueries(self) -> bool:
+        """
+        Whether the query has a subquery or a CTE, which could rename a column. This reads the
+        parser's graph rather than its column lineage: a CTE built from constants
+        (`SELECT STRUCT('x' AS email) AS customer`) has no column lineage, but it still defines
+        the name. A query the parser could not read counts as having one, so callers that need
+        there to be none stay conservative.
+        """
+        if self.parser is None:
+            return True
+        try:
+            return any(isinstance(node, SubQuery) for node in self.parser._sql_holder.graph.nodes)
+        except Exception as err:
+            logger.debug("[%s] Cannot inspect the query for subqueries: %s", self.query_hash, err)
+            return True
+
+    @cached_property
+    def copied_columns(self) -> CopiedColumns:
+        """
+        What the query's final SELECT copies unchanged (see `CopiedColumns`). Nothing when the
+        query has a subquery or a CTE, since a bare `customer` there may name a STRUCT the
+        subquery built, or when the query cannot be read, so callers stay conservative.
+        """
+        if self.parser is None or not self._clean_query or self.has_subqueries:
+            return NOTHING_COPIED
+        query, dialect = self._clean_query, _sqlglot_dialect(self.dialect)
+        try:
+            statements = timeout(seconds=self.timeout_seconds)(sqlglot.parse)(query, dialect=dialect)
+        except Exception as err:
+            logger.debug("[%s] Cannot read the query's projections: %s", self.query_hash, err)
+            return NOTHING_COPIED
+        statements = [statement for statement in statements if statement is not None]
+        if len(statements) != 1:
+            return NOTHING_COPIED
+        statement = statements[0]
+        if isinstance(statement.this, exp.Schema) and statement.this.expressions:
+            # A target column list (`INSERT INTO t (a, b) SELECT ...`) names the outputs by position.
+            return NOTHING_COPIED
+        body = statement.expression if isinstance(statement, (exp.Create, exp.Insert)) else statement
+        items = _items(body)
+        return NOTHING_COPIED if items is None else _copied_columns(items)
+
+    @cached_property
+    def target_tables(self) -> list[Table | Location]:
         """
         Get a list of target tables
         """
@@ -177,7 +367,7 @@ class LineageParser:
 
     # pylint: disable=protected-access
     @cached_property
-    def column_lineage(self) -> List[Tuple[Column, Column]]:  # noqa: UP006
+    def column_lineage(self) -> list[tuple[Column, Column]]:
         """
         Get a list of tuples of column lineage
         """
@@ -206,7 +396,7 @@ class LineageParser:
         return column_lineage
 
     @cached_property
-    def clean_table_list(self) -> List[str]:  # noqa: UP006
+    def clean_table_list(self) -> list[str]:
         """
         Clean the table name if it has <default>, dropping the references we won't
         be able to resolve, such as the ones without a table name.
@@ -225,7 +415,7 @@ class LineageParser:
         return clean_tables
 
     @cached_property
-    def table_aliases(self) -> Dict[str, str]:  # noqa: UP006
+    def table_aliases(self) -> dict[str, str]:
         """
         Prepare a dictionary in the shape of {alias: table_name} from
         the parser tables, with detailed logging for debugging.
@@ -262,10 +452,10 @@ class LineageParser:
 
     def get_table_name_from_list(
         self,
-        database_name: Optional[str],  # noqa: UP045
-        schema_name: Optional[str],  # noqa: UP045
+        database_name: str | None,
+        schema_name: str | None,
         table_name: str,
-    ) -> Optional[str]:  # noqa: UP045
+    ) -> str | None:
         """
         Find the table name (in any format in my come)
         from the list using the given ingredients.
@@ -295,7 +485,7 @@ class LineageParser:
         logger.debug(f"[{self.query_hash}] Cannot find table {db_schema_table} in involved tables")
         return None
 
-    def get_comparison_elements(self, identifier: Identifier) -> Tuple[Optional[str], Optional[str]]:  # noqa: UP006, UP045
+    def get_comparison_elements(self, identifier: Identifier) -> tuple[str | None, str | None]:
         """
         Return the tuple table_name, column_name from each comparison element
         :param identifier: comparison identifier
@@ -345,7 +535,7 @@ class LineageParser:
 
     @staticmethod
     def stateful_add_table_joins(
-        statement_joins: Dict[str, List[TableColumnJoin]],  # noqa: UP006
+        statement_joins: dict[str, list[TableColumnJoin]],
         source: TableColumn,
         target: TableColumn,
     ) -> None:
@@ -376,7 +566,7 @@ class LineageParser:
 
     def stateful_add_joins_from_statement(
         self,
-        join_data: Dict[str, List[TableColumnJoin]],  # noqa: UP006
+        join_data: dict[str, list[TableColumnJoin]],
         sql_statement: str,
     ) -> None:
         """
@@ -387,7 +577,7 @@ class LineageParser:
         """
         # Here we want to get tokens such as `(tableA.col1 = tableB.col2)`
         statement: Statement = sqlparse.parse(sql_statement)[0]
-        comparisons: List[Comparison] = []  # noqa: UP006
+        comparisons: list[Comparison] = []
         for sub in statement.get_sublists():
             if isinstance(sub, Parenthesis):
                 sub = (  # noqa: PLW2901
@@ -426,7 +616,7 @@ class LineageParser:
                 logger.debug(f"[{self.query_hash}] {traceback.format_exc()}")
 
     @cached_property
-    def table_joins(self) -> Dict[str, List[TableColumnJoin]]:  # noqa: UP006
+    def table_joins(self) -> dict[str, list[TableColumnJoin]]:
         """
         For each table involved in the query, find its joins against any
         other table.
@@ -443,14 +633,14 @@ class LineageParser:
 
     def retrieve_tables(
         self,
-        tables: List[Union[Table, DataFunction, Location]],  # noqa: UP006, UP007
-    ) -> List[Union[Table, DataFunction, Location]]:  # noqa: UP006, UP007
+        tables: list[Table | DataFunction | Location],
+    ) -> list[Table | DataFunction | Location]:
         if not self._clean_query:
             return []
         return [self.clean_table_name(table) for table in tables if isinstance(table, (Table, DataFunction, Location))]
 
     @classmethod
-    def clean_raw_query(cls, raw_query: str) -> Optional[str]:  # noqa: UP045
+    def clean_raw_query(cls, raw_query: str) -> str | None:
         """
         Given a raw query from any input (e.g., view definition,
         query from logs, etc.), perform a cleaning step
@@ -497,7 +687,7 @@ class LineageParser:
         dialect: Dialect,
         timeout_seconds: int,
         parser_type: QueryParserType,
-    ) -> Optional[LineageRunner]:  # noqa: UP045
+    ) -> LineageRunner | None:
         """Evaluate and return the best available parser for the query."""
         start_time = time.time()
         result = self._evaluate_best_parser_impl(query, dialect, timeout_seconds, parser_type)
@@ -514,7 +704,7 @@ class LineageParser:
         dialect: Dialect,
         timeout_seconds: int,
         parser_type: QueryParserType,
-    ) -> Optional[LineageRunner]:  # noqa: UP045
+    ) -> LineageRunner | None:
         if query is None:
             return None
 
@@ -667,6 +857,7 @@ class LineageParser:
             lr_sqlparse = None
 
         if lr_sqlparse:
+            self.used_fallback_parser = True
             self.query_hash += "-SqlParse"
             logger.debug(f"[{self.query_hash}] Selected SqlParse for query parsing")
             return lr_sqlparse
@@ -677,8 +868,8 @@ class LineageParser:
 
     @staticmethod
     def clean_table_name(
-        table: Union[Table, DataFunction, Location],  # noqa: UP007
-    ) -> Union[Table, DataFunction, Location]:  # noqa: UP007
+        table: Table | DataFunction | Location,
+    ) -> Table | DataFunction | Location:
         """
         Clean table name by:
         - Removing brackets from the beginning and end of the table and schema name

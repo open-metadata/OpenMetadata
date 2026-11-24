@@ -13,8 +13,6 @@
 Validator for table column count to be between test case
 """
 
-from typing import Optional
-
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
@@ -26,6 +24,6 @@ from metadata.data_quality.validations.table.base.tableColumnCountToBeBetween im
 class TableColumnCountToBeBetweenValidator(BaseTableColumnCountToBeBetweenValidator, PandasValidatorMixin):
     """Validator for table column count to be between test case"""
 
-    def _run_results(self) -> Optional[int]:  # noqa: UP045
+    def _run_results(self) -> int | None:
         """compute result of the test case"""
         return len(next(self.runner()).columns)

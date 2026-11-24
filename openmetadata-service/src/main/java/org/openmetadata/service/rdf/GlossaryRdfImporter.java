@@ -16,13 +16,16 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 
+import jakarta.ws.rs.ClientErrorException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.StringReader;
 import java.net.URI;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -30,8 +33,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
@@ -41,27 +47,46 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.rdf.model.Statement;
 import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.shared.JenaException;
+import org.openmetadata.schema.api.configuration.rdf.ShaclValidationMode;
 import org.openmetadata.schema.api.data.ConceptMapping;
-import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
-import org.openmetadata.schema.configuration.GlossaryTermRelationType;
-import org.openmetadata.schema.configuration.RelationCategory;
+import org.openmetadata.schema.api.data.OntologyImportResult;
+import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.entity.type.CustomProperty;
-import org.openmetadata.schema.settings.Settings;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.OntologyAnnexRevision;
+import org.openmetadata.schema.type.OntologyAnnexSource;
 import org.openmetadata.schema.type.OntologyNamespace;
+import org.openmetadata.schema.type.ProviderType;
+import org.openmetadata.schema.type.RdfValidationReport;
+import org.openmetadata.schema.type.RelationProvenance;
+import org.openmetadata.schema.type.RelationshipCardinality;
+import org.openmetadata.schema.type.RelationshipCharacteristic;
+import org.openmetadata.schema.type.RelationshipPaletteKey;
+import org.openmetadata.schema.type.RelationshipTypeCategory;
+import org.openmetadata.schema.type.SemanticReference;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
+import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 import org.openmetadata.service.jdbi3.TypeRepository;
-import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.monitoring.OntologyMetrics;
+import org.openmetadata.service.ontology.OntologyAnnexService;
+import org.openmetadata.service.ontology.OntologyChangeEventPublisher;
+import org.openmetadata.service.ontology.RdfBlankNodeCanonicalizer;
+import org.openmetadata.service.ontology.RelationshipTypeIds;
+import org.openmetadata.service.ontology.RelationshipTypeReferences;
+import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
@@ -78,7 +103,8 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
  * <ul>
  *   <li>{@code skos:ConceptScheme} &rarr; Glossary
  *   <li>{@code skos:Concept} / {@code owl:Class} &rarr; GlossaryTerm (subject IRI &rarr; {@code iri})
- *   <li>{@code skos:broader} / {@code rdfs:subClassOf} &rarr; parent
+ *   <li>{@code skos:broader} / {@code rdfs:subClassOf} &rarr; deterministic parent plus typed
+ *       {@code broader} relations for additional parents
  *   <li>{@code skos:altLabel} &rarr; synonyms; {@code skos:definition} / {@code rdfs:comment} &rarr;
  *       description
  *   <li>{@code skos:*Match} / {@code owl:sameAs} to external IRIs &rarr; conceptMappings
@@ -92,12 +118,33 @@ public class GlossaryRdfImporter {
   private static final String RDF = "http://www.w3.org/1999/02/22-rdf-syntax-ns#";
   private static final String OWL = "http://www.w3.org/2002/07/owl#";
   private static final String DCT = "http://purl.org/dc/terms/";
+  private static final String XSD = "http://www.w3.org/2001/XMLSchema#";
+  private static final String OM_ONTOLOGY = "https://open-metadata.org/ontology/";
+  // The ontology export declares the vocabulary it uses (skos:Concept and om:GlossaryTerm as
+  // classes, om:fullyQualifiedName as a data property); re-importing an export must not turn those
+  // declarations into terms or attributes.
+  private static final Set<String> VOCABULARY_NAMESPACES =
+      Set.of(SKOS, RDFS, RDF, OWL, XSD, OM_ONTOLOGY);
+  private static final String SKOS_RELATED = SKOS + "related";
+  private static final String SKOS_EXACT_MATCH = SKOS + "exactMatch";
+  private static final String SKOS_CLOSE_MATCH = SKOS + "closeMatch";
+  private static final String SKOS_BROAD_MATCH = SKOS + "broadMatch";
+  private static final String SKOS_NARROW_MATCH = SKOS + "narrowMatch";
+  private static final String SKOS_RELATED_MATCH = SKOS + "relatedMatch";
+  private static final String OWL_SAME_AS = OWL + "sameAs";
+  private static final String RELATED_TYPE = "skosRelated";
+  private static final String SYNONYM_TYPE = "synonym";
+  private static final String SAME_AS_TYPE = "sameAs";
+  private static final String CLOSE_MATCH_TYPE = "closeMatch";
+  private static final String BROAD_MATCH_TYPE = "broadMatch";
+  private static final String NARROW_MATCH_TYPE = "narrowMatch";
+  private static final String RELATED_MATCH_TYPE = "relatedMatch";
+  private static final String BROADER_TYPE = "broader";
+  private static final String SUBCLASS_OF_TYPE = "subClassOf";
   private static final int MAX_RDF_PAYLOAD_CHARS = 10 * 1024 * 1024;
   private static final String DOCTYPE_TOKEN = "<!DOCTYPE";
   private static final String RDF_XML_LANG = "RDF/XML";
-
-  /** Serializes the read-merge-write of the shared glossary relation-type settings. */
-  private static final Object RELATION_TYPE_SETTINGS_LOCK = new Object();
+  private final SafeJsonLdModelParser jsonLdParser = new SafeJsonLdModelParser();
 
   private static final Set<String> STRUCTURAL_PREDICATES =
       Set.of(
@@ -121,21 +168,54 @@ public class GlossaryRdfImporter {
   private final UriInfo uriInfo;
   private final String user;
   private final boolean allowGlobalSchemaChanges;
+  private final Supplier<ShaclValidationMode> validationModeSupplier;
+  private final Supplier<RelationshipTypeResolver> registry;
   private final OntologyImportResult result = new OntologyImportResult();
+  private final Map<String, String> relationTypeNamesByPredicate = new HashMap<>();
+  private final Set<String> availableRelationTypes = new HashSet<>();
+  private final Set<String> rejectedPredicates = new HashSet<>();
+  // Soft-deleted types a dry run plans against as restored, by predicate; a real import restores.
+  private final Map<String, RelationshipType> restorableByPredicate = new HashMap<>();
+  // Soft-deleted types the import leaves deleted; a new type may not take one's name.
+  private List<RelationshipType> remainingSoftDeleted = List.of();
+  private final Set<String> skippedRelationTypes = new HashSet<>();
   private final Map<String, EntityReference> termRefByIri = new HashMap<>();
   private final Map<String, String> termFqnByIri = new HashMap<>();
   private final Map<String, String> iriByFqn = new HashMap<>();
   private EntityReference targetGlossaryRef;
 
   /**
-   * @param allowGlobalSchemaChanges whether the caller may mutate global, admin-scoped settings
-   *     (the {@code GlossaryTerm} type's custom properties and the glossary relation-type settings).
-   *     Glossary {@code EDIT_ALL} alone is not sufficient for those side effects.
+   * @param allowGlobalSchemaChanges whether the caller may register global, governed relationship
+   *     types and glossary custom properties.
    */
   public GlossaryRdfImporter(UriInfo uriInfo, String user, boolean allowGlobalSchemaChanges) {
+    this(uriInfo, user, allowGlobalSchemaChanges, GlossaryRdfImporter::configuredValidationMode);
+  }
+
+  GlossaryRdfImporter(
+      UriInfo uriInfo,
+      String user,
+      boolean allowGlobalSchemaChanges,
+      Supplier<ShaclValidationMode> validationModeSupplier) {
+    this(
+        uriInfo,
+        user,
+        allowGlobalSchemaChanges,
+        validationModeSupplier,
+        () -> new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO()));
+  }
+
+  GlossaryRdfImporter(
+      UriInfo uriInfo,
+      String user,
+      boolean allowGlobalSchemaChanges,
+      Supplier<ShaclValidationMode> validationModeSupplier,
+      Supplier<RelationshipTypeResolver> registry) {
     this.uriInfo = uriInfo;
     this.user = user;
     this.allowGlobalSchemaChanges = allowGlobalSchemaChanges;
+    this.validationModeSupplier = Objects.requireNonNull(validationModeSupplier);
+    this.registry = Objects.requireNonNull(registry);
   }
 
   public OntologyImportResult importRdf(
@@ -143,14 +223,102 @@ public class GlossaryRdfImporter {
     result.setDryRun(dryRun);
     validatePayload(rdf);
     Model model = parseModel(rdf, format);
-    Map<String, EntityReference> glossaryByScheme =
-        createGlossaries(model, targetGlossaryName, dryRun);
-    List<TermIntent> intents = buildTermIntents(model);
-    persistTerms(intents, glossaryByScheme, dryRun);
-    registerRelationTypes(model, intents, dryRun);
-    registerDatatypeProperties(model, dryRun);
-    wireRelations(intents, dryRun);
-    return result;
+    try {
+      result.setValidationReport(validateModel(model, dryRun));
+      Map<String, EntityReference> glossaryByScheme =
+          createGlossaries(model, targetGlossaryName, dryRun);
+      List<TermIntent> intents = buildTermIntents(model);
+      registerDatatypeProperties(model, dryRun);
+      persistTerms(intents, glossaryByScheme, dryRun);
+      registerRelationTypes(model, intents, dryRun);
+      wireRelations(intents, dryRun);
+      preserveAnnex(model, glossaryByScheme, dryRun);
+      publishImportEvents(glossaryByScheme, dryRun);
+      return result;
+    } finally {
+      model.close();
+    }
+  }
+
+  RdfValidationReport validateModel(Model model, boolean dryRun) {
+    final ShaclValidationMode validationMode = validationModeSupplier.get();
+    final boolean shouldValidate = dryRun || validationMode != ShaclValidationMode.OFF;
+    final RdfValidationReport validationReport =
+        shouldValidate
+            ? new RdfShaclReportMapper().map(RdfShaclValidator.validate(model))
+            : new RdfShaclReportMapper().skipped();
+    OntologyMetrics.recordShaclValidation(
+        Boolean.TRUE.equals(validationReport.getPerformed()),
+        Boolean.TRUE.equals(validationReport.getConforms()));
+    if (!dryRun
+        && validationMode == ShaclValidationMode.ENFORCE_IMPORTS
+        && !validationReport.getConforms()) {
+      throw new BadRequestException(
+          String.format(
+              "Ontology import failed SHACL validation with %d violation(s)",
+              validationReport.getViolationCount()));
+    }
+    return validationReport;
+  }
+
+  private static ShaclValidationMode configuredValidationMode() {
+    final RdfRepository repository = RdfRepository.getInstanceOrNull();
+    final ShaclValidationMode validationMode =
+        repository == null || repository.getConfig().getShaclValidationMode() == null
+            ? ShaclValidationMode.REPORT
+            : repository.getConfig().getShaclValidationMode();
+    return validationMode;
+  }
+
+  private void preserveAnnex(
+      Model sourceModel, Map<String, EntityReference> glossaryByScheme, boolean dryRun) {
+    if (!dryRun) {
+      for (UUID glossaryId : importedGlossaryIds(glossaryByScheme)) {
+        preserveAnnex(sourceModel, glossaryId);
+      }
+    }
+  }
+
+  private void publishImportEvents(Map<String, EntityReference> glossaryByScheme, boolean dryRun) {
+    if (!dryRun) {
+      OntologyChangeEventPublisher publisher = new OntologyChangeEventPublisher();
+      for (UUID glossaryId : importedGlossaryIds(glossaryByScheme)) {
+        Glossary glossary = Entity.getEntity(GLOSSARY, glossaryId, "", Include.NON_DELETED);
+        publisher.publish(EventType.ONTOLOGY_IMPORTED, glossary, user);
+      }
+    }
+  }
+
+  private Set<UUID> importedGlossaryIds(Map<String, EntityReference> glossaryByScheme) {
+    Set<UUID> ids = new LinkedHashSet<>();
+    glossaryByScheme.values().stream()
+        .map(EntityReference::getId)
+        .filter(Objects::nonNull)
+        .forEach(ids::add);
+    if (targetGlossaryRef != null && targetGlossaryRef.getId() != null) {
+      ids.add(targetGlossaryRef.getId());
+    }
+    return ids;
+  }
+
+  private void preserveAnnex(Model sourceModel, UUID glossaryId) {
+    GlossaryOntologyExporter exporter =
+        new GlossaryOntologyExporter(
+            URI.create("https://open-metadata.org/"), Entity.getCollectionDAO().ontologyAnnexDAO());
+    Model representedModel = exporter.buildModel(glossaryId, true);
+    try {
+      OntologyAnnexService annexService =
+          new OntologyAnnexService(
+              Entity.getCollectionDAO().ontologyAnnexDAO(),
+              new RdfBlankNodeCanonicalizer(),
+              Clock.systemUTC());
+      OntologyAnnexRevision revision =
+          annexService.preserve(
+              glossaryId, sourceModel, representedModel, OntologyAnnexSource.IMPORT, user);
+      result.getAnnexRevisions().add(revision);
+    } finally {
+      representedModel.close();
+    }
   }
 
   private void validatePayload(String rdf) {
@@ -165,43 +333,40 @@ public class GlossaryRdfImporter {
     }
   }
 
+  private void addMessage(String message) {
+    result.getMessages().add(message);
+  }
+
   private Model parseModel(String rdf, String format) {
-    String lang = jenaLang(format);
-    rejectExternalEntities(rdf, lang);
-    Model model = ModelFactory.createDefaultModel();
-    try {
-      model.read(new StringReader(rdf), null, lang);
-    } catch (JenaException ex) {
-      throw new BadRequestException("Failed to parse the ontology payload: " + ex.getMessage());
+    OntologyInputFormat inputFormat = OntologyInputFormat.resolve(format);
+    rejectExternalEntities(rdf, inputFormat.jenaLanguage());
+    Model model;
+    if (inputFormat == OntologyInputFormat.JSON_LD) {
+      model = jsonLdParser.parse(rdf);
+    } else {
+      model = ModelFactory.createDefaultModel();
+      try {
+        model.read(new StringReader(rdf), null, inputFormat.jenaLanguage());
+      } catch (JenaException ex) {
+        throw new BadRequestException("Failed to parse the ontology payload: " + ex.getMessage());
+      }
     }
     return model;
   }
 
   private void rejectExternalEntities(String rdf, String lang) {
     if (RDF_XML_LANG.equals(lang)
-        && rdf != null
+        && !nullOrEmpty(rdf)
         && rdf.toUpperCase(Locale.ROOT).contains(DOCTYPE_TOKEN)) {
       throw new BadRequestException(
           "RDF/XML payloads with a DOCTYPE declaration are rejected to prevent XXE/SSRF");
     }
   }
 
-  private String jenaLang(String format) {
-    String normalized = format == null ? "turtle" : format.toLowerCase(Locale.ROOT);
-    return switch (normalized) {
-      case "rdfxml", "xml", "rdf", "application/rdf+xml" -> RDF_XML_LANG;
-      case "ntriples", "nt", "application/n-triples" -> "N-TRIPLES";
-      case "jsonld", "json-ld", "application/ld+json" -> throw new BadRequestException(
-          "JSON-LD import is disabled because its remote @context resolution is an SSRF risk; "
-              + "use Turtle, RDF/XML or N-Triples");
-      default -> "TURTLE";
-    };
-  }
-
   private Map<String, EntityReference> createGlossaries(
       Model model, String targetGlossaryName, boolean dryRun) {
     Map<String, EntityReference> glossaryByScheme = new HashMap<>();
-    List<Map<String, String>> namespaces = collectNamespaces(model);
+    List<OntologyNamespace> namespaces = collectNamespaces(model);
     if (nullOrEmpty(targetGlossaryName)) {
       collectSchemeGlossaries(model, namespaces, glossaryByScheme, dryRun);
     } else {
@@ -212,7 +377,7 @@ public class GlossaryRdfImporter {
 
   private void collectSchemeGlossaries(
       Model model,
-      List<Map<String, String>> namespaces,
+      List<OntologyNamespace> namespaces,
       Map<String, EntityReference> glossaryByScheme,
       boolean dryRun) {
     Resource conceptScheme = model.getResource(SKOS + "ConceptScheme");
@@ -228,7 +393,7 @@ public class GlossaryRdfImporter {
   private void addSchemeGlossary(
       Model model,
       Resource scheme,
-      List<Map<String, String>> namespaces,
+      List<OntologyNamespace> namespaces,
       Map<String, EntityReference> glossaryByScheme,
       boolean dryRun) {
     String name = sanitizeName(localName(scheme.getURI()));
@@ -239,7 +404,7 @@ public class GlossaryRdfImporter {
   }
 
   private EntityReference resolveTargetGlossary(
-      String targetGlossaryName, List<Map<String, String>> namespaces, boolean dryRun) {
+      String targetGlossaryName, List<OntologyNamespace> namespaces, boolean dryRun) {
     EntityReference ref;
     try {
       ref = Entity.getEntityReferenceByName(GLOSSARY, targetGlossaryName, Include.NON_DELETED);
@@ -251,19 +416,21 @@ public class GlossaryRdfImporter {
     return ref;
   }
 
-  private List<Map<String, String>> collectNamespaces(Model model) {
-    List<Map<String, String>> namespaces = new ArrayList<>();
-    for (var entry : model.getNsPrefixMap().entrySet()) {
-      namespaces.add(Map.of("prefix", entry.getKey(), "namespace", entry.getValue()));
-    }
-    return namespaces;
+  private List<OntologyNamespace> collectNamespaces(Model model) {
+    return model.getNsPrefixMap().entrySet().stream()
+        .map(
+            entry ->
+                new OntologyNamespace()
+                    .withPrefix(entry.getKey())
+                    .withNamespace(toUri(entry.getValue())))
+        .toList();
   }
 
   private EntityReference ensureGlossary(
       String name,
       String displayName,
       String description,
-      List<Map<String, String>> namespaces,
+      List<OntologyNamespace> namespaces,
       boolean dryRun) {
     EntityReference ref;
     if (dryRun) {
@@ -286,7 +453,7 @@ public class GlossaryRdfImporter {
   }
 
   private EntityReference persistGlossary(
-      String name, String displayName, String description, List<Map<String, String>> namespaces) {
+      String name, String displayName, String description, List<OntologyNamespace> namespaces) {
     GlossaryRepository repository = (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
     Glossary glossary =
         new Glossary()
@@ -294,7 +461,7 @@ public class GlossaryRdfImporter {
             .withName(name)
             .withDisplayName(nullOrEmpty(displayName) ? name : displayName)
             .withDescription(nullOrEmpty(description) ? name : description)
-            .withNamespaces(toNamespaces(namespaces))
+            .withNamespaces(namespaces)
             .withUpdatedBy(user)
             .withUpdatedAt(System.currentTimeMillis());
     glossary.setFullyQualifiedName(name);
@@ -303,17 +470,6 @@ public class GlossaryRdfImporter {
       result.setGlossariesCreated(result.getGlossariesCreated() + 1);
     }
     return response.getEntity().getEntityReference();
-  }
-
-  private List<OntologyNamespace> toNamespaces(List<Map<String, String>> namespaces) {
-    List<OntologyNamespace> result = new ArrayList<>();
-    for (Map<String, String> ns : namespaces) {
-      result.add(
-          new OntologyNamespace()
-              .withPrefix(ns.get("prefix"))
-              .withNamespace(toUri(ns.get("namespace"))));
-    }
-    return result;
   }
 
   List<TermIntent> buildTermIntents(Model model) {
@@ -332,10 +488,15 @@ public class GlossaryRdfImporter {
     var resources = model.listResourcesWithProperty(model.getProperty(RDF, "type"), type);
     while (resources.hasNext()) {
       Resource resource = resources.next();
-      if (resource.isURIResource() && !byIri.containsKey(resource.getURI())) {
+      if (isImportableIri(resource) && !byIri.containsKey(resource.getURI())) {
         byIri.put(resource.getURI(), toTermIntent(resource, model));
       }
     }
+  }
+
+  private static boolean isImportableIri(Resource resource) {
+    return resource.isURIResource()
+        && VOCABULARY_NAMESPACES.stream().noneMatch(resource.getURI()::startsWith);
   }
 
   private TermIntent toTermIntent(Resource resource, Model model) {
@@ -367,10 +528,11 @@ public class GlossaryRdfImporter {
     String predicate = statement.getPredicate().getURI();
     String targetIri = object.asResource().getURI();
     boolean internal = internalIris.contains(targetIri);
+    ConceptMapping.ConceptMappingType mappingType = mappingTypeFor(predicate);
     if (isHierarchical(predicate)) {
-      assignParent(intent, targetIri, internal);
-    } else if (mappingTypeFor(predicate) != null && !internal) {
-      intent.conceptMappings.add(toConceptMapping(predicate, targetIri));
+      assignParent(intent, targetIri, internal, predicate);
+    } else if (mappingType != null && !internal) {
+      addConceptMapping(intent, targetIri, mappingType);
     } else if (internal) {
       addRelation(intent, predicate, targetIri);
     }
@@ -380,10 +542,46 @@ public class GlossaryRdfImporter {
     return (SKOS + "broader").equals(predicate) || (RDFS + "subClassOf").equals(predicate);
   }
 
-  private void assignParent(TermIntent intent, String targetIri, boolean internal) {
-    if (internal && nullOrEmpty(intent.parentIri)) {
-      intent.parentIri = targetIri;
+  /**
+   * A term keeps one structural parent, chosen deterministically as the lexicographically smallest
+   * target IRI. Every other asserted parent becomes a typed relation that preserves the predicate
+   * the source used, so an {@code rdfs:subClassOf} axiom is not weakened into {@code skos:broader}
+   * on the way back out.
+   */
+  private void assignParent(
+      TermIntent intent, String targetIri, boolean internal, String predicate) {
+    if (!internal) {
+      addConceptMapping(intent, targetIri, ConceptMapping.ConceptMappingType.BROAD_MATCH);
+      return;
     }
+    if (targetIri.equals(intent.parentIri)) {
+      return;
+    }
+    if (intent.parentIri == null || targetIri.compareTo(intent.parentIri) < 0) {
+      String previousParent = intent.parentIri;
+      String previousPredicate = intent.parentPredicate;
+      intent.parentIri = targetIri;
+      intent.parentPredicate = predicate;
+      removeHierarchicalRelations(intent, targetIri);
+      if (previousParent != null) {
+        addHierarchicalRelation(intent, previousPredicate, previousParent);
+      }
+    } else {
+      addHierarchicalRelation(intent, predicate, targetIri);
+    }
+  }
+
+  private void addHierarchicalRelation(TermIntent intent, String predicate, String targetIri) {
+    addTypedRelation(intent, hierarchicalRelationType(predicate), predicate, targetIri);
+  }
+
+  private void removeHierarchicalRelations(TermIntent intent, String targetIri) {
+    removeRelation(intent, BROADER_TYPE, targetIri);
+    removeRelation(intent, SUBCLASS_OF_TYPE, targetIri);
+  }
+
+  private static String hierarchicalRelationType(String predicate) {
+    return (RDFS + "subClassOf").equals(predicate) ? SUBCLASS_OF_TYPE : BROADER_TYPE;
   }
 
   private void addRelation(TermIntent intent, String predicate, String targetIri) {
@@ -391,107 +589,486 @@ public class GlossaryRdfImporter {
       return;
     }
     String relationType = relationTypeFor(predicate);
-    intent.relations.add(new String[] {relationType, targetIri});
+    addTypedRelation(intent, relationType, predicate, targetIri);
+  }
+
+  private void addTypedRelation(
+      TermIntent intent, String relationType, String predicateIri, String targetIri) {
+    boolean duplicatesStructuralParent =
+        (BROADER_TYPE.equals(relationType) || SUBCLASS_OF_TYPE.equals(relationType))
+            && targetIri.equals(intent.parentIri);
+    if (duplicatesStructuralParent) {
+      return;
+    }
+    boolean exists =
+        intent.relations.stream()
+            .anyMatch(
+                relation ->
+                    relationType.equals(relation.relationshipType())
+                        && targetIri.equals(relation.targetIri()));
+    if (!exists) {
+      intent.relations.add(new RelationIntent(relationType, predicateIri, targetIri));
+    }
+  }
+
+  private void removeRelation(TermIntent intent, String relationType, String targetIri) {
+    intent.relations.removeIf(
+        relation ->
+            relationType.equals(relation.relationshipType())
+                && targetIri.equals(relation.targetIri()));
+  }
+
+  private void addConceptMapping(
+      TermIntent intent, String targetIri, ConceptMapping.ConceptMappingType mappingType) {
+    boolean exists =
+        intent.conceptMappings.stream()
+            .anyMatch(
+                mapping ->
+                    mappingType.equals(mapping.getMappingType())
+                        && mapping.getConceptIri() != null
+                        && targetIri.equals(mapping.getConceptIri().toString()));
+    if (!exists) {
+      intent.conceptMappings.add(
+          new ConceptMapping().withConceptIri(toUri(targetIri)).withMappingType(mappingType));
+    }
   }
 
   private String relationTypeFor(String predicate) {
     return switch (predicate) {
-      case SKOS + "related", SKOS + "closeMatch", SKOS + "relatedMatch" -> "relatedTo";
-      case SKOS + "exactMatch", OWL + "sameAs" -> "synonym";
-      case SKOS + "broadMatch" -> "broader";
-      case SKOS + "narrowMatch" -> "narrower";
+      case SKOS_RELATED -> RELATED_TYPE;
+      case SKOS_EXACT_MATCH -> SYNONYM_TYPE;
+      case OWL_SAME_AS -> SAME_AS_TYPE;
+      case SKOS_CLOSE_MATCH -> CLOSE_MATCH_TYPE;
+      case SKOS_BROAD_MATCH -> BROAD_MATCH_TYPE;
+      case SKOS_NARROW_MATCH -> NARROW_MATCH_TYPE;
+      case SKOS_RELATED_MATCH -> RELATED_MATCH_TYPE;
       default -> sanitizeRelationName(localName(predicate));
     };
   }
 
-  private ConceptMapping toConceptMapping(String predicate, String targetIri) {
-    return new ConceptMapping()
-        .withConceptIri(toUri(targetIri))
-        .withMappingType(mappingTypeFor(predicate));
-  }
-
   private ConceptMapping.ConceptMappingType mappingTypeFor(String predicate) {
     return switch (predicate) {
-      case SKOS + "exactMatch" -> ConceptMapping.ConceptMappingType.EXACT_MATCH;
-      case SKOS + "closeMatch" -> ConceptMapping.ConceptMappingType.CLOSE_MATCH;
-      case SKOS + "broadMatch" -> ConceptMapping.ConceptMappingType.BROAD_MATCH;
-      case SKOS + "narrowMatch" -> ConceptMapping.ConceptMappingType.NARROW_MATCH;
-      case SKOS + "relatedMatch" -> ConceptMapping.ConceptMappingType.RELATED_MATCH;
-      case OWL + "sameAs" -> ConceptMapping.ConceptMappingType.SAME_AS;
+      case SKOS_EXACT_MATCH -> ConceptMapping.ConceptMappingType.EXACT_MATCH;
+      case SKOS_CLOSE_MATCH -> ConceptMapping.ConceptMappingType.CLOSE_MATCH;
+      case SKOS_BROAD_MATCH -> ConceptMapping.ConceptMappingType.BROAD_MATCH;
+      case SKOS_NARROW_MATCH -> ConceptMapping.ConceptMappingType.NARROW_MATCH;
+      case SKOS_RELATED_MATCH -> ConceptMapping.ConceptMappingType.RELATED_MATCH;
+      case OWL_SAME_AS -> ConceptMapping.ConceptMappingType.SAME_AS;
       default -> null;
     };
   }
 
   private void registerRelationTypes(Model model, List<TermIntent> intents, boolean dryRun) {
-    Set<String> existing = existingRelationTypeNames();
-    Map<String, GlossaryTermRelationType> toAdd = new LinkedHashMap<>();
-    for (TermIntent intent : intents) {
-      for (String[] relation : intent.relations) {
-        collectCustomRelationType(model, relation[0], existing, toAdd);
-      }
+    // ADR:2026-11-18-rdf-import-registers-governed-inverse-components
+    if (allowGlobalSchemaChanges) {
+      restoreSoftDeletedRelationTypes(model, intents, dryRun);
+    }
+    Map<String, RelationshipType> existing = existingRelationTypes();
+    restorableByPredicate.values().forEach(type -> existing.put(type.getName(), type));
+    Map<String, RelationshipType> toAdd = collectRelationTypes(model, intents, existing);
+    if (allowGlobalSchemaChanges) {
+      rejectInvalidDefinitions(model, toAdd);
+    }
+    Map<String, RelationshipType> updates = wireInversePartners(model, toAdd, existing);
+    if (allowGlobalSchemaChanges && !dryRun) {
+      updates = refreshInversePartners(toAdd, updates.values());
     }
     if (!toAdd.isEmpty()) {
-      applyRelationTypes(toAdd, dryRun);
+      applyRelationTypes(toAdd, updates, dryRun);
+    }
+    if (allowGlobalSchemaChanges && !dryRun) {
+      completeExistingPartners(toAdd, updates.values());
+    }
+    availableRelationTypes.addAll(existing.keySet());
+    if (allowGlobalSchemaChanges) {
+      availableRelationTypes.addAll(toAdd.keySet());
     }
   }
 
-  private void applyRelationTypes(Map<String, GlossaryTermRelationType> toAdd, boolean dryRun) {
+  Map<String, RelationshipType> collectRelationTypes(
+      Model model, List<TermIntent> intents, Map<String, RelationshipType> existing) {
+    Map<String, RelationshipType> toAdd = new LinkedHashMap<>();
+    Set<String> collected = new HashSet<>();
+    for (TermIntent intent : intents) {
+      for (RelationIntent relation : intent.relations) {
+        if (collected.add(relation.predicateIri())) {
+          collectRelationPair(model, relation, existing, toAdd);
+        }
+      }
+    }
+    return toAdd;
+  }
+
+  /**
+   * A soft-deleted type holding a predicate the import names comes back instead of a new type being
+   * registered beside it. A real import restores it before anything is collected, so validation and
+   * wiring see a live type; a dry run plans against it as its restore would leave it, without
+   * restoring it.
+   */
+  private void restoreSoftDeletedRelationTypes(
+      Model model, List<TermIntent> intents, boolean dryRun) {
+    List<RelationshipType> softDeleted =
+        Entity.getCollectionDAO().relationshipTypeDAO().listIncludingDeleted().stream()
+            .map(json -> JsonUtils.readValue(json, RelationshipType.class))
+            .filter(type -> Boolean.TRUE.equals(type.getDeleted()))
+            .toList();
+    List<RelationshipType> toRestore =
+        SoftDeletedRelationTypes.namedBy(
+            namedPredicates(model, intents),
+            softDeleted,
+            predicate -> registry.get().findByPredicate(predicate) != null);
+    remainingSoftDeleted = softDeleted.stream().filter(type -> !toRestore.contains(type)).toList();
+    for (RelationshipType type : toRestore) {
+      if (dryRun) {
+        RelationshipType restored =
+            JsonUtils.deepCopy(type, RelationshipType.class)
+                .withDeleted(false)
+                .withInverse(relationshipTypeRepository().inverseKeptOnRestore(type));
+        restorableByPredicate.put(restored.getRdfPredicate().toString(), restored);
+        addMessage("Relationship type '" + type.getName() + "' is deleted and would be restored");
+      } else {
+        restore(type);
+      }
+    }
+  }
+
+  /** Restores the type and records the restore as a change event, as the restore endpoint does. */
+  private void restore(RelationshipType type) {
+    RelationshipTypeRepository repository = relationshipTypeRepository();
+    PutResponse<RelationshipType> response = repository.restoreEntity(user, type.getId());
+    if (response != null) {
+      repository.storeChangeEventForAsyncOperation(
+          response.getEntity(), EventType.ENTITY_RESTORED, false, user);
+    }
+    addMessage("Relationship type '" + type.getName() + "' was deleted and has been restored");
+  }
+
+  private Set<String> namedPredicates(Model model, List<TermIntent> intents) {
+    Set<String> predicates = new LinkedHashSet<>();
+    for (TermIntent intent : intents) {
+      for (RelationIntent relation : intent.relations) {
+        predicates.add(relation.predicateIri());
+        String inverseIri = inversePredicateIri(model, relation.predicateIri());
+        if (inverseIri != null) {
+          predicates.add(inverseIri);
+        }
+      }
+    }
+    return predicates;
+  }
+
+  private void collectRelationPair(
+      Model model,
+      RelationIntent relation,
+      Map<String, RelationshipType> existing,
+      Map<String, RelationshipType> toAdd) {
+    RelationshipType type =
+        resolveRelationType(
+            model, relation.predicateIri(), relation.relationshipType(), existing, toAdd);
+    relationTypeNamesByPredicate.put(relation.predicateIri(), type.getName());
+    String inverseIri = inversePredicateIri(model, relation.predicateIri());
+    if (inverseIri != null) {
+      resolveRelationType(model, inverseIri, relationTypeFor(inverseIri), existing, toAdd);
+    }
+  }
+
+  private RelationshipType resolveRelationType(
+      Model model,
+      String predicateIri,
+      String name,
+      Map<String, RelationshipType> existing,
+      Map<String, RelationshipType> toAdd) {
+    RelationshipType governed = registry.get().findByPredicate(URI.create(predicateIri));
+    if (governed == null) {
+      governed = restorableByPredicate.get(predicateIri);
+    }
+    if (governed != null) {
+      existing.put(governed.getName(), governed);
+      return governed;
+    }
+    for (RelationshipType type : toAdd.values()) {
+      if (URI.create(predicateIri).equals(type.getRdfPredicate())) {
+        return type;
+      }
+    }
+    collectCustomRelationType(model, name, predicateIri, existing.keySet(), toAdd);
+    return toAdd.containsKey(name) ? toAdd.get(name) : existing.get(name);
+  }
+
+  Map<String, RelationshipType> wireInversePartners(
+      Model model, Map<String, RelationshipType> toAdd, Map<String, RelationshipType> existing) {
+    Map<String, RelationshipType> known = new LinkedHashMap<>(existing);
+    known.putAll(toAdd);
+    normalizeNewInverseReferences(model, toAdd.values(), known);
+    Map<String, RelationshipType> updates = new LinkedHashMap<>();
+    for (RelationshipType type : toAdd.values()) {
+      if (isSymmetric(type)) {
+        // Symmetric properties must retain their self-inverse.
+        continue;
+      }
+      if (type.getInverse() != null) {
+        wireInversePartner(model, type, known, updates);
+      }
+    }
+    updates.keySet().removeAll(toAdd.keySet());
+    return updates;
+  }
+
+  private void normalizeNewInverseReferences(
+      Model model, Collection<RelationshipType> types, Map<String, RelationshipType> known) {
+    for (RelationshipType type : types) {
+      if (!isSymmetric(type) && type.getInverse() != null) {
+        normalizeNewInverseReference(model, type, known);
+      }
+    }
+  }
+
+  private void normalizeNewInverseReference(
+      Model model, RelationshipType type, Map<String, RelationshipType> known) {
+    String inverseIri = inversePredicateIri(model, type.getRdfPredicate().toString());
+    if (inverseIri == null) {
+      // Its only claimer was rejected, so nothing remains to pair with.
+      type.setInverse(null);
+    } else {
+      known.values().stream()
+          .filter(partner -> URI.create(inverseIri).equals(partner.getRdfPredicate()))
+          .findFirst()
+          .ifPresent(partner -> type.setInverse(partner.getEntityReference()));
+    }
+  }
+
+  private void wireInversePartner(
+      Model model,
+      RelationshipType type,
+      Map<String, RelationshipType> known,
+      Map<String, RelationshipType> updates) {
+    RelationshipType partner = known.get(type.getInverse().getName());
+    // ADR:2026-11-18-rdf-import-symmetric-inverse-partners-stay-unlinked
+    if (partner != null && isSymmetric(partner)) {
+      type.setInverse(null);
+      return;
+    }
+    if (!isCompatibleInversePartner(model, type, partner)) {
+      addMessage(
+          "Inverse relationship type '"
+              + type.getInverse().getName()
+              + "' is unavailable or has a different inverse; leaving inverse unset on '"
+              + type.getName()
+              + "'");
+      type.setInverse(null);
+      return;
+    }
+    type.setInverse(partner.getEntityReference());
+    completeInversePartner(type, partner, updates);
+  }
+
+  private boolean isCompatibleInversePartner(
+      Model model, RelationshipType type, RelationshipType partner) {
+    if (partner == null) {
+      return false;
+    }
+    String inverseIri = inversePredicateIri(model, type.getRdfPredicate().toString());
+    String partnerInverse = inverseName(partner);
+    return (inverseIri == null || URI.create(inverseIri).equals(partner.getRdfPredicate()))
+        && (partnerInverse == null || type.getName().equals(partnerInverse));
+  }
+
+  private void completeInversePartner(
+      RelationshipType type, RelationshipType partner, Map<String, RelationshipType> updates) {
+    EntityReference inverse = partner.getInverse();
+    if (inverse == null
+        || !type.getName().equals(inverse.getName())
+        || !type.getId().equals(inverse.getId())) {
+      // The snapshot records intent; governed fields come from a fresh read before saving.
+      partner.setInverse(type.getEntityReference());
+      updates.put(partner.getName(), partner);
+    }
+  }
+
+  private boolean isSymmetric(RelationshipType type) {
+    return type.getCharacteristics() != null
+        && type.getCharacteristics().contains(RelationshipCharacteristic.SYMMETRIC);
+  }
+
+  private String inverseName(RelationshipType type) {
+    EntityReference inverse = type.getInverse();
+    if (inverse == null) {
+      return null;
+    }
+    return inverse.getName() == null ? inverse.getFullyQualifiedName() : inverse.getName();
+  }
+
+  private void applyRelationTypes(
+      Map<String, RelationshipType> toAdd, Map<String, RelationshipType> updates, boolean dryRun) {
     if (!allowGlobalSchemaChanges) {
-      result.addMessage(
+      addMessage(
           String.format(
               "%d relation type(s) require admin privileges and were not registered",
               toAdd.size()));
-    } else if (dryRun) {
-      result.setRelationTypesRegistered(result.getRelationTypesRegistered() + toAdd.size());
     } else {
-      persistRelationTypes(toAdd.values());
+      rejectInvalidRelationPairs(toAdd, updates);
+      if (dryRun) {
+        result.setRelationTypesRegistered(result.getRelationTypesRegistered() + toAdd.size());
+      } else {
+        persistRelationTypes(toAdd.values());
+      }
     }
   }
 
   private void collectCustomRelationType(
       Model model,
       String relationName,
+      String predicateIri,
       Set<String> existing,
-      Map<String, GlossaryTermRelationType> toAdd) {
+      Map<String, RelationshipType> toAdd) {
     if (existing.contains(relationName) || toAdd.containsKey(relationName)) {
       return;
     }
-    toAdd.put(relationName, buildRelationType(model, relationName));
+    toAdd.put(relationName, buildRelationType(model, relationName, predicateIri));
   }
 
-  GlossaryTermRelationType buildRelationType(Model model, String relationName) {
-    GlossaryTermRelationType type =
-        new GlossaryTermRelationType()
-            .withName(relationName)
-            .withDisplayName(relationName)
-            .withCategory(RelationCategory.ASSOCIATIVE)
-            .withIsSystemDefined(false);
+  RelationshipType buildRelationType(Model model, String relationName) {
     Resource property = findObjectProperty(model, relationName);
-    if (property != null) {
-      enrichFromObjectProperty(model, type, property, relationName);
-    }
+    String predicateIri =
+        property == null ? "https://open-metadata.org/ontology/" + relationName : property.getURI();
+    return buildRelationType(model, relationName, predicateIri);
+  }
+
+  private RelationshipType buildRelationType(
+      Model model, String relationName, String predicateIri) {
+    Resource property = model.getResource(predicateIri);
+    URI predicate = URI.create(predicateIri);
+    RelationshipType type =
+        new RelationshipType()
+            .withId(RelationshipTypeIds.stableId(relationName))
+            .withName(relationName)
+            .withFullyQualifiedName(relationName)
+            .withDisplayName(relationName)
+            .withDescription(relationName)
+            .withIri(predicate)
+            .withRdfPredicate(predicate)
+            .withCategory(RelationshipTypeCategory.CUSTOM)
+            .withDomain(Set.of())
+            .withRange(Set.of())
+            .withCharacteristics(Set.of())
+            .withPropertyChain(List.of())
+            .withDisjointWith(Set.of())
+            .withCrossGlossaryAllowed(true)
+            .withPaletteKey(RelationshipPaletteKey.VIOLET)
+            .withSystemDefined(false)
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withProvider(ProviderType.USER)
+            .withUpdatedBy(user)
+            .withUpdatedAt(System.currentTimeMillis());
+    enrichFromObjectProperty(model, type, property, relationName);
     return type;
   }
 
   private void enrichFromObjectProperty(
-      Model model, GlossaryTermRelationType type, Resource property, String relationName) {
-    String label = firstLiteral(property, model, RDFS + "label");
-    type.withDisplayName(nullOrEmpty(label) ? relationName : label)
-        .withRdfPredicate(toUri(property.getURI()))
-        .withInverseRelation(inverseRelationName(property, model))
-        .withDomain(listResourceUris(property, model.getProperty(RDFS, "domain")))
-        .withRange(listResourceUris(property, model.getProperty(RDFS, "range")));
-    applyCharacteristics(model, type, property);
+      Model model, RelationshipType type, Resource property, String relationName) {
+    if (property != null) {
+      String label = firstLiteral(property, model, RDFS + "label");
+      String description = firstLiteral(property, model, RDFS + "comment", SKOS + "definition");
+      type.withDisplayName(nullOrEmpty(label) ? relationName : label)
+          .withDescription(nullOrEmpty(description) ? relationName : description)
+          .withInverse(inverseReference(property, model))
+          .withDomain(semanticReferences(property, model.getProperty(RDFS, "domain")))
+          .withRange(semanticReferences(property, model.getProperty(RDFS, "range")));
+      applyCharacteristics(model, type, property);
+    }
   }
 
-  private void applyCharacteristics(Model model, GlossaryTermRelationType type, Resource property) {
-    type.withIsSymmetric(hasRdfType(model, property, OWL + "SymmetricProperty"))
-        .withIsTransitive(hasRdfType(model, property, OWL + "TransitiveProperty"))
-        .withIsFunctional(hasRdfType(model, property, OWL + "FunctionalProperty"))
-        .withIsInverseFunctional(hasRdfType(model, property, OWL + "InverseFunctionalProperty"))
-        .withIsReflexive(hasRdfType(model, property, OWL + "ReflexiveProperty"))
-        .withIsIrreflexive(hasRdfType(model, property, OWL + "IrreflexiveProperty"))
-        .withIsAsymmetric(hasRdfType(model, property, OWL + "AsymmetricProperty"));
+  private void applyCharacteristics(Model model, RelationshipType type, Resource property) {
+    Set<RelationshipCharacteristic> characteristics =
+        EnumSet.noneOf(RelationshipCharacteristic.class);
+    addCharacteristic(
+        model,
+        property,
+        OWL + "SymmetricProperty",
+        RelationshipCharacteristic.SYMMETRIC,
+        characteristics);
+    addCharacteristic(
+        model,
+        property,
+        OWL + "TransitiveProperty",
+        RelationshipCharacteristic.TRANSITIVE,
+        characteristics);
+    addCharacteristic(
+        model,
+        property,
+        OWL + "FunctionalProperty",
+        RelationshipCharacteristic.FUNCTIONAL,
+        characteristics);
+    addCharacteristic(
+        model,
+        property,
+        OWL + "InverseFunctionalProperty",
+        RelationshipCharacteristic.INVERSE_FUNCTIONAL,
+        characteristics);
+    addCharacteristic(
+        model,
+        property,
+        OWL + "ReflexiveProperty",
+        RelationshipCharacteristic.REFLEXIVE,
+        characteristics);
+    addCharacteristic(
+        model,
+        property,
+        OWL + "IrreflexiveProperty",
+        RelationshipCharacteristic.IRREFLEXIVE,
+        characteristics);
+    addCharacteristic(
+        model,
+        property,
+        OWL + "AsymmetricProperty",
+        RelationshipCharacteristic.ASYMMETRIC,
+        characteristics);
+    type.setCharacteristics(Set.copyOf(characteristics));
+    type.setCardinality(cardinality(characteristics));
+    if (characteristics.contains(RelationshipCharacteristic.SYMMETRIC)) {
+      type.setInverse(type.getEntityReference());
+    }
+  }
+
+  private void addCharacteristic(
+      Model model,
+      Resource property,
+      String typeIri,
+      RelationshipCharacteristic characteristic,
+      Set<RelationshipCharacteristic> characteristics) {
+    if (hasRdfType(model, property, typeIri)) {
+      characteristics.add(characteristic);
+    }
+  }
+
+  private RelationshipCardinality cardinality(Set<RelationshipCharacteristic> characteristics) {
+    Integer sourceMax = characteristics.contains(RelationshipCharacteristic.FUNCTIONAL) ? 1 : null;
+    Integer targetMax =
+        characteristics.contains(RelationshipCharacteristic.INVERSE_FUNCTIONAL) ? 1 : null;
+    RelationshipCardinality cardinality =
+        sourceMax == null && targetMax == null
+            ? null
+            : new RelationshipCardinality().withSourceMax(sourceMax).withTargetMax(targetMax);
+    return cardinality;
+  }
+
+  private Set<SemanticReference> semanticReferences(Resource resource, Property property) {
+    return listResourceUris(resource, property).stream()
+        .map(iri -> new SemanticReference().withIri(URI.create(iri)))
+        .collect(Collectors.toUnmodifiableSet());
+  }
+
+  private EntityReference inverseReference(Resource property, Model model) {
+    String inverseName = inverseRelationName(property, model);
+    EntityReference inverse =
+        inverseName == null
+            ? null
+            : new EntityReference()
+                .withId(RelationshipTypeIds.stableId(inverseName))
+                .withName(inverseName)
+                .withFullyQualifiedName(inverseName)
+                .withType(Entity.RELATIONSHIP_TYPE);
+    return inverse;
   }
 
   private boolean hasRdfType(Model model, Resource resource, String typeUri) {
@@ -526,62 +1103,322 @@ public class GlossaryRdfImporter {
   }
 
   private String inverseRelationName(Resource property, Model model) {
-    String inverse = firstResourceUri(property, model.getProperty(OWL, "inverseOf"));
+    String inverse = inversePredicateIri(model, property.getURI());
     return inverse == null ? null : sanitizeRelationName(localName(inverse));
   }
 
-  private Set<String> existingRelationTypeNames() {
-    Set<String> names = new LinkedHashSet<>(GlossaryTermRepository.DEFAULT_RELATION_TYPES);
-    GlossaryTermRelationSettings settings =
-        SettingsCache.getSetting(
-            SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, GlossaryTermRelationSettings.class);
-    if (settings != null && settings.getRelationTypes() != null) {
-      settings.getRelationTypes().forEach(type -> names.add(type.getName()));
+  private String inversePredicateIri(Model model, String predicateIri) {
+    Resource property = model.getResource(predicateIri);
+    Property inverseOf = model.getProperty(OWL, "inverseOf");
+    List<String> inverseIris = listResourceUris(property, inverseOf);
+    if (inverseIris.isEmpty()) {
+      inverseIris = reverseInversePredicateIris(model, property);
+      // A rejected definition's declaration must not claim a partner that declares nothing.
+      inverseIris.removeAll(rejectedPredicates);
     }
-    return names;
+    return inverseIris.stream().sorted().findFirst().orElse(null);
   }
 
-  private void persistRelationTypes(Collection<GlossaryTermRelationType> newTypes) {
-    synchronized (RELATION_TYPE_SETTINGS_LOCK) {
-      // Read the persisted document directly rather than from SettingsCache (a per-JVM Guava
-      // cache) so the merge sees the latest committed types. Best-effort only: the static lock
-      // serializes within a single JVM, so this narrows — but does not close — the cross-node
-      // read-modify-write window (two nodes can still read before either commits, and the later
-      // createOrUpdate wins). Full multi-node safety would need optimistic concurrency
-      // (version/ETag) or a DB-level merging upsert on the settings document.
-      GlossaryTermRelationSettings settings = currentRelationSettings();
-      List<GlossaryTermRelationType> merged =
-          settings == null || settings.getRelationTypes() == null
-              ? new ArrayList<>()
-              : new ArrayList<>(settings.getRelationTypes());
-      Set<String> existingNames = new HashSet<>();
-      merged.forEach(type -> existingNames.add(type.getName()));
-      int added = 0;
-      for (GlossaryTermRelationType type : newTypes) {
-        if (existingNames.add(type.getName())) {
-          merged.add(type);
-          added++;
+  private String declaredInversePredicateIri(Model model, RelationshipType type) {
+    List<String> declared =
+        listResourceUris(
+            model.getResource(type.getRdfPredicate().toString()),
+            model.getProperty(OWL, "inverseOf"));
+    return declared.stream().sorted().findFirst().orElse(null);
+  }
+
+  private List<String> reverseInversePredicateIris(Model model, Resource property) {
+    List<String> inverseIris = new ArrayList<>();
+    var declarations =
+        model.listResourcesWithProperty(model.getProperty(OWL, "inverseOf"), property);
+    try {
+      while (declarations.hasNext()) {
+        Resource subject = declarations.next();
+        if (subject.isURIResource()) {
+          inverseIris.add(subject.getURI());
         }
       }
-      Settings updated =
-          new Settings()
-              .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
-              .withConfigValue(new GlossaryTermRelationSettings().withRelationTypes(merged));
-      Entity.getSystemRepository().createOrUpdate(updated);
-      result.setRelationTypesRegistered(result.getRelationTypesRegistered() + added);
+    } finally {
+      declarations.close();
+    }
+    return inverseIris;
+  }
+
+  private Map<String, RelationshipType> existingRelationTypes() {
+    return registry.get().list().stream()
+        .collect(
+            Collectors.toMap(
+                RelationshipType::getName,
+                type -> type,
+                (first, second) -> first,
+                LinkedHashMap::new));
+  }
+
+  private RelationshipTypeRepository relationshipTypeRepository() {
+    return (RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE);
+  }
+
+  private void persistRelationTypes(Collection<RelationshipType> newTypes) {
+    RelationshipTypeRepository repository = relationshipTypeRepository();
+    int added = 0;
+    for (RelationshipType type : newTypes) {
+      PutResponse<RelationshipType> response = repository.createOrUpdate(uriInfo, type, user);
+      if (Response.Status.CREATED.equals(response.getStatus())) {
+        added++;
+      }
+    }
+    result.setRelationTypesRegistered(result.getRelationTypesRegistered() + added);
+  }
+
+  private void rejectInvalidDefinitions(Model model, Map<String, RelationshipType> newTypes) {
+    Map<UUID, String> invalid = invalidDefinitions(newTypes.values());
+    rejectNamesHeldByDeletedTypes(newTypes.values(), invalid);
+    expandDeclaredInverseRejections(model, newTypes.values(), invalid);
+    newTypes.values().stream()
+        .filter(type -> invalid.containsKey(type.getId()))
+        .forEach(type -> rejectedPredicates.add(type.getRdfPredicate().toString()));
+    skipInvalidTypes(newTypes, invalid);
+  }
+
+  /**
+   * A new type named like a soft-deleted type on another predicate would overwrite that type when
+   * saved, so it is skipped and the deleted type is left to be restored or renamed.
+   */
+  private void rejectNamesHeldByDeletedTypes(
+      Collection<RelationshipType> newTypes, Map<UUID, String> invalid) {
+    for (RelationshipType type : newTypes) {
+      SoftDeletedRelationTypes.holdingNameElsewhere(
+              type.getName(), type.getRdfPredicate(), remainingSoftDeleted)
+          .ifPresent(
+              holder ->
+                  invalid.putIfAbsent(
+                      type.getId(),
+                      "the name is held by a deleted relationship type on "
+                          + holder.getRdfPredicate()
+                          + "; restore or rename it"));
     }
   }
 
-  private GlossaryTermRelationSettings currentRelationSettings() {
-    GlossaryTermRelationSettings settings = null;
-    Settings stored =
-        Entity.getSystemRepository()
-            .getConfigWithKey(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.toString());
-    if (stored != null) {
-      settings =
-          JsonUtils.convertValue(stored.getConfigValue(), GlossaryTermRelationSettings.class);
+  private void rejectInvalidRelationPairs(
+      Map<String, RelationshipType> newTypes, Map<String, RelationshipType> updates) {
+    Map<UUID, String> invalid = invalidDefinitions(newTypes.values());
+    expandInvalidInversePairs(newTypes.values(), invalid);
+    skipInvalidTypes(newTypes, invalid);
+    Set<UUID> retained =
+        newTypes.values().stream().map(RelationshipType::getId).collect(Collectors.toSet());
+    updates.values().removeIf(type -> !retained.contains(type.getInverse().getId()));
+  }
+
+  private Map<UUID, String> invalidDefinitions(Collection<RelationshipType> types) {
+    RelationshipTypeRepository repository = relationshipTypeRepository();
+    Map<UUID, String> invalid = new LinkedHashMap<>();
+    for (RelationshipType type : types) {
+      try {
+        repository.prepareInternal(validationCopy(type), false);
+      } catch (BadRequestException | EntityNotFoundException | ClientErrorException exception) {
+        invalid.put(type.getId(), exception.getMessage());
+      }
     }
-    return settings;
+    return invalid;
+  }
+
+  /**
+   * A dry run plans against soft-deleted types as restored without restoring them, so prepare would
+   * reject an inverse naming one as deleted. The validator checks nothing else about an inverse to
+   * another type, so the validated copy leaves it out.
+   */
+  private RelationshipType validationCopy(RelationshipType type) {
+    RelationshipType copy = JsonUtils.deepCopy(type, RelationshipType.class);
+    EntityReference inverse = copy.getInverse();
+    if (inverse != null
+        && restorableByPredicate.values().stream()
+            .anyMatch(restorable -> RelationshipTypeReferences.refersTo(inverse, restorable))) {
+      copy.setInverse(null);
+    }
+    return copy;
+  }
+
+  private void skipInvalidTypes(Map<String, RelationshipType> newTypes, Map<UUID, String> invalid) {
+    newTypes.values().removeIf(type -> skipIfInvalid(type, invalid.get(type.getId())));
+  }
+
+  private boolean skipIfInvalid(RelationshipType type, String reason) {
+    if (reason != null) {
+      skippedRelationTypes.add(type.getName());
+      addMessage("Relationship type '" + type.getName() + "' skipped: " + reason);
+    }
+    return reason != null;
+  }
+
+  private void expandDeclaredInverseRejections(
+      Model model, Collection<RelationshipType> types, Map<UUID, String> invalid) {
+    Map<URI, RelationshipType> byPredicate =
+        types.stream()
+            .collect(
+                Collectors.toMap(
+                    RelationshipType::getRdfPredicate, type -> type, (first, second) -> first));
+    boolean changed;
+    do {
+      changed = false;
+      for (RelationshipType type : types) {
+        RelationshipType declared = declaredInverse(model, type, byPredicate);
+        if (declared != null && invalid.containsKey(declared.getId())) {
+          String reason = "its declared inverse '" + declared.getName() + "' was skipped";
+          changed |= invalid.putIfAbsent(type.getId(), reason) == null;
+        }
+      }
+    } while (changed);
+  }
+
+  private RelationshipType declaredInverse(
+      Model model, RelationshipType type, Map<URI, RelationshipType> byPredicate) {
+    String declared = declaredInversePredicateIri(model, type);
+    return declared == null ? null : byPredicate.get(URI.create(declared));
+  }
+
+  private void expandInvalidInversePairs(
+      Collection<RelationshipType> types, Map<UUID, String> invalid) {
+    boolean changed;
+    do {
+      changed = false;
+      for (RelationshipType type : types) {
+        EntityReference inverse = type.getInverse();
+        if (inverse != null
+            && (invalid.containsKey(type.getId()) || invalid.containsKey(inverse.getId()))) {
+          changed |= invalid.putIfAbsent(type.getId(), "invalid inverse component") == null;
+          changed |= invalid.putIfAbsent(inverse.getId(), "invalid inverse component") == null;
+        }
+      }
+    } while (changed);
+  }
+
+  private Map<String, RelationshipType> refreshInversePartners(
+      Map<String, RelationshipType> newTypes, Collection<RelationshipType> intended) {
+    Map<String, RelationshipType> refreshed = new LinkedHashMap<>();
+    for (RelationshipType update : intended) {
+      RelationshipType current = currentInversePartner(update);
+      if (current == null) {
+        clearNewInverse(newTypes, update, false);
+      } else {
+        current.setInverse(update.getInverse());
+        refreshed.put(current.getName(), current);
+      }
+    }
+    return refreshed;
+  }
+
+  private RelationshipType currentInversePartner(RelationshipType intended) {
+    RelationshipType current;
+    try {
+      current = registry.get().require(intended.getId());
+    } catch (BadRequestException notRegistered) {
+      addMessage(
+          "Relationship type '"
+              + intended.getName()
+              + "' disappeared before inverse completion; leaving the new inverse unset");
+      return null;
+    }
+    EntityReference inverse = current.getInverse();
+    if (inverse != null && !intended.getInverse().getId().equals(inverse.getId())) {
+      addMessage(
+          "Inverse of relationship type '"
+              + intended.getName()
+              + "' changed before completion; leaving the new inverse unset");
+      return null;
+    }
+    return current;
+  }
+
+  private void clearNewInverse(
+      Map<String, RelationshipType> newTypes, RelationshipType partner, boolean persisted) {
+    for (RelationshipType type : newTypes.values()) {
+      if (type.getId().equals(partner.getInverse().getId())) {
+        type.setInverse(null);
+        if (persisted) {
+          clearPersistedInverse(type.getId(), partner.getId());
+        }
+      }
+    }
+  }
+
+  private void clearPersistedInverse(UUID typeId, UUID partnerId) {
+    RelationshipType current = registry.get().require(typeId);
+    if (current.getInverse() != null && partnerId.equals(current.getInverse().getId())) {
+      current.setInverse(null);
+      overwriteRelationType(current);
+    }
+  }
+
+  private void completeExistingPartners(
+      Map<String, RelationshipType> newTypes, Collection<RelationshipType> intended) {
+    for (RelationshipType update : intended) {
+      if (completeExistingPartner(update) != PartnerCompletion.COMPLETED) {
+        clearNewInverse(newTypes, update, true);
+      }
+    }
+  }
+
+  private PartnerCompletion completeExistingPartner(RelationshipType intended) {
+    PartnerCompletion outcome = attemptPartnerCompletion(intended);
+    if (outcome == PartnerCompletion.STALE) {
+      // One re-read absorbs a concurrent edit that left the partner unclaimed or claimed it for us.
+      outcome = attemptPartnerCompletion(intended);
+    }
+    if (outcome == PartnerCompletion.STALE) {
+      addMessage(
+          "Inverse of relationship type '"
+              + intended.getName()
+              + "' kept changing while completing; leaving the new inverse unset");
+    }
+    return outcome;
+  }
+
+  private PartnerCompletion attemptPartnerCompletion(RelationshipType intended) {
+    RelationshipType current = currentInversePartner(intended);
+    PartnerCompletion outcome;
+    if (current == null) {
+      outcome = PartnerCompletion.LOST;
+    } else if (pointsAt(current.getInverse(), intended.getInverse())) {
+      outcome = PartnerCompletion.COMPLETED;
+    } else {
+      outcome = writeInverseIfCurrent(current, intended.getInverse());
+    }
+    return outcome;
+  }
+
+  private static boolean pointsAt(EntityReference inverse, EntityReference target) {
+    return inverse != null && target.getId().equals(inverse.getId());
+  }
+
+  private PartnerCompletion writeInverseIfCurrent(
+      RelationshipType current, EntityReference inverse) {
+    RelationshipTypeRepository repository = relationshipTypeRepository();
+    RelationshipType updated = JsonUtils.deepCopy(current, RelationshipType.class);
+    updated.setInverse(inverse);
+    PartnerCompletion outcome = PartnerCompletion.COMPLETED;
+    try {
+      repository.prepareInternal(updated, false);
+      // A same-user PATCH consolidated in-session can retain the version being compared.
+      repository.updateIfCurrent(uriInfo, current, updated, user);
+    } catch (PreconditionFailedException changed) {
+      outcome = PartnerCompletion.STALE;
+    } catch (BadRequestException | EntityNotFoundException | ClientErrorException invalid) {
+      addMessage(
+          "Inverse of relationship type '"
+              + current.getName()
+              + "' could not be completed: "
+              + invalid.getMessage());
+      outcome = PartnerCompletion.LOST;
+    }
+    return outcome;
+  }
+
+  private void overwriteRelationType(RelationshipType current) {
+    RelationshipTypeRepository repository = relationshipTypeRepository();
+    current.setUpdatedBy(user);
+    current.setUpdatedAt(System.currentTimeMillis());
+    repository.prepareInternal(current, false);
+    repository.createOrUpdate(uriInfo, current, user);
   }
 
   private void persistTerms(
@@ -602,8 +1439,7 @@ public class GlossaryRdfImporter {
       Map<String, GlossaryTerm> batch) {
     EntityReference glossaryRef = resolveGlossary(intent, glossaryByScheme);
     if (glossaryRef == null) {
-      result.addMessage(
-          String.format("Skipped %s: no glossary (missing inScheme/target)", intent.iri));
+      addMessage(String.format("Skipped %s: no glossary (missing inScheme/target)", intent.iri));
     } else {
       persistResolvedTerm(repository, intent, glossaryRef, dryRun, batch);
     }
@@ -644,7 +1480,7 @@ public class GlossaryRdfImporter {
       conflictLabel = existingIri == null ? "an existing term" : existingIri;
     }
     if (collides) {
-      result.addMessage(
+      addMessage(
           String.format(
               "Skipped %s: local name '%s' collides with %s; both map to '%s'",
               intent.iri, intent.name, conflictLabel, fqn));
@@ -681,8 +1517,9 @@ public class GlossaryRdfImporter {
       } else {
         commitTerm(repository, term, intent);
       }
-    } catch (Exception ex) {
-      result.addMessage(String.format("Failed %s: %s", intent.iri, ex.getMessage()));
+    } catch (RuntimeException ex) {
+      LOG.warn("Failed to persist imported ontology concept {}", intent.iri, ex);
+      addMessage(String.format("Failed %s: %s", intent.iri, ex.getMessage()));
     }
   }
 
@@ -791,11 +1628,13 @@ public class GlossaryRdfImporter {
   private void countRelationsForDryRun(List<TermIntent> intents) {
     Set<String> knownIris = new HashSet<>();
     intents.forEach(intent -> knownIris.add(intent.iri));
-    Set<String> registerableTypes = registerableRelationTypes(intents);
+    Set<String> registerableTypes = availableRelationTypes;
     int total = 0;
     for (TermIntent intent : intents) {
-      for (String[] relation : intent.relations) {
-        if (knownIris.contains(relation[1]) && registerableTypes.contains(relation[0])) {
+      for (RelationIntent relation : intent.relations) {
+        if (knownIris.contains(relation.targetIri())
+            && !skipRelationOfSkippedType(relation)
+            && registerableTypes.contains(registeredRelationType(relation))) {
           total++;
         }
       }
@@ -803,18 +1642,21 @@ public class GlossaryRdfImporter {
     result.setRelationsAdded(result.getRelationsAdded() + total);
   }
 
-  /**
-   * Relation types the real import would accept: the already-registered (default + custom) types,
-   * plus — only when the caller may register them — the custom types declared by this ontology. A
-   * non-admin cannot register new types, so their relations using custom types are skipped on a real
-   * import and must not inflate the dry-run preview.
-   */
-  private Set<String> registerableRelationTypes(List<TermIntent> intents) {
-    Set<String> types = new HashSet<>(existingRelationTypeNames());
-    if (allowGlobalSchemaChanges) {
-      intents.forEach(intent -> intent.relations.forEach(relation -> types.add(relation[0])));
+  private boolean skipRelationOfSkippedType(RelationIntent relation) {
+    String type = registeredRelationType(relation);
+    if (!skippedRelationTypes.contains(type)) {
+      return false;
     }
-    return types;
+    addMessage(
+        String.format(
+            "Relation %s skipped: its relationship type '%s' was skipped as invalid",
+            relation.relationshipType(), type));
+    return true;
+  }
+
+  private String registeredRelationType(RelationIntent relation) {
+    return relationTypeNamesByPredicate.getOrDefault(
+        relation.predicateIri(), relation.relationshipType());
   }
 
   private void persistRelations(List<TermIntent> intents) {
@@ -829,20 +1671,21 @@ public class GlossaryRdfImporter {
   }
 
   private void addTermRelation(
-      GlossaryTermRepository repository, EntityReference fromRef, String[] relation) {
-    EntityReference toRef = termRefByIri.get(relation[1]);
-    if (toRef == null) {
-      return;
-    }
-    try {
-      TermRelation termRelation =
-          new TermRelation()
-              .withRelationType(relation[0])
-              .withTerm(new EntityReference().withId(toRef.getId()).withType(GLOSSARY_TERM));
-      repository.addTermRelation(fromRef.getId(), termRelation);
-      result.setRelationsAdded(result.getRelationsAdded() + 1);
-    } catch (Exception ex) {
-      result.addMessage(String.format("Relation %s skipped: %s", relation[0], ex.getMessage()));
+      GlossaryTermRepository repository, EntityReference fromRef, RelationIntent relation) {
+    EntityReference toRef = termRefByIri.get(relation.targetIri());
+    if (toRef != null && !skipRelationOfSkippedType(relation)) {
+      try {
+        TermRelation termRelation =
+            new TermRelation()
+                .withRelationType(registeredRelationType(relation))
+                .withProvenance(RelationProvenance.IMPORTED)
+                .withTerm(new EntityReference().withId(toRef.getId()).withType(GLOSSARY_TERM));
+        repository.addTermRelation(uriInfo, user, fromRef.getId(), termRelation);
+        result.setRelationsAdded(result.getRelationsAdded() + 1);
+      } catch (BadRequestException | EntityNotFoundException ex) {
+        addMessage(
+            String.format("Relation %s skipped: %s", relation.relationshipType(), ex.getMessage()));
+      }
     }
   }
 
@@ -855,14 +1698,33 @@ public class GlossaryRdfImporter {
 
   private void applyDatatypeProperties(List<DatatypeIntent> intents, boolean dryRun) {
     if (!allowGlobalSchemaChanges) {
-      result.addMessage(
+      addMessage(
           String.format(
               "%d datatype attribute(s) require admin privileges and were not created",
               intents.size()));
     } else if (dryRun) {
-      result.setCustomPropertiesCreated(result.getCustomPropertiesCreated() + intents.size());
+      previewDatatypeProperties(intents);
     } else {
       persistDatatypeProperties(intents);
+    }
+  }
+
+  private void previewDatatypeProperties(List<DatatypeIntent> intents) {
+    Type type =
+        Entity.getEntityByName(Entity.TYPE, GLOSSARY_TERM, "customProperties", Include.NON_DELETED);
+    Set<String> names =
+        type.getCustomProperties().stream()
+            .map(CustomProperty::getName)
+            .collect(Collectors.toSet());
+    for (DatatypeIntent intent : intents) {
+      if (names.add(intent.name)) {
+        result.setCustomPropertiesCreated(result.getCustomPropertiesCreated() + 1);
+      } else {
+        addMessage(
+            String.format(
+                "Custom property %s skipped: name '%s' already exists or is repeated in this import",
+                intent.iri, intent.name));
+      }
     }
   }
 
@@ -873,31 +1735,6 @@ public class GlossaryRdfImporter {
     for (DatatypeIntent intent : intents) {
       createCustomProperty(typeRepository, glossaryTermType.getId(), intent);
     }
-  }
-
-  List<DatatypeIntent> buildDatatypeIntents(Model model) {
-    List<DatatypeIntent> intents = new ArrayList<>();
-    Resource datatypeProperty = model.getResource(OWL + "DatatypeProperty");
-    var properties =
-        model.listResourcesWithProperty(model.getProperty(RDF, "type"), datatypeProperty);
-    while (properties.hasNext()) {
-      Resource property = properties.next();
-      if (property.isURIResource()) {
-        intents.add(toDatatypeIntent(property, model));
-      }
-    }
-    return intents;
-  }
-
-  private DatatypeIntent toDatatypeIntent(Resource property, Model model) {
-    DatatypeIntent intent = new DatatypeIntent();
-    intent.iri = property.getURI();
-    intent.name = customPropertyName(localName(property.getURI()));
-    intent.displayName = firstLiteral(property, model, RDFS + "label");
-    intent.description = firstLiteral(property, model, RDFS + "comment", SKOS + "definition");
-    intent.domainIri = firstResourceUri(property, model.getProperty(RDFS, "domain"));
-    intent.xsdType = firstResourceUri(property, model.getProperty(RDFS, "range"));
-    return intent;
   }
 
   private void createCustomProperty(
@@ -911,16 +1748,16 @@ public class GlossaryRdfImporter {
               .withName(intent.name)
               .withDescription(datatypeDescription(intent))
               .withPropertyType(propertyType);
-      typeRepository.addCustomProperty(uriInfo, user, glossaryTermTypeId, property);
+      // An RDF local name cannot identify an existing, globally shared property definition.
+      typeRepository.createCustomProperty(uriInfo, user, glossaryTermTypeId, property);
       result.setCustomPropertiesCreated(result.getCustomPropertiesCreated() + 1);
-    } catch (Exception ex) {
-      result.addMessage(
-          String.format("Custom property %s skipped: %s", intent.iri, ex.getMessage()));
+    } catch (BadRequestException | EntityNotFoundException ex) {
+      addMessage(String.format("Custom property %s skipped: %s", intent.iri, ex.getMessage()));
     }
   }
 
   String customPropertyTypeFor(String xsdIri) {
-    String local = xsdIri == null ? "" : localName(xsdIri).toLowerCase();
+    String local = xsdIri == null ? "" : localName(xsdIri).toLowerCase(Locale.ROOT);
     return switch (local) {
       case "integer", "int", "long", "short", "nonnegativeinteger", "positiveinteger" -> "integer";
       case "decimal", "double", "float" -> "number";
@@ -936,8 +1773,8 @@ public class GlossaryRdfImporter {
     if (!nullOrEmpty(intent.description)) {
       appendSpaced(description, intent.description);
     }
-    if (!nullOrEmpty(intent.domainIri)) {
-      appendSpaced(description, "(Attribute of " + localName(intent.domainIri) + ".)");
+    for (String domainIri : intent.domainIris) {
+      appendSpaced(description, "(Attribute of " + localName(domainIri) + ".)");
     }
     return description.length() == 0 ? intent.name : description.toString();
   }
@@ -947,6 +1784,31 @@ public class GlossaryRdfImporter {
       builder.append(' ');
     }
     builder.append(text);
+  }
+
+  List<DatatypeIntent> buildDatatypeIntents(Model model) {
+    List<DatatypeIntent> intents = new ArrayList<>();
+    Resource datatypeProperty = model.getResource(OWL + "DatatypeProperty");
+    var properties =
+        model.listResourcesWithProperty(model.getProperty(RDF, "type"), datatypeProperty);
+    while (properties.hasNext()) {
+      Resource property = properties.next();
+      if (isImportableIri(property)) {
+        intents.add(toDatatypeIntent(property, model));
+      }
+    }
+    return intents;
+  }
+
+  private DatatypeIntent toDatatypeIntent(Resource property, Model model) {
+    DatatypeIntent intent = new DatatypeIntent();
+    intent.iri = property.getURI();
+    intent.name = customPropertyName(localName(property.getURI()));
+    intent.displayName = firstLiteral(property, model, RDFS + "label");
+    intent.description = firstLiteral(property, model, RDFS + "comment", SKOS + "definition");
+    intent.domainIris = listResourceUris(property, model.getProperty(RDFS, "domain"));
+    intent.xsdType = firstResourceUri(property, model.getProperty(RDFS, "range"));
+    return intent;
   }
 
   private String customPropertyName(String local) {
@@ -1029,9 +1891,10 @@ public class GlossaryRdfImporter {
     String description;
     List<String> synonyms;
     String parentIri;
+    String parentPredicate;
     String schemeIri;
     final List<ConceptMapping> conceptMappings = new ArrayList<>();
-    final List<String[]> relations = new ArrayList<>();
+    final List<RelationIntent> relations = new ArrayList<>();
   }
 
   static final class DatatypeIntent {
@@ -1039,7 +1902,45 @@ public class GlossaryRdfImporter {
     String name;
     String displayName;
     String description;
-    String domainIri;
+    List<String> domainIris;
     String xsdType;
+  }
+
+  record RelationIntent(String relationshipType, String predicateIri, String targetIri) {}
+
+  private enum PartnerCompletion {
+    COMPLETED,
+    STALE,
+    LOST
+  }
+
+  private enum OntologyInputFormat {
+    TURTLE("TURTLE", Set.of("turtle", "ttl", "text/turtle")),
+    RDF_XML(RDF_XML_LANG, Set.of("rdfxml", "xml", "rdf", "application/rdf+xml")),
+    N_TRIPLES("N-TRIPLES", Set.of("ntriples", "nt", "application/n-triples")),
+    JSON_LD("JSON-LD", Set.of("jsonld", "json-ld", "application/ld+json"));
+
+    private final String jenaLanguage;
+    private final Set<String> aliases;
+
+    OntologyInputFormat(final String jenaLanguage, final Set<String> aliases) {
+      this.jenaLanguage = jenaLanguage;
+      this.aliases = aliases;
+    }
+
+    private String jenaLanguage() {
+      return jenaLanguage;
+    }
+
+    private static OntologyInputFormat resolve(final String value) {
+      final String normalized = nullOrEmpty(value) ? "turtle" : value.toLowerCase(Locale.ROOT);
+      OntologyInputFormat resolved = TURTLE;
+      for (final OntologyInputFormat candidate : values()) {
+        if (candidate.aliases.contains(normalized)) {
+          resolved = candidate;
+        }
+      }
+      return resolved;
+    }
   }
 }

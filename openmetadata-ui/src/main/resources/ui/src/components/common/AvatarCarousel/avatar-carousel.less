@@ -10,49 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import '../../../styles/variables.less';
-
-.avatar-item {
-  position: relative;
-  &:hover {
-    border-color: @border-color !important;
-  }
-  &:focus {
-    border-color: @border-color !important;
-  }
-  &.ant-btn {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
-  }
-}
-
-.avatar-carousel-container {
-  .slick-slide {
-    width: 28px !important;
-  }
-  .slick-list {
-    overflow: visible !important;
-
-    .slick-track {
-      width: auto !important;
-    }
-  }
-  .ant-badge-count {
-    right: 4px;
-    background-color: @red-3;
-  }
-}
-
 .slider-btn-container {
-  .ant-btn {
+  button {
     padding: 0 var(--om-space-10);
     height: 30px;
-  }
-  .ant-btn.exit-suggestion {
-    color: @grey-4;
-    border-color: @grey-4;
-    padding: 0;
-    width: 30px;
   }
 }

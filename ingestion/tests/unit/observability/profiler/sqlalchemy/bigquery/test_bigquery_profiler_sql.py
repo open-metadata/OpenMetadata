@@ -19,8 +19,12 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.sqltypes import NullType
+from sqlalchemy_bigquery import STRUCT
 from sqlalchemy_bigquery.base import BigQueryDialect
 
+from metadata.profiler.interface.sqlalchemy.bigquery.profiler_interface import (
+    BigQueryProfilerInterface,
+)
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -100,6 +104,18 @@ def _grouped_output_label(sql, source):
     return match.group(1)
 
 
+def test_struct_columns_are_attached_to_the_profiled_table():
+    struct = STRUCT(email=sa.String)
+    table = sa.Table(TABLE_NAME, sa.MetaData(), sa.Column("customer", struct))
+    profiler = object.__new__(BigQueryProfilerInterface)
+    profiler._table = SimpleNamespace(__table__=table)
+
+    columns = profiler._get_struct_columns(struct._STRUCT_fields, "customer")
+
+    assert [column.name for column in columns] == [NESTED_COLUMN]
+    assert columns[0].table is table
+
+
 def test_nested_struct_countif_references_the_grouped_subquery_alias():
     """A STRUCT subfield must not leak its dotted path into the COUNTIF operand.
 
@@ -175,3 +191,43 @@ def test_non_bigquery_dialects_keep_the_grouped_having_implementation():
 
     assert "countif" not in sql.lower(), sql
     assert "GROUP BY" in sql and "HAVING" in sql, sql
+
+
+def test_nested_struct_unique_count_over_the_sampler_cte_that_only_selects_the_parent_struct():
+    """BigQuerySampler samples a STRUCT subfield by selecting its parent (`customer`), so the
+    sample has no `customer.email` column; the subfield must be addressed by path instead."""
+    parent = sa.Table(TABLE_NAME, sa.MetaData(), sa.Column("customer", STRUCT(email=sa.String)))
+    sample = sa.select(parent.c.customer).cte(f"{TABLE_NAME}_sample")
+    runner = _RecordingRunner()
+    session = _BigQuerySession()
+
+    SQAProfilerInterface._compute_query_metrics(
+        SimpleNamespace(session=session),
+        metric=Metrics.uniqueCount.value,
+        runner=runner,
+        column=sa.Column(NESTED_COLUMN, sa.String),
+        session=session,
+        sample=sample,
+    )
+
+    assert runner.query is not None, "The profiler never produced a uniqueCount query"
+    sql = _compile(runner.query.statement)
+    assert f"FROM `{TABLE_NAME}_sample` GROUP BY `customer`.`email`" in sql, sql
+
+
+def test_unique_count_runs_on_the_metric_threads_session():
+    """Each metric thread owns a session; building the grouped query on the interface's shared
+    session made concurrent columns collide ("session is provisioning a new connection")."""
+    shared, thread_session = _BigQuerySession(), _BigQuerySession()
+    runner = _RecordingRunner()
+
+    SQAProfilerInterface._compute_query_metrics(
+        SimpleNamespace(session=shared),
+        metric=Metrics.uniqueCount.value,
+        runner=runner,
+        column=sa.Column(FLAT_COLUMN, sa.String),
+        session=thread_session,
+        sample=_sample_table(FLAT_COLUMN),
+    )
+
+    assert runner.query.session is thread_session

@@ -75,3 +75,28 @@ TERADATA_GET_SERVER_VERSION = """
 SELECT InfoData FROM dbc.dbcinfo
 where InfoKey = 'VERSION'
 """
+
+# Full SQL lives in DBC.QryLogSQLV only when DBQL is enabled `WITH SQL`; otherwise
+# fall back to QryLogV.QueryText (first 200 chars by default, so lineage may not parse).
+# QueryText is NULL under `WITH SQL LIMIT SQLTEXT=0`, so text filters must use the COALESCE.
+# ponytail: only SqlRowNo = 1 is read, statements over 31000 chars are truncated
+TERADATA_QUERY_HISTORY_STATEMENT = """
+SELECT TOP {result_limit}
+    q.UserName AS user_name,
+    q.DefaultDatabase AS schema_name,
+    COALESCE(s.SqlTextInfo, q.QueryText) AS query_text,
+    q.StartTime AS start_time,
+    q.FirstRespTime AS end_time
+FROM DBC.QryLogV q
+LEFT JOIN DBC.QryLogSQLV s
+    ON s.ProcID = q.ProcID
+    AND s.QueryID = q.QueryID
+    AND s.SqlRowNo = 1
+WHERE q.ErrorCode = 0
+    AND COALESCE(s.SqlTextInfo, q.QueryText) NOT LIKE '/* {{"app": "OpenMetadata", %'
+    AND COALESCE(s.SqlTextInfo, q.QueryText) NOT LIKE '/* {{"app": "dbt", %'
+    AND q.StartTime >= TIMESTAMP '{start_time}'
+    AND q.StartTime < TIMESTAMP '{end_time}'
+    {filters}
+ORDER BY q.StartTime DESC
+"""

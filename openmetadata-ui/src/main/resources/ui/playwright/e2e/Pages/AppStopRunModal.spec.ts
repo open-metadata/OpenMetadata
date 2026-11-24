@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/base';
 import { redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 
@@ -81,7 +81,7 @@ test.describe('App Stop Run Modal', () => {
     });
 
     const appsResponse = page.waitForResponse(
-      `**/api/v1/apps?limit=15&include=non-deleted`
+      `**/api/v1/apps?limit=12&include=non-deleted`
     );
     await settingClick(page, GlobalSettingOptions.APPLICATIONS);
     await appsResponse;
@@ -141,7 +141,7 @@ test.describe('App Stop Run Modal', () => {
     });
 
     const appsResponse = page.waitForResponse(
-      `**/api/v1/apps?limit=15&include=non-deleted`
+      `**/api/v1/apps?limit=12&include=non-deleted`
     );
     await settingClick(page, GlobalSettingOptions.APPLICATIONS);
     await appsResponse;
@@ -195,7 +195,7 @@ test.describe('App Stop Run Modal', () => {
     });
 
     const appsResponse = page.waitForResponse(
-      `**/api/v1/apps?limit=15&include=non-deleted`
+      `**/api/v1/apps?limit=12&include=non-deleted`
     );
     await settingClick(page, GlobalSettingOptions.APPLICATIONS);
     await appsResponse;

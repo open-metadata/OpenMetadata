@@ -12,14 +12,17 @@
 Tests for metadata.ingestion.api.status.Status
 """
 
+from ast import literal_eval
 from unittest import TestCase
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
+    StepSummary,
 )
 from metadata.ingestion.api.status import (
     MAX_STACK_TRACE_LENGTH,
     MAX_STATUS_DISPLAY_ITEMS,
+    UNKNOWN_FILTER_KEY,
     Status,
     TruncatedStackTraceError,
 )
@@ -134,9 +137,63 @@ class TestStatus(TestCase):
         self.status.filter("entity_name", "filtered out")
         self.assertEqual(self.status.filtered, [{"entity_name": "filtered out"}])
 
+    def test_filter_replaces_none_key_with_placeholder(self):
+        """A nameless filtered entity must not poison the dict[str, str] key."""
+        self.status.filter(None, "filtered out")
+        self.assertEqual(self.status.filtered, [{UNKNOWN_FILTER_KEY: "filtered out"}])
+
+    def test_status_with_none_filter_key_round_trips(self):
+        """as_string() output of a nameless filter must revalidate as a Status."""
+        self.status.filter(None, "Project / Workspace Filtered Out")
+        revalidated = Status.model_validate(literal_eval(self.status.as_string()))
+        self.assertEqual(
+            revalidated.filtered,
+            [{UNKNOWN_FILTER_KEY: "Project / Workspace Filtered Out"}],
+        )
+
     # ── truncation of stack traces ───────────────────────────────────
 
     def test_truncated_stack_trace_error_limits_length(self):
         long_error = "x" * (MAX_STACK_TRACE_LENGTH + 1000)
         truncated = TruncatedStackTraceError(name="t", error=long_error)
         self.assertEqual(len(truncated.error), MAX_STACK_TRACE_LENGTH)
+
+    # ── TruncatedStr empty-string handling ───────────────────────────
+
+    def test_truncated_str_preserves_empty_error_string(self):
+        """An empty error string must stay "" — not be converted to None.
+        Otherwise build_ingestion_status round-trips error=None through
+        StepSummary.model_validate where StackTraceError.error: str is
+        required, raising ValidationError."""
+        failure = TruncatedStackTraceError(name="x", error="", stackTrace="trace")
+        assert failure.error == ""
+        assert failure.stackTrace == "trace"
+
+    def test_truncated_str_preserves_none_for_none_input(self):
+        """None input must still become None (stackTrace can be None)."""
+        failure = TruncatedStackTraceError(name="x", error="err", stackTrace=None)
+        assert failure.error == "err"
+        assert failure.stackTrace is None
+
+    def test_failed_with_empty_error_round_trips_through_step_summary(self):
+        """Status.failed() with error="" must produce a TruncatedStackTraceError
+        that round-trips through model_dump -> StepSummary.model_validate without
+        raising. This is the exact path build_ingestion_status() takes — and
+        the production trigger for the hang-at-shutdown bug."""
+        self.status.failed(StackTraceError(name="test", error="", stackTrace="trace"))
+        assert self.status.failures[0].error == ""
+
+        failure_dump = self.status.failures[0].model_dump()
+        assert failure_dump["error"] == ""
+
+        step_summary = StepSummary.model_validate({"name": "step", "failures": [failure_dump]})
+        assert step_summary.failures[0].error == ""
+
+    def test_failed_with_non_empty_error_round_trips_through_step_summary(self):
+        """Non-empty error strings must continue to round-trip cleanly."""
+        self.status.failed(StackTraceError(name="test", error="boom", stackTrace="trace"))
+        assert self.status.failures[0].error == "boom"
+
+        failure_dump = self.status.failures[0].model_dump()
+        step_summary = StepSummary.model_validate({"name": "step", "failures": [failure_dump]})
+        assert step_summary.failures[0].error == "boom"

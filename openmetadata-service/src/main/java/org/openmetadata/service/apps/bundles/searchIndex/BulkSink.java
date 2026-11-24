@@ -107,21 +107,6 @@ public interface BulkSink {
   }
 
   /**
-   * Wait for vector embedding tasks to complete and return detailed result including timing.
-   *
-   * @param timeoutSeconds Maximum time to wait
-   * @return VectorCompletionResult with completion status, pending count, and wait time
-   */
-  default VectorCompletionResult awaitVectorCompletionWithDetails(int timeoutSeconds) {
-    long start = System.currentTimeMillis();
-    boolean ok = awaitVectorCompletion(timeoutSeconds);
-    long waited = System.currentTimeMillis() - start;
-    return ok
-        ? VectorCompletionResult.success(waited)
-        : VectorCompletionResult.timeout(getPendingVectorTaskCount(), waited);
-  }
-
-  /**
    * Returns the column indexing statistics. Columns are indexed as a side effect of table
    * processing, so their stats are tracked separately.
    *

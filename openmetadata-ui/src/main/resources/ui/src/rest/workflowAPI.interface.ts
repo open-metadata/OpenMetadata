@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 export interface WorkflowInstanceFromApplicationParams {
+  limit?: number;
+  offset?: string;
   startTs: number;
   endTs: number;
-  workflowDefinitionName: string;
+  workflowDefinitionName?: string;
   entityLink: string;
 }
 
 export interface WorkflowInstanceStateParams {
+  limit?: number;
+  offset?: string;
   startTs: number;
   endTs: number;
 }

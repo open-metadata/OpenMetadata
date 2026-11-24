@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { Space, Typography } from 'antd';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { cloneDeep, isEmpty, isEqual } from 'lodash';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../../constants/constants';
 import { EntityField } from '../../../../constants/Feeds.constants';
@@ -27,13 +28,10 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
 } from '../../../../utils/EntityDiffPureUtils';
-import { renderReferenceElement } from '../../../../utils/GlossaryUtils';
-import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
-import {
-  EditIconButton,
-  PlusIconButton,
-} from '../../../common/IconButtons/EditIconButton';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import WidgetCard from '../../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
+import { ReferenceBadge } from '../../GlossaryTermBadges/GlossaryTermBadges';
 import GlossaryTermReferencesModal from '../GlossaryTermReferencesModal.component';
 
 const GlossaryTermReferences = () => {
@@ -47,10 +45,15 @@ const GlossaryTermReferences = () => {
   } = useGenericContext<GlossaryTerm>();
   const { t } = useTranslation();
 
-  const handleReferencesSave = async (
-    newReferences: TermReference[],
-    updateState?: boolean
-  ) => {
+  // Consumer via useGenericContext(). No `deleted` argument: the old expressions here
+  // never gated on glossaryTerm.deleted, only on a bare EditAll read, so
+  // getDerivedPermissionFlags defaults to its `deleted = false` — nothing to gate.
+  const { canEditAll } = useMemo(
+    () => getDerivedPermissionFlags(permissions),
+    [permissions]
+  );
+
+  const handleReferencesSave = async (newReferences: TermReference[]) => {
     try {
       const updatedRef = newReferences.filter(
         (ref) => ref.endpoint && ref.name
@@ -63,9 +66,6 @@ const GlossaryTermReferences = () => {
         };
 
         await onGlossaryTermUpdate(updatedGlossaryTerm);
-        if (updateState) {
-          setReferences(updatedRef);
-        }
       }
       setIsViewMode(true);
     } catch (error) {
@@ -111,70 +111,84 @@ const GlossaryTermReferences = () => {
     }
 
     return (
-      <div className="d-flex flex-wrap">
-        {unchangedReferences.map((reference) =>
-          renderReferenceElement(reference)
-        )}
-        {addedReferences.map((reference) =>
-          renderReferenceElement(reference, { added: true })
-        )}
-        {deletedReferences.map((reference) =>
-          renderReferenceElement(reference, { removed: true })
-        )}
+      <div className="tw:flex tw:flex-wrap tw:gap-1">
+        {unchangedReferences.map((reference) => (
+          <ReferenceBadge key={reference.name} reference={reference} />
+        ))}
+        {addedReferences.map((reference) => (
+          <ReferenceBadge
+            key={reference.name}
+            reference={reference}
+            versionStatus={{ added: true }}
+          />
+        ))}
+        {deletedReferences.map((reference) => (
+          <ReferenceBadge
+            key={reference.name}
+            reference={reference}
+            versionStatus={{ removed: true }}
+          />
+        ))}
       </div>
     );
   }, [glossaryTerm]);
 
-  const header = (
-    <Space
-      className="w-full"
-      data-testid={`section-${t('label.reference-plural')}`}>
-      <Typography.Text className="text-sm font-medium">
-        {t('label.reference-plural')}
-      </Typography.Text>
-      {permissions.EditAll &&
-        (isEmpty(references) ? (
-          <PlusIconButton
-            data-testid="term-references-add-button"
-            size="small"
-            title={t('label.add-entity', {
-              entity: t('label.reference-plural'),
-            })}
-            onClick={() => {
-              setIsViewMode(false);
-            }}
-          />
-        ) : (
-          <EditIconButton
-            newLook
-            data-testid="edit-button"
-            disabled={!permissions.EditAll}
-            size="small"
-            onClick={() => setIsViewMode(false)}
-          />
+  const renderHeaderExtra = () => {
+    if (!canEditAll) {
+      return null;
+    }
+
+    return isEmpty(references) ? (
+      <ButtonUtility
+        data-testid="term-references-add-button"
+        icon={Plus}
+        tooltip={t('label.add-entity', {
+          entity: t('label.reference-plural'),
+        })}
+        onClick={() => setIsViewMode(false)}
+      />
+    ) : (
+      <ButtonUtility
+        data-testid="edit-button"
+        icon={Edit01}
+        tooltip={t('label.edit-entity', {
+          entity: t('label.reference-plural'),
+        })}
+        onClick={() => setIsViewMode(false)}
+      />
+    );
+  };
+
+  const renderReferences = () => {
+    if (isVersionView) {
+      return getVersionReferenceElements();
+    }
+    if (isEmpty(references)) {
+      return canEditAll ? null : <div>{NO_DATA_PLACEHOLDER}</div>;
+    }
+
+    return (
+      <div className="tw:flex tw:flex-wrap tw:gap-1">
+        {references.map((ref) => (
+          <ReferenceBadge key={ref.name} reference={ref} />
         ))}
-    </Space>
-  );
+      </div>
+    );
+  };
+
+  // WidgetCard hides the body of a disabled card, so only disable it when
+  // there is nothing to show; read-only users still see the placeholder.
+  const referencesBody = renderReferences();
 
   return (
     <>
-      <ExpandableCard
-        cardProps={{
-          title: header,
-        }}
+      <WidgetCard
         dataTestId="references-container"
-        isExpandDisabled={isEmpty(references)}>
-        {isVersionView ? (
-          getVersionReferenceElements()
-        ) : !permissions.EditAll || !isEmpty(references) ? (
-          <div className="d-flex flex-wrap">
-            {references.map((ref) => renderReferenceElement(ref))}
-            {!permissions.EditAll && references.length === 0 && (
-              <div>{NO_DATA_PLACEHOLDER}</div>
-            )}
-          </div>
-        ) : null}
-      </ExpandableCard>
+        headerExtra={renderHeaderExtra()}
+        isExpandDisabled={!referencesBody}
+        title={t('label.reference-plural')}>
+        {referencesBody}
+      </WidgetCard>
 
       <GlossaryTermReferencesModal
         isVisible={!isViewMode}

@@ -12,7 +12,7 @@
 Register SSL verification results
 """
 
-from typing import Callable, Optional  # noqa: UP035
+from collections.abc import Callable
 
 from metadata.generated.schema.security.ssl.verifySSLConfig import SslConfig, VerifySSL
 from metadata.utils.dispatch import enum_register
@@ -29,17 +29,17 @@ ssl_verification_registry = enum_register()
 
 
 @ssl_verification_registry.add(VerifySSL.no_ssl.value)
-def no_ssl_init(_: Optional[SslConfig]) -> None:  # noqa: UP045
+def no_ssl_init(_: SslConfig | None) -> None:
     return None
 
 
 @ssl_verification_registry.add(VerifySSL.ignore.value)
-def ignore_ssl_init(_: Optional[SslConfig]) -> bool:  # noqa: UP045
+def ignore_ssl_init(_: SslConfig | None) -> bool:
     return False
 
 
 @ssl_verification_registry.add(VerifySSL.validate.value)
-def validate_ssl_init(ssl_config: Optional[SslConfig]) -> str:  # noqa: UP045
+def validate_ssl_init(ssl_config: SslConfig | None) -> str:
     if ssl_config is None:
         raise InvalidSSLVerificationException(
             "You have Verify SSL but the SSL Config is missing. Make sure to inform the CA Certificate path."

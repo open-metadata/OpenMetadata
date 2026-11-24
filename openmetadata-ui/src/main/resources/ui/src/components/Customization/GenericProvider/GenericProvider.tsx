@@ -13,19 +13,15 @@
 import { AxiosError } from 'axios';
 import { isEmpty, omit } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { DetailPageWidgetKeys } from '../../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
-import { CreateThread } from '../../../generated/api/feed/createThread';
 import { Column, Table } from '../../../generated/entity/data/table';
-import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { useChangeSummary } from '../../../hooks/useChangeSummary';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { postThread } from '../../../rest/feedsAPI';
 import { updateTableColumn } from '../../../rest/tableAPI';
 import { handleColumnFieldUpdate as handleColumnFieldUpdateUtil } from '../../../utils/ColumnUpdateUtils';
 import { EntityDataMapValue } from '../../../utils/ColumnUpdateUtils.interface';
@@ -40,7 +36,6 @@ import {
 } from '../../../utils/TablePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { useActivityFeedProvider } from '../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import {
@@ -57,6 +52,14 @@ const ColumnDetailPanel = withSuspenseFallback(
     )
   )
 );
+
+const getWidgetLayout = (
+  ...args: Parameters<typeof getLayoutFromCustomizedPage>
+): WidgetConfig[] => {
+  const layout = getLayoutFromCustomizedPage(...args);
+
+  return Array.isArray(layout) ? (layout as WidgetConfig[]) : [];
+};
 
 export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   children,
@@ -75,11 +78,6 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
   const [threadLink, setThreadLink] = useState<string>('');
-  const [threadType, setThreadType] = useState<ThreadType>(
-    ThreadType.Conversation
-  );
-  const { t } = useTranslation();
-  const { postFeed, deleteFeed, updateFeed } = useActivityFeedProvider();
   const location = useLocation();
   const navigate = useNavigate();
   const pageType = useMemo(() => ENTITY_PAGE_TYPE_MAP[type], [type]);
@@ -90,12 +88,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const currentTab = activeTab ?? routeTab;
   const expandedLayout = useRef<WidgetConfig[]>([]);
   const [layout, setLayout] = useState<WidgetConfig[]>(
-    getLayoutFromCustomizedPage(
-      pageType,
-      currentTab,
-      customizedPage,
-      isVersionView
-    )
+    getWidgetLayout(pageType, currentTab, customizedPage, isVersionView)
   );
   const [filteredKeys, setFilteredKeys] = useState<string[]>([]);
   const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<
@@ -131,12 +124,12 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     selectedColumnRef.current = selectedColumn;
   }, [selectedColumn]);
 
-  const { entityRules } = useEntityRules(type);
-
+  const { entityRules, isRulesLoaded } = useEntityRules(type);
   // limit=1000 is the backend max. Entities with more tracked field changes
   // will have entries beyond this limit silently omitted. Use fieldPrefix
   // filtering when targeting a specific section (e.g., 'columns.').
   const { changeSummary } = useChangeSummary(
+    // Version views have no change history to fetch.
     isVersionView ? '' : type,
     isVersionView ? '' : data.id ?? '',
     { limit: 1000 }
@@ -211,12 +204,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
 
   useEffect(() => {
     setLayout(
-      getLayoutFromCustomizedPage(
-        pageType,
-        currentTab,
-        customizedPage,
-        isVersionView
-      )
+      getWidgetLayout(pageType, currentTab, customizedPage, isVersionView)
     );
   }, [customizedPage, currentTab, pageType, isVersionView]);
 
@@ -224,29 +212,9 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     setThreadLink('');
   }, [setThreadLink]);
 
-  const onThreadLinkSelect = useCallback(
-    (link: string, threadType?: ThreadType) => {
-      setThreadLink(link);
-      if (threadType) {
-        setThreadType(threadType);
-      }
-    },
-    [setThreadLink, setThreadType]
-  );
-
-  // Create a thread
-  const createThread = async (data: CreateThread) => {
-    try {
-      await postThread(data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.create-entity-error', {
-          entity: t('label.conversation'),
-        })
-      );
-    }
-  };
+  const onThreadLinkSelect = useCallback((link: string) => {
+    setThreadLink(link);
+  }, []);
 
   // Filter the widgets we need to hide widgets which doesn't render anything
   const filterWidgets = useCallback(
@@ -268,8 +236,9 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     (column: ColumnOrTask) => {
       const columnFqn = column.fullyQualifiedName;
 
-      // If the column is already selected, don't do anything to avoid loops
-      if (selectedColumn?.fullyQualifiedName === columnFqn) {
+      // Use ref so the callback is not recreated on every selection change,
+      // which would cause useFqnDeepLink to re-run and reopen the panel on close.
+      if (selectedColumnRef.current?.fullyQualifiedName === columnFqn) {
         return;
       }
 
@@ -288,8 +257,12 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         const newPath = getEntityDetailsPath(type, columnFqn, routeTab);
 
         // Only navigate if the path is different from current path to avoid loops
+        // Keep the query string: list pagination (currentPage, pageSize, cursor) lives there.
         if (location.pathname !== newPath) {
-          navigate(newPath, { replace: true });
+          navigate(
+            { pathname: newPath, search: location.search },
+            { replace: true }
+          );
         }
       }
     },
@@ -299,7 +272,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       routeTab,
       navigate,
       location.pathname,
-      selectedColumn?.fullyQualifiedName,
+      location.search,
       extractedColumns,
     ]
   );
@@ -315,7 +288,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
         data.fullyQualifiedName,
         routeTab
       );
-      navigate(newPath, { replace: true });
+      navigate(
+        { pathname: newPath, search: location.search },
+        { replace: true }
+      );
     } else if (location.hash) {
       // Fallback: just remove hash if no FQN available
       navigate(
@@ -455,6 +431,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     () => ({
       data,
       entityRules,
+      isRulesLoaded,
       type,
       onUpdate,
       isVersionView,
@@ -477,6 +454,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     [
       data,
       entityRules,
+      isRulesLoaded,
       type,
       onUpdate,
       isVersionView,
@@ -503,13 +481,8 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       {children}
       {threadLink ? (
         <ActivityThreadPanel
-          createThread={createThread}
-          deletePostHandler={deleteFeed}
           open={Boolean(threadLink)}
-          postFeedHandler={postFeed}
           threadLink={threadLink}
-          threadType={threadType}
-          updateThreadHandler={updateFeed}
           onCancel={onThreadPanelClose}
         />
       ) : null}

@@ -1,4 +1,5 @@
 import { EntityType } from '../../../../enums/entity.enum';
+import { LineageLens } from '../../../../generated/api/lineage/lineageScene';
 import { SourceType } from '../../../SearchedData/SearchedData.interface';
 
 /*
@@ -16,4 +17,7 @@ import { SourceType } from '../../../SearchedData/SearchedData.interface';
 export interface LineageLayersProps {
   entityType?: EntityType;
   entity?: SourceType;
+  sceneLens?: LineageLens;
+  sceneLevelLabelKey?: string;
+  onSceneLensChange?: (lens: LineageLens) => void;
 }

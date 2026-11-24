@@ -14,7 +14,7 @@ import { useMemo } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { ROUTES } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import i18n from '../../utils/i18next/LocalUtil';
 import { userPermissions } from '../../utils/PermissionsUtils';
 import DomainDetailPage from '../Domain/DomainDetailPage/DomainDetailPage.component';

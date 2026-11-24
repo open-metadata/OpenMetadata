@@ -50,12 +50,13 @@ export interface DorisConnection {
     /**
      * SSL Configuration details.
      */
-    sslConfig?:                     Config;
-    supportsDBTExtraction?:         boolean;
-    supportsMetadataExtraction?:    boolean;
-    supportsProfiler?:              boolean;
-    supportsQueryComment?:          boolean;
-    supportsViewLineageExtraction?: boolean;
+    sslConfig?:                      Config;
+    supportsAutoPartitionDetection?: boolean;
+    supportsDBTExtraction?:          boolean;
+    supportsMetadataExtraction?:     boolean;
+    supportsProfiler?:               boolean;
+    supportsQueryComment?:           boolean;
+    supportsViewLineageExtraction?:  boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */

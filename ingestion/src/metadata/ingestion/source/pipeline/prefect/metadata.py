@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 
 from cachetools import LRUCache
 
+from metadata.domain.tags import TagDefinition
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import (
@@ -61,7 +62,6 @@ from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceS
 from metadata.utils import fqn
 from metadata.utils.helpers import clean_uri
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -98,16 +98,21 @@ PREFECT_STATE_MAP = {
 }
 
 
-def _parse_timestamp(ts_str: str | None) -> Timestamp | None:
+def _parse_timestamp(ts_str: str | None) -> int | None:
     """Convert an ISO timestamp string to a Unix timestamp in milliseconds."""
     if not ts_str:
         return None
     try:
         dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-        return Timestamp(int(dt.timestamp() * 1000))
+        return int(dt.timestamp() * 1000)
     except Exception:
         logger.debug("Failed to parse timestamp %r", ts_str, exc_info=True)
         return None
+
+
+def _as_timestamp(epoch_millis: int | None) -> Timestamp | None:
+    """Lift epoch millis into the schema Timestamp the entity models declare."""
+    return None if epoch_millis is None else Timestamp(epoch_millis)
 
 
 def _stable_task_names(task_runs: list[PrefectTaskRun]) -> dict[str, str]:
@@ -155,7 +160,7 @@ class PrefectSource(PipelineServiceSource):
             raise InvalidSourceException(f"Expected PrefectConnection, got {connection}")  # pyright: ignore[reportUnreachable]
         return cls(config, metadata)
 
-    def _build_task_dag(self, task_runs: list[PrefectTaskRun]) -> list[Task]:
+    def _build_task_dag(self, task_runs: list[PrefectTaskRun], pipeline_fqn: str) -> list[Task]:
         """
         Builds Tasks from one flow run's real task runs — a deployment is a
         trigger/schedule config, not a pipeline step, so it's never
@@ -165,10 +170,8 @@ class PrefectSource(PipelineServiceSource):
         """
         id_to_name = _stable_task_names(task_runs)
         downstream: dict[str, list[str]] = {name: [] for name in id_to_name.values()}
-        tags_by_name: dict[str, set[str]] = {name: set() for name in id_to_name.values()}
         for run in task_runs:
             this_name = id_to_name[run.id]
-            tags_by_name[this_name].update(run.tags)
             for refs in run.task_inputs.values():
                 for ref in refs:
                     upstream_name = id_to_name.get(ref.id) if ref.id else None
@@ -179,13 +182,7 @@ class PrefectSource(PipelineServiceSource):
                 name=name,
                 displayName=name,
                 downstreamTasks=targets or None,
-                tags=get_tag_labels(
-                    metadata=self.metadata,
-                    tags=list(tags_by_name[name]),
-                    classification_name=PREFECT_TAG_CATEGORY,
-                    include_tags=bool(self.source_config.includeTags),
-                )
-                or None,
+                tags=self.get_tag_by_fqn(f"{pipeline_fqn}.{fqn.quote_name(name)}"),
             )
             for name, targets in downstream.items()
         ]
@@ -364,8 +361,8 @@ class PrefectSource(PipelineServiceSource):
             TaskStatus(  # pyright: ignore[reportCallIssue]
                 name=id_to_name[run.id],
                 executionStatus=PREFECT_STATE_MAP.get((run.state_type or "UNKNOWN").upper(), StatusType.Pending),
-                startTime=_parse_timestamp(run.start_time or run.expected_start_time),
-                endTime=_parse_timestamp(run.end_time),
+                startTime=_as_timestamp(_parse_timestamp(run.start_time or run.expected_start_time)),
+                endTime=_as_timestamp(_parse_timestamp(run.end_time)),
             )
             for run in task_runs
             if id_to_name[run.id] in valid_names
@@ -399,8 +396,8 @@ class PrefectSource(PipelineServiceSource):
             pipeline_status = PipelineStatus(  # pyright: ignore[reportCallIssue]
                 executionStatus=om_status,
                 taskStatus=self._build_task_status(task_runs, valid_names),
-                timestamp=start_time,
-                endTime=end_time,
+                timestamp=Timestamp(start_time),
+                endTime=_as_timestamp(end_time),
             )
             statuses.append(pipeline_status)
         return statuses
@@ -411,14 +408,23 @@ class PrefectSource(PipelineServiceSource):
         deployments = self.client.get_deployments(flow_id)
         latest_run = self.client.get_flow_runs(flow_id, limit=1)
         task_runs = self.client.get_task_runs(latest_run[0].id) if latest_run else []
-        all_tags = self._get_all_tags(deployments, task_runs)
-        yield from get_ometa_tag_and_classification(
-            tags=all_tags,
-            classification_name=PREFECT_TAG_CATEGORY,
-            tag_description="Prefect Tag",
-            classification_description="Tags associated with Prefect flows, deployments, and tasks",
-            include_tags=bool(self.source_config.includeTags),
-        )
+        pipeline_fqn = self.get_pipeline_fqn(pipeline_details)
+        attachments = {pipeline_fqn: set(self._get_all_tags(deployments))}
+        task_names = _stable_task_names(task_runs)
+        for run in task_runs:
+            entity_fqn = f"{pipeline_fqn}.{fqn.quote_name(task_names[run.id])}"
+            attachments.setdefault(entity_fqn, set()).update(run.tags)
+        for entity_fqn, tags in attachments.items():
+            for tag_name in sorted(tags):
+                yield from self.register_tag(
+                    entity_fqn=entity_fqn,
+                    definition=TagDefinition(
+                        classification_name=PREFECT_TAG_CATEGORY,
+                        tag_name=tag_name,
+                        tag_description="Prefect Tag",
+                        classification_description="Tags associated with Prefect flows, deployments, and tasks",
+                    ),
+                )
 
     def yield_pipeline(self, pipeline_details: PrefectFlow) -> Iterable[Either[CreatePipelineRequest]]:
         """
@@ -435,18 +441,14 @@ class PrefectSource(PipelineServiceSource):
             all_tags = self._get_all_tags(deployments)
             logger.debug("Tags for %s: %s", flow_name, all_tags)
 
-            tag_labels = get_tag_labels(
-                metadata=self.metadata,
-                tags=all_tags,
-                classification_name=PREFECT_TAG_CATEGORY,
-                include_tags=bool(self.source_config.includeTags),
-            )
+            pipeline_fqn = self.get_pipeline_fqn(pipeline_details)
+            tag_labels = self.get_tag_by_fqn(pipeline_fqn)
 
             schedule_interval = self._schedule_interval(deployments)
 
             latest_run = self.client.get_flow_runs(flow_id, limit=1)
             task_runs = self.client.get_task_runs(latest_run[0].id) if latest_run else []
-            tasks = self._build_task_dag(task_runs)
+            tasks = self._build_task_dag(task_runs, pipeline_fqn)
             # Stashed for yield_pipeline_status to filter historical taskStatus
             # entries against, same pattern as the Airflow connector — avoids
             # re-fetching the same latest run's tasks a second time.

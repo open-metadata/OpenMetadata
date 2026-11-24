@@ -36,28 +36,32 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
- * Integration tests for IngestionPipeline owner inheritance and trigger authorization.
+ * Integration tests for IngestionPipeline owner inheritance and action authorization.
  *
- * <p>Covers two coordinated changes that fix GH-27962 (Pylon-19838):
+ * <p>Covers owner inheritance and authorization for ingestion pipeline actions:
  *
  * <ul>
  *   <li>{@code IngestionPipelineRepository.setInheritedFields} now inherits owners from the
  *       referenced service / TestSuite / App, so {@code isOwner()} conditions on pipeline policies
  *       evaluate correctly.
- *   <li>{@code POST /v1/services/ingestionPipelines/trigger/{id}} now authorizes against {@code
- *       MetadataOperation.TRIGGER}.
+ *   <li>Action endpoints authorize against their resource-specific operation before invoking the
+ *       external pipeline runner.
  * </ul>
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class IngestionPipelineOwnerInheritanceIT {
 
+  private static final String BULK_DEPLOY_PATH = "/v1/services/ingestionPipelines/bulk/deploy";
   private static final Date START_DATE = Date.from(Instant.parse("2022-06-10T15:06:47Z"));
 
   @Test
@@ -118,13 +122,74 @@ public class IngestionPipelineOwnerInheritanceIT {
   }
 
   @Test
-  void test_isOwnerPolicy_appliesToEditAndTrigger(TestNamespace ns) {
+  void test_listedPipelinesInheritServiceOwner(TestNamespace ns) {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    String unique = UUID.randomUUID().toString().substring(0, 8);
+    String userName = "iplistowner_" + unique;
+    User serviceOwner =
+        adminClient
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+
+    try {
+      DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+      DashboardService fetchedService =
+          adminClient.dashboardServices().get(service.getId().toString());
+      fetchedService.setOwners(List.of(serviceOwner.getEntityReference()));
+      adminClient.dashboardServices().update(service.getId().toString(), fetchedService);
+
+      try {
+        IngestionPipeline pipeline =
+            adminClient
+                .ingestionPipelines()
+                .create(
+                    new CreateIngestionPipeline()
+                        .withName(ns.prefix("iplistPipeline"))
+                        .withPipelineType(PipelineType.METADATA)
+                        .withService(service.getEntityReference())
+                        .withSourceConfig(
+                            new SourceConfig().withConfig(new DashboardServiceMetadataPipeline()))
+                        .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE)));
+
+        try {
+          ListParams params =
+              new ListParams().setFields("owners").setService(service.getFullyQualifiedName());
+          IngestionPipeline listed =
+              adminClient.ingestionPipelines().list(params).getData().stream()
+                  .filter(candidate -> candidate.getId().equals(pipeline.getId()))
+                  .findFirst()
+                  .orElseThrow(() -> new AssertionError("Pipeline missing from its service list"));
+
+          List<EntityReference> owners = listed.getOwners();
+          assertNotNull(owners, "Listed pipeline should carry its service's owners");
+          assertTrue(
+              owners.stream().anyMatch(owner -> serviceOwner.getId().equals(owner.getId())),
+              "Service owner missing from listed pipeline owners " + owners);
+          assertTrue(
+              owners.stream().allMatch(owner -> Boolean.TRUE.equals(owner.getInherited())),
+              "Owners inherited from the service must be marked inherited=true: " + owners);
+        } finally {
+          adminClient.ingestionPipelines().delete(pipeline.getId().toString());
+        }
+      } finally {
+        adminClient
+            .dashboardServices()
+            .delete(service.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+      }
+    } finally {
+      adminClient.users().delete(serviceOwner.getId());
+    }
+  }
+
+  @Test
+  void test_isOwnerPolicy_appliesToEditTriggerDeployAndToggle(TestNamespace ns) {
     OpenMetadataClient adminClient = SdkClients.adminClient();
     String unique = UUID.randomUUID().toString().substring(0, 8);
 
     Rule ownerRule =
         new Rule()
-            .withName("pipelineOwnerEditAndTrigger")
+            .withName("pipelineOwnerActions")
             .withDescription("Allow owners to edit and trigger ingestion pipelines")
             .withEffect(Rule.Effect.ALLOW)
             .withOperations(List.of(MetadataOperation.EDIT_ALL, MetadataOperation.TRIGGER))
@@ -191,9 +256,9 @@ public class IngestionPipelineOwnerInheritanceIT {
 
             try {
               OpenMetadataClient ownerClient =
-                  SdkClients.createClient(ownerName, ownerName, new String[] {});
+                  SdkClients.createClient(ownerName, pipelineOwner.getEmail(), new String[] {});
               OpenMetadataClient otherClient =
-                  SdkClients.createClient(otherName, otherName, new String[] {});
+                  SdkClients.createClient(otherName, otherUser.getEmail(), new String[] {});
 
               // Owner can PATCH displayName.
               IngestionPipeline ownerEdit =
@@ -217,6 +282,18 @@ public class IngestionPipelineOwnerInheritanceIT {
               String triggerPath = "/v1/services/ingestionPipelines/trigger/" + pipeline.getId();
               ownerClient.getHttpClient().execute(HttpMethod.POST, triggerPath, null, Void.class);
 
+              String deployPath = "/v1/services/ingestionPipelines/deploy/" + pipeline.getId();
+              ownerClient.getHttpClient().execute(HttpMethod.POST, deployPath, null, Void.class);
+
+              ownerClient
+                  .getHttpClient()
+                  .execute(
+                      HttpMethod.POST, BULK_DEPLOY_PATH, List.of(pipeline.getId()), Void.class);
+
+              String togglePath =
+                  "/v1/services/ingestionPipelines/toggleIngestion/" + pipeline.getId();
+              ownerClient.getHttpClient().execute(HttpMethod.POST, togglePath, null, Void.class);
+
               // Non-owner cannot trigger.
               assertThrows(
                   Exception.class,
@@ -225,6 +302,34 @@ public class IngestionPipelineOwnerInheritanceIT {
                           .getHttpClient()
                           .execute(HttpMethod.POST, triggerPath, null, Void.class),
                   "Non-owner trigger should be forbidden");
+
+              assertThrows(
+                  ForbiddenException.class,
+                  () ->
+                      otherClient
+                          .getHttpClient()
+                          .execute(HttpMethod.POST, deployPath, null, Void.class),
+                  "Non-owner deploy should be forbidden");
+
+              assertThrows(
+                  ForbiddenException.class,
+                  () ->
+                      otherClient
+                          .getHttpClient()
+                          .execute(
+                              HttpMethod.POST,
+                              BULK_DEPLOY_PATH,
+                              List.of(pipeline.getId()),
+                              Void.class),
+                  "Non-owner bulk deploy should be forbidden");
+
+              assertThrows(
+                  ForbiddenException.class,
+                  () ->
+                      otherClient
+                          .getHttpClient()
+                          .execute(HttpMethod.POST, togglePath, null, Void.class),
+                  "Non-owner toggle should be forbidden");
             } finally {
               adminClient.ingestionPipelines().delete(pipeline.getId().toString());
             }
@@ -247,7 +352,7 @@ public class IngestionPipelineOwnerInheritanceIT {
   }
 
   @Test
-  void test_ingestionPipelineDescriptorExposesTrigger() {
+  void test_ingestionPipelineDescriptorExposesActionPermissions() {
     OpenMetadataClient adminClient = SdkClients.adminClient();
     ResourceDescriptorList resources =
         adminClient
@@ -263,6 +368,162 @@ public class IngestionPipelineOwnerInheritanceIT {
         descriptor.getOperations().contains(MetadataOperation.TRIGGER),
         "ingestionPipeline descriptor must expose Trigger so it is grantable scoped to "
             + "Ingestion Pipeline in the policy editor");
+    assertTrue(
+        descriptor.getOperations().contains(MetadataOperation.DEPLOY),
+        "ingestionPipeline descriptor must expose Deploy so it is grantable scoped to "
+            + "Ingestion Pipeline in the policy editor");
+  }
+
+  @Test
+  void test_bulkDeployRejectsNullRequestBody() {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                adminClient
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.POST, BULK_DEPLOY_PATH, JsonUtils.readTree("null"), Void.class));
+
+    assertTrue(exception.getMessage().contains("must not be null"));
+  }
+
+  @Test
+  void test_bulkDeployRejectsEmptyPipelineIds() {
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(HttpMethod.POST, BULK_DEPLOY_PATH, List.of(), Void.class));
+
+    assertTrue(exception.getMessage().contains("pipeline IDs must not be empty"));
+  }
+
+  @Test
+  void test_bulkDeployRejectsNullPipelineId() {
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.POST,
+                        BULK_DEPLOY_PATH,
+                        JsonUtils.readTree("[null]"),
+                        Void.class));
+
+    assertTrue(exception.getMessage().contains("pipeline IDs must not contain null values"));
+  }
+
+  @Test
+  void test_bulkDeployRejectsDuplicatePipelineIds() {
+    UUID pipelineId = UUID.randomUUID();
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.POST,
+                        BULK_DEPLOY_PATH,
+                        List.of(pipelineId, pipelineId),
+                        Void.class));
+
+    assertTrue(exception.getMessage().contains("pipeline IDs must not contain duplicates"));
+  }
+
+  @Test
+  void test_explicitDeployPermissionAllowsNonOwner(TestNamespace ns) {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    String unique = UUID.randomUUID().toString().substring(0, 8);
+
+    Policy deployPolicy =
+        adminClient
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName("ipdeployPolicy_" + unique)
+                    .withDescription("Deploy-only access to ingestion pipelines")
+                    .withRules(
+                        List.of(
+                            new Rule()
+                                .withName("pipelineDeployOnly")
+                                .withEffect(Rule.Effect.ALLOW)
+                                .withOperations(List.of(MetadataOperation.DEPLOY))
+                                .withResources(List.of("ingestionPipeline")))));
+
+    try {
+      Role deployRole =
+          adminClient
+              .roles()
+              .create(
+                  new CreateRole()
+                      .withName("ipdeployRole_" + unique)
+                      .withPolicies(List.of(deployPolicy.getFullyQualifiedName())));
+
+      try {
+        String deployerName = "ipdeployer_" + unique;
+        User deployer =
+            adminClient
+                .users()
+                .create(
+                    new CreateUser()
+                        .withName(deployerName)
+                        .withEmail(deployerName + "@test.openmetadata.org")
+                        .withRoles(List.of(deployRole.getId())));
+
+        try {
+          DashboardService service = DashboardServiceTestFactory.createMetabase(ns);
+
+          try {
+            IngestionPipeline pipeline =
+                adminClient
+                    .ingestionPipelines()
+                    .create(
+                        new CreateIngestionPipeline()
+                            .withName(ns.prefix("ipdeployPipeline_" + unique))
+                            .withPipelineType(PipelineType.METADATA)
+                            .withService(service.getEntityReference())
+                            .withSourceConfig(
+                                new SourceConfig()
+                                    .withConfig(new DashboardServiceMetadataPipeline()))
+                            .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE)));
+
+            try {
+              OpenMetadataClient deployerClient =
+                  SdkClients.createClient(deployerName, deployer.getEmail(), new String[] {});
+              String deployPath = "/v1/services/ingestionPipelines/deploy/" + pipeline.getId();
+              deployerClient.getHttpClient().execute(HttpMethod.POST, deployPath, null, Void.class);
+              deployerClient
+                  .getHttpClient()
+                  .execute(
+                      HttpMethod.POST,
+                      "/v1/services/ingestionPipelines/bulk/deploy",
+                      List.of(pipeline.getId()),
+                      Void.class);
+            } finally {
+              adminClient.ingestionPipelines().delete(pipeline.getId().toString());
+            }
+          } finally {
+            adminClient
+                .dashboardServices()
+                .delete(
+                    service.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+          }
+        } finally {
+          adminClient.users().delete(deployer.getId());
+        }
+      } finally {
+        adminClient.roles().delete(deployRole.getId());
+      }
+    } finally {
+      adminClient.policies().delete(deployPolicy.getId());
+    }
   }
 
   @Test
@@ -355,9 +616,9 @@ public class IngestionPipelineOwnerInheritanceIT {
 
             try {
               OpenMetadataClient viewerClient =
-                  SdkClients.createClient(viewerName, viewerName, new String[] {});
+                  SdkClients.createClient(viewerName, viewer.getEmail(), new String[] {});
               OpenMetadataClient editorClient =
-                  SdkClients.createClient(editorName, editorName, new String[] {});
+                  SdkClients.createClient(editorName, editor.getEmail(), new String[] {});
 
               String killPath = "/v1/services/ingestionPipelines/kill/" + pipeline.getId();
 

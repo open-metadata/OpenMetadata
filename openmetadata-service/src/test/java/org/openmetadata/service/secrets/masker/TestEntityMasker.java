@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -28,16 +30,23 @@ import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.services.connections.mcp.McpConnection;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
+import org.openmetadata.schema.services.connections.messaging.NatsConnection;
+import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
 import org.openmetadata.schema.services.connections.messaging.SaslMechanismType;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig;
+import org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig;
+import org.openmetadata.schema.services.connections.pipeline.openlineage.nats.CredentialsAuth;
 import org.openmetadata.schema.utils.JsonUtils;
 
 abstract class TestEntityMasker {
 
-  private static final String PASSWORD = "*********";
+  private static final String PASSWORD = "openmetadata-secret";
 
   protected static final SecurityConfiguration CONFIG = new SecurityConfiguration();
 
@@ -74,6 +83,29 @@ abstract class TestEntityMasker {
             .getPassword());
   }
 
+  /**
+   * A secret declared inside a JSON-schema array - {@code mcpConnection.servers[].apiKey} - used to
+   * be skipped entirely, because the masker only recursed into OpenMetadata objects and a {@code
+   * List} is neither one of those nor an annotated leaf.
+   */
+  @Test
+  void testArrayNestedSecretIsMaskedAndRoundTrips() {
+    McpConnection mcpConnection =
+        new McpConnection()
+            .withServers(List.of(new McpServerConfig().withName("server").withApiKey(PASSWORD)));
+    McpConnection masked =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(mcpConnection, "Mcp", ServiceType.MCP);
+    assertNotNull(masked);
+    assertEquals(getMaskedPassword(), masked.getServers().getFirst().getApiKey());
+    McpConnection unmasked =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(masked, mcpConnection, "Mcp", ServiceType.MCP);
+    assertEquals(PASSWORD, unmasked.getServers().getFirst().getApiKey());
+  }
+
   @Test
   void testBigQueryConnectionMasker() {
     BigQueryConnection bigQueryConnection =
@@ -90,6 +122,24 @@ abstract class TestEntityMasker {
                 .unmaskServiceConnectionConfig(
                     masked, bigQueryConnection, "BigQuery", ServiceType.DATABASE);
     assertEquals(PASSWORD, getPrivateKeyFromGcsConfig(unmasked.getCredentials()));
+  }
+
+  @Test
+  void testPubSubConnectionMasker() {
+    Map<String, Object> connectionConfig =
+        JsonUtils.getMap(new PubSubConnection().withGcpConfig(buildGcpCredentials()));
+    PubSubConnection masked =
+        (PubSubConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(connectionConfig, "PubSub", ServiceType.MESSAGING);
+    assertNotNull(masked);
+    assertEquals(getPrivateKeyFromGcsConfig(masked.getGcpConfig()), getMaskedPassword());
+    PubSubConnection unmasked =
+        (PubSubConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(
+                    masked, connectionConfig, "PubSub", ServiceType.MESSAGING);
+    assertEquals(PASSWORD, getPrivateKeyFromGcsConfig(unmasked.getGcpConfig()));
   }
 
   @Test
@@ -207,6 +257,62 @@ abstract class TestEntityMasker {
     assertEquals(
         PASSWORD,
         ((KafkaBrokerConfig) unmasked.getBrokerConfig()).getSaslConfig().getSaslPassword());
+  }
+
+  @Test
+  void testOpenLineageNatsConnectionMasker() {
+    // authType is a `oneOf`, so it is generated as Object: without the class converter it stays a
+    // LinkedHashMap, which the masker's reflection walk skips and the token ships in the clear.
+    NatsBrokerConfig brokerConfig =
+        new NatsBrokerConfig()
+            .withNatsServers("nats://localhost:4222")
+            .withStreamName("OPENLINEAGE")
+            .withAuthType(new CredentialsAuth().withCredentials(PASSWORD));
+    OpenLineageConnection connection = new OpenLineageConnection().withBrokerConfig(brokerConfig);
+
+    OpenLineageConnection masked =
+        (OpenLineageConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(connection, "OpenLineage", ServiceType.PIPELINE);
+    assertNotNull(masked);
+    assertEquals(getMaskedPassword(), natsCredentials(masked));
+
+    OpenLineageConnection unmasked =
+        (OpenLineageConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(
+                    masked, connection, "OpenLineage", ServiceType.PIPELINE);
+    assertEquals(PASSWORD, natsCredentials(unmasked));
+  }
+
+  @Test
+  void testNatsMessagingConnectionMasker() {
+    NatsConnection connection =
+        new NatsConnection()
+            .withNatsServers("nats://localhost:4222")
+            .withAuthType(new NatsTokenAuth().withToken(PASSWORD));
+
+    NatsConnection masked =
+        (NatsConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .maskServiceConnectionConfig(connection, "Nats", ServiceType.MESSAGING);
+    assertNotNull(masked);
+    assertEquals(
+        getMaskedPassword(),
+        JsonUtils.convertValue(masked.getAuthType(), NatsTokenAuth.class).getToken());
+
+    NatsConnection unmasked =
+        (NatsConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(masked, connection, "Nats", ServiceType.MESSAGING);
+    assertEquals(
+        PASSWORD, JsonUtils.convertValue(unmasked.getAuthType(), NatsTokenAuth.class).getToken());
+  }
+
+  private static String natsCredentials(OpenLineageConnection connection) {
+    return JsonUtils.convertValue(
+            ((NatsBrokerConfig) connection.getBrokerConfig()).getAuthType(), CredentialsAuth.class)
+        .getCredentials();
   }
 
   @Test

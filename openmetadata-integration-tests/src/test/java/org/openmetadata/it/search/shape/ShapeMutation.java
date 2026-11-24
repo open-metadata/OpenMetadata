@@ -18,11 +18,11 @@ import org.openmetadata.schema.EntityInterface;
 public interface ShapeMutation {
   String dimension();
 
-  boolean appliesTo(EntityInterface entity);
+  boolean appliesTo(EntityInterface<?> entity);
 
   List<Rung> ladder();
 
-  EntityInterface apply(EntityInterface entity, Rung rung);
+  EntityInterface<?> apply(EntityInterface<?> entity, Rung rung);
 
   default FieldProbe probe(Rung rung) {
     return null;

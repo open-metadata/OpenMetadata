@@ -10,8 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SkeletonProps } from 'antd';
-import { SkeletonButtonProps } from 'antd/lib/skeleton/Button';
+import { SkeletonProps } from '@openmetadata/ui-core-components';
 
 export interface Key {
   key?: React.Key | null | undefined;
@@ -28,9 +27,9 @@ export interface TitleBreadcrumbSkeletonProps extends Children {
   loading: boolean;
 }
 
-export interface ButtonSkeletonProps
-  extends SkeletonButtonProps,
-    Partial<Key> {}
+export interface ButtonSkeletonProps extends SkeletonProps, Partial<Key> {
+  size?: 'small' | 'default' | 'large';
+}
 
 export interface LabelCountSkeletonProps extends SkeletonProps, Key {
   countProps?: SkeletonProps;

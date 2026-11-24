@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ArrowRight } from '@untitledui/icons';
+import { FeaturedIcon, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  ArrowRight,
+  RunProfiler,
+} from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as NoDataIcon } from '../../../../../assets/svg/ticket-with-check.svg';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
 import './no-profiler-banner.less';
 
@@ -26,11 +29,14 @@ const NoProfilerBanner = () => {
     <div
       className="no-profiler-banner-container tw:flex tw:items-center tw:gap-4"
       data-testid="no-profiler-placeholder">
-      <div className="tw:shrink-0">
-        <div className="tw:flex tw:h-10 tw:w-10 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-border-secondary tw:bg-primary">
-          <NoDataIcon />
-        </div>
-      </div>
+      <FeaturedIcon
+        color="gray"
+        icon={RunProfiler}
+        radius="lg"
+        shape="square"
+        size="md"
+        theme="modern"
+      />
 
       <div className="tw:grow">
         <p className="profiler-title" data-testid="profiler-title">
@@ -42,15 +48,16 @@ const NoProfilerBanner = () => {
       </div>
 
       <div className="tw:flex tw:shrink-0 tw:items-center tw:justify-end">
-        <a
-          className="tw:font-semibold tw:text-brand-600 tw:flex tw:items-center tw:gap-1"
-          data-testid="documentation-link"
-          href={profilerDocsLink}
-          rel="noreferrer"
-          target="_blank"
-          title="data quality observability profiler workflow">
-          {t('label.learn-more')} <ArrowRight className="tw:size-4" />
-        </a>
+        <Tooltip title={t('label.learn-more')}>
+          <a
+            className="tw:font-semibold tw:text-brand-600 tw:flex tw:items-center tw:gap-1"
+            data-testid="documentation-link"
+            href={profilerDocsLink}
+            rel="noreferrer"
+            target="_blank">
+            {t('label.learn-more')} <ArrowRight className="tw:size-4" />
+          </a>
+        </Tooltip>
       </div>
     </div>
   );

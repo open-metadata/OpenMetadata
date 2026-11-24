@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
+import { expect, test } from '../../support/fixtures/base';
 import {
   createNewPage,
   redirectToHomePage,
@@ -176,7 +176,7 @@ test.describe(
         // Verify the team is moved under the business team
         await openDragDropDropdown(page, droppableTeamName);
         const movedTeam = page.locator(
-          `.ant-table-row-level-1[data-row-key="${teamNameGroup}"]`
+          `[data-level="1"][data-row-key="${teamNameGroup}"]`
         );
 
         await expect(movedTeam).toBeVisible();
@@ -191,14 +191,15 @@ test.describe(
       await dragAndDropElement(
         page,
         teamNameGroup,
-        '.ant-table-thead > tr',
+        '[data-testid="table-toolbar"]',
         true
       );
       await confirmationDragAndDropTeam(page, teamNameGroup, 'Organization');
 
-      // Verify the team is moved under the table level
+      // Verify the team is moved to the table root. TableV2 numbers the first
+      // visible level as 1 (AntD used 0), so a root team is data-level="1".
       const movedTeam = page.locator(
-        `.ant-table-row-level-0[data-row-key="${teamNameGroup}"]`
+        `[data-level="1"][data-row-key="${teamNameGroup}"]`
       );
       await movedTeam.scrollIntoViewIfNeeded();
 

@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { QueryClient } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { EntityType } from '../../../enums/entity.enum';
+import { SuggestionAction } from '../../../enums/Suggestion.enum';
 import {
   MOCK_SUGGESTIONS,
   MOCK_SUGGESTIONS_WITH_SAME_USER,
@@ -27,15 +30,25 @@ import * as toastUtils from '../../../utils/ToastUtils';
 import SuggestionsProvider, {
   useSuggestionsContext,
 } from './SuggestionsProvider';
-import { SuggestionAction } from './SuggestionsProvider.interface';
 
 const mockPagingResponse = {
   data: MOCK_SUGGESTIONS,
   paging: { total: 25, after: null, before: null },
 };
 
+const mockQueryClient = new QueryClient();
+
+jest.mock('@tanstack/react-query', () => ({
+  ...jest.requireActual('@tanstack/react-query'),
+  useQueryClient: () => mockQueryClient,
+}));
+
 jest.mock('../../../hooks/useFqn', () => ({
-  useFqn: jest.fn().mockReturnValue({ fqn: 'mockFQN' }),
+  useFqn: jest.fn().mockReturnValue({ fqn: 'mockFQN', entityFqn: 'mockFQN' }),
+}));
+
+jest.mock('../../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn().mockReturnValue({ entityType: 'table' }),
 }));
 
 jest.mock('../../../hooks/usePubSub', () => ({
@@ -540,6 +553,83 @@ describe('SuggestionsProvider', () => {
     await waitFor(() => {
       // After user fetch: still 3 suggestions (duplicate filtered), pending updated based on limit - merged.length
       expect(screen.getByTestId('pending-count')).toHaveTextContent('22'); // 25 - 3
+    });
+  });
+
+  describe('entity details refresh on accept', () => {
+    const seedQuery = (key: string[]) => {
+      mockQueryClient.setQueryData(key, {});
+
+      return () => mockQueryClient.getQueryState(key)?.isInvalidated;
+    };
+
+    beforeEach(() => {
+      mockQueryClient.clear();
+      (updateSuggestionStatus as jest.Mock).mockResolvedValue({});
+    });
+
+    it('invalidates only the current entity query when a suggestion is accepted', async () => {
+      const isCurrentInvalidated = seedQuery(['table', 'mockFQN', 'columns']);
+      const isOtherInvalidated = seedQuery(['table', 'otherFQN', 'columns']);
+
+      render(
+        <SuggestionsProvider>
+          <TestComponent />
+        </SuggestionsProvider>
+      );
+      fireEvent.click(screen.getByText('Accept One'));
+
+      await waitFor(() => expect(isCurrentInvalidated()).toBe(true));
+
+      expect(isOtherInvalidated()).toBe(false);
+    });
+
+    it('does not invalidate the entity query when a suggestion is rejected', async () => {
+      const isInvalidated = seedQuery(['table', 'mockFQN', 'columns']);
+
+      render(
+        <SuggestionsProvider>
+          <TestComponent />
+        </SuggestionsProvider>
+      );
+      fireEvent.click(screen.getByText('Reject One'));
+
+      await waitFor(() => expect(updateSuggestionStatus).toHaveBeenCalled());
+
+      expect(isInvalidated()).toBe(false);
+    });
+
+    it('invalidates the entity query after accepting all suggestions', async () => {
+      const isInvalidated = seedQuery(['table', 'mockFQN', 'columns']);
+
+      render(
+        <SuggestionsProvider>
+          <TestComponent />
+        </SuggestionsProvider>
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId('suggestions-count')).toHaveTextContent('3')
+      );
+      fireEvent.click(screen.getByText('Active User'));
+      fireEvent.click(screen.getByText('Accept All'));
+
+      await waitFor(() => expect(isInvalidated()).toBe(true));
+    });
+
+    it('uses the entityType prop over the route param', async () => {
+      const isTermInvalidated = seedQuery(['glossaryTerm', 'mockFQN', 'f']);
+      const isTableInvalidated = seedQuery(['table', 'mockFQN', 'f']);
+
+      render(
+        <SuggestionsProvider entityType={EntityType.GLOSSARY_TERM}>
+          <TestComponent />
+        </SuggestionsProvider>
+      );
+      fireEvent.click(screen.getByText('Accept One'));
+
+      await waitFor(() => expect(isTermInvalidated()).toBe(true));
+
+      expect(isTableInvalidated()).toBe(false);
     });
   });
 });

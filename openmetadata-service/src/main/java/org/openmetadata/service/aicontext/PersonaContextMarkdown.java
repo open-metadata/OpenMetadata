@@ -38,6 +38,8 @@ import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.personaContext.ContextSection;
 import org.openmetadata.schema.type.personaContext.ManifestEntry;
 import org.openmetadata.schema.type.personaContext.RuleResult;
+import org.openmetadata.schema.type.personaContext.SearchScope;
+import org.openmetadata.schema.type.personaContext.SearchScopeRule;
 import org.openmetadata.schema.type.personaContext.SharedKnowledge;
 
 /** Renders a materialized persona context with monotonic full/compact/manifest degradation. */
@@ -74,6 +76,7 @@ final class PersonaContextMarkdown {
     List<ManifestEntry> manifest = new ArrayList<>();
     StringBuilder body = new StringBuilder();
     RenderTier tier = RenderTier.FULL;
+    body.append(renderSearchScope(context.getSearchScope()));
 
     for (PersonaContextBuilder.RuleMaterialization rule : rules) {
       RuleRenderResult rendered =
@@ -90,7 +93,10 @@ final class PersonaContextMarkdown {
     appendManifest(body, manifest);
 
     boolean truncated =
-        knowledgeOverflowed || mandatoryKnowledgeChars > contentBudget || !manifest.isEmpty();
+        knowledgeOverflowed
+            || mandatoryKnowledgeChars > contentBudget
+            || !manifest.isEmpty()
+            || rules.stream().anyMatch(rule -> rule.matched() == null);
     context.withRules(ruleResults).withManifest(manifest).withTruncated(truncated);
 
     String definitionHash = PersonaContextHash.definitionHash(definition);
@@ -103,6 +109,33 @@ final class PersonaContextMarkdown {
         (frontmatter(context, maxChars, tokensEstimate) + renderTitle(persona) + body).strip()
             + "\n";
     return new PersonaContextBuilder.MaterializedPersonaContext(context, markdown);
+  }
+
+  /**
+   * Search-scoped rules preload nothing, so without this note the document would give no hint that
+   * searches are being narrowed and the model could not explain a thin result set.
+   */
+  private static String renderSearchScope(SearchScope scope) {
+    if (scope == null || nullOrEmpty(scope.getEntityTypes())) {
+      return "";
+    }
+    StringBuilder markdown = new StringBuilder("\n## Search scope\n\n");
+    markdown
+        .append("Your administrator configured default search rules for this persona. ")
+        .append(
+            "Search tools are asked to apply this scope by default, so results may be narrowed to"
+                + " these assets. This is a relevance default, not a permission boundary, and a"
+                + " tool may search outside it.\n\n");
+    for (SearchScopeRule rule : listOrEmpty(scope.getRules())) {
+      markdown
+          .append("- ")
+          .append(rule.getRuleName())
+          .append(" — ")
+          .append(rule.getEntityType())
+          .append(nullOrEmpty(rule.getQueryFilter()) ? " (every entity of this type)" : "")
+          .append('\n');
+    }
+    return markdown.append('\n').toString();
   }
 
   private static RuleRenderResult renderKnowledgeRule(
@@ -143,7 +176,7 @@ final class PersonaContextMarkdown {
     if (!nullOrEmpty(item.getFullyQualifiedName())) {
       markdown.append('`').append(item.getFullyQualifiedName()).append("`\n");
     }
-    EntityInterface entity = selected.knowledgeEntity();
+    EntityInterface<?> entity = selected.knowledgeEntity();
     if (entity == null) {
       String content = PromptText.forPrompt(item.getContent());
       if (!nullOrEmpty(content)) {
@@ -157,7 +190,7 @@ final class PersonaContextMarkdown {
 
   private static void appendKnowledgeSections(
       StringBuilder markdown,
-      EntityInterface entity,
+      EntityInterface<?> entity,
       Set<ContextSection> sections,
       boolean fullyRendered) {
     if (entity instanceof Page page) {
@@ -560,8 +593,12 @@ final class PersonaContextMarkdown {
 
   private static String frontmatter(
       PersonaContext context, int characterBudget, int tokensEstimate) {
-    int matched =
-        listOrEmpty(context.getRules()).stream().mapToInt(rule -> value(rule.getMatched())).sum();
+    Long matched =
+        listOrEmpty(context.getRules()).stream().anyMatch(rule -> rule.getMatched() == null)
+            ? null
+            : listOrEmpty(context.getRules()).stream()
+                .mapToLong(rule -> value(rule.getMatched()))
+                .sum();
     int rendered =
         listOrEmpty(context.getRules()).stream()
             .mapToInt(rule -> value(rule.getRenderedFull()) + value(rule.getRenderedCompact()))
@@ -616,8 +653,9 @@ final class PersonaContextMarkdown {
         + " ("
         + rule.rule().getEntityType()
         + ") — "
-        + rule.matched()
-        + " matched, "
+        + (rule.matched() == null
+            ? "selection limited; total matches unavailable, "
+            : rule.matched() + " matched, ")
         + renderedCount
         + " rendered\n";
   }

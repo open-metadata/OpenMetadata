@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { Page } from '@playwright/test';
+import { migratedTo } from '../../constant/migration';
 import {
   CertificationSupportedServices,
   FollowSupportedServices,
@@ -27,6 +28,7 @@ import { MlmodelServiceClass } from '../../support/entity/service/MlmodelService
 import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
 import { SearchIndexServiceClass } from '../../support/entity/service/SearchIndexServiceClass';
 import { StorageServiceClass } from '../../support/entity/service/StorageServiceClass';
+import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
@@ -34,6 +36,7 @@ import {
   getToken,
   redirectToHomePage,
 } from '../../utils/common';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 
 const entities = {
   'Api Service': ApiServiceClass,
@@ -61,12 +64,43 @@ const expectedPlaceholders: Record<string, string> = {
   'Drive Service': 'Search for Directories',
 };
 
+const BROWSER_TESTS =
+  'src/test/browser/entity-matrix/ServiceEntity.*.browser.test.tsx';
+const MIGRATED = migratedTo.browser(BROWSER_TESTS);
+
+/**
+ * Where each delete's server half is asserted: soft delete, then restore (the
+ * hard delete is BaseEntityIT#delete_entityAsAdmin_hardDelete_200, inherited
+ * by each). Database and Database Schema delete through the async endpoint as
+ * the UI does, via BaseEntityIT#delete_async_soft_delete (hard delete:
+ * delete_async_with_recursive_hardDelete). Database Service stays unmarked as
+ * the real-server delete flow.
+ */
+const DELETE_ITS: Record<string, string> = {
+  'Api Service': 'APIServiceResourceIT#test_apiServiceSoftDeleteRestore',
+  'Dashboard Service':
+    'DashboardServiceResourceIT#test_dashboardServiceSoftDeleteRestore',
+  'Messaging Service':
+    'MessagingServiceResourceIT#test_messagingServiceSoftDeleteRestore',
+  'Mlmodel Service':
+    'MlModelServiceResourceIT#test_mlModelServiceSoftDeleteRestore',
+  'Pipeline Service':
+    'PipelineServiceResourceIT#test_pipelineServiceSoftDeleteRestore',
+  'Search Index Service':
+    'SearchServiceResourceIT#test_searchServiceSoftDeleteRestore',
+  'Storage Service':
+    'StorageServiceResourceIT#test_storageServiceSoftDeleteRestore',
+  'Drive Service': 'DriveServiceResourceIT#test_driveServiceSoftDeleteRestore',
+  Database: 'DatabaseResourceIT#delete_async_soft_delete',
+  'Database Schema': 'DatabaseSchemaResourceIT#delete_async_soft_delete',
+};
+
 const adminUser = new UserClass();
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
+    await adminUser.signIn(adminPage);
     await use(adminPage);
     await adminPage.close();
   },
@@ -79,7 +113,11 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
-Object.entries(entities).forEach(([key, EntityClass]) => {
+Object.entries(
+  pickEntityMatrix(__filename, entities, {
+    'Database Service': DatabaseServiceClass,
+  })
+).forEach(([key, EntityClass]) => {
   const entity = new EntityClass();
   const deleteEntity = new EntityClass();
 
@@ -102,7 +140,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * Tests domain management on services
      * @description Adds a domain, switches to another, then removes it from the service
      */
-    test('Domain Add, Update and Remove', async ({ page }) => {
+    test('Domain Add, Update and Remove', MIGRATED, async ({ page }) => {
       test.slow(true);
 
       await entity.domain(
@@ -119,7 +157,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * Tests user ownership management
      * @description Adds user owners, updates the owner list, and removes owners from the service
      */
-    test('User as Owner Add, Update and Remove', async ({ page }) => {
+    test('User as Owner Add, Update and Remove', MIGRATED, async ({ page }) => {
       test.slow(true);
 
       const OWNER1 = EntityDataClass.user1.getUserDisplayName();
@@ -132,7 +170,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * Tests team ownership management
      * @description Adds team owners, updates the list, and removes teams from the service
      */
-    test('Team as Owner Add, Update and Remove', async ({ page }) => {
+    test('Team as Owner Add, Update and Remove', MIGRATED, async ({ page }) => {
       const OWNER1 = EntityDataClass.team1.responseData.displayName;
       const OWNER2 = EntityDataClass.team2.responseData.displayName;
       await entity.owner(page, [OWNER1], [OWNER2], 'Teams');
@@ -142,7 +180,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * Tests tier management
      * @description Assigns a tier to the service, updates it, and removes it
      */
-    test('Tier Add, Update and Remove', async ({ page }) => {
+    test('Tier Add, Update and Remove', MIGRATED, async ({ page }) => {
       await entity.tier(page, 'Tier1', 'Tier5');
     });
 
@@ -151,7 +189,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
        * Tests certification lifecycle
        * @description Adds a certification to the service, updates it, and removes it
        */
-      test('Certification Add Remove', async ({ page }) => {
+      test('Certification Add Remove', MIGRATED, async ({ page }) => {
         await entity.certification(
           page,
           EntityDataClass.certificationTag1,
@@ -164,7 +202,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * Tests description updates
      * @description Edits the service description
      */
-    test('Update description', async ({ page }) => {
+    test('Update description', MIGRATED, async ({ page }) => {
       await entity.descriptionUpdate(page);
     });
 
@@ -172,7 +210,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * Tests tag management
      * @description Adds tags to the service, updates them, and removes them
      */
-    test('Tag Add, Update and Remove', async ({ page }) => {
+    test('Tag Add, Update and Remove', MIGRATED, async ({ page }) => {
       await entity.tag(page, 'PersonalData.Personal', 'PII.None', entity);
     });
 
@@ -180,7 +218,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * Tests glossary term management
      * @description Assigns glossary terms to the service, updates them, and removes them
      */
-    test('Glossary Term Add, Update and Remove', async ({ page }) => {
+    test('Glossary Term Add, Update and Remove', MIGRATED, async ({ page }) => {
       await entity.glossaryTerm(
         page,
         EntityDataClass.glossaryTerm1.responseData,
@@ -192,7 +230,7 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * Tests announcement lifecycle
      * @description Creates, edits, and deletes an announcement on the service
      */
-    test(`Announcement create, edit & delete`, async ({ page }) => {
+    test(`Announcement create, edit & delete`, MIGRATED, async ({ page }) => {
       test.slow();
 
       await entity.announcement(page);
@@ -202,12 +240,18 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * Tests inactive announcements
      * @description Creates an inactive announcement and then deletes it
      */
-    test(`Inactive Announcement create & delete`, async ({ page }) => {
-      // used slow as test contain page reload which might lead to timeout
-      test.slow(true);
-      await entity.inactiveAnnouncement(page);
-    });
+    test(
+      `Inactive Announcement create & delete`,
+      MIGRATED,
+      async ({ page }) => {
+        // used slow as test contain page reload which might lead to timeout
+        test.slow(true);
+        await entity.inactiveAnnouncement(page);
+      }
+    );
 
+    // Not migrated: it also checks the home page's followed-entities widget,
+    // which reads the search index.
     if (FollowSupportedServices.includes(entity.endpoint)) {
       /**
        * Tests follow and unfollow actions
@@ -228,12 +272,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
      * Tests display name updates
      * @description Renames the service by updating its display name
      */
-    test(`Update displayName`, async ({ page }) => {
+    test(`Update displayName`, MIGRATED, async ({ page }) => {
       await entity.renameEntity(page, entity.entity.name);
     });
 
     if (expectedPlaceholders[key]) {
-      test('Verify Search Placeholder', async ({ page }) => {
+      test('Verify Search Placeholder', MIGRATED, async ({ page }) => {
         const expectedText = expectedPlaceholders[key];
         const input = page.locator('[data-testid="searchbar"]');
         await expect(input).toHaveAttribute('placeholder', expectedText);
@@ -251,7 +295,12 @@ Object.entries(entities).forEach(([key, EntityClass]) => {
    * Tests service deletion
    * @description Soft deletes the service and then hard deletes it to remove it permanently
    */
-  test(`Delete ${key}`, async ({ page }) => {
+  // Unmarked for Database Service (the genuine flow).
+  const deleteMarker = DELETE_ITS[key]
+    ? migratedTo.split(BROWSER_TESTS, DELETE_ITS[key])
+    : {};
+
+  test(`Delete ${key}`, deleteMarker, async ({ page }) => {
     // increase timeout as it using single test for multiple steps
     test.slow(true);
 

@@ -282,9 +282,19 @@ class SearchUtilsTest {
 
       when(subjectContext.isAdmin()).thenReturn(true);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+
+      // A bot is policy-evaluated exactly like a human (#30023): exempting bots left every
+      // bot-authenticated search unfiltered, because a skipped injection matches everything.
       when(subjectContext.isAdmin()).thenReturn(false);
       when(subjectContext.isBot()).thenReturn(true);
+      assertTrue(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+
+      // Being a bot does not defeat the other exemptions.
+      when(subjectContext.isAdmin()).thenReturn(true);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+      when(subjectContext.isAdmin()).thenReturn(false);
+      assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, null));
+
       when(subjectContext.isBot()).thenReturn(false);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, null));
       assertFalse(SearchUtils.shouldApplyRbacConditions(null, evaluator));
@@ -292,6 +302,8 @@ class SearchUtilsTest {
       settingsCache
           .when(() -> SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class))
           .thenReturn(disabledSettings);
+      assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
+      when(subjectContext.isBot()).thenReturn(true);
       assertFalse(SearchUtils.shouldApplyRbacConditions(subjectContext, evaluator));
     }
 
@@ -447,6 +459,15 @@ class SearchUtilsTest {
         "kochi__expected_vessels__portcall_v1 | 0", // 5 sub-tokens
         "scraped/kochi/expected_vessels/parsed/portcall/v1 | 0",
         "foo-bar.baz_qux | 0", // 4 sub-tokens via mixed separators
+        // non-ASCII scripts count as sub-tokens, matching om_ngram's Unicode token_chars
+        "顧客 注文 履歴 | 0", // Japanese, 3 sub-tokens
+        "客户订单 明细 记录 | 0", // Chinese, 3 sub-tokens
+        "клиент заказ история | 0", // Russian, 3 sub-tokens
+        // accented Latin is no longer split on its accents, so these count as 2, not 3/4
+        "café münchen | 1",
+        "größe prüfung | 1",
+        // an unsegmented script still yields a single sub-token, so the guard stays off
+        "顧客注文履歴 | 1",
       })
   void getFuzzinessReturnsExpected(String query, String expected) {
     assertEquals(expected, SearchUtils.getFuzziness(query));
@@ -487,6 +508,10 @@ class SearchUtilsTest {
         "lhr__incoming_flights | 1",
         "kochi__expected_vessels__portcall_v1 | 1",
         "scraped/kochi/expected_vessels/parsed/portcall/v1 | 1",
+        // non-ASCII scripts count as sub-tokens here too
+        "顧客 注文 履歴 | 1",
+        "клиент заказ история | 1",
+        "顧客注文履歴 | 10", // unsegmented, single sub-token
       })
   void getMaxExpansionsReturnsExpected(String query, int expected) {
     assertEquals(expected, SearchUtils.getMaxExpansions(query));
@@ -571,6 +596,8 @@ class SearchUtilsTest {
         // user/team/dataAsset alias are NOT data assets in this classifier's sense
         "user_search_index",
         "team_search_index",
+        "metric_group_search_index",
+        Entity.METRIC_GROUP,
         "dataAsset",
         "all",
         "garbage"
@@ -680,6 +707,8 @@ class SearchUtilsTest {
         "pipeline_search_index | pipeline",
         "container_search_index | container",
         "metric_search_index | metric",
+        "metric_group_search_index | metricGroup",
+        "metricGroup | metricGroup",
         "user_search_index | user",
         "team_search_index | team",
         "context_file_search_index | contextFile",

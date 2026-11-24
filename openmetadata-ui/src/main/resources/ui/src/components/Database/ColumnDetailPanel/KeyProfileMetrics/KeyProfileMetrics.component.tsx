@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
-import { HelpCircle } from '@untitledui/icons';
+import { Tooltip } from '@openmetadata/ui-core-components';
+import { HelpCircle } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getKeyProfileMetrics } from '../../../../utils/TableProfilerUtils';
@@ -29,8 +29,8 @@ export const KeyProfileMetrics = ({ profile }: KeyProfileMetricsProps) => {
   );
 
   const sectionClassName =
-    'tw:border-b-[0.6px] tw:border-tertiary tw:-mt-2 tw:pb-4 tw:px-4';
-  const titleClassName = 'tw:text-sm tw:font-semibold tw:mb-1.5';
+    'tw:border-b-[0.6px] tw:border-secondary tw:pb-4 tw:px-3.5';
+  const titleClassName = 'tw:text-sm tw:font-semibold tw:mb-3';
 
   return (
     <div className={sectionClassName}>
@@ -38,7 +38,7 @@ export const KeyProfileMetrics = ({ profile }: KeyProfileMetricsProps) => {
       <div className="tw:flex tw:flex-nowrap tw:gap-2">
         {metrics.map((metric) => (
           <div
-            className="tw:flex-1 tw:rounded-lg tw:bg-secondary tw:p-2"
+            className="tw:flex-1 tw:rounded-lg tw:bg-secondary tw:p-2 tw:dark:bg-transparent tw:dark:outline-1 tw:dark:-outline-offset-1 tw:dark:outline-secondary"
             data-testid={`key-profile-metric-${metric.label}`}
             key={metric.label}>
             <div className="tw:flex tw:flex-col tw:gap-1">
@@ -47,10 +47,11 @@ export const KeyProfileMetrics = ({ profile }: KeyProfileMetricsProps) => {
                   {metric.label}
                 </span>
                 {metric.tooltip && (
-                  <Tooltip placement="top" title={metric.tooltip}>
-                    <TooltipTrigger>
-                      <HelpCircle className="tw:size-2.5 tw:text-tertiary" />
-                    </TooltipTrigger>
+                  <Tooltip
+                    placement="top"
+                    title={metric.tooltip}
+                    triggerClassName="tw:inline-flex">
+                    <HelpCircle className="tw:size-2.5 tw:text-tertiary" />
                   </Tooltip>
                 )}
               </div>

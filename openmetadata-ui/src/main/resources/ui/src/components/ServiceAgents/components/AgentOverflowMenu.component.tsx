@@ -12,9 +12,7 @@
  */
 
 import { Dropdown } from '@openmetadata/ui-core-components';
-import { DotsVertical } from '@untitledui/icons';
 import { FC, Key, useCallback, useRef, useState } from 'react';
-import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../common/Loader/Loader';
 import { AgentActionPermissions, AgentStatus } from '../AgentsPage.interface';
@@ -39,6 +37,9 @@ interface MenuItem {
   label: string;
   testId: string;
 }
+
+const renderPendingIcon = (isPending: boolean) =>
+  isPending ? <Loader size="x-small" /> : null;
 
 const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
   allowedActions,
@@ -135,26 +136,17 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
 
   return (
     <Dropdown.Root isOpen={isOpen} onOpenChange={handleOpenChange}>
-      <AriaButton
+      <Dropdown.DotsButton
         aria-label={t('label.more-action-plural')}
-        className={
-          'tw:grid tw:size-8.5 tw:cursor-pointer tw:place-items-center' +
-          ' tw:rounded-lg tw:border tw:border-secondary' +
-          ' tw:bg-primary tw:text-fg-tertiary tw:shadow-xs tw:outline-none' +
-          ' tw:disabled:cursor-not-allowed tw:disabled:opacity-50'
-        }
         data-testid="more-actions"
-        isDisabled={isDisabled}>
-        <DotsVertical size={18} />
-      </AriaButton>
+        isDisabled={isDisabled}
+      />
       <Dropdown.Popover data-testid="actions-dropdown">
         <Dropdown.Menu onAction={handleAction}>
           {items.map((item) => (
             <Dropdown.Item
               data-testid={item.testId}
-              icon={() =>
-                pendingAction === item.id ? <Loader size="x-small" /> : null
-              }
+              icon={() => renderPendingIcon(pendingAction === item.id)}
               id={item.id}
               isDisabled={Boolean(pendingAction)}
               key={item.id}

@@ -16,27 +16,13 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  transition: background-color var(--om-duration-300) ease, opacity var(--om-duration-300) ease;
+  transition: background-color var(--om-duration-300) ease,
+    opacity var(--om-duration-300) ease;
   width: 100%;
   box-sizing: border-box;
   padding: 0 var(--om-space-16);
   box-sizing: border-box;
   height: 33px;
-
-  .draggable-menu-item-button {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    padding: 0;
-
-    .draggable-menu-item-button-label {
-      font-size: var(--om-font-size-sm);
-      line-height: 21px;
-      color: @black;
-      padding-left: var(--om-space-8);
-    }
-  }
 }
 
 .draggable-menu-item.dragging {

@@ -10,38 +10,50 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, NumberInput, Slider } from '@openmetadata/ui-core-components';
 import { WidgetProps } from '@rjsf/utils';
-import { Col, InputNumber, Row, Slider } from 'antd';
+import { isNumber } from 'lodash';
+import { useTranslation } from 'react-i18next';
 
 export const CustomRangeWidget = (props: WidgetProps) => {
+  const min = props.schema.minimum ?? 0;
+  const { t } = useTranslation();
+  const label = props.label || t('label.profile-sample');
+
   return (
-    <Row data-testid="percentage-input" gutter={20}>
-      <Col span={20}>
+    // Two items and one gap: a 24-column Grid with colGap puts the gap between every column,
+    // which needs 460px before any content and pushes the number input out of narrow dialogs.
+    <Box data-testid="percentage-input" gap={5}>
+      <div className="tw:min-w-0 tw:flex-3">
         <Slider
-          marks={{
-            0: '0%',
-            100: '100%',
-          }}
-          max={100}
-          min={0}
-          tooltip={{ open: false }}
-          value={props.value}
+          showRange
+          aria-label={label}
+          isDisabled={props.disabled || props.readonly}
+          labelFormatter={(value) => `${value}%`}
+          maxValue={100}
+          minValue={min}
+          step={1}
+          value={isNumber(props.value) ? props.value : min}
           onChange={props.onChange}
         />
-      </Col>
-      <Col span={4}>
-        <InputNumber
-          data-testid="slider-input"
-          formatter={(value) => `${value}%`}
+      </div>
+      <div className="tw:min-w-0 tw:flex-1">
+        <NumberInput
+          aria-label={label}
+          formatOptions={{ style: 'unit', unit: 'percent' }}
           id={props.id}
-          max={100}
-          min={0}
+          inputDataTestId="slider-input"
+          isDisabled={props.disabled || props.readonly}
+          maxValue={100}
+          minValue={min}
           name={props.name}
           step={1}
-          value={props.value}
-          onChange={props.onChange}
+          value={isNumber(props.value) ? props.value : Number.NaN}
+          onChange={(value) =>
+            props.onChange(Number.isNaN(value) ? null : value)
+          }
         />
-      </Col>
-    </Row>
+      </div>
+    </Box>
   );
 };

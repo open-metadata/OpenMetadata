@@ -17,7 +17,6 @@ To be used by OpenMetadata class
 import json
 import traceback
 from functools import lru_cache
-from typing import Optional, Type  # noqa: UP035
 from urllib.parse import quote
 
 from metadata.generated.schema.entity.teams.team import Team, TeamType
@@ -29,6 +28,9 @@ from metadata.ingestion.ometa.client import REST
 from metadata.utils.constants import ENTITY_REFERENCE_TYPE_MAP
 from metadata.utils.elasticsearch import ES_INDEX_MAP
 from metadata.utils.logger import ometa_logger
+from metadata.utils.lru_cache import LRUCache
+
+USER_REFERENCE_CACHE_SIZE = 1000
 
 logger = ometa_logger()
 
@@ -43,11 +45,11 @@ class OMetaUserMixin:
     client: REST
 
     @staticmethod
-    def email_search_query_es(entity: Type[T]) -> str:  # noqa: UP006
+    def email_search_query_es(entity: type[T]) -> str:
         return "/search/query?q=email.keyword:{email}&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
 
     @staticmethod
-    def name_search_query_es(entity: Type[T], name: str, from_: int, size: int) -> str:  # noqa: UP006
+    def name_search_query_es(entity: type[T], name: str, from_: int, size: int) -> str:
         """
         Allow for more flexible lookup following what the UI is doing when searching users.
 
@@ -72,14 +74,43 @@ class OMetaUserMixin:
             f"&from={from_}&size={size}&index=" + ES_INDEX_MAP[entity.__name__]
         )
 
+    def _get_user_reference_cache(self) -> LRUCache:
+        """
+        Lazily create a User-reference cache scoped to this specific
+        OpenMetadata client instance, so caches from different clients or
+        catalogs never mix.
+        """
+        cache = getattr(self, "_user_reference_cache_instance", None)
+        if cache is None:
+            cache = LRUCache(USER_REFERENCE_CACHE_SIZE)
+            self._user_reference_cache_instance = cache
+        return cache
+
+    def get_cached_user_reference(self, name: str) -> EntityReference | None:
+        """
+        Cached lookup for a User EntityReference by name/FQN.
+        Used during usage ingestion, where the same username is looked up
+        repeatedly across staging and lifecycle processing.
+        Misses are cached too: a user absent from OpenMetadata at the start
+        of a run will not appear mid-run.
+        """
+        cache = self._get_user_reference_cache()
+        if name in cache:
+            return cache.get(name)
+        reference = self.get_entity_reference(  # pyright: ignore[reportAttributeAccessIssue]
+            entity=User, fqn=name
+        )
+        cache.put(name, reference)
+        return reference
+
     def _search_by_email(
         self,
-        entity: Type[T],  # noqa: UP006
-        email: Optional[str],  # noqa: UP045
+        entity: type[T],
+        email: str | None,
         from_count: int = 0,
         size: int = 1,
-        fields: Optional[list] = None,  # noqa: UP045
-    ) -> Optional[T]:  # noqa: UP045
+        fields: list | None = None,
+    ) -> T | None:
         """
         GET user or team entity by mail
 
@@ -97,12 +128,12 @@ class OMetaUserMixin:
 
     def _search_by_name(
         self,
-        entity: Type[T],  # noqa: UP006
-        name: Optional[str],  # noqa: UP045
+        entity: type[T],
+        name: str | None,
         from_count: int = 0,
         size: int = 1,
-        fields: Optional[list] = None,  # noqa: UP045
-    ) -> Optional[T]:  # noqa: UP045
+        fields: list | None = None,
+    ) -> T | None:
         """
         GET entity by name
 
@@ -121,11 +152,11 @@ class OMetaUserMixin:
     @lru_cache(maxsize=None)  # noqa: B019, UP033
     def get_reference_by_email(
         self,
-        email: Optional[str],  # noqa: UP045
+        email: str | None,
         from_count: int = 0,
         size: int = 1,
-        fields: Optional[list] = None,  # noqa: UP045
-    ) -> Optional[EntityReferenceList]:  # noqa: UP045
+        fields: list | None = None,
+    ) -> EntityReferenceList | None:
         """
         Get a User or Team Entity Reference by searching by its mail
         """
@@ -160,12 +191,12 @@ class OMetaUserMixin:
     @lru_cache(maxsize=None)  # noqa: B019, UP033
     def get_reference_by_name(
         self,
-        name: Optional[str],  # noqa: UP045
+        name: str | None,
         from_count: int = 0,
         size: int = 1,
-        fields: Optional[list] = None,  # noqa: UP045
+        fields: list | None = None,
         is_owner: bool = False,
-    ) -> Optional[EntityReferenceList]:  # noqa: UP045
+    ) -> EntityReferenceList | None:
         """
         Get a User or Team Entity Reference by searching by its name.
         """

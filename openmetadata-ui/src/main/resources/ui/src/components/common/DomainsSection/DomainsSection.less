@@ -24,21 +24,11 @@
     margin-bottom: var(--om-space-12);
     padding-left: var(--om-space-14);
     padding-right: var(--om-space-14);
-    .domains-title {
-      font-weight: var(--om-font-weight-semibold);
-      font-size: var(--om-font-size-13);
-      color: @grey-900;
-    }
   }
 
   .domains-content {
     padding-left: var(--om-space-14);
     padding-right: var(--om-space-14);
-
-    .no-data-placeholder {
-      color: @grey-500;
-      font-size: var(--om-font-size-xs);
-    }
 
     .domains-display {
       .domains-list {
@@ -126,21 +116,33 @@
         }
       }
     }
-
-    // Ensure popover appears below the selector
-    :global(.domain-select-popover) {
-      .ant-popover-arrow {
-        display: none;
-      }
-    }
-  }
-  .domain-select-popover {
-    .ant-popover-inner {
-      border-radius: var(--om-radius-2xl) !important;
-    }
   }
 }
 .domain-popover {
   width: 300px !important;
   left: 10px !important;
+}
+
+// The summary-panel owner section shares the domain section's visual treatment
+// but uses its own class names so `.domains-*` selectors resolve to the domain
+// section only (avoids strict-locator collisions in tests).
+.owners-section {
+  border-bottom: solid;
+  border-bottom-width: 0.6px;
+  border-color: @grey-15;
+  padding-bottom: var(--om-space-16);
+
+  .owners-header {
+    display: flex;
+    gap: var(--om-space-8);
+    align-items: center;
+    margin-bottom: var(--om-space-12);
+    padding-left: var(--om-space-14);
+    padding-right: var(--om-space-14);
+  }
+
+  .owners-content {
+    padding-left: var(--om-space-14);
+    padding-right: var(--om-space-14);
+  }
 }

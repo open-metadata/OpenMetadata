@@ -1,6 +1,6 @@
 {
     "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/ssisConnection.json",
-    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
     "title": "SSISConnection",
     "description": "SSIS Metadata Database Connection Config",
     "type": "object",
@@ -31,11 +31,14 @@
         "$ref": "../database/mssqlConnection.json"
       },
       "packageConnection": {
-        "title": "SSIS Projects Location (Local Path or S3 Bucket)",
+        "title": "SSIS Projects Location (Local Path, S3 Bucket or Azure Blob Container)",
         "description": "Underlying storage connection",
         "oneOf": [
           {
             "$ref": "../storage/s3Connection.json"
+          },
+          {
+            "$ref": "../storage/adlsConnection.json"
           },
           {
             "$ref": "#/definitions/localProjectsPath"

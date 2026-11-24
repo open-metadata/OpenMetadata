@@ -43,6 +43,7 @@ interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   onSave?: (value: string) => void;
   onTextChange?: (message: string) => void;
   focused?: boolean;
+  emptyMentionText?: string;
 }
 
 const ActivityFeedEditor = forwardRef<EditorContentRef, ActivityFeedEditorProp>(
@@ -56,6 +57,7 @@ const ActivityFeedEditor = forwardRef<EditorContentRef, ActivityFeedEditorProp>(
       onTextChange,
       editAction,
       focused = false,
+      emptyMentionText,
     },
     ref
   ) => {
@@ -96,6 +98,7 @@ const ActivityFeedEditor = forwardRef<EditorContentRef, ActivityFeedEditorProp>(
         <FeedEditor
           defaultValue={defaultValue}
           editorClass={editorClass}
+          emptyMentionText={emptyMentionText}
           focused={focused}
           placeHolder={placeHolder}
           ref={editorRef as LegacyRef<EditorContentRef>}

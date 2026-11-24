@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { QueryVote } from '../../../interface/entity/vote.interface';
 
 export interface DataProductsDetailsPageProps {
   dataProduct: DataProduct;

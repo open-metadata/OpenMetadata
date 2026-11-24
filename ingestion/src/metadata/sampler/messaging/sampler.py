@@ -13,7 +13,7 @@ Base sampler for messaging services (Kafka, Kinesis, PubSub, etc.)
 """
 
 from abc import abstractmethod
-from typing import Any, List, Optional, cast  # noqa: UP035
+from typing import Any, cast
 
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, TableData
 from metadata.generated.schema.entity.data.topic import Topic
@@ -42,7 +42,7 @@ class MessagingSampler(SamplerInterface):
         service_connection_config: MessagingConnection,
         ometa_client: OpenMetadata,
         entity: Topic,
-        config: Optional[MessagingSamplerConfig] = None,  # noqa: UP045
+        config: MessagingSamplerConfig | None = None,
         **kwargs,
     ):
         super().__init__(
@@ -69,7 +69,7 @@ class MessagingSampler(SamplerInterface):
     def get_dataset(self, **kwargs):
         raise NotImplementedError
 
-    def get_columns(self) -> List[SQALikeColumn]:  # noqa: UP006
+    def get_columns(self) -> list[SQALikeColumn]:
         entity: Topic = cast("Topic", self.entity)
         if entity.messageSchema and entity.messageSchema.schemaFields:
             columns = []
@@ -78,7 +78,7 @@ class MessagingSampler(SamplerInterface):
             return columns
         return []
 
-    def _flatten_field(self, field, depth: int = 0, max_depth: int = 10, parent_name: str = "") -> List[SQALikeColumn]:  # noqa: UP006
+    def _flatten_field(self, field, depth: int = 0, max_depth: int = 10, parent_name: str = "") -> list[SQALikeColumn]:
         """
         Recursively flatten RECORD fields to their leaf columns.
         Handles nested RECORDs (RECORD within RECORD) up to max_depth to prevent infinite recursion.
@@ -104,7 +104,7 @@ class MessagingSampler(SamplerInterface):
         return [SQALikeColumn(current_name, cast("DataType", field.dataType))]
 
     @abstractmethod
-    def _fetch_messages(self, count: int) -> List[dict]:  # noqa: UP006
+    def _fetch_messages(self, count: int) -> list[dict]:
         """
         Fetch up to `count` messages from the topic.
         Returns a list of dicts mapping field name to value.
@@ -148,7 +148,7 @@ class MessagingSampler(SamplerInterface):
         value = MessagingSampler._walk(msg, dotted)
         return None if value is MISSING else value
 
-    def fetch_sample_data(self, columns: Optional[List[SQALikeColumn]]) -> TableData:  # noqa: UP006, UP045
+    def fetch_sample_data(self, columns: list[SQALikeColumn] | None) -> TableData:
         column_objs = columns or self.get_columns()
         column_names = [col.name for col in column_objs]
         if not column_names:

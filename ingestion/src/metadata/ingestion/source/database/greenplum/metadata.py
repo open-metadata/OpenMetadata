@@ -14,16 +14,21 @@ Greenplum source module
 
 import traceback
 from collections import namedtuple
-from typing import Iterable, Optional, Tuple  # noqa: UP035
+from collections.abc import Iterable
+from typing import cast
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.engine import Inspector
+from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
+    Column,
+    ConstraintType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
+    TableConstraint,
     TablePartition,
     TableType,
 )
@@ -44,9 +49,11 @@ from metadata.ingestion.source.database.common_db_source import (
 from metadata.ingestion.source.database.common_pg_mappings import (
     INTERVAL_TYPE_MAP,
     RELKIND_MAP,
+    PgMatviewMixin,
     ischema_names,
 )
 from metadata.ingestion.source.database.greenplum.queries import (
+    GREENPLUM_DISTRIBUTION_KEYS,
     GREENPLUM_GET_DB_NAMES,
     GREENPLUM_GET_TABLE_NAMES,
     GREENPLUM_PARTITION_DETAILS,
@@ -86,7 +93,7 @@ Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 
 
-class GreenplumSource(CommonDbSourceService, MultiDBSource):
+class GreenplumSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
     """
     Implements the necessary methods to extract
     Database metadata from Greenplum Source
@@ -97,7 +104,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
         cls,
         config_dict,
         metadata: OpenMetadataConnection,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: GreenplumConnection = config.serviceConnection.root.config
@@ -119,7 +126,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
             TableNameAndType(name=name, type_=RELKIND_MAP.get(relkind, TableType.Regular)) for name, relkind in result
         ]
 
-    def get_configured_database(self) -> Optional[str]:  # noqa: UP045
+    def get_configured_database(self) -> str | None:
         if not self.service_connection.ingestAllDatabases:
             return self.service_connection.database
         return None
@@ -157,7 +164,7 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
 
     def get_table_partition_details(
         self, table_name: str, schema_name: str, inspector: Inspector
-    ) -> Tuple[bool, Optional[TablePartition]]:  # noqa: UP006, UP045
+    ) -> tuple[bool, TablePartition | None]:
         with self.engine.connect() as conn:
             result = conn.execute(
                 text(GREENPLUM_PARTITION_DETAILS.format(table_name=table_name, schema_name=schema_name))
@@ -180,3 +187,37 @@ class GreenplumSource(CommonDbSourceService, MultiDBSource):
             )
             return True, partition_details
         return False, None
+
+    def update_table_constraints(
+        self,
+        table_name: str,
+        schema_name: str,
+        db_name: str,
+        table_constraints: list[TableConstraint] | None,
+        foreign_columns: list[dict],
+        columns: list[Column],
+    ) -> list[TableConstraint]:
+        """Include Greenplum distribution columns in the table constraints."""
+        table_constraints = table_constraints or []
+        connection = self.connection
+        # The cached dialect version is PostgreSQL's base: GP5 uses 8.3, GP6 uses 9.4.
+        if cast("tuple[int, ...]", connection.dialect.server_version_info) >= (9, 4):
+            try:
+                distribution_columns = [
+                    row[0]
+                    for row in connection.execute(
+                        text(GREENPLUM_DISTRIBUTION_KEYS),
+                        {"schema_name": schema_name, "table_name": table_name},
+                    )
+                ]
+            except SQLAlchemyError as exc:
+                connection.rollback()
+                logger.warning("Skipping DIST_KEY for %s.%s: %s", schema_name, table_name, exc)
+            else:
+                if distribution_columns:
+                    table_constraints.append(
+                        TableConstraint(constraintType=ConstraintType.DIST_KEY, columns=distribution_columns)
+                    )
+        return super().update_table_constraints(
+            table_name, schema_name, db_name, table_constraints, foreign_columns, columns
+        )

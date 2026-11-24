@@ -14,7 +14,8 @@ Common NoSQL source methods.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
@@ -30,6 +31,7 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import (
     Column,
+    DataType,
     Table,
     TableConstraint,
     TableType,
@@ -56,16 +58,38 @@ from metadata.ingestion.source.database.database_service import DatabaseServiceS
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.constants import DEFAULT_DATABASE
-from metadata.utils.datalake.datalake_utils import DataFrameColumnParser
+from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.schema_inference import InferenceLimits, InferenceReport
 from metadata.utils.ssl_manager import check_ssl_and_init
+
+if TYPE_CHECKING:
+    from pandas import DataFrame
 
 logger = ingestion_logger()
 
 
 SAMPLE_SIZE = 1000
+
+
+class NoSQLDataFrameColumnParser(GenericDataFrameColumnParser):
+    """Preserve native string values in NoSQL documents instead of parsing their contents.
+
+    The generic DataFrame parser deliberately guesses CSV/datalake column types from
+    text (including numeric-looking strings). MongoDB and other NoSQL drivers
+    provide typed values: a BSON string such as "01051" must stay STRING.
+    """
+
+    @classmethod
+    def fetch_col_types(cls, data_frame: "DataFrame", column_name: str) -> DataType:
+        non_null = data_frame[column_name].dropna()
+        if len(non_null) and non_null.dtype.name == "object":
+            values = non_null.values[:SAMPLE_SIZE]
+            if all(isinstance(value, str) for value in values):
+                return DataType.STRING
+        return super().fetch_col_types(data_frame, column_name)
 
 
 class TableNameAndType(BaseModel):
@@ -89,6 +113,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
+        self.inference_limits = InferenceLimits.from_source_config(self.source_config)
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.ssl_manager = check_ssl_and_init(self.service_connection)
@@ -134,7 +159,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         self.register_record_database_request(database_request=database_request)
 
     @abstractmethod
-    def get_schema_name_list(self) -> List[str]:  # noqa: UP006
+    def get_schema_name_list(self) -> list[str]:
         """
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
@@ -197,7 +222,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         need to be overridden by sources if views are supported by the database.
         """
 
-    def get_tables_name_and_type(self) -> Optional[Iterable[Tuple[str, TableType]]]:  # noqa: UP006, UP045
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]] | None:
         """
         Handle table and views.
 
@@ -241,7 +266,7 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
             logger.warning(f"Fetching tables names failed for schema {schema_name} due to - {err}")
             logger.debug(traceback.format_exc())
 
-    def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:  # noqa: UP006, UP007
+    def get_table_columns_dict(self, schema_name: str, table_name: str) -> list[dict] | dict:
         """
         Method to get actual data available within table
         need to be overridden by sources
@@ -252,21 +277,24 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
         db_name: str,
         schema_name: str,
         table_name: str,
-    ) -> Optional[List[TableConstraint]]:  # noqa: UP006, UP045
+    ) -> list[TableConstraint] | None:
         # pylint: disable=unused-argument
         return None
 
-    def get_table_columns(self, schema_name: str, table_name: str) -> List[Column]:  # noqa: UP006
+    def get_table_columns(self, schema_name: str, table_name: str) -> list[Column]:
         """
         Method to return all columns of a table
         """
         import pandas as pd  # pylint: disable=import-outside-toplevel
 
         df = pd.DataFrame.from_records(list(self.get_table_columns_dict(schema_name, table_name)))
-        column_parser = DataFrameColumnParser.create(df)
-        return column_parser.get_columns()
+        inference_report = InferenceReport()
+        column_parser = NoSQLDataFrameColumnParser(df, limits=self.inference_limits, report=inference_report)
+        columns = column_parser.get_columns()
+        inference_report.emit(self.status, f"{schema_name}.{table_name}", self.inference_limits)
+        return columns
 
-    def yield_table(self, table_name_and_type: Tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:  # noqa: UP006
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
         """
         From topology.
         Prepare a table request and pass it to the sink
@@ -328,11 +356,11 @@ class CommonNoSQLSource(DatabaseServiceSource, ABC):
 
     def get_source_url(
         self,
-        database_name: Optional[str] = None,  # noqa: UP045
-        schema_name: Optional[str] = None,  # noqa: UP045
-        table_name: Optional[str] = None,  # noqa: UP045
-        table_type: Optional[TableType] = None,  # noqa: UP045
-    ) -> Optional[str]:  # noqa: UP045
+        database_name: str | None = None,
+        schema_name: str | None = None,
+        table_name: str | None = None,
+        table_type: TableType | None = None,
+    ) -> str | None:
         """
         By default the source url is not supported for
         """

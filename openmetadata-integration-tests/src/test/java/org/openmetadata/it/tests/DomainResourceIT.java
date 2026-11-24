@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -25,7 +26,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -37,20 +42,27 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
+import org.openmetadata.schema.api.domains.DomainStyles;
+import org.openmetadata.schema.api.domains.EntityStyle;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.entity.type.CoverImage;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Votes;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -60,6 +72,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for Domain entity operations.
@@ -77,6 +90,7 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
 
   public DomainResourceIT() {
     supportsFollowers = false;
+    supportsCustomExtension = true;
     supportsTags = true;
     supportsDomains = false;
     supportsDataProducts = false;
@@ -219,6 +233,28 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     Domain child = createEntity(createChild);
     assertNotNull(child.getParent());
     assertEquals(parent.getId(), child.getParent().getId());
+  }
+
+  // domain_entity.fqnHash stores one 32-char hash per FQN level, so an eighth-level subdomain
+  // (263 chars) needs more than the varchar(256) the column was created with.
+  @Test
+  void test_createEighthLevelSubDomain(TestNamespace ns) {
+    Domain domain = null;
+    for (int level = 1; level <= 8; level++) {
+      CreateDomain create =
+          new CreateDomain()
+              .withName(level == 1 ? ns.prefix("deepDomain") : "l" + level)
+              .withDomainType(DomainType.AGGREGATE)
+              .withDescription("Deep domain");
+      if (domain != null) {
+        create.withParent(domain.getFullyQualifiedName());
+      }
+      domain = createEntity(create);
+    }
+
+    Domain fetched = SdkClients.adminClient().domains().getByName(domain.getFullyQualifiedName());
+
+    assertEquals(domain.getId(), fetched.getId());
   }
 
   @Test
@@ -1566,6 +1602,69 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
     verifyDomainInSearch(siblingFqn, sibling.getId().toString());
   }
 
+  // Domain and data product references carry no style, so chips look the colour and icon up by id
+  // from this list. ADR:2026-11-02-domain-chips-resolve-their-style-by-domain-id
+  @Test
+  void test_listStylesReturnsStyledDomainsAndDataProducts(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain styled =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("styled_domain"))
+                .withDomainType(DomainType.AGGREGATE)
+                .withDescription("Domain with a style")
+                .withStyle(
+                    new Style()
+                        .withColor("#F14C75")
+                        .withIconURL("Database01")
+                        .withCoverImage(
+                            new CoverImage().withUrl("https://example.com/cover.png"))));
+    Domain plain =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("plain_domain"))
+                .withDomainType(DomainType.AGGREGATE)
+                .withDescription("Domain without a style"));
+    DataProduct dataProduct =
+        client
+            .dataProducts()
+            .create(
+                new CreateDataProduct()
+                    .withName(ns.prefix("styled_dp"))
+                    .withDescription("Data product with a style")
+                    .withDomains(List.of(styled.getFullyQualifiedName()))
+                    .withStyle(new Style().withColor("#12B76A").withIconURL("Cube01")));
+
+    Map<UUID, EntityStyle> styles = listStylesById(client);
+
+    EntityStyle domainStyle = styles.get(styled.getId());
+    assertNotNull(domainStyle, "a styled domain is listed");
+    assertEquals(Entity.DOMAIN, domainStyle.getType());
+    assertEquals("#F14C75", domainStyle.getStyle().getColor());
+    assertEquals("Database01", domainStyle.getStyle().getIconURL());
+    assertNull(domainStyle.getStyle().getCoverImage(), "only the colour and icon");
+    assertFalse(styles.containsKey(plain.getId()), "a domain without a style is omitted");
+    assertEquals(Entity.DATA_PRODUCT, styles.get(dataProduct.getId()).getType());
+    assertEquals("#12B76A", styles.get(dataProduct.getId()).getStyle().getColor());
+
+    styled.setStyle(new Style().withColor("#1470EF").withIconURL("Globe01"));
+    patchEntity(styled.getId().toString(), styled);
+
+    assertEquals(
+        "#1470EF",
+        listStylesById(client).get(styled.getId()).getStyle().getColor(),
+        "a restyle shows on the next request");
+  }
+
+  private Map<UUID, EntityStyle> listStylesById(OpenMetadataClient client) {
+    DomainStyles styles =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.GET, "/v1/domains/styles", null, DomainStyles.class);
+    return styles.getData().stream()
+        .collect(Collectors.toMap(EntityStyle::getId, Function.identity()));
+  }
+
   private Table createTableInDomain(TestNamespace ns, String suffix, String domainFqn) {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
@@ -1747,6 +1846,185 @@ public class DomainResourceIT extends BaseEntityIT<Domain, CreateDomain> {
       createTable.withDomains(List.of(domainFqn));
     }
     return SdkClients.adminClient().tables().create(createTable);
+  }
+
+  // ===================================================================
+  // LIST ENDPOINT SERVER-SIDE FILTERS (issue #29213)
+  // ===================================================================
+
+  private static Set<UUID> listedIds(ListResponse<Domain> response) {
+    return response.getData().stream().map(Domain::getId).collect(Collectors.toSet());
+  }
+
+  private ListResponse<Domain> listDomainsWithFilter(String key, String value) {
+    return listEntities(new ListParams().withLimit(1000000).addFilter(key, value));
+  }
+
+  private Domain createDomain(TestNamespace ns, String suffix, DomainType type) {
+    return createEntity(
+        new CreateDomain()
+            .withName(ns.prefix(suffix))
+            .withDomainType(type)
+            .withDescription("filter test domain"));
+  }
+
+  @Test
+  void test_listDomains_filterByDomainType(TestNamespace ns) {
+    Domain aggregate = createDomain(ns, "ftype_agg", DomainType.AGGREGATE);
+    Domain source = createDomain(ns, "ftype_src", DomainType.SOURCE_ALIGNED);
+    Domain consumer = createDomain(ns, "ftype_con", DomainType.CONSUMER_ALIGNED);
+
+    Set<UUID> single =
+        listedIds(listDomainsWithFilter("domainType", DomainType.SOURCE_ALIGNED.value()));
+    assertTrue(single.contains(source.getId()), "SOURCE_ALIGNED domain must be listed");
+    assertFalse(single.contains(aggregate.getId()), "AGGREGATE domain must be filtered out");
+    assertFalse(single.contains(consumer.getId()), "CONSUMER_ALIGNED domain must be filtered out");
+
+    Set<UUID> multi =
+        listedIds(
+            listDomainsWithFilter(
+                "domainType",
+                DomainType.SOURCE_ALIGNED.value() + "," + DomainType.CONSUMER_ALIGNED.value()));
+    assertTrue(multi.contains(source.getId()));
+    assertTrue(multi.contains(consumer.getId()));
+    assertFalse(
+        multi.contains(aggregate.getId()), "AGGREGATE must be excluded by multi-value type");
+  }
+
+  @Test
+  void test_listDomains_filterByOwner(TestNamespace ns) {
+    User owner = testUser1();
+    EntityReference ownerRef = new EntityReference().withId(owner.getId()).withType("user");
+    Domain owned =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("fowner_owned"))
+                .withDomainType(DomainType.AGGREGATE)
+                .withOwners(List.of(ownerRef))
+                .withDescription("filter test domain"));
+    Domain notOwned = createDomain(ns, "fowner_not", DomainType.AGGREGATE);
+
+    Set<UUID> ids = listedIds(listDomainsWithFilter("owners", owner.getFullyQualifiedName()));
+    assertTrue(ids.contains(owned.getId()), "owned domain must be listed");
+    assertFalse(ids.contains(notOwned.getId()), "un-owned domain must be filtered out");
+  }
+
+  @Test
+  void test_listDomains_filterByUnknownOwnerReturnsNoMatches(TestNamespace ns) {
+    User owner = testUser1();
+    EntityReference ownerRef = new EntityReference().withId(owner.getId()).withType("user");
+    // A real, owned domain so the endpoint has data it could wrongly return.
+    createEntity(
+        new CreateDomain()
+            .withName(ns.prefix("fowner_unknown"))
+            .withDomainType(DomainType.AGGREGATE)
+            .withOwners(List.of(ownerRef))
+            .withDescription("filter test domain"));
+
+    // An owner that resolves to nothing must yield an empty result, not the full domain list.
+    Set<UUID> ids = listedIds(listDomainsWithFilter("owners", ns.prefix("no_such_owner")));
+    assertTrue(ids.isEmpty(), "unknown owner must yield no matches, but got " + ids.size());
+  }
+
+  @Test
+  void test_listDomains_filterByClassificationTag(TestNamespace ns) {
+    TagLabel pii = piiSensitiveTagLabel();
+    Domain tagged =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("ftag_yes"))
+                .withDomainType(DomainType.AGGREGATE)
+                .withTags(List.of(pii))
+                .withDescription("filter test domain"));
+    Domain untagged = createDomain(ns, "ftag_no", DomainType.AGGREGATE);
+
+    Set<UUID> ids = listedIds(listDomainsWithFilter("tags", pii.getTagFQN()));
+    assertTrue(ids.contains(tagged.getId()), "tagged domain must be listed");
+    assertFalse(ids.contains(untagged.getId()), "un-tagged domain must be filtered out");
+
+    // A glossaryTerms filter must NOT match a classification tag (tag_usage.source separation)
+    Set<UUID> asGlossary = listedIds(listDomainsWithFilter("glossaryTerms", pii.getTagFQN()));
+    assertFalse(
+        asGlossary.contains(tagged.getId()),
+        "classification tag must not be matched by the glossaryTerms filter");
+  }
+
+  @Test
+  void test_listDomains_filterByGlossaryTerm(TestNamespace ns) {
+    TagLabel term = glossaryTermLabel();
+    Domain tagged =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("fterm_yes"))
+                .withDomainType(DomainType.AGGREGATE)
+                .withTags(List.of(term))
+                .withDescription("filter test domain"));
+    Domain untagged = createDomain(ns, "fterm_no", DomainType.AGGREGATE);
+
+    Set<UUID> ids = listedIds(listDomainsWithFilter("glossaryTerms", term.getTagFQN()));
+    assertTrue(ids.contains(tagged.getId()), "domain tagged with the term must be listed");
+    assertFalse(ids.contains(untagged.getId()), "un-tagged domain must be filtered out");
+
+    // A tags filter must NOT match a glossary term (tag_usage.source separation)
+    Set<UUID> asClassification = listedIds(listDomainsWithFilter("tags", term.getTagFQN()));
+    assertFalse(
+        asClassification.contains(tagged.getId()),
+        "glossary term must not be matched by the classification tags filter");
+  }
+
+  @Test
+  void test_listDomains_filtersApplyAcrossHierarchy(TestNamespace ns) {
+    Domain parent = createDomain(ns, "fh_parent", DomainType.AGGREGATE);
+    Domain sub =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("fh_sub"))
+                .withDomainType(DomainType.SOURCE_ALIGNED)
+                .withParent(parent.getFullyQualifiedName())
+                .withTags(List.of(piiSensitiveTagLabel()))
+                .withDescription("filter test sub-domain"));
+
+    // Type filter must reach sub-domains, not just root-level domains
+    Set<UUID> byType =
+        listedIds(listDomainsWithFilter("domainType", DomainType.SOURCE_ALIGNED.value()));
+    assertTrue(byType.contains(sub.getId()), "matching sub-domain must be returned by type filter");
+
+    // Tag filter must also reach sub-domains
+    Set<UUID> byTag = listedIds(listDomainsWithFilter("tags", piiSensitiveTagLabel().getTagFQN()));
+    assertTrue(byTag.contains(sub.getId()), "matching sub-domain must be returned by tag filter");
+  }
+
+  @Test
+  void test_listDomains_combinedFiltersAreAnded(TestNamespace ns) {
+    User owner = testUser1();
+    EntityReference ownerRef = new EntityReference().withId(owner.getId()).withType("user");
+    Domain match =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("fc_match"))
+                .withDomainType(DomainType.CONSUMER_ALIGNED)
+                .withOwners(List.of(ownerRef))
+                .withDescription("filter test domain"));
+    Domain ownerOnly =
+        createEntity(
+            new CreateDomain()
+                .withName(ns.prefix("fc_owneronly"))
+                .withDomainType(DomainType.AGGREGATE)
+                .withOwners(List.of(ownerRef))
+                .withDescription("filter test domain"));
+    Domain typeOnly = createDomain(ns, "fc_typeonly", DomainType.CONSUMER_ALIGNED);
+
+    Set<UUID> ids =
+        listedIds(
+            listEntities(
+                new ListParams()
+                    .withLimit(1000000)
+                    .addFilter("owners", owner.getFullyQualifiedName())
+                    .addFilter("domainType", DomainType.CONSUMER_ALIGNED.value())));
+    assertTrue(ids.contains(match.getId()), "domain matching both filters must be listed");
+    assertFalse(
+        ids.contains(ownerOnly.getId()), "owner-only match must be excluded (AND semantics)");
+    assertFalse(ids.contains(typeOnly.getId()), "type-only match must be excluded (AND semantics)");
   }
 
   private void addAssetsToDomain(String domainFqn, List<EntityReference> assets) throws Exception {

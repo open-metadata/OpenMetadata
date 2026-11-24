@@ -15,10 +15,10 @@ DBT service Topology.
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Iterable, List  # noqa: UP035
+from collections.abc import Iterable
+from typing import Annotated
 
 from pydantic import Field
-from typing_extensions import Annotated  # noqa: UP035
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -39,7 +39,6 @@ from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.source.database.database_service import DataModelLink
@@ -92,10 +91,8 @@ class DbtServiceTopology(ServiceTopology):
         stages=[
             NodeStage(
                 type_=OMetaTagAndClassification,
-                context="tags",
                 processor="yield_dbt_tags",
                 nullable=True,
-                store_all_in_context=True,
             ),
             NodeStage(
                 type_=DataModelLink,
@@ -108,6 +105,8 @@ class DbtServiceTopology(ServiceTopology):
     process_dbt_entities: Annotated[TopologyNode, Field(description="Process dbt entities")] = TopologyNode(
         producer="get_data_model",
         stages=[
+            # Must stay ahead of create_dbt_query_lineage, or its override delete would remove the
+            # compiled-SQL edges. ADR:2026-11-09-dbt-override-lineage-deletes-when-the-manifest-declares-no-parent
             NodeStage(
                 type_=AddLineageRequest,
                 processor="create_dbt_lineage",
@@ -135,6 +134,11 @@ class DbtServiceTopology(ServiceTopology):
             NodeStage(
                 type_=DataModelLink,
                 processor="process_dbt_domain",
+                nullable=True,
+            ),
+            NodeStage(
+                type_=DataModelLink,
+                processor="process_dbt_data_products",
                 nullable=True,
             ),
         ],
@@ -196,7 +200,6 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     """
 
     topology = DbtServiceTopology()
-    context = TopologyContextManager(topology)
     source_config: DbtPipeline
 
     @property
@@ -242,7 +245,7 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
                         else:
                             value["constraints"] = None
 
-    def remove_run_result_non_required_keys(self, run_results: List[dict]):  # noqa: UP006
+    def remove_run_result_non_required_keys(self, run_results: list[dict]):
         """
         Method to remove the non required keys from run results file
         """
@@ -398,6 +401,12 @@ class DbtServiceSource(TopologyRunnerMixin, Source, ABC):
     def process_dbt_domain(self, data_model_link: DataModelLink):
         """
         Method to process DBT domain using patch APIs
+        """
+
+    @abstractmethod
+    def process_dbt_data_products(self, data_model_link: DataModelLink):
+        """
+        Method to attach the table to its dbt-declared Data Products
         """
 
     @abstractmethod

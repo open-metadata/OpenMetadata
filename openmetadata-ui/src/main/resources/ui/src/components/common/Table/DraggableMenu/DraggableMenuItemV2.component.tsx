@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 import { Box, Dropdown, Typography } from '@openmetadata/ui-core-components';
-import { Eye, EyeOff } from '@untitledui/icons';
+import { DotsGrid, Eye, EyeOff } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, useCallback, useMemo, type MouseEvent } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
-import { ReactComponent as ColumnDragIcon } from '../../../../assets/svg/menu-duo.svg';
 import { DraggableMenuItemProps } from './DraggableMenuItem.interface';
 
 /**
@@ -92,26 +91,34 @@ const DraggableMenuItemV2: FC<DraggableMenuItemProps> = ({
         <span
           className="tw:inline-flex tw:cursor-grab tw:items-center tw:active:cursor-grabbing"
           data-testid="draggable-menu-item-drag-handle">
-          <ColumnDragIcon
-            className="text-grey-muted"
+          <DotsGrid
+            aria-hidden
+            className="tw:text-fg-quaternary"
             data-testid="draggable-menu-item-drag-icon"
-            height={16}
-            width={16}
+            size={16}
           />
         </span>
 
         <button
-          className="tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
+          className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-2 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
           type="button"
           onClick={handleSelect}>
-          <Typography>{label}</Typography>
+          <Typography
+            ellipsis={{ tooltip: true, excludeTriggerFromTabOrder: true }}>
+            {label}
+          </Typography>
 
           {isItemSelected ? (
-            <Eye aria-label="eye" className="tw:ml-auto tw:size-4" />
+            <Eye
+              aria-label="eye"
+              className="tw:ml-auto tw:shrink-0"
+              size={16}
+            />
           ) : (
             <EyeOff
               aria-label="eye-invisible"
-              className="tw:ml-auto tw:size-4"
+              className="tw:ml-auto tw:shrink-0"
+              size={16}
             />
           )}
         </button>

@@ -45,7 +45,11 @@ OPENSEARCH_CONFIG = {
 
 def _ssl_by_value(staging_dir) -> SslConfig:
     return SslConfig(
-        certificates=SslCertificatesByValues(privateKeyValue="-----PRIVATE KEY-----", stagingDir=str(staging_dir))
+        certificates=SslCertificatesByValues(
+            clientCertValue="-----CLIENT CERTIFICATE-----",
+            privateKeyValue="-----PRIVATE KEY-----",
+            stagingDir=str(staging_dir),
+        )
     )
 
 
@@ -69,7 +73,10 @@ def test_elasticsearch_connection_removes_staging_dir_on_close(tmp_path):
     service_connection = ElasticsearchConnectionConfig(
         hostPort="http://localhost:9200", sslConfig=_ssl_by_value(staging_dir)
     )
-    with patch("metadata.ingestion.source.search.elasticsearch.connection.Elasticsearch"):
+    with (
+        patch("metadata.ingestion.source.search.elasticsearch.connection.Elasticsearch"),
+        patch("metadata.ingestion.source.search.elasticsearch.connection.create_ssl_context"),
+    ):
         connection = ElasticsearchConnection(service_connection)
         assert connection.client is not None
         assert staging_dir.exists()
@@ -100,7 +107,11 @@ def test_elasticsearch_removes_staging_dir_when_init_test_connection_fails(tmp_p
                 "type": "ElasticSearch",
                 "hostPort": "http://elasticsearch.example.com:9200",
                 "sslConfig": {
-                    "certificates": {"privateKeyValue": "-----PRIVATE KEY-----", "stagingDir": str(staging_dir)}
+                    "certificates": {
+                        "clientCertValue": "-----CLIENT CERTIFICATE-----",
+                        "privateKeyValue": "-----PRIVATE KEY-----",
+                        "stagingDir": str(staging_dir),
+                    }
                 },
             }
         },
@@ -108,6 +119,7 @@ def test_elasticsearch_removes_staging_dir_when_init_test_connection_fails(tmp_p
     }
     with (
         patch("metadata.ingestion.source.search.elasticsearch.connection.Elasticsearch"),
+        patch("metadata.ingestion.source.search.elasticsearch.connection.create_ssl_context"),
         patch(
             "metadata.ingestion.source.search.search_service.run_test_connection",
             side_effect=RuntimeError("cannot connect"),

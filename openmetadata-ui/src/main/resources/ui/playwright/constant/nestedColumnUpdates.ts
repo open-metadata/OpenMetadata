@@ -31,7 +31,8 @@ export const nestedChildrenTestData: Record<
       | typeof TableClass
       | typeof TopicClass
       | typeof WorksheetClass;
-    tabSelector?: string;
+    // Anchored: the tab's accessible name also includes its count badge.
+    tabName?: RegExp;
     supportDisplayNameUpdate?: boolean;
   }
 > = {
@@ -40,7 +41,7 @@ export const nestedChildrenTestData: Record<
   },
   Container: {
     CreationClass: ContainerClass,
-    tabSelector: '.ant-tabs-nav-list [data-node-key="schema"]',
+    tabName: /^Schema/,
   },
   'Data Model': {
     CreationClass: DashboardDataModelClass,
@@ -48,7 +49,7 @@ export const nestedChildrenTestData: Record<
   },
   File: {
     CreationClass: FileClass,
-    tabSelector: '.ant-tabs-nav-list [data-node-key="schema"]',
+    tabName: /^Schema/,
   },
   'Search Index': {
     CreationClass: SearchIndexClass,

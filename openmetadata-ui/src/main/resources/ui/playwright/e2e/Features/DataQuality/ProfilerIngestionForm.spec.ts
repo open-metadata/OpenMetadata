@@ -13,7 +13,11 @@
 import { expect } from '@playwright/test';
 import { DatabaseServiceClass } from '../../../support/entity/service/DatabaseServiceClass';
 import { performAdminLogin } from '../../../utils/admin';
+import { okJson } from '../../../utils/apiResponse';
+import { chooseSelectOption, getApiContext } from '../../../utils/common';
 import {
+  expandAdvancedConfig,
+  isCreatePipelineCall,
   openProfilerForm,
   selectSampleConfigType,
   submitAndCaptureCreatePayload,
@@ -72,11 +76,15 @@ test.describe('Profiler ingestion form — profile sample config', () => {
         .locator('input')
         .fill('25');
 
-      await page.getByTestId('profile-sample-type-select').click();
-      await page.locator('[data-key="ROWS"]').click();
+      await chooseSelectOption(
+        page.getByTestId('profile-sample-type-select'),
+        page.getByRole('listbox').locator('[data-key="ROWS"]')
+      );
 
-      await page.getByTestId('sampling-method-type-select').click();
-      await page.locator('[data-key="SYSTEM"]').click();
+      await chooseSelectOption(
+        page.getByTestId('sampling-method-type-select'),
+        page.getByRole('listbox').locator('[data-key="SYSTEM"]')
+      );
 
       const profileSampleConfig = await submitAndCaptureCreatePayload(page);
 
@@ -245,8 +253,10 @@ test.describe('Profiler ingestion form — profile sample config', () => {
         .locator('input')
         .fill('70');
 
-      await page.getByTestId('profile-sample-type-select').click();
-      await page.locator('[data-key="PERCENTAGE"]').click();
+      await chooseSelectOption(
+        page.getByTestId('profile-sample-type-select'),
+        page.getByRole('listbox').locator('[data-key="PERCENTAGE"]')
+      );
 
       await selectSampleConfigType(page, 'DYNAMIC');
       await expect(page.getByTestId('smart-sampling-toggle')).toBeVisible();
@@ -264,3 +274,106 @@ test.describe('Profiler ingestion form — profile sample config', () => {
     }
   );
 });
+
+test.describe(
+  'Profiler ingestion form — automatic partition detection',
+  { tag: ['@ingestion', '@Observability'] },
+  () => {
+    let partitionService: DatabaseServiceClass;
+    let unsupportedService: DatabaseServiceClass;
+
+    test.beforeAll(async ({ browser }) => {
+      unsupportedService = new DatabaseServiceClass();
+      partitionService = new DatabaseServiceClass(undefined, {
+        serviceType: 'Postgres',
+        connection: {
+          config: {
+            type: 'Postgres',
+            hostPort: 'localhost:5432',
+            username: 'user',
+          },
+        },
+      });
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await Promise.all([
+        partitionService.create(apiContext),
+        unsupportedService.create(apiContext),
+      ]);
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await Promise.all([
+        partitionService.delete(apiContext),
+        unsupportedService.delete(apiContext),
+      ]);
+      await afterAction();
+    });
+
+    test('hides automatic partition detection for unsupported services', async ({
+      page,
+    }) => {
+      await page.goto(
+        `/service/databaseServices/${encodeURIComponent(
+          unsupportedService.entity.name
+        )}/add-ingestion/profiler`
+      );
+      await expect(page.getByTestId('add-ingestion-container')).toBeVisible();
+      await expandAdvancedConfig(page);
+      await expect(page.getByTestId('sample-config-type-select')).toBeVisible();
+      await expect(
+        page.getByRole('switch', {
+          name: 'Enable Auto Partition Detection',
+          exact: true,
+        })
+      ).toBeHidden();
+    });
+
+    test('allows disabling automatic partition detection and persists the choice', async ({
+      page,
+    }) => {
+      await test.step('Disable the default for a supported service', async () => {
+        await page.goto(
+          `/service/databaseServices/${encodeURIComponent(
+            partitionService.entity.name
+          )}/add-ingestion/profiler`
+        );
+        await expect(page.getByTestId('add-ingestion-container')).toBeVisible();
+        await expandAdvancedConfig(page);
+        const toggle = page.getByRole('switch', {
+          name: 'Enable Auto Partition Detection',
+          exact: true,
+        });
+        await expect(toggle).toBeChecked();
+        await toggle.press('Space');
+        await expect(toggle).not.toBeChecked();
+      });
+
+      await test.step('Save and verify the stored pipeline configuration', async () => {
+        const created = page.waitForResponse((response) =>
+          isCreatePipelineCall(response.url(), response.request().method())
+        );
+        await submitAndCaptureCreatePayload(page);
+        const pipeline = await okJson(
+          await created,
+          'create profiler pipeline'
+        );
+        const { apiContext, afterAction } = await getApiContext(page);
+        try {
+          const stored = await okJson(
+            await apiContext.get(
+              `/api/v1/services/ingestionPipelines/${pipeline.id}`
+            ),
+            'read profiler pipeline'
+          );
+          expect(stored.sourceConfig.config.enableAutoPartitionDetection).toBe(
+            false
+          );
+        } finally {
+          await afterAction();
+        }
+      });
+    });
+  }
+);

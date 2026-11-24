@@ -7,10 +7,6 @@ import argparse
 import concurrent.futures
 import sys
 import time
-from datetime import datetime
-
-# Force unbuffered output
-sys.stdout.reconfigure(line_buffering=True)
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -27,6 +23,9 @@ from metadata.generated.schema.entity.services.connections.database.common.basic
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
+from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
+    OpenMetadataConnection,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -36,9 +35,29 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
-    OpenMetadataConnection,
-)
+
+
+def _parse_int(value: str) -> int:
+    try:
+        return int(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError("must be an integer") from error
+
+
+def positive_int(value: str) -> int:
+    """Parse a strictly positive CLI integer."""
+    parsed = _parse_int(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than 0")
+    return parsed
+
+
+def non_negative_int(value: str) -> int:
+    """Parse a non-negative CLI integer."""
+    parsed = _parse_int(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be greater than or equal to 0")
+    return parsed
 
 
 def create_metadata_client(server_url: str, token: str) -> OpenMetadata:
@@ -107,28 +126,58 @@ def create_schema(metadata: OpenMetadata, database_fqn: str, schema_name: str):
     return created
 
 
+BASE_COLUMNS = [
+    Column(name="id", dataType=DataType.BIGINT, description="Primary key"),
+    Column(name="name", dataType=DataType.VARCHAR, dataLength=255),
+    Column(name="description", dataType=DataType.TEXT),
+    Column(name="created_at", dataType=DataType.TIMESTAMP),
+    Column(name="updated_at", dataType=DataType.TIMESTAMP),
+    Column(name="status", dataType=DataType.VARCHAR, dataLength=50),
+    Column(name="metadata", dataType=DataType.JSON),
+]
+
+
+def build_columns(total: int) -> list:
+    """Widen the base column set to `total` columns.
+
+    Wide tables are the interesting shape for RDF/search reindex benchmarks: a
+    single wide table serializes into a far larger payload than its row count
+    suggests, which is what makes byte-budgeted batching matter.
+    """
+    columns = list(BASE_COLUMNS[:total])
+    columns.extend(
+        Column(
+            name=f"col_{i:03d}",
+            dataType=DataType.VARCHAR,
+            dataLength=255,
+            description=f"Generated column {i} for wide-table benchmarking",
+        )
+        for i in range(len(columns), total)
+    )
+    return columns
+
+
 def create_tables_batch(
-    metadata: OpenMetadata, schema_fqn: str, start_idx: int, count: int
+    metadata: OpenMetadata,
+    schema_fqn: str,
+    start_idx: int,
+    count: int,
+    columns: list | None = None,
+    wide_columns: list | None = None,
+    wide_every: int = 0,
 ) -> int:
     """Create a batch of tables."""
     created_count = 0
-    columns = [
-        Column(name="id", dataType=DataType.BIGINT, description="Primary key"),
-        Column(name="name", dataType=DataType.VARCHAR, dataLength=255),
-        Column(name="description", dataType=DataType.TEXT),
-        Column(name="created_at", dataType=DataType.TIMESTAMP),
-        Column(name="updated_at", dataType=DataType.TIMESTAMP),
-        Column(name="status", dataType=DataType.VARCHAR, dataLength=50),
-        Column(name="metadata", dataType=DataType.JSON),
-    ]
+    columns = columns if columns is not None else list(BASE_COLUMNS)
 
     for i in range(start_idx, start_idx + count):
         table_name = f"test_table_{i:06d}"
+        table_columns = wide_columns if wide_every and wide_columns and (i + 1) % wide_every == 0 else columns
         try:
             table = CreateTableRequest(
                 name=table_name,
                 databaseSchema=schema_fqn,
-                columns=columns,
+                columns=table_columns,
                 description=f"Test table {i} for distributed indexing benchmark",
             )
             metadata.create_or_update(table)
@@ -145,11 +194,21 @@ def ingest_tables(
     total_tables: int = 100000,
     batch_size: int = 100,
     workers: int = 10,
+    columns: int = 7,
+    wide_columns: int = 500,
+    wide_every: int = 0,
 ):
     """Ingest tables into OpenMetadata."""
     print(f"Starting ingestion of {total_tables} tables...", flush=True)
     print(f"Server: {server_url}", flush=True)
     print(f"Batch size: {batch_size}, Workers: {workers}", flush=True)
+    narrow_column_list = build_columns(columns)
+    wide_column_list = build_columns(wide_columns) if wide_every else None
+    if wide_every:
+        print(
+            f"Every {wide_every}th table gets {wide_columns} columns (others get {columns})",
+            flush=True,
+        )
     print("-" * 60, flush=True)
 
     # Create main client for setup
@@ -162,9 +221,9 @@ def ingest_tables(
     db_name = "scale_test_db"
     schema_name = "scale_test_schema"
 
-    service = create_service(metadata, service_name)
-    database = create_database(metadata, service_name, db_name)
-    schema = create_schema(metadata, f"{service_name}.{db_name}", schema_name)
+    create_service(metadata, service_name)
+    create_database(metadata, service_name, db_name)
+    create_schema(metadata, f"{service_name}.{db_name}", schema_name)
     schema_fqn = f"{service_name}.{db_name}.{schema_name}"
 
     print("-" * 60)
@@ -185,7 +244,15 @@ def ingest_tables(
         start_idx, count = batch_info
         # Each worker needs its own client
         worker_metadata = create_metadata_client(server_url, token)
-        return create_tables_batch(worker_metadata, schema_fqn, start_idx, count)
+        return create_tables_batch(
+            worker_metadata,
+            schema_fqn,
+            start_idx,
+            count,
+            columns=narrow_column_list,
+            wide_columns=wide_column_list,
+            wide_every=wide_every,
+        )
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
         futures = {executor.submit(process_batch, batch): batch for batch in batches}
@@ -204,7 +271,7 @@ def ingest_tables(
                     rate = total_created / elapsed if elapsed > 0 else 0
                     print(
                         f"Progress: {total_created}/{total_tables} tables "
-                        f"({100*total_created/total_tables:.1f}%) - "
+                        f"({100 * total_created / total_tables:.1f}%) - "
                         f"{rate:.1f} tables/sec"
                     )
             except Exception as e:
@@ -214,7 +281,7 @@ def ingest_tables(
     rate = total_created / elapsed if elapsed > 0 else 0
 
     print("-" * 60)
-    print(f"Ingestion complete!")
+    print("Ingestion complete!")
     print(f"Total tables created: {total_created}")
     print(f"Time elapsed: {elapsed:.1f} seconds")
     print(f"Average rate: {rate:.1f} tables/sec")
@@ -222,9 +289,7 @@ def ingest_tables(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Ingest tables into OpenMetadata for scale testing"
-    )
+    parser = argparse.ArgumentParser(description="Ingest tables into OpenMetadata for scale testing")
     parser.add_argument(
         "--server",
         default="http://localhost:8585/api",
@@ -237,21 +302,42 @@ def main():
     )
     parser.add_argument(
         "--tables",
-        type=int,
+        type=positive_int,
         default=100000,
         help="Number of tables to create (default: 100000)",
     )
     parser.add_argument(
         "--batch-size",
-        type=int,
+        type=positive_int,
         default=100,
         help="Batch size for table creation (default: 100)",
     )
     parser.add_argument(
         "--workers",
-        type=int,
+        type=positive_int,
         default=10,
         help="Number of parallel workers (default: 10)",
+    )
+    parser.add_argument(
+        "--columns",
+        type=positive_int,
+        default=7,
+        help="Columns per ordinary table (default: 7)",
+    )
+    parser.add_argument(
+        "--wide-columns",
+        type=positive_int,
+        default=500,
+        help="Columns on wide tables (default: 500)",
+    )
+    parser.add_argument(
+        "--wide-every",
+        type=non_negative_int,
+        default=0,
+        help=(
+            "Make every Nth table wide. 0 (default) creates no wide tables; "
+            "100 mixes in the wide-table shape that dominates reindex payload size."
+        ),
     )
 
     args = parser.parse_args()
@@ -262,8 +348,12 @@ def main():
         total_tables=args.tables,
         batch_size=args.batch_size,
         workers=args.workers,
+        columns=args.columns,
+        wide_columns=args.wide_columns,
+        wide_every=args.wide_every,
     )
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(line_buffering=True)
     main()

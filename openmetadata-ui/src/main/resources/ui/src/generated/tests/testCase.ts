@@ -37,6 +37,12 @@ export interface TestCase {
      */
     dataProducts?: EntityReference[];
     /**
+     * Data quality dimension this test case belongs to. When not set at creation time, it
+     * defaults to the dimension of the test definition. Any dimension registered in Settings >
+     * Preferences > Data Quality can be used, system and custom alike.
+     */
+    dataQualityDimension?: EntityReference;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -247,9 +253,15 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Data quality dimension this test case belongs to. When not set at creation time, it
+ * defaults to the dimension of the test definition. Any dimension registered in Settings >
+ * Preferences > Data Quality can be used, system and custom alike.
+ *
  * Test case reference
  *
  * User working on failure resolution.
+ *
+ * Assignee of the incident at resolution.
  *
  * User who resolved the test case failure.
  *
@@ -320,8 +332,10 @@ export interface EntityReference {
 /**
  * Current status of the test case.
  *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -342,11 +356,22 @@ export interface TableData {
     /**
      * List of local column names (not fully qualified column names) of the table.
      */
-    columns?: string[];
+    columns?:         string[];
+    executionSource?: TableExecutionSource;
     /**
      * Data for multiple rows of the table.
      */
     rows?: Array<any[]>;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
 }
 
 /**
@@ -439,6 +464,8 @@ export enum Severities {
 export interface Assigned {
     /**
      * User working on failure resolution.
+     *
+     * Assignee of the incident at resolution.
      */
     assignee?: EntityReference;
     /**
@@ -703,10 +730,37 @@ export interface CoverImage {
  */
 export interface TestCaseResult {
     /**
+     * Failure threshold the run was judged by, as configured when it executed. Absent for a run
+     * recorded before the snapshot existed, whose threshold cannot be recovered.
+     */
+    appliedThreshold?: TestCaseAppliedThreshold;
+    /**
+     * Upper bound the test case asked for when the run executed, before the failure threshold
+     * widened it into `maxBound`. Absent for a run that recorded no threshold snapshot.
+     */
+    configuredMaxBound?: number;
+    /**
+     * Lower bound the test case asked for when the run executed, before the failure threshold
+     * widened it into `minBound`. Absent for a run that recorded no threshold snapshot.
+     */
+    configuredMinBound?: number;
+    /**
      * List of dimensional test results. Only populated when the test case has dimensionColumns
      * specified.
      */
     dimensionResults?: TestCaseDimensionResult[];
+    /**
+     * Wall-clock time the test case run took, in milliseconds.
+     */
+    duration?: number;
+    /**
+     * Structured error details when the run was aborted by an error.
+     */
+    errorDetails?: TestCaseErrorDetails;
+    /**
+     * Which rows the run was measured on. Absent for a run that recorded no scope.
+     */
+    evaluationScope?: TestCaseEvaluationScope;
     /**
      * Number of rows that failed.
      */
@@ -773,10 +827,60 @@ export interface TestCaseResult {
 }
 
 /**
+ * Failure threshold the run was judged by, as configured when it executed. Absent for a run
+ * recorded before the snapshot existed, whose threshold cannot be recovered.
+ *
+ * The failure threshold a test case run was judged by, as the evaluator read it while the
+ * run executed. Recorded by the agent that ran the test and never re-read from the test
+ * case afterwards: an edit between the run and the result being stored would otherwise be
+ * attributed to the run.
+ *
+ * Failure threshold the parent run was judged by, as configured when it executed. Every
+ * dimension of a run shares it.
+ */
+export interface TestCaseAppliedThreshold {
+    /**
+     * Whether this run used a failure tolerance. False when the execution mode did not apply
+     * one, such as columnValuesToBeInSet with matchEnum disabled. When false, value and unit do
+     * not explain the verdict. An absent snapshot means applicability is unknown.
+     */
+    applied?: boolean;
+    unit?:    ThresholdUnit;
+    /**
+     * Deviation the run tolerated before it was reported as failed. `0` tolerated nothing.
+     */
+    value?: number;
+}
+
+/**
+ * How a failure threshold reads: `ABSOLUTE` for a raw deviation, `PERCENTAGE` for a share
+ * of what it applies to.
+ */
+export enum ThresholdUnit {
+    Absolute = "ABSOLUTE",
+    Percentage = "PERCENTAGE",
+}
+
+/**
  * Test case result for dimensional analysis - supports both single and multi-dimensional
  * groupings
  */
 export interface TestCaseDimensionResult {
+    /**
+     * Failure threshold the parent run was judged by, as configured when it executed. Every
+     * dimension of a run shares it.
+     */
+    appliedThreshold?: TestCaseAppliedThreshold;
+    /**
+     * Upper bound the test case asked for when the run executed, before the failure threshold
+     * widened it into `maxBound`.
+     */
+    configuredMaxBound?: number;
+    /**
+     * Lower bound the test case asked for when the run executed, before the failure threshold
+     * widened it into `minBound`.
+     */
+    configuredMinBound?: number;
     /**
      * Composite key for API filtering: 'region=mumbai' or 'region=mumbai,product=laptop'
      */
@@ -786,6 +890,16 @@ export interface TestCaseDimensionResult {
      * 'mumbai'}, {'name': 'product', 'value': 'laptop'}])
      */
     dimensionValues: DimensionValue[];
+    /**
+     * Which rows the parent run was measured on. Every dimension of a run shares it.
+     */
+    evaluationScope?: TestCaseEvaluationScope;
+    /**
+     * Whether this dimension has fewer rows than the test case's `minRowsPerDimension`. Its
+     * status is still reported, but it does not fail the test case under the `ANY_DIMENSION`
+     * policy.
+     */
+    excludedFromRollUp?: boolean;
     /**
      * Number of rows that failed for this dimension combination
      */
@@ -804,6 +918,16 @@ export interface TestCaseDimensionResult {
      * considering both failure rate and data volume.
      */
     impactScore?: number;
+    /**
+     * Upper bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    maxBound?: number;
+    /**
+     * Lower bound this dimension was evaluated against: the configured bound, widened by the
+     * failure threshold or learned by dynamic assertion when either applies.
+     */
+    minBound?: number;
     /**
      * Number of rows that passed for this dimension combination
      */
@@ -853,6 +977,52 @@ export interface DimensionValue {
 }
 
 /**
+ * Which rows the parent run was measured on. Every dimension of a run shares it.
+ *
+ * Which rows a test case run was measured on. The verdict is the subset's: nothing
+ * extrapolates it back to the table.
+ *
+ * Which rows the run was measured on. Absent for a run that recorded no scope.
+ */
+export interface TestCaseEvaluationScope {
+    executionSource?: TableExecutionSource;
+    /**
+     * Column the partition filter was applied on.
+     */
+    partitionColumnName?: string;
+    /**
+     * Whether the rows read were restricted to a partition. False when the test runs its own
+     * SQL, which ignores the configured partition.
+     */
+    partitioned?: boolean;
+    /**
+     * Size of the sample read, in the unit `profileSampleType` names.
+     */
+    profileSample?: number;
+    /**
+     * Whether `profileSample` is a percentage of the table or a number of rows. Read only when
+     * `sampled` is true.
+     */
+    profileSampleType?: ProfileSampleType;
+    /**
+     * Whether the run read a sample of the table. False when the test runs its own SQL, which
+     * ignores the configured sample.
+     */
+    sampled?: boolean;
+}
+
+/**
+ * Whether `profileSample` is a percentage of the table or a number of rows. Read only when
+ * `sampled` is true.
+ *
+ * Type of Profile Sample (percentage or rows)
+ */
+export enum ProfileSampleType {
+    Percentage = "PERCENTAGE",
+    Rows = "ROWS",
+}
+
+/**
  * Status of the test for this dimension combination
  *
  * Status of Test Case run.
@@ -883,6 +1053,26 @@ export interface TestResultValue {
      */
     value?: string;
     [property: string]: any;
+}
+
+/**
+ * Structured error details when the run was aborted by an error.
+ *
+ * Structured details of the error that aborted a test case run.
+ */
+export interface TestCaseErrorDetails {
+    /**
+     * Type of the error, e.g. the exception class name.
+     */
+    errorType?: string;
+    /**
+     * Human-readable error message.
+     */
+    message?: string;
+    /**
+     * Formatted stack trace of the error.
+     */
+    stackTrace?: string;
 }
 
 /**

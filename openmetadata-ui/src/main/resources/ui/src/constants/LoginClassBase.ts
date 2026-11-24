@@ -15,6 +15,7 @@ import dataCollaborationImg from '../assets/img/login-screen/data-collaboration/
 import discoveryImg from '../assets/img/login-screen/discovery/data-discovery.png';
 import governanceImg from '../assets/img/login-screen/governance/governance.png';
 import observabilityImg from '../assets/img/login-screen/observability/data-observability.png';
+import loginDarkVideo from '../assets/videos/omd-dark.mp4';
 import loginVideo from '../assets/videos/omd.mp4';
 
 class LoginClassBase {
@@ -47,7 +48,25 @@ class LoginClassBase {
   }
 
   public getLoginVideo(): string | undefined {
-    return loginVideo;
+    // On /signin no ThemeProvider mounts; `dark-mode` comes from the
+    // #theme-restore boot script in index.html. An OS scheme flip while the
+    // sign-in page is open keeps the current video until reload.
+    return document.documentElement.classList.contains('dark-mode')
+      ? loginDarkVideo
+      : loginVideo;
+  }
+
+  // Panel and card styles are returned from here (not inlined in
+  // CarouselLayout) so Collate can override the login palette via
+  // LoginClassCollate without forking the layout. Theme-aware tokens live in
+  // styles/app.less.
+  public getLoginVideoPanelClassName(): string {
+    return 'tw:bg-(image:--login-panel-bg)';
+  }
+
+  // The card background stands in for the video until it paints.
+  public getLoginVideoCardClassName(): string {
+    return 'tw:bg-(image:--login-card-bg) tw:shadow-(--login-card-shadow)';
   }
 }
 

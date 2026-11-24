@@ -19,25 +19,9 @@ declare module 'i18next' {
     returnEmptyString: false;
     returnObjects: false;
     defaultNS: 'translation';
-    resources: {
-      translation: {
-        [key: string]: string;
-      };
-    };
-  }
-}
-
-declare module 'react-i18next' {
-  interface CustomTypeOptions {
-    returnNull: false;
-    returnEmptyString: false;
-    returnObjects: false;
-    defaultNS: 'translation';
-    resources: {
-      translation: {
-        [key: string]: string;
-      };
-    };
+    // Keys are untyped (no `resources`), so v27's default check only makes
+    // `TFunction` unassignable to the `(key, options?) => string` helpers.
+    strictInterpolationChecks: false;
   }
 }
 

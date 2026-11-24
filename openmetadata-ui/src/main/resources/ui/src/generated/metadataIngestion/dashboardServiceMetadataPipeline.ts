@@ -27,6 +27,13 @@ export interface DashboardServiceMetadataPipeline {
      */
     dataModelFilterPattern?: FilterPattern;
     /**
+     * Optional configuration to toggle the ingestion of source-specific custom properties (e.g.
+     * the app views, last run status, run time and refresh time of Hex projects) onto the
+     * dashboard extension. The custom property definitions are shared by every dashboard in
+     * OpenMetadata, so this is disabled by default.
+     */
+    includeCustomProperties?: boolean;
+    /**
      * Optional configuration to toggle the ingestion of data models.
      */
     includeDataModels?: boolean;
@@ -35,6 +42,14 @@ export interface DashboardServiceMetadataPipeline {
      * draft dashboards
      */
     includeDraftDashboard?: boolean;
+    /**
+     * Optional configuration to toggle the ingestion of semantic-layer measures (e.g. LookML
+     * measures) as first-class Metric entities. Metric names are unique across the whole
+     * OpenMetadata instance, so this is disabled by default. Measures are discovered from the
+     * data models that expose them, so this requires 'Include Data Models' to be enabled as
+     * well.
+     */
+    includeMetrics?: boolean;
     /**
      * Enabling a flag will replace the current owner with a new owner from the source during
      * metadata ingestion, if the current owner is null. It is recommended to keep the flag

@@ -12,7 +12,8 @@
 OpenMetadata source for the profiler
 """
 
-from typing import ClassVar, Iterable, List, Optional  # noqa: UP035
+from collections.abc import Iterable
+from typing import ClassVar
 
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline,  # noqa: TC001
@@ -101,7 +102,7 @@ class OpenMetadataSource(Source):
 
         logger.info(f"Starting profiler for service {self.config.source.serviceName}:{self.config.source.type.lower()}")
 
-    def _get_fields(self) -> List[str]:  # noqa: UP006
+    def _get_fields(self) -> list[str]:
         """Get the fields required to process the tables"""
         return TABLE_FIELDS if not self.source_config.processPiiSensitive else TABLE_FIELDS + TAGS_FIELD
 
@@ -140,7 +141,7 @@ class OpenMetadataSource(Source):
         cls,
         config_dict: dict,
         metadata: OpenMetadata,
-        pipeline_name: Optional[str] = None,  # noqa: UP045
+        pipeline_name: str | None = None,
     ) -> "Step":
         config = parse_workflow_config_gracefully(config_dict)
         return cls(config=config, metadata=metadata)

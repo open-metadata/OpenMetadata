@@ -13,7 +13,8 @@
 Defines the needed protocol for a Metric to support pandas
 """
 
-from typing import Any, Callable, Generic, Protocol, TypeVar, runtime_checkable  # noqa: UP035
+from collections.abc import Callable
+from typing import Any, Generic, Protocol, TypeVar, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict
 

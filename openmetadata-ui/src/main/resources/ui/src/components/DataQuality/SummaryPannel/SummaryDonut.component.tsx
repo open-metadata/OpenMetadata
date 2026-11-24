@@ -10,16 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Cell, Pie, PieChart, Tooltip } from 'recharts';
-import { GREY_200 } from '../../../constants/Color.constants';
+import { Typography } from '@openmetadata/ui-core-components';
+import { PieChart } from '@openmetadata/ui-core-components/charts';
 import { ChartData } from './SummaryPanel.interface';
 
 export interface SummaryDonutProps {
+  /** Accessible name of the chart, e.g. the card title. Translated by the caller. */
+  ariaLabel: string;
   chartData: ChartData[];
   percentage: number | string;
   paddingAngle?: number;
   size?: number;
 }
+
+const LEGEND_HIDDEN = { show: false };
+// ECharts expands hovered slices by 5px; leave another pixel for the stroke.
+const HOVER_PADDING = 6;
 
 /**
  * Donut ring (grey track + coloured data) with a centred percentage. Shared by
@@ -27,58 +33,35 @@ export interface SummaryDonutProps {
  * chart; `size` scales the ring and the centre label.
  */
 export const SummaryDonut = ({
+  ariaLabel,
   chartData,
   percentage,
   paddingAngle = 0,
   size = 120,
 }: SummaryDonutProps) => {
-  const innerRadius = (size * 45) / 120;
-  const outerRadius = (size * 60) / 120;
+  const outerRadius = size / 2 - HOVER_PADDING;
 
   return (
-    <PieChart height={size} width={size}>
-      <Pie
-        cx="50%"
-        cy="50%"
-        // empty grey ring shown as the track behind the data
-        data={[{ value: 1 }]}
-        dataKey="value"
-        endAngle={-270}
-        innerRadius={innerRadius}
-        outerRadius={outerRadius}
-        paddingAngle={paddingAngle}
-        pointerEvents="none"
-        startAngle={90}>
-        <Cell fill={GREY_200} />
-      </Pie>
-      <Pie
-        cx="50%"
-        cy="50%"
+    <div style={{ width: size }}>
+      <PieChart
+        track
+        ariaLabel={ariaLabel}
+        centerLabel={
+          <Typography
+            className="tw:text-primary"
+            style={{ fontSize: Math.round(size * 0.135) }}
+            weight="semibold">
+            {percentage}
+          </Typography>
+        }
         data={chartData}
-        dataKey="value"
-        endAngle={-270}
-        innerRadius={innerRadius}
+        height={size}
+        innerRadius={outerRadius * 0.75}
+        legend={LEGEND_HIDDEN}
         outerRadius={outerRadius}
-        paddingAngle={paddingAngle}
-        startAngle={90}>
-        {chartData.map((entry, index) => (
-          <Cell fill={entry.color} key={`cell-${index}`} />
-        ))}
-      </Pie>
-      <Tooltip />
-      <text
-        dominantBaseline="middle"
-        style={{
-          fill: 'var(--color-text-primary, #181d27)',
-          fontSize: Math.round(size * 0.135),
-          fontWeight: 600,
-        }}
-        textAnchor="middle"
-        x="50%"
-        y="50%">
-        {percentage}
-      </text>
-    </PieChart>
+        padAngle={paddingAngle}
+      />
+    </div>
   );
 };
 

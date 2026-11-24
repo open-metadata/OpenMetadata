@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Space } from 'antd';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { Check, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
+import { useTranslation } from 'react-i18next';
 import './inline-edit.less';
 import { InlineEditProps } from './InlineEdit.interface';
 
@@ -26,6 +27,7 @@ const InlineEdit = ({
   cancelButtonProps,
   saveButtonProps,
 }: InlineEditProps) => {
+  const { t } = useTranslation();
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -33,38 +35,44 @@ const InlineEdit = ({
     }
   };
 
+  const isVertical = direction === 'vertical';
+
   return (
-    <Space
+    <Box
+      align={isVertical ? undefined : 'center'}
       className={classNames(className, 'inline-edit-container')}
       data-testid="inline-edit-container"
-      direction={direction}
+      direction={isVertical ? 'col' : 'row'}
+      gap={2}
       // Used onClick to stop click propagation event anywhere in the component to parent
       // TeamDetailsV1 and User.component collapsible panel.
       onClick={(e) => e.stopPropagation()}
       onKeyDown={handleKeyDown}>
       {children}
 
-      <Space className="w-full justify-end" data-testid="buttons" size={4}>
-        <Button
+      <Box data-testid="buttons" gap={1} justify="end">
+        <ButtonUtility
+          color="primary"
           data-testid="inline-cancel-btn"
-          disabled={isLoading}
-          icon={<CloseOutlined />}
-          size="small"
-          type="primary"
+          icon={XClose}
+          isDisabled={isLoading}
+          size="sm"
+          tooltip={t('label.cancel')}
           onClick={onCancel}
           {...cancelButtonProps}
         />
-        <Button
+        <ButtonUtility
+          color="primary"
           data-testid="inline-save-btn"
-          icon={<CheckOutlined />}
-          loading={isLoading}
-          size="small"
-          type="primary"
+          icon={Check}
+          isLoading={isLoading}
+          size="sm"
+          tooltip={t('label.save')}
           onClick={onSave}
           {...saveButtonProps}
         />
-      </Space>
-    </Space>
+      </Box>
+    </Box>
   );
 };
 

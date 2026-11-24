@@ -13,9 +13,10 @@ Python SSE Client wrapper and helpers
 """
 
 import time
+from collections.abc import Generator
 from datetime import datetime, timezone
 from logging import Logger  # noqa: TC003
-from typing import Any, Generator  # noqa: UP035
+from typing import Any
 
 import requests
 
@@ -203,6 +204,11 @@ class SSEClient:
             self.config.access_token, expiry = self.config.auth_token()
             if not self.config.access_token == "no_token":  # noqa: SIM201
                 if isinstance(expiry, datetime):
+                    # Auth callbacks (e.g. google-auth's ``credentials.expiry``) may
+                    # return a naive UTC datetime. Interpret it as UTC so
+                    # ``.timestamp()`` doesn't skew by the host's local timezone.
+                    if expiry.tzinfo is None:
+                        expiry = expiry.replace(tzinfo=timezone.utc)
                     self.config.expires_in = expiry.timestamp() - 120
                 else:
                     self.config.expires_in = datetime.now(timezone.utc).timestamp() + expiry - 120

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { Meta, StoryObj } from '@storybook/react';
-import { Edit01, Settings01, Trash01 } from '@untitledui/icons';
+import { Edit01, Settings01, Trash01 } from '../icons';
 import {
   ButtonGroup,
   ButtonGroupItem,

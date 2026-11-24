@@ -17,6 +17,12 @@ import { useEntityRules } from '../../../hooks/useEntityRules';
 import { DomainSelectableListProps } from '../DomainSelectableList/DomainSelectableList.interface';
 import DomainsSection from './DomainsSection';
 
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
 // i18n mock
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -38,24 +44,6 @@ jest.mock('../Loader/Loader', () => ({
   )),
 }));
 // Partial antd mock for Typography.Text
-jest.mock('antd', () => {
-  const actual = jest.requireActual('antd');
-
-  return {
-    ...actual,
-    Typography: {
-      ...actual.Typography,
-      Text: jest
-        .fn()
-        .mockImplementation(({ children, className, ...props }) => (
-          <span className={className} data-testid="typography-text" {...props}>
-            {children}
-          </span>
-        )),
-    },
-  };
-});
-
 // SVG icon mocks
 jest.mock('../../../assets/svg/edit.svg', () => ({
   ReactComponent: () => <div data-testid="edit-icon-svg">Edit</div>,
@@ -154,7 +142,6 @@ describe('DomainsSection', () => {
     it('renders header, title and no-data when empty', () => {
       const { container } = render(<DomainsSection {...defaultProps} />);
 
-      expect(screen.getByTestId('typography-text')).toBeInTheDocument();
       expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
       expect(container.querySelector('.domains-section')).toBeInTheDocument();
       expect(container.querySelector('.domains-header')).toBeInTheDocument();
@@ -167,7 +154,7 @@ describe('DomainsSection', () => {
       ).toBeInTheDocument();
     });
 
-    it('renders existing domains via custom domain cards when provided', () => {
+    it('renders existing domains as DomainTag chips when provided', () => {
       const { container } = render(
         <DomainsSection
           {...defaultProps}
@@ -176,6 +163,7 @@ describe('DomainsSection', () => {
               id: 'd1',
               name: 'd1',
               displayName: 'Domain 1',
+              fullyQualifiedName: 'd1',
               type: EntityType.DOMAIN,
             },
           ]}
@@ -183,7 +171,7 @@ describe('DomainsSection', () => {
       );
 
       expect(container.querySelector('.domains-display')).toBeInTheDocument();
-      expect(container.querySelector('.domain-item')).toBeInTheDocument();
+      expect(screen.getByTestId('domain-tag-d1')).toBeInTheDocument();
       expect(screen.getByText('Domain 1')).toBeInTheDocument();
     });
   });

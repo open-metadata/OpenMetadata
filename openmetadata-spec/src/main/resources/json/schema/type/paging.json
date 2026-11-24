@@ -1,6 +1,6 @@
 {
   "$id": "https://open-metadata.org/schema/type/paging.json",
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Paging",
   "description": "Type used for cursor based pagination information in GET list responses.",
   "type": "object",

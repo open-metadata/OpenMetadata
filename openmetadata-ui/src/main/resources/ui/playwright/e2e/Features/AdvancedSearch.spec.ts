@@ -15,10 +15,14 @@ import { expect } from '@playwright/test';
 import { EntityStatus } from '../../../src/generated/entity/data/searchIndex';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { DOMAIN_TAGS } from '../../constant/config';
+import { migratedTo } from '../../constant/migration';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
+import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
 import { Glossary } from '../../support/glossary/Glossary';
@@ -38,6 +42,7 @@ import {
   showAdvancedSearchDialog,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
+import { settleAll } from '../../utils/apiResponse';
 import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
@@ -46,6 +51,21 @@ import {
 } from '../../utils/explore';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
+
+/**
+ * The query each rule and group sends, and the page-level UI, now have
+ * browser tests. Tests that assert which documents the real index returns
+ * stay here until a Java IT covers the search semantics.
+ */
+const AS_FIELDS = migratedTo.browser(
+  'src/test/browser/advanced-search/AdvancedSearch.*.browser.test.tsx'
+);
+const AS_EXPLORE = migratedTo.browser(
+  'src/test/browser/advanced-search/AdvancedSearchExplore.browser.test.tsx'
+);
+const AS_CUSTOM_PROPERTY = migratedTo.browser(
+  'src/test/browser/custom-properties/CustomPropertyAdvancedSearch.browser.test.tsx'
+);
 
 let user: UserClass;
 let table: TableClass;
@@ -62,20 +82,25 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
     test.slow(true);
 
     user = new UserClass();
-    table = new TableClass(undefined, 'Regular');
-    table1 = new TableClass();
-    table2 = new TableClass();
-    topic1 = new TopicClass();
-    topic2 = new TopicClass();
+    // Advanced search filters by service.name, so each fixture owns its service.
+    table = new TableClass({
+      tableType: 'Regular',
+      service: new DatabaseServiceClass(),
+    });
+    table1 = new TableClass({ service: new DatabaseServiceClass() });
+    table2 = new TableClass({ service: new DatabaseServiceClass() });
+    topic1 = new TopicClass({ service: new MessagingServiceClass() });
+    topic2 = new TopicClass({ service: new MessagingServiceClass() });
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
-    await Promise.allSettled([
+    await settleAll([
       table1.create(apiContext),
       table2.create(apiContext),
       topic1.create(apiContext),
       topic2.create(apiContext),
     ]);
+
     glossaryEntity = new Glossary(undefined, [
       {
         id: user.responseData.id,
@@ -337,32 +362,38 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
   Object.values(OPERATOR).forEach(({ name: operator }) => {
     FIELDS.forEach((field) => {
       // Rule based search
-      test(`Verify Rule functionality for field ${field.id} with ${operator} operator`, async ({
-        page,
-      }) => {
-        test.slow(true);
+      test(
+        `Verify Rule functionality for field ${field.id} with ${operator} operator`,
+        AS_FIELDS,
+        async ({ page }) => {
+          test.slow(true);
 
-        await runRuleGroupTests(page, field, operator, false, searchCriteria);
-      });
+          await runRuleGroupTests(page, field, operator, false, searchCriteria);
+        }
+      );
 
       // Group based search
-      test(`Verify Group functionality for field ${field.id} with ${operator} operator`, async ({
-        page,
-      }) => {
-        test.slow(true);
+      test(
+        `Verify Group functionality for field ${field.id} with ${operator} operator`,
+        AS_FIELDS,
+        async ({ page }) => {
+          test.slow(true);
 
-        await runRuleGroupTests(page, field, operator, true, searchCriteria);
-      });
+          await runRuleGroupTests(page, field, operator, true, searchCriteria);
+        }
+      );
     });
   });
 
-  test('Verify search with non existing value do not result in infinite search', async ({
-    page,
-  }) => {
-    test.slow(true);
+  test(
+    'Verify search with non existing value do not result in infinite search',
+    AS_EXPLORE,
+    async ({ page }) => {
+      test.slow(true);
 
-    await runRuleGroupTestsWithNonExistingValue(page);
-  });
+      await runRuleGroupTestsWithNonExistingValue(page);
+    }
+  );
 });
 
 const ENTITY_STATUSES = Object.values(EntityStatus);
@@ -392,7 +423,7 @@ test.describe(
 
         glossaryForStatus = new Glossary();
         glossaryTermApproved = new GlossaryTerm(glossaryForStatus);
-        mlModelDraft = new MlModelClass();
+        mlModelDraft = new MlModelClass({ service: new MlmodelServiceClass() });
         dataProductInReview = new DataProduct();
 
         await glossaryForStatus.create(apiContext);
@@ -446,49 +477,56 @@ test.describe(
       await sidebarClick(page, SidebarItem.EXPLORE);
     });
 
-    test('All entity status options are visible in the Status dropdown', async ({
-      page,
-    }) => {
-      await test.step('Open advanced search dialog', async () => {
-        await showAdvancedSearchDialog(page);
-      });
+    test(
+      'All entity status options are visible in the Status dropdown',
+      AS_EXPLORE,
+      async ({ page }) => {
+        await test.step('Open advanced search dialog', async () => {
+          await showAdvancedSearchDialog(page);
+        });
 
-      await test.step('Select Status field and == operator', async () => {
-        const ruleLocator = page.locator('.rule').nth(0);
-        await selectOption(
-          page,
-          ruleLocator.locator('.rule--field .ant-select'),
-          'Status',
-          true
-        );
-        await selectOption(
-          page,
-          ruleLocator.locator('.rule--operator .ant-select'),
-          '=='
-        );
-      });
+        await test.step('Select Status field and == operator', async () => {
+          const ruleLocator = page.getByTestId('query-builder-rule-0');
+          await selectOption(
+            page,
+            ruleLocator.getByTestId('advanced-search-field-select'),
+            'Status',
+            true
+          );
+          await selectOption(
+            page,
+            ruleLocator.getByTestId('advanced-search-operator-select'),
+            '=='
+          );
+        });
 
-      await test.step('Open Status value dropdown and verify all hard-coded options appear', async () => {
-        const ruleLocator = page.locator('.rule').nth(0);
-        await ruleLocator.locator('.widget--widget > .ant-select').click();
+        await test.step('Open Status value dropdown and verify all hard-coded options appear', async () => {
+          const ruleLocator = page.getByTestId('query-builder-rule-0');
+          const triggerBtn = ruleLocator.locator(
+            '[data-testid=advanced-search-value] button[aria-haspopup="listbox"]'
+          );
 
-        const dropdown = page
-          .locator('.ant-select-dropdown')
-          .filter({ hasText: EntityStatus.Approved })
-          .last();
+          await expect(triggerBtn).toBeVisible();
+          await triggerBtn.click();
 
-        await expect(dropdown).toBeVisible();
+          const dropdown = page
+            .locator('[role="listbox"]')
+            .filter({ hasText: EntityStatus.Approved })
+            .last();
 
-        for (const status of ENTITY_STATUSES) {
-          await expect(
-            dropdown
-              .locator('.ant-select-item-option')
-              .filter({ hasText: new RegExp(`^${status}$`, 'i') })
-              .first()
-          ).toBeVisible();
-        }
-      });
-    });
+          await expect(dropdown).toBeVisible();
+
+          for (const status of ENTITY_STATUSES) {
+            await expect(
+              dropdown
+                .getByRole('option')
+                .filter({ hasText: new RegExp(`^${status}$`, 'i') })
+                .filter({ visible: true })
+            ).not.toHaveCount(0);
+          }
+        });
+      }
+    );
 
     test('Filtering by status "==" shows matching entity and hides others across entity types', async ({
       page,
@@ -509,7 +547,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -573,7 +611,7 @@ test.describe(
           ruleIndex: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -614,7 +652,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -660,7 +698,9 @@ test.describe(
         DESCRIPTION_TEXT = `This is a table description containing the word ${UNIQUE_WORD} to test the advanced search functionality.`;
         const { apiContext, afterAction } = await performAdminLogin(browser);
 
-        descFilterTable = new TableClass();
+        descFilterTable = new TableClass({
+          service: new DatabaseServiceClass(),
+        });
         await descFilterTable.create(apiContext);
 
         await descFilterTable.patch({
@@ -738,7 +778,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -781,7 +821,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -823,7 +863,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -865,7 +905,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -909,7 +949,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -952,7 +992,7 @@ test.describe(
             ruleIndex: 1,
           });
 
-          await page.getByTestId('advanced-search-add-rule').nth(1).click();
+          await page.getByTestId('advanced-search-add-rule').click();
 
           await fillRule(page, {
             condition: '==',
@@ -993,108 +1033,118 @@ test.describe(
       await waitForAllLoadersToDisappear(page);
     });
 
-    test('Verify count shows with Advanced Search filter', async ({ page }) => {
-      let resultTotal = 0;
+    test(
+      'Verify count shows with Advanced Search filter',
+      AS_EXPLORE,
+      async ({ page }) => {
+        let resultTotal = 0;
 
-      await test.step('Open Advanced Search', async () => {
-        await showAdvancedSearchDialog(page);
-      });
-
-      await test.step('Apply Description Contains filter', async () => {
-        await fillRule(page, {
-          condition: 'Contains',
-          field: { id: 'Description', name: 'description' },
-          searchCriteria: 'test',
-          index: 1,
+        await test.step('Open Advanced Search', async () => {
+          await showAdvancedSearchDialog(page);
         });
 
-        const searchRes = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.url().includes('index=dataAsset') &&
-            response.url().includes('size=15')
-        );
+        await test.step('Apply Description Contains filter', async () => {
+          await fillRule(page, {
+            condition: 'Contains',
+            field: { id: 'Description', name: 'description' },
+            searchCriteria: 'test',
+            index: 1,
+          });
 
-        await page.getByTestId('apply-btn').click();
+          const searchRes = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/search/query') &&
+              response.url().includes('index=dataAsset') &&
+              response.url().includes('size=15')
+          );
 
-        const response = await searchRes;
-        resultTotal = (await response.json()).hits.total.value;
+          await page.getByTestId('apply-btn').click();
 
-        await waitForAllLoadersToDisappear(page);
-      });
+          const response = await searchRes;
+          resultTotal = (await response.json()).hits.total.value;
 
-      await test.step('Verify count is visible and matches the API total', async () => {
-        const countEl = page.getByTestId('search-results-count');
+          await waitForAllLoadersToDisappear(page);
+        });
 
-        await expect(countEl).toBeVisible();
-        await expect(countEl).toContainText(resultTotal.toLocaleString());
-      });
+        await test.step('Verify count is visible and matches the API total', async () => {
+          const countEl = page.getByTestId('search-results-count');
 
-      await test.step('Clear filters and verify count disappears', async () => {
-        await page.getByTestId('advance-search-clear-btn').click();
-        await waitForAllLoadersToDisappear(page);
+          await expect(countEl).toBeVisible();
+          await expect(countEl).toContainText(resultTotal.toLocaleString());
+        });
 
-        await expect(
-          page.getByTestId('search-results-count')
-        ).not.toBeVisible();
-      });
-    });
+        await test.step('Clear filters and verify count disappears', async () => {
+          await page.getByTestId('advance-search-clear-btn').click();
+          await waitForAllLoadersToDisappear(page);
 
-    test('Verify count matches the API total for a quick filter', async ({
-      page,
-    }) => {
-      let resultTotal = 0;
+          await expect(
+            page.getByTestId('search-results-count')
+          ).not.toBeVisible();
+        });
+      }
+    );
 
-      await test.step('Apply the Table data-asset quick filter', async () => {
-        await page.getByTestId('search-dropdown-Data Assets').click();
+    test(
+      'Verify count matches the API total for a quick filter',
+      AS_EXPLORE,
+      async ({ page }) => {
+        let resultTotal = 0;
 
-        const searchRes = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/search/query') &&
-            response.url().includes('index=dataAsset') &&
-            response.url().includes('size=15')
-        );
+        await test.step('Apply the Table data-asset quick filter', async () => {
+          await page.getByTestId('search-dropdown-Data Assets').click();
 
-        await searchAndClickOnOption(
-          page,
-          { label: 'Data Assets', key: 'entityType', value: 'Table' },
-          true
-        );
-        await clickUpdateButtonIfVisible(page);
+          const searchRes = page.waitForResponse(
+            (response) =>
+              response.url().includes('/api/v1/search/query') &&
+              response.url().includes('index=dataAsset') &&
+              response.url().includes('size=15')
+          );
 
-        const response = await searchRes;
-        resultTotal = (await response.json()).hits.total.value;
+          await searchAndClickOnOption(
+            page,
+            { label: 'Data Assets', key: 'entityType', value: 'table' },
+            true
+          );
+          await clickUpdateButtonIfVisible(page);
 
-        await waitForAllLoadersToDisappear(page);
-      });
+          const response = await searchRes;
+          resultTotal = (await response.json()).hits.total.value;
 
-      await test.step('Count badge shows the same total as the API', async () => {
-        const countEl = page.getByTestId('search-results-count');
+          await waitForAllLoadersToDisappear(page);
+        });
 
-        await expect(countEl).toBeVisible();
-        await expect(countEl).toContainText(resultTotal.toLocaleString());
-      });
-    });
+        await test.step('Count badge shows the same total as the API', async () => {
+          const countEl = page.getByTestId('search-results-count');
 
-    test('Verify the toolbar Clear All button is removed', async ({ page }) => {
-      await test.step('Apply a quick filter', async () => {
-        await page.getByTestId('search-dropdown-Data Assets').click();
-        await searchAndClickOnOption(
-          page,
-          { label: 'Data Assets', key: 'entityType', value: 'Table' },
-          true
-        );
-        await clickUpdateButtonIfVisible(page);
-        await waitForAllLoadersToDisappear(page);
-      });
+          await expect(countEl).toBeVisible();
+          await expect(countEl).toContainText(resultTotal.toLocaleString());
+        });
+      }
+    );
 
-      await test.step('Only the chip Clear button exists, no toolbar Clear All', async () => {
-        await expect(page.getByTestId('clear-filters')).not.toBeVisible();
-        await expect(page.getByTestId('clear-all-chips')).toBeVisible();
-      });
-    });
+    test(
+      'Verify the toolbar Clear All button is removed',
+      AS_EXPLORE,
+      async ({ page }) => {
+        await test.step('Apply a quick filter', async () => {
+          await page.getByTestId('search-dropdown-Data Assets').click();
+          await searchAndClickOnOption(
+            page,
+            { label: 'Data Assets', key: 'entityType', value: 'table' },
+            true
+          );
+          await clickUpdateButtonIfVisible(page);
+          await waitForAllLoadersToDisappear(page);
+        });
 
-    test('Verify browse mode has no count', async ({ page }) => {
+        await test.step('Only the chip Clear button exists, no toolbar Clear All', async () => {
+          await expect(page.getByTestId('clear-filters')).not.toBeVisible();
+          await expect(page.getByTestId('clear-all-chips')).toBeVisible();
+        });
+      }
+    );
+
+    test('Verify browse mode has no count', AS_EXPLORE, async ({ page }) => {
       await test.step('Verify no search and no filters are applied', async () => {
         await expect(
           page.getByTestId('advance-search-filter-container')
@@ -1144,8 +1194,12 @@ test.describe(
           columnTag2.create(apiContext),
         ]);
 
-        columnTagTable1 = new TableClass();
-        columnTagTable2 = new TableClass();
+        columnTagTable1 = new TableClass({
+          service: new DatabaseServiceClass(),
+        });
+        columnTagTable2 = new TableClass({
+          service: new DatabaseServiceClass(),
+        });
         await Promise.all([
           columnTagTable1.create(apiContext),
           columnTagTable2.create(apiContext),
@@ -1216,9 +1270,9 @@ test.describe(
       await test.step('Filter chip reflects the applied column tag', async () => {
         await expect(
           page.getByTestId('advance-search-filter-container')
-        ).toContainText(
-          columnTag1.responseData.fullyQualifiedName.toLowerCase()
-        );
+        ).toContainText(columnTag1.responseData.fullyQualifiedName, {
+          ignoreCase: true,
+        });
       });
 
       await test.step('table1 (tagged with tag1) is visible', async () => {
@@ -1266,9 +1320,9 @@ test.describe(
       await test.step('Filter chip reflects the applied column tag', async () => {
         await expect(
           page.getByTestId('advance-search-filter-container')
-        ).toContainText(
-          columnTag2.responseData.fullyQualifiedName.toLowerCase()
-        );
+        ).toContainText(columnTag2.responseData.fullyQualifiedName, {
+          ignoreCase: true,
+        });
       });
 
       await test.step('table2 (tagged with tag2) is visible', async () => {
@@ -1305,7 +1359,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1380,7 +1434,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1443,6 +1497,11 @@ test.describe(
     });
 
     test('Column Tags Not in [tag1] excludes table1', async ({ page }) => {
+      // Advanced-search response + ES tag-negation propagation drifts under
+      // merge-queue load — the exclusion assertion can race the search
+      // aggregation. Triple the budget for a clean pass at 0 retries.
+      test.slow();
+
       await test.step('Open advanced search dialog', async () => {
         await showAdvancedSearchDialog(page);
       });
@@ -1455,7 +1514,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1497,7 +1556,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1539,7 +1598,7 @@ test.describe(
           index: 1,
         });
 
-        await page.getByTestId('advanced-search-add-rule').nth(1).click();
+        await page.getByTestId('advanced-search-add-rule').click();
 
         await fillRule(page, {
           condition: '==',
@@ -1582,7 +1641,6 @@ test.describe(
     const SECOND_PAGE_VALUE = 'enum_val_100';
 
     let enumCPName: string;
-    let enumCPId: string;
     let lazyLoadTable: TableClass;
 
     test.beforeAll(
@@ -1590,7 +1648,9 @@ test.describe(
       async ({ browser }) => {
         const { apiContext, afterAction } = await performAdminLogin(browser);
         try {
-          lazyLoadTable = new TableClass();
+          lazyLoadTable = new TableClass({
+            service: new DatabaseServiceClass(),
+          });
           await lazyLoadTable.create(apiContext);
 
           const cpMetadataTypeRes = await apiContext.get(
@@ -1623,8 +1683,7 @@ test.describe(
               },
             }
           );
-          const cpData = await cpRes.json();
-          enumCPId = cpData.id;
+          expect(cpRes.ok()).toBeTruthy();
         } finally {
           await afterAction();
         }
@@ -1638,115 +1697,79 @@ test.describe(
       await sidebarClick(page, SidebarItem.EXPLORE);
       await showAdvancedSearchDialog(page);
 
-      const ruleLocator = page.locator('.rule').nth(0);
+      const ruleLocator = page.getByTestId('query-builder-rule-0');
 
+      // Each drill level gets its own control in the row, suffixed by depth:
+      // Custom Properties -> Table -> the property.
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select'),
         'Custom Properties',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select-1'),
         'Table',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.getByTestId('advanced-search-field-select-2'),
         enumCPName,
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.getByTestId('advanced-search-operator-select'),
         'Equals'
       );
 
-      const valueSelector = ruleLocator.locator(
-        '.ant-select-selection-overflow'
+      const comboboxInput = ruleLocator.locator(
+        '[data-testid=advanced-search-value] input[role="combobox"]'
       );
 
-      await expect(valueSelector).toBeVisible({ timeout: 15000 });
-      await valueSelector.click();
+      await expect(comboboxInput).toBeVisible({ timeout: 15000 });
+      // fill('') focuses the input (menuTrigger="focus" opens the popup)
+      // without pointer-clicking — the overlaid chevron button can intercept
+      // clicks at the input's center in narrow ComboBoxes.
+      await comboboxInput.fill('');
 
-      const dropdown = page.locator('.ant-select-dropdown:visible').last();
+      const dropdown = page.locator('[role="listbox"]:visible').last();
 
       await expect(dropdown).toBeVisible();
 
-      return { ruleLocator, valueSelector, dropdown };
+      return { ruleLocator, comboboxInput, dropdown };
     };
 
-    test('should append page-2 items and make them visible when Load more button is clicked', async ({
-      page,
-    }) => {
-      test.slow();
+    test(
+      'should find page-2 items via search without clicking Load more',
+      AS_CUSTOM_PROPERTY,
+      async ({ page }) => {
+        test.slow();
 
-      const { dropdown } = await openEnumValueDropdown(page);
+        const { ruleLocator, dropdown } = await openEnumValueDropdown(page);
 
-      // Page 1 items present; page-2 item not yet visible
-      await expect(
-        dropdown.locator(`[title="${FIRST_PAGE_VALUE}"]`)
-      ).toBeVisible({ timeout: 10000 });
-      await expect(
-        dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
-      ).not.toBeVisible();
+        // Page 1 items load; page-2 item is not yet visible
+        await expect(
+          dropdown.getByRole('option', { name: FIRST_PAGE_VALUE })
+        ).toBeVisible({ timeout: 10000 });
+        await expect(
+          dropdown.getByRole('option', { name: SECOND_PAGE_VALUE })
+        ).not.toBeVisible();
 
-      // "Load more..." button visible at the bottom of the list
-      const loadMoreBtn = dropdown
-        .locator('a')
-        .filter({ hasText: /load more/i });
+        // Type to search — asyncFetch filters the full values array, not just the loaded page
+        const searchInput = ruleLocator.locator(
+          '[data-testid=advanced-search-value] input[role="combobox"]'
+        );
 
-      await expect(loadMoreBtn).toBeVisible();
+        await searchInput.fill(SECOND_PAGE_VALUE);
 
-      // Click Load more → page-2 items append
-      await loadMoreBtn.click();
-
-      // Hover over the virtual list so mouse wheel events target it
-      const virtualListHolder = dropdown.locator('.rc-virtual-list-holder');
-
-      await expect(virtualListHolder).toBeVisible();
-      await virtualListHolder.hover();
-
-      // Wheel-scroll in small increments until the page-2 item comes into view
-      const secondPageItem = dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`);
-      let found = await secondPageItem.isVisible();
-
-      for (let i = 0; i < 20 && !found; i++) {
-        await page.mouse.wheel(0, 200);
-        found = await secondPageItem.isVisible();
+        // Item appears immediately without clicking Load more
+        await expect(
+          dropdown.getByRole('option', { name: SECOND_PAGE_VALUE })
+        ).toBeVisible({ timeout: 10000 });
       }
-
-      await expect(secondPageItem).toBeVisible({ timeout: 5000 });
-    });
-
-    test('should find page-2 items via search without clicking Load more', async ({
-      page,
-    }) => {
-      test.slow();
-
-      const { ruleLocator, dropdown } = await openEnumValueDropdown(page);
-
-      // Page 1 items load; page-2 item is not yet visible
-      await expect(
-        dropdown.locator(`[title="${FIRST_PAGE_VALUE}"]`)
-      ).toBeVisible({ timeout: 10000 });
-      await expect(
-        dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
-      ).not.toBeVisible();
-
-      // Type to search — asyncFetch filters the full values array, not just the loaded page
-      const searchInput = ruleLocator.locator(
-        '.rule--widget .ant-select-selection-search-input'
-      );
-
-      await searchInput.fill(SECOND_PAGE_VALUE);
-
-      // Item appears immediately without clicking Load more
-      await expect(
-        dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
-      ).toBeVisible({ timeout: 10000 });
-    });
+    );
   }
 );

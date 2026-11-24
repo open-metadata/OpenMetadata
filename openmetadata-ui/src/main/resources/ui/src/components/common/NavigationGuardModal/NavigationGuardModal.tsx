@@ -17,8 +17,8 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
+import { Save } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as SaveIcon } from '../../../assets/svg/ic-save.svg';
 
 interface NavigationGuardModalProps {
   isOpen: boolean;
@@ -36,12 +36,16 @@ export const NavigationGuardModal = ({
   return (
     <ModalOverlay isOpen={isOpen} onOpenChange={(open) => !open && onStay()}>
       <Modal>
-        <Dialog showCloseButton width={480} onClose={onStay}>
+        <Dialog
+          showCloseButton
+          data-testid="navigation-guard-modal"
+          width={480}
+          onClose={onStay}>
           <Dialog.Header>
             <div className="tw:relative tw:w-max">
               <FeaturedIcon
                 color="warning"
-                icon={SaveIcon}
+                icon={Save}
                 size="lg"
                 theme="light"
               />
@@ -56,7 +60,11 @@ export const NavigationGuardModal = ({
             </div>
           </Dialog.Header>
           <Dialog.Footer className="tw:border-none tw:sm:mt-3">
-            <Button color="secondary" size="lg" onPress={onLeave}>
+            <Button
+              color="secondary"
+              data-testid="navigation-guard-discard"
+              size="lg"
+              onPress={onLeave}>
               {t('label.discard')}
             </Button>
             <Button color="primary" size="lg" onPress={onStay}>

@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.automatedTa
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
+import static org.openmetadata.service.governance.workflows.Workflow.REJECTION_COMMENT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
@@ -35,6 +36,7 @@ public class RejectRecognizerFeedbackImpl implements JavaDelegate {
               varHandler.getNamespacedVariable(
                   inputNamespaces.namespaceFor(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
       RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
+      WorkflowVariableHandler.requireRecognizerFeedback(feedback, execution);
 
       String updatedByNamespace = inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE);
       String reviewedBy = "governance-bot";
@@ -47,7 +49,7 @@ public class RejectRecognizerFeedbackImpl implements JavaDelegate {
       }
 
       String comment =
-          (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, "rejectionComment");
+          (String) varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, REJECTION_COMMENT_VARIABLE);
 
       RecognizerFeedbackRepository repo =
           new RecognizerFeedbackRepository(Entity.getCollectionDAO());

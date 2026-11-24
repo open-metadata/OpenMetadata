@@ -1,0 +1,15 @@
+{
+  "events": [
+    {
+      "kind": "host-build-cache-cleanup",
+      "phase": "distributed-recovery",
+      "startedAt": "2026-09-08T23:24:54Z",
+      "observedCompletedAt": "2026-09-08 23:25:35 UTC",
+      "command": "docker builder prune --force --filter 'until=168h' --max-used-space 24GB --reserved-space 20GB",
+      "exitCode": 0,
+      "dockerReportedReclaimed": "8.287GB",
+      "reason": "Shared-host free disk fell faster than the benchmark data grew; reclaiming old unused build cache restored headroom for compaction.",
+      "measurementScope": "The benchmark and resource/query sampling continued during cleanup. No samples or elapsed time were excluded."
+    }
+  ]
+}

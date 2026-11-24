@@ -39,6 +39,7 @@ export enum SettingType {
     EntityRulesSettings = "entityRulesSettings",
     EventHandlerConfiguration = "eventHandlerConfiguration",
     FernetConfiguration = "fernetConfiguration",
+    GlossarySettings = "glossarySettings",
     GlossaryTermRelationSettings = "glossaryTermRelationSettings",
     JwtTokenConfiguration = "jwtTokenConfiguration",
     LineageSettings = "lineageSettings",
@@ -58,6 +59,7 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    SparqlQuerySettings = "sparqlQuerySettings",
     StartupChecksums = "startupChecksums",
     TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
@@ -111,8 +113,14 @@ export enum SettingType {
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
  *
- * App-wide UI configuration. Seeded from yaml/env on first boot; DB-backed and
- * admin-mutable at runtime afterwards (yaml is ignored once a DB row exists).
+ * Catalog-wide preferences for glossary terms.
+ *
+ * Administrator-managed SPARQL query templates available across the installation.
+ *
+ * App-wide UI configuration. It exists both in the server configuration (yaml/env) and in
+ * the database, and configSource.app (APP_CONFIG_SOURCE, default DB) decides which one
+ * wins. In DB mode the stored value wins, and the server configuration only fills values
+ * the stored setting lacks.
  *
  * Fingerprints of bundled resources successfully applied during server startup.
  */
@@ -217,6 +225,16 @@ export interface PipelineServiceClientConfiguration {
      */
     clientType?: ClientType;
     /**
+     * JWT claim name containing the user's display name. Used only when emailClaim is
+     * configured.
+     */
+    displayNameClaim?: string;
+    /**
+     * JWT claim name containing the user's email address. When omitted, OpenMetadata continues
+     * using the legacy jwtPrincipalClaims flow for backward compatibility.
+     */
+    emailClaim?: string;
+    /**
      * Enable automatic redirect from the sign-in page to the configured SSO provider.
      */
     enableAutoRedirect?: boolean;
@@ -230,12 +248,15 @@ export interface PipelineServiceClientConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
-     * Jwt Principal Claim
+     * [DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the
+     * principal/subject of the token. Defaults are sub, email, preferred_username, name, upn,
+     * email_verified
      */
     jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
-     * 'email'. Both username and email mappings are required.
+     * [DEPRECATED: Use 'emailClaim' and 'displayNameClaim' instead] Use these claims from the
+     * JWT to identify the principal/subject and extract email. Format:
+     * 'username:claim_name,email:claim_name'
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -287,19 +308,32 @@ export interface PipelineServiceClientConfiguration {
      */
     tokenValidationAlgorithm?: TokenValidationAlgorithm;
     /**
-     * List of unique admin principals.
+     * List of email addresses that should be granted admin privileges. Preferred over
+     * adminPrincipals.
+     */
+    adminEmails?: string[];
+    /**
+     * [DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.
      */
     adminPrincipals?: string[];
     /**
-     * Allowed Domains to access
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Allowed Domains to access.
      */
     allowedDomains?: string[];
+    /**
+     * List of email domains allowed to authenticate. If empty, all domains are allowed.
+     */
+    allowedEmailDomains?: string[];
     /**
      * List of unique email domains that are allowed to signup on the platforms
      */
     allowedEmailRegistrationDomains?: string[];
     /**
-     * **@Deprecated** List of unique bot principals
+     * Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).
+     */
+    botDomain?: string;
+    /**
+     * [DEPRECATED] List of unique bot principals.
      */
     botPrincipals?: string[];
     /**
@@ -312,15 +346,17 @@ export interface PipelineServiceClientConfiguration {
      */
     defaultOAuthRole?: string;
     /**
-     * Enable Secure Socket Connection.
+     * Deprecated — has no effect (ADR:2026-10-26-push-feed-handshakes-always-authenticate).
+     * Socket handshakes are always authenticated under every configuration.
      */
     enableSecureSocketConnection?: boolean;
     /**
-     * Enable Enforce Principal Domain
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Enable Enforce Principal Domain.
      */
     enforcePrincipalDomain?: boolean;
     /**
-     * Principal Domain
+     * [DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions]
+     * Domain to use for constructing email addresses.
      */
     principalDomain?: string;
     /**
@@ -391,6 +427,10 @@ export interface PipelineServiceClientConfiguration {
      * comma-separated hosts with ports.
      */
     port?: number;
+    /**
+     * Enable gzip compression for HTTP request bodies sent to Elasticsearch.
+     */
+    requestCompressionEnabled?: boolean;
     /**
      * Http/Https connection scheme
      */
@@ -484,6 +524,11 @@ export interface PipelineServiceClientConfiguration {
      */
     openMetadataUrl?: string;
     /**
+     * App-level token (xapp-*) required for Socket Mode. Generate from Slack app settings under
+     * App-Level Tokens with connections:write scope.
+     */
+    appToken?: string;
+    /**
      * Bot Token
      */
     botToken?: string;
@@ -491,6 +536,13 @@ export interface PipelineServiceClientConfiguration {
      * Client Secret of the Application.
      */
     clientSecret?: string;
+    /**
+     * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+     * for production) receives events on a public HTTP endpoint and scales horizontally behind
+     * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+     * deployments that cannot expose a public endpoint (on-prem/firewalled).
+     */
+    connectionMode?: ConnectionMode;
     /**
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
@@ -597,13 +649,16 @@ export interface PipelineServiceClientConfiguration {
      */
     authorizerConfiguration?: AuthorizerConfiguration;
     /**
-     * Automatically create Table and Pipeline entities when they are referenced in OpenLineage
-     * events but don't exist in OpenMetadata.
+     * Create a Table that an OpenLineage event references but OpenMetadata lacks, along with
+     * its missing Database and Database Schema, when the dataset namespace maps to a Database
+     * Service through namespaceToServiceMapping and the event carries the table's columns in
+     * its schema facet. Pipelines are never created.
      */
     autoCreateEntities?: boolean;
     /**
-     * Name of the Pipeline Service to use when auto-creating Pipeline entities from OpenLineage
-     * jobs. This service must exist in OpenMetadata.
+     * Name of the Pipeline Service searched for the Pipeline of an OpenLineage job, named
+     * '<namespace>-<job name>'. Pipelines are never created from OpenLineage events; a job
+     * without one is reported in the response and its edges carry no pipeline.
      */
     defaultPipelineService?: string;
     /**
@@ -612,9 +667,10 @@ export interface PipelineServiceClientConfiguration {
      */
     eventTypeFilter?: EventTypeFilter[];
     /**
-     * Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names. Used to
-     * resolve dataset references to existing tables. Example: 'postgresql://prod-db:5432' ->
-     * 'prod-postgres'
+     * Mapping of OpenLineage dataset namespaces to OpenMetadata Database Service names, matched
+     * exactly and then by the longest namespace prefix. Used to resolve dataset references to
+     * existing tables, and the only way a missing table can be created (see
+     * autoCreateEntities). Example: 'postgresql://prod-db:5432' -> 'prod-postgres'
      */
     namespaceToServiceMapping?: { [key: string]: string };
     /**
@@ -629,6 +685,21 @@ export interface PipelineServiceClientConfiguration {
      */
     allowedOrigins?: string[];
     /**
+     * Exact HTTPS redirect host allowlist, case-insensitive. Empty allows any HTTPS host. No
+     * wildcards or suffix matching. Loopback and native redirects are controlled separately.
+     * Applies to new registration and new authorization flows.
+     */
+    allowedRedirectHosts?: string[];
+    /**
+     * Allow HTTP or HTTPS loopback callbacks for desktop clients.
+     */
+    allowLoopbackRedirects?: boolean;
+    /**
+     * Allow private-use URI scheme callbacks for native clients. Disable to require HTTPS or
+     * enabled loopback callbacks.
+     */
+    allowNativeRedirects?: boolean;
+    /**
      * Base URL for MCP OAuth endpoints. Used for OAuth metadata (issuer, endpoints). If not
      * set, falls back to system settings. For clustered deployments, set this to the
      * external-facing URL.
@@ -640,11 +711,30 @@ export interface PipelineServiceClientConfiguration {
      */
     connectTimeout?: number;
     /**
-     * Name of the MCP server
+     * Names of MCP tools to turn off for every user, admins included. A change applies right
+     * away to tool calls and to the next tools/list, on each server as it reloads the setting;
+     * an MCP client that already listed the tools sees the change when it lists them again. A
+     * name that matches no tool is ignored.
+     */
+    disabledTools?: string[];
+    /**
+     * Allow anonymous OAuth client registration. Disabling it stops new registrations but
+     * preserves existing clients and grants.
+     */
+    dynamicClientRegistrationEnabled?: boolean;
+    /**
+     * Largest MCP tool response, in characters. Tools return fewer items to stay under it, so
+     * it bounds how much of the MCP client's context one call can use. A saved change applies
+     * right away on the server that handled the save; other servers in a cluster pick it up on
+     * restart.
+     */
+    maxResponseChars?: number;
+    /**
+     * Name of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerName?: string;
     /**
-     * Version of the MCP server
+     * Version of the MCP server, reported to clients in initialize. Applies after a restart.
      */
     mcpServerVersion?: string;
     /**
@@ -660,6 +750,13 @@ export interface PipelineServiceClientConfiguration {
      */
     path?: string;
     /**
+     * Expose only the MCP tools that do not change metadata (annotated readOnlyHint), for every
+     * user including admins. A change applies right away to tool calls and to the next
+     * tools/list, on each server as it reloads the setting; an MCP client that already listed
+     * the tools sees the change when it lists them again.
+     */
+    readOnly?: boolean;
+    /**
      * HTTP read timeout in milliseconds for SSO provider metadata fetching. Default: 30000ms
      * (30 seconds)
      */
@@ -669,11 +766,30 @@ export interface PipelineServiceClientConfiguration {
      */
     relationTypes?: GlossaryTermRelationType[];
     /**
+     * Apply classification tags from glossary terms to their associated assets. Changes to
+     * existing search results require reindexing.
+     */
+    enableTagPropagation?: boolean;
+    /**
+     * Installation query templates visible to SPARQL console users.
+     */
+    queryTemplates?: SavedSparqlQuery[];
+    /**
      * Tenant-wide 'first impression' app-mode default. Seeds the app mode for users who have
      * not chosen one; user preference and persona-level app mode still win over this default.
      * Null means no tenant default is configured.
      */
     defaultAppMode?: DefaultAppMode | null;
+    /**
+     * Tenant-wide default order of columns in table schema views. Users can still change the
+     * order per page from the Sort menu; that choice is not saved. Null means no tenant default
+     * is configured, and columns are ordered alphabetically.
+     */
+    defaultColumnOrder?: DefaultColumnOrder | null;
+    /**
+     * Tenant-wide default time format for UI display.
+     */
+    defaultTimeFormat?: DefaultTimeFormat;
     /**
      * Timestamp when the fingerprints were last persisted.
      */
@@ -725,6 +841,13 @@ export interface AllowedFieldField {
      * Detailed explanation of what this field represents and how it affects search behavior
      */
     description: string;
+    /**
+     * Whether this field may be enabled for search highlighting. Server-derived from the index
+     * mapping, not configured: false when the field is mapped flattened/flat_object (no
+     * analyzer, fails the highlight phase) or enabled:false (not indexed, can never match). The
+     * UI only offers the highlight toggle where this is true. Defaults to false.
+     */
+    highlight?: boolean;
     /**
      * Field name that can be used in searchFields
      */
@@ -1273,6 +1396,16 @@ export interface AuthenticationConfiguration {
      */
     clientType?: ClientType;
     /**
+     * JWT claim name containing the user's display name. Used only when emailClaim is
+     * configured.
+     */
+    displayNameClaim?: string;
+    /**
+     * JWT claim name containing the user's email address. When omitted, OpenMetadata continues
+     * using the legacy jwtPrincipalClaims flow for backward compatibility.
+     */
+    emailClaim?: string;
+    /**
      * Enable automatic redirect from the sign-in page to the configured SSO provider.
      */
     enableAutoRedirect?: boolean;
@@ -1286,12 +1419,15 @@ export interface AuthenticationConfiguration {
      */
     forceSecureSessionCookie?: boolean;
     /**
-     * Jwt Principal Claim
+     * [DEPRECATED: Use 'emailClaim' instead] Use this claim from the JWT to identify the
+     * principal/subject of the token. Defaults are sub, email, preferred_username, name, upn,
+     * email_verified
      */
-    jwtPrincipalClaims: string[];
+    jwtPrincipalClaims?: string[];
     /**
-     * Jwt Principal Claim Mapping. Format: 'key:claim_name' where key must be 'username' or
-     * 'email'. Both username and email mappings are required.
+     * [DEPRECATED: Use 'emailClaim' and 'displayNameClaim' instead] Use these claims from the
+     * JWT to identify the principal/subject and extract email. Format:
+     * 'username:claim_name,email:claim_name'
      */
     jwtPrincipalClaimsMapping?: string[];
     /**
@@ -1568,11 +1704,20 @@ export interface OidcClientConfig {
      */
     discoveryUri: string;
     /**
+     * [DEPRECATED: ignored] Confidential OIDC sessions always end with the identity provider's:
+     * each refresh redeems the provider's refresh token for the browser's next ID token, and a
+     * refresh token the provider rejects ends the OpenMetadata session too.
+     */
+    endSessionWithProvider?: boolean;
+    /**
      * Client ID.
      */
     id: string;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * OIDC max_age authentication request parameter: the maximum time in seconds since the user
+     * last actively authenticated at the identity provider. Leave empty so the identity
+     * provider can reuse its own session; '0' is treated as unset. To force re-authentication
+     * on every login, set prompt to 'login' instead.
      */
     maxAge?: string;
     /**
@@ -1584,7 +1729,9 @@ export interface OidcClientConfig {
      */
     preferredJwsAlgorithm?: string;
     /**
-     * Prompt whether login/consent
+     * OIDC prompt authentication request parameter (for example 'login', 'consent' or
+     * 'select_account'). Leaving it empty is recommended: OpenMetadata sends prompt=none on its
+     * own when it re-authenticates a user silently.
      */
     prompt?: string;
     /**
@@ -1612,7 +1759,9 @@ export interface OidcClientConfig {
      */
     tenant: string;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * [DEPRECATED: ignored] OpenMetadata no longer issues its own token after OIDC
+     * authentication: the browser presents the identity provider's ID token, whose lifetime the
+     * provider sets.
      */
     tokenValidity?: number;
     /**
@@ -1678,7 +1827,10 @@ export interface Idp {
      */
     entityId: string;
     /**
-     * X509 Certificate
+     * IdP signing certificate(s): a PEM certificate or concatenated PEM bundle; a single base64
+     * DER certificate is also accepted. Saving requires at least one currently valid
+     * certificate. At runtime every configured certificate is trusted, including expired and
+     * future rollover ones, so remove a retired key explicitly.
      */
     idpX509Certificate?: string;
     /**
@@ -1720,11 +1872,12 @@ export interface Security {
      */
     signSpMetadata?: boolean;
     /**
-     * Only accept valid signed and encrypted assertions if the relevant flags are set
+     * Enable strict SAML protocol checks and the Want Messages Signed / Want Assertions Signed
+     * policies. Require Encrypted Assertions applies independently of strict mode.
      */
     strictMode?: boolean;
     /**
-     * Validity for the JWT Token created from SAML Response
+     * Lifetime in seconds of the OpenMetadata JWT issued after SAML authentication.
      */
     tokenValidity?: number;
     /**
@@ -1732,7 +1885,9 @@ export interface Security {
      */
     validateXml?: boolean;
     /**
-     * SP requires the assertion received to be encrypted.
+     * Reject plaintext assertions even when Strict Mode is off. Optional and disabled by
+     * default. Requires an SP private key and matching certificate; configure token encryption
+     * at the IdP too. Providing an SP key alone does not require encryption.
      */
     wantAssertionEncrypted?: boolean;
     /**
@@ -1790,19 +1945,32 @@ export enum TokenValidationAlgorithm {
  */
 export interface AuthorizerConfiguration {
     /**
-     * List of unique admin principals.
+     * List of email addresses that should be granted admin privileges. Preferred over
+     * adminPrincipals.
      */
-    adminPrincipals: string[];
+    adminEmails?: string[];
     /**
-     * Allowed Domains to access
+     * [DEPRECATED: Use 'adminEmails' instead] List of unique admin principals.
+     */
+    adminPrincipals?: string[];
+    /**
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Allowed Domains to access.
      */
     allowedDomains?: string[];
+    /**
+     * List of email domains allowed to authenticate. If empty, all domains are allowed.
+     */
+    allowedEmailDomains?: string[];
     /**
      * List of unique email domains that are allowed to signup on the platforms
      */
     allowedEmailRegistrationDomains?: string[];
     /**
-     * **@Deprecated** List of unique bot principals
+     * Email domain used for system-created bots (e.g., ingestion-bot@{botDomain}).
+     */
+    botDomain?: string;
+    /**
+     * [DEPRECATED] List of unique bot principals.
      */
     botPrincipals?: string[];
     /**
@@ -1819,17 +1987,19 @@ export interface AuthorizerConfiguration {
      */
     defaultOAuthRole?: string;
     /**
-     * Enable Secure Socket Connection.
+     * Deprecated — has no effect (ADR:2026-10-26-push-feed-handshakes-always-authenticate).
+     * Socket handshakes are always authenticated under every configuration.
      */
     enableSecureSocketConnection: boolean;
     /**
-     * Enable Enforce Principal Domain
+     * [DEPRECATED: Use 'allowedEmailDomains' instead] Enable Enforce Principal Domain.
      */
-    enforcePrincipalDomain: boolean;
+    enforcePrincipalDomain?: boolean;
     /**
-     * Principal Domain
+     * [DEPRECATED: Use 'botDomain' for bots, 'allowedEmailDomains' for domain restrictions]
+     * Domain to use for constructing email addresses.
      */
-    principalDomain: string;
+    principalDomain?: string;
     /**
      * List of unique principals used as test users. **NOTE THIS IS ONLY FOR TEST SETUP AND NOT
      * TO BE USED IN PRODUCTION SETUP**
@@ -1859,9 +2029,33 @@ export interface Aws {
     [property: string]: any;
 }
 
+/**
+ * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+ * for production) receives events on a public HTTP endpoint and scales horizontally behind
+ * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+ * deployments that cannot expose a public endpoint (on-prem/firewalled).
+ */
+export enum ConnectionMode {
+    SocketMode = "SocketMode",
+    Webhook = "Webhook",
+}
+
 export enum DefaultAppMode {
     AI = "ai",
     Classic = "classic",
+}
+
+export enum DefaultColumnOrder {
+    Alphabetical = "alphabetical",
+    SourceOrder = "sourceOrder",
+}
+
+/**
+ * Tenant-wide default time format for UI display.
+ */
+export enum DefaultTimeFormat {
+    The12H = "12h",
+    The24H = "24h",
 }
 
 /**
@@ -1973,6 +2167,12 @@ export interface GlobalSettings {
      * Flag to enable or disable RBAC Search Configuration globally.
      */
     enableAccessControl?: boolean;
+    /**
+     * Index table columns as standalone search documents in the column search index. Disabling
+     * it stops column indexing and deletes the column search index; enabling it creates the
+     * index again, and a reindex of tables fills it.
+     */
+    enableColumnIndexing?: boolean;
     /**
      * Optional list of numeric field-based boosts applied globally.
      */
@@ -2117,7 +2317,8 @@ export interface LogStorageConfiguration {
      */
     earlyFlushWatermarkBytes?: number;
     /**
-     * Enable it for pipelines deployed in the server
+     * Deprecated and ignored. Pipelines store their logs in S3 whenever the type is s3
+     * (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).
      */
     enabled?: boolean;
     /**
@@ -2416,8 +2617,8 @@ export interface NaturalLanguageSearch {
     keywordWeight?: number;
     /**
      * Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector
-     * search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the
-     * cost of latency. Defaults to 2.
+     * search. num_candidates = max(k * multiplier, 100), clamped to Elasticsearch's engine
+     * maximum of 10,000. Higher values improve recall at the cost of latency. Defaults to 2.
      */
     knnNumCandidatesMultiplier?: number;
     /**
@@ -2683,6 +2884,65 @@ export interface PolicyAgentConfiguration {
 }
 
 /**
+ * A SPARQL query saved by a user or curated as an installation query template.
+ */
+export interface SavedSparqlQuery {
+    /**
+     * Preferred result serialization.
+     */
+    format: Format;
+    /**
+     * Stable identifier for the saved query.
+     */
+    id: string;
+    /**
+     * Preferred inference level.
+     */
+    inference: Inference;
+    /**
+     * Display name for the saved query.
+     */
+    name: string;
+    /**
+     * Ontology the query was saved in. Ontology Studio lists a query only in its own ontology;
+     * absent for a query saved outside one.
+     */
+    ontologyId?: string;
+    /**
+     * SPARQL query body.
+     */
+    query: string;
+    /**
+     * Time the query was last saved, in Unix epoch milliseconds.
+     */
+    savedAt: number;
+}
+
+/**
+ * Preferred result serialization.
+ */
+export enum Format {
+    CSV = "csv",
+    JSON = "json",
+    Jsonld = "jsonld",
+    Ntriples = "ntriples",
+    Rdfxml = "rdfxml",
+    Tsv = "tsv",
+    Turtle = "turtle",
+    XML = "xml",
+}
+
+/**
+ * Preferred inference level.
+ */
+export enum Inference {
+    Custom = "custom",
+    None = "none",
+    Owl = "owl",
+    Rdfs = "rdfs",
+}
+
+/**
  * Definition of a glossary term relation type.
  */
 export interface GlossaryTermRelationType {
@@ -2841,6 +3101,7 @@ export interface SampleDataIngestionConfig {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ko = "KO",
     Ru = "RU",
     Zh = "ZH",
 }

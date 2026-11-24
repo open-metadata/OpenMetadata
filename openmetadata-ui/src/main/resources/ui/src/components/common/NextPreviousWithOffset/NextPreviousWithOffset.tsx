@@ -11,19 +11,15 @@
  *  limitations under the License.
  */
 
+import { Button, Dropdown, Typography } from '@openmetadata/ui-core-components';
 import {
-  ArrowLeftOutlined,
-  ArrowRightOutlined,
-  DownOutlined,
-} from '@ant-design/icons';
-import { Button, Dropdown } from 'antd';
+  ArrowLeft,
+  ArrowRight,
+  ChevronDown,
+} from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
 import {
   NextPreviousWithOffsetProps,
@@ -39,10 +35,8 @@ const NextPreviousWithOffset = ({
   ...pagingProps
 }: NextPreviousWithOffsetProps) => {
   const { t } = useTranslation();
-  const {
-    pageSizeOptions = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
-    onShowSizeChange,
-  } = (pagingProps ?? {}) as PagingProps;
+  const { pageSizeOptions = LIST_PAGE_SIZE_OPTIONS, onShowSizeChange } =
+    (pagingProps ?? {}) as PagingProps;
 
   const onNextHandler = useCallback(() => {
     pagingHandler({
@@ -64,52 +58,52 @@ const NextPreviousWithOffset = ({
   );
 
   const nextButtonDisabled = useMemo(() => {
-    return currentPage === totalPages;
+    return currentPage >= totalPages;
   }, [currentPage, totalPages]);
 
   return (
     <div className="flex-center gap-3" data-testid="pagination">
       <Button
-        ghost
-        className="hover-button text-sm flex-center"
+        color="secondary-brand"
         data-testid="previous"
-        disabled={currentPage === 1 || isLoading}
-        icon={<ArrowLeftOutlined />}
-        type="primary"
+        iconLeading={ArrowLeft}
+        isDisabled={currentPage === 1 || isLoading}
         onClick={onPreviousHandler}>
-        <span>{t('label.previous')}</span>
+        <Typography>{t('label.previous')}</Typography>
       </Button>
-      <span data-testid="page-indicator">{`${currentPage}/${totalPages} ${t(
+      <Typography data-testid="page-indicator">{`${currentPage}/${totalPages} ${t(
         'label.page'
-      )}`}</span>
+      )}`}</Typography>
       <Button
-        ghost
-        className="hover-button text-sm flex-center"
+        color="secondary-brand"
         data-testid="next"
-        disabled={nextButtonDisabled || isLoading}
-        type="primary"
+        iconTrailing={ArrowRight}
+        isDisabled={nextButtonDisabled || isLoading}
         onClick={onNextHandler}>
-        <span> {t('label.next')}</span>
-        <ArrowRightOutlined />
+        <Typography>{t('label.next')}</Typography>
       </Button>
       {onShowSizeChange && (
-        <Dropdown
-          disabled={isLoading}
-          menu={{
-            items: pageSizeOptions.map((size) => ({
-              label: `${size} / ${t('label.page')}`,
-              value: size,
-              key: size,
-              onClick: () => onShowSizeChange(size),
-            })),
-          }}>
+        <Dropdown.Root>
           <Button
+            color="secondary"
             data-testid="page-size-change-button"
-            onClick={(e) => e.preventDefault()}>
+            iconTrailing={ChevronDown}
+            isDisabled={isLoading}>
             {`${pageSize} / ${t('label.page')}`}
-            <DownOutlined />
           </Button>
-        </Dropdown>
+          <Dropdown.Popover className="tw:w-auto">
+            <Dropdown.Menu
+              aria-label={t('label.size')}
+              selectionMode="none"
+              onAction={(key) => onShowSizeChange(Number(key))}>
+              {pageSizeOptions.map((size) => (
+                <Dropdown.Item id={String(size)} key={size}>
+                  {`${size} / ${t('label.page')}`}
+                </Dropdown.Item>
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
       )}
     </div>
   );

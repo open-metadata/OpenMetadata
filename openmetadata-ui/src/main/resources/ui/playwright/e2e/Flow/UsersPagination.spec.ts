@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
+import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
@@ -24,6 +24,7 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Soft Delete User Pagination', () => {
   test.beforeAll('Creating and Soft Deleting 30 users', async ({ browser }) => {
+    users.length = 0;
     test.slow(true);
 
     const { apiContext, afterAction } = await createNewPage(browser);

@@ -14,9 +14,12 @@ import { NodeSelection, Plugin } from '@tiptap/pm/state';
 import { EditorView } from '@tiptap/pm/view';
 import { isUndefined } from 'lodash';
 import { DOMSerializer } from 'prosemirror-model';
+import { getLanguageDirection } from '../../../../utils/i18next/i18nextUtil';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { BlockAndDragHandleOptions } from './BlockAndDragDrop';
 import { absoluteRect, nodeDOMAtCoords, nodePosAtDOM } from './helpers';
+
+const OM_NODE_DRAGGING_CLASS = 'om-node-dragging';
 
 export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
   let dragHandleElement: HTMLElement | null = null;
@@ -71,7 +74,7 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
   const handleDragClick = (event: MouseEvent, view: EditorView) => {
     view.focus();
 
-    view.dom.classList.remove('om-node-dragging');
+    view.dom.classList.remove(OM_NODE_DRAGGING_CLASS);
 
     const node = nodeDOMAtCoords({
       x: event.clientX + 50 + options.dragHandleWidth,
@@ -134,7 +137,7 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
       return;
     }
 
-    if (i18n.dir() === 'rtl') {
+    if (getLanguageDirection(i18n) === 'rtl') {
       dragHandleElement.style.right = `${rect.right - rect.width - 10}px`;
     } else {
       dragHandleElement.style.left = `${rect.left - rect.width - 10}px`;
@@ -187,7 +190,7 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
       return;
     }
 
-    if (i18n.dir() === 'rtl') {
+    if (getLanguageDirection(i18n) === 'rtl') {
       blockHandleElement.style.right = `${rect.right - rect.width + 6}px`;
     } else {
       blockHandleElement.style.left = `${rect.left - rect.width + 6}px`;
@@ -275,13 +278,13 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
         },
         // dragging class is used for CSS
         dragstart: (view) => {
-          view.dom.classList.add('om-node-dragging');
+          view.dom.classList.add(OM_NODE_DRAGGING_CLASS);
         },
         drop: (view) => {
-          view.dom.classList.remove('om-node-dragging');
+          view.dom.classList.remove(OM_NODE_DRAGGING_CLASS);
         },
         dragend: (view) => {
-          view.dom.classList.remove('om-node-dragging');
+          view.dom.classList.remove(OM_NODE_DRAGGING_CLASS);
         },
       },
     },

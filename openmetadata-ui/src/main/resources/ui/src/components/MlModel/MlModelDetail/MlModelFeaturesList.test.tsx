@@ -12,7 +12,8 @@
  */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import MlModelFeaturesList from './MlModelFeaturesList';
 
 const mockData = {
@@ -123,13 +124,21 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockReturnValue(<p>RichTextEditorPreviewer</p>);
 });
 
-jest.mock('../../Database/TableTags/TableTags.component', () => {
-  return jest.fn().mockReturnValue(<p>TableTags</p>);
-});
+jest.mock('../../Database/TableTags/TableTags.component', () =>
+  jest.fn(({ hasTagEditAccess, isReadOnly, type }) => (
+    <p data-testid={`table-tags-${type.toLowerCase()}`}>
+      {hasTagEditAccess && !isReadOnly ? 'editable' : 'readonly'}
+    </p>
+  ))
+);
 
-jest.mock('../../Database/TableDescription/TableDescription.component', () => {
-  return jest.fn().mockReturnValue(<p>TableDescription</p>);
-});
+jest.mock('../../Database/TableDescription/TableDescription.component', () =>
+  jest.fn(({ hasEditPermission }) => (
+    <p data-testid="table-description">
+      {hasEditPermission ? 'editable' : 'readonly'}
+    </p>
+  ))
+);
 
 jest.mock(
   '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
@@ -142,25 +151,28 @@ jest.mock(
 
 const mockHandleFeaturesUpdate = jest.fn();
 
-jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  useGenericContext: jest.fn().mockImplementation(() => ({
-    data: mockData,
-    permissions: DEFAULT_ENTITY_PERMISSION,
-    onUpdate: mockHandleFeaturesUpdate,
-    setDisplayedColumns: jest.fn(),
-  })),
-}));
+// Mutable so individual tests can override `permissions` (explicit-deny-wins regression
+// coverage for the getDerivedPermissionFlags conversion, Task 8 Batch 10) without a fresh
+// jest.mock factory per test — APIEndpointSchema.test.tsx precedent.
+const mockUseGenericContextResult = {
+  data: mockData,
+  permissions: {} as OperationPermission,
+  onUpdate: mockHandleFeaturesUpdate,
+  setDisplayedColumns: jest.fn(),
+};
 
 jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
-  useGenericContext: jest.fn().mockImplementation(() => ({
-    data: mockData,
-    permissions: DEFAULT_ENTITY_PERMISSION,
-    onUpdate: mockHandleFeaturesUpdate,
-    setDisplayedColumns: jest.fn(),
-  })),
+  useGenericContext: jest
+    .fn()
+    .mockImplementation(() => mockUseGenericContextResult),
 }));
 
 describe('Test MlModel feature list', () => {
+  beforeEach(() => {
+    mockUseGenericContextResult.data = mockData;
+    mockUseGenericContextResult.permissions = {} as OperationPermission;
+  });
+
   it('Should render MlModel feature list component', async () => {
     render(<MlModelFeaturesList />, {
       wrapper: MemoryRouter,
@@ -185,5 +197,130 @@ describe('Test MlModel feature list', () => {
     expect(featureList).toBeInTheDocument();
     expect(salesFeatureCard).toBeInTheDocument();
     expect(personaFeatureCard).toBeInTheDocument();
+  });
+
+  // Regression coverage for the getDerivedPermissionFlags conversion: an explicit
+  // per-field deny must win over a bare EditAll grant (explicit-deny-wins) — the old
+  // raw `EditX || EditAll` OR let EditAll grant unconditionally.
+  // The Glossary-source TableTags is gated by `canEditGlossaryTerms` (EditGlossaryTerms)
+  // and the Classification-source TableTags by `canEditTags` (EditTags), matching the
+  // backend's `JsonPatchUtils.mapTagToOperation` (Classification→EDIT_TAGS,
+  // Glossary→EDIT_GLOSSARY_TERMS) and all other dual-row TableTags call sites.
+
+  it('denies glossary-source tag edit when EditGlossaryTerms is explicitly false, even with EditAll true', async () => {
+    mockUseGenericContextResult.permissions = {
+      ...ENTITY_PERMISSIONS,
+      EditGlossaryTerms: false,
+    } as OperationPermission;
+
+    render(<MlModelFeaturesList />, { wrapper: MemoryRouter });
+
+    const glossaryTags = await screen.findAllByTestId('table-tags-glossary');
+
+    expect(glossaryTags[0]).toHaveTextContent('readonly');
+  });
+
+  it('grants glossary-source tag edit via EditAll when EditGlossaryTerms is not present', async () => {
+    mockUseGenericContextResult.permissions = {
+      EditAll: true,
+    } as OperationPermission;
+
+    render(<MlModelFeaturesList />, { wrapper: MemoryRouter });
+
+    const glossaryTags = await screen.findAllByTestId('table-tags-glossary');
+
+    expect(glossaryTags[0]).toHaveTextContent('editable');
+  });
+
+  it('denies classification-source tag edit when EditTags is explicitly false, even with EditAll true', async () => {
+    mockUseGenericContextResult.permissions = {
+      ...ENTITY_PERMISSIONS,
+      EditTags: false,
+    } as OperationPermission;
+
+    render(<MlModelFeaturesList />, { wrapper: MemoryRouter });
+
+    const classificationTags = await screen.findAllByTestId(
+      'table-tags-classification'
+    );
+
+    expect(classificationTags[0]).toHaveTextContent('readonly');
+  });
+
+  it('grants classification-source tag edit via EditAll when EditTags is not present', async () => {
+    mockUseGenericContextResult.permissions = {
+      EditAll: true,
+    } as OperationPermission;
+
+    render(<MlModelFeaturesList />, { wrapper: MemoryRouter });
+
+    const classificationTags = await screen.findAllByTestId(
+      'table-tags-classification'
+    );
+
+    expect(classificationTags[0]).toHaveTextContent('editable');
+  });
+
+  // Cross-wiring regression: proves the two rows are gated by the operation that matches
+  // their tag source (not the swapped one). These fail on the pre-fix wiring, where the
+  // Glossary row was gated by EditTags and the Classification row by EditGlossaryTerms.
+
+  it('does not deny glossary-source tag edit when only EditTags is false (glossary is gated by EditGlossaryTerms, not EditTags)', async () => {
+    mockUseGenericContextResult.permissions = {
+      ...ENTITY_PERMISSIONS,
+      EditTags: false,
+    } as OperationPermission;
+
+    render(<MlModelFeaturesList />, { wrapper: MemoryRouter });
+
+    const glossaryTags = await screen.findAllByTestId('table-tags-glossary');
+
+    expect(glossaryTags[0]).toHaveTextContent('editable');
+  });
+
+  it('does not deny classification-source tag edit when only EditGlossaryTerms is false (classification is gated by EditTags, not EditGlossaryTerms)', async () => {
+    mockUseGenericContextResult.permissions = {
+      ...ENTITY_PERMISSIONS,
+      EditGlossaryTerms: false,
+    } as OperationPermission;
+
+    render(<MlModelFeaturesList />, { wrapper: MemoryRouter });
+
+    const classificationTags = await screen.findAllByTestId(
+      'table-tags-classification'
+    );
+
+    expect(classificationTags[0]).toHaveTextContent('editable');
+  });
+
+  it('denies both glossary and classification tag edit when the entity is soft-deleted (isReadOnly)', async () => {
+    mockUseGenericContextResult.data = { ...mockData, deleted: true };
+    mockUseGenericContextResult.permissions = {
+      ...ENTITY_PERMISSIONS,
+      EditGlossaryTerms: true,
+    } as OperationPermission;
+
+    render(<MlModelFeaturesList />, { wrapper: MemoryRouter });
+
+    const glossaryTags = await screen.findAllByTestId('table-tags-glossary');
+    const classificationTags = await screen.findAllByTestId(
+      'table-tags-classification'
+    );
+
+    expect(glossaryTags[0]).toHaveTextContent('readonly');
+    expect(classificationTags[0]).toHaveTextContent('readonly');
+  });
+
+  it('denies description edit when EditDescription is explicitly false, even with EditAll true', async () => {
+    mockUseGenericContextResult.permissions = {
+      ...ENTITY_PERMISSIONS,
+      EditDescription: false,
+    } as OperationPermission;
+
+    render(<MlModelFeaturesList />, { wrapper: MemoryRouter });
+
+    const descriptions = await screen.findAllByTestId('table-description');
+
+    expect(descriptions[0]).toHaveTextContent('readonly');
   });
 });

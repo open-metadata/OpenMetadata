@@ -15,6 +15,8 @@ To be used by OpenMetadata class
 """
 
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.type.entityUsage import EntityUsage
+from metadata.generated.schema.type.usageDetails import UsageDetails
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.ometa.client import REST
 from metadata.utils.logger import ometa_logger
@@ -43,3 +45,14 @@ class OMetaDashboardMixin:
             data=dashboard_usage_request.model_dump_json(),
         )
         logger.debug("Published dashboard usage %s", resp)
+
+    def get_dashboard_usage(self, dashboard: Dashboard, date: str, days: int) -> list[UsageDetails]:
+        """
+        Daily usage of a Dashboard over the `days` (at most 30) up to and including `date`
+
+        :param dashboard: Dashboard Entity
+        :param date: Last day, in ISO 8601 format
+        :param days: Number of days
+        """
+        resp = self.client.get(f"/usage/dashboard/{dashboard.id.root}", data={"date": date, "days": days})
+        return EntityUsage.model_validate(resp).usage

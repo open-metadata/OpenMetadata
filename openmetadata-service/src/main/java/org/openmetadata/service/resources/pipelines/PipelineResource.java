@@ -50,6 +50,7 @@ import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -105,6 +106,77 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("tasks,pipelineStatus", MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_LINEAGE, MetadataOperation.EDIT_STATUS);
+  }
+
+  public static class PipelineTaskList extends ResultList<FieldInterface> {
+    /* Required for serde */
+  }
+
+  @GET
+  @Path("/name/{fqn}/columns")
+  @Operation(
+      operationId = "getPipelineTasksPaginatedByFQN",
+      summary = "Get paginated tasks of a pipeline by fully qualified name",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Paginated tasks",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineTaskList.class))),
+        @ApiResponse(responseCode = "404", description = "Pipeline not found")
+      })
+  public PipelineTaskList getTasksPaginatedByFQN(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the pipeline",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number of tasks returned (1 to 1000, default = 50)")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset,
+      @Parameter(description = "Fields requested in the returned tasks (tags)")
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Include all, deleted, or non-deleted entities.")
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(
+              description = "Sort tasks by. Supported values: 'name' (default), 'ordinalPosition'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "ordinalPosition"}))
+          @QueryParam("sortBy")
+          @DefaultValue("name")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
+    ResultList<FieldInterface> page =
+        getChildFieldPage(
+            securityContext, fqn, limit, offset, fieldsParam, include, sortBy, sortOrder);
+    PipelineTaskList result = new PipelineTaskList();
+    result.setData(page.getData());
+    result.setPaging(page.getPaging());
+    return result;
   }
 
   public static class PipelineList extends ResultList<Pipeline> {
@@ -577,7 +649,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_STATUS);
     authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-    return repository.addBulkPipelineStatus(fqn, pipelineStatuses).toResponse();
+    return repository
+        .addBulkPipelineStatus(fqn, pipelineStatuses, securityContext.getUserPrincipal().getName())
+        .toResponse();
   }
 
   @GET
@@ -586,7 +660,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       operationId = "listPipelineStatuses",
       summary = "List pipeline status",
       description =
-          "Get a list of pipeline status. Use `limit` and `before` or `after` query params for cursor-based pagination. "
+          "Get a page of pipeline statuses, newest first. Use `limit` and `before` or `after` query params for cursor-based pagination. "
               + "Filter by execution status using comma-separated values (e.g., 'Failed,Successful'). "
               + "Search by task name using the `search` parameter.",
       responses = {
@@ -620,12 +694,18 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
           Long endTs,
       @Parameter(
               description =
-                  "Limit the number of pipeline statuses returned. If not provided, returns all results.",
+                  "Maximum number of pipeline statuses to return. 0 returns only the total; follow "
+                      + "the `after` cursor in `paging` to read the rest of the range.",
               schema = @Schema(type = "integer"))
+          @DefaultValue("10")
           @Min(value = 0, message = "must be greater than or equal to 0")
-          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          @Max(
+              value = PipelineRepository.MAX_PIPELINE_STATUS_PAGE_SIZE,
+              message =
+                  "must be less than or equal to "
+                      + PipelineRepository.MAX_PIPELINE_STATUS_PAGE_SIZE)
           @QueryParam("limit")
-          Integer limitParam,
+          int limitParam,
       @Parameter(
               description = "Returns list of pipeline statuses before this cursor (timestamp)",
               schema = @Schema(type = "string"))
@@ -657,6 +737,9 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               schema = @Schema(type = "number"))
           @QueryParam("maxDuration")
           Long maxDuration) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
     return repository.getPipelineStatuses(
         fqn, startTs, endTs, limitParam, before, after, status, search, minDuration, maxDuration);
   }
@@ -720,9 +803,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               description = "Id of the user to be added as follower",
               schema = @Schema(type = "string"))
           UUID userId) {
-    return repository
-        .addFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return addFollowerInternal(securityContext, id, userId);
   }
 
   @DELETE
@@ -751,9 +832,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
               schema = @Schema(type = "UUID"))
           @PathParam("userId")
           UUID userId) {
-    return repository
-        .deleteFollower(securityContext.getUserPrincipal().getName(), id, userId)
-        .toResponse();
+    return deleteFollowerInternal(securityContext, id, userId);
   }
 
   @PUT
@@ -778,9 +857,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
       @Parameter(description = "Id of the Entity", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @GET
@@ -850,6 +927,7 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
 
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
     Fields fields = getFields(fieldsParam);
     ListFilter filter =
         new ListFilter(include)

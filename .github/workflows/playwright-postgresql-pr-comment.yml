@@ -29,9 +29,7 @@ concurrency:
 
 jobs:
   publish-playwright-comment:
-    if: >-
-      github.event.workflow_run.event == 'pull_request' ||
-      github.event.workflow_run.event == 'workflow_dispatch'
+    if: ${{ github.event.workflow_run.event == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout trusted workflow helpers
@@ -52,7 +50,7 @@ jobs:
 
       - name: Update Playwright PR comment
         if: ${{ always() && steps.download-comment.outcome == 'success' }}
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           COMMENT_PAYLOAD_PATH: ${{ runner.temp }}/playwright-pr-comment/summary.json
         with:

@@ -19,7 +19,9 @@ import test, {
 } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 const RELEVANCE_QUERY = 'provider address texas';
 const STOPWORD_RELEVANCE_QUERY = 'provider address in texas';
@@ -295,13 +297,15 @@ const searchForExactTableWithRankingDetails = async (page: Page) => {
   await page.getByTestId('global-search-selector').click();
   await page.getByTestId('global-search-select-option-Table').click();
 
-  const searchResponse = page.waitForResponse(
+  const searchResponse = waitForResponseWithStatus(
+    page,
     (response) =>
+      response.request().method() === 'GET' &&
       response.url().includes('/api/v1/search/query') &&
       response.url().includes('index=table') &&
       response.url().includes('q=provider_address_texas') &&
-      response.url().includes('explain=true') &&
-      response.status() === 200
+      response.url().includes('explain=true'),
+    200
   );
 
   const searchBox = page
@@ -312,16 +316,16 @@ const searchForExactTableWithRankingDetails = async (page: Page) => {
   await searchBox.press('Enter');
   await searchResponse;
 
-  await page.getByTestId('search-container').getByTestId('loader').waitFor({
-    state: 'detached',
-  });
+  await waitForAllLoadersToDisappear(page.getByTestId('search-container'));
   await page.getByTestId('search-results').waitFor({
     state: 'visible',
   });
 };
 
 const openTableSearchSettings = async (page: Page) => {
-  await page.goto('/settings/preferences/search-settings/tables');
+  await page.goto('/settings/preferences/search-settings/tables', {
+    waitUntil: 'domcontentloaded',
+  });
   await expect(page.getByTestId('entity-search-settings-header')).toBeVisible();
 };
 
@@ -588,8 +592,10 @@ test.describe(
 
       await expect(signalBoosts).toBeVisible();
       await expect(
-        signalBoosts.getByTestId('ranking-signal-contributor').first()
-      ).toBeVisible();
+        signalBoosts
+          .getByTestId('ranking-signal-contributor')
+          .filter({ visible: true })
+      ).not.toHaveCount(0);
       // Each contributor is a signed contribution against a named signal.
       await expect(
         signalBoosts.getByTestId('ranking-signal-contributor').first()
@@ -650,7 +656,9 @@ test.describe(
 
       await page.getByTestId('ranking-details-switch').click();
       await rankingDetailsResponse;
-      await expect(page.getByTestId('ranking-details').first()).toBeVisible();
+      await expect(
+        page.getByTestId('ranking-details').filter({ visible: true })
+      ).not.toHaveCount(0);
       await expect(page.getByTestId('ranking-details').first()).toContainText(
         /Exact name|Close name|Structural context|Score/i
       );

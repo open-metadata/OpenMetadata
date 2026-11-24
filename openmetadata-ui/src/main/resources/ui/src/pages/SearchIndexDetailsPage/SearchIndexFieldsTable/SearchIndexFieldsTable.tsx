@@ -11,9 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip, Typography } from 'antd';
-import { ColumnsType } from 'antd/lib/table';
-import { ExpandableConfig } from 'antd/lib/table/interface';
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import {
   cloneDeep,
   groupBy,
@@ -26,12 +24,16 @@ import {
 import { EntityTags, TagFilterOptions } from 'Models';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  ColumnsType,
+  ExpandableConfig,
+} from '../../../components/common/Table/Table.interface';
 
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import CopyLinkButton from '../../../components/common/CopyLinkButton/CopyLinkButton';
+import CopyButton from '../../../components/common/CopyButton/CopyButton';
+import NoSearchResultsPlaceholder from '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import Table from '../../../components/common/Table/Table';
+import Table from '../../../components/common/Table/TableV2';
 import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import { ColumnFilter } from '../../../components/Database/ColumnFilter/ColumnFilter.component';
@@ -62,10 +64,12 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   highlightSearchArrayElement,
   highlightSearchText,
+  renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getEntityDetailsUrl } from '../../../utils/RouterUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   getHighlightedRowClassName,
@@ -211,8 +215,10 @@ const SearchIndexFieldsTable = ({
     [handleEditField]
   );
 
+  // Consumer via useGenericContext() (Task 8 rule 2). `hasViewAccess` is a
+  // byte-for-byte match of the old `ViewAll || ViewBasic` bare OR — pure rename.
   const hasViewPermission = useMemo(
-    () => permissions?.ViewAll || permissions?.ViewBasic,
+    () => getDerivedPermissionFlags(permissions).hasViewAccess,
     [permissions]
   );
 
@@ -242,16 +248,22 @@ const SearchIndexFieldsTable = ({
         return <>{NO_DATA_PLACEHOLDER}</>;
       }
 
+      const shouldShowPlainText =
+        isReadOnly || (displayValue && displayValue.length < 25 && !isReadOnly);
+
       return (
         <div data-testid={`${record.name}-data-type`}>
-          {isReadOnly ||
-          (displayValue && displayValue.length < 25 && !isReadOnly) ? (
+          {shouldShowPlainText ? (
             toLower(displayValue)
           ) : (
-            <Tooltip title={toLower(displayValue)}>
-              <Typography.Text ellipsis className="cursor-pointer">
+            <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
+              title={toLower(displayValue)}
+              triggerClassName="tw:block tw:min-w-0">
+              <Typography ellipsis className="cursor-pointer">
                 {highlightSearchArrayElement(displayValue, searchText)}
-              </Typography.Text>
+              </Typography>
             </Tooltip>
           )}
         </div>
@@ -303,13 +315,19 @@ const SearchIndexFieldsTable = ({
             className="d-inline-flex items-start gap-1 hover-icon-group flex-column"
             style={{ maxWidth: '80%' }}>
             <span className="break-word text-link-color">
-              {stringToHTML(
+              {renderHighlightedText(
                 highlightSearchText(getEntityName(record), searchText)
               )}
             </span>
-            <CopyLinkButton
-              entityType={EntityType.SEARCH_INDEX}
-              fieldFqn={record.fullyQualifiedName || ''}
+            <CopyButton
+              className="hover-cell-icon"
+              isDisabled={!record.fullyQualifiedName}
+              size="xs"
+              testId="copy-field-link-button"
+              value={getEntityDetailsUrl(
+                EntityType.SEARCH_INDEX,
+                record.fullyQualifiedName ?? ''
+              )}
             />
           </div>
         ),
@@ -454,7 +472,11 @@ const SearchIndexFieldsTable = ({
           />
         }
         locale={{
-          emptyText: <FilterTablePlaceHolder />,
+          emptyText: (
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+            </div>
+          ),
         }}
         pagination={false}
         rowClassName={getRowClassName}

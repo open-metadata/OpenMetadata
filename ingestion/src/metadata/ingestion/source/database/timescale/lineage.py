@@ -14,7 +14,7 @@ TimescaleDB lineage module with continuous aggregate support
 """
 
 import traceback
-from typing import Iterable, Optional  # noqa: UP035
+from collections.abc import Iterable
 
 from sqlalchemy import text
 
@@ -32,6 +32,8 @@ from metadata.ingestion.source.database.timescale.queries import (
     TIMESCALE_GET_CONTINUOUS_AGGREGATE_DEFINITIONS,
 )
 from metadata.ingestion.source.models import TableView
+from metadata.utils import fqn
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -44,7 +46,7 @@ class TimescaleLineageSource(PostgresLineageSource):
     """
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         """Create TimescaleLineageSource"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection = config.serviceConnection.root.config
@@ -96,6 +98,22 @@ class TimescaleLineageSource(PostgresLineageSource):
 
             for row in results:
                 try:
+                    if (
+                        filter_by_database(
+                            self.source_config.databaseFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+                            fqn.unquote_name(self.service_connection.database),
+                        )
+                        or filter_by_schema(
+                            self.source_config.schemaFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+                            fqn.unquote_name(row.view_schema),
+                        )
+                        or filter_by_table(
+                            self.source_config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
+                            fqn.unquote_name(row.view_name),
+                        )
+                    ):
+                        self.status.filter(row.view_name, "View Filtered Out")
+                        continue
                     yield TableView(
                         table_name=row.view_name,
                         schema_name=row.view_schema,

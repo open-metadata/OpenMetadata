@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { APIRequestContext, Browser } from '@playwright/test';
+import { migratedTo } from '../../constant/migration';
 import { searchRBACEntities } from '../../constant/searchRBAC';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -19,13 +20,37 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { disableEtagConditionalReads, uuid } from '../../utils/common';
+import { pickEntityMatrix } from '../../utils/entityMatrix';
 import { waitForSearchIndexed } from '../../utils/polling';
 import {
+  enableDisableSearchRBAC,
   exploreShouldShowEntity,
   exploreTreeCategories,
   searchForEntityShouldWork,
   searchForEntityShouldWorkShowNoResult,
 } from '../../utils/searchRBAC';
+
+// `enableAccessControl` is global and SearchSettings.spec.ts resets it, so
+// re-assert it per test rather than trusting the project setup to survive.
+test.beforeEach(async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+
+  try {
+    await enableDisableSearchRBAC(apiContext, true);
+  } finally {
+    await afterAction();
+  }
+});
+
+const ASSET_SEARCH_IT = migratedTo.javaIT(
+  'SearchRbacIT#viewAllowedUserFindsAssetAndDeniedUserDoesNot'
+);
+const COLUMN_SEARCH_IT = migratedTo.javaIT(
+  'SearchRbacIT#tableColumnSearchFollowsTheTablePolicy'
+);
+const EXPLORE_IT = migratedTo.javaIT(
+  'SearchRbacIT#exploreAndTypeCountsShowOnlyPermittedAssetTypes'
+);
 
 const newStrippedPage = async (browser: Browser) => {
   const page = await browser.newPage();
@@ -34,7 +59,13 @@ const newStrippedPage = async (browser: Browser) => {
   return page;
 };
 
-for (const entity of searchRBACEntities) {
+for (const entity of pickEntityMatrix(
+  __filename,
+  searchRBACEntities,
+  searchRBACEntities.filter(
+    ({ class: EntityClass }) => EntityClass === TableClass
+  )
+)) {
   const entityObj = new entity.class();
 
   test.describe(entity.name, () => {
@@ -117,10 +148,10 @@ for (const entity of searchRBACEntities) {
       await afterAction();
     });
 
-    test(`User with permission`, async ({ browser }) => {
+    test(`User with permission`, ASSET_SEARCH_IT, async ({ browser }) => {
       const userWithPermissionPage = await newStrippedPage(browser);
 
-      await user1.login(userWithPermissionPage);
+      await user1.signIn(userWithPermissionPage);
 
       await searchForEntityShouldWork(
         entityObj.entityResponseData?.fullyQualifiedName ?? '',
@@ -132,10 +163,10 @@ for (const entity of searchRBACEntities) {
       );
     });
 
-    test(`User without permission`, async ({ browser }) => {
+    test(`User without permission`, ASSET_SEARCH_IT, async ({ browser }) => {
       const userWithoutPermissionPage = await newStrippedPage(browser);
 
-      await user2.login(userWithoutPermissionPage);
+      await user2.signIn(userWithoutPermissionPage);
 
       await searchForEntityShouldWorkShowNoResult(
         entityObj.entityResponseData?.fullyQualifiedName ?? '',
@@ -243,11 +274,11 @@ test.describe(`Table Column`, () => {
     await afterAction();
   });
 
-  test(`User with permission`, async ({ browser }) => {
+  test(`User with permission`, COLUMN_SEARCH_IT, async ({ browser }) => {
     const userWithPermissionPage = await newStrippedPage(browser);
     const column = table.entityResponseData?.columns?.[0];
 
-    await user1.login(userWithPermissionPage);
+    await user1.signIn(userWithPermissionPage);
 
     await searchForEntityShouldWork(
       column.fullyQualifiedName ?? '',
@@ -257,11 +288,11 @@ test.describe(`Table Column`, () => {
     );
   });
 
-  test(`User without permission`, async ({ browser }) => {
+  test(`User without permission`, COLUMN_SEARCH_IT, async ({ browser }) => {
     const userWithoutPermissionPage = await newStrippedPage(browser);
     const column = table.entityResponseData?.columns?.[0];
 
-    await user2.login(userWithoutPermissionPage);
+    await user2.signIn(userWithoutPermissionPage);
 
     await searchForEntityShouldWorkShowNoResult(
       column.fullyQualifiedName ?? '',
@@ -376,80 +407,110 @@ test.describe('Explore browse respects search RBAC across users', () => {
     dashboard.entityResponseData?.fullyQualifiedName ?? '';
   const dashboardName = () => dashboard.entityResponseData?.displayName ?? '';
 
-  test('a user permitted on all asset types browses both', async ({
-    browser,
-  }) => {
-    test.slow();
-    const page = await newStrippedPage(browser);
-    await userAll.login(page);
+  test(
+    'a user permitted on all asset types browses both',
+    EXPLORE_IT,
+    async ({ browser }) => {
+      test.slow();
+      const page = await newStrippedPage(browser);
+      await userAll.signIn(page);
 
-    await exploreShouldShowEntity(page, tableFqn(), tableName(), true);
-    await exploreShouldShowEntity(page, dashboardFqn(), dashboardName(), true);
+      await exploreShouldShowEntity(page, tableFqn(), tableName(), true);
+      await exploreShouldShowEntity(
+        page,
+        dashboardFqn(),
+        dashboardName(),
+        true
+      );
 
-    await page.close();
-  });
+      await page.close();
+    }
+  );
 
-  test('a table-scoped user sees tables but never dashboards', async ({
-    browser,
-  }) => {
-    test.slow();
-    const page = await newStrippedPage(browser);
-    await userTableOnly.login(page);
+  test(
+    'a table-scoped user sees tables but never dashboards',
+    EXPLORE_IT,
+    async ({ browser }) => {
+      test.slow();
+      const page = await newStrippedPage(browser);
+      await userTableOnly.signIn(page);
 
-    await exploreShouldShowEntity(page, tableFqn(), tableName(), true);
-    await exploreShouldShowEntity(page, dashboardFqn(), dashboardName(), false);
+      await exploreShouldShowEntity(page, tableFqn(), tableName(), true);
+      await exploreShouldShowEntity(
+        page,
+        dashboardFqn(),
+        dashboardName(),
+        false
+      );
 
-    await page.close();
-  });
+      await page.close();
+    }
+  );
 
-  test('a dashboard-scoped user sees dashboards but never tables', async ({
-    browser,
-  }) => {
-    test.slow();
-    const page = await newStrippedPage(browser);
-    await userDashboardOnly.login(page);
+  test(
+    'a dashboard-scoped user sees dashboards but never tables',
+    EXPLORE_IT,
+    async ({ browser }) => {
+      test.slow();
+      const page = await newStrippedPage(browser);
+      await userDashboardOnly.signIn(page);
 
-    await exploreShouldShowEntity(page, dashboardFqn(), dashboardName(), true);
-    await exploreShouldShowEntity(page, tableFqn(), tableName(), false);
+      await exploreShouldShowEntity(
+        page,
+        dashboardFqn(),
+        dashboardName(),
+        true
+      );
+      await exploreShouldShowEntity(page, tableFqn(), tableName(), false);
 
-    await page.close();
-  });
+      await page.close();
+    }
+  );
 
-  test('a fully denied user sees neither asset type when browsing', async ({
-    browser,
-  }) => {
-    test.slow();
-    const page = await newStrippedPage(browser);
-    await userDenied.login(page);
+  test(
+    'a fully denied user sees neither asset type when browsing',
+    EXPLORE_IT,
+    async ({ browser }) => {
+      test.slow();
+      const page = await newStrippedPage(browser);
+      await userDenied.signIn(page);
 
-    await exploreShouldShowEntity(page, tableFqn(), tableName(), false);
-    await exploreShouldShowEntity(page, dashboardFqn(), dashboardName(), false);
+      await exploreShouldShowEntity(page, tableFqn(), tableName(), false);
+      await exploreShouldShowEntity(
+        page,
+        dashboardFqn(),
+        dashboardName(),
+        false
+      );
 
-    await page.close();
-  });
+      await page.close();
+    }
+  );
 
-  test('the browse tree only shows the asset-type categories a user can access', async ({
-    browser,
-  }) => {
-    test.slow();
+  test(
+    'the browse tree only shows the asset-type categories a user can access',
+    EXPLORE_IT,
+    async ({ browser }) => {
+      test.slow();
 
-    // A table-scoped user's tree has Databases but never Dashboards — the
-    // Dashboards count is RBAC-filtered to zero, so the category drops out.
-    const tablePage = await newStrippedPage(browser);
-    await userTableOnly.login(tablePage);
-    await exploreTreeCategories(tablePage, {
-      visible: ['Databases'],
-      hidden: ['Dashboards'],
-    });
-    await tablePage.close();
+      // A table-scoped user's tree has Databases but never Dashboards — the
+      // Dashboards count is RBAC-filtered to zero, so the category drops out.
+      const tablePage = await newStrippedPage(browser);
+      await userTableOnly.signIn(tablePage);
+      await exploreTreeCategories(tablePage, {
+        visible: ['Databases'],
+        hidden: ['Dashboards'],
+      });
+      await tablePage.close();
 
-    // A dashboard-scoped user sees the mirror image — no Databases category.
-    const dashboardPage = await newStrippedPage(browser);
-    await userDashboardOnly.login(dashboardPage);
-    await exploreTreeCategories(dashboardPage, {
-      visible: ['Dashboards'],
-      hidden: ['Databases'],
-    });
-    await dashboardPage.close();
-  });
+      // A dashboard-scoped user sees the mirror image — no Databases category.
+      const dashboardPage = await newStrippedPage(browser);
+      await userDashboardOnly.signIn(dashboardPage);
+      await exploreTreeCategories(dashboardPage, {
+        visible: ['Dashboards'],
+        hidden: ['Databases'],
+      });
+      await dashboardPage.close();
+    }
+  );
 });

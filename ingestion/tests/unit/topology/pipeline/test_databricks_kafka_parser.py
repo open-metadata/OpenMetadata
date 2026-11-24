@@ -15,9 +15,11 @@ Unit tests for Databricks Kafka parser
 
 import unittest
 
-from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
+from metadata.ingestion.source.pipeline.databrickspipeline.dlt_parsers import (
+    PythonDltParser,
     extract_dlt_table_dependencies,
-    extract_dlt_table_names,
+)
+from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
     extract_kafka_sources,
     get_pipeline_libraries,
 )
@@ -317,14 +319,14 @@ class TestPipelineLibraries(unittest.TestCase):
         pipeline_config = {"libraries": [{"notebook": {"path": "/Workspace/dlt/bronze_pipeline"}}]}
         libraries = get_pipeline_libraries(pipeline_config)
         self.assertEqual(len(libraries), 1)
-        self.assertEqual(libraries[0], "/Workspace/dlt/bronze_pipeline")
+        self.assertEqual(libraries[0].path, "/Workspace/dlt/bronze_pipeline")
 
     def test_file_library(self):
         """Test file library extraction"""
         pipeline_config = {"libraries": [{"file": {"path": "/Workspace/scripts/etl.py"}}]}
         libraries = get_pipeline_libraries(pipeline_config)
         self.assertEqual(len(libraries), 1)
-        self.assertEqual(libraries[0], "/Workspace/scripts/etl.py")
+        self.assertEqual(libraries[0].path, "/Workspace/scripts/etl.py")
 
     def test_mixed_libraries(self):
         """Test mixed notebook and file libraries"""
@@ -337,9 +339,10 @@ class TestPipelineLibraries(unittest.TestCase):
         }
         libraries = get_pipeline_libraries(pipeline_config)
         self.assertEqual(len(libraries), 3)
-        self.assertIn("/nb1", libraries)
-        self.assertIn("/file1.py", libraries)
-        self.assertIn("/nb2", libraries)
+        paths = [library.path for library in libraries]
+        self.assertIn("/nb1", paths)
+        self.assertIn("/file1.py", paths)
+        self.assertIn("/nb2", paths)
 
     def test_empty_libraries(self):
         """Test empty libraries list"""
@@ -371,7 +374,7 @@ class TestPipelineLibraries(unittest.TestCase):
         }
         libraries = get_pipeline_libraries(pipeline_config)
         self.assertEqual(len(libraries), 1)
-        self.assertEqual(libraries[0], "/nb")
+        self.assertEqual(libraries[0].path, "/nb")
 
 
 class TestDLTTableExtraction(unittest.TestCase):
@@ -386,7 +389,7 @@ class TestDLTTableExtraction(unittest.TestCase):
         def bronze_events():
             return spark.readStream.format("kafka").load()
         """
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         self.assertEqual(len(table_names), 1)
         self.assertEqual(table_names[0], "user_events_bronze")
 
@@ -400,7 +403,7 @@ class TestDLTTableExtraction(unittest.TestCase):
         def my_function():
             return df
         """
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         self.assertEqual(len(table_names), 1)
         self.assertEqual(table_names[0], "my_table")
 
@@ -415,7 +418,7 @@ class TestDLTTableExtraction(unittest.TestCase):
         def silver():
             return dlt.read("bronze_table")
         """
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         self.assertEqual(len(table_names), 2)
         self.assertIn("bronze_table", table_names)
         self.assertIn("silver_table", table_names)
@@ -429,7 +432,7 @@ class TestDLTTableExtraction(unittest.TestCase):
         def event_log():
             return df
         """
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         # Should infer from entity_name variable and function pattern
         self.assertEqual(len(table_names), 1)
         self.assertEqual(table_names[0], "customerevent_event_log")
@@ -441,7 +444,7 @@ class TestDLTTableExtraction(unittest.TestCase):
         def my_function():
             return df
         """
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         # Should return empty list when no name found
         self.assertEqual(len(table_names), 0)
 
@@ -452,18 +455,18 @@ class TestDLTTableExtraction(unittest.TestCase):
         def func():
             return df
         """
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         self.assertEqual(len(table_names), 1)
         self.assertEqual(table_names[0], "CasedTable")
 
     def test_empty_source_code(self):
         """Test empty source code"""
-        table_names = extract_dlt_table_names("")
+        table_names = PythonDltParser.extract_dlt_table_names("")
         self.assertEqual(len(table_names), 0)
 
     def test_null_source_code(self):
         """Test None source code doesn't crash"""
-        table_names = extract_dlt_table_names(None)
+        table_names = PythonDltParser.extract_dlt_table_names(None)
         self.assertEqual(len(table_names), 0)
 
 
@@ -577,7 +580,7 @@ class TestKafkaFallbackPatterns(unittest.TestCase):
         self.assertEqual(kafka_configs[0].topics, ["dev.example.cashout.customerEvent_v1"])
 
         # Test DLT table extraction
-        table_names = extract_dlt_table_names(source_code)
+        table_names = PythonDltParser.extract_dlt_table_names(source_code)
         self.assertEqual(len(table_names), 1)
         self.assertEqual(table_names[0], "customerevent_event_log")
 

@@ -18,9 +18,12 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
+import { ResourceEntity } from '../../../enums/permissions.enum';
+import { Include } from '../../../generated/type/include';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import searchClassBase from '../../../utils/SearchClassBase';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockApplicationEntityDetails } from './mocks/ApplicationSummary.mock';
@@ -32,6 +35,12 @@ import { mockPipelineEntityDetails } from './mocks/PipelineSummary.mock';
 import { mockTableEntityDetails } from './mocks/TableSummary.mock';
 import { mockTagEntityDetails } from './mocks/TagSummary.mock';
 import { mockTopicEntityDetails } from './mocks/TopicSummary.mock';
+
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
 
 const mockHandleClosePanel = jest.fn();
 
@@ -112,9 +121,12 @@ jest.mock('../../../utils/EntityPureUtils', () => ({
 }));
 jest.mock('../../../utils/StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
-  stringToHTML: jest.fn(),
   bytesToSize: jest.fn(),
   ordinalize: jest.fn(),
+}));
+
+jest.mock('../../../utils/RichTextStringUtils', () => ({
+  stringToHTML: jest.fn(),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -123,6 +135,41 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn().mockImplementation(() => jest.fn()),
 }));
 
+// The panel now reads permissions via useEntityPermissions rather than the raw
+// PermissionProvider context — see TableDetailsPageV1.test.tsx's setMockPermissions for the
+// full rationale (partial-object fidelity, mockReturnValue over mockImplementationOnce, the
+// `deleted`-gating blind spot), mirrored here without repeating it. Default grants ViewBasic
+// + ViewCustomFields, matching the old global usePermissionProvider mock's default return
+// value — most tests below don't care about permissions specifics and rely on this.
+const mockUseEntityPermissions = jest.fn();
+
+const setMockPermissions = (
+  overrides: Partial<OperationPermission> = {},
+  {
+    isLoading = false,
+    error = null as unknown,
+  }: { isLoading?: boolean; error?: unknown } = {}
+) => {
+  const permissions = overrides as OperationPermission;
+  mockUseEntityPermissions.mockReturnValue({
+    permissions,
+    isLoading,
+    error,
+    refresh: jest.fn(),
+    ...getDerivedPermissionFlags(permissions, false),
+  });
+};
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: (...args: unknown[]) =>
+    mockUseEntityPermissions(...args),
+}));
+
+// Not converted by this task, and NOT the panel's own permission source (that's the mock
+// above) — DataAssetSummaryPanelV1 is a real, unmocked child this suite renders (the
+// default overview component, per searchClassBase.getEntitySummaryPanelComponents()'s empty
+// mock below) and it still calls usePermissionProvider().getEntityPermission() internally.
+// Kept only so that untouched component doesn't crash when actually rendered.
 jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     getEntityPermission: jest.fn().mockReturnValue({
@@ -169,15 +216,6 @@ jest.mock('../../../hooks/useEntityRules', () => ({
     rules: [],
     isLoading: false,
   })),
-}));
-
-jest.mock('../../common/OwnerUserList/OwnerUserList.component', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="owner-user-list">OwnerUserList</div>
-    )),
 }));
 
 jest.mock('../../../utils/SearchClassBase', () => ({
@@ -229,15 +267,36 @@ jest.mock('../../common/EntityTitleSection/EntityTitleSection', () => ({
   )),
 }));
 
+const mockGetLineageDataByFQN = jest.fn();
+
+jest.mock('../../../rest/lineageAPI', () => ({
+  ...jest.requireActual('../../../rest/lineageAPI'),
+  getLineageDataByFQN: (...args: unknown[]) => mockGetLineageDataByFQN(...args),
+}));
+
+const mockGetListTestCaseBySearch = jest.fn();
+
+jest.mock('../../../rest/testAPI', () => ({
+  ...jest.requireActual('../../../rest/testAPI'),
+  getListTestCaseBySearch: (...args: unknown[]) =>
+    mockGetListTestCaseBySearch(...args),
+}));
+
 const mockGetTableDetailsByFQN = jest.fn();
 
+const mockGetColumnByFQN = jest.fn();
 jest.mock('../../../rest/tableAPI', () => ({
+  getColumnByFQN: (...args: unknown[]) => mockGetColumnByFQN(...args),
   getTableDetailsByFQN: (...args: unknown[]) =>
     mockGetTableDetailsByFQN(...args),
   patchTableDetails: jest.fn(),
 }));
 
 describe('EntitySummaryPanel component tests', () => {
+  beforeEach(() => {
+    setMockPermissions({ ViewBasic: true, ViewCustomFields: true });
+  });
+
   afterEach(() => {
     (
       searchClassBase.getEntitySummaryPanelComponents as jest.Mock
@@ -246,6 +305,14 @@ describe('EntitySummaryPanel component tests', () => {
       (entityType: string) => entityType
     );
   });
+
+  // No same-args guardrail here (unlike every other file in this batch): both the resource
+  // AND the identifier legitimately vary within a single test in this suite — see "should
+  // handle entity type change correctly" and "should handle entity details change
+  // correctly" below, which each `rerender()` with a genuinely different selected entity
+  // inside one `it`. Coverage instead comes from the dedicated identifier-assertion tests in
+  // the "Permission identifier resolution" describe below (one per precedence branch:
+  // by-id, tableColumn-inherits-parent-table, and ontology-panel-by-fqn).
 
   it('renders a custom summary panel component when the search class provides one', async () => {
     const CustomSummaryPanel = () => (
@@ -261,9 +328,7 @@ describe('EntitySummaryPanel component tests', () => {
     ).mockReturnValue({
       [EntityType.TABLE]: CustomSummaryPanel,
     });
-    (
-      usePermissionProvider().getEntityPermission as jest.Mock
-    ).mockResolvedValueOnce({ ViewBasic: true });
+    setMockPermissions({ ViewBasic: true });
     mockGetTableDetailsByFQN.mockResolvedValueOnce(tableEntity);
 
     render(
@@ -548,10 +613,9 @@ describe('EntitySummaryPanel component tests', () => {
     });
 
     it('should initialize with loading state for permissions', async () => {
-      // Force permission fetch to remain pending so we can reliably assert the initial loader state.
-      (
-        usePermissionProvider().getEntityPermission as jest.Mock
-      ).mockImplementationOnce(() => new Promise(() => undefined));
+      // Force the permission hook to report loading so we can reliably assert the initial
+      // loader state.
+      setMockPermissions({}, { isLoading: true });
 
       const { container } = render(
         <EntitySummaryPanel
@@ -673,6 +737,13 @@ describe('EntitySummaryPanel component tests', () => {
     });
 
     it('should handle missing entityType gracefully', async () => {
+      // With entityType missing, the page computes no valid ResourceEntity and passes
+      // `enabled: false` to useEntityPermissions — but the mocked hook (unlike the real one)
+      // doesn't know about `enabled`, so this simulates the always-denied outcome directly
+      // to verify the render gate (hasViewAccess driving the permission placeholder) rather
+      // than the hook's own enabled-computation, which a mocked hook can't exercise.
+      setMockPermissions({ ViewBasic: false, ViewAll: false });
+
       render(
         <EntitySummaryPanel
           entityDetails={{
@@ -699,6 +770,12 @@ describe('EntitySummaryPanel component tests', () => {
     });
 
     it('should handle missing entityDetails gracefully', async () => {
+      // With no entity selected (id empty), the page passes `enabled: false` to
+      // useEntityPermissions — see "should handle missing entityType gracefully" above for
+      // why this is simulated directly rather than relying on the mocked hook to honor
+      // `enabled`.
+      setMockPermissions({ ViewBasic: false, ViewAll: false });
+
       render(
         <EntitySummaryPanel
           entityDetails={{
@@ -717,6 +794,9 @@ describe('EntitySummaryPanel component tests', () => {
     });
 
     it('should handle missing id for lineage-supported entity', async () => {
+      // Same rationale as above: id is empty, so useEntityPermissions is disabled.
+      setMockPermissions({ ViewBasic: false, ViewAll: false });
+
       const entityWithoutId = {
         ...mockTableEntityDetails,
         id: undefined,
@@ -847,18 +927,7 @@ describe('EntitySummaryPanel component tests', () => {
     });
 
     it('should handle permission loading state correctly', async () => {
-      const mockGetEntityPermission = jest
-        .fn()
-        .mockImplementation(
-          () =>
-            new Promise((resolve) =>
-              setTimeout(() => resolve({ ViewBasic: true }), 100)
-            )
-        );
-
-      (
-        usePermissionProvider().getEntityPermission as jest.Mock
-      ).mockImplementationOnce(mockGetEntityPermission);
+      setMockPermissions({ ViewBasic: true }, { isLoading: true });
 
       const { container } = render(
         <EntitySummaryPanel
@@ -876,14 +945,14 @@ describe('EntitySummaryPanel component tests', () => {
         const loaders = container.querySelectorAll('[data-testid="loader"]');
 
         expect(loaders.length).toBeGreaterThan(0);
-        expect(mockGetEntityPermission).toHaveBeenCalled();
+        expect(mockUseEntityPermissions).toHaveBeenCalled();
       });
 
       // Should show loader while permission is loading
       const loaders = container.querySelectorAll('[data-testid="loader"]');
 
       expect(loaders.length).toBeGreaterThan(0);
-      expect(mockGetEntityPermission).toHaveBeenCalled();
+      expect(mockUseEntityPermissions).toHaveBeenCalled();
     });
   });
 
@@ -901,12 +970,7 @@ describe('EntitySummaryPanel component tests', () => {
     });
 
     it('should render EntityTitleSection with edit button when isSideDrawer is true and has edit permission', async () => {
-      (
-        usePermissionProvider().getEntityPermission as jest.Mock
-      ).mockResolvedValue({
-        ViewBasic: true,
-        EditDisplayName: true,
-      });
+      setMockPermissions({ ViewBasic: true, EditDisplayName: true });
 
       render(
         <EntitySummaryPanel
@@ -939,12 +1003,7 @@ describe('EntitySummaryPanel component tests', () => {
     });
 
     it('should not render edit button when user lacks EditDisplayName permission', async () => {
-      (
-        usePermissionProvider().getEntityPermission as jest.Mock
-      ).mockResolvedValue({
-        ViewBasic: true,
-        EditDisplayName: false,
-      });
+      setMockPermissions({ ViewBasic: true, EditDisplayName: false });
 
       render(
         <EntitySummaryPanel
@@ -972,12 +1031,7 @@ describe('EntitySummaryPanel component tests', () => {
     });
 
     it('should call onDisplayNameUpdate callback when display name is updated', async () => {
-      (
-        usePermissionProvider().getEntityPermission as jest.Mock
-      ).mockResolvedValue({
-        ViewBasic: true,
-        EditDisplayName: true,
-      });
+      setMockPermissions({ ViewBasic: true, EditDisplayName: true });
 
       render(
         <EntitySummaryPanel
@@ -1011,12 +1065,7 @@ describe('EntitySummaryPanel component tests', () => {
     });
 
     it('should display updated displayName after update', async () => {
-      (
-        usePermissionProvider().getEntityPermission as jest.Mock
-      ).mockResolvedValue({
-        ViewBasic: true,
-        EditDisplayName: true,
-      });
+      setMockPermissions({ ViewBasic: true, EditDisplayName: true });
 
       mockGetTableDetailsByFQN.mockResolvedValue({
         ...mockTableEntityDetails,
@@ -1099,12 +1148,7 @@ describe('EntitySummaryPanel component tests', () => {
 
       mockGetTableDetailsByFQN.mockResolvedValue(mockEntityData);
 
-      (
-        usePermissionProvider().getEntityPermission as jest.Mock
-      ).mockResolvedValue({
-        ViewBasic: true,
-        EditDisplayName: true,
-      });
+      setMockPermissions({ ViewBasic: true, EditDisplayName: true });
 
       render(
         <EntitySummaryPanel
@@ -1141,12 +1185,7 @@ describe('EntitySummaryPanel component tests', () => {
 
     describe('Entity types that require fallback API', () => {
       it('should render GLOSSARY entity without errors', async () => {
-        (
-          usePermissionProvider().getEntityPermission as jest.Mock
-        ).mockResolvedValue({
-          ViewBasic: true,
-          EditAll: true,
-        });
+        setMockPermissions({ ViewBasic: true, EditAll: true });
 
         render(
           <EntitySummaryPanel
@@ -1168,12 +1207,7 @@ describe('EntitySummaryPanel component tests', () => {
       });
 
       it('should render TAG entity without errors', async () => {
-        (
-          usePermissionProvider().getEntityPermission as jest.Mock
-        ).mockResolvedValue({
-          ViewBasic: true,
-          EditAll: true,
-        });
+        setMockPermissions({ ViewBasic: true, EditAll: true });
 
         render(
           <EntitySummaryPanel
@@ -1195,12 +1229,7 @@ describe('EntitySummaryPanel component tests', () => {
       });
 
       it('should render APPLICATION entity without errors', async () => {
-        (
-          usePermissionProvider().getEntityPermission as jest.Mock
-        ).mockResolvedValue({
-          ViewBasic: true,
-          EditAll: true,
-        });
+        setMockPermissions({ ViewBasic: true, EditAll: true });
 
         render(
           <EntitySummaryPanel
@@ -1224,12 +1253,7 @@ describe('EntitySummaryPanel component tests', () => {
 
     describe('Non-fallback path verification', () => {
       it('should NOT use fallback for TABLE entity which exists in entityUpdateMap', async () => {
-        (
-          usePermissionProvider().getEntityPermission as jest.Mock
-        ).mockResolvedValue({
-          ViewBasic: true,
-          EditAll: true,
-        });
+        setMockPermissions({ ViewBasic: true, EditAll: true });
 
         render(
           <EntitySummaryPanel
@@ -1251,12 +1275,7 @@ describe('EntitySummaryPanel component tests', () => {
       });
 
       it('should NOT use fallback for TOPIC entity which exists in entityUpdateMap', async () => {
-        (
-          usePermissionProvider().getEntityPermission as jest.Mock
-        ).mockResolvedValue({
-          ViewBasic: true,
-          EditAll: true,
-        });
+        setMockPermissions({ ViewBasic: true, EditAll: true });
 
         render(
           <EntitySummaryPanel
@@ -1278,12 +1297,7 @@ describe('EntitySummaryPanel component tests', () => {
       });
 
       it('should NOT use fallback for DASHBOARD entity which exists in entityUpdateMap', async () => {
-        (
-          usePermissionProvider().getEntityPermission as jest.Mock
-        ).mockResolvedValue({
-          ViewBasic: true,
-          EditAll: true,
-        });
+        setMockPermissions({ ViewBasic: true, EditAll: true });
 
         render(
           <EntitySummaryPanel
@@ -1307,6 +1321,119 @@ describe('EntitySummaryPanel component tests', () => {
   });
 
   describe('entityData sync when onEntityUpdate is provided (Lineage drawer)', () => {
+    it('shows the column extension from the API, not the stale search hit', async () => {
+      const columnHit = {
+        ...mockTableEntityDetails,
+        entityType: EntityType.TABLE_COLUMN,
+        table: { id: 'parent-table-id' },
+        extension: {},
+      };
+      mockGetColumnByFQN.mockResolvedValueOnce({
+        name: columnHit.name,
+        extension: { helloWorld: ['hello'] },
+      });
+
+      (
+        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
+      ).mockReturnValue({
+        [EntityType.TABLE_COLUMN]: (props: {
+          dataAsset?: { extension?: object; table?: object };
+        }) => (
+          <div data-testid="captured-column">
+            {JSON.stringify({
+              extension: props.dataAsset?.extension,
+              table: props.dataAsset?.table,
+            })}
+          </div>
+        ),
+      });
+
+      render(
+        <EntitySummaryPanel
+          entityDetails={{ details: columnHit as unknown as never }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-column')).toHaveTextContent(
+          JSON.stringify({
+            extension: { helloWorld: ['hello'] },
+            table: { id: 'parent-table-id' },
+          })
+        );
+      });
+
+      expect(mockGetColumnByFQN).toHaveBeenCalledWith(
+        columnHit.fullyQualifiedName,
+        {
+          entityType: EntityType.TABLE,
+          fields: 'tags,extension',
+          include: Include.All,
+        }
+      );
+    });
+
+    it('ignores a late response for a previously selected column', async () => {
+      const columnHit = (fqn: string) => ({
+        ...mockTableEntityDetails,
+        id: fqn,
+        fullyQualifiedName: fqn,
+        entityType: EntityType.TABLE_COLUMN,
+        table: { id: 'parent-table-id' },
+        extension: {},
+      });
+      let resolveFirst: (value: object) => void = jest.fn();
+      mockGetColumnByFQN
+        .mockImplementationOnce(
+          () => new Promise((resolve) => (resolveFirst = resolve))
+        )
+        .mockResolvedValueOnce({ extension: { owner: 'second' } });
+
+      (
+        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
+      ).mockReturnValue({
+        [EntityType.TABLE_COLUMN]: (props: {
+          dataAsset?: { extension?: object };
+        }) => (
+          <div data-testid="captured-column">
+            {JSON.stringify(props.dataAsset?.extension)}
+          </div>
+        ),
+      });
+
+      const { rerender } = render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: columnHit('svc.db.schema.t.first') as unknown as never,
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+      rerender(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: columnHit('svc.db.schema.t.second') as unknown as never,
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-column')).toHaveTextContent(
+          JSON.stringify({ owner: 'second' })
+        );
+      });
+
+      await act(async () => {
+        resolveFirst({ extension: { owner: 'first' } });
+      });
+
+      expect(screen.getByTestId('captured-column')).toHaveTextContent(
+        JSON.stringify({ owner: 'second' })
+      );
+    });
+
     it('should refresh the rendered dataAsset immediately, not just notify onEntityUpdate', async () => {
       const mockOnEntityUpdate = jest.fn();
       const tableEntity = {
@@ -1367,6 +1494,84 @@ describe('EntitySummaryPanel component tests', () => {
       await waitFor(() => {
         expect(screen.getByTestId('captured-tags-count')).toHaveTextContent(
           '1'
+        );
+      });
+    });
+  });
+
+  // Dedicated identifier-assertion tests, one per precedence branch of the old
+  // fetchResourcePermission's identifier logic (now computed as
+  // permissionResourceType/permissionIdentifier and passed straight to
+  // useEntityPermissions) — see this suite's top-level comment for why there's no generic
+  // same-args guardrail instead.
+  describe('Permission identifier resolution', () => {
+    it('fetches permissions by id for a normal (non-ontology-panel) entity', async () => {
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+          ResourceEntity.TABLE,
+          { id: mockTableEntityDetails.id },
+          expect.objectContaining({ enabled: true })
+        );
+      });
+    });
+
+    it('fetches permissions for the parent table (not the column itself) for a tableColumn entity', async () => {
+      const columnEntity = {
+        ...mockTableEntityDetails,
+        id: 'column-id',
+        entityType: ResourceEntity.TABLE_COLUMN as unknown as EntityType,
+        table: { id: 'parent-table-id' },
+      };
+
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: columnEntity as unknown as never,
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+          ResourceEntity.TABLE,
+          { id: 'parent-table-id' },
+          expect.objectContaining({ enabled: true })
+        );
+      });
+    });
+
+    it('fetches permissions by fqn (not id) in ontology-panel mode', async () => {
+      render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: {
+              ...mockTableEntityDetails,
+              entityType: EntityType.TABLE,
+            },
+          }}
+          handleClosePanel={mockHandleClosePanel}
+          panelPath="ontology-explorer"
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockUseEntityPermissions).toHaveBeenCalledWith(
+          ResourceEntity.TABLE,
+          mockTableEntityDetails.fullyQualifiedName,
+          expect.objectContaining({ enabled: true })
         );
       });
     });

@@ -16,7 +16,6 @@ Test database connectors which extend from `CommonDbSourceService` with CLI
 import os
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Optional
 
 from sqlalchemy.engine import Engine
 
@@ -191,7 +190,7 @@ class CliCommonDB:
             raise NotImplementedError()
 
         @staticmethod
-        def _fqn_deleted_table() -> Optional[str]:  # noqa: UP045
+        def _fqn_deleted_table() -> str | None:
             return None
 
         @staticmethod

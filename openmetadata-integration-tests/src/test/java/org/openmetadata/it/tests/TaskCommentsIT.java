@@ -14,6 +14,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.models.ListParams;
 
 /**
  * Integration tests for Task Comments functionality.
@@ -321,6 +323,84 @@ public class TaskCommentsIT {
       assertNotNull(comment.getCreatedAt());
       assertTrue(comment.getCreatedAt() >= beforeCreate);
       assertTrue(comment.getCreatedAt() <= afterCreate);
+    } finally {
+      adminClient.tasks().delete(task.getId().toString(), java.util.Map.of("hardDelete", "true"));
+    }
+  }
+
+  @Test
+  @Order(13)
+  void test_listByMentionedUser_returnsTaskFromCommentMention() {
+    Task mentioning = createTestTask(adminClient);
+    Task unrelated = createTestTask(adminClient);
+
+    try {
+      adminClient
+          .tasks()
+          .addComment(
+              mentioning.getId().toString(),
+              String.format("Please review <#E::user::%s>", shared.USER2.getName()));
+      adminClient.tasks().addComment(unrelated.getId().toString(), "No mention here");
+
+      ListParams params =
+          new ListParams().addFilter("mentionedUser", shared.USER2.getName()).setLimit(1000);
+      List<Task> mentioned = adminClient.tasks().list(params).getData();
+      List<UUID> mentionedIds = mentioned.stream().map(Task::getId).toList();
+
+      assertTrue(
+          mentionedIds.contains(mentioning.getId()),
+          "mentionedUser filter must return the task whose comment mentions the user");
+      assertFalse(
+          mentionedIds.contains(unrelated.getId()),
+          "mentionedUser filter must exclude tasks that do not mention the user");
+
+      // The UI sends the FQN, which is quoted for a dotted username, but a bare
+      // name has to resolve to the same mention rows or the filter silently
+      // returns nothing for those users.
+      ListParams byFqn =
+          new ListParams()
+              .addFilter("mentionedUser", shared.USER2.getFullyQualifiedName())
+              .setLimit(1000);
+      assertTrue(
+          adminClient.tasks().list(byFqn).getData().stream()
+              .anyMatch(t -> t.getId().equals(mentioning.getId())),
+          "mentionedUser must match on the quoted FQN as well as the bare name");
+    } finally {
+      adminClient
+          .tasks()
+          .delete(mentioning.getId().toString(), java.util.Map.of("hardDelete", "true"));
+      adminClient
+          .tasks()
+          .delete(unrelated.getId().toString(), java.util.Map.of("hardDelete", "true"));
+    }
+  }
+
+  @Test
+  void test_editedCommentMention_isReturnedByMentionedUser() {
+    Task task = createTestTask(adminClient);
+    try {
+      Task commented = adminClient.tasks().addComment(task.getId().toString(), "Needs review");
+      ListParams params =
+          new ListParams().addFilter("mentionedUser", shared.USER2.getName()).setLimit(1000);
+      assertFalse(
+          adminClient.tasks().list(params).getData().stream()
+              .anyMatch(item -> task.getId().equals(item.getId())));
+      String message = "Please review <#E::user::%s>".formatted(shared.USER2.getName());
+      adminClient
+          .tasks()
+          .editComment(
+              task.getId().toString(), commented.getComments().getFirst().getId(), message);
+      assertTrue(
+          adminClient.tasks().list(params).getData().stream()
+              .anyMatch(item -> task.getId().equals(item.getId())));
+      assertEquals(
+          message,
+          adminClient
+              .tasks()
+              .get(task.getId().toString(), "comments")
+              .getComments()
+              .getFirst()
+              .getMessage());
     } finally {
       adminClient.tasks().delete(task.getId().toString(), java.util.Map.of("hardDelete", "true"));
     }

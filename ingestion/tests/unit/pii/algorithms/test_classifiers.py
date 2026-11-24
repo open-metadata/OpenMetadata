@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 import inspect
-from typing import Iterable, Tuple  # noqa: UP035
+from collections.abc import Iterable
 
 from metadata.pii.algorithms.classifiers import ColumnClassifier, HeuristicPIIClassifier
 from metadata.pii.algorithms.tags import PIITag
@@ -19,7 +19,7 @@ from .data import pii_samples  # noqa: TID252
 from .data.pii_samples import LabeledData  # noqa: TID252
 
 
-def get_sample_data() -> Iterable[Tuple[str, LabeledData]]:  # noqa: UP006
+def get_sample_data() -> Iterable[tuple[str, LabeledData]]:
     # Add the samples you want to test
     # get all attributes of the module that ends with _data
     suffix = "_data"

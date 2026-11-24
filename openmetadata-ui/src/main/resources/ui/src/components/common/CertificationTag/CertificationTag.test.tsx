@@ -11,21 +11,28 @@
  *  limitations under the License.
  */
 import { render, screen } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { LabelType, State, TagSource } from '../../../generated/type/tagLabel';
 import { getClassificationTagPath } from '../../../utils/RouterUtils';
 import CertificationTag from './CertificationTag';
 
-jest.mock('../../../assets/svg/ic-certification.svg', () => ({
-  ReactComponent: () => <div data-testid="default-certification-icon" />,
+interface MockIconProps {
+  iconValue?: string;
+  fallback?: ReactNode;
+}
+
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
+  Certification: () => <div data-testid="default-certification-icon" />,
 }));
 
-jest.mock('../../../utils/IconUtils', () => ({
-  renderIcon: jest.fn(),
+jest.mock('@openmetadata/ui-core-components/icon', () => ({
+  Icon: jest.fn(),
 }));
 
-const { renderIcon } = jest.requireMock('../../../utils/IconUtils');
+const { Icon } = jest.requireMock('@openmetadata/ui-core-components/icon');
 
 const mockCertification: AssetCertification = {
   tagLabel: {
@@ -58,8 +65,12 @@ const renderCertificationTag = (
 describe('CertificationTag', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    renderIcon.mockReturnValue(
-      <img alt="icon" data-testid="custom-certification-icon" />
+    Icon.mockImplementation(({ iconValue, fallback }: MockIconProps) =>
+      iconValue ? (
+        <img alt="icon" data-testid="custom-certification-icon" />
+      ) : (
+        fallback
+      )
     );
   });
 
@@ -98,30 +109,29 @@ describe('CertificationTag', () => {
     renderCertificationTag();
 
     expect(screen.getByTestId('custom-certification-icon')).toBeInTheDocument();
-    expect(renderIcon).toHaveBeenCalledWith(
-      'https://example.com/gold.png',
+    expect(Icon).toHaveBeenCalledWith(
       expect.objectContaining({
-        size: 14,
-        className: 'certification-img',
+        iconValue: 'https://example.com/gold.png',
+        size: 16,
         alt: 'certification: Gold Medal',
-      })
+      }),
+      expect.anything()
     );
   });
 
-  it('should use a smaller icon size when showName is true', () => {
+  it('should keep the same icon size when showName is true', () => {
     renderCertificationTag(mockCertification, true);
 
-    expect(renderIcon).toHaveBeenCalledWith(
-      'https://example.com/gold.png',
+    expect(Icon).toHaveBeenCalledWith(
       expect.objectContaining({
-        size: 14,
-      })
+        iconValue: 'https://example.com/gold.png',
+        size: 16,
+      }),
+      expect.anything()
     );
   });
 
   it('should render the default icon when iconURL is not provided', () => {
-    renderIcon.mockReturnValue(null);
-
     const certificationWithoutIcon: AssetCertification = {
       ...mockCertification,
       tagLabel: {

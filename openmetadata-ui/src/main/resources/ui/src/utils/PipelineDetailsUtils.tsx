@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
+import {
+  CheckCircle02,
+  SlashCircle02,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { get } from 'lodash';
 import { lazy } from 'react';
-import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
-import { ReactComponent as IconSkippedBadge } from '../assets/svg/skipped-badge.svg';
-import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback, {
   TAB_CONTENT_FALLBACK,
@@ -30,14 +32,8 @@ import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidg
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
-import {
-  Pipeline,
-  StatusType,
-  Task,
-  TaskStatus,
-} from '../generated/entity/data/pipeline';
+import { StatusType, TaskStatus } from '../generated/entity/data/pipeline';
 import { PageType } from '../generated/system/ui/page';
-import { EntityReference } from '../generated/type/entityReference';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { t } from './i18next/LocalUtil';
 import { PipelineDetailPageTabProps } from './PipelineClassBase';
@@ -96,16 +92,29 @@ export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
   return tasks.find((task) => task.name === taskName)?.executionStatus;
 };
 
+export const getStatusBadgeClassName = (status?: StatusType) => {
+  switch (status) {
+    case StatusType.Successful:
+      return 'tw:text-utility-green-500';
+
+    case StatusType.Failed:
+      return 'tw:text-utility-error-600';
+
+    default:
+      return 'tw:text-utility-gray-500';
+  }
+};
+
 export const getStatusBadgeIcon = (status?: StatusType) => {
   switch (status) {
     case StatusType.Successful:
-      return IconSuccessBadge;
+      return CheckCircle02;
 
     case StatusType.Failed:
-      return IconFailBadge;
+      return XCircle;
 
     default:
-      return IconSkippedBadge;
+      return SlashCircle02;
   }
 };
 
@@ -218,15 +227,5 @@ export const getPipelineWidgetsFromKey = (widgetConfig: WidgetConfig) => {
       entityType={EntityType.PIPELINE}
       widgetConfig={widgetConfig}
     />
-  );
-};
-
-export const extractPipelineTasks = <T extends Omit<EntityReference, 'type'>>(
-  data: T
-): Task[] => {
-  const pipeline = data as Partial<Pipeline>;
-
-  return (pipeline.tasks ?? []).map(
-    (task) => ({ ...task, tags: task.tags ?? [] } as Task)
   );
 };

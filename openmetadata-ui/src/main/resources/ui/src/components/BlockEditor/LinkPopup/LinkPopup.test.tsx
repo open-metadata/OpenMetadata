@@ -42,6 +42,7 @@ describe('LinkPopup', () => {
 
     expect(open).toHaveAttribute('href', 'https://example.com');
     expect(open).toHaveAttribute('target', '_blank');
+    expect(open).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   it('should call handleLinkToggle when edit is clicked', () => {

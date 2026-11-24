@@ -19,7 +19,7 @@ import TableConstraints from './TableConstraints';
 
 const mockOnUpdate = jest.fn().mockResolvedValue(undefined);
 
-const mockGenericContextProps = {
+let mockGenericContextProps = {
   data: {
     tableConstraints: [
       {
@@ -78,6 +78,21 @@ const mockTableConstraintRendererBasedOnType =
 describe('TableConstraints', () => {
   beforeEach(() => {
     mockTableConstraintRendererBasedOnType.mockClear();
+    mockGenericContextProps = {
+      data: {
+        tableConstraints: [
+          {
+            constraintType: ConstraintType.ClusterKey,
+            columns: ['Entity_ID', 'Entity_Type'],
+          },
+        ],
+      } as Table,
+      permissions: {
+        ...DEFAULT_ENTITY_PERMISSION,
+        EditAll: false,
+      },
+      onUpdate: mockOnUpdate,
+    };
   });
 
   it('renders cluster key constraints in table details', () => {
@@ -90,5 +105,49 @@ describe('TableConstraints', () => {
       ConstraintType.ClusterKey,
       ['Entity_ID', 'Entity_Type']
     );
+  });
+
+  it('shows the edit-constraint button when EditAll is granted and constraints exist', () => {
+    mockGenericContextProps = {
+      ...mockGenericContextProps,
+      permissions: { ...DEFAULT_ENTITY_PERMISSION, EditAll: true },
+    };
+
+    render(<TableConstraints />);
+
+    expect(
+      screen.getByTestId('edit-table-constraint-button')
+    ).toBeInTheDocument();
+  });
+
+  it('shows the add-constraint button when EditAll is granted and no constraints exist', () => {
+    mockGenericContextProps = {
+      ...mockGenericContextProps,
+      data: { tableConstraints: [] } as unknown as Table,
+      permissions: { ...DEFAULT_ENTITY_PERMISSION, EditAll: true },
+    };
+
+    render(<TableConstraints />);
+
+    expect(
+      screen.getByTestId('table-constraints-add-button')
+    ).toBeInTheDocument();
+  });
+
+  it('hides the edit-constraint button when the table is deleted, even with EditAll granted', () => {
+    mockGenericContextProps = {
+      ...mockGenericContextProps,
+      data: {
+        ...mockGenericContextProps.data,
+        deleted: true,
+      } as Table,
+      permissions: { ...DEFAULT_ENTITY_PERMISSION, EditAll: true },
+    };
+
+    render(<TableConstraints />);
+
+    expect(
+      screen.queryByTestId('edit-table-constraint-button')
+    ).not.toBeInTheDocument();
   });
 });

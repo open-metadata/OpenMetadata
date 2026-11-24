@@ -11,16 +11,24 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { GREEN_1, RED_1 } from '../../../constants/Color.constants';
 import { SystemChartType } from '../../../enums/DataInsight.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { ServicesType } from '../../../interface/service.interface';
 import { getTitleByChartType } from '../../../utils/ServiceInsightsTabPureUtils';
 import { getReadableCountString } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import PlatformInsightsWidget from './PlatformInsightsWidget';
 import { PlatformInsightsWidgetProps } from './PlatformInsightsWidget.interface';
 // Mock dependencies
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
+  ChevronDown: () => <div data-testid="arrow-down-icon" />,
+  TrendUp01: () => <div data-testid="arrow-up-icon" />,
+}));
+
 jest.mock('../../../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn(),
 }));
@@ -34,21 +42,10 @@ jest.mock('../../../utils/ServicePureUtils', () => ({
 }));
 
 // Mock SVG components
-jest.mock('../../../assets/svg/ic-arrow-down.svg', () => {
-  return {
-    __esModule: true,
-    ReactComponent: () => <div data-testid="arrow-down-icon" />,
-  };
-});
 
-jest.mock('../../../assets/svg/ic-trend-up.svg', () => {
-  return {
-    __esModule: true,
-    ReactComponent: () => <div data-testid="arrow-up-icon" />,
-  };
-});
-
-const mockUseRequiredParams = useRequiredParams as jest.MockedFunction<any>;
+const mockUseRequiredParams = useRequiredParams as jest.MockedFunction<
+  typeof useRequiredParams
+>;
 
 const mockGetTitleByChartType = getTitleByChartType as jest.MockedFunction<
   typeof getTitleByChartType
@@ -61,9 +58,9 @@ describe('PlatformInsightsWidget', () => {
   const mockServiceDetails = {
     id: 'test-service-id',
     name: 'test-service',
-    serviceType: 'Mysql' as any,
+    serviceType: 'Mysql',
     fullyQualifiedName: 'test-service-fqn',
-  } as any;
+  } as unknown as ServicesType;
 
   const mockChartsData = [
     {
@@ -133,12 +130,33 @@ describe('PlatformInsightsWidget', () => {
       ).toBeInTheDocument();
     });
 
-    it('should render expand/collapse functionality', () => {
+    it('collapses and restores chart content through its accessible header', () => {
       renderComponent();
+      const header = screen.getByRole('button', { expanded: true });
 
-      const expandIcon = screen.getByText('label.view-more');
+      expect(screen.getByText('85%')).toBeVisible();
 
-      expect(expandIcon).toBeInTheDocument();
+      fireEvent.click(header);
+
+      expect(header).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.getByText('85%')).not.toBeVisible();
+
+      fireEvent.click(header);
+
+      expect(header).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByText('85%')).toBeVisible();
+    });
+
+    it('keeps embedded charts visible without a disabled collapse control', () => {
+      renderComponent({ variant: 'embedded' });
+
+      expect(screen.getByText('85%')).toBeVisible();
+      // Truncated titles are tooltip triggers; only a collapse header carries aria-expanded.
+      expect(
+        screen
+          .queryAllByRole('button')
+          .filter((button) => button.hasAttribute('aria-expanded'))
+      ).toHaveLength(0);
     });
 
     it('should render the export class for platform insights chart', () => {
@@ -157,7 +175,7 @@ describe('PlatformInsightsWidget', () => {
       renderComponent({ isLoading: true });
 
       // Should render 5 skeleton cards for database services (includes HealthyDataAssets)
-      const skeletonCards = document.querySelectorAll('.ant-skeleton');
+      const skeletonCards = document.querySelectorAll('.other-charts-card');
 
       expect(skeletonCards).toHaveLength(5);
     });
@@ -169,7 +187,7 @@ describe('PlatformInsightsWidget', () => {
       renderComponent({ isLoading: true });
 
       // Should render 4 skeleton cards (excludes HealthyDataAssets for non-database services)
-      const skeletonCards = document.querySelectorAll('.ant-skeleton');
+      const skeletonCards = document.querySelectorAll('.other-charts-card');
 
       expect(skeletonCards).toHaveLength(4);
     });
@@ -222,6 +240,25 @@ describe('PlatformInsightsWidget', () => {
       expect(screen.getByText('75%')).toBeInTheDocument();
       expect(screen.getByText('90%')).toBeInTheDocument();
     });
+
+    it('should render healthy data assets as a count, without a percent sign', () => {
+      renderComponent({
+        chartsData: [
+          {
+            chartType: SystemChartType.HealthyDataAssets,
+            currentPercentage: 12,
+            percentageChange: 3,
+            isIncreased: true,
+            numberOfDays: 6,
+          },
+        ],
+      });
+
+      expect(screen.getByText('12')).toBeInTheDocument();
+      expect(screen.getByText('3')).toBeInTheDocument();
+      expect(screen.queryByText('12%')).not.toBeInTheDocument();
+      expect(screen.queryByText('3%')).not.toBeInTheDocument();
+    });
   });
 
   describe('Percentage Change Display', () => {
@@ -231,7 +268,7 @@ describe('PlatformInsightsWidget', () => {
       const positiveChange = screen.getByText('5%');
 
       expect(positiveChange).toBeInTheDocument();
-      expect(positiveChange).toHaveStyle({ color: 'rgb(6, 118, 71)' }); // GREEN_1
+      expect(positiveChange).toHaveStyle({ color: GREEN_1 });
     });
 
     it('should render negative percentage change with red color and down arrow', () => {
@@ -240,7 +277,7 @@ describe('PlatformInsightsWidget', () => {
       const negativeChange = screen.getByText('-2%');
 
       expect(negativeChange).toBeInTheDocument();
-      expect(negativeChange).toHaveStyle({ color: 'rgb(240, 68, 56)' }); // RED_1
+      expect(negativeChange).toHaveStyle({ color: RED_1 });
     });
 
     it('should render percentage change text but not icon when value is 0', () => {
@@ -260,9 +297,7 @@ describe('PlatformInsightsWidget', () => {
       expect(screen.getByText('0%')).toBeInTheDocument();
 
       // Should not show the icon (since showIcon = false when percentageChange === 0)
-      const icons = screen.getAllByTestId('arrow-up-icon');
-
-      expect(icons).toHaveLength(1); // Only the one from the header
+      expect(screen.queryByTestId('arrow-up-icon')).not.toBeInTheDocument();
     });
 
     it('should render percentage change icon correctly', () => {
@@ -368,22 +403,25 @@ describe('PlatformInsightsWidget', () => {
   });
 
   describe('CSS Classes and Styling', () => {
-    it('should apply correct container class for 5 charts (database services)', () => {
+    it('should size the grid to the container instead of a fixed column count', () => {
       renderComponent();
 
-      const colElement = document.querySelector('.other-charts-container');
+      const grid = document.querySelector('.other-charts-container');
 
-      expect(colElement).toBeInTheDocument();
-      expect(colElement).not.toHaveClass('four-chart-container');
+      expect(grid).toHaveClass(
+        'tw:grid-cols-[repeat(auto-fit,minmax(13rem,1fr))]'
+      );
     });
 
-    it('should apply correct container class for non-4 charts', () => {
-      const limitedChartsData = mockChartsData.slice(0, 2);
-      renderComponent({ chartsData: limitedChartsData });
+    it('should keep the day range outside the badge row', () => {
+      renderComponent();
 
-      const colElement = document.querySelector('.four-chart-container');
+      const badge = screen.getByText('5%').closest('.percent-change-tag');
 
-      expect(colElement).not.toBeInTheDocument();
+      expect(badge?.parentElement).toContainElement(screen.getByText('85%'));
+      expect(badge?.parentElement).not.toContainElement(
+        screen.getAllByText('label.in-last-number-of-days')[0]
+      );
     });
 
     it('should apply correct CSS classes to chart cards', () => {

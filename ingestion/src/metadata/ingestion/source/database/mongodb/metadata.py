@@ -13,10 +13,11 @@ MongoDB source methods.
 """
 
 import traceback
-from typing import Dict, Iterable, List, Optional, Union  # noqa: UP035
+from collections.abc import Iterable
 
 from pymongo.errors import OperationFailure
 
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBConnection,
 )
@@ -46,14 +47,14 @@ class MongodbSource(CommonNoSQLSource):
         self.mongodb = self.connection_obj
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: MongoDBConnection = config.serviceConnection.root.config
         if not isinstance(connection, MongoDBConnection):
             raise InvalidSourceException(f"Expected MongoDBConnection, but got {connection}")
         return cls(config, metadata)
 
-    def get_schema_name_list(self) -> List[str]:  # noqa: UP006
+    def get_schema_name_list(self) -> list[str]:
         """
         Method to get list of schema names available within NoSQL db
         need to be overridden by sources
@@ -68,19 +69,26 @@ class MongodbSource(CommonNoSQLSource):
         return []
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
-        """
-        Method to get list of table names available within schema db
-        need to be overridden by sources
-        """
+        return self._list_collections(schema_name, {"type": {"$ne": "view"}}, TableType.Regular)
+
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
+        return self._list_collections(schema_name, {"type": "view"}, TableType.View)
+
+    def _list_collections(
+        self, schema_name: str, collection_filter: dict, table_type: TableType
+    ) -> list[TableNameAndType]:
         try:
             database = self.mongodb.get_database(schema_name)
-            return [TableNameAndType(name=name) for name in database.list_collection_names()]
+            return [
+                TableNameAndType(name=name, type_=table_type)
+                for name in database.list_collection_names(filter=collection_filter)
+            ]
         except Exception as exp:
-            logger.debug(f"Failed to list collection names for schema [{schema_name}]: {exp}")
+            logger.debug("Failed to list %s names for schema [%s]: %s", table_type.value, schema_name, exp)
             logger.debug(traceback.format_exc())
         return []
 
-    def get_table_columns_dict(self, schema_name: str, table_name: str) -> Union[List[Dict], Dict]:  # noqa: UP006, UP007
+    def get_table_columns_dict(self, schema_name: str, table_name: str) -> list[dict] | dict:
         """
         Method to get actual data available within table
         need to be overridden by sources

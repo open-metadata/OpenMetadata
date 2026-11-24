@@ -310,8 +310,8 @@ public class OpenSearchRequestBuilder {
             s.size(size);
           }
 
-          if (trackTotalHits != null && trackTotalHits) {
-            s.trackTotalHits(th -> th.enabled(true));
+          if (trackTotalHits != null) {
+            s.trackTotalHits(th -> th.enabled(trackTotalHits));
           } else if (trackTotalHitsUpTo != null) {
             s.trackTotalHits(th -> th.count(trackTotalHitsUpTo));
           }

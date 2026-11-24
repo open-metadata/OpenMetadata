@@ -12,8 +12,12 @@
 Source connection handler
 """
 
-from typing import Optional
+from typing import TYPE_CHECKING, cast
 
+from pydoris.sqlalchemy.dialect import DorisDialect
+from sqlalchemy.dialects import registry
+from sqlalchemy.dialects.mysql.base import MySQLIdentifierPreparer
+from sqlalchemy.dialects.mysql.pymysql import MySQLDialect_pymysql
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -33,19 +37,51 @@ from metadata.ingestion.connections.test_connections import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
+if TYPE_CHECKING:
+    from sqlalchemy.engine.default import DefaultDialect
+
+
+# pydoris's reflection signatures predate SQLAlchemy 2.0's typed ones; its methods win in
+# the MRO by design, so the override mismatch with the MySQL base is not ours to fix.
+class DorisPyMySQLDialect(DorisDialect, MySQLDialect_pymysql):  # pyright: ignore[reportIncompatibleMethodOverride]
+    """pydoris on the pure-Python PyMySQL driver.
+
+    pydoris builds on SQLAlchemy's mysqldb dialect, which needs the mysqlclient C
+    extension and, through it, Debian's libmariadb3 and mariadb-common. Those packages
+    carry MariaDB server CVEs into every image, so `doris://` resolves here instead.
+    ADR:2026-10-22-doris-connects-through-pymysql-and-images-ship-no-mariadb-client
+    """
+
+    supports_statement_cache = True
+
+
+# Importing pydoris above already registered its own `doris` entry; this overrides it.
+registry.register("doris", __name__, DorisPyMySQLDialect.__name__)
+
+
+class DorisIdentifierPreparer(MySQLIdentifierPreparer):
+    """Quote every identifier because Doris reserves more words than MySQL."""
+
+    def _requires_quotes(self, value: str) -> bool:
+        return True
+
 
 class DorisConnection(BaseConnection[DorisConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
         """
         Return the SQLAlchemy Engine for Doris.
         """
-        return BasicAuthStrategy(self.service_connection).build()
+        engine = BasicAuthStrategy(self.service_connection).build()
+        self._on_close(engine.dispose)
+        dialect = cast("DefaultDialect", engine.dialect)
+        engine.dialect.identifier_preparer = DorisIdentifierPreparer(dialect)
+        return engine
 
     def test_connection(
         self,
         metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+        automation_workflow: AutomationWorkflow | None = None,
+        timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         """
         Test connection. This can be executed either as part

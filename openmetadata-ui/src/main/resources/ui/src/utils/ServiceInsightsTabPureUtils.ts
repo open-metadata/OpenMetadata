@@ -105,26 +105,34 @@ export const getChartTypeForWidget = (chartType: SystemChartType) => {
       return SystemChartType.PIICoverage;
     case SystemChartType.AssetsWithTierLive:
       return SystemChartType.TierCoverage;
+    case SystemChartType.HealthyDataAssetsLive:
+      return SystemChartType.HealthyDataAssets;
     default:
       return chartType;
   }
 };
 
+const isPlatformInsightsChartDataEmpty = (
+  chartsData: Record<SystemChartType, DataInsightCustomChartResult>,
+  chartType: SystemChartType
+) =>
+  isNil(chartsData) ||
+  isNil(chartsData[chartType]) ||
+  isEmpty(chartsData[chartType].results);
+
+const getEmptyPlatformInsightsChartData = () => ({
+  isIncreased: false,
+  percentageChange: 0,
+  currentPercentage: 0,
+  noRecords: true,
+  numberOfDays: 0,
+});
+
 export const getPlatformInsightsChartDataFormattingMethod =
   (chartsData: Record<SystemChartType, DataInsightCustomChartResult>) =>
   (chartType: SystemChartType) => {
-    if (
-      isNil(chartsData) ||
-      isNil(chartsData[chartType]) ||
-      isEmpty(chartsData[chartType].results)
-    ) {
-      return {
-        isIncreased: false,
-        percentageChange: 0,
-        currentPercentage: 0,
-        noRecords: true,
-        numberOfDays: 0,
-      };
+    if (isPlatformInsightsChartDataEmpty(chartsData, chartType)) {
+      return getEmptyPlatformInsightsChartData();
     }
 
     const summaryChartData = chartsData[chartType];
@@ -165,13 +173,13 @@ export const getPlatformInsightsChartDataFormattingMethod =
     );
 
     // This is true if the current data is greater than or equal to the earliest day data
-    const isIncreased = (lastDayData ?? 0) >= (earliestDayData ?? 0);
+    const isIncreased = lastDayData >= earliestDayData;
 
     return {
       chartType: getChartTypeForWidget(chartType),
       isIncreased,
       percentageChange: percentageChangeOverall,
-      currentPercentage: round(lastDayData ?? 0, 1),
+      currentPercentage: round(lastDayData, 1),
       noRecords: summaryChartData?.results.every((item) => isEmpty(item)),
       numberOfDays: data.length > 0 ? data.length - 1 : 0,
     };

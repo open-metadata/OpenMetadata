@@ -23,11 +23,12 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { useTestCaseResultTab } from './useTestCaseResultTab';
 
-const mockSetTestCase = jest.fn();
+const mockMergeTestCase = jest.fn();
 
 const mockUseTestCaseStore = {
   testCase: MOCK_TEST_CASE_DATA as unknown as TestCase,
-  setTestCase: mockSetTestCase,
+  setTestCase: jest.fn(),
+  mergeTestCase: mockMergeTestCase,
   showAILearningBanner: false,
   testCasePermission: MOCK_PERMISSIONS,
   isTabExpanded: true,
@@ -56,11 +57,18 @@ jest.mock('../../../../rest/testAPI', () => ({
     ),
 }));
 
+const mockShouldRenderDefaultGraph = jest.fn().mockReturnValue(true);
+
 jest.mock('./TestCaseResultTabClassBase', () => ({
   __esModule: true,
   default: {
     getAdditionalComponents: jest.fn().mockReturnValue([]),
     getAlertBanner: jest.fn().mockReturnValue(null),
+    shouldRenderDefaultGraph: jest
+      .fn()
+      .mockImplementation((...args: unknown[]) =>
+        mockShouldRenderDefaultGraph(...args)
+      ),
   },
 }));
 
@@ -95,6 +103,7 @@ describe('useTestCaseResultTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockParams = {};
+    mockShouldRenderDefaultGraph.mockReturnValue(true);
     mockUseTestCaseStore.testCase = MOCK_TEST_CASE_DATA as unknown as TestCase;
     mockUseTestCaseStore.testCasePermission = MOCK_PERMISSIONS;
   });
@@ -133,6 +142,19 @@ describe('useTestCaseResultTab', () => {
     expect(result.current.hasEditGlossaryTermsPermission).toBe(true);
   });
 
+  it('should let a denied field permission beat EditAll', () => {
+    mockUseTestCaseStore.testCasePermission = {
+      ...DEFAULT_ENTITY_PERMISSION,
+      EditAll: true,
+      EditDescription: false,
+    };
+
+    const { result } = renderHook(() => useTestCaseResultTab());
+
+    expect(result.current.hasEditPermission).toBe(true);
+    expect(result.current.hasEditDescriptionPermission).toBe(false);
+  });
+
   it('should disable edit permissions without permission', () => {
     mockUseTestCaseStore.testCasePermission = DEFAULT_ENTITY_PERMISSION;
 
@@ -150,10 +172,23 @@ describe('useTestCaseResultTab', () => {
     expect(result.current.isVersionPage).toBe(true);
     expect(result.current.hasEditPermission).toBe(false);
     expect(result.current.hasEditTagsPermission).toBe(false);
-    expect(result.current.parameterItems).toBeNull();
   });
 
-  it('should build parameter items with compute row count when supported', async () => {
+  it('should disable all widget edit permissions for a deleted test case', () => {
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      deleted: true,
+    } as TestCase;
+
+    const { result } = renderHook(() => useTestCaseResultTab());
+
+    expect(result.current.hasEditPermission).toBe(false);
+    expect(result.current.hasEditDescriptionPermission).toBe(false);
+    expect(result.current.hasEditTagsPermission).toBe(false);
+    expect(result.current.hasEditGlossaryTermsPermission).toBe(false);
+  });
+
+  it('should split parameters and flag compute row count when supported', async () => {
     mockUseTestCaseStore.testCase = {
       ...MOCK_TEST_CASE_DATA,
       computePassedFailedRowCount: true,
@@ -166,19 +201,8 @@ describe('useTestCaseResultTab', () => {
     expect(getTestDefinitionById).toHaveBeenCalledWith(
       MOCK_TEST_CASE_DATA.testDefinition.id
     );
-    expect(result.current.parameterItems).toHaveLength(3);
-  });
-
-  it('should build a dynamic assertion parameter item', () => {
-    mockUseTestCaseStore.testCase = {
-      ...MOCK_TEST_CASE_DATA,
-      useDynamicAssertion: true,
-    };
-
-    const { result } = renderHook(() => useTestCaseResultTab());
-
-    expect(result.current.parameterItems).toHaveLength(1);
-    expect(result.current.parameterItems?.[0].label).toBeUndefined();
+    expect(result.current.withoutSqlParams).toHaveLength(2);
+    expect(result.current.withSqlParams).toHaveLength(0);
   });
 
   it('handleDescriptionChange should patch the description and toast success', async () => {
@@ -194,7 +218,7 @@ describe('useTestCaseResultTab', () => {
         expect.objectContaining({ path: '/description' }),
       ])
     );
-    expect(mockSetTestCase).toHaveBeenCalled();
+    expect(mockMergeTestCase).toHaveBeenCalled();
     expect(showSuccessToast).toHaveBeenCalled();
     expect(mockRefetchChangeSummary).toHaveBeenCalled();
   });
@@ -222,7 +246,7 @@ describe('useTestCaseResultTab', () => {
       MOCK_TEST_CASE_DATA.id,
       expect.arrayContaining([expect.objectContaining({ path: '/tags' })])
     );
-    expect(mockSetTestCase).toHaveBeenCalled();
+    expect(mockMergeTestCase).toHaveBeenCalled();
   });
 
   it('handleDataProductsSave should patch the data products', async () => {
@@ -242,6 +266,27 @@ describe('useTestCaseResultTab', () => {
     );
   });
 
+  it('should ignore widget mutations for a deleted test case', async () => {
+    mockUseTestCaseStore.testCase = {
+      ...MOCK_TEST_CASE_DATA,
+      deleted: true,
+    } as TestCase;
+
+    const { result } = renderHook(() => useTestCaseResultTab());
+
+    await act(async () => {
+      await result.current.handleDescriptionChange('updated description');
+      await result.current.handleTagSelection([
+        { tagFQN: 'PII.Sensitive', source: 'Classification' },
+      ]);
+      await result.current.handleDataProductsSave([
+        { id: 'dp-id', name: 'dp-name' } as never,
+      ]);
+    });
+
+    expect(updateTestCaseById).not.toHaveBeenCalled();
+  });
+
   it('should toggle the parameter edit state', () => {
     const { result } = renderHook(() => useTestCaseResultTab());
 
@@ -258,5 +303,22 @@ describe('useTestCaseResultTab', () => {
     });
 
     expect(result.current.isParameterEdit).toBe(false);
+  });
+
+  it('should surface the class base default-graph decision for the current test case', () => {
+    const { result } = renderHook(() => useTestCaseResultTab());
+
+    expect(result.current.shouldRenderDefaultGraph).toBe(true);
+    expect(mockShouldRenderDefaultGraph).toHaveBeenCalledWith(
+      MOCK_TEST_CASE_DATA
+    );
+  });
+
+  it('should surface a suppressed default graph', () => {
+    mockShouldRenderDefaultGraph.mockReturnValue(false);
+
+    const { result } = renderHook(() => useTestCaseResultTab());
+
+    expect(result.current.shouldRenderDefaultGraph).toBe(false);
   });
 });

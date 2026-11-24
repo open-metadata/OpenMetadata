@@ -62,6 +62,8 @@ export enum FormattedPipelineServiceType {
   Stitch = 'Stitch',
   Wherescape = 'Wherescape',
   MicrosoftFabricPipeline = 'Microsoft Fabric Pipeline',
+  Data360Pipeline = 'Salesforce Data 360 Pipeline',
+  TableauPipeline = 'Tableau Pipeline',
 }
 export enum FormattedSearchServiceType {
   CustomSearch = 'Custom Search',
@@ -79,10 +81,10 @@ export enum FormattedDatabaseServiceType {
   Couchbase = 'Couchbase',
   CustomDatabase = 'Custom Database',
   Databricks = 'Databricks',
+  Databend = 'Databend',
   Datalake = 'Datalake',
   Db2 = 'Db2',
   Dbt = 'dbt',
-  DeltaLake = 'DeltaLake',
   DomoDatabase = 'Domo Database',
   Doris = 'Doris',
   StarRocks = 'StarRocks',
@@ -118,6 +120,7 @@ export enum FormattedDatabaseServiceType {
   Trino = 'Trino',
   UnityCatalog = 'UnityCatalog',
   Vertica = 'Vertica',
+  Data360 = 'Salesforce Data 360',
 }
 export enum FormattedDashboardServiceType {
   CustomDashboard = 'Custom Dashboard',
@@ -141,6 +144,7 @@ export enum FormattedMessagingServiceType {
   CustomMessaging = 'Custom Messaging',
   Kafka = 'Kafka',
   Kinesis = 'Kinesis',
+  Nats = 'NATS',
   Redpanda = 'Redpanda',
 }
 

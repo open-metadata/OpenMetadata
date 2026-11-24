@@ -5,6 +5,7 @@ import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.jackson.Jackson;
@@ -29,10 +30,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Duration;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,11 +53,17 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.SdkClients;
@@ -77,14 +81,14 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 /**
- * Integration test for Context Center Drive file upload with MinIO-backed S3 storage using
+ * Integration test for Context Center Drive file upload with S3-backed object storage using
  * fixture files from src/test/resources.
  */
 @ExtendWith(TestNamespaceExtension.class)
 class DriveFileUploadIT {
 
-  private static final String MINIO_BUCKET = "test-bucket";
-  private static final String TIKA_TESSERACT_PATH_PROPERTY = "collate.tika.tesseract.path";
+  private static final String S3_BUCKET = "test-bucket";
+  private static final String FILE_PATH = "v1/contextCenter/drive/files";
   private static final Duration EXTRACTION_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration SEARCH_VISIBLE_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
@@ -195,7 +199,7 @@ class DriveFileUploadIT {
 
   private String resolveStoredObjectKey(S3Client s3Client, String assetId) {
     return s3Client
-        .listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(MINIO_BUCKET).build())
+        .listObjectsV2Paginator(ListObjectsV2Request.builder().bucket(S3_BUCKET).build())
         .contents()
         .stream()
         .map(S3Object::key)
@@ -204,22 +208,22 @@ class DriveFileUploadIT {
         .orElse(null);
   }
 
-  private S3Client buildMinioClient() {
+  private S3Client buildS3Client() {
     return S3Client.builder()
         .region(Region.US_EAST_1)
         .credentialsProvider(
-            StaticCredentialsProvider.create(AwsBasicCredentials.create("minio", "minio123")))
+            StaticCredentialsProvider.create(AwsBasicCredentials.create("accesskey", "secretkey")))
         .endpointOverride(
             URI.create(
                 System.getProperty(
-                    "IT_MINIO_ENDPOINT",
-                    System.getenv().getOrDefault("IT_MINIO_ENDPOINT", "http://localhost:9000"))))
+                    "IT_S3_ENDPOINT",
+                    System.getenv().getOrDefault("IT_S3_ENDPOINT", "http://localhost:9000"))))
         .serviceConfiguration(S3Configuration.builder().pathStyleAccessEnabled(true).build())
         .build();
   }
 
-  private void assertStoredInMinIO(String assetId, byte[] expectedBytes) {
-    try (S3Client s3Client = buildMinioClient()) {
+  private void assertStoredInS3(String assetId, byte[] expectedBytes) {
+    try (S3Client s3Client = buildS3Client()) {
       await()
           .pollDelay(Duration.ZERO)
           .pollInterval(Duration.ofMillis(200))
@@ -230,15 +234,15 @@ class DriveFileUploadIT {
                 assertNotNull(objectKey, "Expected uploaded object for asset " + assetId);
                 try (ResponseInputStream<GetObjectResponse> objectStream =
                     s3Client.getObject(
-                        GetObjectRequest.builder().bucket(MINIO_BUCKET).key(objectKey).build())) {
+                        GetObjectRequest.builder().bucket(S3_BUCKET).key(objectKey).build())) {
                   assertArrayEquals(expectedBytes, objectStream.readAllBytes());
                 }
               });
     }
   }
 
-  private void assertRemovedFromMinIO(String assetId) {
-    try (S3Client s3Client = buildMinioClient()) {
+  private void assertRemovedFromS3(String assetId) {
+    try (S3Client s3Client = buildS3Client()) {
       await()
           .pollInterval(POLL_INTERVAL)
           .atMost(Duration.ofSeconds(10))
@@ -384,46 +388,18 @@ class DriveFileUploadIT {
     }
   }
 
-  private Path createFakeTesseractHome(String extractedText) throws IOException {
-    Path home = Files.createTempDirectory("fake-tesseract-home-");
-    Path executable = home.resolve("tesseract");
-    Files.writeString(
-        executable,
-        "#!/bin/sh\n"
-            + "if [ $# -eq 0 ] || [ \"$1\" = \"--version\" ]; then\n"
-            + "  echo \"tesseract 5.0.0\"\n"
-            + "  exit 0\n"
-            + "fi\n"
-            + "output_base=\"$2\"\n"
-            + "printf '%s\\n' \""
-            + extractedText
-            + "\" > \"${output_base}.txt\"\n",
-        StandardCharsets.UTF_8);
-    executable.toFile().setExecutable(true);
-    return home;
-  }
-
-  private void deleteRecursively(Path root) throws IOException {
-    if (root == null || Files.notExists(root)) {
-      return;
-    }
-    try (var paths = Files.walk(root)) {
-      paths.sorted(Comparator.reverseOrder()).forEach(path -> path.toFile().delete());
-    }
-  }
-
   @Test
-  void testUploadPdfToMinIO(TestNamespace ns) throws Exception {
+  void testUploadPdfToS3(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-report.pdf");
     ContextFile file;
     try (Response response = uploadUniqueFixture(ns, "/drive/sample-report.pdf", "Annual Report")) {
-      file = readCreatedContextFile(response, "Upload to MinIO failed");
+      file = readCreatedContextFile(response, "Upload to S3 failed");
       assertNotNull(file.getId());
       assertNotNull(file.getAssetId(), "File should have assetId from S3 upload");
       assertNotNull(file.getHeadContentId(), "File should point at a current content snapshot");
       assertEquals("Annual Report", file.getDisplayName());
       assertEquals(content.length, file.getFileSize().intValue());
-      assertStoredInMinIO(file.getAssetId(), content);
+      assertStoredInS3(file.getAssetId(), content);
     }
 
     ContextFile refreshed = awaitProcessed(file.getId(), "Context Center PDF Fixture");
@@ -431,7 +407,7 @@ class DriveFileUploadIT {
   }
 
   @Test
-  void testUploadSpreadsheetToMinIO(TestNamespace ns) throws Exception {
+  void testUploadSpreadsheetToS3(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-pricing.xlsx");
     Response response = uploadUniqueFixture(ns, "/drive/sample-pricing.xlsx", "Pricing Sheet");
 
@@ -443,7 +419,7 @@ class DriveFileUploadIT {
   }
 
   @Test
-  void testUploadCsvToMinIO(TestNamespace ns) throws Exception {
+  void testUploadCsvToS3(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-data.csv");
     String uploadedFileName = uniqueUploadedFileName(ns, "/drive/sample-data.csv");
     Response response = uploadFixture("/drive/sample-data.csv", uploadedFileName, null, null);
@@ -539,40 +515,28 @@ class DriveFileUploadIT {
   }
 
   @Test
-  void testUploadedImageIsSearchableByOcrExtractedText(TestNamespace ns) throws Exception {
-    String uniqueToken =
-        "IMAGENEEDLE"
-            + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase();
-    Path fakeTesseractHome = createFakeTesseractHome("Revenue chart " + uniqueToken);
-    String originalPath = System.getProperty(TIKA_TESSERACT_PATH_PROPERTY);
+  void testUploadedImageIsStoredWithoutTextExtraction(TestNamespace ns) throws Exception {
+    byte[] content = createPngWithText("Revenue chart");
 
-    try {
-      System.setProperty(TIKA_TESSERACT_PATH_PROPERTY, fakeTesseractHome.toString());
-      byte[] content = createPngWithText(uniqueToken);
-
-      ContextFile file;
-      try (Response response =
-          uploadFile(
-              uniqueUploadedFileName(ns, "search-fixture.png"),
-              content,
-              ns.shortPrefix("Image Search"),
-              null)) {
-        String body = response.readEntity(String.class);
-        assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
-        file = JsonUtils.readValue(body, ContextFile.class);
-      }
-
-      awaitProcessed(file.getId(), uniqueToken);
-
-      assertSearchContainsFile(uniqueToken, file.getId());
-    } finally {
-      if (originalPath == null) {
-        System.clearProperty(TIKA_TESSERACT_PATH_PROPERTY);
-      } else {
-        System.setProperty(TIKA_TESSERACT_PATH_PROPERTY, originalPath);
-      }
-      deleteRecursively(fakeTesseractHome);
+    ContextFile file;
+    try (Response response =
+        uploadFile(
+            uniqueUploadedFileName(ns, "image-fixture.png"),
+            content,
+            ns.shortPrefix("Image Upload"),
+            null)) {
+      file = readCreatedContextFile(response, "Upload failed");
     }
+
+    UUID fileId = file.getId();
+    await()
+        .pollInterval(POLL_INTERVAL)
+        .atMost(EXTRACTION_TIMEOUT)
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    ProcessingStatus.Unsupported, fetchFile(fileId).getProcessingStatus()));
+    assertNull(fetchFile(fileId).getExtractedText());
   }
 
   @Test
@@ -605,6 +569,44 @@ class DriveFileUploadIT {
   }
 
   @Test
+  void testUploadIntoDomain(TestNamespace ns) throws Exception {
+    // The UI uploads under the navbar domain pick, so the file must not be left without a domain.
+    RestClient rest = RestClient.admin();
+    Domain domain =
+        rest.create(
+            "v1/domains",
+            new CreateDomain()
+                .withName(ns.prefix("upload-domain"))
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("upload target"),
+            Domain.class);
+
+    ContextFile file;
+    try (FormDataMultiPart multipart = new FormDataMultiPart()) {
+      multipart.field("domain", domain.getFullyQualifiedName());
+      multipart.bodyPart(
+          new StreamDataBodyPart(
+              "file",
+              new ByteArrayInputStream(readFixture("/drive/sample-report.pdf")),
+              uniqueUploadedFileName(ns, "/drive/sample-report.pdf"),
+              MediaType.APPLICATION_OCTET_STREAM_TYPE));
+      Response response =
+          uploadTarget
+              .request()
+              .headers(adminAuthHeaders())
+              .post(Entity.entity(multipart, multipart.getMediaType()));
+      String body = response.readEntity(String.class);
+      assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
+      file = JsonUtils.readValue(body, ContextFile.class);
+    }
+
+    ContextFile fetched =
+        rest.getById("v1/contextCenter/drive/files", file.getId(), "domains", ContextFile.class);
+    assertEquals(
+        List.of(domain.getId()), fetched.getDomains().stream().map(d -> d.getId()).toList());
+  }
+
+  @Test
   void testUploadRejectsDuplicateFileNameCaseInsensitiveInRoot(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-report.pdf");
 
@@ -616,7 +618,7 @@ class DriveFileUploadIT {
       assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
       ContextFile file = JsonUtils.readValue(body1, ContextFile.class);
       assertEquals("First Title", file.getDisplayName());
-      assertStoredInMinIO(file.getAssetId(), content);
+      assertStoredInS3(file.getAssetId(), content);
 
       assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), resp2.getStatus(), body2);
       assertTrue(body2.contains("duplicate.pdf"));
@@ -645,7 +647,7 @@ class DriveFileUploadIT {
       ContextFile file = JsonUtils.readValue(body1, ContextFile.class);
       assertEquals("Nested First", file.getDisplayName());
       assertEquals(folder.getId(), file.getFolder().getId());
-      assertStoredInMinIO(file.getAssetId(), content);
+      assertStoredInS3(file.getAssetId(), content);
 
       assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), resp2.getStatus(), body2);
       assertTrue(body2.contains("nestedduplicate.txt"));
@@ -667,7 +669,7 @@ class DriveFileUploadIT {
       assertEquals(CREATED.getStatusCode(), resp1.getStatus(), "First upload failed: " + body1);
       ContextFile file = JsonUtils.readValue(body1, ContextFile.class);
       assertEquals(expectedName, file.getName());
-      assertStoredInMinIO(file.getAssetId(), content);
+      assertStoredInS3(file.getAssetId(), content);
 
       assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), resp2.getStatus(), body2);
       assertTrue(body2.contains(expectedName));
@@ -704,8 +706,8 @@ class DriveFileUploadIT {
       assertEquals(secondFolder.getId(), secondFile.getFolder().getId());
       assertEquals("First Folder Title", firstFile.getDisplayName());
       assertEquals("Second Folder Different Title", secondFile.getDisplayName());
-      assertStoredInMinIO(firstFile.getAssetId(), content);
-      assertStoredInMinIO(secondFile.getAssetId(), content);
+      assertStoredInS3(firstFile.getAssetId(), content);
+      assertStoredInS3(secondFile.getAssetId(), content);
     }
   }
 
@@ -956,19 +958,118 @@ class DriveFileUploadIT {
   }
 
   @Test
-  void testHardDeleteRemovesObjectFromMinIO(TestNamespace ns) throws Exception {
+  void testMetadataUpdatesPreserveUploadedContent(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    byte[] content = readFixture("/drive/sample-notes.txt");
+    ContextFile uploaded;
+    try (Response response = uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Metadata edits")) {
+      uploaded = readCreatedContextFile(response, "Upload failed");
+    }
+    assertNotNull(uploaded.getAssetId());
+    assertNotNull(uploaded.getHeadContentId());
+
+    ContextFile updated =
+        rest.update(
+            FILE_PATH,
+            new CreateContextFile()
+                .withName(uploaded.getName())
+                .withDescription("Updated metadata"),
+            ContextFile.class);
+    assertContentReferences(uploaded, updated);
+    assertContentReferences(uploaded, fetchFile(uploaded.getId()));
+
+    String original = JsonUtils.pojoToJson(updated);
+    updated.withAssetId(null).withHeadContentId(null).withDescription("Cleared metadata fields");
+    updated = rest.patch(FILE_PATH, updated.getId(), original, updated, ContextFile.class);
+    assertContentReferences(uploaded, updated);
+    assertContentReferences(uploaded, fetchFile(uploaded.getId()));
+    assertArrayEquals(content, downloadContent(rest, uploaded.getId()));
+  }
+
+  @Test
+  void testMetadataOnlyFileKeepsIndependentContent(TestNamespace ns) throws Exception {
+    RestClient admin = RestClient.admin();
+    User owner = DriveTestUsers.createUser(ns, "metadata-owner");
+    RestClient ownerRest = RestClient.forUser(owner.getEmail(), new String[] {});
+    byte[] content = readFixture("/drive/sample-notes.txt");
+    ContextFile uploaded;
+    try (Response response = uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Stored content")) {
+      uploaded = readCreatedContextFile(response, "Upload failed");
+    }
+    String original = JsonUtils.pojoToJson(uploaded);
+    uploaded.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    uploaded = admin.patch(FILE_PATH, uploaded.getId(), original, uploaded, ContextFile.class);
+    try (Response response = ownerRest.rawGet(FILE_PATH + "/" + uploaded.getId() + "/download")) {
+      assertEquals(403, response.getStatus());
+    }
+    try (Response response =
+        ownerRest.rawDelete(FILE_PATH + "/" + uploaded.getId() + "?hardDelete=true")) {
+      assertEquals(403, response.getStatus());
+    }
+
+    ContextFile metadata =
+        admin.create(
+            FILE_PATH,
+            new CreateContextFile()
+                .withName(ns.prefix("metadata-only"))
+                .withOwners(List.of(owner.getEntityReference())),
+            ContextFile.class);
+    original = JsonUtils.pojoToJson(metadata);
+    metadata.withAssetId(uploaded.getAssetId()).withDescription("First metadata edit");
+    metadata = ownerRest.patch(FILE_PATH, metadata.getId(), original, metadata, ContextFile.class);
+    assertNull(metadata.getAssetId());
+    assertNull(fetchFile(metadata.getId()).getAssetId());
+
+    original = JsonUtils.pojoToJson(metadata);
+    metadata.withHeadContentId(uploaded.getHeadContentId()).withDescription("Second metadata edit");
+    metadata = ownerRest.patch(FILE_PATH, metadata.getId(), original, metadata, ContextFile.class);
+    assertNull(metadata.getHeadContentId());
+    assertNull(fetchFile(metadata.getId()).getHeadContentId());
+    try (Response response = ownerRest.rawGet(FILE_PATH + "/" + metadata.getId() + "/download")) {
+      assertEquals(404, response.getStatus());
+    }
+
+    UUID metadataId = metadata.getId();
+    ownerRest.hardDelete(FILE_PATH, metadataId);
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              try (Response response =
+                  admin.rawGet(FILE_PATH + "/" + metadataId + "?include=all")) {
+                assertEquals(404, response.getStatus());
+              }
+            });
+    assertArrayEquals(content, downloadContent(admin, uploaded.getId()));
+    assertStoredInS3(uploaded.getAssetId(), content);
+  }
+
+  private void assertContentReferences(ContextFile expected, ContextFile actual) {
+    assertEquals(expected.getAssetId(), actual.getAssetId());
+    assertEquals(expected.getHeadContentId(), actual.getHeadContentId());
+  }
+
+  private byte[] downloadContent(RestClient rest, UUID id) {
+    try (Response response = rest.rawGet(FILE_PATH + "/" + id + "/download?redirect=false")) {
+      assertEquals(200, response.getStatus());
+      return response.readEntity(byte[].class);
+    }
+  }
+
+  @Test
+  void testHardDeleteRemovesObjectFromS3(TestNamespace ns) throws Exception {
     byte[] content = readFixture("/drive/sample-notes.txt");
     RestClient rest = RestClient.admin();
 
     Response uploadResponse = uploadUniqueFixture(ns, "/drive/sample-notes.txt", "Hard Delete");
     ContextFile file = readCreatedContextFile(uploadResponse, "Upload failed");
-    assertStoredInMinIO(file.getAssetId(), content);
+    assertStoredInS3(file.getAssetId(), content);
 
     rest.hardDelete("v1/contextCenter/drive/files", file.getId());
 
     // Hard delete is asynchronous: the server returns 200 immediately, then a background
     // worker soft-deletes (if needed), removes search/relationship state, drops the row,
-    // and unlinks the object from MinIO. Under CI load this chain can take well over 10s,
+    // and unlinks the object from S3. Under CI load this chain can take well over 10s,
     // so poll with a generous ceiling rather than gambling on a tight window.
     await()
         .pollInterval(Duration.ofMillis(200))
@@ -980,6 +1081,6 @@ class DriveFileUploadIT {
                 assertEquals(404, deletedResponse.getStatus());
               }
             });
-    assertRemovedFromMinIO(file.getAssetId());
+    assertRemovedFromS3(file.getAssetId());
   }
 }

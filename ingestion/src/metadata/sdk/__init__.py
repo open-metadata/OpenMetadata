@@ -46,7 +46,7 @@ from metadata.sdk.entities import (
 )
 from metadata.sdk.entities.base import BaseEntity
 
-_global_client: Optional[OpenMetadata] = None  # noqa: UP045
+_global_client: OpenMetadata | None = None
 
 
 def to_entity_reference(entity: Any) -> dict[str, Any]:

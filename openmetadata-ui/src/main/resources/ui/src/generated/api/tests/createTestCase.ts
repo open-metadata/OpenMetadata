@@ -19,6 +19,12 @@ export interface CreateTestCase {
      */
     computePassedFailedRowCount?: boolean;
     /**
+     * Name of the data quality dimension this test case belongs to. When not set, it defaults
+     * to the dimension of the test definition. Any dimension registered in Settings >
+     * Preferences > Data Quality can be used, system and custom alike.
+     */
+    dataQualityDimension?: string;
+    /**
      * Description of the testcase.
      */
     description?: string;

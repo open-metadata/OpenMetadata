@@ -14,7 +14,6 @@ Secrets manager implementation using AWS Secrets Manager
 """
 
 import traceback
-from typing import Optional
 
 from botocore.exceptions import ClientError
 
@@ -39,7 +38,7 @@ class AWSSecretsManager(AWSBasedSecretsManager):
     def __init__(self, loader: SecretsManagerClientLoader):
         super().__init__(client="secretsmanager", provider=SecretsManagerProvider.aws, loader=loader)
 
-    def get_string_value(self, secret_id: str) -> Optional[str]:  # noqa: UP045
+    def get_string_value(self, secret_id: str) -> str | None:
         """
         :param secret_id: The secret id to retrieve. Current stage is always retrieved.
         :return: The value of the secret. When the secret is a string, the value is
