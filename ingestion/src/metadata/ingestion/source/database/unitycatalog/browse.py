@@ -14,14 +14,23 @@ from collections.abc import Iterator
 from typing import Any
 from urllib.parse import quote
 
+from databricks.sdk import WorkspaceClient
 
-def iter_browse_items(client: Any, resource: str, collection: str, **filters: Any) -> Iterator[dict[str, Any]]:
+
+def iter_browse_items(
+    client: WorkspaceClient, resource: str, collection: str, **filters: Any
+) -> Iterator[dict[str, Any]]:
     """The pinned SDK predates include_browse; preserve API pagination directly."""
+    # max_results=0 makes the server paginate with its configured page size; leaving it
+    # unset returns every table of a schema in one response, which OOMs the pod on
+    # schemas with many wide tables.
     query: dict[str, Any] = {"include_browse": "true", "max_results": 0, **filters}
     seen_tokens: set[str] = set()
     while True:
         response = client.api_client.do("GET", f"/api/2.1/unity-catalog/{resource}", query=query)
         if not isinstance(response, dict):
+            # do() is typed dict | BinaryIO. A non-dict body carries no next_page_token
+            # we can trust, and reading one off it would spin this loop forever.
             raise TypeError(f"expected a JSON object, got {type(response).__name__}")
         yield from response.get(collection) or []
         page_token = response.get("next_page_token")
@@ -33,7 +42,7 @@ def iter_browse_items(client: Any, resource: str, collection: str, **filters: An
         query["page_token"] = page_token
 
 
-def get_browse_item(client: Any, resource: str, full_name: str) -> dict[str, Any]:
+def get_browse_item(client: WorkspaceClient, resource: str, full_name: str) -> dict[str, Any]:
     """Use BROWSE visibility for a metadata GET, never SELECT privileges."""
     response = client.api_client.do(
         "GET",

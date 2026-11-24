@@ -503,33 +503,10 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         One listing per schema, exactly as before: the typed and the raw view of a table
         come out of the same response rather than out of two.
         """
-        query: dict[str, Any] = {
-            "catalog_name": catalog_name,
-            "schema_name": schema_name,
-            # max_results=0 makes the server paginate with its configured page size;
-            # leaving it unset returns every table of the schema in one response,
-            # which OOMs the pod on schemas with many wide tables.
-            "max_results": 0,
-            # A metadata-only BROWSE grant must enumerate these tables.
-            "include_browse": "true",
-        }
-        seen_tokens: set[str] = set()
-        while True:
-            response = self.client.api_client.do("GET", "/api/2.1/unity-catalog/tables", query=query)
-            if not isinstance(response, dict):
-                # do() is typed dict | BinaryIO. A non-dict body carries no
-                # next_page_token we can trust, and reading one off it would
-                # spin this loop forever.
-                raise TypeError(f"expected a JSON object, got {type(response).__name__}")
-            for row in response.get("tables") or []:
-                yield TableInfo.from_dict(row), str(row.get("securable_kind") or "").upper()
-            page_token = response.get("next_page_token")
-            if not page_token:
-                return
-            if page_token in seen_tokens:
-                raise RuntimeError(f"Unity Catalog reissued page token [{page_token}] while listing tables.")
-            seen_tokens.add(page_token)
-            query["page_token"] = page_token
+        for row in iter_browse_items(
+            self.client, "tables", "tables", catalog_name=catalog_name, schema_name=schema_name
+        ):
+            yield TableInfo.from_dict(row), str(row.get("securable_kind") or "").upper()
 
     def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]]:
         """
@@ -600,9 +577,6 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
                     "tables",
                     f"{catalog_name}.{schema_name}.{table_name}",
                 )
-                if not isinstance(row, dict):
-                    # do() is typed dict | BinaryIO; a non-dict body carries no table.
-                    raise TypeError(f"expected a JSON object, got {type(row).__name__}")  # noqa: TRY301
                 table = TableInfo.from_dict(row)
                 securable_kind = str(row.get("securable_kind") or "").upper()
             except Exception as exc:

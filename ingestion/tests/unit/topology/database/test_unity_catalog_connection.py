@@ -267,14 +267,17 @@ class TestGetViews:
         )
 
     def test_scan_is_capped_when_schema_has_no_views(self):
-        tables = [_named_mock(f"t{i}", table_type=TableType.MANAGED) for i in range(VIEW_LISTING_SCAN_LIMIT)]
-        client = _workspace_client(tables=tables)
+        full_page = [{"name": f"t{i}", "table_type": "MANAGED"} for i in range(VIEW_LISTING_SCAN_LIMIT)]
+        client = MagicMock()
+        client.api_client.do.side_effect = [
+            {"tables": full_page, "next_page_token": "more"},
+            {"tables": [{"name": "late_view", "table_type": "VIEW"}]},
+        ]
         table_obj = DatabricksTable(catalog_name="main", schema_name="bronze")
 
         get_views(client, table_obj)
 
         assert client.api_client.do.call_count == 1
-        assert client.api_client.do.call_args.kwargs["query"]["max_results"] == VIEW_LISTING_SCAN_LIMIT
 
     def test_raises_when_catalog_and_schema_unresolved(self):
         client = _workspace_client()
