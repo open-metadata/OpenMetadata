@@ -348,6 +348,12 @@ const ActivityGroupList = ({
   );
 };
 
+const showsEveryUnread = (
+  isCapped: boolean,
+  cutAt: number | undefined,
+  seenTs: number | null
+) => seenTs === null || !isCapped || (cutAt !== undefined && cutAt <= seenTs);
+
 const ActivityTab: React.FC<ActivityTabProps> = ({
   user,
   initialFilter = ActivityFilter.All,
@@ -365,6 +371,9 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   );
   const markInboxActivitySeen = usePersonalSpaceStore(
     (s) => s.markInboxActivitySeen
+  );
+  const inboxActivitySeenTs = usePersonalSpaceStore(
+    (s) => s.inboxActivitySeenTs
   );
   const { dateRange, isFiltered, onDatePresetChange } =
     useActivityDateRange(windowProps);
@@ -391,9 +400,12 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
       taskMentionsReadAt !== undefined &&
       !isFiltered &&
       typeKeys.length === 0;
-    const ownViewLoadedWhole =
-      !isOtherUser && !isLoading && !error && !isCapped;
-    if (ownViewLoadedWhole && showsUnfilteredTaskMentions) {
+    const ownViewLoaded = !isOtherUser && !isLoading && !error;
+    if (
+      ownViewLoaded &&
+      showsEveryUnread(isCapped, cutAt, inboxActivitySeenTs) &&
+      showsUnfilteredTaskMentions
+    ) {
       markInboxActivitySeen(taskMentionsReadAt);
     }
   }, [
@@ -401,6 +413,8 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
     isLoading,
     error,
     isCapped,
+    cutAt,
+    inboxActivitySeenTs,
     taskMentionsLoaded,
     taskMentionsReadAt,
     isFiltered,

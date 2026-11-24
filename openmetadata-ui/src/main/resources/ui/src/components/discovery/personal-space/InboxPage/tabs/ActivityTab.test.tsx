@@ -199,10 +199,14 @@ jest.mock('react-i18next', () => ({
 }));
 
 const mockMarkInboxActivitySeen = jest.fn();
+let mockInboxActivitySeenTs: number | null = 500;
 
 jest.mock('../../../../../hooks/usePersonalSpaceStore', () => ({
   usePersonalSpaceStore: (selector: (s: unknown) => unknown) =>
-    selector({ markInboxActivitySeen: mockMarkInboxActivitySeen }),
+    selector({
+      markInboxActivitySeen: mockMarkInboxActivitySeen,
+      inboxActivitySeenTs: mockInboxActivitySeenTs,
+    }),
 }));
 
 import { User } from '../../../../../generated/entity/teams/user';
@@ -218,6 +222,7 @@ const alice = {
 describe('ActivityTab', () => {
   beforeEach(() => {
     mockMentionsCutAt = undefined;
+    mockInboxActivitySeenTs = 500;
     jest.clearAllMocks();
     activityState = {
       items: [],
@@ -792,7 +797,7 @@ describe('ActivityTab', () => {
       expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
     });
 
-    it('does not stamp the seen-mark when the feed is capped', () => {
+    it('does not stamp the seen-mark when the feed is cut after the last visit', () => {
       activityState = {
         items: [],
         total: 0,
@@ -838,7 +843,22 @@ describe('ActivityTab', () => {
       expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
     });
 
-    it('stamps the seen-mark once a capped feed becomes complete', () => {
+    it('stamps the seen-mark when the feed is cut before the last visit', () => {
+      activityState = {
+        items: [],
+        total: 0,
+        isLoading: false,
+        isCapped: true,
+        cutAt: 500,
+        taskMentionsReadAt: 2000,
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalledWith(2000);
+    });
+
+    it('stamps the seen-mark on the first visit even when the feed is capped', () => {
+      mockInboxActivitySeenTs = null;
       activityState = {
         items: [],
         total: 0,
@@ -847,14 +867,9 @@ describe('ActivityTab', () => {
         cutAt: 1000,
         taskMentionsReadAt: 2000,
       };
-      const { rerender } = render(<ActivityTab />);
+      render(<ActivityTab />);
 
-      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
-
-      activityState = { items: [], total: 0, isLoading: false };
-      rerender(<ActivityTab />);
-
-      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalledWith(2000);
     });
   });
 });
