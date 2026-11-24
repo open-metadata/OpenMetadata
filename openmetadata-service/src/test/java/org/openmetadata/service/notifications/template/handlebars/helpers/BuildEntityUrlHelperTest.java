@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mockStatic;
 
 import com.github.jknack.handlebars.EscapingStrategy;
 import com.github.jknack.handlebars.Handlebars;
@@ -27,7 +28,12 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 
 /**
  * Focused unit tests for {@link BuildEntityUrlHelper}. Renders the helper through a real
@@ -49,6 +55,8 @@ import org.openmetadata.service.Entity;
 class BuildEntityUrlHelperTest {
 
   private static final String BASE_URL = "http://localhost:8585";
+  private static final String TABLE_FQN = "service.db.schema.orders";
+  private static final String CONTRACT_FQN = TABLE_FQN + ".dataContract_Orders Contract";
   private static final String TEMPLATE_SRC =
       "<a href=\"{{buildEntityUrl event.entityType entity}}\">link</a>";
 
@@ -298,5 +306,109 @@ class BuildEntityUrlHelperTest {
 
     assertFalse(href.contains("null"), () -> "URL must not contain literal 'null': " + href);
     assertFalse(href.contains("/activity_feed/"), () -> "no feed suffix on a null URL: " + href);
+  }
+
+  @Test
+  void dataContract_withAsset_linksToAssetContractTab() throws IOException {
+    Map<String, Object> entity =
+        Map.of(
+            "id", UUID.randomUUID().toString(),
+            "fullyQualifiedName", CONTRACT_FQN,
+            "entity", Map.of("type", "table", "fullyQualifiedName", TABLE_FQN));
+
+    String url = extractHref(render(Entity.DATA_CONTRACT, entity));
+
+    assertEquals(BASE_URL + "/table/" + TABLE_FQN + "/contract", url);
+  }
+
+  @Test
+  void dataContractReference_loadsContractToLinkItsAsset() throws IOException {
+    Map<String, Object> about =
+        Map.of(
+            "id",
+            UUID.randomUUID().toString(),
+            "type",
+            Entity.DATA_CONTRACT,
+            "fullyQualifiedName",
+            CONTRACT_FQN);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      stubContractLookup(entity);
+      String url = extractHref(render(Entity.DATA_CONTRACT, about));
+
+      assertEquals(BASE_URL + "/table/" + TABLE_FQN + "/contract", url);
+    }
+  }
+
+  @Test
+  void dataContractFqn_loadsContractToLinkItsAsset() throws IOException {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      stubContractLookup(entity);
+      String url = extractHref(renderContractFqnLink());
+
+      assertEquals(BASE_URL + "/table/" + TABLE_FQN + "/contract", url);
+    }
+  }
+
+  @Test
+  void dataContractTaskLink_pointsToAssetTasksTab() throws IOException {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      stubContractLookup(entity);
+      String url = extractHref(renderFeedLink(Entity.DATA_CONTRACT, CONTRACT_FQN, "tasks"));
+
+      assertEquals(BASE_URL + "/table/" + TABLE_FQN + "/activity_feed/tasks", url);
+    }
+  }
+
+  @Test
+  void task_aboutADataContract_linksToTheTasksTabOfItsTable() throws IOException {
+    Map<String, Object> entity =
+        Map.of(
+            "fullyQualifiedName",
+            "TASK-00433",
+            "about",
+            Map.of("type", Entity.DATA_CONTRACT, "fullyQualifiedName", CONTRACT_FQN));
+
+    try (MockedStatic<Entity> mocked = mockStatic(Entity.class)) {
+      stubContractLookup(mocked);
+      String url = extractHref(render(Entity.TASK, entity));
+
+      assertEquals(BASE_URL + "/table/" + TABLE_FQN + "/activity_feed/tasks", url);
+    }
+  }
+
+  @Test
+  void deletedDataContract_rendersEmptyLink() throws IOException {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(() -> Entity.getEntityByName(Entity.DATA_CONTRACT, CONTRACT_FQN, "", Include.ALL))
+          .thenThrow(EntityNotFoundException.byName(CONTRACT_FQN));
+      String url = extractHref(renderContractFqnLink());
+
+      assertEquals("", url);
+    }
+  }
+
+  private String renderContractFqnLink() throws IOException {
+    Template t =
+        handlebars.compileInline("<a href=\"{{buildEntityUrl 'dataContract' fqn}}\">link</a>");
+    return t.apply(Map.of("fqn", CONTRACT_FQN));
+  }
+
+  /** The stored contract keeps only the table's id and type; resolving it adds the FQN. */
+  private void stubContractLookup(MockedStatic<Entity> entity) {
+    EntityReference storedRef = new EntityReference().withId(UUID.randomUUID()).withType("table");
+    DataContract contract =
+        new DataContract().withFullyQualifiedName(CONTRACT_FQN).withEntity(storedRef);
+    entity
+        .when(() -> Entity.getEntityByName(Entity.DATA_CONTRACT, CONTRACT_FQN, "", Include.ALL))
+        .thenReturn(contract);
+    entity
+        .when(() -> Entity.getEntityReference(storedRef, Include.ALL))
+        .thenReturn(
+            new EntityReference()
+                .withId(storedRef.getId())
+                .withType("table")
+                .withFullyQualifiedName(TABLE_FQN));
   }
 }
