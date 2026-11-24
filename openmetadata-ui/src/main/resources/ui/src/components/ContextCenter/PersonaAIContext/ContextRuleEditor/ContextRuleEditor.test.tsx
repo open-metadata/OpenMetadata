@@ -31,12 +31,9 @@ jest.mock('../../../../rest/PersonaAPI', () => ({
   }),
 }));
 
-jest.mock('react-i18next', () => {
-  const t = (key: string, options?: { sample?: string }) =>
-    options?.sample ?? key;
-
-  return { useTranslation: () => ({ t }) };
-});
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}));
 
 jest.mock('../../../common/atoms/drawer/useFormDrawer', () => ({
   useFormDrawerWithHook: ({ form }: { form: ReactNode }) => ({
@@ -84,53 +81,6 @@ describe('ContextRuleEditor', () => {
     personaId: '11111111-1111-4111-8111-111111111111',
     rule,
   };
-
-  it('previews through the supplied callback without a persona ID', async () => {
-    const previewRule = jest.fn().mockResolvedValue({
-      matchedCount: 3,
-      sampleNames: ['finance.orders'],
-    });
-    render(
-      <ContextRuleEditor
-        {...defaultProps}
-        personaId={undefined}
-        previewRule={previewRule}
-      />
-    );
-
-    expect(await screen.findByText('finance.orders')).toBeInTheDocument();
-    expect(previewRule).toHaveBeenCalledWith(expect.objectContaining(rule));
-    expect(previewPersonaAIContextRule).not.toHaveBeenCalled();
-  });
-
-  it('validates changed filters through the supplied callback before saving', async () => {
-    const previewRule = jest
-      .fn()
-      .mockRejectedValue(new Error('Invalid filter'));
-    const onSubmit = jest.fn();
-    render(
-      <ContextRuleEditor
-        {...defaultProps}
-        personaId={undefined}
-        previewRule={previewRule}
-        onSubmit={onSubmit}
-      />
-    );
-    const filter = '{"term":{"name":"orders"}}';
-    fireEvent.change(screen.getByTestId('rule-query-builder'), {
-      target: { value: filter },
-    });
-    fireEvent.submit(
-      screen.getByTestId('context-rule-name').closest('form') as HTMLFormElement
-    );
-
-    expect(await screen.findByText('Invalid filter')).toBeInTheDocument();
-    expect(previewRule).toHaveBeenCalledWith(
-      expect.objectContaining({ queryFilter: filter })
-    );
-    expect(previewPersonaAIContextRule).not.toHaveBeenCalled();
-    expect(onSubmit).not.toHaveBeenCalled();
-  });
 
   it('rejects a whitespace-only name at the field', async () => {
     const onSubmit = jest.fn();

@@ -3,19 +3,16 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-24 (initial)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `ContextRuleEditor.test.tsx`, `ContextRuleCard.test.tsx`, `RdfToolExtensionTest`, `PersonaContextAccessTest`, `PersonaAIContextIT`
+- **Guard:** `RdfToolExtensionTest`, `PersonaContextAccessTest`, `PersonaContextDefinitionValidationTest`, `PersonaAIContextIT`
 
 ## Context
 
 Collate authors company and persona context rules separately, projects the merged definition onto a
-persona, and provides company context to callers without a persona. Its UI and MCP tools share
+persona, and provides company context to callers without a persona. Its MCP tools share
 OpenMetadata's rule model and RDF checks.
 
 ## Decision
 
-- Context rule components use the generated persona rule and section types. An editor can supply
-  its preview operation for both live preview and submit validation. Card renderers can present
-  version values, queries, badges, and authorized actions using the same delete confirmation.
 - RDF tool subclasses can inject the repository and readiness resolver, receive the caller's
   authorizer, and reuse the grant, readiness, and admission checks. Composed tools supply their
   own write limits alongside their write operations.
@@ -30,5 +27,5 @@ OpenMetadata's rule model and RDF checks.
 
 ## Consequences
 
-Downstream code owns harness policy and presentation. OpenMetadata owns rule validation,
+Downstream code owns harness policy and its UI, since OpenMetadata keeps only UI it uses itself. OpenMetadata owns rule validation,
 authorization, materialization, and tool execution guards.

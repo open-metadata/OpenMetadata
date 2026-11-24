@@ -73,20 +73,14 @@ import { getErrorText } from '../../../../utils/StringUtils';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 
-export type ContextRulePreview = PersonaContextRulePreview;
-
-type PreviewRule = (rule: ContextRule) => Promise<ContextRulePreview>;
-
-export type ContextRuleEditorProps = {
+interface ContextRuleEditorProps {
   existingRuleNames: string[];
   open: boolean;
+  personaId: string;
   rule?: ContextRule;
   onClose: () => void;
   onSubmit: (rule: ContextRule) => Promise<void>;
-} & (
-  | { personaId: string; previewRule?: undefined }
-  | { personaId?: string; previewRule: PreviewRule }
-);
+}
 
 interface FieldProps {
   children: ReactNode;
@@ -183,7 +177,6 @@ export const ContextRuleEditor = ({
   existingRuleNames,
   open,
   personaId,
-  previewRule,
   rule,
   onClose,
   onSubmit,
@@ -221,7 +214,7 @@ export const ContextRuleEditor = ({
   ruleForResetRef.current = rule;
   const activeRuleId = rule?.id;
   const previewRequestRef = useRef(0);
-  const [preview, setPreview] = useState<ContextRulePreview>();
+  const [preview, setPreview] = useState<PersonaContextRulePreview>();
   const [previewError, setPreviewError] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [maxAssetsDraft, setMaxAssetsDraft] = useState<string>();
@@ -262,14 +255,6 @@ export const ContextRuleEditor = ({
     ? 'message.persona-context-knowledge-fully-rendered'
     : nonKnowledgeFullyRenderedKey;
 
-  const requestPreview = useCallback<PreviewRule>(
-    (draft) =>
-      previewRule
-        ? previewRule(draft)
-        : previewPersonaAIContextRule(personaId, draft),
-    [personaId, previewRule]
-  );
-
   useEffect(() => {
     if (!open) {
       previewRequestRef.current++;
@@ -283,7 +268,7 @@ export const ContextRuleEditor = ({
     const timeout = window.setTimeout(async () => {
       try {
         const values = form.getValues();
-        const result = await requestPreview({
+        const result = await previewPersonaAIContextRule(personaId, {
           ...values,
           name: values.name.trim() || t('label.untitled'),
         });
@@ -315,8 +300,8 @@ export const ContextRuleEditor = ({
     form,
     maxAssets,
     open,
+    personaId,
     queryFilter,
-    requestPreview,
     t,
   ]);
 
@@ -329,7 +314,7 @@ export const ContextRuleEditor = ({
           data.queryFilter === (rule.queryFilter ?? '');
         const reEnabled = rule?.enabled === false && data.enabled !== false;
         if (data.queryFilter && (!unchangedFilter || reEnabled)) {
-          await requestPreview(data);
+          await previewPersonaAIContextRule(personaId, data);
         }
         form.clearErrors('queryFilter');
 
@@ -348,7 +333,7 @@ export const ContextRuleEditor = ({
         return false;
       }
     },
-    [form, requestPreview, rule, t]
+    [form, personaId, rule, t]
   );
 
   const handleSubmit = useCallback(

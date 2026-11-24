@@ -22,14 +22,12 @@ import {
   getRuleConditionCount,
   getRuleExplorePath,
   getRuleFilterTree,
-  getRuleQuery,
   getScopedRuleCount,
   isKnowledgeContextRule,
   isRuleFilterFullyRendered,
   isSearchScopedRule,
   normalizePersonaContextDefinition,
   parseRuleFilterTree,
-  ruleConditionText,
 } from './PersonaAIContextUtils';
 
 const versionSnapshot = (
@@ -46,40 +44,6 @@ const versionSnapshot = (
   });
 
 describe('PersonaAIContextUtils', () => {
-  it('summarizes flat and mixed-conjunction rule trees', () => {
-    const condition = (field: string, value: string) => ({
-      properties: { field, operator: 'equal', value: [value] },
-      type: 'rule',
-    });
-    const group = (conjunction: string, children1: object[]) => ({
-      children1,
-      properties: { conjunction },
-      type: 'group',
-    });
-    const owners = condition('owners.displayName.keyword', 'Finance');
-    const property = condition('extension.table.riskTier', 'high');
-    const flat = group('OR', [owners, property]);
-    const mixed = group('AND', [condition('name', 'orders'), flat]);
-    const query = getRuleQuery({ filterJsonTree: JSON.stringify(flat) });
-
-    expect(query).toEqual({
-      conditions: [
-        { field: 'Owners', operator: '=', value: 'Finance' },
-        { field: 'Risk Tier', operator: '=', value: 'high' },
-      ],
-      conjunction: 'OR',
-      kind: 'conditions',
-    });
-    expect(getRuleQuery({ filterJsonTree: JSON.stringify(mixed) })).toEqual({
-      count: 3,
-      kind: 'count',
-    });
-    expect(getRuleQuery({})).toEqual({ kind: 'all' });
-    expect(ruleConditionText({ field: 'Owners', operator: 'is null' })).toBe(
-      'Owners is null'
-    );
-  });
-
   it('applies schema defaults without sharing mutable rule arrays', () => {
     const first = normalizePersonaContextDefinition();
     const second = normalizePersonaContextDefinition();

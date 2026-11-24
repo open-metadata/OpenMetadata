@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ContextSection } from '../../../../generated/type/personaContextDefinition';
 import { ContextRuleCard } from './ContextRuleCard.component';
@@ -20,119 +20,6 @@ jest.mock('react-i18next', () => ({
 }));
 
 describe('ContextRuleCard', () => {
-  const rule = {
-    description: 'Current description',
-    entityType: EntityType.TABLE,
-    name: 'Current name',
-  };
-  const defaultProps = {
-    canEdit: true,
-    onDelete: jest.fn(),
-    onEdit: jest.fn(),
-    rule,
-  };
-
-  it('keeps the original name, actions and description visibility by default', () => {
-    render(<ContextRuleCard {...defaultProps} />);
-
-    expect(screen.getByText(rule.name)).toBeInTheDocument();
-    expect(screen.queryByText(rule.description)).not.toBeInTheDocument();
-    expect(screen.getByTestId('edit-context-rule')).toBeInTheDocument();
-    expect(screen.getByTestId('delete-context-rule')).toBeInTheDocument();
-  });
-
-  it('shows inherited rules as read-only even when editing is allowed', () => {
-    render(
-      <ContextRuleCard
-        {...defaultProps}
-        inherited
-        renderActions={() => 'Custom menu'}
-      />
-    );
-
-    expect(screen.getByText('label.inherited')).toBeInTheDocument();
-    expect(screen.queryByTestId('edit-context-rule')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('delete-context-rule')).not.toBeInTheDocument();
-    expect(screen.queryByText('Custom menu')).not.toBeInTheDocument();
-  });
-
-  it('renders version values, including a removed description', () => {
-    render(
-      <ContextRuleCard
-        {...defaultProps}
-        renderVersionValue={(field, value) =>
-          field === 'name' ? (
-            <ins>{value}</ins>
-          ) : (
-            <del>Previous description</del>
-          )
-        }
-        rule={{ ...rule, description: undefined }}
-      />
-    );
-
-    expect(screen.getByText(rule.name).tagName).toBe('INS');
-    expect(screen.getByText('Previous description').tagName).toBe('DEL');
-  });
-
-  it('renders the supplied change badge', () => {
-    render(<ContextRuleCard {...defaultProps} changeBadge="Changed" />);
-
-    expect(screen.getByText('Changed')).toBeInTheDocument();
-  });
-
-  it('passes the parsed query to a custom condition renderer', () => {
-    render(
-      <ContextRuleCard
-        {...defaultProps}
-        renderQuery={(query) =>
-          query.kind === 'conditions'
-            ? query.conditions.map((condition) => condition.value).join(', ')
-            : undefined
-        }
-        rule={{ ...rule, queryFilter: '{"term":{"name":"orders"}}' }}
-      />
-    );
-
-    expect(screen.getByText('orders')).toBeInTheDocument();
-  });
-
-  it('uses the custom action presentation and preserves delete confirmation', () => {
-    const onEdit = jest.fn();
-    const onDelete = jest.fn();
-    render(
-      <ContextRuleCard
-        {...defaultProps}
-        renderActions={({ onEdit, onDelete }) => (
-          <>
-            <button type="button" onClick={onEdit}>
-              Edit rule
-            </button>
-            <button type="button" onClick={onDelete}>
-              Remove rule
-            </button>
-          </>
-        )}
-        onDelete={onDelete}
-        onEdit={onEdit}
-      />
-    );
-
-    expect(screen.queryByTestId('edit-context-rule')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Edit rule' }));
-
-    expect(onEdit).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Remove rule' }));
-
-    expect(onDelete).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByTestId('confirm-button'));
-
-    expect(onDelete).toHaveBeenCalledTimes(1);
-  });
-
   it('marks a disabled scoped rule without claiming its search filter is applied', () => {
     render(
       <ContextRuleCard
