@@ -394,6 +394,50 @@ class RdfLiveWriteTest {
   }
 
   @Test
+  void directedSameTypeRelatedToReplaysOnlyTheStoredDirection() {
+    final UUID first = UUID.randomUUID();
+    final UUID second = UUID.randomUUID();
+    final Model graph = dataset.getNamedModel(GRAPH);
+    final Property relatedTo = graph.createProperty(RELATED_TO);
+    for (final String directedType : List.of(Entity.TABLE, Entity.PAGE)) {
+      final EntityRelationship forwardRelated =
+          new EntityRelationship()
+              .withFromId(first)
+              .withToId(second)
+              .withFromEntity(directedType)
+              .withToEntity(directedType)
+              .withRelationshipType(Relationship.RELATED_TO);
+      final EntityRelationship reverseRelated =
+          new EntityRelationship()
+              .withFromId(second)
+              .withToId(first)
+              .withFromEntity(directedType)
+              .withToEntity(directedType)
+              .withRelationshipType(Relationship.RELATED_TO);
+      storeRelationship(forwardRelated);
+      storeRelationship(reverseRelated);
+      final RdfLiveWrite staleRelatedAdd =
+          RdfLiveWrite.RelationshipChange.capture(forwardRelated, false);
+      replay(staleRelatedAdd);
+      replay(RdfLiveWrite.RelationshipChange.capture(reverseRelated, false));
+
+      final Resource firstResource =
+          graph.createResource(BASE + "entity/" + directedType + "/" + first);
+      final Resource secondResource =
+          graph.createResource(BASE + "entity/" + directedType + "/" + second);
+      assertTrue(graph.contains(firstResource, relatedTo, secondResource));
+      assertTrue(graph.contains(secondResource, relatedTo, firstResource));
+
+      storedRelationships.remove(
+          new StoredRelationship(
+              first, directedType, second, directedType, Relationship.RELATED_TO));
+      replay(staleRelatedAdd);
+      assertFalse(graph.contains(firstResource, relatedTo, secondResource));
+      assertTrue(graph.contains(secondResource, relatedTo, firstResource));
+    }
+  }
+
+  @Test
   void glossaryRelationAdditionReplayedAfterTheRelationWasDeletedDoesNotResurrectIt() {
     // Regression test for #36026: replaying a glossary ADD after SQL deletion must not resurrect.
     final UUID from = UUID.randomUUID();

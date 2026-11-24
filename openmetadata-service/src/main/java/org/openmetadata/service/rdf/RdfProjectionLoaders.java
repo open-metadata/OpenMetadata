@@ -151,11 +151,9 @@ record RdfProjectionLoaders(
   }
 
   /**
-   * Matches a non-lineage relationship against SQL. Bidirectional relationships (same-type {@link
-   * Relationship#RELATED_TO}, stored via {@code EntityRepository.addRelationship(..., true)}) keep
-   * a single row with {@code fromId < toId} while queuing RDF adds in both directions, so the
-   * reversed row is accepted only for that case. Directed relations (such as {@code CONTAINS} and
-   * {@code OWNS}) must match the queried direction only.
+   * Matches a non-lineage relationship against SQL. Metric.relatedMetrics stores one canonical
+   * {@link Relationship#RELATED_TO} row while queuing RDF adds in both directions. Table foreign
+   * keys and related knowledge pages also use RELATED_TO, but store directed rows.
    */
   boolean relationshipExists(final EntityRelationship relationship) {
     if (relationship == null
@@ -174,7 +172,7 @@ record RdfProjectionLoaders(
         relationship.getRelationshipType())) {
       return true;
     }
-    return isBidirectional(relationship)
+    return isBidirectionalMetricRelationship(relationship)
         && !relationship.getFromId().equals(relationship.getToId())
         && relationshipExists.exists(
             relationship.getToId(),
@@ -184,9 +182,10 @@ record RdfProjectionLoaders(
             relationship.getRelationshipType());
   }
 
-  private static boolean isBidirectional(final EntityRelationship relationship) {
+  private static boolean isBidirectionalMetricRelationship(final EntityRelationship relationship) {
     return relationship.getRelationshipType() == Relationship.RELATED_TO
-        && relationship.getFromEntity().equals(relationship.getToEntity());
+        && Entity.METRIC.equals(relationship.getFromEntity())
+        && Entity.METRIC.equals(relationship.getToEntity());
   }
 
   private static boolean relationshipRowExists(
