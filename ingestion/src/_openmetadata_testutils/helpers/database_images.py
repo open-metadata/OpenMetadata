@@ -10,28 +10,43 @@
 #  limitations under the License.
 """The MySQL and Postgres images connector tests read from, as a customer's source database.
 
-One version per engine, the newest the connectors support. They are independent of the
-database OpenMetadata ships as its own metadata store, which TestDatabaseImages in
-openmetadata-service holds. Bump them here by hand; tests/unit/test_database_source_image_guard.py
-lists every other line that must change. The MYSQL_SOURCE_IMAGE and POSTGRES_SOURCE_IMAGE
-environment variables replace them for a one-off run.
+Each engine has the oldest and the newest version the connectors support, independent of the
+database OpenMetadata ships as its own metadata store (TestDatabaseImages in openmetadata-service).
+Tests run on the newest; SOURCE_DATABASE_VERSION=oldest runs them on the oldest, as the nightly
+run does. MYSQL_SOURCE_IMAGE and POSTGRES_SOURCE_IMAGE replace the image for a one-off run.
+Bump these by hand; tests/unit/test_database_source_image_guard.py lists every other line that
+must change.
 
 ADR:2026-11-19-test-database-images-have-a-store-and-a-source-version
 """
 
 import os
 
-MYSQL_SOURCE_IMAGE = "mysql:8.4.13"
-POSTGRES_SOURCE_IMAGE = "postgres:16.15"
+MYSQL_OLDEST_SOURCE_IMAGE = "mysql:8.0.46"
+MYSQL_NEWEST_SOURCE_IMAGE = "mysql:9.7.4"
+POSTGRES_OLDEST_SOURCE_IMAGE = "postgres:15.20"
+POSTGRES_NEWEST_SOURCE_IMAGE = "postgres:18.7"
+
+SOURCE_VERSION_VARIABLE = "SOURCE_DATABASE_VERSION"
+OLDEST = "oldest"
+NEWEST = "newest"
 
 
 def mysql_source_image() -> str:
-    return _resolve("MYSQL_SOURCE_IMAGE", MYSQL_SOURCE_IMAGE)
+    return _resolve("MYSQL_SOURCE_IMAGE", MYSQL_OLDEST_SOURCE_IMAGE, MYSQL_NEWEST_SOURCE_IMAGE)
 
 
 def postgres_source_image() -> str:
-    return _resolve("POSTGRES_SOURCE_IMAGE", POSTGRES_SOURCE_IMAGE)
+    return _resolve("POSTGRES_SOURCE_IMAGE", POSTGRES_OLDEST_SOURCE_IMAGE, POSTGRES_NEWEST_SOURCE_IMAGE)
 
 
-def _resolve(override_variable: str, image: str) -> str:
-    return os.environ.get(override_variable, "").strip() or image
+def _resolve(override_variable: str, oldest: str, newest: str) -> str:
+    override = os.environ.get(override_variable, "").strip()
+    return override or (oldest if _selected_version() == OLDEST else newest)
+
+
+def _selected_version() -> str:
+    version = os.environ.get(SOURCE_VERSION_VARIABLE, "").strip().lower() or NEWEST
+    if version not in (OLDEST, NEWEST):
+        raise ValueError(f"{SOURCE_VERSION_VARIABLE} must be '{OLDEST}' or '{NEWEST}', not '{version}'")
+    return version

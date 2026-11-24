@@ -29,7 +29,8 @@ def mysql_container(tmp_path_factory):
             [
                 "sh",
                 "-c",
-                f"cd /data/test_db && mysql -uroot -p{container.password}  < employees.sql",
+                # employees.sql loads its data with `source`, a client command MySQL 9 turns off by default
+                f"cd /data/test_db && mysql --commands -uroot -p{container.password}  < employees.sql",
             ],
             [
                 "sh",

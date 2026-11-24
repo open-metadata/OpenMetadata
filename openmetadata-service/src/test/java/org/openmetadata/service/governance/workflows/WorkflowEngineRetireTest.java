@@ -25,6 +25,7 @@ import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
@@ -42,7 +43,7 @@ class WorkflowEngineRetireTest {
 
   @Container
   static final GenericContainer<?> POSTGRES =
-      new GenericContainer<>("postgres:15-alpine")
+      new GenericContainer<>(TestDatabaseImages.postgres())
           .withEnv("POSTGRES_USER", DATABASE_USER)
           .withEnv("POSTGRES_PASSWORD", DATABASE_USER)
           .withExposedPorts(5432)

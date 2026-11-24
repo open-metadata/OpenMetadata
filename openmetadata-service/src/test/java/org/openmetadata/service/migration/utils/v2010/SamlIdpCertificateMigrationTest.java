@@ -32,6 +32,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
@@ -61,7 +62,7 @@ class SamlIdpCertificateMigrationTest {
 
   @Container
   static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.3.0"))
+      new GenericContainer<>(DockerImageName.parse(TestDatabaseImages.mysql()))
           .withEnv("MYSQL_DATABASE", DATABASE)
           .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
           .withEnv("MYSQL_ROOT_HOST", "%")
@@ -74,7 +75,7 @@ class SamlIdpCertificateMigrationTest {
 
   @Container
   static final GenericContainer<?> POSTGRES =
-      new GenericContainer<>(DockerImageName.parse("postgres:16"))
+      new GenericContainer<>(DockerImageName.parse(TestDatabaseImages.postgres()))
           .withEnv("POSTGRES_DB", DATABASE)
           .withEnv("POSTGRES_PASSWORD", PASSWORD)
           .withExposedPorts(5432)

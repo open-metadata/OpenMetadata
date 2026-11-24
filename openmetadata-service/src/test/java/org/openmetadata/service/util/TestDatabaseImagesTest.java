@@ -13,6 +13,7 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
@@ -29,5 +30,17 @@ class TestDatabaseImagesTest {
         TestDatabaseImages.MYSQL, TestDatabaseImages.resolve(" ", TestDatabaseImages.MYSQL));
     assertEquals(
         TestDatabaseImages.POSTGRES, TestDatabaseImages.resolve(null, TestDatabaseImages.POSTGRES));
+  }
+
+  @Test
+  void mysqlRunsTheShippedVersionUnlessTheOldestIsSelected() {
+    assertEquals(TestDatabaseImages.MYSQL, TestDatabaseImages.mysqlFor(null));
+    assertEquals(TestDatabaseImages.MYSQL, TestDatabaseImages.mysqlFor(" shipped "));
+    assertEquals(TestDatabaseImages.MYSQL_OLDEST_SUPPORTED, TestDatabaseImages.mysqlFor("Oldest"));
+  }
+
+  @Test
+  void unknownVersionFailsInsteadOfRunningTheShippedOne() {
+    assertThrows(IllegalStateException.class, () -> TestDatabaseImages.mysqlFor("olde"));
   }
 }

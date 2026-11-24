@@ -14,7 +14,7 @@ services:
     ports:
       - "8888:8888"
   dwh:
-    image: postgres:16.15
+    image: postgres:15-alpine
     container_name: dwh-postgres
     volumes:
       - dwh_data:/var/lib/postgresql/data

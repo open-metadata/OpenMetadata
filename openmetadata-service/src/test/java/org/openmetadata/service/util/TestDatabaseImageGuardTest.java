@@ -31,8 +31,9 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /**
- * Every MySQL and Postgres image tag outside the connector source roots must equal {@link
- * TestDatabaseImages#MYSQL} or {@link TestDatabaseImages#POSTGRES}, the metadata store we ship.
+ * Every MySQL and Postgres image tag outside the connector source roots and the SDK examples must
+ * equal a metadata store constant in {@link TestDatabaseImages}: the images we ship, or the oldest
+ * MySQL an operator may run the store on.
  *
  * <p>ADR:2026-11-19-test-database-images-have-a-store-and-a-source-version
  */
@@ -57,11 +58,28 @@ class TestDatabaseImageGuardTest {
           "docs/artifacts/");
 
   /**
-   * Connector tests, their shared fixtures and the SDK examples start databases our connectors
-   * read, so they follow the connector source versions in Python, not the store we ship.
+   * Connector tests and their shared fixtures start databases our connectors read, so they follow
+   * the connector source versions in Python, not the store we ship.
    */
   private static final List<String> CONNECTOR_SOURCE_ROOTS =
-      List.of("ingestion/tests/", "ingestion/src/_openmetadata_testutils/", "examples/");
+      List.of("ingestion/tests/", "ingestion/src/_openmetadata_testutils/");
+
+  /**
+   * SDK examples are tutorials, not tests: their databases keep data in a volume across runs, and a
+   * new major version cannot start on an older one's data.
+   */
+  private static final List<String> EXAMPLES = List.of("examples/");
+
+  private static final List<String> MYSQL_IMAGES =
+      List.of(TestDatabaseImages.MYSQL, TestDatabaseImages.MYSQL_OLDEST_SUPPORTED);
+  private static final List<String> POSTGRES_IMAGES = List.of(TestDatabaseImages.POSTGRES);
+
+  /**
+   * Java code names no image but this helper: a test that typed even the shipped tag would miss the
+   * oldest-version run.
+   */
+  private static final String HELPER =
+      "openmetadata-service/src/test/java/org/openmetadata/service/util/TestDatabaseImages.java";
 
   private static final Set<String> PRUNED_DIRECTORIES =
       Set.of(
@@ -94,22 +112,19 @@ class TestDatabaseImageGuardTest {
   private static final Path REPOSITORY_ROOT = repositoryRoot();
 
   @Test
-  void everyMetadataStoreImageTagEqualsTheConstant() throws IOException {
+  void everyMetadataStoreImageTagIsAStoreConstant() throws IOException {
     final List<String> mismatches = new ArrayList<>();
     Files.walkFileTree(REPOSITORY_ROOT, new TagCollector(mismatches));
     assertTrue(
         mismatches.isEmpty(),
-        "The metadata store runs "
-            + TestDatabaseImages.MYSQL
-            + " and "
-            + TestDatabaseImages.POSTGRES
-            + ", the constants in TestDatabaseImages. To bump a version, change those constants"
-            + " and every line listed here. These lines name a different image:\n"
+        "The metadata store runs the constants in TestDatabaseImages: call"
+            + " TestDatabaseImages.mysql() or postgres(). To bump a version, change those"
+            + " constants and every line listed here. These lines name a different image:\n"
             + String.join("\n", mismatches));
   }
 
-  private static String expectedImage(final String tag) {
-    return tag.startsWith("postgres:") ? TestDatabaseImages.POSTGRES : TestDatabaseImages.MYSQL;
+  private static List<String> allowedImages(final String tag) {
+    return tag.startsWith("postgres") ? POSTGRES_IMAGES : MYSQL_IMAGES;
   }
 
   private static Path repositoryRoot() {
@@ -159,17 +174,24 @@ class TestDatabaseImageGuardTest {
     }
 
     private void collect(final String relative, final List<String> lines) {
+      final boolean javaCode = relative.endsWith(".java") && !relative.equals(HELPER);
       for (int index = 0; index < lines.size(); index++) {
         final Matcher matcher = IMAGE_TAG.matcher(lines.get(index));
         while (matcher.find()) {
           final String tag = matcher.group();
-          final String expected = expectedImage(tag);
-          if (!tag.equals(expected)) {
+          final List<String> allowed = allowedImages(tag);
+          if (javaCode || !allowed.contains(tag)) {
             mismatches.add(
-                relative + ":" + (index + 1) + ": " + tag + " (expected " + expected + ")");
+                relative + ":" + (index + 1) + ": " + tag + " (" + fix(javaCode, allowed) + ")");
           }
         }
       }
+    }
+
+    private static String fix(final boolean javaCode, final List<String> allowed) {
+      return javaCode
+          ? "call TestDatabaseImages.mysql() or postgres()"
+          : "expected one of " + allowed;
     }
 
     private static boolean isScanned(final String relative) {
@@ -179,7 +201,8 @@ class TestDatabaseImageGuardTest {
           dot > lower.lastIndexOf('/') && SKIPPED_EXTENSIONS.contains(lower.substring(dot));
       return !skippedExtension
           && HISTORY.stream().noneMatch(relative::startsWith)
-          && CONNECTOR_SOURCE_ROOTS.stream().noneMatch(relative::startsWith);
+          && CONNECTOR_SOURCE_ROOTS.stream().noneMatch(relative::startsWith)
+          && EXAMPLES.stream().noneMatch(relative::startsWith);
     }
 
     private static List<String> readLines(final Path file) {

@@ -29,6 +29,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.service.jdbi3.FqnKeyedRowCleanup.EntityTable;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -54,7 +55,7 @@ class FqnKeyedRowCleanupMySqlTest {
   @BeforeAll
   static void startMySql() {
     database =
-        new GenericContainer<>("mysql:8.4.13")
+        new GenericContainer<>(TestDatabaseImages.mysql())
             .withEnv("MYSQL_DATABASE", DATABASE)
             .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
             .withEnv("MYSQL_ROOT_HOST", "%")
