@@ -10,12 +10,6 @@ on:
         description: "Base Branch for Release Branch"
         required: true
         default: "main"
-        type: choice
-        options:
-          - "main"
-          - "1.13"
-          - "2.0"
-          - "2.1"
 permissions:
   contents: write
 jobs:
