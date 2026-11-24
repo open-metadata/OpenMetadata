@@ -85,6 +85,10 @@ updates:
         update-types: ["version-update:semver-minor"]
       - dependency-name: "react-hook-form"
         update-types: ["version-update:semver-minor"]
+      # Playwright is upgraded by hand: the version is also pinned in the CI image tags, the
+      # browser installs, the IndexedDB patch and Collate (ADR:2026-11-24-playwright-is-upgraded-by-hand).
+      - dependency-name: "@playwright/test"
+      - dependency-name: "playwright*"
 
   - package-ecosystem: "github-actions"
     directory: "/"
