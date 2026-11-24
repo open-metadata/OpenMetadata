@@ -2,6 +2,7 @@ package org.openmetadata.service.migration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -18,6 +19,8 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.testcontainers.containers.GenericContainer;
@@ -345,14 +348,15 @@ class LogicalTestSuitePipelineMigrationTest {
     if (root == null) {
       throw new IllegalStateException("Cannot find migration scripts");
     }
-    return MigrationFile.parseSQLFile(
-            root.resolve("bootstrap/sql/migrations/native")
-                .resolve(version)
-                .resolve(dialect)
-                .resolve("schemaChanges.sql")
-                .toFile(),
-            MYSQL.equals(dialect) ? ConnectionType.MYSQL : ConnectionType.POSTGRES)
-        .stream()
+    final MigrationFile migration =
+        new MigrationFile(
+            root.resolve("bootstrap/sql/migrations/native").resolve(version).toFile(),
+            mock(MigrationDAO.class),
+            MYSQL.equals(dialect) ? ConnectionType.MYSQL : ConnectionType.POSTGRES,
+            new OpenMetadataApplicationConfig(),
+            false);
+    migration.parseSQLFiles();
+    return migration.getSchemaChanges().stream()
         .filter(sql -> sql.contains("entityFullyQualifiedName"))
         .toList();
   }
