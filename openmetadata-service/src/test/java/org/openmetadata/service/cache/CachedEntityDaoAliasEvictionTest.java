@@ -28,9 +28,13 @@ class CachedEntityDaoAliasEvictionTest {
 
     dao.invalidateByName(TYPE, FQN);
 
-    assertEquals(1, cache.deletes.size(), "both aliases must be evicted in a single del");
+    assertEquals(1, cache.deletes.size(), "all name aliases must be evicted in a single del");
     assertEquals(
-        List.of(keys.entityByName(TYPE, FQN), keys.refByName(TYPE, FQN)), cache.deletes.getFirst());
+        List.of(
+            keys.entityIdByName(TYPE, FQN),
+            keys.entityByName(TYPE, FQN),
+            keys.refByName(TYPE, FQN)),
+        cache.deletes.getFirst());
   }
 
   @Test
@@ -41,9 +45,13 @@ class CachedEntityDaoAliasEvictionTest {
 
     dao.deleteByName(TYPE, FQN);
 
-    assertEquals(1, cache.deletes.size(), "both aliases must be evicted in a single del");
+    assertEquals(1, cache.deletes.size(), "all name aliases must be evicted in a single del");
     assertEquals(
-        List.of(keys.entityByName(TYPE, FQN), keys.refByName(TYPE, FQN)), cache.deletes.getFirst());
+        List.of(
+            keys.entityIdByName(TYPE, FQN),
+            keys.entityByName(TYPE, FQN),
+            keys.refByName(TYPE, FQN)),
+        cache.deletes.getFirst());
   }
 
   @Test
@@ -77,6 +85,7 @@ class CachedEntityDaoAliasEvictionTest {
     assertEquals(
         List.of(
             keys.entity(TYPE, named),
+            keys.entityIdByName(TYPE, FQN),
             keys.entityByName(TYPE, FQN),
             keys.refByName(TYPE, FQN),
             keys.entity(TYPE, unnamed)),

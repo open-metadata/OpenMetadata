@@ -260,7 +260,7 @@ class DeferredCacheInvalidationTest {
   private void cacheInRedis(final Pipeline pipeline) {
     final String json = jsonOf(pipeline, false);
     cachedEntityDao.putBase(Entity.PIPELINE, pipeline.getId(), json);
-    cachedEntityDao.putByName(Entity.PIPELINE, pipeline.getFullyQualifiedName(), json);
+    cachedEntityDao.putByName(Entity.PIPELINE, pipeline.getFullyQualifiedName(), pipeline.getId());
   }
 
   private long redisVariantsOf(final Pipeline pipeline) {
