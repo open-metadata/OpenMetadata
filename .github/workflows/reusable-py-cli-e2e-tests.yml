@@ -81,6 +81,8 @@ jobs:
         if: inputs.use-ingestion-image
         run: bash .github/scripts/python_ci_ingestion_image.sh load "$RUNNER_TEMP/python-ci-ingestion.tar.zst"
         shell: bash
+      # TODO: Validate all CLI connectors without Airflow before removing ingestion image setup.
+      # TODO: Profile a small MySQL fixture database instead of the backend schema.
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:

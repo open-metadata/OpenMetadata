@@ -195,66 +195,13 @@ jobs:
           persist-credentials: false
           # Sonar uses history for blame and new-code analysis.
           fetch-depth: 0
-      - name: Set up Python
-        uses: ./.github/actions/setup-python
+      - name: Publish Python Sonar analysis
+        uses: ./.github/actions/python-sonar
         with:
           python-version: ${{ needs.plan.outputs.python-highest }}
-      - name: Prepare Python tools
-        run: make python_tools
-        shell: bash
-      - name: Download coverage artifacts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          pattern: '*coverage-*'
-          path: artifacts
-      - name: Download test results
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          pattern: '{tests-*,py-*-test-results-*}'
-          path: test-artifacts
-      - name: Generate report
-        run: |
-          ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py -s combine-coverage -- \
-            --coverage-dir artifacts --results-dir test-artifacts
-        shell: bash
-      - name: Push Results to Sonar
-        id: push-to-sonar
-        continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-        with:
-          projectBaseDir: ingestion/
-      - name: Wait to retry Sonar upload
-        if: ${{ !cancelled() && steps.push-to-sonar.outcome == 'failure' }}
-        run: sleep 20s
-        shell: bash
-      - name: Retry Sonar upload
-        if: ${{ !cancelled() && steps.push-to-sonar.outcome == 'failure' }}
-        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-        with:
-          projectBaseDir: ingestion/
-
-      - name: Download Airflow API results
-        id: airflow-apis-results
-        if: ${{ !cancelled() && needs.airflow-apis.result == 'success' }}
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          name: airflow-apis-test-results
-          path: openmetadata-airflow-apis/
-      - name: Publish Airflow API Sonar analysis
-        if: ${{ !cancelled() && steps.airflow-apis-results.outcome == 'success' }}
-        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-          SONAR_TOKEN: ${{ secrets.AIRFLOW_APIS_SONAR_TOKEN }}
-        with:
-          projectBaseDir: openmetadata-airflow-apis/
-          args: -Dproject.settings=openmetadata-airflow-apis/sonar-project.properties
+          ingestion-token: ${{ secrets.INGESTION_SONAR_SECRET }}
+          airflow-apis-token: ${{ secrets.AIRFLOW_APIS_SONAR_TOKEN }}
+          publish-airflow-apis: ${{ needs.airflow-apis.result == 'success' }}
 
   notify:
     needs:
