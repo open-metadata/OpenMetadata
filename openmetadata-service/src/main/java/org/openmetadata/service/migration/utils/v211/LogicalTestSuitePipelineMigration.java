@@ -74,15 +74,63 @@ public final class LogicalTestSuitePipelineMigration {
         AND pipeline.json::jsonb #> '{sourceConfig,config,entityFullyQualifiedName}' IS NOT NULL
       """;
 
+  private static final String MYSQL_ALIGN_BASIC =
+      """
+      UPDATE entity_relationship AS relationship
+      JOIN test_suite AS suite ON suite.id = relationship.fromId
+      JOIN ingestion_pipeline_entity AS pipeline ON pipeline.id = relationship.toId
+      SET pipeline.json = JSON_SET(
+          pipeline.json,
+          '$.sourceConfig.config.entityFullyQualifiedName',
+          JSON_EXTRACT(suite.json, '$.basicEntityReference.fullyQualifiedName'))
+      WHERE relationship.fromEntity = 'testSuite'
+        AND relationship.toEntity = 'ingestionPipeline'
+        AND relationship.relation = 0
+        AND JSON_UNQUOTE(JSON_EXTRACT(suite.json, '$.basic')) = 'true'
+        AND JSON_TYPE(JSON_EXTRACT(suite.json, '$.basicEntityReference.fullyQualifiedName')) = 'STRING'
+        AND JSON_UNQUOTE(JSON_EXTRACT(suite.json, '$.basicEntityReference.fullyQualifiedName')) <> ''
+        AND JSON_UNQUOTE(JSON_EXTRACT(pipeline.json, '$.pipelineType')) = 'TestSuite'
+        AND JSON_EXTRACT(pipeline.json, '$.sourceConfig.config.entityFullyQualifiedName') IS NOT NULL
+        AND JSON_TYPE(JSON_EXTRACT(pipeline.json, '$.sourceConfig.config.entityFullyQualifiedName')) <> 'NULL'
+        AND JSON_EXTRACT(pipeline.json, '$.sourceConfig.config.entityFullyQualifiedName')
+            <> JSON_EXTRACT(suite.json, '$.basicEntityReference.fullyQualifiedName')
+      """;
+
+  private static final String POSTGRES_ALIGN_BASIC =
+      """
+      UPDATE ingestion_pipeline_entity AS pipeline
+      SET json = jsonb_set(
+          pipeline.json::jsonb,
+          '{sourceConfig,config,entityFullyQualifiedName}',
+          suite.json #> '{basicEntityReference,fullyQualifiedName}',
+          false)::json
+      FROM entity_relationship AS relationship
+      JOIN test_suite AS suite ON suite.id = relationship.fromId
+      WHERE pipeline.id = relationship.toId
+        AND relationship.fromEntity = 'testSuite'
+        AND relationship.toEntity = 'ingestionPipeline'
+        AND relationship.relation = 0
+        AND suite.json ->> 'basic' = 'true'
+        AND jsonb_typeof(suite.json #> '{basicEntityReference,fullyQualifiedName}') = 'string'
+        AND suite.json #>> '{basicEntityReference,fullyQualifiedName}' <> ''
+        AND pipeline.json ->> 'pipelineType' = 'TestSuite'
+        AND pipeline.json::jsonb #> '{sourceConfig,config,entityFullyQualifiedName}' IS NOT NULL
+        AND jsonb_typeof(pipeline.json::jsonb #> '{sourceConfig,config,entityFullyQualifiedName}') <> 'null'
+        AND (pipeline.json::jsonb #> '{sourceConfig,config,entityFullyQualifiedName}')
+            IS DISTINCT FROM (suite.json #> '{basicEntityReference,fullyQualifiedName}')
+      """;
+
   private LogicalTestSuitePipelineMigration() {}
 
   public static void migrate(final Handle handle, final ConnectionType connectionType) {
     if (connectionType == ConnectionType.MYSQL) {
       addOnMySql(handle);
       handle.execute(MYSQL_CLEANUP);
+      handle.execute(MYSQL_ALIGN_BASIC);
     } else {
       addOnPostgres(handle);
       handle.execute(POSTGRES_CLEANUP);
+      handle.execute(POSTGRES_ALIGN_BASIC);
     }
   }
 

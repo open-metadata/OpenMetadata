@@ -33,11 +33,11 @@ before talking to the ingestion runner.
    deploy, run, toggle, and data-contract DQ validation. Violations return HTTP 400 before calling
    the runner.
 5. **Upgrade normalization:** `LogicalTestSuitePipelineMigration` (run once in `2.1.1` on both
-   MySQL and PostgreSQL) strips `sourceConfig.config.entityFullyQualifiedName` from stored
-   logical-suite pipelines after ensuring `idx_test_suite_id` exists on `test_suite(id)`. Stored
-   basic-suite rows with a mismatched table FQN are left untouched so the migration never silently
-   redirects a pipeline to a different table; runner actions reject them with 400 until fixed or
-   deleted.
+   MySQL and PostgreSQL) creates `idx_test_suite_id` on `test_suite(id)`, strips
+   `sourceConfig.config.entityFullyQualifiedName` from stored logical-suite pipelines, and aligns
+   any mismatched non-null `sourceConfig.config.entityFullyQualifiedName` on stored basic-suite
+   pipelines to `suite.basicEntityReference.fullyQualifiedName` (preserving omitted/`null` values
+   and leaving basic suites without a `basicEntityReference.fullyQualifiedName` untouched).
 
 ## Consequences
 

@@ -150,19 +150,24 @@ class LogicalTestSuitePipelineMigrationTest {
   private static void assertIndexedSuiteLookup(final Handle handle, final String dialect)
       throws ReflectiveOperationException {
     handle.execute(MYSQL.equals(dialect) ? "ANALYZE TABLE test_suite" : "ANALYZE test_suite");
-    final Field cleanup =
-        LogicalTestSuitePipelineMigration.class.getDeclaredField(
-            MYSQL.equals(dialect) ? "MYSQL_CLEANUP" : "POSTGRES_CLEANUP");
-    cleanup.setAccessible(true);
+    final List<String> fields =
+        MYSQL.equals(dialect)
+            ? List.of("MYSQL_CLEANUP", "MYSQL_ALIGN_BASIC")
+            : List.of("POSTGRES_CLEANUP", "POSTGRES_ALIGN_BASIC");
     final String explain =
         MYSQL.equals(dialect) ? "EXPLAIN FORMAT=JSON " : "EXPLAIN (FORMAT JSON) ";
-    final JsonNode plan =
-        JsonUtils.readTree(
-            handle.createQuery(explain + cleanup.get(null)).mapTo(String.class).one());
     final String key = MYSQL.equals(dialect) ? "key" : "Index Name";
-    assertTrue(
-        plan.findValues(key).stream().anyMatch(value -> "idx_test_suite_id".equals(value.asText())),
-        "The populated suite table should be joined through its id index: " + plan);
+    for (final String fieldName : fields) {
+      final Field statement = LogicalTestSuitePipelineMigration.class.getDeclaredField(fieldName);
+      statement.setAccessible(true);
+      final JsonNode plan =
+          JsonUtils.readTree(
+              handle.createQuery(explain + statement.get(null)).mapTo(String.class).one());
+      assertTrue(
+          plan.findValues(key).stream()
+              .anyMatch(value -> "idx_test_suite_id".equals(value.asText())),
+          fieldName + " should join test_suite through idx_test_suite_id: " + plan);
+    }
   }
 
   private static void invalidatePostgresIndex(final Handle handle, final String dialect) {
@@ -202,8 +207,11 @@ class LogicalTestSuitePipelineMigrationTest {
       insertEntity(handle, dialect, "test_suite", suiteId, JsonUtils.readTree(fixture.suiteJson()));
       insertEntity(handle, dialect, "ingestion_pipeline_entity", pipelineId, pipeline);
       insertRelationship(handle, suiteId, pipelineId, fixture);
+      final ObjectNode config = (ObjectNode) pipeline.path("sourceConfig").path("config");
       if (fixture.removeTable()) {
-        ((ObjectNode) pipeline.path("sourceConfig").path("config")).remove(TABLE_FIELD);
+        config.remove(TABLE_FIELD);
+      } else if (fixture.expectedTableJson() != null) {
+        config.set(TABLE_FIELD, JsonUtils.readTree(fixture.expectedTableJson()));
       }
       expected.put(pipelineId, pipeline);
     }
@@ -221,7 +229,8 @@ class LogicalTestSuitePipelineMigrationTest {
             "ingestionPipeline",
             0,
             false,
-            true),
+            true,
+            null),
         new Fixture(
             "logical_table",
             "{\"basic\":false}",
@@ -231,7 +240,8 @@ class LogicalTestSuitePipelineMigrationTest {
             "ingestionPipeline",
             0,
             false,
-            true),
+            true,
+            null),
         new Fixture(
             "missing_basic",
             "{}",
@@ -241,7 +251,8 @@ class LogicalTestSuitePipelineMigrationTest {
             "ingestionPipeline",
             0,
             false,
-            true),
+            true,
+            null),
         new Fixture(
             "null_basic",
             "{\"basic\":null}",
@@ -251,7 +262,8 @@ class LogicalTestSuitePipelineMigrationTest {
             "ingestionPipeline",
             0,
             false,
-            true),
+            true,
+            null),
         new Fixture(
             "deleted",
             "{\"basic\":false}",
@@ -261,9 +273,10 @@ class LogicalTestSuitePipelineMigrationTest {
             "ingestionPipeline",
             0,
             true,
-            true),
+            true,
+            null),
         new Fixture(
-            "basic",
+            "basic_missing_ref",
             "{\"basic\":true}",
             "\"service.db.schema.table\"",
             "TestSuite",
@@ -271,17 +284,74 @@ class LogicalTestSuitePipelineMigrationTest {
             "ingestionPipeline",
             0,
             false,
-            false),
+            false,
+            null),
         new Fixture(
-            "basic_mismatch",
-            "{\"basic\":true,\"basicEntityReference\":{\"fullyQualifiedName\":\"other.table\"}}",
+            "basic_matching",
+            "{\"basic\":true,\"basicEntityReference\":{\"fullyQualifiedName\":\"service.db.schema.orders\"}}",
+            "\"service.db.schema.orders\"",
+            "TestSuite",
+            "testSuite",
+            "ingestionPipeline",
+            0,
+            false,
+            false,
+            null),
+        new Fixture(
+            "basic_mismatch_quoted",
+            "{\"basic\":true,\"basicEntityReference\":{\"fullyQualifiedName\":\"svc.db.\\\"schema.name\\\".other_table\"}}",
             "\"service.db.schema.table\"",
             "TestSuite",
             "testSuite",
             "ingestionPipeline",
             0,
             false,
-            false),
+            false,
+            "\"svc.db.\\\"schema.name\\\".other_table\""),
+        new Fixture(
+            "basic_case_mismatch",
+            "{\"basic\":true,\"basicEntityReference\":{\"fullyQualifiedName\":\"service.db.schema.orders\"}}",
+            "\"service.db.schema.ORDERS\"",
+            "TestSuite",
+            "testSuite",
+            "ingestionPipeline",
+            0,
+            false,
+            false,
+            "\"service.db.schema.orders\""),
+        new Fixture(
+            "basic_non_string",
+            "{\"basic\":true,\"basicEntityReference\":{\"fullyQualifiedName\":\"service.db.schema.orders\"}}",
+            "42",
+            "TestSuite",
+            "testSuite",
+            "ingestionPipeline",
+            0,
+            false,
+            false,
+            "\"service.db.schema.orders\""),
+        new Fixture(
+            "basic_absent",
+            "{\"basic\":true,\"basicEntityReference\":{\"fullyQualifiedName\":\"service.db.schema.orders\"}}",
+            null,
+            "TestSuite",
+            "testSuite",
+            "ingestionPipeline",
+            0,
+            false,
+            false,
+            null),
+        new Fixture(
+            "basic_null_table",
+            "{\"basic\":true,\"basicEntityReference\":{\"fullyQualifiedName\":\"service.db.schema.orders\"}}",
+            "null",
+            "TestSuite",
+            "testSuite",
+            "ingestionPipeline",
+            0,
+            false,
+            false,
+            null),
         new Fixture(
             "absent",
             "{\"basic\":false}",
@@ -291,7 +361,8 @@ class LogicalTestSuitePipelineMigrationTest {
             "ingestionPipeline",
             0,
             false,
-            false),
+            false,
+            null),
         new Fixture(
             "null_table",
             "{\"basic\":false}",
@@ -301,7 +372,8 @@ class LogicalTestSuitePipelineMigrationTest {
             "ingestionPipeline",
             0,
             false,
-            true),
+            true,
+            null),
         new Fixture(
             "metadata",
             "{\"basic\":false}",
@@ -311,7 +383,8 @@ class LogicalTestSuitePipelineMigrationTest {
             "ingestionPipeline",
             0,
             false,
-            false),
+            false,
+            null),
         new Fixture(
             "other_parent",
             "{\"basic\":false}",
@@ -321,7 +394,8 @@ class LogicalTestSuitePipelineMigrationTest {
             "ingestionPipeline",
             0,
             false,
-            false),
+            false,
+            null),
         new Fixture(
             "other_child",
             "{\"basic\":false}",
@@ -331,7 +405,8 @@ class LogicalTestSuitePipelineMigrationTest {
             "pipeline",
             0,
             false,
-            false),
+            false,
+            null),
         new Fixture(
             "other_relation",
             "{\"basic\":false}",
@@ -341,7 +416,8 @@ class LogicalTestSuitePipelineMigrationTest {
             "ingestionPipeline",
             1,
             false,
-            false));
+            false,
+            null));
   }
 
   private static ObjectNode pipeline(final String id, final Fixture fixture) {
@@ -468,5 +544,6 @@ class LogicalTestSuitePipelineMigrationTest {
       String toEntity,
       int relation,
       boolean deleted,
-      boolean removeTable) {}
+      boolean removeTable,
+      String expectedTableJson) {}
 }
