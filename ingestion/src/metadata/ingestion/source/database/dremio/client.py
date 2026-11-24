@@ -39,6 +39,7 @@ CLOUD_API_URLS = {
     Region.EU: "https://api.eu.dremio.cloud",
 }
 SOFTWARE_API_PREFIX = "/api/v3"
+# ADR:2026-11-23-dremio-connector-reads-the-rest-api-not-arrow-flight
 REQUEST_TIMEOUT_SECONDS = 60
 SQL_TIMEOUT_SECONDS = 300
 JOB_POLL_SECONDS = 2

@@ -35,6 +35,7 @@ from metadata.ingestion.source.database.dremio.queries import (
 from metadata.utils.constants import THREE_MIN
 
 NAMESPACE_TYPES = ("SOURCE", "SPACE")
+# ADR:2026-11-23-dremio-connector-reads-the-rest-api-not-arrow-flight
 TEST_SQL_TIMEOUT_SECONDS = 30
 
 

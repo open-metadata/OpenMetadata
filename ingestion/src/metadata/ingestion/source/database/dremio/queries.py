@@ -86,7 +86,7 @@ def to_table_query(row: dict, jobs: JobsTable, service_name: str) -> TableQuery:
     return TableQuery(
         query=row["query"],
         userName=row.get("user_name") or "",
-        startTime=datetime.fromtimestamp(submitted / jobs.units_per_second).isoformat() if submitted else "",
+        startTime=submitted_at.isoformat() if submitted_at else "",
         duration=cpu_time / jobs.units_per_second if cpu_time else 0,
         analysisDate=DateTime(submitted_at or datetime.now(tz=timezone.utc)),
         serviceName=service_name,

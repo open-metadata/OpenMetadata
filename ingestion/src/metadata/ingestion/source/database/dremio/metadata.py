@@ -66,12 +66,16 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# ADR:2026-11-23-dremio-tags-are-the-classification-dremiotags-and-cloud-internal-sources-are-skipped
+DREMIO_TAGS_CLASSIFICATION = "DremioTags"
+
 # Datasets at the root of a source or space, outside any folder.
 # ADR:2026-11-18-dremio-schema-name-is-the-folder-path-without-its-space
 ROOT_SCHEMA = "default"
 
 # Dremio Cloud re-exposes the catalog of the project as sources of these types,
 # which would duplicate the real sources and spaces.
+# ADR:2026-11-23-dremio-tags-are-the-classification-dremiotags-and-cloud-internal-sources-are-skipped
 INTERNAL_SOURCE_TYPE_PREFIX = "DCS_CORE"
 
 # Dremio does not always report the length of a string or binary column
@@ -371,10 +375,10 @@ class DremioSource(DatabaseServiceSource):
                 yield from self.register_tag(
                     entity_fqn=table_fqn,
                     definition=TagDefinition(
-                        classification_name="DremioTags",
+                        classification_name=DREMIO_TAGS_CLASSIFICATION,
                         tag_name=tag_name,
-                        classification_description="Tags synchronized from Dremio Cloud collaboration tags",
-                        tag_description="Tag from Dremio Cloud collaboration tags",
+                        classification_description="Tags synchronized from Dremio collaboration tags",
+                        tag_description="Tag from Dremio collaboration tags",
                     ),
                 )
 

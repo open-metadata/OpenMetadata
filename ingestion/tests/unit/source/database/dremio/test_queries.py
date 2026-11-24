@@ -24,7 +24,7 @@ from metadata.ingestion.source.database.dremio.queries import (
     iter_table_queries,
 )
 
-START, END = datetime(2026, 11, 1), datetime(2026, 11, 2)
+START, END = datetime(2026, 11, 1, tzinfo=timezone.utc), datetime(2026, 11, 2, tzinfo=timezone.utc)
 
 
 @pytest.mark.parametrize(

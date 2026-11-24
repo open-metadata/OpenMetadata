@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-23 (initial)
 - **Deciders:** Charly Clairmont, ulixius9
-- **Guard:** `test_client.py` and `test_metadata.py` in `ingestion/tests/unit/source/database/dremio/`
+- **Guard:** `test_client.py` and `test_metadata.py` in `ingestion/tests/unit/source/database/dremio/`; the limits are `reviewer`
 - **Related:** [#34366](https://github.com/open-metadata/OpenMetadata/issues/34366), [PR #36163](https://github.com/open-metadata/OpenMetadata/pull/36163)
 
 ## Context
@@ -24,6 +24,14 @@ region (Dremio Cloud). The catalog is walked folder by folder from `/catalog/by-
 wiki and tags come from `/catalog/{id}`; usage and lineage read the job history with `/sql`.
 Nested types come from the `subSchema` of each catalog field. It needs no dependency beyond
 `requests`.
+
+Limits of the client (`client.py`, `connection.py`):
+
+- a REST request times out after 60 s;
+- a SQL job is polled every 2 s and abandoned after 300 s, or 30 s for the job-history step of the
+  test connection. The job-history query of usage and lineage is the only long one: when it is
+  abandoned, the run logs an error and ingests no usage or lineage, and the metadata is unaffected;
+- job results are read 500 rows at a time, the largest page Dremio returns.
 
 ## Consequences
 
