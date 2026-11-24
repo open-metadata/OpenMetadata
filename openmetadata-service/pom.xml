@@ -902,24 +902,8 @@
       <artifactId>junit-platform-commons</artifactId>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>testcontainers</artifactId>
-      <version>1.21.4</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <version>1.21.4</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.testcontainers</groupId>
-      <artifactId>localstack</artifactId>
-      <version>1.21.4</version>
-      <scope>test</scope>
-    </dependency>
+    <!-- No Testcontainers here: unit tests are mock-only, and a test that needs a database, search
+         engine, Redis or AWS service is an IT in openmetadata-integration-tests. -->
     <dependency>
       <groupId>info.picocli</groupId>
       <artifactId>picocli</artifactId>

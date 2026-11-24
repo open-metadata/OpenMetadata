@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT,DataProductPortsAtomicityIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT,DataProductPortsAtomicityIT,ContextProcessingConditionalWriteSqlIT,PipelineStatusPaginationSqlIT,DataAssetChartScopeIT,AWSSSMSecretsManagerLocalStackIT,AWSSecretsManagerLocalStackIT,OntologyActiveGraphStorageIT,OntologyHierarchyStorageIT,OntologyConceptStatusStorageIT,OntologyDerivedStatusStorageIT,OntologyPropertyInverseStorageIT,OntologyPublicationStorageIT,OntologyReleaseActivationIT,OntologyReleaseComparisonStorageIT,OntologyReleaseCaptureIT,OntologyReleaseReviewListIT,OntologyServedBindingsStorageIT,OntologyEntityDAOIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CsvExportMultiNodeIT,RdfDisabledMarkLifecycleIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tests that need the RDF store. The rdf lane runs them against the published
@@ -155,11 +155,6 @@
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>3.27.7</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.mockito</groupId>
-      <artifactId>mockito-core</artifactId>
       <scope>test</scope>
     </dependency>
     <!-- Dropwizard testing harness -->
@@ -299,6 +294,17 @@
   </dependencies>
   <build>
     <plugins>
+      <!-- The parent's surefire includes cover org.openmetadata.service.* packages, where ITs that
+           need package-private access live; they run only in the failsafe lanes. -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <excludes>
+            <exclude>**/*IT.java</exclude>
+          </excludes>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-failsafe-plugin</artifactId>
@@ -477,6 +483,23 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
@@ -548,6 +571,23 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
@@ -649,6 +689,23 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
@@ -719,6 +776,23 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
@@ -821,6 +895,23 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
@@ -892,6 +983,23 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
@@ -994,6 +1102,23 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
@@ -1064,6 +1189,23 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
@@ -1165,6 +1307,23 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
@@ -1235,6 +1394,23 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
@@ -1335,6 +1511,23 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
@@ -1406,6 +1599,23 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
@@ -1523,6 +1733,23 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
@@ -1595,6 +1822,23 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
@@ -1703,6 +1947,23 @@
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
+                    <include>**/ContextProcessingConditionalWriteSqlIT.java</include>
+                    <include>**/PipelineStatusPaginationSqlIT.java</include>
+                    <include>**/DataAssetChartScopeIT.java</include>
+                    <include>**/AWSSSMSecretsManagerLocalStackIT.java</include>
+                    <include>**/AWSSecretsManagerLocalStackIT.java</include>
+                    <include>**/OntologyActiveGraphStorageIT.java</include>
+                    <include>**/OntologyHierarchyStorageIT.java</include>
+                    <include>**/OntologyConceptStatusStorageIT.java</include>
+                    <include>**/OntologyDerivedStatusStorageIT.java</include>
+                    <include>**/OntologyPropertyInverseStorageIT.java</include>
+                    <include>**/OntologyPublicationStorageIT.java</include>
+                    <include>**/OntologyReleaseActivationIT.java</include>
+                    <include>**/OntologyReleaseComparisonStorageIT.java</include>
+                    <include>**/OntologyReleaseCaptureIT.java</include>
+                    <include>**/OntologyReleaseReviewListIT.java</include>
+                    <include>**/OntologyServedBindingsStorageIT.java</include>
+                    <include>**/OntologyEntityDAOIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
                     <include>**/ContextMemoryExtractionRequestIT.java</include>
@@ -1774,6 +2035,23 @@
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
+                    <exclude>**/ContextProcessingConditionalWriteSqlIT.java</exclude>
+                    <exclude>**/PipelineStatusPaginationSqlIT.java</exclude>
+                    <exclude>**/DataAssetChartScopeIT.java</exclude>
+                    <exclude>**/AWSSSMSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/AWSSecretsManagerLocalStackIT.java</exclude>
+                    <exclude>**/OntologyActiveGraphStorageIT.java</exclude>
+                    <exclude>**/OntologyHierarchyStorageIT.java</exclude>
+                    <exclude>**/OntologyConceptStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyDerivedStatusStorageIT.java</exclude>
+                    <exclude>**/OntologyPropertyInverseStorageIT.java</exclude>
+                    <exclude>**/OntologyPublicationStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseActivationIT.java</exclude>
+                    <exclude>**/OntologyReleaseComparisonStorageIT.java</exclude>
+                    <exclude>**/OntologyReleaseCaptureIT.java</exclude>
+                    <exclude>**/OntologyReleaseReviewListIT.java</exclude>
+                    <exclude>**/OntologyServedBindingsStorageIT.java</exclude>
+                    <exclude>**/OntologyEntityDAOIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
