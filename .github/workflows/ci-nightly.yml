@@ -149,7 +149,6 @@ jobs:
       python-version: ${{ needs.plan.outputs.python-highest }}
       ref: ${{ needs.plan.outputs.ref }}
       connectors: ${{ needs.plan.outputs.connectors }}
-      use-ingestion-image: true
       collect-coverage: ${{ github.ref == 'refs/heads/main' }}
 
   python-operator:

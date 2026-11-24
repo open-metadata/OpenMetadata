@@ -76,5 +76,4 @@ jobs:
       python-version: ${{ needs.prepare-classification-models.outputs.python-version }}
       connectors: ${{ needs.prepare-classification-models.outputs.connectors }}
       test-suite: v2
-      use-ingestion-image: true
       collect-coverage: false
