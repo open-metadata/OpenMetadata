@@ -88,6 +88,9 @@ class IngestionPipelineRepositoryTest {
     SecretsManagerFactory.setSecretsManager(null);
     SecretsManagerConfiguration smConfig = new SecretsManagerConfiguration();
     smConfig.setSecretsManager(SecretsManagerProvider.DB);
+    // createSecretsManager keeps whatever manager an earlier test in this JVM left behind.
+    previousSecretsManager = SecretsManagerFactory.getSecretsManager();
+    SecretsManagerFactory.setSecretsManager(null);
     SecretsManagerFactory.createSecretsManager(smConfig, "test");
   }
 
