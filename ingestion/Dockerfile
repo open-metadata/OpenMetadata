@@ -1,6 +1,14 @@
 ARG BASE_IMAGE=apache/airflow:3.3.2-python3.12
 FROM mysql:8.4.13 AS mysql
 
+# Rebuilds the Go library bundled in adbc-driver-flightsql against patched modules;
+# see ingestion/scripts/rebuild_adbc_flightsql.sh. Cross-compiled on the build host,
+# and on bookworm so the library needs no newer glibc than any of these images ship.
+FROM --platform=$BUILDPLATFORM golang:1.26.11-bookworm AS adbc-flightsql
+ARG TARGETARCH
+RUN --mount=type=bind,source=ingestion/scripts/rebuild_adbc_flightsql.sh,target=/rebuild.sh \
+    bash /rebuild.sh build /out
+
 FROM ${BASE_IMAGE}
 
 # gRPC ships a separate CA bundle that can lag behind OS distrust updates.
@@ -126,7 +134,7 @@ ARG INGESTION_DEPENDENCY="all"
 ENV PIP_NO_CACHE_DIR=1
 # Make pip silent
 ENV PIP_QUIET=1
-ARG RI_VERSION="2.1.0.0"
+ARG RI_VERSION="2.1.1.0"
 RUN python -m pip install --no-cache-dir --upgrade "pip @ https://files.pythonhosted.org/packages/3f/06/3e4420302363fbb71be3c7f35ce042f54bfca330e3e66b3a2e3c4cca579f/pip-26.2.2-py3-none-any.whl#sha256=fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70" \
     && python -m pip install --no-cache-dir --upgrade "certifi>=2026.10.19" "uv>=0.13.4" \
     && pip install --upgrade "setuptools>=83"
@@ -178,6 +186,12 @@ RUN bash /tmp/strip_spacy_test_fixture.sh && rm -f /tmp/strip_spacy_test_fixture
 # spaCy strip -- after the final pip install, or a later install restores them.
 COPY --chown=airflow:0 ingestion/scripts/strip_teradatasql_arch_libs.sh /tmp/strip_teradatasql_arch_libs.sh
 RUN bash /tmp/strip_teradatasql_arch_libs.sh && rm -f /tmp/strip_teradatasql_arch_libs.sh
+
+# Swap in the rebuilt FlightSQL driver. Must run after the final pip install, or a
+# later install restores the wheel's library.
+RUN --mount=type=bind,source=ingestion/scripts/rebuild_adbc_flightsql.sh,target=/tmp/rebuild_adbc_flightsql.sh \
+    --mount=type=bind,from=adbc-flightsql,source=/out,target=/tmp/adbc-flightsql \
+    bash /tmp/rebuild_adbc_flightsql.sh install /tmp/adbc-flightsql
 
 # Native Python extensions still need their shared libraries after header/tool cleanup.
 USER root
