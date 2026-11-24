@@ -2061,20 +2061,6 @@
   dependencies:
     "@swc/helpers" "^0.5.0"
 
-"@internationalized/number@^3.6.9":
-  version "3.6.9"
-  resolved "https://registry.yarnpkg.com/@internationalized/number/-/number-3.6.9.tgz#dc237daa302bd44248bb03e73abf5ef7549f4902"
-  integrity sha512-GgWy2caO/+hV9sT/oCTWGHvbjmJMPT9kkXzoKRLnkEq7adghhR7UprhvY9sXrKfrp3NcDfhF6QQHXR1KfQbB8g==
-  dependencies:
-    "@swc/helpers" "^0.5.0"
-
-"@internationalized/string@^3.2.10":
-  version "3.2.10"
-  resolved "https://registry.yarnpkg.com/@internationalized/string/-/string-3.2.10.tgz#c38bd59a69509a41bf7422f1b2fc3af7468e4322"
-  integrity sha512-PDx6//vHSpRnHfxqMqto11zQvhsaU74O3mKv2F/0eicGZcl9NLjQmGlbHz/LsJh5tLKp4A4L7ZVTzN1/MmMTvA==
-  dependencies:
-    "@swc/helpers" "^0.5.0"
-
 "@internationalized/string@^3.2.8":
   version "3.2.8"
   resolved "https://registry.yarnpkg.com/@internationalized/string/-/string-3.2.8.tgz#ca27e2ba127528d6b55a20fb5302bfebb852e1d9"
@@ -2687,9 +2673,8 @@
   integrity sha512-U69T3ItWHvLwGg5eJ0n3I62nWuE6ilHlmz7zM0npLBRvPRd7e6NYmg54vvRtP5mZG7kZqZCFVdsTWo7BPtBujg==
 
 "@openmetadata/ui-core-components@link:../../../../../openmetadata-ui-core-components/src/main/resources/ui":
-  version "1.0.0"
-  dependencies:
-    "@untitledui/file-icons" "^0.0.9"
+  version "0.0.0"
+  uid ""
 
 "@ota-meshi/ast-token-store@^0.3.0":
   version "0.3.0"
@@ -3008,11 +2993,6 @@
   version "3.34.0"
   resolved "https://registry.yarnpkg.com/@react-types/shared/-/shared-3.34.0.tgz#f9688443fdf8e29f7a06b499598a930be96a2f65"
   integrity sha512-gp6xo/s2lX54AlTjOiqwDnxA7UW79BNvI9dB9pr3LZTzRKCd1ZA+ZbgKw/ReIiWuvvVw/8QFJpnqeeFyLocMcQ==
-
-"@react-types/shared@^3.37.0":
-  version "3.37.0"
-  resolved "https://registry.yarnpkg.com/@react-types/shared/-/shared-3.37.0.tgz#bbbd3cddc2ba2764a6a915659a1ab0e628779ae9"
-  integrity sha512-VNlZuifu4tHdxWPfHvoMfKsHA9kVTCGkduv5vKVTdinm8wHFJNhyVB5RzIMiRFj0q3RKoCbP68u2zaoBSiFueg==
 
 "@reactflow/background@11.3.14":
   version "11.3.14"
@@ -11729,7 +11709,7 @@ react-aria-components@^1.16.0:
     react-aria "3.48.0"
     react-stately "3.46.0"
 
-react-aria@3.48.0:
+react-aria@3.48.0, react-aria@^3.47.0, react-aria@^3.48.0:
   version "3.48.0"
   resolved "https://registry.yarnpkg.com/react-aria/-/react-aria-3.48.0.tgz#ede91d3b247d34ea35216e246f0cb7de074303bd"
   integrity sha512-jQjd4rBEIMqecBaAKYJbVGK6EqIHLa5znVQ7jwFyK5vCyljoj6KhgtiahmcIPsG5vG5vEDLw+ba+bEWn6A2P4w==
@@ -11742,21 +11722,6 @@ react-aria@3.48.0:
     aria-hidden "^1.2.3"
     clsx "^2.0.0"
     react-stately "3.46.0"
-    use-sync-external-store "^1.6.0"
-
-react-aria@^3.47.0, react-aria@^3.48.0:
-  version "3.53.1"
-  resolved "https://registry.yarnpkg.com/react-aria/-/react-aria-3.53.1.tgz#8c78b8e1a2c680d404c1aabe75f31c98d2444b10"
-  integrity sha512-dikisyOjJd3D2fFrIDWmVWzqiLz5B86GzZv1zxs7xI4dVc0JIz/1Wa52I20gYvVL2WXeFXlygYsle/QcOMhtcg==
-  dependencies:
-    "@internationalized/date" "^3.12.4"
-    "@internationalized/number" "^3.6.9"
-    "@internationalized/string" "^3.2.10"
-    "@react-types/shared" "^3.37.0"
-    "@swc/helpers" "^0.5.0"
-    aria-hidden "^1.2.3"
-    clsx "^2.0.0"
-    react-stately "3.51.0"
     use-sync-external-store "^1.6.0"
 
 react-data-grid@7.0.0-beta.47:
@@ -11982,7 +11947,7 @@ react-shallow-renderer@^16.15.0:
     object-assign "^4.1.1"
     react-is "^16.12.0 || ^17.0.0 || ^18.0.0"
 
-react-stately@3.46.0:
+react-stately@3.46.0, react-stately@^3.46.0:
   version "3.46.0"
   resolved "https://registry.yarnpkg.com/react-stately/-/react-stately-3.46.0.tgz#9ce293b765c246c398a1765d6290acd0a77caa49"
   integrity sha512-OdxhWvHgs2L4OJGIs7hnuTr5WjjMM6enhNEAMRqiekhF8+ITvA2LRwNftOZwcogaoCslGYq5S2VQTQwnm0GbCA==
@@ -11991,18 +11956,6 @@ react-stately@3.46.0:
     "@internationalized/number" "^3.6.6"
     "@internationalized/string" "^3.2.8"
     "@react-types/shared" "^3.34.0"
-    "@swc/helpers" "^0.5.0"
-    use-sync-external-store "^1.6.0"
-
-react-stately@3.51.0, react-stately@^3.46.0:
-  version "3.51.0"
-  resolved "https://registry.yarnpkg.com/react-stately/-/react-stately-3.51.0.tgz#115925ddfdd4838baedc7d1123ffcb5f937230fc"
-  integrity sha512-YJcmkAXu2XOQP97hO/qz/cC3qv9kni3oVhwBlxWr358BHePJUpY15XwL3YSRMKxYt4EkslPqAz11JRirMfANGw==
-  dependencies:
-    "@internationalized/date" "^3.12.4"
-    "@internationalized/number" "^3.6.9"
-    "@internationalized/string" "^3.2.10"
-    "@react-types/shared" "^3.37.0"
     "@swc/helpers" "^0.5.0"
     use-sync-external-store "^1.6.0"
 
