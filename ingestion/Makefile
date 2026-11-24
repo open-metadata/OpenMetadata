@@ -101,11 +101,11 @@ sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push 
 
 .PHONY: run_apis_tests
 run_apis_tests:  ## Run the openmetadata airflow apis tests
-	$(MAKE) -C $(ROOT_DIR)/openmetadata-airflow-apis test ARGS="$(ARGS)"
+	$(MAKE) -C $(ROOT_DIR)/openmetadata-airflow-apis test
 
 .PHONY: coverage_apis
 coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
-	$(MAKE) -C $(ROOT_DIR)/openmetadata-airflow-apis coverage ARGS="$(ARGS)"
+	$(MAKE) -C $(ROOT_DIR)/openmetadata-airflow-apis coverage
 
 .PHONY: coverage
 coverage: python_tools  ## Run all Python tests and generate the coverage XML report

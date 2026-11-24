@@ -3,8 +3,7 @@
 PYTHON ?= python3
 UV = $(shell $(PYTHON) ../scripts/python_tools.py uv-path)
 
-test:
-	"$(UV)" run --exact --locked --python "$(shell $(PYTHON) -c 'import sys; print(sys.executable)')" --group test nox -s tests -- $(ARGS)
+test coverage:
+	"$(UV)" run --exact --locked --python "$(shell $(PYTHON) -c 'import sys; print(sys.executable)')" --group test nox -s tests -- $(COVERAGE_ARGS) $(ARGS)
 
-coverage:
-	$(MAKE) test ARGS="--coverage $(ARGS)"
+coverage: COVERAGE_ARGS = --coverage

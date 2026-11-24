@@ -99,6 +99,66 @@ def reported_test_names(repo: Path, suite: str) -> list[str]:
     return [case.attrib["name"] for case in report.findall(".//testcase")]
 
 
+@pytest.mark.parametrize(
+    "directory, target, ci, exit_code",
+    [
+        ("module", "coverage", True, 0),
+        ("root", "coverage_apis", False, 0),
+        ("root", "run_apis_tests", True, 1),
+        ("module", "test", True, 5),
+    ],
+)
+def test_airflow_make_preserves_selection_status_and_coverage(
+    tooling_repo, monkeypatch, directory, target, ci, exit_code
+):
+    project = tooling_repo / "openmetadata-airflow-apis"
+    project.mkdir()
+    for name in ("Makefile", "noxfile.py"):
+        shutil.copyfile(REPO_ROOT / "openmetadata-airflow-apis" / name, project / name)
+    tools = [
+        f"{name}=={importlib.metadata.version(name)}" for name in ("nox", "pytest", "pytest-cov", "pytest-timeout")
+    ]
+    (project / "pyproject.toml").write_text(
+        '[build-system]\nrequires=["setuptools==83.0.0"]\nbuild-backend="setuptools.build_meta"\n'
+        '[project]\nname="api-tooling-fixture"\nversion="0.0.0"\nrequires-python=">=3.10"\n'
+        "[dependency-groups]\ntest=" + json.dumps(tools) + "\n"
+        '[tool.setuptools.packages.find]\ninclude=["openmetadata_managed_apis"]\n'
+        '[tool.pytest.ini_options]\ntestpaths=["tests"]\n'
+        '[tool.coverage.run]\nsource=["openmetadata_managed_apis"]\nrelative_files=true\nbranch=true\n'
+    )
+    package = project / "openmetadata_managed_apis"
+    package.mkdir()
+    (package / "__init__.py").write_text('def classify(value):\n    return "positive" if value > 0 else "other"\n')
+    tests = project / "tests"
+    tests.mkdir()
+    (tests / "test_selection.py").write_text(
+        "from openmetadata_managed_apis import classify\n"
+        "def test_selected():\n    assert classify(1) == 'positive'\n"
+        f"    assert {exit_code != 1!r}\n"
+        "def test_selected_rejected():\n    raise AssertionError('unselected')\n"
+    )
+    monkeypatch.setenv("GITHUB_ACTIONS", "true" if ci else "false")
+    monkeypatch.delenv("PYTEST_ADDOPTS", raising=False)
+    assert_success(run("uv", "lock", "--project", str(project), cwd=tooling_repo))
+    selection = "missing and not rejected" if exit_code == 5 else "selected and not rejected"
+    result = run(
+        "make",
+        target,
+        f"PYTHON={sys.executable}",
+        f'ARGS=tests/test_selection.py -k "{selection}"',
+        cwd=project if directory == "module" else tooling_repo,
+    )
+    assert (result.returncode == 0) == (exit_code == 0), result.stdout + result.stderr
+    assert (project / "airflow-apis-test-exit-code.txt").read_text().strip() == str(exit_code)
+    report = ET.parse(project / "junit/test-results-airflow-apis.xml")
+    assert [case.attrib["name"] for case in report.findall(".//testcase")] == (
+        [] if exit_code == 5 else ["test_selected"]
+    )
+    coverage = "coverage" in target
+    assert (project / "ci-coverage.xml").is_file() == coverage
+    assert ("TOTAL" in result.stdout) == (coverage and not ci)
+
+
 @pytest.mark.parametrize("suite", ["unit", "integration"])
 @pytest.mark.parametrize("collect, exit_code", [(False, 0), (True, 0), (True, 1)])
 def test_ci_suite_collects_coverage_only_when_selected(

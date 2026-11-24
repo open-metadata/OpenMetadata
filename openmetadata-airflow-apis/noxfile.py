@@ -46,9 +46,10 @@ def tests(session):
                 "--cov-branch",
                 "--cov-config=pyproject.toml",
                 "--cov-report=xml:ci-coverage.xml",
-                "--cov-report=term:skip-covered",
             ]
         )
+        if os.environ.get("GITHUB_ACTIONS") != "true":
+            command.append("--cov-report=term:skip-covered")
     command.extend(args)
     result = subprocess.run(
         command,
