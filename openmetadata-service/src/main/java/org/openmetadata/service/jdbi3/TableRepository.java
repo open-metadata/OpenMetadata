@@ -1490,7 +1490,7 @@ public class TableRepository extends EntityRepository<Table> {
       daoCollection.tagUsageDAO().deleteTagsByTargets(updatedColumnFqns);
     }
     applyColumnTags(table.getColumns());
-    dao.update(table.getId(), table.getFullyQualifiedName(), JsonUtils.pojoToJson(table));
+    dao.update(table.getId(), table.getFullyQualifiedName(), serializeForStorage(table));
     // addDataModel bypasses the EntityRepository.update() path, so invalidateCachesAfterStore
     // never runs. Drop every cached variant manually so the next GET rebuilds with the freshly
     // merged tags/dataModel instead of stale pre-merge JSON. It also bypasses postUpdate, which is
