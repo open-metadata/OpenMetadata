@@ -58,8 +58,8 @@ class TestDatabaseImageGuardTest {
           "docs/artifacts/");
 
   /**
-   * Connector tests and their shared fixtures start databases our connectors read, so they follow
-   * the connector source versions in Python, not the store we ship.
+   * Connector tests and their shared fixtures start databases our connectors read, so their
+   * versions follow what the connectors support, not the store we ship.
    */
   private static final List<String> CONNECTOR_SOURCE_ROOTS =
       List.of("ingestion/tests/", "ingestion/src/_openmetadata_testutils/");

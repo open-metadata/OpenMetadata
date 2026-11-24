@@ -38,10 +38,6 @@ on:
         description: Run offline E2E framework tests for nightly workloads
         type: boolean
         default: false
-      source-database-version:
-        description: Connector source database version the integration tests read, newest or oldest
-        type: string
-        default: newest
 
 jobs:
   py-static-checks:
@@ -276,7 +272,6 @@ jobs:
           nox --no-venv -s integration-tests -- --standalone --durations=5 "${shard_args[@]}" 2>&1 | tee integration-test-run.log
         env:
           NOX_ARGS: ${{ matrix.shard.nox-args }}
-          SOURCE_DATABASE_VERSION: ${{ inputs.source-database-version }}
           TESTCONTAINERS_RYUK_DISABLED: true
         shell: bash
 

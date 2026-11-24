@@ -18,9 +18,9 @@ import java.util.Locale;
  * The MySQL and Postgres images of the metadata store, OpenMetadata's own database. Server,
  * migration and integration tests run the images OpenMetadata ships; {@code
  * STORE_DATABASE_VERSION=oldest} runs MySQL on the oldest version an operator may run the store on,
- * as the nightly run does. Databases that connector tests read as a source have their own
- * versions, in the ingestion test utilities. Bump these by hand; {@code TestDatabaseImageGuardTest}
- * lists every other line that must change with them. The {@code MYSQL_IMAGE} and {@code
+ * as the nightly run does. Databases that connector tests read as a source keep their own
+ * versions. Bump these by hand; {@code TestDatabaseImageGuardTest} lists every other line that
+ * must change with them. The {@code MYSQL_IMAGE} and {@code
  * POSTGRES_IMAGE} environment variables replace the image for a one-off run.
  *
  * <p>ADR:2026-11-19-test-database-images-have-a-store-and-a-source-version

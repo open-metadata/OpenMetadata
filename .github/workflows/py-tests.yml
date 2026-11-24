@@ -168,8 +168,6 @@ jobs:
       coverage-python: ${{ needs.changes.outputs.coverage-version }}
       run-integration: ${{ needs.changes.outputs.integration == 'true' }}
       run-e2e-meta: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly') }}
-      # The merge queue tests connectors on the newest source versions; the nightly run on the oldest.
-      source-database-version: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly')) && 'oldest' || 'newest' }}
 
   cli-e2e:
     needs: [changes, prepare-spacy-model, build-distribution]
