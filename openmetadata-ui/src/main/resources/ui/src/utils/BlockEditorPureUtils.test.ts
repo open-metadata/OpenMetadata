@@ -468,10 +468,7 @@ describe('formatClientContent: XSS neutralisation', () => {
   it('should strip javascript: hrefs from markdown links', () => {
     const result = formatClientContent('[click](javascript:alert(1))');
 
-    const doc = new DOMParser().parseFromString(result, 'text/html');
-
-    // CommonMark leaves unsafe markdown links as literal text, not anchors.
-    expect(doc.querySelector('a[href^="javascript:"]')).toBeNull();
+    expect(result).not.toContain('javascript:');
   });
 
   it('should strip javascript: hrefs from anchor tags', () => {
