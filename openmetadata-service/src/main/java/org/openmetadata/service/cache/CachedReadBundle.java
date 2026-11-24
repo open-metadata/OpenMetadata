@@ -141,12 +141,12 @@ public class CachedReadBundle {
     try {
       String json = JsonUtils.pojoToJson(dto);
       String encoded = CacheValueCodec.encode(json, config.compressionThresholdBytes);
-      if (config.maxEntrySizeBytes > 0 && encoded.length() > config.maxEntrySizeBytes) {
+      if (CacheValueCodec.exceedsMaxEntrySize(encoded, config.maxEntrySizeBytes)) {
         LOG.debug(
             "Skipping oversized read bundle: {} {} encodedBytes={} maxEntrySizeBytes={}",
             entityType,
             entityId,
-            encoded.length(),
+            CacheValueCodec.encodedByteSize(encoded),
             config.maxEntrySizeBytes);
         return;
       }

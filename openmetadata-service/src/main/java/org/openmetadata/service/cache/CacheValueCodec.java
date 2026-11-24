@@ -58,6 +58,22 @@ public final class CacheValueCodec {
     return stored != null && stored.startsWith(GZIP_PREFIX);
   }
 
+  public static boolean exceedsMaxEntrySize(final String encoded, final int maxEntrySizeBytes) {
+    if (encoded == null || maxEntrySizeBytes <= 0) {
+      return false;
+    }
+    return encodedByteSize(encoded) > maxEntrySizeBytes;
+  }
+
+  public static int encodedByteSize(final String encoded) {
+    if (encoded == null) {
+      return 0;
+    }
+    return isCompressed(encoded)
+        ? encoded.length()
+        : encoded.getBytes(StandardCharsets.UTF_8).length;
+  }
+
   private static byte[] gzip(final byte[] input) {
     final ByteArrayOutputStream out = new ByteArrayOutputStream(Math.max(64, input.length / 4));
     try (GZIPOutputStream gzipOut = new GZIPOutputStream(out)) {
