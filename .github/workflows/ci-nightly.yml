@@ -152,6 +152,13 @@ jobs:
       use-ingestion-image: true
       collect-coverage: ${{ github.ref == 'refs/heads/main' }}
 
+  python-operator:
+    needs: [plan, backend, ingestion-image]
+    uses: ./.github/workflows/reusable-py-operator-build-test.yml
+    with:
+      ref: ${{ needs.plan.outputs.ref }}
+      python-version: ${{ needs.plan.outputs.python-highest }}
+
   airflow-apis:
     needs: [plan, backend]
     uses: ./.github/workflows/reusable-py-airflow-apis.yml
@@ -173,6 +180,7 @@ jobs:
       - python-unit
       - python-integration
       - python-cli-e2e
+      - python-operator
     if: ${{ always() }}
     runs-on: ubuntu-slim
     timeout-minutes: 2
@@ -219,6 +227,7 @@ jobs:
       - python-unit
       - python-integration
       - python-cli-e2e
+      - python-operator
       - py-tests-status
       - sonar-cloud-coverage-upload
     if: ${{ always() && !cancelled() && (needs.py-tests-status.result == 'failure' || needs.sonar-cloud-coverage-upload.result == 'failure') }}
@@ -235,5 +244,5 @@ jobs:
           payload: |
             {
               "channel": "C03EYBDDX17",
-              "text": "<!subteam^S0AH093PEQL> Python CI nightly failed on `${{ github.ref_name }}`.\nSelection: ${{ needs.plan.result }}; checks: ${{ needs.py-static-checks.result }}; models: ${{ needs.prepare-classification-models.result }}; backend: ${{ needs.backend.result }}; units: ${{ needs.python-unit.result }}; integrations: ${{ needs.python-integration.result }}; CLI E2E: ${{ needs.python-cli-e2e.result }}; Sonar: ${{ needs.sonar-cloud-coverage-upload.result }}.\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "<!subteam^S0AH093PEQL> Python CI nightly failed on `${{ github.ref_name }}`.\nSelection: ${{ needs.plan.result }}; checks: ${{ needs.py-static-checks.result }}; models: ${{ needs.prepare-classification-models.result }}; backend: ${{ needs.backend.result }}; units: ${{ needs.python-unit.result }}; integrations: ${{ needs.python-integration.result }}; CLI E2E: ${{ needs.python-cli-e2e.result }}; operator image: ${{ needs.python-operator.result }}; Sonar: ${{ needs.sonar-cloud-coverage-upload.result }}.\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }

@@ -26,11 +26,11 @@ uses numeric minimum/maximum versions rather than list order or separate version
 
 For relevant changes, select these workloads:
 
-| Event | Unit tests | MySQL/PostgreSQL integration tests | Legacy connector E2E |
-| --- | --- | --- | --- |
-| Pull request | Highest supported Python | Skipped | Skipped |
-| Merge queue | Highest supported Python | Highest supported Python | Skipped |
-| Nightly | Full supported matrix | Full supported matrix | Highest supported Python |
+| Event | Unit tests | MySQL/PostgreSQL integration tests | Legacy connector E2E | Operator image smoke test |
+| --- | --- | --- | --- | --- |
+| Pull request | Highest supported Python | Skipped | Skipped | Skipped |
+| Merge queue | Highest supported Python | Highest supported Python | Skipped | Skipped |
+| Nightly | Full supported matrix | Full supported matrix | Highest supported Python | Highest supported Python |
 
 Formatting, lint and type checks share one job on the lowest supported Python, with separate
 steps and isolated tool environments. Both modes share Python and pinned uv setup. Formatting/lint
@@ -55,7 +55,7 @@ the selected results without checking out the repository, and retain the require
 `py-tests-status` aggregate check. Other Python CI jobs run on `ubuntu-latest`. Playwright
 workflows and their cache warmer remain on `ubuntu-24.04`, matching the validated browser dependencies.
 
-Nightly connector tests share one ingestion image built at the tested revision, in parallel with
+Nightly connector and operator image tests share one ingestion image built at the tested revision, in parallel with
 backend and classification preparation. Consumers verify its revision and dependency selection
 before using the existing image preload path. The manual v2 connector workflow shares both backend
 and ingestion builds within its run. Reusable connector callers can retain per-runner builds.
@@ -64,8 +64,8 @@ Stack startup does not prepare or modify host Python environments. Python integr
 and operator jobs explicitly prepare their locked profile after startup; browser jobs use container
 ingestion without host Python dependencies. Classification models are verified during Python
 preparation. Nox still prepares the selected profile before tests.
-Failure diagnostics are collected before the hosted runner is discarded, without
-explicit Docker teardown or local data deletion. Test results retain JUnit and outcome metadata;
+The diagnostics action collects evidence before workflow-owned teardown and does not stop services
+or delete local data. Test results retain JUnit and outcome metadata;
 raw test logs are uploaded for
 unsuccessful tests, and coverage text is rendered once centrally in CI.
 
@@ -97,6 +97,12 @@ and calls the same reusable runner with `test-suite: v2`, without collecting cov
 stabilization. Both suites use the highest supported interpreter and Nox's `cli-e2e` session,
 with shared reporting, failure diagnostics, a 90-minute job limit and stack teardown. V2 retains
 its contract checks and connector worker counts. Connector migration remains a separate change.
+
+The operator image build and sample-data smoke test runs only through `ci-nightly`, including
+manual nightly dispatches, on the highest supported Python with a 90-minute job limit. It reuses the shared backend and
+ingestion images for stack startup, then builds its own `ingestion-base` image and runs ingestion
+twice to validate sample data and stable entity IDs. Its result participates in the nightly gate
+and failure notification. Image packaging failures may therefore merge before the next nightly.
 
 Selected jobs must succeed; unexpected failures and skips fail the required status. Scheduled
 and manual nightly failures notify ingestion Slack and mention `onduty-integrations`; successful

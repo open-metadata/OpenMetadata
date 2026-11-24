@@ -9,32 +9,29 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: py-operator-build-test
+name: reusable-py-operator-build-test
 on:
-  workflow_dispatch:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - "ingestion/**"
-      - "openmetadata-service/**"
-      - "openmetadata-spec/src/main/resources/json/schema/**"
-      - "pom.xml"
-      - "Makefile"
+  workflow_call:
+    inputs:
+      ref:
+        description: Git commit SHA to test; must match the shared images
+        required: true
+        type: string
+      python-version:
+        description: Highest supported Python version for sample-data validation
+        required: true
+        type: string
 
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   py-run-build-tests:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    timeout-minutes: 90
     steps:
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
         with:
           tool-cache: false
           android: true
@@ -45,23 +42,30 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ inputs.ref }}
           persist-credentials: false
-      - name: Read Python versions
-        id: versions
-        run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
+          fetch-depth: 1
+      - name: Download ingestion image
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: python-ci-ingestion-image
+          path: ${{ runner.temp }}
+      - name: Load ingestion image
+        run: bash .github/scripts/python_ci_ingestion_image.sh load "$RUNNER_TEMP/python-ci-ingestion.tar.zst"
+        shell: bash
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
-          args: "-m no-ui"
+          use-backend-image: 'true'
+          args: "-m no-ui -s true"
           ingestion_dependency: "mysql,elasticsearch,sample-data"
 
       - name: Prepare Python environment
         uses: ./.github/actions/prepare-python-environment
         with:
-          python-version: ${{ steps.versions.outputs.highest }}
+          python-version: ${{ inputs.python-version }}
           profile: test
 
       - name: Build Ingestion Operator & Ingest Sample Data
@@ -80,8 +84,15 @@ jobs:
           source env/bin/activate
           python scripts/validate_sample_data.py --id-snapshot /tmp/ai-governance-sample-ids.json
 
+      - name: Collect failure diagnostics
+        if: ${{ failure() || cancelled() }}
+        uses: ./.github/actions/python-diagnostics
+        with:
+          artifact-name: py-operator-diagnostics-${{ inputs.python-version }}
+
       - name: Clean Up
+        if: ${{ always() }}
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
+          sudo rm -rf "${PWD}/docker-volume"
