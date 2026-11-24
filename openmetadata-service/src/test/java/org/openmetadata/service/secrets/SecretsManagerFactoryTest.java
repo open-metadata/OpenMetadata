@@ -14,6 +14,7 @@ package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,13 @@ public class SecretsManagerFactoryTest {
   @BeforeEach
   void setUp() {
     config = new SecretsManagerConfiguration();
+    SecretsManagerFactory.setSecretsManager(null);
+  }
+
+  // The factory keeps one manager per JVM; leaving an AWS or GCP one behind changes what later
+  // tests in the same fork get from createSecretsManager.
+  @AfterEach
+  void tearDown() {
     SecretsManagerFactory.setSecretsManager(null);
   }
 

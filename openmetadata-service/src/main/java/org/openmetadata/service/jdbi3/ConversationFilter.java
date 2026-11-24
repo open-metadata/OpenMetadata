@@ -171,11 +171,11 @@ public class ConversationFilter {
 
   private void addTimePredicate(List<String> predicates, Map<String, Object> params) {
     if (startTs != null) {
-      predicates.add("c.createdAt >= :startTs");
+      predicates.add("c.updatedAt >= :startTs");
       params.put("startTs", startTs);
     }
     if (endTs != null) {
-      predicates.add("c.createdAt <= :endTs");
+      predicates.add("c.updatedAt <= :endTs");
       params.put("endTs", endTs);
     }
   }
