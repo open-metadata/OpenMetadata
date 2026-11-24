@@ -46,9 +46,10 @@ v2 narrows v1 to what it changes and replaces its first Decision sentence.
   withdraws that support.
 - **Why 8.4.** MySQL does not allow skipping an LTS series: an 8.0 database reaches a later
   LTS, such as 9.7, only through 8.4. Bumps stay on the newest 8.4 patch.
-- **Tests use 8.4.13 only.** Every MySQL test container uses 8.4.13, including those that
-  stand in for a customer's source server. MySQL 8.0, still supported for connector sources
-  and for an operator-run metadata database, is not exercised by any test.
+- **Tests follow the role of the database.** Tests of the metadata store run the shipped
+  MySQL 8.4.13. A container that stands in for a customer's source server, or for an
+  operator-run metadata database on MySQL 8.0, follows what we support there, not what we
+  ship.
 - **Helm is outside these images.** The Kubernetes dependencies chart
   (`openmetadata-helm-charts`, `charts/deps`) deploys its own MySQL 8.0 image, so v1's
   "Deployments no longer receive a MySQL 8.0 base image" holds for the Docker images built

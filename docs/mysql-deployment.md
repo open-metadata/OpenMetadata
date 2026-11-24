@@ -2,7 +2,7 @@
 
 OpenMetadata ships and tests its metadata store on **MySQL 8.4.13**, an exact patch pin
 used by the bundled database, development environments, the ingestion image client stage
-and the MySQL test containers. A metadata database you run yourself, such as
+and the metadata store tests. A metadata database you run yourself, such as
 Amazon RDS for MySQL 8.0, Aurora MySQL 3 or Cloud SQL for MySQL 8.0, remains supported on
 MySQL 8.0. PostgreSQL deployments are unaffected. The MySQL ingestion connector keeps
 supporting source databases running MySQL 8.0.
