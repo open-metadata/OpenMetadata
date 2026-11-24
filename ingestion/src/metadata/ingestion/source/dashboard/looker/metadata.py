@@ -1175,7 +1175,9 @@ class LookerSource(DashboardServiceSource):
         derived_sql = (self._parsed_views or {}).get(referenced_view)
         if derived_sql is None:
             logger.warning(
-                f"View [{view_name}] uses the table of view [{referenced_view}], which is not parsed yet. Skipping."
+                "View [%s] uses the table of view [%s], which is not parsed yet. Skipping.",
+                view_name,
+                referenced_view,
             )
         return None, derived_sql
 
