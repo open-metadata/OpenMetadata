@@ -12,6 +12,10 @@
  */
 package org.openmetadata.service.aicontext;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
 import java.util.regex.Pattern;
 import org.openmetadata.service.util.DescriptionSanitizer;
 import org.owasp.html.HtmlPolicyBuilder;
@@ -98,15 +102,6 @@ public final class PromptText {
               + "|dt|em|h[1-6]|hr|i|img|ins|li|mark|ol|p|pre|s|section|small|span|strong|sub"
               + "|summary|sup|table|tbody|td|tfoot|th|thead|tr|u|ul)\\b[^>]*+>");
 
-  /**
-   * Matches Markdown inline images whose destination is a {@code data:} URI (for example
-   * {@code ![diagram](data:image/png;base64,...)}), with optional angle-bracket destination or
-   * title. Possessive quantifiers guarantee linear-time matching on long base64 payloads.
-   */
-  private static final Pattern MARKDOWN_DATA_IMAGE =
-      Pattern.compile(
-          "(?i)!\\[[^\\]\\r\\n]*+\\]\\(\\s*+<?data:[^>)\\s]++>?(?:\\s++(?:\"[^\"]*+\"|'[^']*+'))?\\s*+\\)");
-
   private PromptText() {}
 
   /**
@@ -125,11 +120,157 @@ public final class PromptText {
     return DescriptionSanitizer.sanitizeWith(PROMPT_POLICY, text);
   }
 
+  /** Removes inline data images while preserving the original Markdown around them. */
   private static String stripMarkdownDataImages(String text) {
     if (!text.contains("![")) {
       return text;
     }
-    return MARKDOWN_DATA_IMAGE.matcher(text).replaceAll("");
+    DataImageScanner scanner = new DataImageScanner(text);
+    scanner.scan();
+    return scanner.withoutImages();
+  }
+
+  private record ImageRange(int start, int end) {}
+
+  /** Matches escaped and nested brackets without rescanning unclosed labels. */
+  private static final class DataImageScanner {
+    private static final int TEXT_BRACKET = -1;
+
+    private final String text;
+    private final Deque<Integer> brackets = new ArrayDeque<>();
+    private final List<ImageRange> images = new ArrayList<>();
+    private int uriEnd = -1;
+    private int tailStart = -1;
+    private int tailEnd = -1;
+
+    private DataImageScanner(String text) {
+      this.text = text;
+    }
+
+    private void scan() {
+      for (int index = 0; index < text.length(); index++) {
+        switch (text.charAt(index)) {
+          case '\\' -> index = skipEscapedCharacter(index);
+          case '\r', '\n' -> brackets.clear();
+          case '[' -> brackets.push(TEXT_BRACKET);
+          case ']' -> index = closeBracket(index);
+          case '!' -> {
+            if (hasCharacterAt(index + 1, '[')) {
+              brackets.push(index);
+              index++;
+            }
+          }
+          default -> {}
+        }
+      }
+    }
+
+    private int skipEscapedCharacter(int index) {
+      if (index + 1 < text.length() && isMarkdownEscape(text.charAt(index + 1))) {
+        return index + 1;
+      }
+      return index;
+    }
+
+    private int closeBracket(int index) {
+      if (brackets.isEmpty()) {
+        return index;
+      }
+      int imageStart = brackets.pop();
+      if (imageStart == TEXT_BRACKET || !hasCharacterAt(index + 1, '(')) {
+        return index;
+      }
+      int imageEnd = dataDestinationEnd(index + 2);
+      if (imageEnd < 0) {
+        return index;
+      }
+      // An outer image covers any image already found in its alt text.
+      while (!images.isEmpty() && images.getLast().start() > imageStart) {
+        images.removeLast();
+      }
+      images.add(new ImageRange(imageStart, imageEnd));
+      return imageEnd - 1;
+    }
+
+    private int dataDestinationEnd(int start) {
+      int uriStart = skipWhitespace(start);
+      boolean hasAngleBrackets = hasCharacterAt(uriStart, '<');
+      if (hasAngleBrackets) {
+        uriStart++;
+      }
+      if (!text.regionMatches(true, uriStart, "data:", 0, 5)) {
+        return -1;
+      }
+      int payloadStart = uriStart + 5;
+      int end = endOfUri(payloadStart);
+      if (end == payloadStart || hasAngleBrackets != hasCharacterAt(end, '>')) {
+        return -1;
+      }
+      return endOfImage(hasAngleBrackets ? end + 1 : end);
+    }
+
+    private int endOfImage(int start) {
+      // Failed candidates sharing a URI run also share the whitespace and title after it.
+      if (start != tailStart) {
+        tailStart = start;
+        int close = skipTitle(start);
+        tailEnd = hasCharacterAt(close, ')') ? close + 1 : -1;
+      }
+      return tailEnd;
+    }
+
+    private int endOfUri(int start) {
+      // Several failed candidates may end in the same uninterrupted URI run.
+      // Scan each run at most once, even when it contains another image opener.
+      if (start >= uriEnd) {
+        uriEnd = start;
+        while (uriEnd < text.length() && !isUriTerminator(text.charAt(uriEnd))) {
+          uriEnd++;
+        }
+      }
+      return uriEnd;
+    }
+
+    private int skipTitle(int index) {
+      int start = skipWhitespace(index);
+      if (start == index || (!hasCharacterAt(start, '"') && !hasCharacterAt(start, '\''))) {
+        return start;
+      }
+      int titleEnd = text.indexOf(text.charAt(start), start + 1);
+      return titleEnd < 0 ? -1 : skipWhitespace(titleEnd + 1);
+    }
+
+    private int skipWhitespace(int index) {
+      while (index < text.length() && Character.isWhitespace(text.charAt(index))) {
+        index++;
+      }
+      return index;
+    }
+
+    private boolean hasCharacterAt(int index, char expected) {
+      return index >= 0 && index < text.length() && text.charAt(index) == expected;
+    }
+
+    private String withoutImages() {
+      if (images.isEmpty()) {
+        return text;
+      }
+      StringBuilder result = new StringBuilder();
+      int from = 0;
+      for (ImageRange image : images) {
+        result.append(text, from, image.start());
+        from = image.end();
+      }
+      return result.append(text, from, text.length()).toString();
+    }
+
+    private static boolean isMarkdownEscape(char character) {
+      return character == '\\' || character == '!' || character == '[' || character == ']';
+    }
+
+    private static boolean isUriTerminator(char character) {
+      return character == '>' || character == ')' || Character.isWhitespace(character);
+    }
   }
 
   private static boolean hasHtmlTag(String description) {

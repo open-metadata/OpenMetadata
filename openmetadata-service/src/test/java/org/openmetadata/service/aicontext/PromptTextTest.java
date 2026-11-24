@@ -15,8 +15,10 @@ package org.openmetadata.service.aicontext;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -195,6 +197,48 @@ class PromptTextTest {
     assertTrue(
         prompt.length() < 200,
         "the 20k-character markdown payload must not survive, got " + prompt.length());
+  }
+
+  @Test
+  void markdownInlineBase64ImagesWithNestedOrEscapedBracketsAreRemoved() {
+    String diagram = "iVBORw0KGgoAAAANSUhEUg" + "A".repeat(25_000) + "ErkJggg==";
+    String description =
+        "Before.\n"
+            + "![Revenue [USD]](data:image/png;base64,"
+            + diagram
+            + ")\n"
+            + "![Escaped \\] alt](<data:image/png;base64,"
+            + diagram
+            + "> 'Chart')\n"
+            + "Keep ![external [USD]](https://cdn.example.com/chart.png) and \\![escaped](data:image/png;base64,AAAA).\n"
+            + "After.";
+
+    String prompt = PromptText.forPrompt(description);
+
+    assertFalse(prompt.contains(diagram));
+    assertTrue(prompt.contains("Before."));
+    assertTrue(prompt.contains("After."));
+    assertTrue(prompt.contains("![external [USD]](https://cdn.example.com/chart.png)"));
+    assertTrue(prompt.contains("\\![escaped](data:image/png;base64,AAAA)"));
+    assertTrue(
+        prompt.length() < 250,
+        "large base64 payloads inside bracketed alt text must not survive, got " + prompt.length());
+  }
+
+  @Test
+  void repeatedUnclosedImageOpenersStayLinearTime() {
+    String repeatedOpeners = "![".repeat(150_000);
+    String unclosedDataUris = "![a](data:".repeat(50_000) + " ".repeat(50_000) + "end";
+
+    String openersResult =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(2), () -> PromptText.forPrompt(repeatedOpeners));
+    String unclosedResult =
+        assertTimeoutPreemptively(
+            Duration.ofSeconds(2), () -> PromptText.forPrompt(unclosedDataUris));
+
+    assertEquals(repeatedOpeners, openersResult);
+    assertEquals(unclosedDataUris, unclosedResult);
   }
 
   @Test

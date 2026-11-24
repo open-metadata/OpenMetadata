@@ -44,9 +44,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
@@ -333,6 +335,65 @@ class GetEntityToolTest {
     String rendered = (String) castMap(result.get("content")).get("content");
     assertThat(rendered)
         .contains("Sanitized fallback body.")
+        .doesNotContain("base64")
+        .doesNotContain("<img");
+  }
+
+  @Test
+  void contentQueryPreservesMetricSqlOperatorsWhileSanitizingDescriptionMarkup() throws Exception {
+    String fqn = "net_revenue";
+    String sql = "SELECT SUM(amount) FROM orders WHERE amount <b AND b> 0";
+    Metric metric =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName(fqn)
+            .withFullyQualifiedName(fqn)
+            .withDescription("<p>Gross revenue</p>")
+            .withMetricExpression(new MetricExpression().withCode("SELECT amount FROM orders"));
+    CatalogSecurityContext securityContext = securityContextFor("alice");
+    SubjectContext alice = new SubjectContext(new User().withName("alice"), null, null);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    when(vectorService.searchChunksByParent(metric.getId().toString(), "amount", 3, alice))
+        .thenReturn(
+            List.of(
+                "name: net_revenue; metricCode: ```SQL\n"
+                    + sql
+                    + "\n```; tier:  | description: <p>Gross revenue</p>"
+                    + "<img src=\"data:image/png;base64,AAAA\"> | chunk 1/1"));
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class);
+        MockedStatic<OpenSearchVectorService> vectors = mockStatic(OpenSearchVectorService.class)) {
+      entities
+          .when(() -> Entity.getEntityByName(Entity.METRIC, fqn, "", Include.NON_DELETED))
+          .thenReturn(metric);
+      entities.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      subjects.when(() -> DefaultAuthorizer.getSubjectContext(securityContext)).thenReturn(alice);
+      vectors.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+
+      result =
+          new GetEntityTool()
+              .execute(
+                  mock(Authorizer.class),
+                  securityContext,
+                  Map.of(
+                      "entityType",
+                      Entity.METRIC,
+                      "fqn",
+                      fqn,
+                      "include",
+                      List.of("content"),
+                      "query",
+                      "amount"));
+    }
+
+    String rendered = (String) castMap(result.get("content")).get("content");
+    assertThat(rendered)
+        .contains(sql)
+        .contains("Gross revenue")
         .doesNotContain("base64")
         .doesNotContain("<img");
   }

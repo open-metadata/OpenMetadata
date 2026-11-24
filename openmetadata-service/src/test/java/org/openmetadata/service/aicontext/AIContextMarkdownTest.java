@@ -306,7 +306,7 @@ class AIContextMarkdownTest {
   }
 
   @Test
-  void render_sanitizesDelimiterSensitiveFqnInTruncatedFetchHint() {
+  void render_preservesBackticksInTruncatedFetchHintWithLongerCodeFence() {
     AIContext context =
         new AIContext()
             .withEntityType("table")
@@ -318,13 +318,22 @@ class AIContextMarkdownTest {
                         .withName("Rules")
                         .withFullyQualifiedName("kb.rev`enue\nrules")
                         .withContent("Excerpt.")
+                        .withContentTruncated(true),
+                    new KnowledgeItem()
+                        .withType(KnowledgeItem.Type.METRIC)
+                        .withName("Edge")
+                        .withFullyQualifiedName("`edge`")
+                        .withContent("Excerpt.")
                         .withContentTruncated(true)));
 
     String markdown = AIContextMarkdown.render(context);
 
     assertTrue(
         markdown.contains(
-            "get_entity_details(entityType=`page`, fqn=`kb.revenue rules`, include=[\"content\"])"));
+            "get_entity_details(entityType=`page`, fqn=``kb.rev`enue rules``, include=[\"content\"])"));
+    assertTrue(
+        markdown.contains(
+            "get_entity_details(entityType=`metric`, fqn=`` `edge` ``, include=[\"content\"])"));
   }
 
   @Test

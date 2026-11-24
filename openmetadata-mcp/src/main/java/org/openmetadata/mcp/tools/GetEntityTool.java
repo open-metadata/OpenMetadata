@@ -99,6 +99,8 @@ public class GetEntityTool implements McpTool {
   private static final String FORMAT_MARKDOWN = "markdown";
   private static final int DEFAULT_PASSAGES = 3;
   private static final int MAX_PASSAGES = 10;
+  private static final String METRIC_CODE_START = "; metricCode: ```";
+  private static final String METRIC_CODE_END = "\n```; ";
   private static final String TEST_SUITE_KEY = "testSuite";
   private static final String CERTIFICATION_KEY = "certification";
 
@@ -427,7 +429,7 @@ public class GetEntityTool implements McpTool {
     String query = ctx.options().query();
     List<String> found =
         query != null && !query.isBlank() && vectorSearchEnabled()
-            ? sanitizePassages(passages(ctx, query))
+            ? sanitizePassages(ctx.entity(), passages(ctx, query))
             : List.of();
     Object rendered;
     if (found.isEmpty()) {
@@ -444,16 +446,35 @@ public class GetEntityTool implements McpTool {
 
   /**
    * Strips inline images and render-only markup from retrieved chunk passages (page chunks can
-   * carry raw HTML from the block editor) and drops passages that reduce to blank text.
+   * carry raw HTML from the block editor) and drops passages that reduce to blank text, while
+   * keeping saved metric expression code outside the HTML sanitizer so SQL operators such as
+   * {@code <b AND b>} stay verbatim.
    */
-  private static List<String> sanitizePassages(List<String> passages) {
+  private static List<String> sanitizePassages(EntityInterface<?> entity, List<String> passages) {
     if (nullOrEmpty(passages)) {
       return List.of();
     }
     return passages.stream()
-        .map(PromptText::forPrompt)
+        .map(
+            entity instanceof Metric ? GetEntityTool::sanitizeMetricPassage : PromptText::forPrompt)
         .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
         .toList();
+  }
+
+  private static String sanitizeMetricPassage(String passage) {
+    if (nullOrEmpty(passage)) {
+      return passage;
+    }
+    // VectorDocBuilder wraps SQL in a labeled code field in both current and older indexed chunks.
+    int start = passage.indexOf(METRIC_CODE_START);
+    int end = passage.indexOf(METRIC_CODE_END, start + METRIC_CODE_START.length());
+    if (start < 0 || end < 0) {
+      return PromptText.forPrompt(passage);
+    }
+    int afterCode = end + METRIC_CODE_END.length();
+    return PromptText.forPrompt(passage.substring(0, start))
+        + passage.substring(start, afterCode)
+        + PromptText.forPrompt(passage.substring(afterCode));
   }
 
   private static boolean masksTestCaseContent(IncludeContext ctx) {
