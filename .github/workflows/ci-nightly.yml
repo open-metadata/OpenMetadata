@@ -87,7 +87,7 @@ jobs:
           python-version: ${{ needs.plan.outputs.python-lowest }}
           check-types: 'true'
 
-  classification-models:
+  prepare-classification-models:
     needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -102,7 +102,7 @@ jobs:
   python-unit:
     needs:
       - plan
-      - classification-models
+      - prepare-classification-models
     strategy:
       fail-fast: false
       matrix:
@@ -116,7 +116,7 @@ jobs:
   python-integration:
     needs:
       - plan
-      - classification-models
+      - prepare-classification-models
       - backend
     strategy:
       fail-fast: false
@@ -131,7 +131,7 @@ jobs:
   python-cli-e2e:
     needs:
       - plan
-      - classification-models
+      - prepare-classification-models
       - backend
       - ingestion-image
     permissions:
@@ -161,7 +161,7 @@ jobs:
       - plan
       - airflow-apis
       - py-static-checks
-      - classification-models
+      - prepare-classification-models
       - backend
       - ingestion-image
       - python-unit
@@ -207,7 +207,7 @@ jobs:
     needs:
       - plan
       - py-static-checks
-      - classification-models
+      - prepare-classification-models
       - backend
       - ingestion-image
       - python-unit
@@ -229,5 +229,5 @@ jobs:
           payload: |
             {
               "channel": "C03EYBDDX17",
-              "text": "<!subteam^S0AH093PEQL> Python CI nightly failed on `${{ github.ref_name }}`.\nSelection: ${{ needs.plan.result }}; checks: ${{ needs.py-static-checks.result }}; models: ${{ needs.classification-models.result }}; backend: ${{ needs.backend.result }}; units: ${{ needs.python-unit.result }}; integrations: ${{ needs.python-integration.result }}; CLI E2E: ${{ needs.python-cli-e2e.result }}; Sonar: ${{ needs.sonar-cloud-coverage-upload.result }}.\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "<!subteam^S0AH093PEQL> Python CI nightly failed on `${{ github.ref_name }}`.\nSelection: ${{ needs.plan.result }}; checks: ${{ needs.py-static-checks.result }}; models: ${{ needs.prepare-classification-models.result }}; backend: ${{ needs.backend.result }}; units: ${{ needs.python-unit.result }}; integrations: ${{ needs.python-integration.result }}; CLI E2E: ${{ needs.python-cli-e2e.result }}; Sonar: ${{ needs.sonar-cloud-coverage-upload.result }}.\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }

@@ -79,7 +79,7 @@ jobs:
           python-version: ${{ needs.plan.outputs.python-lowest }}
           check-types: ${{ needs.plan.outputs.python }}
 
-  classification-models:
+  prepare-classification-models:
     needs: plan
     if: ${{ needs.plan.outputs.python == 'true' }}
     runs-on: ubuntu-latest
@@ -95,7 +95,7 @@ jobs:
   python-unit:
     needs:
       - plan
-      - classification-models
+      - prepare-classification-models
     if: ${{ needs.plan.outputs.python == 'true' }}
     uses: ./.github/workflows/reusable-py-unit.yml
     with:
@@ -106,7 +106,7 @@ jobs:
   python-integration:
     needs:
       - plan
-      - classification-models
+      - prepare-classification-models
       - backend
     if: ${{ needs.plan.outputs.python == 'true' }}
     uses: ./.github/workflows/reusable-py-integration.yml
@@ -130,7 +130,7 @@ jobs:
       - plan
       - airflow-apis
       - py-static-checks
-      - classification-models
+      - prepare-classification-models
       - backend
       - python-unit
       - python-integration
@@ -146,7 +146,7 @@ jobs:
               "plan": "success",
               "airflow-apis": "${{ needs.plan.outputs.airflow-apis == 'true' && 'success' || 'skipped' }}",
               "py-static-checks": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
-              "classification-models": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
+              "prepare-classification-models": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
               "backend": "${{ (needs.plan.outputs.python == 'true' || needs.plan.outputs.airflow-apis == 'true') && 'success' || 'skipped' }}",
               "python-unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
               "python-integration": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}"
