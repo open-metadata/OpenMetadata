@@ -1554,6 +1554,36 @@ def test_data_model_filter_pattern_applies_to_sigma_data_models(sigma_over_http,
     assert calls["GET", "/v2/dataModels/dm-1/elements"] == 0
 
 
+@pytest.mark.parametrize("list_all_assets", [False, True])
+@pytest.mark.parametrize(
+    "pattern, other_path, kept",
+    [
+        (FilterPattern(includes=["^Accounting$"]), "Sandbox/Accounting", ["dm-1"]),
+        (FilterPattern(excludes=["^Accounting$"]), "Sandbox/Accounting", ["dm-2"]),
+        (FilterPattern(includes=["^Accounting$"]), None, ["dm-1"]),
+        (None, None, ["dm-1", "dm-2"]),
+    ],
+)
+def test_workspace_filter_on_standalone_data_models(
+    sigma_over_http, two_sigma_data_models, list_all_assets, pattern, other_path, kept
+):
+    source, calls = sigma_over_http
+    source.client.config.listAllAssets = list_all_assets
+    source.source_config.projectFilterPattern = pattern
+    accounting, other = two_sigma_data_models["GET", "/v2/dataModels"]["entries"]
+    accounting["path"] = "Accounting/Reports"
+    other["path"] = other_path
+    two_sigma_data_models["GET", "/v2/dataModels/dm-2/columns"] = {"entries": []}
+    scope = (ORG_WIDE_DATA_MODELS,) if list_all_assets else ()
+    two_sigma_data_models[("GET", "/v2/dataModels") + scope] = {"entries": [other], "nextPage": "2"}
+    two_sigma_data_models[("GET", "/v2/dataModels", "2") + scope] = {"entries": [accounting]}
+
+    assert sorted(model.name.root for model in bulk_data_models(source)) == kept
+    for model_id in {"dm-1", "dm-2"} - set(kept):
+        for endpoint in ("elements", "columns", "lineage"):
+            assert calls["GET", f"/v2/dataModels/{model_id}/{endpoint}"] == 0
+
+
 def test_a_sigma_data_model_is_owned_by_its_owner(sigma_over_http, sigma_data_models):
     source, _ = sigma_over_http
     # The data model's ownerId is member-1, whose email is ada@example.com

@@ -62,7 +62,7 @@ When **Include Tags** is on, a workbook's certification badge (Endorsed, Warning
 
 ## Projects
 
-A Sigma workbook's project is its workspace, the first part of the workbook's path in Sigma (for example `My Documents`). **Project Filter Pattern** includes or excludes workbooks by that workspace name.
+**Project Filter Pattern** selects workbooks and standalone data models by workspace in both listing modes. For example, add `^Accounting$` to **Includes** to ingest assets from the Accounting workspace and its folders. A folder named Accounting inside another workspace does not match. The connector reads the workspace from the first part of the Sigma path. Assets without a path are skipped when a pattern is active.
 
 ## Data Models
 
