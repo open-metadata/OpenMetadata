@@ -103,6 +103,11 @@ export const defaultHandlers = [
     HttpResponse.json([])
   ),
   http.get('/api/v1/changeRequests', () => HttpResponse.json(EMPTY_LIST)),
+  // Lifecycle exits: no stage can be requested from the entity header.
+  http.get(
+    '/api/v1/metadata/types/lifecycleStages/:entityType/:id/requestableStages',
+    () => HttpResponse.json([])
+  ),
   http.get('/api/v1/metadata/types/name/:name', ({ params }) =>
     HttpResponse.json({ name: params.name, customProperties: [] })
   ),

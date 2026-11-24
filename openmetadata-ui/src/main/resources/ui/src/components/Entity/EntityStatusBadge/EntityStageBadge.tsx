@@ -21,10 +21,10 @@ import { stageKey } from '../../../utils/governance/lifecycle/LifecycleRequest.u
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import {
+  STAGE_MENU_BADGE_CLASS,
   STAGE_MENU_CLASS,
   STAGE_MENU_HEADER_CLASS,
   STAGE_TRIGGER_CLASS,
-  STAGE_MENU_BADGE_CLASS,
 } from './EntityStageBadge.constants';
 import { getStageActionLabel } from './EntityStageBadge.utils';
 import { StagePill } from './StagePill';
