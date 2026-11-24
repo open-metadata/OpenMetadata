@@ -102,16 +102,30 @@ public class BundleWarmupBatcher {
   private final CacheProvider cache;
   private final CacheKeys keys;
   private final boolean warmRelationships;
+  private final int compressionThresholdBytes;
+  private final int maxEntrySizeBytes;
 
   public BundleWarmupBatcher(
       final CollectionDAO dao,
       final CacheProvider cache,
       final CacheKeys keys,
       final boolean warmRelationships) {
+    this(dao, cache, keys, warmRelationships, 0, 0);
+  }
+
+  public BundleWarmupBatcher(
+      final CollectionDAO dao,
+      final CacheProvider cache,
+      final CacheKeys keys,
+      final boolean warmRelationships,
+      final int compressionThresholdBytes,
+      final int maxEntrySizeBytes) {
     this.dao = dao;
     this.cache = cache;
     this.keys = keys;
     this.warmRelationships = warmRelationships;
+    this.compressionThresholdBytes = compressionThresholdBytes;
+    this.maxEntrySizeBytes = maxEntrySizeBytes;
   }
 
   /** Outcome of a batch warmup — caller uses for stats reporting. */
@@ -174,7 +188,11 @@ public class BundleWarmupBatcher {
         dto.tagsLoaded = true;
         dto.certification = null;
         dto.certificationLoaded = false;
-        bundleKeyValues.put(keys.bundle(entityType, entity.getId()), JsonUtils.pojoToJson(dto));
+        final String encoded =
+            CacheValueCodec.encode(JsonUtils.pojoToJson(dto), compressionThresholdBytes);
+        if (maxEntrySizeBytes <= 0 || encoded.length() <= maxEntrySizeBytes) {
+          bundleKeyValues.put(keys.bundle(entityType, entity.getId()), encoded);
+        }
       } catch (final Exception e) {
         failed++;
         LOG.debug("Bundle warmup row failed: type={} id={}", entityType, entity.getId(), e);

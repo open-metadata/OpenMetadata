@@ -239,9 +239,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.cache.CachedEntityDao;
 import org.openmetadata.service.cache.CachedReadBundle;
 import org.openmetadata.service.cache.CachedRelationshipDao;
+import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.cache.NotFoundCache;
 import org.openmetadata.service.config.CacheConfiguration;
@@ -4517,7 +4519,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     T original;
-    try (var ignored = phase("upsertFindOriginal")) {
+    try (var ignored = phase("upsertFindOriginal");
+        var populateGuard = skipPopulateOnUpsert()) {
       original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     }
     if (original == null) { // If an original entity does not exist then create it, else update
@@ -4542,7 +4545,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   public PutResponse<T> createOrUpdateForImport(
       UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
     T original;
-    try (var ignored = phase("upsertFindOriginalImport")) {
+    try (var ignored = phase("upsertFindOriginalImport");
+        var populateGuard = skipPopulateOnUpsert()) {
       original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     }
     if (original == null) { // If an original entity does not exist then create it, else update
@@ -4575,13 +4579,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     List<PutResponse<T>> responses = new ArrayList<>();
 
     // Separate entities into creates vs updates
-    for (T entity : entities) {
-      T original = findByNameOrNull(entity.getFullyQualifiedName(), ALL);
-      if (original == null) {
-        toCreate.add(entity);
-      } else {
-        toUpdate.add(entity);
-        originals.add(original);
+    try (var populateGuard = skipPopulateOnUpsert()) {
+      for (T entity : entities) {
+        T original = findByNameOrNull(entity.getFullyQualifiedName(), ALL);
+        if (original == null) {
+          toCreate.add(entity);
+        } else {
+          toUpdate.add(entity);
+          originals.add(original);
+        }
       }
     }
 
@@ -4778,7 +4784,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           Entity.DATA_PRODUCT);
 
   static boolean isCacheableEntityType(String entityType) {
-    return entityType != null && !UNCACHED_ENTITY_TYPES.contains(entityType);
+    if (entityType == null || UNCACHED_ENTITY_TYPES.contains(entityType)) {
+      return false;
+    }
+    CacheConfig cacheConfig = CacheBundle.getCacheConfig();
+    return cacheConfig == null || !cacheConfig.isEntityTypeExcluded(entityType);
+  }
+
+  private static EntityCacheBypass.Handle skipPopulateOnUpsert() {
+    CacheConfig cacheConfig = CacheBundle.getCacheConfig();
+    if (cacheConfig != null && cacheConfig.populateOnUpsert) {
+      return () -> {};
+    }
+    return EntityCacheBypass.skipPopulate();
   }
 
   /**
@@ -13828,9 +13846,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             try {
               Class<? extends EntityInterface<?>> entityClass = repository.getEntityClass();
               EntityInterface<?> entity = JsonUtils.readValue(cachedJson.get(), entityClass);
-              if (entity.getId() == null || entity.getFullyQualifiedName() == null) {
+              if (entity.getId() == null
+                  || entity.getFullyQualifiedName() == null
+                  || !fqnMatches(entityType, fqn, entity.getFullyQualifiedName())) {
                 LOG.error(
-                    "CACHE ERROR: Cached entity from name lookup is invalid! Evicting. Type: {}, Name: {}",
+                    "CACHE ERROR: Cached entity from name lookup is invalid or FQN-mismatched! Evicting. Type: {}, Name: {}",
                     entityType,
                     fqn);
                 cachedEntityDao.deleteByName(entityType, fqn);
@@ -13880,14 +13900,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             String.format("Invalid entity from database: %s %s", entityType, fqn));
       }
 
-      // Populate Redis on miss so subsequent reads (incl. cross-instance) can hit cache
+      // Populate Redis on miss: write the single JSON copy by ID first, then the tiny FQN -> UUID
+      // pointer so a concurrent reader following the pointer immediately sees the payload.
       if (isCacheableEntityType(entityType) && readEpochByName(fqnPair) == startEpoch) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
-        if (cachedEntityDao != null) {
+        if (cachedEntityDao != null && entity.getId() != null) {
           try {
-            cachedEntityDao.putByName(entityType, fqn, json);
-            if (entity.getId() != null) {
-              cachedEntityDao.putBase(entityType, entity.getId(), json);
+            if (cachedEntityDao.putBase(entityType, entity.getId(), json)) {
+              cachedEntityDao.putByName(entityType, fqn, entity.getId());
             }
           } catch (Exception e) {
             LOG.debug("Failed to populate Redis on byName miss: {} {}", entityType, fqn, e);
@@ -13896,6 +13916,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
 
       return json;
+    }
+
+    private static boolean fqnMatches(
+        final String entityType, final String requestedFqn, final String cachedFqn) {
+      if (requestedFqn == null || cachedFqn == null) {
+        return false;
+      }
+      final String normalizedRequested =
+          USER.equals(entityType) ? requestedFqn.toLowerCase(Locale.ROOT) : requestedFqn;
+      final String normalizedCached =
+          USER.equals(entityType) ? cachedFqn.toLowerCase(Locale.ROOT) : cachedFqn;
+      return FullyQualifiedName.buildHash(normalizedRequested)
+          .equals(FullyQualifiedName.buildHash(normalizedCached));
     }
 
     private void evictExternalCache(Pair<String, String> fqnPair, String json) {
@@ -13924,13 +13957,28 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       long startEpoch = readEpochById(idPair);
       String json = loadInternal(idPair, startEpoch);
       if (readEpochById(idPair) != startEpoch) {
-        var cachedEntityDao = CacheBundle.getCachedEntityDao();
-        if (cachedEntityDao != null) {
-          cachedEntityDao.deleteBase(idPair.getLeft(), idPair.getRight());
-        }
+        evictExternalCache(idPair, json);
         throw new LoaderRaceException("Concurrent write during loadById: " + idPair);
       }
       return json;
+    }
+
+    private void evictExternalCache(Pair<String, UUID> idPair, String json) {
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao == null) {
+        return;
+      }
+      cachedEntityDao.deleteBase(idPair.getLeft(), idPair.getRight());
+      try {
+        EntityRepository<? extends EntityInterface<?>> repository =
+            Entity.getEntityRepository(idPair.getLeft());
+        EntityInterface<?> entity = JsonUtils.readValue(json, repository.getEntityClass());
+        if (entity.getFullyQualifiedName() != null) {
+          cachedEntityDao.deleteByName(idPair.getLeft(), entity.getFullyQualifiedName());
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to evict raced cache entry by name for {}", idPair, e);
+      }
     }
 
     @NonNull
@@ -14006,8 +14054,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
       if (isCacheableEntityType(entityType) && readEpochById(idPair) == startEpoch) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
-        if (cachedEntityDao != null) {
-          cachedEntityDao.putBase(entityType, id, json);
+        if (cachedEntityDao != null
+            && cachedEntityDao.putBase(entityType, id, json)
+            && entity.getFullyQualifiedName() != null) {
+          cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), id);
         }
       }
 

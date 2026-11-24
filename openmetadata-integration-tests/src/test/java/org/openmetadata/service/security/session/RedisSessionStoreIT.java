@@ -164,4 +164,62 @@ class RedisSessionStoreIT extends SessionStoreContractBase {
     assertTrue(redisStore.findByUserIdAndStatus(userId, SessionStatus.ACTIVE, 10).isEmpty());
     assertEquals(0L, redisStore.userIndexSize(userId, SessionStatus.ACTIVE));
   }
+
+  @Test
+  void userIndexZsetHasBoundedTtlThatExtendsWithoutShortening() {
+    RedisSessionStore redisStore = (RedisSessionStore) store;
+    String userId = UUID.randomUUID().toString();
+    String indexKey = "om-test:session:idx:user:" + userId + ":ACTIVE";
+    long now = System.currentTimeMillis();
+
+    UserSession longer =
+        UserSession.builder()
+            .id(UUID.randomUUID().toString())
+            .type(SessionType.AUTH)
+            .provider("basic")
+            .status(SessionStatus.ACTIVE)
+            .userId(userId)
+            .version(0L)
+            .lastAccessedAt(now)
+            .expiresAt(now + TimeUnit.HOURS.toMillis(2))
+            .idleExpiresAt(now + TimeUnit.HOURS.toMillis(2))
+            .build();
+    redisStore.create(longer);
+
+    Long ttlAfterLonger = commands.ttl(indexKey);
+    assertTrue(ttlAfterLonger > TimeUnit.MINUTES.toSeconds(110));
+    assertTrue(ttlAfterLonger <= TimeUnit.HOURS.toSeconds(2));
+
+    UserSession shorter =
+        UserSession.builder()
+            .id(UUID.randomUUID().toString())
+            .type(SessionType.AUTH)
+            .provider("basic")
+            .status(SessionStatus.ACTIVE)
+            .userId(userId)
+            .version(0L)
+            .lastAccessedAt(now)
+            .expiresAt(now + TimeUnit.MINUTES.toMillis(10))
+            .idleExpiresAt(now + TimeUnit.MINUTES.toMillis(10))
+            .build();
+    redisStore.create(shorter);
+
+    Long ttlAfterShorter = commands.ttl(indexKey);
+    assertTrue(
+        ttlAfterShorter > TimeUnit.MINUTES.toSeconds(110),
+        "a shorter session must not shrink the user index TTL");
+
+    UserSession extended =
+        shorter.toBuilder()
+            .version(1L)
+            .expiresAt(now + TimeUnit.HOURS.toMillis(4))
+            .idleExpiresAt(now + TimeUnit.HOURS.toMillis(4))
+            .build();
+    assertTrue(redisStore.updateIfVersion(extended, 0L));
+
+    Long ttlAfterExtend = commands.ttl(indexKey);
+    assertTrue(
+        ttlAfterExtend > TimeUnit.MINUTES.toSeconds(230),
+        "updating a session with a longer horizon must extend the user index TTL");
+  }
 }

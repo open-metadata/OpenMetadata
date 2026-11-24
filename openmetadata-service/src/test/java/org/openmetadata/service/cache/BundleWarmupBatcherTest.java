@@ -365,6 +365,47 @@ class BundleWarmupBatcherTest {
     assertContainsTagFqn(dto.tags, "PII.Sensitive");
   }
 
+  @Test
+  void compressesLargeWarmedBundlesAndSkipsEntriesPastMaxEntrySize() {
+    Table largeTable =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("wide_orders")
+            .withFullyQualifiedName("svc.db.schema.wide_orders");
+    List<TagLabel> manyTags = new ArrayList<>();
+    for (int i = 0; i < 20; i++) {
+      manyTags.add(
+          new TagLabel()
+              .withTagFQN("Classification.Tag_" + i)
+              .withDescription("Repeated governance classification description"));
+    }
+    when(tagUsageDAO.getTagsByTargetFQNHashes(any()))
+        .thenReturn(
+            Map.of(FullyQualifiedName.buildHash(largeTable.getFullyQualifiedName()), manyTags));
+
+    InMemoryCacheProvider inMemory = new InMemoryCacheProvider();
+    BundleWarmupBatcher compressingBatcher =
+        new BundleWarmupBatcher(dao, inMemory, keys, false, 256, 0);
+    BundleWarmupBatcher.BatchResult compressedResult =
+        compressingBatcher.warmupBatch("table", List.of(largeTable), Duration.ofSeconds(60));
+    assertEquals(1, compressedResult.success());
+
+    String stored = inMemory.get(keys.bundle("table", largeTable.getId())).orElseThrow();
+    assertTrue(CacheValueCodec.isCompressed(stored));
+    CachedReadBundle reader = new CachedReadBundle(inMemory, keys, new CacheConfig());
+    CachedReadBundle.Dto decoded = reader.get("table", largeTable.getId());
+    assertNotNull(decoded);
+    assertEquals(20, decoded.tags.size());
+
+    InMemoryCacheProvider cappedCache = new InMemoryCacheProvider();
+    BundleWarmupBatcher cappedBatcher =
+        new BundleWarmupBatcher(dao, cappedCache, keys, false, 256, 32);
+    BundleWarmupBatcher.BatchResult skippedResult =
+        cappedBatcher.warmupBatch("table", List.of(largeTable), Duration.ofSeconds(60));
+    assertEquals(0, skippedResult.success());
+    assertTrue(cappedCache.get(keys.bundle("table", largeTable.getId())).isEmpty());
+  }
+
   private static void assertContainsTagFqn(List<TagLabel> tags, String tagFqn) {
     assertTrue(
         tags.stream().anyMatch(t -> tagFqn.equals(t.getTagFQN())),

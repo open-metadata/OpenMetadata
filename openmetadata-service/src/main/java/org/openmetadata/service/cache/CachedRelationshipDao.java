@@ -57,7 +57,7 @@ public class CachedRelationshipDao {
   }
 
   public void putOwners(String entityType, UUID entityId, String ownersJson) {
-    if (ownersJson == null || ownersJson.isEmpty() || EntityCacheBypass.isSkipped()) {
+    if (ownersJson == null || ownersJson.isEmpty() || EntityCacheBypass.isPopulateSkipped()) {
       return;
     }
 
@@ -72,7 +72,7 @@ public class CachedRelationshipDao {
   }
 
   public void putDomains(String entityType, UUID entityId, String domainsJson) {
-    if (domainsJson == null || domainsJson.isEmpty() || EntityCacheBypass.isSkipped()) {
+    if (domainsJson == null || domainsJson.isEmpty() || EntityCacheBypass.isPopulateSkipped()) {
       return;
     }
 
@@ -142,7 +142,7 @@ public class CachedRelationshipDao {
   }
 
   public void putContainer(String childType, UUID childId, int relation, EntityReference parent) {
-    if (parent == null || EntityCacheBypass.isSkipped()) return;
+    if (parent == null || EntityCacheBypass.isPopulateSkipped()) return;
     try {
       cache.set(
           keys.containerRef(childType, childId, relation),

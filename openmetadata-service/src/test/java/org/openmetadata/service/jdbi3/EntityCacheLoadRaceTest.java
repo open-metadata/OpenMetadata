@@ -159,7 +159,7 @@ class EntityCacheLoadRaceTest {
     cacheBundle.when(CacheBundle::getCachedEntityDao).thenReturn(cachedEntityDao);
     EntityRepository.clearCacheInvalidations();
     cachedEntityDao.putBase(Entity.PIPELINE, id, softDeletedJson);
-    cachedEntityDao.putByName(Entity.PIPELINE, nameKey.getRight(), softDeletedJson);
+    cachedEntityDao.putByName(Entity.PIPELINE, nameKey.getRight(), id);
   }
 
   @AfterEach
