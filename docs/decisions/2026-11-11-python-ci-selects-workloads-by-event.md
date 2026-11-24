@@ -92,7 +92,11 @@ Static checks run once on the minimum interpreter.
 `reusable-py-cli-e2e-tests.yml` contains only connector E2E jobs. Preserve the 17 legacy connector lanes,
 their test environment, cloud authentication, diagnostics and Snowflake concurrency with
 V2. The default connector list lives in `ci-nightly.yml`; manual nightly runs may override it with
-a JSON array. The V2 workflow remains independent, and connector migration is a separate change.
+a JSON array. The manual V2 entrypoint validates its connector selection before building images
+and calls the same reusable runner with `test-suite: v2`, without collecting coverage during
+stabilization. Both suites use the highest supported interpreter and Nox's `cli-e2e` session,
+with shared reporting, failure diagnostics, a 90-minute job limit and stack teardown. V2 retains
+its contract checks and connector worker counts. Connector migration remains a separate change.
 
 Selected jobs must succeed; unexpected failures and skips fail the required status. Scheduled
 and manual nightly failures notify ingestion Slack and mention `onduty-integrations`; successful

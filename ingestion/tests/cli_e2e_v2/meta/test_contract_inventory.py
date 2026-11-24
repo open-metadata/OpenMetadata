@@ -12,10 +12,15 @@
 
 import os
 import shlex
+import shutil
+import site
+import sys
 from pathlib import Path
 
 import pytest
 import yaml
+
+from ingestion.tests.utils.python_tooling import prepare_locked_tooling
 
 from .support import configure_child
 
@@ -228,22 +233,40 @@ def test_contract_check_without_cacheprovider_still_enforces_coverage(pytester, 
 @pytest.mark.parametrize("omit_case", [False, True])
 def test_ci_invocation_enforces_complete_contracts(pytester, monkeypatch, omit_case):
     root = Path(__file__).resolve().parents[4]
-    workflow = yaml.safe_load((root / ".github/workflows/py-cli-e2e-tests-v2.yml").read_text())
-    steps = workflow["jobs"]["py-cli-e2e-tests-v2"]["steps"]
-    script = next(step["run"] for step in steps if step.get("id") == "e2e-v2-test")
-    monkeypatch.setenv("E2E_CONNECTOR", "mysql")
-    command = os.path.expandvars(script[script.index("pytest ") :].replace("\\\n", ""))
-    arguments = shlex.split(command)[1:]
-    suite = _child(pytester, monkeypatch, directory="tests/cli_e2e_v2")
+    suite = _child(pytester, monkeypatch, directory="ingestion/tests/cli_e2e_v2")
+    project = pytester.path / "ingestion"
+    for name in ("Makefile", "noxfile.py", "pyproject.toml"):
+        shutil.copyfile(root / "ingestion" / name, project / name)
+    (pytester.path / "Makefile").write_text("include ingestion/Makefile\n")
+    prepare_locked_tooling(pytester.path, monkeypatch)
+    monkeypatch.setenv("PYTHONPATH", os.pathsep.join((os.environ["PYTHONPATH"], *site.getsitepackages())))
+    (project / "conftest.py").write_text('pytest_plugins = ["ingestion.tests.cli_e2e_v2.conftest"]\n')
     ids = tuple(case for case in MYSQL_IDS if not omit_case or case != "profile.metrics")
     _connector(suite, "mysql", _cases(ids))
-    result = pytester.runpytest_subprocess(*arguments, "--collect-only")
+    result = pytester.run(
+        sys.executable,
+        "-m",
+        "nox",
+        "-f",
+        str(project / "noxfile.py"),
+        "--no-venv",
+        "-s",
+        "cli-e2e",
+        "--",
+        "mysql",
+        "--suite",
+        "v2",
+        "--no-cov",
+    )
+    raw_exit = (project / "cli-e2e-test-exit-code.txt").read_text().strip()
     if omit_case:
-        assert result.ret == pytest.ExitCode.USAGE_ERROR
+        assert result.ret != 0
+        assert raw_exit == str(pytest.ExitCode.USAGE_ERROR)
         result.stderr.fnmatch_lines(["*mysql: profile.metrics missing collected case*"])
     else:
-        assert result.ret == pytest.ExitCode.OK
-        result.stdout.fnmatch_lines(["*20 tests collected*"])
+        assert result.ret == 0
+        assert raw_exit == "0"
+        result.stdout.fnmatch_lines(["*20 passed*"])
 
 
 @pytest.mark.parametrize("fails", [False, True])

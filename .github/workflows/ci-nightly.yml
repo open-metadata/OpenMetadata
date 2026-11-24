@@ -97,6 +97,12 @@ jobs:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
           fetch-depth: 1
+          sparse-checkout: |
+            scripts/prepare_classification_models.py
+            ingestion/pyproject.toml
+            .github/actions/prepare-classification-models
+            .github/actions/prepare-classification-model
+          sparse-checkout-cone-mode: false
       - uses: ./.github/actions/prepare-classification-models
 
   python-unit:

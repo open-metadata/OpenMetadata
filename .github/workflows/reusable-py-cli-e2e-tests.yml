@@ -29,6 +29,10 @@ on:
         description: Load the shared ingestion image instead of building it per connector
         type: boolean
         default: false
+      test-suite:
+        description: CLI test implementation (legacy or v2)
+        type: string
+        default: legacy
       collect-coverage:
         description: Collect and upload connector coverage for Sonar
         type: boolean
@@ -39,6 +43,7 @@ permissions:
 jobs:
   py-cli-e2e-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -48,7 +53,12 @@ jobs:
       group: ${{ matrix.e2e-test == 'snowflake' && 'cli-e2e-snowflake-database' || format('{0}-{1}-{2}', github.workflow, github.run_id, matrix.e2e-test) }}
       cancel-in-progress: false
     environment: test
+    env:
+      E2E_TEST: ${{ matrix.e2e-test }}
+      TEST_SUITE: ${{ inputs.test-suite }}
+      COLLECT_COVERAGE: ${{ inputs.collect-coverage }}
     steps:
+      # TODO: Measure connector disk usage before narrowing runner cleanup.
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
         with:
@@ -111,8 +121,9 @@ jobs:
         shell: bash
       - name: Run connector E2E
         id: tests
+        if: inputs.test-suite != 'v2'
         shell: bash
-        run: |
+        run: &run-cli-e2e |
           set -o pipefail
           source env/bin/activate
           cd ingestion
@@ -120,10 +131,8 @@ jobs:
           if [[ "$COLLECT_COVERAGE" != 'true' ]]; then
             args+=(--no-cov)
           fi
-          nox --no-venv -s cli-e2e -- "$E2E_TEST" "${args[@]}" 2>&1 | tee cli-e2e-test-run.log
+          nox --no-venv -s cli-e2e -- "$E2E_TEST" --suite "$TEST_SUITE" "${args[@]}" 2>&1 | tee cli-e2e-test-run.log
         env:
-          E2E_TEST: ${{ matrix.e2e-test }}
-          COLLECT_COVERAGE: ${{ inputs.collect-coverage }}
           E2E_BQ_PROJECT_ID_TAXONOMY: ${{ secrets.TEST_BQ_PROJECT_ID_TAXONOMY }}
           E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
           E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
@@ -183,24 +192,66 @@ jobs:
           E2E_ATHENA_REGION: ${{ secrets.E2E_AWS_REGION }}
           E2E_ATHENA_S3STAGINGDIR: ${{ secrets.E2E_ATHENA_S3STAGINGDIR }}
           E2E_ATHENA_WORKGROUP: ${{ secrets.E2E_ATHENA_WORKGROUP }}
+      - name: Run CLI E2E v2 tests
+        id: e2e-v2-test
+        if: inputs.test-suite == 'v2' && matrix.e2e-test != 'bigquery' && matrix.e2e-test != 'snowflake'
+        shell: bash
+        run: *run-cli-e2e
+        env:
+          OM_ADMIN_EMAIL: admin@open-metadata.org
+          OM_ADMIN_PASSWORD: admin
+      - name: Run BigQuery CLI E2E v2 tests
+        id: e2e-v2-bigquery-test
+        if: inputs.test-suite == 'v2' && matrix.e2e-test == 'bigquery'
+        shell: bash
+        run: *run-cli-e2e
+        env:
+          OM_ADMIN_EMAIL: admin@open-metadata.org
+          OM_ADMIN_PASSWORD: admin
+          E2E_BQ_PROJECT_ID: ${{ secrets.TEST_BQ_PROJECT_ID }}
+          E2E_BQ_PROJECT_ID2: ${{ secrets.TEST_BQ_PROJECT_ID2 }}
+          E2E_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY_E2E }}
+          E2E_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
+          E2E_BQ_CLIENT_EMAIL: ${{ secrets.TEST_BQ_CLIENT_EMAIL }}
+      - name: Run Snowflake CLI E2E v2 tests
+        id: e2e-v2-snowflake-test
+        if: inputs.test-suite == 'v2' && matrix.e2e-test == 'snowflake'
+        shell: bash
+        run: *run-cli-e2e
+        env:
+          OM_ADMIN_EMAIL: admin@open-metadata.org
+          OM_ADMIN_PASSWORD: admin
+          E2E_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
+          E2E_SNOWFLAKE_USERNAME: ${{ secrets.TEST_SNOWFLAKE_USERNAME }}
+          E2E_SNOWFLAKE_PRIVATE_KEY: ${{ secrets.TEST_SNOWFLAKE_PASSWORD_YAML }}
+          E2E_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
+          E2E_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+          E2E_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE_E2E }}
       - name: Upload connector coverage
         if: ${{ inputs.collect-coverage && !cancelled() }}
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: cli-coverage-${{ inputs.python-version }}-${{ matrix.e2e-test }}
+          name: cli-coverage-${{ inputs.test-suite == 'v2' && 'v2-' || '' }}${{ inputs.python-version }}-${{ matrix.e2e-test }}
           path: ingestion/.coverage.${{ matrix.e2e-test }}
           include-hidden-files: true
       - name: Report test results
         if: ${{ always() }}
         uses: ./.github/actions/report-test-results
         with:
-          step-outcome: ${{ steps.tests.outcome }}
+          step-outcome: ${{ job.status }}
           exit-code-file: ingestion/cli-e2e-test-exit-code.txt
-          test-profile: python-cli-e2e
-          artifact-name: tests-${{ inputs.python-version }}-${{ matrix.e2e-test }}
+          test-profile: python-cli-e2e-${{ inputs.test-suite }}
+          artifact-name: tests-${{ inputs.test-suite == 'v2' && 'v2-' || '' }}${{ inputs.python-version }}-${{ matrix.e2e-test }}
       - name: Collect failure diagnostics
         if: ${{ failure() || cancelled() }}
         uses: ./.github/actions/python-diagnostics
         with:
-          artifact-name: py-cli-e2e-diagnostics-${{ inputs.python-version }}-${{ matrix.e2e-test }}
+          artifact-name: py-cli-e2e-diagnostics-${{ inputs.test-suite }}-${{ inputs.python-version }}-${{ matrix.e2e-test }}
+      - name: Stop test environment
+        if: ${{ always() }}
+        working-directory: docker/development
+        run: |
+          docker compose down --remove-orphans
+          sudo rm -rf "${PWD}/docker-volume"
+        shell: bash

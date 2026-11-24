@@ -24,6 +24,17 @@ python -m pytest ingestion/tests/cli_e2e_v2/mysql --e2e-contract-check -v
 python -m pytest ingestion/tests/cli_e2e_v2/postgres --e2e-contract-check -v
 ```
 
+To use the same locked environment and command as CI, run from `ingestion/`:
+
+```bash
+nox --no-venv -s cli-e2e -- mysql --suite v2 --no-cov
+```
+
+The `cli-e2e` session defaults to legacy tests; `--suite v2` selects the replacement directory and
+enforces its contracts. BigQuery uses six workers and Snowflake four. Both workflows use
+`reusable-py-cli-e2e-tests.yml` for stack setup, reporting, failure diagnostics and teardown.
+V2 remains manually dispatched with coverage disabled during stabilization.
+
 Use `OM_JWT_TOKEN` for an existing token. Without it, `server.py` authenticates with `OM_ADMIN_EMAIL` / `OM_ADMIN_PASSWORD` (defaults: `admin@open-metadata.org` / `admin`) and obtains the ingestion-bot token. Missing credentials, unreachable services, and failed provisioning are errors, not skips.
 
 The MySQL and Postgres fixtures each own a disposable container, restricted ingestion account, and unique per-test schemas. Every Postgres workflow uses an anchored include filter for its owned schemas. Each test also owns a unique OM service. Cleanup runs after setup or call failures; cleanup failures remain teardown errors alongside the original failure. Never point these mutating fixtures at a shared source or reset somebody else's schema.
@@ -41,10 +52,8 @@ env -u OM_JWT_TOKEN OM_SERVER_URL=http://127.0.0.1:1/api \
   python -m pytest ingestion/tests/cli_e2e_v2/meta -q
 ```
 
-The shared Python CI workflow runs this offline suite once, on Python 3.10, when E2E code,
-ingestion dependency/test configuration, generated-model schemas, or the relevant CI wiring changes.
-It reuses the unit-test environment and does not run live connectors. Unrelated changes skip this step;
-manual Python workflow runs include it. The live connector workflow remains manually triggered.
+Nightly runs this offline suite once, in the unit-test environment on the highest supported Python
+version. PR and merge-queue unit runs exclude it. The live connector workflow remains manually triggered.
 
 ## Boundaries
 
@@ -431,8 +440,8 @@ profiler's ORM type map, so it fell back to `CustomTypes.UNDETERMINED` and its s
 persisted as the literal `OPENMETADATA_UNDETERMIND[<root/>]` instead of the document. `XML`
 now maps to `TEXT`, like every other textual type, for every connector that has one.
 
-**Wired into CI.** `mssql` is in `py-cli-e2e-tests-v2.yml`'s dispatch default, matrix default and
-`Validate connector` allowlist, and in `meta/test_ci_workflow.py`'s connector lists. It runs in the
+**Wired into CI.** `mssql` is in `py-cli-e2e-tests-v2.yml`'s dispatch default, which also defines the
+allowed connector list. Selection is validated before image builds. It runs in the
 generic `Run CLI E2E v2 tests` step, like Oracle and Postgres, because the suite owns its source
 through testcontainers and needs no secrets. The workflow is `workflow_dispatch` only, so the suite
 runs when it is dispatched rather than on every PR; the command above still runs it locally.

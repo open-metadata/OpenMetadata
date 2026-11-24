@@ -390,15 +390,24 @@ def integration_tests(session):
 @nox.session(name="cli-e2e", python=False, default=False)
 def cli_e2e(session):
     """Run one connector's CLI tests with optional parent and subprocess coverage."""
-    args = list(session.posargs)
-    collect_coverage = "--no-cov" not in args
-    if not collect_coverage:
-        args.remove("--no-cov")
-    if len(args) != 1:
-        session.error("Pass one connector name and optional --no-cov after --")
-    connector = args[0]
+    parser = argparse.ArgumentParser()
+    parser.add_argument("connector")
+    parser.add_argument("--suite", choices=("legacy", "v2"), default="legacy")
+    parser.add_argument("--no-cov", action="store_true")
+    args = parser.parse_args(session.posargs)
+    connector = args.connector
+    collect_coverage = not args.no_cov
     test = INGESTION_ROOT / "tests/cli_e2e" / f"test_cli_{connector}.py"
-    if not test.is_file():
+    pytest_args = ["--durations=20"]
+    report = connector
+    if args.suite == "v2":
+        test = INGESTION_ROOT / "tests/cli_e2e_v2" / connector
+        report = f"v2-{connector}"
+        pytest_args.extend(["-v", "--e2e-contract-check"])
+        workers = {"bigquery": "6", "snowflake": "4"}.get(connector)
+        if workers:
+            pytest_args.extend(["-n", workers])
+    if not connector.replace("_", "").isalnum() or not (test.is_dir() if args.suite == "v2" else test.is_file()):
         session.error(f"Unknown CLI E2E connector: {connector}")
     python = prepare(session, "test-classification")
     environment = {name: value for name, value in {**os.environ, **session.env}.items() if value is not None}
@@ -428,7 +437,8 @@ def cli_e2e(session):
             "pytest",
             "-c",
             "pyproject.toml",
-            f"--junitxml=junit/test-results-{connector}.xml",
+            *pytest_args,
+            f"--junitxml=junit/test-results-{report}.xml",
             str(test),
         ],
         "cli-e2e",

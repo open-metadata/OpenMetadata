@@ -249,11 +249,19 @@ def test_ci_suite_records_pytest_status_and_streams_real_output(nox_repo, monkey
 
 @pytest.mark.parametrize("exit_code", [0, 1, 5])
 @pytest.mark.parametrize("collect", [True, False])
+@pytest.mark.parametrize("suite", ["legacy", "v2"])
 def test_cli_e2e_preserves_pytest_outcome_and_subprocess_coverage(
-    nox_repo: Path, exit_code: int, collect: bool
+    nox_repo: Path, exit_code: int, collect: bool, suite: str
 ) -> None:
-    tests = nox_repo / "ingestion/tests/cli_e2e"
-    tests.mkdir()
+    tests = nox_repo / ("ingestion/tests/cli_e2e_v2/demo" if suite == "v2" else "ingestion/tests/cli_e2e")
+    tests.mkdir(parents=True)
+    if suite == "v2":
+        (tests / "conftest.py").write_text(
+            "def pytest_addoption(parser):\n"
+            "    parser.addoption('--e2e-contract-check', action='store_true')\n"
+            "def pytest_configure(config):\n"
+            "    assert config.getoption('--e2e-contract-check')\n"
+        )
     (tests / "test_cli_demo.py").write_text(
         "import subprocess, sys\nfrom metadata.sample import classify\n"
         "def test_connector():\n"
@@ -265,10 +273,13 @@ def test_cli_e2e_preserves_pytest_outcome_and_subprocess_coverage(
         else "value = 1\n"
     )
     args = [] if collect else ["--no-cov"]
+    if suite == "v2":
+        args.extend(["--suite", "v2"])
     result = run("nox", "--no-venv", "-s", "cli-e2e", "--", "demo", *args, cwd=nox_repo / "ingestion")
     assert (result.returncode == 0) == (exit_code == 0), result.stdout + result.stderr
     assert (nox_repo / "ingestion/cli-e2e-test-exit-code.txt").read_text().strip() == str(exit_code)
-    assert (nox_repo / "ingestion/junit/test-results-demo.xml").is_file()
+    report = "v2-demo" if suite == "v2" else "demo"
+    assert (nox_repo / f"ingestion/junit/test-results-{report}.xml").is_file()
     if not collect:
         assert not list((nox_repo / "ingestion").glob(".coverage*"))
     elif exit_code != 5:
@@ -278,7 +289,36 @@ def test_cli_e2e_preserves_pytest_outcome_and_subprocess_coverage(
         coverage.read()
         assert coverage.lines("src/metadata/sample.py") == [1, 2, 3, 4]
     if exit_code != 5:
-        assert reported_test_names(nox_repo, "demo") == ["test_connector"]
+        assert reported_test_names(nox_repo, report) == ["test_connector"]
+
+
+@pytest.mark.parametrize("connector, workers", [("bigquery", "6"), ("snowflake", "4")])
+def test_cli_v2_runs_contracts_with_connector_worker_counts(nox_repo, connector, workers):
+    tests = nox_repo / "ingestion/tests/cli_e2e_v2" / connector
+    tests.mkdir(parents=True)
+    (tests / "conftest.py").write_text(
+        "def pytest_addoption(parser):\n"
+        "    parser.addoption('--e2e-contract-check', action='store_true')\n"
+        "def pytest_configure(config):\n"
+        "    assert config.getoption('--e2e-contract-check')\n"
+    )
+    (tests / "test_workers.py").write_text(
+        f"import os\ndef test_workers():\n    assert os.environ['PYTEST_XDIST_WORKER_COUNT'] == {workers!r}\n"
+    )
+    result = run(
+        "nox",
+        "--no-venv",
+        "-s",
+        "cli-e2e",
+        "--",
+        connector,
+        "--suite",
+        "v2",
+        "--no-cov",
+        cwd=nox_repo / "ingestion",
+    )
+    assert_success(result)
+    assert reported_test_names(nox_repo, f"v2-{connector}") == ["test_workers"]
 
 
 @pytest.mark.parametrize("entrypoint, workers", [("nox", "2"), ("nox", "0"), ("nox", "auto"), ("make", "2")])
