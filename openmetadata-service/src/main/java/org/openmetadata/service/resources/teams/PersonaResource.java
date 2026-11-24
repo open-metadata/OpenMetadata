@@ -37,7 +37,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.entity.teams.Persona;
@@ -79,16 +78,6 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   private final PersonaMapper mapper = new PersonaMapper();
   public static final String COLLECTION_PATH = "/v1/personas";
   static final String FIELDS = "users,contextDefinition";
-  private static volatile Supplier<Persona> missingActivePersonaFallback;
-
-  /**
-   * Registers a shared context for authenticated callers without an active persona. Register at
-   * server startup. The supplier must return context intended for those callers, with a stable
-   * persona ID for caching. Passing null restores the standard 404 response.
-   */
-  public static void setMissingActivePersonaFallback(Supplier<Persona> fallback) {
-    missingActivePersonaFallback = fallback;
-  }
 
   @Override
   public Persona addHref(UriInfo uriInfo, Persona persona) {
@@ -602,10 +591,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
           String refresh) {
     return renderPersonaContext(
         PersonaContextAccess.materializeActive(
-            authorizer,
-            securityContext,
-            Boolean.parseBoolean(refresh),
-            missingActivePersonaFallback),
+            authorizer, securityContext, Boolean.parseBoolean(refresh)),
         format);
   }
 

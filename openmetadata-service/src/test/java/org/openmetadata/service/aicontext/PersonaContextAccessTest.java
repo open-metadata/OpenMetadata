@@ -80,7 +80,7 @@ class PersonaContextAccessTest {
         assertThrows(
             EntityNotFoundException.class,
             () -> resource.getMyPersonaContext(null, caller, "json", "false"));
-        PersonaResource.setMissingActivePersonaFallback(() -> shared);
+        PersonaContextAccess.setMissingActivePersonaFallback(() -> shared);
         assertContext(
             resource.getMyPersonaContext(null, caller, "json", "false"), shared, "BYPASS");
         assertThrows(
@@ -107,7 +107,7 @@ class PersonaContextAccessTest {
                 EntityNotFoundException.class,
                 () -> resource.getMyPersonaContext(null, caller, "json", "false")));
       } finally {
-        PersonaResource.setMissingActivePersonaFallback(null);
+        PersonaContextAccess.setMissingActivePersonaFallback(null);
       }
     }
   }

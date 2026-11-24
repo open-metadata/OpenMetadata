@@ -146,9 +146,10 @@ public class PersonaRepository extends EntityRepository<Persona> {
       UUID id, PersonaContextDefinition definition) {
     var patch = JsonUtils.getJsonPatch(Map.of(), Map.of(FIELD_CONTEXT_DEFINITION, definition));
     UUID previous = projectedContextPatch.get();
+    PatchResponse<Persona> response;
     projectedContextPatch.set(id);
     try {
-      return patch(null, id, Entity.INGESTION_BOT_NAME, patch, ChangeSource.AUTOMATED);
+      response = patch(null, id, Entity.INGESTION_BOT_NAME, patch, ChangeSource.AUTOMATED);
     } finally {
       if (previous == null) {
         projectedContextPatch.remove();
@@ -156,6 +157,9 @@ public class PersonaRepository extends EntityRepository<Persona> {
         projectedContextPatch.set(previous);
       }
     }
+    storeChangeEventForAsyncOperation(
+        response.entity(), response.changeType(), false, Entity.INGESTION_BOT_NAME);
+    return response;
   }
 
   private int contextRuleLimit(Persona persona, boolean update) {

@@ -14,16 +14,17 @@ OpenMetadata's rule model and RDF checks.
 ## Decision
 
 - RDF tool subclasses can inject the repository and readiness resolver, receive the caller's
-  authorizer, and reuse the grant, readiness, and admission checks. Composed tools supply their
-  own write limits alongside their write operations.
-- A server can register a shared persona context at startup for callers with no active persona.
-  The supplier uses a stable cache identity distinct from stored personas. The existing endpoint
-  resolves the authenticated caller first and applies caller visibility, refresh authorization,
-  formatting, and cache policy. A missing context yields the existing 404.
+  authorizer, and reuse the grant, readiness, and admission checks. Composed tools enforce their
+  own write limits. Collate injects those limits through the composed tool's constructor.
+- Servers can register a shared context at startup through `PersonaContextAccess`. REST and MCP
+  use it when the authenticated caller has no active persona, and MCP search uses its search
+  scope. The supplier uses a stable cache identity distinct from stored personas. Each path
+  applies its existing visibility, refresh authorization, formatting, and cache rules.
 - `PersonaRepository.patchProjectedContext` applies server-generated definitions through the
   normal persona PATCH pipeline with a 50-rule ceiling, allowing two authored sets of 25 rules.
-  The allowance is scoped to the target persona during that call. Authored lists retain the
-  25-rule limit. Edits can carry forward an existing projected list verbatim.
+  The schema accepts up to 50 rules, and the repository caps authored lists at 25. Generic PUT
+  and PATCH can carry forward an existing projected list verbatim. A projection that changes
+  the persona version records an `entityUpdated` event.
 
 ## Consequences
 

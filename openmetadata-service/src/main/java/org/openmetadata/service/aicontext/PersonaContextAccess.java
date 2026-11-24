@@ -25,11 +25,21 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
-/** Persona-membership authorization shared by the REST endpoint and MCP tool. */
+/** Active persona resolution and context authorization shared by REST and MCP. */
 public final class PersonaContextAccess {
   private static final String CONTEXT_DEFINITION_FIELD = "contextDefinition";
+  private static volatile Supplier<Persona> missingActivePersonaFallback;
 
   private PersonaContextAccess() {}
+
+  /**
+   * Registers shared context for authenticated callers without an active persona. Register at
+   * server startup. The supplier must use a stable persona ID distinct from stored personas for
+   * caching. Passing null clears the registration.
+   */
+  public static void setMissingActivePersonaFallback(Supplier<Persona> fallback) {
+    missingActivePersonaFallback = fallback;
+  }
 
   public static PersonaContextCache.CachedResult materialize(
       Authorizer authorizer, SecurityContext securityContext, Persona persona, boolean refresh) {
@@ -40,16 +50,19 @@ public final class PersonaContextAccess {
     return materializeVisibleContext(authorizer, securityContext, persona, refresh);
   }
 
-  /** Only the caller's active persona or a server-provided shared context can resolve /me. */
+  /** Materializes the caller's active persona or the registered shared context. */
   public static PersonaContextCache.CachedResult materializeActive(
-      Authorizer authorizer,
-      SecurityContext securityContext,
-      boolean refresh,
-      Supplier<Persona> fallback) {
+      Authorizer authorizer, SecurityContext securityContext, boolean refresh) {
     Persona persona = findActivePersona(securityContext);
     if (persona != null) {
       return materialize(authorizer, securityContext, persona, refresh);
     }
+    Persona shared = fallbackPersona(securityContext, refresh);
+    return materializeVisibleContext(authorizer, securityContext, shared, refresh);
+  }
+
+  private static Persona fallbackPersona(SecurityContext securityContext, boolean refresh) {
+    Supplier<Persona> fallback = missingActivePersonaFallback;
     if (fallback == null) {
       throw noActivePersona();
     }
@@ -60,7 +73,7 @@ public final class PersonaContextAccess {
     if (shared == null) {
       throw noActivePersona();
     }
-    return materializeVisibleContext(authorizer, securityContext, shared, refresh);
+    return shared;
   }
 
   private static PersonaContextCache.CachedResult materializeVisibleContext(
@@ -92,12 +105,10 @@ public final class PersonaContextAccess {
     }
   }
 
+  /** Resolves the caller's persona or shared context for search scoping. */
   public static Persona activePersona(SecurityContext securityContext) {
     Persona persona = findActivePersona(securityContext);
-    if (persona == null) {
-      throw noActivePersona();
-    }
-    return persona;
+    return persona != null ? persona : fallbackPersona(securityContext, false);
   }
 
   private static EntityNotFoundException noActivePersona() {

@@ -48,7 +48,9 @@ import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.api.BulkAssets;
@@ -57,6 +59,7 @@ import org.openmetadata.schema.type.personaContext.ContextRule;
 import org.openmetadata.schema.type.personaContext.ContextSection;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.PersonaRepository;
+import org.openmetadata.service.resources.events.EventResource.EventList;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PersonaAIContextIT extends McpTestBase {
@@ -284,13 +287,32 @@ class PersonaAIContextIT extends McpTestBase {
           .isInstanceOf(IllegalArgumentException.class)
           .hasMessageContaining("at most 50 rules");
       repository.patchProjectedContext(
-          owned.getId(), settings(true).withRules(rules.subList(0, 50)));
+          owned.getId(), settings(true).withRules(rules.subList(0, 30)));
+
+      Persona stored = get(path + "?fields=contextDefinition", Persona.class);
+      assertThat(stored.getContextDefinition().getRules()).hasSize(30);
+      assertThat(
+              get("personas/name/" + owned.getName() + "?fields=contextDefinition", Persona.class)
+                  .getContextDefinition())
+          .isEqualTo(stored.getContextDefinition());
+      CreatePersona request =
+          new CreatePersona()
+              .withName(owned.getName())
+              .withDescription("Updated through generic PUT")
+              .withContextDefinition(stored.getContextDefinition());
+      Persona updated = put("personas", request, Persona.class);
+      assertThat(updated.getId()).isEqualTo(owned.getId());
+      assertThat(updated.getDescription()).isEqualTo(request.getDescription());
+      assertThat(updated.getContextDefinition()).isEqualTo(stored.getContextDefinition());
 
       patch(
           path,
           """
-          [{"op":"add","path":"/description","value":"Still editable"}]
-          """);
+          [{"op":"replace","path":"/description","value":"Still editable"},
+           {"op":"replace","path":"/contextDefinition/rules","value":%s}]
+          """
+              .formatted(
+                  OBJECT_MAPPER.writeValueAsString(stored.getContextDefinition().getRules())));
       assertThatThrownBy(
               () ->
                   patch(
@@ -299,10 +321,48 @@ class PersonaAIContextIT extends McpTestBase {
                   [{"op":"replace","path":"/contextDefinition/rules/0/name","value":"Changed rule"}]
                   """))
           .hasMessageContaining("at most 25 rules");
-      Persona stored = get(path + "?fields=contextDefinition", Persona.class);
-      assertThat(stored.getDescription()).isEqualTo("Still editable");
-      assertThat(stored.getContextDefinition().getRules()).hasSize(50);
-      assertThat(stored.getContextDefinition().getRules().getFirst().getName()).isEqualTo("Rule 1");
+      Persona afterPatch = get(path + "?fields=contextDefinition", Persona.class);
+      assertThat(afterPatch.getDescription()).isEqualTo("Still editable");
+      assertThat(afterPatch.getContextDefinition()).isEqualTo(stored.getContextDefinition());
+      request.setName("authored_context_" + shortId());
+      HttpResponse<String> authored = putResponse("personas", request, authToken);
+      assertThat(authored.statusCode()).isEqualTo(400);
+      assertThat(authored.body()).contains("at most 25 rules");
+    } finally {
+      deleteResponse(path + "?hardDelete=true", authToken);
+    }
+  }
+
+  @Test
+  void projectionRecordsAnUpdateEventForTheStoredVersion() throws Exception {
+    Persona owned =
+        post(
+            "personas",
+            new CreatePersona().withName("projected_context_event_" + shortId()),
+            Persona.class);
+    String path = "personas/" + owned.getId();
+    var repository = (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
+    var definition = settings(true).withRules(List.of(tableRule("Projected tables")));
+    long since = System.currentTimeMillis();
+    try {
+      var projected = repository.patchProjectedContext(owned.getId(), definition).entity();
+      repository.patchProjectedContext(owned.getId(), projected.getContextDefinition());
+
+      var events = get("events?entityUpdated=persona&timestamp=" + since, EventList.class);
+      List<ChangeEvent> updates =
+          events.getData().stream()
+              .filter(event -> owned.getId().equals(event.getEntityId()))
+              .toList();
+      assertThat(updates)
+          .singleElement()
+          .satisfies(
+              event -> {
+                assertThat(event.getEventType()).isEqualTo(EventType.ENTITY_UPDATED);
+                assertThat(event.getUserName()).isEqualTo(Entity.INGESTION_BOT_NAME);
+                assertThat(event.getPreviousVersion()).isEqualTo(owned.getVersion());
+                assertThat(event.getCurrentVersion()).isEqualTo(projected.getVersion());
+              });
+      assertThat(projected.getVersion()).isGreaterThan(owned.getVersion());
     } finally {
       deleteResponse(path + "?hardDelete=true", authToken);
     }
