@@ -1,3 +1,15 @@
+-- The released test_suite table has no index beginning with id.
+SET @logical_suite_index_sql = (
+    SELECT IF(EXISTS (
+        SELECT 1 FROM information_schema.statistics
+        WHERE table_schema = DATABASE() AND table_name = 'test_suite'
+          AND index_name = 'idx_test_suite_id'
+    ), 'SELECT 1', 'CREATE INDEX idx_test_suite_id ON test_suite (id)')
+);
+PREPARE logical_suite_index_stmt FROM @logical_suite_index_sql;
+EXECUTE logical_suite_index_stmt;
+DEALLOCATE PREPARE logical_suite_index_stmt;
+
 -- Logical suites select their tables through their test cases.
 UPDATE entity_relationship AS relationship
 JOIN test_suite AS suite ON suite.id = relationship.fromId
