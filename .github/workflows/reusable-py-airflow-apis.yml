@@ -1,0 +1,71 @@
+name: reusable-py-airflow-apis
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git commit SHA to test
+        type: string
+        required: true
+      python-version:
+        description: Python interpreter for the API tests
+        type: string
+        required: true
+      use-backend-artifact:
+        description: Use the shared backend distribution instead of building on this runner
+        type: boolean
+        default: false
+      collect-coverage:
+        description: Collect coverage for the nightly Sonar analysis
+        type: boolean
+        default: false
+permissions:
+  contents: read
+jobs:
+  airflow-apis-tests:
+    name: airflow-apis-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+          fetch-depth: 1
+      - name: Download backend distribution
+        if: inputs.use-backend-artifact
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: openmetadata-backend-distribution
+          path: openmetadata-dist/target
+      - name: Start test environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          args: -m no-ui -i false -s ${{ inputs.use-backend-artifact }}
+      - uses: ./.github/actions/setup-python
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Prepare generated models
+        run: |
+          sudo make install_antlr_cli
+          make generate ARGS=--python-only
+      - name: Run Airflow API tests
+        id: tests
+        env:
+          COLLECT_COVERAGE: ${{ inputs.collect-coverage }}
+        run: |
+          set -o pipefail
+          args=()
+          if [[ "$COLLECT_COVERAGE" == 'true' ]]; then
+            args+=(--coverage)
+          fi
+          make -C openmetadata-airflow-apis test ARGS="${args[*]}" 2>&1 | tee openmetadata-airflow-apis/airflow-apis-test-run.log
+        shell: bash
+      - name: Report test results
+        if: ${{ always() }}
+        uses: ./.github/actions/report-test-results
+        with:
+          step-outcome: ${{ steps.tests.outcome }}
+          exit-code-file: openmetadata-airflow-apis/airflow-apis-test-exit-code.txt
+          test-profile: airflow-apis
+          artifact-name: airflow-apis-test-results
+          working-directory: openmetadata-airflow-apis

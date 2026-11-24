@@ -308,13 +308,13 @@ await (async () => {
 
 def test_airflow_sonar_settings_resolve_from_the_workspace():
     document = yaml.load(
-        (ROOT / ".github/workflows/airflow-apis-tests.yml").read_text(),
+        (ROOT / ".github/workflows/ci-nightly.yml").read_text(),
         Loader=yaml.BaseLoader,
     )
     scan = next(
         step
-        for step in document["jobs"]["airflow-apis-sonar"]["steps"]
-        if step.get("uses", "").startswith("SonarSource/sonarqube-scan-action@")
+        for step in document["jobs"]["sonar-cloud-coverage-upload"]["steps"]
+        if step.get("with", {}).get("projectBaseDir", "").rstrip("/") == "openmetadata-airflow-apis"
     )["with"]
     settings = next(
         (

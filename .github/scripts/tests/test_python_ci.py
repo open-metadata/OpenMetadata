@@ -207,8 +207,11 @@ def test_nightly_artifact_names_are_unique_across_invocations():
         ("success", 0, "missing_results"),
     ],
 )
-def test_reporting_records_outcomes_and_keeps_only_failure_logs(tmp_path, step_outcome, exit_code, classification):
-    project = tmp_path / "ingestion"
+@pytest.mark.parametrize("directory", ["ingestion", "openmetadata-airflow-apis"])
+def test_reporting_records_outcomes_and_keeps_only_failure_logs(
+    tmp_path, step_outcome, exit_code, classification, directory
+):
+    project = tmp_path / directory
     project.mkdir()
     log = project / "unit-test-run.log"
     log.write_text("test process timed out\n" if classification == "hung_test" else "test output\n")
@@ -238,6 +241,7 @@ def test_reporting_records_outcomes_and_keeps_only_failure_logs(tmp_path, step_o
             "EXIT_CODE_FILE": str(exit_file),
             "TEST_PROFILE": "python-tests",
             "TEST_LANE": "sample-lane",
+            "TEST_DIRECTORY": directory,
             "GITHUB_STEP_SUMMARY": str(summary),
         },
     )

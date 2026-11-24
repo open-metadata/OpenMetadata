@@ -13,6 +13,9 @@ inputs:
   artifact-name:
     description: Name of the uploaded result artifact and reported lane
     required: true
+  working-directory:
+    description: Directory containing JUnit reports, test logs, and exit codes
+    default: ingestion
 runs:
   using: composite
   steps:
@@ -23,20 +26,22 @@ runs:
         TEST_PROFILE: ${{ inputs.test-profile }}
         TEST_STEP_OUTCOME: ${{ job.status == 'cancelled' && 'cancelled' || inputs.step-outcome }}
         EXIT_CODE_FILE: ${{ inputs.exit-code-file }}
+        TEST_DIRECTORY: ${{ inputs.working-directory }}
       run: |
+        test_directory="${TEST_DIRECTORY:-ingestion}"
         test_exit_code=""
         if [[ -s "$EXIT_CODE_FILE" ]]; then
           read -r test_exit_code < "$EXIT_CODE_FILE"
         fi
         diagnostic_glob=""
         if [[ "$TEST_STEP_OUTCOME" != 'success' ]]; then
-          diagnostic_glob='ingestion/*-test-run.log'
+          diagnostic_glob="$test_directory/*-test-run.log"
         fi
         python3 .github/scripts/classify_test_outcome.py \
           --step-outcome "$TEST_STEP_OUTCOME" --exit-code "$test_exit_code" \
-          --report-glob 'ingestion/junit/test-results-*.xml' \
+          --report-glob "$test_directory/junit/test-results-*.xml" \
           --diagnostic-glob "$diagnostic_glob" \
-          --output ingestion/ci-diagnostics/outcome.json
+          --output "$test_directory/ci-diagnostics/outcome.json"
       shell: bash
     - name: Upload test results
       if: ${{ always() }}
@@ -45,10 +50,11 @@ runs:
       with:
         name: ${{ inputs.artifact-name }}
         path: |
-          ingestion/junit/
-          ingestion/ci-diagnostics/outcome.json
-          ${{ inputs.step-outcome != 'success' && 'ingestion/*-test-run.log' || '' }}
-          ingestion/*-test-exit-code.txt
+          ${{ inputs.working-directory }}/junit/
+          ${{ inputs.working-directory }}/ci-diagnostics/outcome.json
+          ${{ inputs.working-directory }}/ci-coverage.xml
+          ${{ inputs.step-outcome != 'success' && format('{0}/*-test-run.log', inputs.working-directory) || '' }}
+          ${{ inputs.working-directory }}/*-test-exit-code.txt
         if-no-files-found: warn
         retention-days: 14
         compression-level: 1

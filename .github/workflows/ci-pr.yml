@@ -34,7 +34,8 @@ jobs:
       python-highest: ${{ steps.versions.outputs.highest }}
       ref: ${{ github.event.pull_request.head.sha || github.sha }}
       python: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' }}
-      static: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.static == 'true' }}
+      airflow-apis: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.airflow-apis == 'true' }}
+      static: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.airflow-apis == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -84,10 +85,19 @@ jobs:
       collect-coverage: false
       prepare-models: true
 
+  airflow-apis:
+    needs: plan
+    if: ${{ needs.plan.outputs.airflow-apis == 'true' }}
+    uses: ./.github/workflows/reusable-py-airflow-apis.yml
+    with:
+      ref: ${{ needs.plan.outputs.ref }}
+      python-version: ${{ needs.plan.outputs.python-lowest }}
+
   py-tests-status:
     name: py-tests-status
     needs:
       - plan
+      - airflow-apis
       - py-checkstyle
       - python-unit
     if: ${{ always() && !github.event.pull_request.draft }}
@@ -100,6 +110,7 @@ jobs:
           EXPECTED_RESULTS: |
             {
               "plan": "success",
+              "airflow-apis": "${{ needs.plan.outputs.airflow-apis == 'true' && 'success' || 'skipped' }}",
               "py-checkstyle": "${{ needs.plan.outputs.static == 'true' && 'success' || 'skipped' }}",
               "python-unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}"
             }

@@ -102,15 +102,11 @@ sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push 
 
 .PHONY: run_apis_tests
 run_apis_tests:  ## Run the openmetadata airflow apis tests
-	coverage erase
-	coverage run --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(ROOT_DIR)/openmetadata-airflow-apis/junit/test-results.xml $(ROOT_DIR)/openmetadata-airflow-apis/tests
-	coverage report --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml
+	$(MAKE) -C $(ROOT_DIR)/openmetadata-airflow-apis test ARGS="$(ARGS)"
 
 .PHONY: coverage_apis
 coverage_apis:  ## Run the python tests on openmetadata-airflow-apis
-	$(MAKE) run_apis_tests
-	coverage xml --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml -o $(ROOT_DIR)/openmetadata-airflow-apis/coverage.xml
-	sed -e "s/$(shell python -c "import site; import os; from pathlib import Path; print(os.path.relpath(site.getsitepackages()[0], str(Path.cwd())).replace('/','\/'))")\///g" $(ROOT_DIR)/openmetadata-airflow-apis/coverage.xml >> $(ROOT_DIR)/openmetadata-airflow-apis/ci-coverage.xml
+	$(MAKE) -C $(ROOT_DIR)/openmetadata-airflow-apis coverage ARGS="$(ARGS)"
 
 .PHONY: coverage
 coverage: python_tools  ## Run all Python tests and generate the coverage XML report

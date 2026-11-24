@@ -146,10 +146,20 @@ jobs:
       connectors: ${{ needs.plan.outputs.connectors }}
       use-ingestion-image: true
 
+  airflow-apis:
+    needs: [plan, backend]
+    uses: ./.github/workflows/reusable-py-airflow-apis.yml
+    with:
+      ref: ${{ needs.plan.outputs.ref }}
+      python-version: ${{ needs.plan.outputs.python-lowest }}
+      use-backend-artifact: true
+      collect-coverage: true
+
   py-tests-status:
     name: py-tests-status
     needs:
       - plan
+      - airflow-apis
       - py-checkstyle
       - classification-models
       - backend
@@ -167,6 +177,7 @@ jobs:
           EXPECTED_RESULTS: |
             {
               "plan": "success",
+              "airflow-apis": "success",
               "py-checkstyle": "success",
               "classification-models": "success",
               "backend": "success",
@@ -188,6 +199,7 @@ jobs:
   sonar-cloud-coverage-upload:
     needs:
       - plan
+      - airflow-apis
       - python-unit
       - python-integration
       - python-cli-e2e
@@ -249,6 +261,23 @@ jobs:
           SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
         with:
           projectBaseDir: ingestion/
+
+      - name: Download Airflow API results
+        id: airflow-apis-results
+        if: ${{ !cancelled() && needs.airflow-apis.result == 'success' }}
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          name: airflow-apis-test-results
+          path: openmetadata-airflow-apis/
+      - name: Publish Airflow API Sonar analysis
+        if: ${{ !cancelled() && steps.airflow-apis-results.outcome == 'success' }}
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SONAR_TOKEN: ${{ secrets.AIRFLOW_APIS_SONAR_TOKEN }}
+        with:
+          projectBaseDir: openmetadata-airflow-apis/
+          args: -Dproject.settings=openmetadata-airflow-apis/sonar-project.properties
 
   notify:
     needs:

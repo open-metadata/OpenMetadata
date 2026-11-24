@@ -34,5 +34,21 @@ python:
   - .github/scripts/classify_test_outcome.py
   - .github/scripts/tests/test_python_ci.py
   - Makefile
-static:
+airflow-apis:
   - openmetadata-airflow-apis/**
+  - .github/workflows/reusable-py-airflow-apis.yml
+  - .github/actions/report-test-results/**
+  - .github/actions/setup-python/**
+  - .github/actions/setup-uv/**
+  - .github/actions/setup-openmetadata-test-environment/**
+  - .github/python-ci/**
+  - .github/workflows/ci-*.yml
+  - scripts/python_tools.py
+  - scripts/generate_ingestion_models.py
+  - scripts/check_generated_models.py
+  - scripts/datamodel_generation.py
+  - ingestion/noxfile.py
+  - Makefile
+  - ingestion/pyproject.toml
+  - ingestion/setup.py
+  - openmetadata-spec/**
