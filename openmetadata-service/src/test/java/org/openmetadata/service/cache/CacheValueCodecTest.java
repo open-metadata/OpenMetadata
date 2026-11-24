@@ -80,4 +80,17 @@ class CacheValueCodecTest {
         IllegalArgumentException.class,
         () -> CacheValueCodec.decode(CacheValueCodec.GZIP_PREFIX + "YWJjZGVm"));
   }
+
+  @Test
+  void exceedsMaxEntrySizeMeasuresUtf8BytesForUncompressedNonAsciiValues() {
+    // 10 CJK characters = 10 UTF-16 chars, but 30 UTF-8 bytes.
+    final String cjk = "数据目录资产元数据表";
+    assertEquals(10, cjk.length());
+    assertEquals(30, CacheValueCodec.encodedByteSize(cjk));
+
+    assertTrue(CacheValueCodec.exceedsMaxEntrySize(cjk, 20));
+    assertFalse(CacheValueCodec.exceedsMaxEntrySize(cjk, 30));
+    assertFalse(CacheValueCodec.exceedsMaxEntrySize(cjk, 0));
+    assertFalse(CacheValueCodec.exceedsMaxEntrySize(null, 10));
+  }
 }

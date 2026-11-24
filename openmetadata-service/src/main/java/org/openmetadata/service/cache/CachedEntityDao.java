@@ -291,7 +291,7 @@ public class CachedEntityDao {
   }
 
   private boolean exceedsMaxEntrySize(final String encoded) {
-    return config.maxEntrySizeBytes > 0 && encoded.length() > config.maxEntrySizeBytes;
+    return CacheValueCodec.exceedsMaxEntrySize(encoded, config.maxEntrySizeBytes);
   }
 
   private Optional<UUID> resolveIdByName(final String entityType, final String fqn) {

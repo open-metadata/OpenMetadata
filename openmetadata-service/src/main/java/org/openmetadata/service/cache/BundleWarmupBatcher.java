@@ -190,7 +190,7 @@ public class BundleWarmupBatcher {
         dto.certificationLoaded = false;
         final String encoded =
             CacheValueCodec.encode(JsonUtils.pojoToJson(dto), compressionThresholdBytes);
-        if (maxEntrySizeBytes <= 0 || encoded.length() <= maxEntrySizeBytes) {
+        if (!CacheValueCodec.exceedsMaxEntrySize(encoded, maxEntrySizeBytes)) {
           bundleKeyValues.put(keys.bundle(entityType, entity.getId()), encoded);
         }
       } catch (final Exception e) {

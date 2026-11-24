@@ -506,8 +506,7 @@ public class CacheWarmupApp extends AbstractNativeApplication {
             continue;
           }
           String encoded = CacheValueCodec.encode(json, cacheConfig.compressionThresholdBytes);
-          if (cacheConfig.maxEntrySizeBytes > 0
-              && encoded.length() > cacheConfig.maxEntrySizeBytes) {
+          if (CacheValueCodec.exceedsMaxEntrySize(encoded, cacheConfig.maxEntrySizeBytes)) {
             continue;
           }
           hsetBatch.put(keys.entity(entityType, entity.getId()), Map.of("base", encoded));
