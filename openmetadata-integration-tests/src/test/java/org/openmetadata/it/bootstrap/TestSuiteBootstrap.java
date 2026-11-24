@@ -636,8 +636,8 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return FUSEKI_CONTAINER;
   }
 
-  /** The isolated metadata database, for scale resource sampling. */
-  public static GenericContainer<?> getDatabaseContainer() {
+  /** The metadata database server, for scale resource sampling and scratch databases. */
+  public static JdbcDatabaseContainer<?> getDatabaseContainer() {
     return DATABASE_CONTAINER;
   }
 

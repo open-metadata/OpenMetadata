@@ -1322,6 +1322,7 @@
         "org/openmetadata/it/search/**/*Test.java",
         "org/openmetadata/it/server/*Test.java",
         "org/openmetadata/it/util/*Test.java",
+        "org/openmetadata/it/util/*IT.java",
         "*SmokeIT"
       ]
     }
