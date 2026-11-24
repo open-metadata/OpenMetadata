@@ -65,7 +65,7 @@ class DremioConnection(BaseConnection[DremioConnectionConfig, DremioClient]):
         return test_connection_steps(
             metadata=metadata,
             test_fn=test_fn,
-            service_type=self.service_connection.type.value,
+            service_type=self.service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
             automation_workflow=automation_workflow,
             timeout_seconds=timeout_seconds,
         )

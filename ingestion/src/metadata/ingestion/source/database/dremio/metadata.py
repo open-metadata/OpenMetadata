@@ -17,7 +17,7 @@ import traceback
 from collections import defaultdict
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import quote
 
 from requests.exceptions import RequestException
@@ -47,13 +47,13 @@ from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
     Markdown,
+    SqlQuery,
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import close_on_failure, create_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.dremio.connection import (
     NAMESPACE_TYPES,
@@ -63,6 +63,12 @@ from metadata.ingestion.source.database.dremio.connection import (
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+        DatabaseServiceMetadataPipeline,
+    )
+    from metadata.ingestion.source.database.dremio.client import DremioClient
 
 logger = ingestion_logger()
 
@@ -130,19 +136,21 @@ class DremioSource(DatabaseServiceSource):
     their wiki descriptions and collaboration tags.
     """
 
+    service_connection: DremioConnection
+
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.metadata = metadata
-        self.service_connection = config.serviceConnection.root.config
-        self.source_config = self.config.sourceConfig.config
+        self.service_connection = config.serviceConnection.root.config  # pyright: ignore[reportOptionalMemberAccess,reportAttributeAccessIssue]
+        self.source_config = cast("DatabaseServiceMetadataPipeline", self.config.sourceConfig.config)
         self._connection = create_connection(self.service_connection)
-        self.client = self._connection.client
+        self.client: DremioClient = self._connection.client  # pyright: ignore[reportOptionalMemberAccess]
 
         self._namespace_ids: dict[str, str] = {}
         # The folders and datasets of the database being ingested, read once by
         # get_database_schema_names and dropped when the next database starts.
-        self._folder_ids: dict[str, str] = {}
+        self._folder_ids: dict[str, str | None] = {}
         self._datasets: dict[str, list[DremioDataset]] = {}
         # The folders of the current database that could not be listed
         self._unread_folders: list[str] = []
@@ -153,10 +161,30 @@ class DremioSource(DatabaseServiceSource):
     @classmethod
     def create(cls, config_dict: dict, metadata: OpenMetadata, pipeline_name: str | None = None) -> "DremioSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: DremioConnection = config.serviceConnection.root.config
+        connection = config.serviceConnection.root.config if config.serviceConnection else None
         if not isinstance(connection, DremioConnection):
             raise InvalidSourceException(f"Expected DremioConnection, but got {connection}")
         return cls(config, metadata)
+
+    # The topology context holds entity names as attributes created at runtime
+    @property
+    def _service_name(self) -> str:
+        return self.context.get().database_service  # pyright: ignore[reportAttributeAccessIssue]
+
+    @property
+    def _database_name(self) -> str:
+        return self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+
+    @property
+    def _schema_name(self) -> str:
+        return self.context.get().database_schema  # pyright: ignore[reportAttributeAccessIssue]
+
+    def _build_fqn(self, entity_type: type, **parts: Any) -> str:
+        """Every call passes all the parts of the FQN, so an empty one is a bug"""
+        built = fqn.build(self.metadata, entity_type=entity_type, **parts)
+        if not built:
+            raise ValueError(f"Could not build the {entity_type.__name__} FQN from {parts}")
+        return built
 
     def get_database_names(self) -> Iterable[str]:
         if self.service_connection.database:
@@ -205,10 +233,10 @@ class DremioSource(DatabaseServiceSource):
     def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
         database_request = CreateDatabaseRequest(
             name=EntityName(database_name),
-            service=FullyQualifiedEntityName(self.context.get().database_service),
+            service=FullyQualifiedEntityName(self._service_name),
             description=self._get_wiki(self._namespace_ids.get(database_name)),
         )
-        yield Either(right=database_request)
+        yield Either(right=database_request)  # pyright: ignore[reportCallIssue]
         self.register_record_database_request(database_request=database_request)
 
     def _read_namespace(self, namespace: str) -> None:
@@ -250,10 +278,10 @@ class DremioSource(DatabaseServiceSource):
         return sorted(self._datasets)
 
     def get_database_schema_names(self) -> Iterable[str]:
-        self._read_namespace(self.context.get().database)
+        self._read_namespace(self._database_name)
         yield from self._get_filtered_schema_names()
 
-    def mark_schemas_as_deleted(self) -> Iterable[Either]:
+    def mark_schemas_as_deleted(self):
         """
         The schemas below a folder that could not be listed are missing from the
         walk, but not from Dremio: do not mark them as deleted.
@@ -261,7 +289,7 @@ class DremioSource(DatabaseServiceSource):
         if self._unread_folders:
             logger.warning(
                 "Not marking the schemas of the Dremio database %s as deleted: these folders could not be listed: %s",
-                self.context.get().database,
+                self._database_name,
                 ", ".join(self._unread_folders),
             )
             return
@@ -271,36 +299,34 @@ class DremioSource(DatabaseServiceSource):
         schema_request = CreateDatabaseSchemaRequest(
             name=EntityName(schema_name),
             database=FullyQualifiedEntityName(
-                fqn.build(
-                    metadata=self.metadata,
+                self._build_fqn(
                     entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
+                    service_name=self._service_name,
+                    database_name=self._database_name,
                 )
             ),
             description=self._get_wiki(self._folder_ids.get(schema_name)),
         )
-        yield Either(right=schema_request)
+        yield Either(right=schema_request)  # pyright: ignore[reportCallIssue]
         self.register_record_schema_request(schema_request=schema_request)
 
     def _get_schema_datasets(self) -> list[DremioDataset]:
-        return self._datasets.get(self.context.get().database_schema, [])
+        return self._datasets.get(self._schema_name, [])
 
     def _is_included(self, dataset: DremioDataset) -> bool:
         if dataset.table_type == TableType.View:
-            return self.source_config.includeViews
-        return self.source_config.includeTables
+            return bool(self.source_config.includeViews)
+        return bool(self.source_config.includeTables)
 
-    def get_tables_name_and_type(self) -> Iterable[TableNameAndType]:
+    def get_tables_name_and_type(self) -> Iterable[tuple[str, TableType]]:
         for dataset in self._get_schema_datasets():
             if not self._is_included(dataset):
                 continue
-            table_fqn = fqn.build(
-                self.metadata,
+            table_fqn = self._build_fqn(
                 entity_type=Table,
-                service_name=self.context.get().database_service,
-                database_name=self.context.get().database,
-                schema_name=self.context.get().database_schema,
+                service_name=self._service_name,
+                database_name=self._database_name,
+                schema_name=self._schema_name,
                 table_name=dataset.name,
                 skip_es_search=True,
             )
@@ -310,22 +336,22 @@ class DremioSource(DatabaseServiceSource):
             ):
                 self.status.filter(table_fqn, "Table Filtered Out")
                 continue
-            yield TableNameAndType(name=dataset.name, type_=dataset.table_type)
+            yield dataset.name, dataset.table_type
 
     def _get_dataset(self, table_name: str) -> dict:
         """Dremio Cloud rejects by-path for datasets: read them by id"""
         dataset = next((item for item in self._get_schema_datasets() if item.name == table_name), None)
         response = self.client.get(f"/catalog/{dataset.resource_id}") if dataset and dataset.resource_id else None
         if response is None:
-            schema_name = self.context.get().database_schema
+            schema_name = self._schema_name
             folders = [] if schema_name == ROOT_SCHEMA else schema_name.split(".")
-            path = [self.context.get().database, *folders, table_name]
+            path = [self._database_name, *folders, table_name]
             response = self.client.get(f"/catalog/by-path/{'/'.join(quote(part, safe='') for part in path)}")
         response.raise_for_status()
         return response.json()
 
-    def yield_table(self, table_name_and_type: TableNameAndType) -> Iterable[Either[CreateTableRequest]]:
-        table_name, table_type = table_name_and_type.name, table_name_and_type.type_
+    def yield_table(self, table_name_and_type: tuple[str, TableType]) -> Iterable[Either[CreateTableRequest]]:
+        table_name, table_type = table_name_and_type
         try:
             table_data = self._get_dataset(table_name)
             view_sql = table_data.get("sql") if table_type == TableType.View else None
@@ -334,23 +360,24 @@ class DremioSource(DatabaseServiceSource):
                 tableType=table_type,
                 columns=[to_column(field, position) for position, field in enumerate(table_data.get("fields", []), 1)],
                 # As the other connectors do, so that the lineage parser has the view as target
-                schemaDefinition=f"CREATE VIEW {quote_identifier(table_name)} AS {view_sql}" if view_sql else None,
+                schemaDefinition=SqlQuery(f"CREATE VIEW {quote_identifier(table_name)} AS {view_sql}")
+                if view_sql
+                else None,
                 databaseSchema=FullyQualifiedEntityName(
-                    fqn.build(
-                        metadata=self.metadata,
+                    self._build_fqn(
                         entity_type=DatabaseSchema,
-                        service_name=self.context.get().database_service,
-                        database_name=self.context.get().database,
-                        schema_name=self.context.get().database_schema,
+                        service_name=self._service_name,
+                        database_name=self._database_name,
+                        schema_name=self._schema_name,
                     )
                 ),
                 description=self._get_wiki(table_data.get("id")),
                 tags=self.get_tag_labels(table_name) if self.source_config.includeTags else None,
             )
-            yield Either(right=table_request)
+            yield Either(right=table_request)  # pyright: ignore[reportCallIssue]
             self.register_record(table_request=table_request)
         except Exception as exc:
-            yield Either(
+            yield Either(  # pyright: ignore[reportCallIssue]
                 left=StackTraceError(
                     name=table_name,
                     error=f"Error processing table {table_name}: {exc}",
@@ -364,11 +391,10 @@ class DremioSource(DatabaseServiceSource):
             return
         for dataset in self._datasets.get(schema_name, []):
             for tag_name in self._get_tags(dataset.resource_id):
-                table_fqn = fqn.build(
-                    self.metadata,
-                    Table,
-                    service_name=self.context.get().database_service,
-                    database_name=self.context.get().database,
+                table_fqn = self._build_fqn(
+                    entity_type=Table,
+                    service_name=self._service_name,
+                    database_name=self._database_name,
                     schema_name=schema_name,
                     table_name=dataset.name,
                     skip_es_search=True,

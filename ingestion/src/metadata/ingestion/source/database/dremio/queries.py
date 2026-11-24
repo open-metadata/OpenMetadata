@@ -49,7 +49,7 @@ TEST_GET_JOBS = "SELECT job_id FROM {jobs_table} LIMIT 1"
 
 
 def get_jobs_query(
-    jobs: JobsTable, start_time: datetime, end_time: datetime, query_filter: str, result_limit: int
+    jobs: JobsTable, start_time: datetime, end_time: datetime, query_filter: str, result_limit: int | None
 ) -> str:
     """
     The user queries submitted between the two times, newest first. Reads of the
@@ -71,7 +71,7 @@ WHERE {jobs.time_column} >= {start}
   AND LOWER(query) NOT LIKE '%{jobs.name.lower()}%'
   AND {query_filter}
 ORDER BY {jobs.time_column} DESC
-LIMIT {result_limit}
+{f"LIMIT {result_limit}" if result_limit else ""}
 """
 
 

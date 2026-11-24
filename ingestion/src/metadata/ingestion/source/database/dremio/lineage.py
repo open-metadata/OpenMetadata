@@ -14,6 +14,7 @@ Dremio query lineage, read from the job history through the REST API
 
 import traceback
 from collections.abc import Iterator
+from typing import TYPE_CHECKING, cast
 
 from metadata.generated.schema.entity.services.connections.database.dremioConnection import (
     DremioConnection,
@@ -33,31 +34,42 @@ from metadata.ingestion.source.database.dremio.queries import (
     iter_table_queries,
 )
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.ingestion.source.database.query_parser_source import QueryParserSource
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
+        DatabaseServiceQueryLineagePipeline,
+    )
+    from metadata.ingestion.source.database.dremio.client import DremioClient
 
 logger = ingestion_logger()
 
 
-class DremioLineageSource(LineageSource, QueryParserSource):
+class DremioLineageSource(LineageSource):
     """Dremio has no SQLAlchemy engine: queries go through the REST client"""
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata, get_engine=False)
         self._connection = create_connection(self.service_connection)
-        self.client = self._connection.client
+        self.client: DremioClient = self._connection.client  # pyright: ignore[reportOptionalMemberAccess]
         self.jobs = CLOUD_JOBS if self.client.is_cloud else SOFTWARE_JOBS
 
     @classmethod
     def create(cls, config_dict: dict, metadata: OpenMetadata, pipeline_name: str | None = None):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: DremioConnection = config.serviceConnection.root.config
+        connection = config.serviceConnection.root.config if config.serviceConnection else None
         if not isinstance(connection, DremioConnection):
             raise InvalidSourceException(f"Expected DremioConnection, but got {connection}")
         return cls(config, metadata)
 
     def yield_table_query(self) -> Iterator[TableQuery]:
-        query = get_jobs_query(self.jobs, self.start, self.end, LINEAGE_FILTER, self.source_config.resultLimit)
+        query = get_jobs_query(
+            self.jobs,
+            self.start,
+            self.end,
+            LINEAGE_FILTER,
+            cast("DatabaseServiceQueryLineagePipeline", self.source_config).resultLimit,
+        )
         try:
             rows = self.client.execute_sql(query)
         except Exception as exc:
@@ -65,10 +77,10 @@ class DremioLineageSource(LineageSource, QueryParserSource):
             logger.error("Failed to read the Dremio job history from %s: %s", self.jobs.name, exc)
             return
         self.warn_if_query_log_truncated(len(rows), "lineage")
-        yield from iter_table_queries(rows, self.jobs, self.config.serviceName)
+        yield from iter_table_queries(rows, self.jobs, self.config.serviceName or "")
 
     def close(self) -> None:
         try:
             super().close()
         finally:
-            self._connection.close()
+            self._connection.close()  # pyright: ignore[reportOptionalMemberAccess]

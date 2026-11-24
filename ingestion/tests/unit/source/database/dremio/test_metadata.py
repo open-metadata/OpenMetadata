@@ -18,7 +18,6 @@ import pytest
 import requests
 
 from metadata.generated.schema.entity.data.table import DataType, TableType
-from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.dremio.metadata import to_column
 
 from ._fixtures import dataset, folder  # noqa: TID252
@@ -64,7 +63,7 @@ class TestNames:
         schemas_of(source, "reporting")
         source.context.get().database_schema = "default"
 
-        assert list(source.get_tables_name_and_type()) == [TableNameAndType(name="totals", type_=TableType.View)]
+        assert list(source.get_tables_name_and_type()) == [("totals", TableType.View)]
 
     def test_the_namespace_is_read_once_per_database(self, make_source):
         source = make_source(CATALOG)
@@ -110,7 +109,7 @@ class TestNames:
         schemas_of(source, "reporting")
         source.context.get().database_schema = "reporting"
 
-        assert [table.name for table in source.get_tables_name_and_type()] == expected
+        assert [name for name, _ in source.get_tables_name_and_type()] == expected
 
     def test_the_database_filter(self, make_source):
         source = make_source(CATALOG, source_config={"databaseFilterPattern": {"includes": ["^lake$"]}})
@@ -184,7 +183,7 @@ class TestTable:
         source.context.get().database_schema = "default"
         list(source.yield_tag("default"))
 
-        (either,) = source.yield_table(TableNameAndType(name="totals", type_=TableType.View))
+        (either,) = source.yield_table(("totals", TableType.View))
 
         table = either.right
         assert table.databaseSchema.root == "svc.reporting.default"
@@ -197,7 +196,7 @@ class TestTable:
         schemas_of(source, "reporting")
         source.context.get().database_schema = "default"
 
-        (either,) = source.yield_table(TableNameAndType(name="totals", type_=TableType.View))
+        (either,) = source.yield_table(("totals", TableType.View))
 
         assert either.right is None
         assert either.left.name == "totals"

@@ -66,3 +66,10 @@ def test_usage_is_counted_on_the_day_the_job_was_submitted(jobs, scale):
     (query,) = iter_table_queries(rows, jobs, "svc")
 
     assert query.analysisDate.root == submitted
+
+
+def test_no_limit_when_the_result_limit_is_unset():
+    query = get_jobs_query(SOFTWARE_JOBS, START, END, USAGE_FILTER, None)
+
+    assert "LIMIT" not in query
+    assert query.rstrip().endswith("DESC")

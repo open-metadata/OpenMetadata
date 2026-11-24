@@ -63,7 +63,7 @@ class DremioClient:
         self.session = requests.Session()
         self.session.headers["Content-Type"] = "application/json"
 
-        if self.is_cloud:
+        if isinstance(auth, DremioCloudAuthentication):
             self.base_url = f"{CLOUD_API_URLS[auth.region]}/v0/projects/{auth.projectId}"
             self.session.headers["Authorization"] = f"Bearer {auth.personalAccessToken.get_secret_value()}"
         elif isinstance(auth, DremioSoftwareAuthentication):
@@ -71,7 +71,7 @@ class DremioClient:
             self.session.verify = self._get_verify(auth, on_close)
             self.session.headers["Authorization"] = f"_dremio{self._login(auth)}"
         else:
-            raise ValueError(f"Unsupported Dremio authentication type: {type(auth).__name__}")
+            raise TypeError(f"Unsupported Dremio authentication type: {type(auth).__name__}")
 
     @staticmethod
     def _get_verify(
@@ -90,7 +90,7 @@ class DremioClient:
                 ssl_manager = SSLManager(ca=auth.sslConfig.root.caCertificate)
                 if on_close:
                     on_close(ssl_manager.cleanup_temp_files)
-                return ssl_manager.ca_file_path
+                return ssl_manager.ca_file_path or True
             logger.warning("Verify SSL is 'validate' without a CA certificate: the system authorities are used")
         return True
 

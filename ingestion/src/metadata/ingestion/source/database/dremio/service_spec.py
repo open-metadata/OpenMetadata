@@ -15,8 +15,8 @@ from metadata.ingestion.source.database.dremio.usage import DremioUsageSource
 from metadata.utils.service_spec import BaseSpec
 
 ServiceSpec = BaseSpec(
-    metadata_source_class=DremioSource,
-    lineage_source_class=DremioLineageSource,
-    usage_source_class=DremioUsageSource,
-    connection_class=DremioConnection,
+    metadata_source_class=DremioSource,  # pyright: ignore[reportArgumentType]
+    lineage_source_class=DremioLineageSource,  # pyright: ignore[reportArgumentType]
+    usage_source_class=DremioUsageSource,  # pyright: ignore[reportArgumentType]
+    connection_class=DremioConnection,  # pyright: ignore[reportArgumentType]
 )
