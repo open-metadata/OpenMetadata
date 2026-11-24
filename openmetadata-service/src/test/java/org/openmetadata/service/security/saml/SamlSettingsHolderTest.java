@@ -31,6 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.cert.CertificateException;
+import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,8 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 class SamlSettingsHolderTest {
   private static final String KEYSTORE_PASSWORD = "changeit";
+  private static final String IDP_SSO_URL = "https://idp.example.com/sso";
+  private static final String SP_ACS_URL = "https://sp.example.com/api/v1/saml/acs";
 
   @Test
   void rejectsMalformedAdditionalSigningCertificates() throws Exception {
@@ -70,8 +73,7 @@ class SamlSettingsHolderTest {
       SamlSSOClientConfig config = samlConfig("https://idp.example.com/sso");
       config.getIdp().setIdpX509Certificate(inactivePem + "\n" + resource("/saml/mock-idp.crt"));
       assertEquals(
-          SamlCertificates.parseUnexpiredIdpCertificates(
-              inactivePem + "\n" + resource("/saml/mock-idp.crt")),
+          SamlCertificates.parse(inactivePem + "\n" + resource("/saml/mock-idp.crt")),
           SamlSettingsHolder.buildSettings(config).getIdpx509certMulti());
       assertThrows(
           CertificateException.class,
@@ -82,7 +84,7 @@ class SamlSettingsHolderTest {
   @Test
   void acceptsResponsesSignedByTheSecondMetadataCertificate() throws Exception {
     MockSamlIdp idp = new MockSamlIdp("https://idp.example/metadata");
-    SamlSSOClientConfig config = samlConfig("https://idp.example.com/sso");
+    SamlSSOClientConfig config = samlConfig(IDP_SSO_URL);
     config
         .getIdp()
         .withEntityId(idp.idpEntityId())
@@ -101,16 +103,33 @@ class SamlSettingsHolderTest {
   }
 
   @Test
-  void removesExpiredKeysAndRejectsAnEntirelyExpiredTrustStore() throws Exception {
-    SamlSSOClientConfig config = samlConfig("https://idp.example.com/sso");
-    String expired = resource("/saml/expired-idp.crt");
-    String active = resource("/saml/mock-idp.crt");
+  void preservesExplicitlyConfiguredKeysAtRuntime() throws Exception {
+    final SamlSSOClientConfig config = samlConfig("https://idp.example.com/sso");
+    final String expired = resource("/saml/expired-idp.crt");
+    final String active = resource("/saml/mock-idp.crt");
     config.getIdp().setIdpX509Certificate(expired + "\n" + active);
-    Saml2Settings settings = SamlSettingsHolder.buildSettings(config);
-    assertEquals(SamlCertificates.parse(active), settings.getIdpx509certMulti());
-    assertEquals(SamlCertificates.parse(active).getFirst(), settings.getIdpx509cert());
+    assertEquals(
+        SamlCertificates.parse(expired + "\n" + active),
+        SamlSettingsHolder.buildSettings(config).getIdpx509certMulti());
+    assertThrows(
+        CertificateException.class, () -> SamlCertificates.parseValidIdpCertificates(expired));
+  }
+
+  @Test
+  void initializesLiveSettingsWhenAllSavedIdpCertificatesHaveExpired() throws Exception {
+    final String expired = resource("/saml/expired-idp.crt");
+    final SamlSSOClientConfig config = samlConfig("https://idp.example.com/sso");
     config.getIdp().setIdpX509Certificate(expired);
-    assertThrows(CertificateException.class, () -> SamlSettingsHolder.buildSettings(config));
+    try (MockedStatic<SecurityConfigurationManager> manager =
+        mockStatic(SecurityConfigurationManager.class)) {
+      manager
+          .when(SecurityConfigurationManager::getCurrentAuthConfig)
+          .thenReturn(new AuthenticationConfiguration().withSamlConfiguration(config));
+      SamlSettingsHolder.getInstance().initDefaultSettings(null);
+    }
+    assertEquals(
+        SamlCertificates.parse(expired),
+        SamlSettingsHolder.getSaml2Settings().getIdpx509certMulti());
   }
 
   @AfterEach
@@ -125,7 +144,7 @@ class SamlSettingsHolderTest {
    */
   @Test
   void buildSettingsGivesJavaSamlTheSpKeyWithoutRequestSigning() throws Exception {
-    SamlSSOClientConfig samlConfig = samlConfig("https://idp.example.com/sso");
+    SamlSSOClientConfig samlConfig = samlConfig(IDP_SSO_URL);
     samlConfig
         .getSp()
         .withSpX509Certificate(resource("/saml/mock-idp.crt"))
@@ -178,7 +197,7 @@ class SamlSettingsHolderTest {
 
   @Test
   void buildSettingsReadsTheKeyStoreWithItsPassword(@TempDir Path directory) throws Exception {
-    SamlSSOClientConfig samlConfig = samlConfig("https://idp.example.com/sso");
+    SamlSSOClientConfig samlConfig = samlConfig(IDP_SSO_URL);
     samlConfig.setSecurity(
         new SamlSecurityConfig()
             .withSendSignedAuthRequest(true)
@@ -190,6 +209,44 @@ class SamlSettingsHolderTest {
 
     samlConfig.getSecurity().setKeyStorePassword("not-the-password");
     assertThrows(IOException.class, () -> SamlSettingsHolder.buildSettings(samlConfig));
+  }
+
+  /**
+   * Keycloak's default role mapper sends one Attribute element per role, all named "Role". They
+   * must merge into one multi-valued attribute instead of failing the sign-in with "Found an
+   * Attribute element with duplicated Name".
+   */
+  @Test
+  void buildSettingsMergesRepeatedAttributeNames() throws Exception {
+    final String response =
+        """
+        <samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" \
+        xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_r" Version="2.0" \
+        IssueInstant="2026-11-18T00:00:00Z">
+          <saml:Assertion ID="_a" Version="2.0" IssueInstant="2026-11-18T00:00:00Z">
+            <saml:AttributeStatement>
+              <saml:Attribute Name="email">
+                <saml:AttributeValue>user@example.com</saml:AttributeValue>
+              </saml:Attribute>
+              <saml:Attribute Name="Role">
+                <saml:AttributeValue>offline_access</saml:AttributeValue>
+              </saml:Attribute>
+              <saml:Attribute Name="Role">
+                <saml:AttributeValue>uma_authorization</saml:AttributeValue>
+              </saml:Attribute>
+            </saml:AttributeStatement>
+          </saml:Assertion>
+        </samlp:Response>
+        """;
+
+    final SamlResponse samlResponse =
+        new SamlResponse(
+            SamlSettingsHolder.buildSettings(samlConfig(IDP_SSO_URL)),
+            SP_ACS_URL,
+            Base64.getEncoder().encodeToString(response.getBytes(StandardCharsets.UTF_8)));
+
+    assertEquals(
+        List.of("offline_access", "uma_authorization"), samlResponse.getAttributes().get("Role"));
   }
 
   private static Path emptyKeyStore(Path directory) throws Exception {
@@ -207,7 +264,7 @@ class SamlSettingsHolderTest {
         .withSp(
             new ServiceProviderConfig()
                 .withEntityId("https://sp.example.com/entity")
-                .withAcs("https://sp.example.com/api/v1/saml/acs")
+                .withAcs(SP_ACS_URL)
                 .withCallback("https://sp.example.com/callback"))
         .withIdp(
             new IdentityProviderConfig()

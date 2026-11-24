@@ -10,7 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page } from '@playwright/test';
+import { expect, Locator, Page } from '@playwright/test';
+
+// dragTo snapshots both boxes up front and presses at those coordinates, so a
+// drag begun while the page is still reflowing presses on whatever slid into
+// the old spot and no dragstart fires. Hold both elements still before pressing.
+export const waitForStableBox = async (locator: Locator) => {
+  let previous: { x: number; y: number } | undefined;
+
+  await expect(async () => {
+    const box = await locator.boundingBox();
+
+    expect(box).not.toBeNull();
+
+    const current = { x: box?.x ?? NaN, y: box?.y ?? NaN };
+    const held = previous?.x === current.x && previous?.y === current.y;
+
+    previous = current;
+
+    expect(held, 'element is still moving').toBe(true);
+  }).toPass({ timeout: 15_000, intervals: [200, 200, 400, 800] });
+};
 
 export const dragAndDropElement = async (
   page: Page,

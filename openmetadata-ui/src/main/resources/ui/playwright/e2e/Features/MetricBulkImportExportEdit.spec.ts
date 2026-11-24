@@ -32,6 +32,7 @@ import {
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { verifyPageAccess } from '../../utils/testCases';
+import { clickUntilVisible } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
 interface EntityReference {
@@ -1024,11 +1025,18 @@ test.describe('Metrics bulk import, export, and edit', () => {
       expect(response.status()).toBe(202);
       // Verify exactly one export request was fired (no duplicate calls).
       await expect.poll(() => exportRequestCount).toBe(1);
-      await expect(page.locator('.csv-jobs-tray-launcher')).toBeVisible({
+      // A job reaching a terminal state auto-opens the tray, and the launcher
+      // button only renders while the tray is closed -- so a fast export
+      // removes the very element this used to wait for. Accept either state;
+      // the job can also finish between a visibility check and the click,
+      // unmounting the launcher mid-click, so retry until the popover is open.
+      const trayLauncher = page.locator('.csv-jobs-tray-launcher');
+      const trayPopover = page.locator('.csv-jobs-tray-popover');
+
+      await expect(trayLauncher.or(trayPopover)).toBeVisible({
         timeout: 30000,
       });
-      await page.locator('.csv-jobs-tray-launcher').click();
-      await expect(page.locator('.csv-jobs-tray-popover')).toBeVisible();
+      await clickUntilVisible(trayLauncher, trayPopover);
       // Verify the export job appears in the tray. Each test uses a dedicated
       // user session so only this test's own job is visible — checking the
       // label is sufficient.

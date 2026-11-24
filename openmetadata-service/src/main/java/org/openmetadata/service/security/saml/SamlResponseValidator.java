@@ -82,7 +82,7 @@ public final class SamlResponseValidator {
   private static void requireEncryptedAssertion(Saml2Settings settings, HttpRequest request)
       throws Exception {
     if (settings.getWantAssertionsEncrypted()) {
-      Document document =
+      final Document document =
           Util.loadXML(
               new String(
                   Util.base64decoder(request.getParameter("SAMLResponse")),

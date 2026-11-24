@@ -84,10 +84,6 @@ const MarketPlacePage = () => {
     cursorType,
   }: PagingHandlerParams) => {
     if (cursorType) {
-      fetchApplicationList({
-        [cursorType]: paging[cursorType],
-        total: paging.total,
-      });
       handlePageChange(
         currentPage,
         { cursorType, cursorValue: paging[cursorType] },
