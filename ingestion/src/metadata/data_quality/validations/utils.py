@@ -11,7 +11,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, TypeVar
 from urllib.parse import quote
 
-from jinja2 import StrictUndefined, TemplateSyntaxError, UndefinedError
+from jinja2 import StrictUndefined, TemplateSyntaxError, UndefinedError, meta
 from jinja2.exceptions import SecurityError
 from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy import Boolean, Date, DateTime, Double, Float, Integer, Numeric, String, bindparam, text
@@ -273,59 +273,90 @@ def coerce_test_case_param_value(
     OpenMetadata stores every parameter value as a string. SQLAlchemy DBAPI drivers (such as
     PyAthena, BigQuery, Trino, and Databricks) infer the SQL bind type from the Python value's
     runtime type, so leaving numeric/boolean/temporal parameters as strings causes drivers to
-    bind or quote them as VARCHAR/STRING.
+    bind or quote them as VARCHAR/STRING. Unparseable or legacy values fall back to the raw
+    string with a warning so existing test cases continue to run without aborting.
     """
     resolved_type = _normalize_test_data_type(data_type)
     coercer = _PARAM_COERCERS.get(resolved_type) if resolved_type is not None else None
     if coercer is None or resolved_type is None:
         return value
     label = f" for parameter '{param_name}'" if param_name else ""
-    return coercer(value, resolved_type, label)
+    try:
+        return coercer(value, resolved_type, label)
+    except ValueError as exc:
+        logger.warning("%s; keeping as string", exc)
+        return value
+
+
+def extract_rule_library_raw_user_params(
+    parameter_values: list[TestCaseParameterValue] | None,
+    reserved_params: set[str],
+) -> dict[str, str]:
+    """Extract raw string user-defined parameters for a Rule Library test case."""
+    params: dict[str, str] = {}
+    if not parameter_values:
+        return params
+    for param in parameter_values:
+        if param.name and param.value and param.name not in reserved_params:  # noqa: SIM102
+            if not param.name.endswith("RuntimeParameters"):
+                params[param.name] = param.value
+    return params
 
 
 def extract_rule_library_user_params(
     parameter_values: list[TestCaseParameterValue] | None,
     reserved_params: set[str],
     param_types: dict[str, TestDataType] | None = None,
+    only_params: set[str] | None = None,
 ) -> dict[str, Any]:
     """Extract and type-coerce user-defined parameters for a Rule Library test case."""
-    params: dict[str, Any] = {}
-    if not parameter_values:
-        return params
+    raw_params = extract_rule_library_raw_user_params(parameter_values, reserved_params)
     resolved_types = param_types or {}
-    for param in parameter_values:
-        if param.name and param.value and param.name not in reserved_params:  # noqa: SIM102
-            if not param.name.endswith("RuntimeParameters"):
-                params[param.name] = coerce_test_case_param_value(
-                    param.value,
-                    resolved_types.get(param.name),
-                    param_name=param.name,
-                )
-    return params
+    return {
+        name: coerce_test_case_param_value(raw_value, resolved_types.get(name), param_name=name)
+        for name, raw_value in raw_params.items()
+        if only_params is None or name in only_params
+    }
+
+
+def get_template_variables(sql_template: str) -> set[str] | None:
+    """Return undeclared Jinja2 variable names referenced in ``sql_template``, or None on syntax error."""
+    env = SandboxedEnvironment()
+    try:
+        return meta.find_undeclared_variables(env.parse(sql_template))
+    except TemplateSyntaxError:
+        return None
+
+
+def _is_plain_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _sqla_number_type(value: Any) -> TypeEngine[Any] | None:
+    if _is_plain_int(value):
+        return Integer()
+    return Float() if isinstance(value, float) else None
+
+
+_SQLA_TYPE_BUILDERS: dict[TestDataType, Callable[[Any], TypeEngine[Any] | None]] = {
+    TestDataType.INT: lambda v: Integer() if _is_plain_int(v) else None,
+    TestDataType.FLOAT: lambda v: Float() if isinstance(v, float) else None,
+    TestDataType.DOUBLE: lambda v: Double() if isinstance(v, float) else None,
+    TestDataType.DECIMAL: lambda v: Numeric() if isinstance(v, Decimal) else None,
+    TestDataType.NUMBER: _sqla_number_type,
+    TestDataType.BOOLEAN: lambda v: Boolean() if isinstance(v, bool) else None,
+    TestDataType.DATE: lambda v: Date() if isinstance(v, date) and not isinstance(v, datetime) else None,
+    TestDataType.DATETIME: lambda v: DateTime(timezone=v.tzinfo is not None) if isinstance(v, datetime) else None,
+    TestDataType.TIMESTAMP: lambda v: DateTime(timezone=v.tzinfo is not None) if isinstance(v, datetime) else None,
+    TestDataType.STRING: lambda v: String() if isinstance(v, str) else None,
+}
 
 
 def _sqlalchemy_type_for_param(value: Any, data_type: TestDataType | None) -> TypeEngine[Any] | None:
-    if data_type is TestDataType.INT:
-        return Integer()
-    if data_type is TestDataType.FLOAT:
-        return Float()
-    if data_type is TestDataType.DOUBLE:
-        return Double()
-    if data_type is TestDataType.DECIMAL:
-        return Numeric()
-    if data_type is TestDataType.NUMBER:
-        return Integer() if isinstance(value, int) and not isinstance(value, bool) else Float()
-    if data_type is TestDataType.BOOLEAN:
-        return Boolean()
-    if data_type is TestDataType.DATE and isinstance(value, date) and not isinstance(value, datetime):
-        return Date()
-    if data_type in (TestDataType.DATETIME, TestDataType.TIMESTAMP) and isinstance(value, datetime):
-        return DateTime(timezone=value.tzinfo is not None)
-    if data_type is TestDataType.STRING:
-        return String()
-    if isinstance(value, Decimal):
-        return Numeric()
-    return None
+    builder = _SQLA_TYPE_BUILDERS.get(data_type) if data_type is not None else None
+    if builder is not None:
+        return builder(value)
+    return Numeric() if isinstance(value, Decimal) else None
 
 
 def build_typed_text_clause(

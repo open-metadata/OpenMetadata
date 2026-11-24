@@ -232,7 +232,7 @@ class TestCoerceTestCaseParamValue:
         ("raw_value", "data_type"),
         [
             pytest.param("abc", TestDataType.INT, id="int-non-numeric"),
-            pytest.param("3.14", TestDataType.INT, id="int-float-string"),
+            pytest.param("10.0", TestDataType.INT, id="int-float-string"),
             pytest.param("abc", TestDataType.FLOAT, id="float-non-numeric"),
             pytest.param("nan", TestDataType.FLOAT, id="float-nan"),
             pytest.param("inf", TestDataType.FLOAT, id="float-inf"),
@@ -247,9 +247,12 @@ class TestCoerceTestCaseParamValue:
             pytest.param("1", TestDataType.BOOLEAN, id="boolean-one"),
         ],
     )
-    def test_coerce_rejects_invalid_values(self, raw_value, data_type):
-        with pytest.raises(ValueError, match="threshold"):
-            coerce_test_case_param_value(raw_value, data_type, param_name="threshold")
+    def test_coerce_unparseable_values_fall_back_to_string_with_warning(self, raw_value, data_type, caplog):
+        with caplog.at_level("WARNING"):
+            result = coerce_test_case_param_value(raw_value, data_type, param_name="threshold")
+        assert type(result) is str
+        assert result == raw_value
+        assert any("threshold" in rec.message and "keeping as string" in rec.message for rec in caplog.records)
 
     @pytest.mark.parametrize(
         ("raw_value", "data_type"),
@@ -517,6 +520,135 @@ class TestGenericRuleLibraryTypedExecution:
 
         assert result.testCaseStatus == TestCaseStatus.Failed
         assert result.testResultValue[0].value == "1"
+
+    @pytest.mark.parametrize(
+        ("validator_class", "entity_type"),
+        [
+            pytest.param(SQAColumnValidator, EntityType.COLUMN, id="sqa-column"),
+            pytest.param(SQATableValidator, EntityType.TABLE, id="sqa-table"),
+        ],
+    )
+    @pytest.mark.parametrize("bad_threshold", ["nan", "inf", "not-a-number"])
+    def test_unreferenced_unreadable_threshold_does_not_abort_sqa_rule(
+        self, validator_class, entity_type, bad_threshold, caplog
+    ):
+        """Unreferenced failure-threshold params must not be coerced or abort before _read_failure_threshold runs."""
+        engine = create_engine("sqlite://")
+        metrics = Table("metrics", MetaData(), Column("price", Float))
+        metrics.metadata.create_all(engine)
+
+        sql = (
+            "SELECT {{ column_name }} FROM {{ table_name }} WHERE {{ column_name }} > {{ minPrice }}"
+            if entity_type is EntityType.COLUMN
+            else "SELECT * FROM {{ table_name }} WHERE price > {{ minPrice }}"
+        )
+        test_case = _build_test_case(
+            entity_type=entity_type,
+            sql_expression=sql,
+            param_defs=[
+                TestCaseParameterDefinition(name="minPrice", dataType=TestDataType.DOUBLE),
+                TestCaseParameterDefinition(name="threshold", dataType=TestDataType.NUMBER),
+                TestCaseParameterDefinition(name="thresholdUnit", dataType=TestDataType.STRING),
+            ],
+            param_values=[
+                TestCaseParameterValue(name="minPrice", value="10.2"),
+                TestCaseParameterValue(name="threshold", value=bad_threshold),
+                TestCaseParameterValue(name="thresholdUnit", value="ABSOLUTE"),
+            ],
+        )
+        with Session(engine) as session:
+            session.execute(metrics.insert(), [{"price": 9.5}, {"price": 15.0}])
+            runner = QueryRunner(session=session, dataset=metrics, raw_dataset=metrics)
+            validator = validator_class(runner, test_case, EXECUTION_DATE)
+            validator.runtime_params = validator.get_runtime_parameters(RuleLibrarySqlExpressionRuntimeParameters)
+            compile_kwargs = {"table_name": "metrics"}
+            if validator_class is SQAColumnValidator:
+                compile_kwargs["column_name"] = "price"
+            with caplog.at_level("WARNING"):
+                _, bind_params = validator.compile_sql_expression(**compile_kwargs)
+                result = validator.run_validation()
+
+        assert bind_params == {"minPrice": 10.2}
+        assert "threshold" not in bind_params
+        assert result.testCaseStatus == TestCaseStatus.Failed
+        assert result.testResultValue[0].value == "1"
+        assert not any("keeping as string" in rec.message for rec in caplog.records)
+
+    @pytest.mark.parametrize(
+        ("validator_class", "entity_type", "expression"),
+        [
+            pytest.param(PandasColumnValidator, EntityType.COLUMN, "{{ column_name }} > {{ minPrice }}", id="column"),
+            pytest.param(PandasTableValidator, EntityType.TABLE, "price > {{ minPrice }}", id="table"),
+        ],
+    )
+    def test_unreferenced_unreadable_threshold_does_not_abort_pandas_rule(
+        self, validator_class, entity_type, expression, caplog
+    ):
+        frame = pd.DataFrame([{"price": 9.5}, {"price": 15.0}])
+        runner = PandasRunner(dataset=lambda: iter([frame]), raw_dataset=lambda: iter([frame]))
+        test_case = _build_test_case(
+            entity_type=entity_type,
+            sql_expression=expression,
+            param_defs=[
+                TestCaseParameterDefinition(name="minPrice", dataType=TestDataType.DOUBLE),
+                TestCaseParameterDefinition(name="threshold", dataType=TestDataType.NUMBER),
+                TestCaseParameterDefinition(name="thresholdUnit", dataType=TestDataType.STRING),
+            ],
+            param_values=[
+                TestCaseParameterValue(name="minPrice", value="10.2"),
+                TestCaseParameterValue(name="threshold", value="nan"),
+                TestCaseParameterValue(name="thresholdUnit", value="ABSOLUTE"),
+            ],
+        )
+
+        with caplog.at_level("WARNING"):
+            result = validator_class(runner, test_case, EXECUTION_DATE).run_validation()
+
+        assert result.testCaseStatus == TestCaseStatus.Failed
+        assert result.testResultValue[0].value == "1"
+        assert not any("keeping as string" in rec.message for rec in caplog.records)
+
+    @pytest.mark.parametrize(
+        ("data_type", "raw_value", "col_name", "sql_op", "expected_count"),
+        [
+            pytest.param(TestDataType.INT, "10.0", "price", ">", 1, id="legacy-int-decimal-string"),
+            pytest.param(TestDataType.BOOLEAN, "1", "active", "=", 1, id="legacy-boolean-digit"),
+            pytest.param(TestDataType.DECIMAL, "not-a-decimal", "label", "=", 1, id="unparseable-decimal-string"),
+        ],
+    )
+    def test_legacy_unparseable_referenced_params_fall_back_without_crashing_sqla(
+        self, data_type, raw_value, col_name, sql_op, expected_count
+    ):
+        """Legacy values that fail coercion must stay untyped strings so SQLAlchemy bind processors do not raise."""
+        engine = create_engine("sqlite://")
+        metrics = Table(
+            "metrics",
+            MetaData(),
+            Column("price", Float),
+            Column("active", Integer),
+            Column("label", String(32)),
+        )
+        metrics.metadata.create_all(engine)
+
+        test_case = _build_test_case(
+            entity_type=EntityType.TABLE,
+            sql_expression=f"SELECT * FROM {{{{ table_name }}}} WHERE {col_name} {sql_op} {{{{ legacyVal }}}}",
+            param_defs=[TestCaseParameterDefinition(name="legacyVal", dataType=data_type)],
+            param_values=[TestCaseParameterValue(name="legacyVal", value=raw_value)],
+        )
+        with Session(engine) as session:
+            session.execute(
+                metrics.insert(),
+                [
+                    {"price": 5.0, "active": 0, "label": "other"},
+                    {"price": 15.0, "active": 1, "label": "not-a-decimal"},
+                ],
+            )
+            runner = QueryRunner(session=session, dataset=metrics, raw_dataset=metrics)
+            result = SQATableValidator(runner, test_case, EXECUTION_DATE).run_validation()
+
+        assert result.testCaseStatus == TestCaseStatus.Failed
+        assert result.testResultValue[0].value == str(expected_count)
 
 
 class TestDatabaseSpecificParameterBinding:

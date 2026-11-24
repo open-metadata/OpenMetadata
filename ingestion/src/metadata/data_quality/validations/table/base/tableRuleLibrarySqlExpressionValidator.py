@@ -22,7 +22,9 @@ from metadata.data_quality.validations.models import (
     RuleLibrarySqlExpressionRuntimeParameters,
 )
 from metadata.data_quality.validations.utils import (
+    extract_rule_library_raw_user_params,
     extract_rule_library_user_params,
+    get_template_variables,
     get_test_definition_param_types,
     render_sql_expression,
 )
@@ -61,12 +63,17 @@ class TableRuleLibrarySqlExpressionValidator(RuleLibraryThresholdMixin):
         test_definition = getattr(runtime_params, "test_definition", None) if runtime_params is not None else None
         return get_test_definition_param_types(test_definition)
 
-    def _get_user_params(self) -> dict[str, Any]:
+    def _get_raw_user_params(self) -> dict[str, str]:
+        """Extract raw string user-defined parameters without type coercion."""
+        return extract_rule_library_raw_user_params(self.test_case.parameterValues, RESERVED_PARAMS)
+
+    def _get_user_params(self, only_params: set[str] | None = None) -> dict[str, Any]:
         """Extract and coerce user-defined parameters from test case parameterValues."""
         return extract_rule_library_user_params(
             self.test_case.parameterValues,
             RESERVED_PARAMS,
             self._get_parameter_types(),
+            only_params=only_params,
         )
 
     def compile_sql_expression(self, table_name: str) -> str:
@@ -89,8 +96,9 @@ class TableRuleLibrarySqlExpressionValidator(RuleLibraryThresholdMixin):
         if not sql_template:
             raise ValueError("Test definition does not have sqlExpression defined")
 
-        params = {"table_name": table_name}
-        params.update(self._get_user_params())
+        referenced_vars = get_template_variables(sql_template.root)
+        params: dict[str, Any] = {"table_name": table_name}
+        params.update(self._get_user_params(only_params=referenced_vars))
 
         return render_sql_expression(sql_template.root, params)
 
