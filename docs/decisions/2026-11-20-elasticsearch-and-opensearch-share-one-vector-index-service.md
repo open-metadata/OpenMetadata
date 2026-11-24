@@ -112,7 +112,8 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   by id up to the header's count, then by a query on `parentId` for anything a header that was
   missing or behind did not cover, and chunk 0 last, so a delete that stops part way keeps the
   count for its retry. That query costs one delete-by-query per entity delete; writes never run
-  one unless chunks are stored without a header.
+  one unless chunks are stored without a header. A delete sends nothing to a chunk index that
+  does not exist yet.
 - **Ontology terms keep the layout their own record gives them.**
   ADR:2026-11-23-ontology-terms-have-dedicated-search-indexes keeps their chunks in
   `ontology_embeddings_chunks` on OpenSearch and their vectors on the term documents on

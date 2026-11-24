@@ -564,7 +564,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private boolean deleteChunksFrom(String indexName, String parentId) {
     boolean deleted;
     try {
-      removeChunkSet(indexName, parentId, previousCount(getChunkHeader(indexName, parentId)));
+      ChunkHeader header = getChunkHeader(indexName, parentId);
+      if (header != null || !indexMissing(indexName)) {
+        removeChunkSet(indexName, parentId, previousCount(header));
+      }
       deleted = true;
     } catch (Exception e) {
       LOG.debug("Failed to delete chunks for {} from {}: {}", parentId, indexName, e.getMessage());
@@ -1927,6 +1930,22 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
     } catch (Exception e) {
       LOG.debug("Orphan chunk cleanup skipped for {}: {}", parentId, e.getMessage());
     }
+  }
+
+  /**
+   * A chunk index is created by the first write, so an entity deleted before that has nothing to
+   * delete. Only a 404 counts as missing: a probe that fails sends the delete, which reports its own
+   * failure.
+   */
+  private boolean indexMissing(String indexName) {
+    boolean missing;
+    try {
+      missing = performRequest("HEAD", "/" + indexName, null).status() == 404;
+    } catch (IOException e) {
+      LOG.debug("Index existence probe failed for {}: {}", indexName, e.getMessage());
+      missing = false;
+    }
+    return missing;
   }
 
   private boolean chunkDocExists(String indexName, String docId) {
