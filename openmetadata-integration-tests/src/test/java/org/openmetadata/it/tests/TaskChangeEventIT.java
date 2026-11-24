@@ -81,6 +81,7 @@ public class TaskChangeEventIT {
   private static final String STATUS = "status";
   private static final String RESOLUTION = "resolution";
   private static final String COMMENTS = "comments";
+  private static final String RESOLUTION_NOTE = "not a real failure";
   private static final String NEW_STAGE = "new";
 
   @Test
@@ -278,8 +279,28 @@ public class TaskChangeEventIT {
 
     long resolvedAt = System.currentTimeMillis();
     createResolvedIncidentStatus(testCase);
-    ChangeEvent resolution = awaitUpdatedEvents(incident.getId(), resolvedAt, 1).getFirst();
-    assertStatusChange(resolution, TaskEntityStatus.InProgress, TaskEntityStatus.Completed);
+    // The resolution note is also posted as a task comment, with its own event so mentions in it
+    // notify: one event for the status change, one for the comment.
+    List<ChangeEvent> resolution = awaitUpdatedEvents(incident.getId(), resolvedAt, 2);
+    assertStatusChange(
+        resolution.stream()
+            .filter(
+                event ->
+                    event.getChangeDescription() != null
+                        && names(event.getChangeDescription().getFieldsUpdated()).contains(STATUS))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("no status change in " + resolution)),
+        TaskEntityStatus.InProgress,
+        TaskEntityStatus.Completed);
+    assertTrue(
+        resolution.stream()
+            .filter(event -> event.getChangeDescription() != null)
+            .flatMap(event -> event.getChangeDescription().getFieldsAdded().stream())
+            .anyMatch(
+                change ->
+                    COMMENTS.equals(change.getName())
+                        && RESOLUTION_NOTE.equals(String.valueOf(change.getNewValue()))),
+        () -> "no comment event for the resolution note in " + resolution);
 
     // ADR:2026-11-17-resolved-incidents-are-final: a legacy status write cannot reopen it.
     assertThrows(
@@ -316,6 +337,9 @@ public class TaskChangeEventIT {
     ChangeEvent event = awaitUpdatedEvents(incident.getId(), closedAt, 1).getFirst();
     assertStatusChange(event, TaskEntityStatus.Open, TaskEntityStatus.Completed);
     assertEquals("governance-bot", event.getUserName());
+    Task resolved = client().tasks().get(incident.getId().toString(), "comments,resolution");
+    assertTrue(resolved.getComments() == null || resolved.getComments().isEmpty());
+    assertEquals("AutoResolved", resolved.getResolution().getComment());
   }
 
   // ---------------------------------------------------------------- change events
@@ -528,6 +552,6 @@ public class TaskChangeEventIT {
                 .withTestCaseResolutionStatusDetails(
                     new Resolved()
                         .withTestCaseFailureReason(TestCaseFailureReasonType.FalsePositive)
-                        .withTestCaseFailureComment("not a real failure")));
+                        .withTestCaseFailureComment(RESOLUTION_NOTE)));
   }
 }

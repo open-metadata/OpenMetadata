@@ -133,6 +133,16 @@ class StageStatsTrackerTest {
     }
 
     @Test
+    @DisplayName("Should record a process batch")
+    void testRecordProcessBatch() {
+      tracker.recordProcessBatch(5, 2, 0);
+
+      assertEquals(5, tracker.getProcess().getSuccess().get());
+      assertEquals(2, tracker.getProcess().getFailed().get());
+      assertEquals(7, tracker.getProcess().getTotal());
+    }
+
+    @Test
     @DisplayName("Should record sink success")
     void testRecordSinkSuccess() {
       tracker.recordSink(StatsResult.SUCCESS);
