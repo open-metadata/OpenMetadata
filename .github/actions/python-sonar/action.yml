@@ -23,6 +23,10 @@ runs:
     - name: Prepare Python tools
       run: make python_tools
       shell: bash
+    - name: Read supported Python versions
+      id: versions
+      run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
+      shell: bash
     - name: Download coverage artifacts
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
       with:
@@ -47,6 +51,7 @@ runs:
         SONAR_TOKEN: ${{ inputs.ingestion-token }}
       with:
         projectBaseDir: ingestion/
+        args: -Dsonar.python.version=${{ join(fromJSON(steps.versions.outputs.versions), ',') }}
     - name: Wait to retry Sonar upload
       if: ${{ !cancelled() && steps.push-to-sonar.outcome == 'failure' }}
       run: sleep 20s
@@ -59,6 +64,7 @@ runs:
         SONAR_TOKEN: ${{ inputs.ingestion-token }}
       with:
         projectBaseDir: ingestion/
+        args: -Dsonar.python.version=${{ join(fromJSON(steps.versions.outputs.versions), ',') }}
 
     - name: Download Airflow API results
       id: airflow-apis-results
@@ -75,4 +81,6 @@ runs:
         SONAR_TOKEN: ${{ inputs.airflow-apis-token }}
       with:
         projectBaseDir: openmetadata-airflow-apis/
-        args: -Dproject.settings=openmetadata-airflow-apis/sonar-project.properties
+        args: >-
+          -Dproject.settings=openmetadata-airflow-apis/sonar-project.properties
+          -Dsonar.python.version=${{ join(fromJSON(steps.versions.outputs.versions), ',') }}
