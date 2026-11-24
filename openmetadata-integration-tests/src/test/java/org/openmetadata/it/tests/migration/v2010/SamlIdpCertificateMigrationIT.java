@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.migration.utils.v2010;
+package org.openmetadata.it.tests.migration.v2010;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -27,26 +27,21 @@ import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.openmetadata.it.tests.migration.ScratchDatabasePerTest;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
+import org.openmetadata.service.migration.utils.v2010.SamlIdpCertificateMigration;
 
 /**
  * Runs the 2.0.10 step against real MySQL and PostgreSQL. It must rewrite a single-line identity
  * provider certificate as standard PEM, change nothing else in the stored configuration or in the
  * other settings, and leave a standard, unreadable or missing certificate exactly as stored.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class SamlIdpCertificateMigrationTest {
-  private static final String PASSWORD = "saml-certificate-test";
-  private static final String DATABASE = "saml_certificate_test";
+@ExtendWith(ScratchDatabasePerTest.class)
+class SamlIdpCertificateMigrationIT {
   private static final String MYSQL_DIALECT = "mysql";
   private static final String POSTGRES_DIALECT = "postgres";
   private static final String AUTHENTICATION = "authenticationConfiguration";
@@ -59,30 +54,8 @@ class SamlIdpCertificateMigrationTest {
   private static final String EMAIL_JSON =
       "{\"senderMail\":\"om@example.com\",\"serverEndpoint\":\"smtp.example.com\"}";
 
-  @Container
-  static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.3.0"))
-          .withEnv("MYSQL_DATABASE", DATABASE)
-          .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-          .withEnv("MYSQL_ROOT_HOST", "%")
-          .withExposedPorts(3306)
-          .waitingFor(
-              Wait.forSuccessfulCommand(
-                  "mysql --protocol=TCP --host=127.0.0.1 --user=root --password="
-                      + PASSWORD
-                      + " --execute='SELECT 1'"));
-
-  @Container
-  static final GenericContainer<?> POSTGRES =
-      new GenericContainer<>(DockerImageName.parse("postgres:16"))
-          .withEnv("POSTGRES_DB", DATABASE)
-          .withEnv("POSTGRES_PASSWORD", PASSWORD)
-          .withExposedPorts(5432)
-          .waitingFor(
-              Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
-
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void rewritesASingleLineCertificateAndNothingElse(final String dialect)
       throws CertificateException {
     try (Handle handle = open(dialect)) {
@@ -106,7 +79,7 @@ class SamlIdpCertificateMigrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void aSecondRunChangesNothing(final String dialect) {
     try (Handle handle = open(dialect)) {
       seed(handle, dialect, samlConfiguration(SINGLE_LINE));
@@ -120,25 +93,25 @@ class SamlIdpCertificateMigrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void leavesAStandardCertificateAsStored(final String dialect) {
     assertUnchanged(dialect, samlConfiguration(MOCK_IDP + "\n"));
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void leavesAnUnreadableCertificateAsStored(final String dialect) {
     assertUnchanged(dialect, samlConfiguration(BEGIN + "not-a-certificate" + END));
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void leavesAnEmptyCertificateAsStored(final String dialect) {
     assertUnchanged(dialect, samlConfiguration(""));
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void leavesANullCertificateAsStored(final String dialect) {
     final ObjectNode configuration = samlConfiguration("");
     ((ObjectNode) configuration.path("samlConfiguration").path("idp"))
@@ -147,7 +120,7 @@ class SamlIdpCertificateMigrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void leavesAConfigurationWithoutSamlAsStored(final String dialect) {
     final ObjectNode configuration = samlConfiguration(SINGLE_LINE);
     configuration.put("provider", "google");
@@ -156,7 +129,7 @@ class SamlIdpCertificateMigrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void doesNothingWithoutAStoredConfiguration(final String dialect) {
     try (Handle handle = open(dialect)) {
       createTable(handle, dialect);
@@ -259,28 +232,7 @@ class SamlIdpCertificateMigrationTest {
   }
 
   private static Handle open(final String dialect) {
-    return POSTGRES_DIALECT.equals(dialect)
-        ? Jdbi.create(
-                "jdbc:postgresql://"
-                    + POSTGRES.getHost()
-                    + ":"
-                    + POSTGRES.getMappedPort(5432)
-                    + "/"
-                    + DATABASE,
-                "postgres",
-                PASSWORD)
-            .open()
-        : Jdbi.create(
-                "jdbc:mysql://"
-                    + MYSQL.getHost()
-                    + ":"
-                    + MYSQL.getMappedPort(3306)
-                    + "/"
-                    + DATABASE
-                    + "?allowPublicKeyRetrieval=true&useSSL=false",
-                "root",
-                PASSWORD)
-            .open();
+    return ScratchDatabasePerTest.jdbi().open();
   }
 
   private static ConnectionType connectionType(final String dialect) {
@@ -288,7 +240,7 @@ class SamlIdpCertificateMigrationTest {
   }
 
   private static String resource(final String path) {
-    try (InputStream stream = SamlIdpCertificateMigrationTest.class.getResourceAsStream(path)) {
+    try (InputStream stream = SamlIdpCertificateMigrationIT.class.getResourceAsStream(path)) {
       return new String(stream.readAllBytes(), StandardCharsets.US_ASCII);
     } catch (IOException e) {
       throw new UncheckedIOException(e);

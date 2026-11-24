@@ -2,16 +2,11 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -31,9 +26,8 @@ import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.mockito.MockedStatic;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.type.PipelineRuntimeTrend;
@@ -44,84 +38,43 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
-@Testcontainers(disabledWithoutDocker = true)
-@Execution(ExecutionMode.SAME_THREAD)
-class PipelineStatusPaginationSqlTest {
-  private static final String DATABASE = "pipeline_history_test";
-  private static final String PASSWORD = "pipeline-history-test";
+@Isolated("replaces the static Entity collection DAO and pipeline repository")
+class PipelineStatusPaginationSqlIT {
   private static final String FQN = "pipeline_service.demo_pipeline";
   private static final String OTHER_FQN = "other_pipeline";
   private static final String TASK_NAME = "target_%!\\'Ö";
 
   @Test
   void filteredPagesOnMysql() {
-    try (GenericContainer<?> database =
-        new GenericContainer<>("mysql:8.4.13")
-            .withEnv("MYSQL_DATABASE", DATABASE)
-            .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-            .withEnv("MYSQL_ROOT_HOST", "%")
-            .withExposedPorts(3306)
-            .waitingFor(
-                Wait.forSuccessfulCommand(
-                    "mysql --protocol=TCP --host=127.0.0.1 --user=root --password="
-                        + PASSWORD
-                        + " --execute='SELECT 1'"))) {
-      database.start();
-      checkPages(
-          "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-              .formatted(database.getHost(), database.getMappedPort(3306), DATABASE),
-          true);
-    }
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL only");
+    ScratchDatabase.withJdbi(scratch -> checkPages(scratch, true));
   }
 
   @Test
   void filteredPagesOnPostgres() {
-    try (GenericContainer<?> database =
-        new GenericContainer<>("postgres:15")
-            .withEnv("POSTGRES_DB", DATABASE)
-            .withEnv("POSTGRES_PASSWORD", PASSWORD)
-            .withExposedPorts(5432)
-            .waitingFor(
-                Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2))) {
-      database.start();
-      checkPages(
-          "jdbc:postgresql://%s:%d/%s"
-              .formatted(database.getHost(), database.getMappedPort(5432), DATABASE),
-          false);
-    }
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.POSTGRES, "PostgreSQL only");
+    ScratchDatabase.withJdbi(scratch -> checkPages(scratch, false));
   }
 
-  private void checkPages(String url, boolean mysql) {
+  @SuppressWarnings("unchecked")
+  private void checkPages(Jdbi scratch, boolean mysql) {
     AtomicInteger jsonRowsRead = new AtomicInteger();
     Jdbi jdbi =
         Jdbi.create(
-                () ->
-                    trackJsonRows(
-                        Connection.class,
-                        DriverManager.getConnection(url, mysql ? "root" : "postgres", PASSWORD),
-                        jsonRowsRead))
+                () -> trackJsonRows(Connection.class, scratch.open().getConnection(), jsonRowsRead))
             .installPlugin(new SqlObjectPlugin());
     jdbi.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
     jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(
-            new ConnectionAwareAnnotationSqlLocator(
-                mysql ? "com.mysql.cj.jdbc.Driver" : "org.postgresql.Driver"));
-    try (Handle handle = jdbi.open();
-        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(ScratchDatabase.dialect().label));
+    CollectionDAO originalDao = Entity.getCollectionDAO();
+    EntityRepository<?> originalRepository = Entity.getEntityRepository(Entity.PIPELINE);
+    try (Handle handle = jdbi.open()) {
       seed(handle, mysql);
-      CollectionDAO collection = mock(CollectionDAO.class);
-      when(collection.entityExtensionTimeSeriesDao())
-          .thenReturn(handle.attach(CollectionDAO.EntityExtensionTimeSeriesDAO.class));
-      entities.when(Entity::getCollectionDAO).thenReturn(collection);
-      entities
-          .when(() -> Entity.registerEntity(any(), any(), any(PipelineRepository.class)))
-          .thenAnswer(call -> null);
+      Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
       PipelineRepository repository = new PipelineRepository();
 
       ResultList<PipelineStatus> first =
@@ -193,6 +146,10 @@ class PipelineStatusPaginationSqlTest {
       checkLargeHistory(handle, repository, mysql, jsonRowsRead);
       checkStoredStatusLookup(repository, jsonRowsRead);
       checkAverageAndTrendShareOneRuntime(handle, repository, mysql, jsonRowsRead);
+    } finally {
+      Entity.setCollectionDAO(originalDao);
+      Entity.registerEntity(
+          Pipeline.class, Entity.PIPELINE, (EntityRepository<Pipeline>) originalRepository);
     }
   }
 

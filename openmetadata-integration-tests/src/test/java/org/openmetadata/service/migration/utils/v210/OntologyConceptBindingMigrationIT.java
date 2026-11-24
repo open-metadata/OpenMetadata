@@ -32,9 +32,10 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.openmetadata.it.tests.migration.ScratchDatabasePerTest;
 import org.openmetadata.schema.type.OntologyAssetBinding;
 import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyColumnBinding;
@@ -43,15 +44,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingStore;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
-@Testcontainers(disabledWithoutDocker = true)
-class OntologyConceptBindingMigrationTest {
-  private static final String PASSWORD = "binding-copy-test";
-  private static final String DATABASE = "binding_test";
+@ExtendWith(ScratchDatabasePerTest.class)
+class OntologyConceptBindingMigrationIT {
   private static final String MYSQL_DIALECT = "mysql";
   private static final String POSTGRES_DIALECT = "postgres";
   private static final String BINDING_TABLE = "ontology_concept_binding";
@@ -70,24 +65,10 @@ class OntologyConceptBindingMigrationTest {
   private static final UUID PROPERTY = id("e1");
   private static final int WIDE_TOPICS = 120;
 
-  @Container
-  static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
-          .withEnv("MYSQL_DATABASE", DATABASE)
-          .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-          .withExposedPorts(3306);
-
-  @Container
-  static final GenericContainer<?> POSTGRES =
-      new GenericContainer<>(DockerImageName.parse("postgres:15"))
-          .withEnv("POSTGRES_DB", DATABASE)
-          .withEnv("POSTGRES_PASSWORD", PASSWORD)
-          .withExposedPorts(5432);
-
   private record Row(String assetType, String assetFqnHash, JsonNode columns) {}
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void copiesEveryDocumentIntoOneRowPerBindingAndASecondRunChangesNothing(final String dialect) {
     try (Handle handle = open(dialect)) {
       final ConnectionType connectionType = connectionType(dialect);
@@ -162,7 +143,7 @@ class OntologyConceptBindingMigrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void aRerunLeavesRowsEditedSinceTheFirstRunAlone(final String dialect) {
     try (Handle handle = open(dialect)) {
       final ConnectionType connectionType = connectionType(dialect);
@@ -216,7 +197,7 @@ class OntologyConceptBindingMigrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void unreadableDocumentsDoNotPreventCopyingValidBindings(final String dialect) {
     try (Handle handle = open(dialect)) {
       createTables(handle, dialect);
@@ -408,19 +389,7 @@ class OntologyConceptBindingMigrationTest {
   }
 
   private static Handle open(final String dialect) {
-    return MYSQL_DIALECT.equals(dialect)
-        ? Jdbi.create(
-                "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-                    .formatted(MYSQL.getHost(), MYSQL.getMappedPort(3306), DATABASE),
-                "root",
-                PASSWORD)
-            .open()
-        : Jdbi.create(
-                "jdbc:postgresql://%s:%d/%s"
-                    .formatted(POSTGRES.getHost(), POSTGRES.getMappedPort(5432), DATABASE),
-                "postgres",
-                PASSWORD)
-            .open();
+    return ScratchDatabasePerTest.jdbi().open();
   }
 
   private static Path migrationFile(final String dialect) {

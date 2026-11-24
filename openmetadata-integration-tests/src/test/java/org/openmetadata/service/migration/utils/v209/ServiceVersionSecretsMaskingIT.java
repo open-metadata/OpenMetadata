@@ -23,16 +23,12 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.openmetadata.it.tests.migration.ScratchDatabasePerTest;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Runs the 2.0.9 masking step against real MySQL and PostgreSQL. It must mask each listed secret
@@ -40,43 +36,19 @@ import org.testcontainers.utility.DockerImageName;
  * values, secret references, unlisted fields, other service types, the services' current rows and
  * other entities' versions.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class ServiceVersionSecretsMaskingTest {
-  private static final String PASSWORD = "version-secrets-test";
-  private static final String DATABASE = "version_secrets_test";
+@ExtendWith(ScratchDatabasePerTest.class)
+class ServiceVersionSecretsMaskingIT {
   private static final String MYSQL_DIALECT = "mysql";
   private static final String POSTGRES_DIALECT = "postgres";
   private static final String PLAIN = "plain-text-secret";
   private static final String FERNET = "fernet:gAAAAABencrypted";
   private static final String REFERENCE = "secret:prod-password";
 
-  @Container
-  static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.3.0"))
-          .withEnv("MYSQL_DATABASE", DATABASE)
-          .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-          .withEnv("MYSQL_ROOT_HOST", "%")
-          .withExposedPorts(3306)
-          .waitingFor(
-              Wait.forSuccessfulCommand(
-                  "mysql --protocol=TCP --host=127.0.0.1 --user=root --password="
-                      + PASSWORD
-                      + " --execute='SELECT 1'"));
-
-  @Container
-  static final GenericContainer<?> POSTGRES =
-      new GenericContainer<>(DockerImageName.parse("postgres:15"))
-          .withEnv("POSTGRES_DB", DATABASE)
-          .withEnv("POSTGRES_PASSWORD", PASSWORD)
-          .withExposedPorts(5432)
-          .waitingFor(
-              Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
-
   /** A stored row and the JSON it must hold after the step. */
   private record Row(String id, String extension, String before, String after) {}
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void masksOnlyPlainTextListedSecretsInServiceVersionsAndIsIdempotent(final String dialect) {
     try (Handle handle = open(dialect)) {
       createTable(handle, dialect);
@@ -294,28 +266,7 @@ class ServiceVersionSecretsMaskingTest {
   }
 
   private static Handle open(final String dialect) {
-    return POSTGRES_DIALECT.equals(dialect)
-        ? Jdbi.create(
-                "jdbc:postgresql://"
-                    + POSTGRES.getHost()
-                    + ":"
-                    + POSTGRES.getMappedPort(5432)
-                    + "/"
-                    + DATABASE,
-                "postgres",
-                PASSWORD)
-            .open()
-        : Jdbi.create(
-                "jdbc:mysql://"
-                    + MYSQL.getHost()
-                    + ":"
-                    + MYSQL.getMappedPort(3306)
-                    + "/"
-                    + DATABASE
-                    + "?allowPublicKeyRetrieval=true&useSSL=false",
-                "root",
-                PASSWORD)
-            .open();
+    return ScratchDatabasePerTest.jdbi().open();
   }
 
   private static ConnectionType connectionType(final String dialect) {

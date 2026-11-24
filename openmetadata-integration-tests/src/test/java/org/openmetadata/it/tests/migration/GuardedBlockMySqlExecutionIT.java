@@ -1,9 +1,10 @@
-package org.openmetadata.service.migration.api;
+package org.openmetadata.it.tests.migration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.openmetadata.service.util.EntityUtil.hash;
 
 import java.io.IOException;
@@ -13,22 +14,16 @@ import java.util.List;
 import java.util.Map;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.statement.SqlStatements;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.service.jdbi3.MigrationDAO;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.QueryStatus;
+import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.SqlUnit;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * A prepared statement only exists on the MySQL connection that prepared it. These tests run guarded
@@ -36,19 +31,10 @@ import org.testcontainers.utility.DockerImageName;
  * runs on one connection, is recorded once after its last statement, and is skipped or rerun as a
  * whole.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class GuardedBlockMySqlExecutionTest {
-  private static final String PASSWORD = "guarded-block-test";
-  private static final String DATABASE = "guarded_test";
+@ExtendWith(ScratchDatabasePerTest.class)
+class GuardedBlockMySqlExecutionIT implements ScratchDatabasePerTest.Target {
   private static final String VERSION = "2.1.0";
   private static final String EARLIER_VERSION = "2.0.0";
-
-  @Container
-  static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
-          .withEnv("MYSQL_DATABASE", DATABASE)
-          .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-          .withExposedPorts(3306);
 
   @TempDir Path tempDir;
 
@@ -57,18 +43,10 @@ class GuardedBlockMySqlExecutionTest {
 
   record LogRow(String version, String checksum, String sqlStatement) {}
 
-  @BeforeEach
-  void setUp() {
-    jdbi =
-        Jdbi.create(
-                "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-                    .formatted(MYSQL.getHost(), MYSQL.getMappedPort(3306), DATABASE),
-                "root",
-                PASSWORD)
-            .installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(ConnectionType.MYSQL.label));
+  @Override
+  public void useScratchDatabase(Jdbi scratch) {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL only");
+    jdbi = scratch;
     migrationDAO = jdbi.onDemand(MigrationDAO.class);
     try (Handle handle = jdbi.open()) {
       MigrationFile.parseSQLFile(migrationLogTables().toFile(), ConnectionType.MYSQL)

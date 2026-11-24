@@ -11,39 +11,32 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.migration.utils.v210;
+package org.openmetadata.it.tests.migration.v210;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.List;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.tests.migration.ScratchDatabasePerTest;
+import org.openmetadata.it.util.ScratchDatabase;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.v210.FlowableCharsetMigration;
 
-@Testcontainers(disabledWithoutDocker = true)
-class FlowableCharsetMigrationMySqlTest {
-  private static final String DATABASE = "legacy_openmetadata";
-  private static final String PASSWORD = "flowable-test";
+@ExtendWith(ScratchDatabasePerTest.class)
+class FlowableCharsetMigrationMySqlIT {
   private static final String TARGET_COLLATION = "utf8mb4_0900_ai_ci";
   private static final String DRIFT_COLLATION = "utf8mb4_unicode_ci";
 
-  @Container
-  static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
-          .withEnv("MYSQL_DATABASE", DATABASE)
-          .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-          .withExposedPorts(3306)
-          .withCommand("--character-set-server=utf8mb3", "--collation-server=utf8mb3_general_ci");
-
   @Test
   void convertsLegacyFlowableTablesWithoutBreakingForeignKeys() {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL only");
     try (Handle handle = openHandle()) {
+      handle.execute("ALTER DATABASE CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci");
       createMixedCharsetSchema(handle);
       handle.execute("ALTER DATABASE CHARACTER SET utf8mb4 COLLATE " + TARGET_COLLATION);
 
@@ -57,10 +50,7 @@ class FlowableCharsetMigrationMySqlTest {
   }
 
   private static Handle openHandle() {
-    final String jdbcUrl =
-        "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-            .formatted(MYSQL.getHost(), MYSQL.getMappedPort(3306), DATABASE);
-    return Jdbi.create(jdbcUrl, "root", PASSWORD).open();
+    return ScratchDatabasePerTest.jdbi().open();
   }
 
   private static void createMixedCharsetSchema(final Handle handle) {

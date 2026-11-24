@@ -3,10 +3,12 @@ package org.openmetadata.service.governance.workflows;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
+import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -22,13 +24,12 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
 import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.util.ScratchDatabase;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 /**
  * Saving workflow settings replaces the process engine on every server and closes the old one.
@@ -36,18 +37,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * for jobs still running, so such a job is acquired and run a second time. These tests run a real
  * engine with a job that is still running when the engine closes.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class WorkflowEngineRetireTest {
-  private static final String DATABASE_USER = "flowable";
-
-  @Container
-  static final GenericContainer<?> POSTGRES =
-      new GenericContainer<>("postgres:15-alpine")
-          .withEnv("POSTGRES_USER", DATABASE_USER)
-          .withEnv("POSTGRES_PASSWORD", DATABASE_USER)
-          .withExposedPorts(5432)
-          .waitingFor(Wait.forLogMessage(".*ready to accept connections.*\\n", 2));
-
+@Execution(ExecutionMode.SAME_THREAD)
+class WorkflowEngineRetireIT {
   private static final String PROCESS =
       """
       <definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
@@ -68,6 +59,8 @@ class WorkflowEngineRetireTest {
   private static volatile CountDownLatch releaseJob;
 
   private String jdbcUrl;
+  private String databaseUser;
+  private String databasePassword;
   // A pool the engine does not own, as on a server: closing an engine force-closes only a pool it
   // created itself, which would cut off the job still running on it.
   private HikariDataSource dataSource;
@@ -85,28 +78,46 @@ class WorkflowEngineRetireTest {
     }
   }
 
-  @BeforeEach
-  void armJob() throws SQLException {
-    String database = "retire_%s".formatted(UUID.randomUUID().toString().replace("-", ""));
-    try (Connection connection = connect(serverUrl("postgres"));
-        Statement statement = connection.createStatement()) {
-      statement.execute("CREATE DATABASE %s".formatted(database));
-    }
-    jdbcUrl = serverUrl(database);
-    jobStarted = new CountDownLatch(1);
-    releaseJob = new CountDownLatch(1);
+  @FunctionalInterface
+  private interface Body {
+    void run() throws Exception;
   }
 
-  @AfterEach
-  void finishJob() {
-    releaseJob.countDown();
-    if (dataSource != null) {
-      dataSource.close();
-    }
+  private void onScratchDatabase(Body body) {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.POSTGRES, "PostgreSQL only");
+    ScratchDatabase.withJdbi(
+        jdbi -> {
+          try {
+            DatabaseMetaData metadata =
+                jdbi.withHandle(handle -> handle.getConnection().getMetaData());
+            jdbcUrl = metadata.getURL();
+            databaseUser = metadata.getUserName();
+          } catch (SQLException e) {
+            throw new IllegalStateException(e);
+          }
+          databasePassword = TestSuiteBootstrap.getDatabaseContainer().getPassword();
+          jobStarted = new CountDownLatch(1);
+          releaseJob = new CountDownLatch(1);
+          try {
+            body.run();
+          } catch (Exception e) {
+            throw new IllegalStateException(e);
+          } finally {
+            releaseJob.countDown();
+            if (dataSource != null) {
+              dataSource.close();
+              dataSource = null;
+            }
+          }
+        });
   }
 
   @Test
-  void retiringEngineKeepsTheLockOfAJobStillRunningAndTheJobStillCompletes() throws Exception {
+  void retiringEngineKeepsTheLockOfAJobStillRunningAndTheJobStillCompletes() {
+    onScratchDatabase(this::retiringEngineKeepsTheLockOfAJobStillRunning);
+  }
+
+  private void retiringEngineKeepsTheLockOfAJobStillRunning() throws Exception {
     ProcessEngine engine = startEngineRunningLongJob();
     AsyncExecutor asyncExecutor = engine.getProcessEngineConfiguration().getAsyncExecutor();
     String lockOwner = asyncExecutor.getLockOwner();
@@ -122,7 +133,11 @@ class WorkflowEngineRetireTest {
   }
 
   @Test
-  void closingEngineByDefaultReleasesAJobStillRunning() throws Exception {
+  void closingEngineByDefaultReleasesAJobStillRunning() {
+    onScratchDatabase(this::closingEngineByDefaultReleasesTheJob);
+  }
+
+  private void closingEngineByDefaultReleasesTheJob() throws Exception {
     ProcessEngine engine = startEngineRunningLongJob();
     AsyncExecutor asyncExecutor = engine.getProcessEngineConfiguration().getAsyncExecutor();
 
@@ -147,8 +162,8 @@ class WorkflowEngineRetireTest {
   private ProcessEngine startEngineRunningLongJob() {
     HikariConfig poolConfig = new HikariConfig();
     poolConfig.setJdbcUrl(jdbcUrl);
-    poolConfig.setUsername(DATABASE_USER);
-    poolConfig.setPassword(DATABASE_USER);
+    poolConfig.setUsername(databaseUser);
+    poolConfig.setPassword(databasePassword);
     dataSource = new HikariDataSource(poolConfig);
     StandaloneProcessEngineConfiguration configuration = new StandaloneProcessEngineConfiguration();
     configuration.setDataSource(dataSource);
@@ -186,12 +201,7 @@ class WorkflowEngineRetireTest {
     }
   }
 
-  private static String serverUrl(String database) {
-    return "jdbc:postgresql://%s:%d/%s"
-        .formatted(POSTGRES.getHost(), POSTGRES.getMappedPort(5432), database);
-  }
-
-  private static Connection connect(String url) throws SQLException {
-    return DriverManager.getConnection(url, DATABASE_USER, DATABASE_USER);
+  private Connection connect(String url) throws SQLException {
+    return DriverManager.getConnection(url, databaseUser, databasePassword);
   }
 }

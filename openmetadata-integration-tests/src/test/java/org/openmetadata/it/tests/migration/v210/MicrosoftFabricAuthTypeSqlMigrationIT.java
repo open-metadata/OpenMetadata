@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.migration.utils.v210;
+package org.openmetadata.it.tests.migration.v210;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -26,16 +26,13 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.openmetadata.it.tests.migration.ScratchDatabasePerTest;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Runs the 2.1.0 statements that move a stored Microsoft Fabric {@code clientSecret} under {@code
@@ -43,10 +40,8 @@ import org.testcontainers.utility.DockerImageName;
  * statements are read from the shipped {@code postDataMigrationSQLScript.sql}, so the test fails if
  * either dialect drifts from what upgrades really run.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class MicrosoftFabricAuthTypeSqlMigrationTest {
-  private static final String PASSWORD = "fabric-auth-type-test";
-  private static final String DATABASE = "fabric_test";
+@ExtendWith(ScratchDatabasePerTest.class)
+class MicrosoftFabricAuthTypeSqlMigrationIT {
   private static final String MYSQL_DIALECT = "mysql";
   private static final String POSTGRES_DIALECT = "postgres";
   private static final String FABRIC = "MicrosoftFabric";
@@ -59,20 +54,6 @@ class MicrosoftFabricAuthTypeSqlMigrationTest {
   private static final String LEGACY_REFERENCE = "fabric_reference";
   private static final String CERTIFICATE = "fabric_certificate";
   private static final String SYNAPSE = "synapse";
-
-  @Container
-  static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
-          .withEnv("MYSQL_DATABASE", DATABASE)
-          .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-          .withExposedPorts(3306);
-
-  @Container
-  static final GenericContainer<?> POSTGRES =
-      new GenericContainer<>(DockerImageName.parse("postgres:15"))
-          .withEnv("POSTGRES_DB", DATABASE)
-          .withEnv("POSTGRES_PASSWORD", PASSWORD)
-          .withExposedPorts(5432);
 
   private record Fixture(String name, String serviceType, String config) {}
 
@@ -107,7 +88,7 @@ class MicrosoftFabricAuthTypeSqlMigrationTest {
               {"type": "Synapse", "clientId": "c", "tenantId": "t", "clientSecret": "fernet:other"}"""));
 
   static Stream<String> dialects() {
-    return Stream.of(MYSQL_DIALECT, POSTGRES_DIALECT);
+    return ScratchDatabasePerTest.laneDialect();
   }
 
   @ParameterizedTest
@@ -169,20 +150,8 @@ class MicrosoftFabricAuthTypeSqlMigrationTest {
     assertEquals(clientSecret, config.path("authType").path(CLIENT_SECRET).asText());
   }
 
-  private static Handle open(String dialect) {
-    return MYSQL_DIALECT.equals(dialect)
-        ? Jdbi.create(
-                "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-                    .formatted(MYSQL.getHost(), MYSQL.getMappedPort(3306), DATABASE),
-                "root",
-                PASSWORD)
-            .open()
-        : Jdbi.create(
-                "jdbc:postgresql://%s:%d/%s"
-                    .formatted(POSTGRES.getHost(), POSTGRES.getMappedPort(5432), DATABASE),
-                "postgres",
-                PASSWORD)
-            .open();
+  private static Handle open(final String dialect) {
+    return ScratchDatabasePerTest.jdbi().open();
   }
 
   private static Database seed(Database db) {

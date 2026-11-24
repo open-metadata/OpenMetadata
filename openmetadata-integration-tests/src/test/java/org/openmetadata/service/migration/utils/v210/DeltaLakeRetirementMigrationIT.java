@@ -27,25 +27,20 @@ import java.util.TreeMap;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.openmetadata.it.tests.migration.ScratchDatabasePerTest;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Runs the 2.1.0 step that retires the DeltaLake database connector against real MySQL and
  * PostgreSQL. A DeltaLake service and its children become CustomDatabase, including their version
  * history, and only its ingestion pipelines are handed to the delete, after the retype.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class DeltaLakeRetirementMigrationTest {
-  private static final String PASSWORD = "deltalake-retire-test";
-  private static final String DATABASE = "deltalake_test";
+@ExtendWith(ScratchDatabasePerTest.class)
+class DeltaLakeRetirementMigrationIT {
   private static final String MYSQL_DIALECT = "mysql";
   private static final String POSTGRES_DIALECT = "postgres";
   private static final String DELTA_LAKE = "DeltaLake";
@@ -66,20 +61,6 @@ class DeltaLakeRetirementMigrationTest {
           new Child("table_entity", "table", id("d5"), id("a5")),
           new Child("stored_procedure_entity", "storedProcedure", id("d6"), id("a6")));
 
-  @Container
-  static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
-          .withEnv("MYSQL_DATABASE", DATABASE)
-          .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-          .withExposedPorts(3306);
-
-  @Container
-  static final GenericContainer<?> POSTGRES =
-      new GenericContainer<>(DockerImageName.parse("postgres:15"))
-          .withEnv("POSTGRES_DB", DATABASE)
-          .withEnv("POSTGRES_PASSWORD", PASSWORD)
-          .withExposedPorts(5432);
-
   private record Database(Handle handle, String dialect) {
     boolean isPostgres() {
       return POSTGRES_DIALECT.equals(dialect);
@@ -99,7 +80,7 @@ class DeltaLakeRetirementMigrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void retypesDeltaLakeServiceAndChildrenKeepingTheirMetadata(String dialect) {
     try (Handle handle = open(dialect)) {
       Database db = seed(new Database(handle, dialect));
@@ -131,7 +112,7 @@ class DeltaLakeRetirementMigrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void deletesOnlyDeltaLakePipelinesAndOnlyAfterTheRetype(String dialect) {
     try (Handle handle = open(dialect)) {
       Database db = seed(new Database(handle, dialect));
@@ -153,7 +134,7 @@ class DeltaLakeRetirementMigrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void aFailedPipelineDeleteStillRetiresTheServices(String dialect) {
     try (Handle handle = open(dialect)) {
       Database db = seed(new Database(handle, dialect));
@@ -176,7 +157,7 @@ class DeltaLakeRetirementMigrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void aRunKilledInsideTheDeleteLoopDeletesThePipelineOnTheNextRun(String dialect) {
     try (Handle handle = open(dialect)) {
       Database db = seed(new Database(handle, dialect));
@@ -211,7 +192,7 @@ class DeltaLakeRetirementMigrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void leavesOtherServicesUntouched(String dialect) {
     try (Handle handle = open(dialect)) {
       Database db = seed(new Database(handle, dialect));
@@ -224,7 +205,7 @@ class DeltaLakeRetirementMigrationTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void secondRunChangesNothing(String dialect) {
     try (Handle handle = open(dialect)) {
       Database db = seed(new Database(handle, dialect));
@@ -258,20 +239,8 @@ class DeltaLakeRetirementMigrationTest {
     return others;
   }
 
-  private static Handle open(String dialect) {
-    return MYSQL_DIALECT.equals(dialect)
-        ? Jdbi.create(
-                "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-                    .formatted(MYSQL.getHost(), MYSQL.getMappedPort(3306), DATABASE),
-                "root",
-                PASSWORD)
-            .open()
-        : Jdbi.create(
-                "jdbc:postgresql://%s:%d/%s"
-                    .formatted(POSTGRES.getHost(), POSTGRES.getMappedPort(5432), DATABASE),
-                "postgres",
-                PASSWORD)
-            .open();
+  private static Handle open(final String dialect) {
+    return ScratchDatabasePerTest.jdbi().open();
   }
 
   private static Database seed(Database db) {

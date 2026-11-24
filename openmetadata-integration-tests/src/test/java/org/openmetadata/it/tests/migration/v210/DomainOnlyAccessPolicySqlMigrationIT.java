@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.migration.utils.v210;
+package org.openmetadata.it.tests.migration.v210;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -27,20 +27,17 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.openmetadata.it.tests.migration.ScratchDatabasePerTest;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Runs the 2.1.0 statement that adds the administration deny rule to {@code DomainOnlyAccessPolicy}
@@ -48,30 +45,14 @@ import org.testcontainers.utility.DockerImageName;
  * schemaChanges.sql}, and the added rule is compared with the seeded policy, so neither can drift
  * from what upgrades run.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class DomainOnlyAccessPolicySqlMigrationTest {
-  private static final String PASSWORD = "domain-policy-test";
-  private static final String DATABASE = "domain_policy_test";
+@ExtendWith(ScratchDatabasePerTest.class)
+class DomainOnlyAccessPolicySqlMigrationIT {
   private static final String POLICY = "DomainOnlyAccessPolicy";
   private static final String OTHER_POLICY = "OtherPolicy";
   private static final List<String> ADDED_RULES =
       List.of("DomainAccessDenyAdministrationRule", "DomainAccessDenyTeamAndUserRule");
   private static final String MYSQL_DIALECT = "mysql";
   private static final String POSTGRES_DIALECT = "postgres";
-
-  @Container
-  static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
-          .withEnv("MYSQL_DATABASE", DATABASE)
-          .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-          .withExposedPorts(3306);
-
-  @Container
-  static final GenericContainer<?> POSTGRES =
-      new GenericContainer<>(DockerImageName.parse("postgres:15"))
-          .withEnv("POSTGRES_DB", DATABASE)
-          .withEnv("POSTGRES_PASSWORD", PASSWORD)
-          .withExposedPorts(5432);
 
   private record Scenario(String description, List<Rule> rules, boolean appended) {
     @Override
@@ -83,7 +64,7 @@ class DomainOnlyAccessPolicySqlMigrationTest {
   static Stream<Arguments> scenarios() {
     Rule deny = shippedDeny();
     Rule allow = shippedAllow();
-    return Stream.of(MYSQL_DIALECT, POSTGRES_DIALECT)
+    return ScratchDatabasePerTest.laneDialect()
         .flatMap(
             dialect ->
                 Stream.of(
@@ -167,7 +148,7 @@ class DomainOnlyAccessPolicySqlMigrationTest {
   /** {@code rules} followed by the added rules as new installations are seeded with them. */
   private static List<Rule> withAddedRules(List<Rule> rules) {
     try (InputStream seed =
-        DomainOnlyAccessPolicySqlMigrationTest.class
+        DomainOnlyAccessPolicySqlMigrationIT.class
             .getClassLoader()
             .getResourceAsStream("json/data/policy/DomainAccessPolicy.json")) {
       List<Rule> result = new ArrayList<>(rules);
@@ -180,20 +161,8 @@ class DomainOnlyAccessPolicySqlMigrationTest {
     }
   }
 
-  private static Handle open(String dialect) {
-    return MYSQL_DIALECT.equals(dialect)
-        ? Jdbi.create(
-                "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-                    .formatted(MYSQL.getHost(), MYSQL.getMappedPort(3306), DATABASE),
-                "root",
-                PASSWORD)
-            .open()
-        : Jdbi.create(
-                "jdbc:postgresql://%s:%d/%s"
-                    .formatted(POSTGRES.getHost(), POSTGRES.getMappedPort(5432), DATABASE),
-                "postgres",
-                PASSWORD)
-            .open();
+  private static Handle open(final String dialect) {
+    return ScratchDatabasePerTest.jdbi().open();
   }
 
   private static void createPolicyTable(Handle handle, String dialect) {

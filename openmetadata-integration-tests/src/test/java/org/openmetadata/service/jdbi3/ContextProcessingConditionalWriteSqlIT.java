@@ -2,17 +2,19 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.UUID;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Article;
@@ -25,64 +27,43 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.PreconditionFailedException;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
-@Testcontainers
-@Isolated
-class ContextProcessingConditionalWriteSqlTest {
-  private static final String DATABASE = "context_processing";
-  private static final String PASSWORD = "context-processing-test";
+@Isolated("replaces the static Entity collection DAO and the page/contextFile repositories")
+class ContextProcessingConditionalWriteSqlIT {
+  private CollectionDAO originalDao;
+  private EntityRepository<Page> originalPageRepository;
+  private EntityRepository<ContextFile> originalContextFileRepository;
+
+  @BeforeEach
+  @SuppressWarnings("unchecked")
+  void captureSharedRegistry() {
+    originalDao = Entity.getCollectionDAO();
+    originalPageRepository = (EntityRepository<Page>) Entity.getEntityRepository(Entity.PAGE);
+    originalContextFileRepository =
+        (EntityRepository<ContextFile>) Entity.getEntityRepository(Entity.CONTEXT_FILE);
+  }
 
   @AfterEach
-  void tearDown() {
-    Entity.cleanup();
+  void restoreSharedRegistry() {
+    Entity.setCollectionDAO(originalDao);
+    Entity.registerEntity(Page.class, Entity.PAGE, originalPageRepository);
+    Entity.registerEntity(ContextFile.class, Entity.CONTEXT_FILE, originalContextFileRepository);
   }
 
   @Test
-  void fileProcessingPreservesConsolidatedEditsOnMysql() throws IOException {
-    try (GenericContainer<?> database =
-        new GenericContainer<>("mysql:8.4.13")
-            .withEnv("MYSQL_DATABASE", DATABASE)
-            .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-            .withEnv("MYSQL_ROOT_HOST", "%")
-            .withExposedPorts(3306)
-            .waitingFor(
-                Wait.forSuccessfulCommand(
-                    "mysql --protocol=TCP --host=127.0.0.1 --user=root --password="
-                        + PASSWORD
-                        + " --execute='SELECT 1'"))) {
-      database.start();
-      String url =
-          "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-              .formatted(database.getHost(), database.getMappedPort(3306), DATABASE);
-      runChecks(url, "root", "com.mysql.cj.jdbc.Driver", "mysql");
-    }
+  void fileProcessingPreservesConsolidatedEditsOnMysql() {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL only");
+    ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, "mysql"));
   }
 
   @Test
-  void fileProcessingPreservesConsolidatedEditsOnPostgres() throws IOException {
-    try (GenericContainer<?> database =
-        new GenericContainer<>("postgres:15")
-            .withEnv("POSTGRES_DB", DATABASE)
-            .withEnv("POSTGRES_PASSWORD", PASSWORD)
-            .withExposedPorts(5432)
-            .waitingFor(
-                Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2))) {
-      database.start();
-      String url =
-          "jdbc:postgresql://%s:%d/%s"
-              .formatted(database.getHost(), database.getMappedPort(5432), DATABASE);
-      runChecks(url, "postgres", "org.postgresql.Driver", "postgres");
-    }
+  void fileProcessingPreservesConsolidatedEditsOnPostgres() {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.POSTGRES, "PostgreSQL only");
+    ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, "postgres"));
   }
 
-  private void runChecks(String url, String username, String driver, String engine)
-      throws IOException {
-    Jdbi jdbi = Jdbi.create(url, username, PASSWORD).installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class).setSqlLocator(new ConnectionAwareAnnotationSqlLocator(driver));
+  private void runChecks(Jdbi jdbi, String engine) {
     Entity.setCollectionDAO(jdbi.onDemand(CollectionDAO.class));
     createTable(jdbi, engine, "context_file");
     createTable(jdbi, engine, "knowledge_center");
@@ -90,7 +71,7 @@ class ContextProcessingConditionalWriteSqlTest {
     assertPageWrites(jdbi);
   }
 
-  private void createTable(Jdbi jdbi, String engine, String table) throws IOException {
+  private void createTable(Jdbi jdbi, String engine, String table) {
     Path migration =
         Path.of(
             System.getProperty("basedir"),
@@ -102,7 +83,12 @@ class ContextProcessingConditionalWriteSqlTest {
             "2.0.0",
             engine,
             "schemaChanges.sql");
-    String schema = Files.readString(migration);
+    String schema;
+    try {
+      schema = Files.readString(migration);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
     int start = schema.indexOf("CREATE TABLE IF NOT EXISTS " + table + " (");
     String statement = schema.substring(start, schema.indexOf(';', start) + 1);
     jdbi.useHandle(handle -> handle.execute(statement));

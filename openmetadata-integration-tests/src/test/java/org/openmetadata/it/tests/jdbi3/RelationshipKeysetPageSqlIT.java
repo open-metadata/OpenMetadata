@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
@@ -24,21 +25,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Runs the relationship keyset page ({@code getAllRelationshipsAfter}) against real MySQL and
@@ -47,10 +39,7 @@ import org.testcontainers.utility.DockerImageName;
  * primary key, or every page re-reads the table up to the cursor and the walk grows with the square
  * of the table.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class RelationshipKeysetPageSqlTest {
-  private static final String PASSWORD = "relationship-keyset-test";
-  private static final String DATABASE = "relationship_keyset_test";
+class RelationshipKeysetPageSqlIT {
   private static final String MYSQL_DIALECT = "mysql";
   private static final String POSTGRES_DIALECT = "postgres";
   private static final int PAGE_SIZE = 7;
@@ -159,28 +148,6 @@ class RelationshipKeysetPageSqlTest {
           "CREATE INDEX idx_entity_relationship_memory_anchor ON entity_relationship"
               + " (fromId, relation) WHERE toEntity = 'contextMemory'");
 
-  @Container
-  static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
-          .withEnv("MYSQL_DATABASE", DATABASE)
-          .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-          .withEnv("MYSQL_ROOT_HOST", "%")
-          .withExposedPorts(3306)
-          .waitingFor(
-              Wait.forSuccessfulCommand(
-                  "mysql --protocol=TCP --host=127.0.0.1 --user=root --password="
-                      + PASSWORD
-                      + " --execute='SELECT 1'"));
-
-  @Container
-  static final GenericContainer<?> POSTGRES =
-      new GenericContainer<>(DockerImageName.parse("postgres:15"))
-          .withEnv("POSTGRES_DB", DATABASE)
-          .withEnv("POSTGRES_PASSWORD", PASSWORD)
-          .withExposedPorts(5432)
-          .waitingFor(
-              Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
-
   private record Key(String fromId, String toId, int relation, String relationType) {
     static Key of(CollectionDAO.EntityRelationshipObject row) {
       return new Key(row.getFromId(), row.getToId(), row.getRelation(), row.getRelationType());
@@ -192,27 +159,28 @@ class RelationshipKeysetPageSqlTest {
    * differs only in relation or relation type, so page boundaries fall inside those groups. The walk
    * must return every row exactly once, in key order.
    */
-  @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
-  void walkReturnsEveryRowOnceInKeyOrder(String dialect) {
-    try (Handle handle = open(dialect)) {
-      createTable(handle, dialect);
-      List<Key> seeded = seed(handle);
-      CollectionDAO.EntityRelationshipDAO dao =
-          handle.attach(CollectionDAO.EntityRelationshipDAO.class);
+  @Test
+  void walkReturnsEveryRowOnceInKeyOrder() {
+    String dialect = laneDialect();
+    ScratchDatabase.withDatabase(
+        handle -> {
+          createTable(handle, dialect);
+          List<Key> seeded = seed(handle);
+          CollectionDAO.EntityRelationshipDAO dao =
+              handle.attach(CollectionDAO.EntityRelationshipDAO.class);
 
-      List<Key> walked = new ArrayList<>();
-      Key cursor = new Key("", "", -1, "");
-      List<CollectionDAO.EntityRelationshipObject> page = next(dao, cursor);
-      while (!page.isEmpty()) {
-        page.forEach(row -> walked.add(Key.of(row)));
-        cursor = Key.of(page.getLast());
-        page = next(dao, cursor);
-      }
+          List<Key> walked = new ArrayList<>();
+          Key cursor = new Key("", "", -1, "");
+          List<CollectionDAO.EntityRelationshipObject> page = next(dao, cursor);
+          while (!page.isEmpty()) {
+            page.forEach(row -> walked.add(Key.of(row)));
+            cursor = Key.of(page.getLast());
+            page = next(dao, cursor);
+          }
 
-      assertEquals(keysInOrder(handle), walked, "every row once, in key order");
-      assertEquals(seeded.size(), walked.size());
-    }
+          assertEquals(keysInOrder(handle), walked, "every row once, in key order");
+          assertEquals(seeded.size(), walked.size());
+        });
   }
 
   /**
@@ -221,56 +189,62 @@ class RelationshipKeysetPageSqlTest {
    */
   @Test
   void postgresReadsEachPageAsARangeOfThePrimaryKey() {
-    try (Handle handle = open(POSTGRES_DIALECT)) {
-      createTable(handle, POSTGRES_DIALECT);
-      handle.execute(
-          "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)"
-              + " SELECT md5((g / 20)::text), md5(g::text), 'table', 'table', g % 20"
-              + " FROM generate_series(1, "
-              + PLAN_ROWS
-              + ") AS g");
-      handle.execute("ANALYZE entity_relationship");
-      Key cursor = cursorInTheMiddle(handle);
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.POSTGRES, "PostgreSQL only");
+    ScratchDatabase.withDatabase(
+        handle -> {
+          createTable(handle, POSTGRES_DIALECT);
+          handle.execute(
+              "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)"
+                  + " SELECT md5((g / 20)::text), md5(g::text), 'table', 'table', g % 20"
+                  + " FROM generate_series(1, "
+                  + PLAN_ROWS
+                  + ") AS g");
+          handle.execute("ANALYZE entity_relationship");
+          Key cursor = cursorInTheMiddle(handle);
 
-      JsonNode plan =
-          JsonUtils.readTree(
-                  explain(handle, "EXPLAIN (FORMAT JSON) ", ConnectionType.POSTGRES, cursor))
-              .get(0)
-              .get("Plan");
+          JsonNode plan =
+              JsonUtils.readTree(
+                      explain(handle, "EXPLAIN (FORMAT JSON) ", ConnectionType.POSTGRES, cursor))
+                  .get(0)
+                  .get("Plan");
 
-      JsonNode scan = findNode(plan, "Index Name");
-      assertNotNull(scan, "the page is an index scan: " + plan);
-      assertEquals("entity_relationship_pkey", scan.get("Index Name").asText(), plan.toString());
-      assertTrue(
-          scan.path("Index Cond").asText().contains(cursor.fromId()),
-          "the cursor bounds the index scan: " + plan);
-      assertFalse(plan.toString().contains("Sort"), "the page needs no sort: " + plan);
-    }
+          JsonNode scan = findNode(plan, "Index Name");
+          assertNotNull(scan, "the page is an index scan: " + plan);
+          assertEquals(
+              "entity_relationship_pkey", scan.get("Index Name").asText(), plan.toString());
+          assertTrue(
+              scan.path("Index Cond").asText().contains(cursor.fromId()),
+              "the cursor bounds the index scan: " + plan);
+          assertFalse(plan.toString().contains("Sort"), "the page needs no sort: " + plan);
+        });
   }
 
   /** MySQL keeps the expanded {@code OR} cursor, which it reads as a primary key range. */
   @Test
   void mysqlReadsEachPageAsARangeOfThePrimaryKey() {
-    try (Handle handle = open(MYSQL_DIALECT)) {
-      createTable(handle, MYSQL_DIALECT);
-      handle.execute("SET SESSION cte_max_recursion_depth = " + PLAN_ROWS);
-      handle.execute(
-          "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)"
-              + " WITH RECURSIVE g (n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM g WHERE n < "
-              + PLAN_ROWS
-              + ") SELECT md5(n DIV 20), md5(n), 'table', 'table', n % 20 FROM g");
-      handle.execute("ANALYZE TABLE entity_relationship");
-      Key cursor = cursorInTheMiddle(handle);
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL only");
+    ScratchDatabase.withDatabase(
+        handle -> {
+          createTable(handle, MYSQL_DIALECT);
+          handle.execute("SET SESSION cte_max_recursion_depth = " + PLAN_ROWS);
+          handle.execute(
+              "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation)"
+                  + " WITH RECURSIVE g (n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM g WHERE n < "
+                  + PLAN_ROWS
+                  + ") SELECT md5(n DIV 20), md5(n), 'table', 'table', n % 20 FROM g");
+          handle.execute("ANALYZE TABLE entity_relationship");
+          Key cursor = cursorInTheMiddle(handle);
 
-      JsonNode plan =
-          JsonUtils.readTree(explain(handle, "EXPLAIN FORMAT=JSON ", ConnectionType.MYSQL, cursor));
+          JsonNode plan =
+              JsonUtils.readTree(
+                  explain(handle, "EXPLAIN FORMAT=JSON ", ConnectionType.MYSQL, cursor));
 
-      JsonNode table = findNode(plan, "access_type");
-      assertNotNull(table, plan.toString());
-      assertEquals("PRIMARY", table.path("key").asText(), plan.toString());
-      assertEquals("range", table.path("access_type").asText(), plan.toString());
-      assertFalse(plan.toString().contains("\"using_filesort\":true"), plan.toString());
-    }
+          JsonNode table = findNode(plan, "access_type");
+          assertNotNull(table, plan.toString());
+          assertEquals("PRIMARY", table.path("key").asText(), plan.toString());
+          assertEquals("range", table.path("access_type").asText(), plan.toString());
+          assertFalse(plan.toString().contains("\"using_filesort\":true"), plan.toString());
+        });
   }
 
   private static List<CollectionDAO.EntityRelationshipObject> next(
@@ -384,21 +358,7 @@ class RelationshipKeysetPageSqlTest {
     return new UUID(0L, n).toString();
   }
 
-  private static Handle open(String dialect) {
-    boolean mysql = MYSQL_DIALECT.equals(dialect);
-    String url =
-        mysql
-            ? "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-                .formatted(MYSQL.getHost(), MYSQL.getMappedPort(3306), DATABASE)
-            : "jdbc:postgresql://%s:%d/%s"
-                .formatted(POSTGRES.getHost(), POSTGRES.getMappedPort(5432), DATABASE);
-    Jdbi jdbi =
-        Jdbi.create(url, mysql ? "root" : "postgres", PASSWORD)
-            .installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(
-            new ConnectionAwareAnnotationSqlLocator(
-                mysql ? "com.mysql.cj.jdbc.Driver" : "org.postgresql.Driver"));
-    return jdbi.open();
+  private static String laneDialect() {
+    return ScratchDatabase.dialect() == ConnectionType.MYSQL ? MYSQL_DIALECT : POSTGRES_DIALECT;
   }
 }

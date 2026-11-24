@@ -11,31 +11,31 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.migration.utils.v208;
+package org.openmetadata.it.tests.migration.v208;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.List;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.tests.migration.ScratchDatabasePerTest;
+import org.openmetadata.it.util.ScratchDatabase;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
 
 /**
  * Runs the alignment on a real MySQL server, against the column states upgraded databases are in.
  * An unchanged InnoDB table id means MySQL did not copy the table.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class EntityExtensionCollationAlignmentTest {
-  private static final String PASSWORD = "collation-alignment-test";
+@ExtendWith(ScratchDatabasePerTest.class)
+class EntityExtensionCollationAlignmentIT implements ScratchDatabasePerTest.Target {
   private static final String DATABASE = "collation_test";
   private static final String ASCII_COLUMN = "VARCHAR(512) CHARACTER SET ascii COLLATE ascii_bin";
   private static final String DEFAULT_COLUMN = "VARCHAR(512)";
@@ -44,30 +44,19 @@ class EntityExtensionCollationAlignmentTest {
   private static final String ENTITY = "2f4c7a1e-0000-4000-8000-000000000001";
   private static final String OTHER_ENTITY = "2f4c7a1e-0000-4000-8000-000000000002";
 
-  @Container
-  static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
-          .withEnv("MYSQL_DATABASE", DATABASE)
-          .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-          .withExposedPorts(3306);
-
   private Handle handle;
 
-  @BeforeEach
-  void setUp() {
-    handle =
-        Jdbi.create(
-                "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-                    .formatted(MYSQL.getHost(), MYSQL.getMappedPort(3306), DATABASE),
-                "root",
-                PASSWORD)
-            .open();
-    handle.execute("DROP TABLE IF EXISTS entity_extension");
+  @Override
+  public void useScratchDatabase(Jdbi jdbi) {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL only");
+    handle = jdbi.open();
   }
 
   @AfterEach
   void tearDown() {
-    handle.close();
+    if (handle != null) {
+      handle.close();
+    }
   }
 
   @Test

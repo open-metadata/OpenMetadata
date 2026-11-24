@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.sql.ResultSet;
@@ -29,21 +30,18 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.openmetadata.it.tests.migration.ScratchDatabasePerTest;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
 /**
  * Runs the 2.1.0 lineage edge clean-up against real MySQL and PostgreSQL, on the relationship table
@@ -52,10 +50,8 @@ import org.testcontainers.utility.DockerImageName;
  * only non-pipeline references of lineage edges, and each page must be a range read of the primary
  * key, or the scan grows with the square of the table.
  */
-@Testcontainers(disabledWithoutDocker = true)
-class LineageEdgePipelineCleanupMigrationTest {
-  private static final String PASSWORD = "lineage-cleanup-test";
-  private static final String DATABASE = "lineage_cleanup_test";
+@ExtendWith(ScratchDatabasePerTest.class)
+class LineageEdgePipelineCleanupMigrationIT {
   private static final String MYSQL_DIALECT = "mysql";
   private static final String POSTGRES_DIALECT = "postgres";
   private static final int UPSTREAM = Relationship.UPSTREAM.ordinal();
@@ -143,35 +139,13 @@ class LineageEdgePipelineCleanupMigrationTest {
               + " AND deleted = FALSE",
           "CREATE INDEX idx_entity_relationship_memory_anchor ON entity_relationship (fromId, relation) WHERE toEntity = 'contextMemory'");
 
-  @Container
-  static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
-          .withEnv("MYSQL_DATABASE", DATABASE)
-          .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-          .withEnv("MYSQL_ROOT_HOST", "%")
-          .withExposedPorts(3306)
-          .waitingFor(
-              Wait.forSuccessfulCommand(
-                  "mysql --protocol=TCP --host=127.0.0.1 --user=root --password="
-                      + PASSWORD
-                      + " --execute='SELECT 1'"));
-
-  @Container
-  static final GenericContainer<?> POSTGRES =
-      new GenericContainer<>(DockerImageName.parse("postgres:15"))
-          .withEnv("POSTGRES_DB", DATABASE)
-          .withEnv("POSTGRES_PASSWORD", PASSWORD)
-          .withExposedPorts(5432)
-          .waitingFor(
-              Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
-
   /** A seeded edge and whether the step must clear its pipeline reference. */
   private record Seeded(Key key, LineageDetails details, boolean cleared) {}
 
   private record Key(String fromId, String toId, int relation, String relationType) {}
 
   @ParameterizedTest
-  @ValueSource(strings = {MYSQL_DIALECT, POSTGRES_DIALECT})
+  @MethodSource("org.openmetadata.it.tests.migration.ScratchDatabasePerTest#laneDialect")
   void clearsOnlyNonPipelineLineageReferencesInEveryBatchAndIsIdempotent(String dialect) {
     try (Handle handle = open(dialect)) {
       createTable(handle, dialect);
@@ -202,6 +176,7 @@ class LineageEdgePipelineCleanupMigrationTest {
    */
   @Test
   void postgresReadsEachPageAsARangeOfThePrimaryKey() {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.POSTGRES, "PostgreSQL only");
     try (Handle handle = open(POSTGRES_DIALECT)) {
       createTable(handle, POSTGRES_DIALECT);
       handle.execute(
@@ -232,6 +207,7 @@ class LineageEdgePipelineCleanupMigrationTest {
   /** MySQL keeps the expanded {@code OR} cursor, which it reads as a primary key range. */
   @Test
   void mysqlReadsEachPageAsARangeOfThePrimaryKey() {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL only");
     try (Handle handle = open(MYSQL_DIALECT)) {
       createTable(handle, MYSQL_DIALECT);
       handle.execute("SET SESSION cte_max_recursion_depth = " + PLAN_ROWS);
@@ -390,19 +366,7 @@ class LineageEdgePipelineCleanupMigrationTest {
     return new UUID(0L, n).toString();
   }
 
-  private static Handle open(String dialect) {
-    return MYSQL_DIALECT.equals(dialect)
-        ? Jdbi.create(
-                "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-                    .formatted(MYSQL.getHost(), MYSQL.getMappedPort(3306), DATABASE),
-                "root",
-                PASSWORD)
-            .open()
-        : Jdbi.create(
-                "jdbc:postgresql://%s:%d/%s"
-                    .formatted(POSTGRES.getHost(), POSTGRES.getMappedPort(5432), DATABASE),
-                "postgres",
-                PASSWORD)
-            .open();
+  private static Handle open(final String dialect) {
+    return ScratchDatabasePerTest.jdbi().open();
   }
 }

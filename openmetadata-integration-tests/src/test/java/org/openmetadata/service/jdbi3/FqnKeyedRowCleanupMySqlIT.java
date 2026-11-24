@@ -15,95 +15,77 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.service.jdbi3.FqnKeyedRowCleanup.EntityTable;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Testcontainers;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 /**
  * Runs the cleanup's UNION probes on a MySQL server whose default collation is not the one newer
  * tables declare. The three tables carry the hash collations a real install mixes: ascii_bin, a
  * table declared utf8mb4_0900_ai_ci, and query_entity's column, which takes the server default.
  */
-@Testcontainers(disabledWithoutDocker = true)
 @Execution(ExecutionMode.SAME_THREAD)
-class FqnKeyedRowCleanupMySqlTest {
+class FqnKeyedRowCleanupMySqlIT {
   private static final String DATABASE = "fqn_cleanup";
-  private static final String PASSWORD = "fqn-cleanup-test";
   private static final String HASH = "h0.h1";
   private static final Map<String, String> BINDINGS = Map.of("hash0", HASH);
   private static final List<String> TABLE_NAMES =
       List.of("test_suite", "ai_application_entity", "query_entity");
 
-  private static GenericContainer<?> database;
-  private static ClassificationTagDAOs.TagUsageDAO tagUsage;
-
-  @BeforeAll
-  static void startMySql() {
-    database =
-        new GenericContainer<>("mysql:8.4.13")
-            .withEnv("MYSQL_DATABASE", DATABASE)
-            .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-            .withEnv("MYSQL_ROOT_HOST", "%")
-            .withCommand("--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci")
-            .withExposedPorts(3306)
-            .waitingFor(
-                Wait.forSuccessfulCommand(
-                    "mysql --protocol=TCP --host=127.0.0.1 --user=root --password=%s --execute='SELECT 1'"
-                        .formatted(PASSWORD)));
-    database.start();
-    Jdbi jdbi =
-        Jdbi.create(
-            "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-                .formatted(database.getHost(), database.getMappedPort(3306), DATABASE),
-            "root",
-            PASSWORD);
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator("com.mysql.cj.jdbc.Driver"));
-    seedTables(jdbi);
-    tagUsage = jdbi.onDemand(ClassificationTagDAOs.TagUsageDAO.class);
-  }
-
-  @AfterAll
-  static void stopMySql() {
-    database.stop();
-  }
-
   @Test
   void bareHashColumnsOfMixedCollationsCannotBeUnioned() {
-    UnableToExecuteStatementException error =
-        assertThrows(UnableToExecuteStatementException.class, () -> namesakeHashes(false));
-    assertTrue(error.getMessage().contains("Illegal mix of collations"), error.getMessage());
+    withSeededTagUsage(
+        tagUsage -> {
+          UnableToExecuteStatementException error =
+              assertThrows(
+                  UnableToExecuteStatementException.class, () -> namesakeHashes(tagUsage, false));
+          assertTrue(error.getMessage().contains("Illegal mix of collations"), error.getMessage());
+        });
   }
 
   @Test
   void theNamesakeProbeFindsTheHashInEveryTable() {
-    assertEquals(List.of(HASH, HASH, HASH), namesakeHashes(true));
+    withSeededTagUsage(
+        tagUsage -> assertEquals(List.of(HASH, HASH, HASH), namesakeHashes(tagUsage, true)));
   }
 
   @Test
   void theNestedProbeFindsTheRowsUnderAPrefixInEveryTable() {
-    List<String> hashes =
-        tagUsage.listEntityFqnHashes(
-            FqnKeyedRowCleanup.allUnderProbes(tables(true), "under", 10), Map.of("under", "h0.%"));
-    assertEquals(List.of(HASH, HASH, HASH), hashes);
+    withSeededTagUsage(
+        tagUsage -> {
+          List<String> hashes =
+              tagUsage.listEntityFqnHashes(
+                  FqnKeyedRowCleanup.allUnderProbes(tables(true), "under", 10),
+                  Map.of("under", "h0.%"));
+          assertEquals(List.of(HASH, HASH, HASH), hashes);
+        });
   }
 
-  private static List<String> namesakeHashes(boolean onMySql) {
+  private static void withSeededTagUsage(Consumer<ClassificationTagDAOs.TagUsageDAO> body) {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL only");
+    ScratchDatabase.withJdbi(
+        jdbi -> {
+          jdbi.useHandle(
+              handle ->
+                  handle.execute(
+                      "ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"));
+          seedTables(jdbi);
+          body.accept(jdbi.onDemand(ClassificationTagDAOs.TagUsageDAO.class));
+        });
+  }
+
+  private static List<String> namesakeHashes(
+      ClassificationTagDAOs.TagUsageDAO tagUsage, boolean onMySql) {
     return tagUsage.listEntityFqnHashes(
         FqnKeyedRowCleanup.inProbes(tables(onMySql), BINDINGS.keySet()), BINDINGS);
   }

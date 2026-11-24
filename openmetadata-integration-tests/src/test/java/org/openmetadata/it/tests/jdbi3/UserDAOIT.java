@@ -11,81 +11,35 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
-import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.statement.SqlStatements;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.MockedStatic;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UserDAO;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
 
-@Testcontainers(disabledWithoutDocker = true)
-class UserDAOTest {
-  private static final String DATABASE = "user_dao_test";
-  private static final String PASSWORD = "user-dao-test";
+class UserDAOIT {
   private static final String FIRST_DOMAIN = UUID.randomUUID().toString();
   private static final String SECOND_DOMAIN = UUID.randomUUID().toString();
   private static final String TEAM = "engineering";
   private static final int PAGE_SIZE = 2;
-
-  @Container
-  static final GenericContainer<?> POSTGRES_CONTAINER =
-      new GenericContainer<>(DockerImageName.parse("postgres:15"))
-          .withEnv("POSTGRES_DB", DATABASE)
-          .withEnv("POSTGRES_PASSWORD", PASSWORD)
-          .withExposedPorts(5432)
-          .waitingFor(
-              Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
-
-  @Container
-  static final GenericContainer<?> MYSQL_CONTAINER =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
-          .withEnv("MYSQL_DATABASE", DATABASE)
-          .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-          .withExposedPorts(3306)
-          .waitingFor(Wait.forLogMessage(".*ready for connections.*port: 3306.*\\n", 1))
-          .withStartupTimeout(Duration.ofMinutes(2));
-
-  @BeforeAll
-  static void initializeDatabases() {
-    for (final ConnectionType database : ConnectionType.values()) {
-      try (Handle handle = openHandle(database)) {
-        createTables(handle, database);
-        seedUsers(handle);
-      }
-    }
-  }
 
   @ParameterizedTest
   @MethodSource("domainFilters")
@@ -95,12 +49,14 @@ class UserDAOTest {
       boolean domainAccessControl,
       String team,
       List<String> expectedNames) {
-    try (Handle handle = openHandle(database);
-        MockedStatic<DatasourceConfig> ignored = useSqlFor(database)) {
-      final UserDAO dao = handle.attach(UserDAO.class);
-      assertEquals(
-          expectedNames.size(), dao.listCount(userFilter(domainIds, domainAccessControl, team)));
-    }
+    withSeededHandle(
+        database,
+        handle -> {
+          final UserDAO dao = handle.attach(UserDAO.class);
+          assertEquals(
+              expectedNames.size(),
+              dao.listCount(userFilter(domainIds, domainAccessControl, team)));
+        });
   }
 
   @ParameterizedTest
@@ -111,20 +67,22 @@ class UserDAOTest {
       boolean domainAccessControl,
       String team,
       List<String> expectedNames) {
-    try (Handle handle = openHandle(database);
-        MockedStatic<DatasourceConfig> ignored = useSqlFor(database)) {
-      final UserDAO dao = handle.attach(UserDAO.class);
-      final ListFilter filter = userFilter(domainIds, domainAccessControl, team);
-      final List<User> firstPage = users(dao.listAfter(filter, PAGE_SIZE, "", ""));
-      final int split = Math.min(PAGE_SIZE, expectedNames.size());
-      assertEquals(expectedNames.subList(0, split), names(firstPage));
-      final User cursor = firstPage.getLast();
-      assertEquals(
-          expectedNames.subList(split, expectedNames.size()),
-          names(
-              users(
-                  dao.listAfter(filter, PAGE_SIZE, cursor.getName(), cursor.getId().toString()))));
-    }
+    withSeededHandle(
+        database,
+        handle -> {
+          final UserDAO dao = handle.attach(UserDAO.class);
+          final ListFilter filter = userFilter(domainIds, domainAccessControl, team);
+          final List<User> firstPage = users(dao.listAfter(filter, PAGE_SIZE, "", ""));
+          final int split = Math.min(PAGE_SIZE, expectedNames.size());
+          assertEquals(expectedNames.subList(0, split), names(firstPage));
+          final User cursor = firstPage.getLast();
+          assertEquals(
+              expectedNames.subList(split, expectedNames.size()),
+              names(
+                  users(
+                      dao.listAfter(
+                          filter, PAGE_SIZE, cursor.getName(), cursor.getId().toString()))));
+        });
   }
 
   @ParameterizedTest
@@ -135,24 +93,26 @@ class UserDAOTest {
       boolean domainAccessControl,
       String team,
       List<String> expectedNames) {
-    try (Handle handle = openHandle(database);
-        MockedStatic<DatasourceConfig> ignored = useSqlFor(database)) {
-      final UserDAO dao = handle.attach(UserDAO.class);
-      final ListFilter filter = userFilter(domainIds, domainAccessControl, team);
-      final List<User> lastPage = users(dao.listBefore(filter, PAGE_SIZE, "zz", ""));
-      final int split = Math.max(0, expectedNames.size() - PAGE_SIZE);
-      assertEquals(expectedNames.subList(split, expectedNames.size()), names(lastPage));
-      final User cursor = lastPage.getFirst();
-      assertEquals(
-          expectedNames.subList(0, split),
-          names(
-              users(
-                  dao.listBefore(filter, PAGE_SIZE, cursor.getName(), cursor.getId().toString()))));
-    }
+    withSeededHandle(
+        database,
+        handle -> {
+          final UserDAO dao = handle.attach(UserDAO.class);
+          final ListFilter filter = userFilter(domainIds, domainAccessControl, team);
+          final List<User> lastPage = users(dao.listBefore(filter, PAGE_SIZE, "zz", ""));
+          final int split = Math.max(0, expectedNames.size() - PAGE_SIZE);
+          assertEquals(expectedNames.subList(split, expectedNames.size()), names(lastPage));
+          final User cursor = lastPage.getFirst();
+          assertEquals(
+              expectedNames.subList(0, split),
+              names(
+                  users(
+                      dao.listBefore(
+                          filter, PAGE_SIZE, cursor.getName(), cursor.getId().toString()))));
+        });
   }
 
   private static Stream<Arguments> domainFilters() {
-    return Stream.of(POSTGRES, MYSQL)
+    return Stream.of(ScratchDatabase.dialect())
         .flatMap(
             database ->
                 Stream.of(
@@ -186,31 +146,13 @@ class UserDAOTest {
         .addQueryParam("team", team);
   }
 
-  // ListFilter picks the SQL dialect from the server's datasource, which no test sets up
-  private static MockedStatic<DatasourceConfig> useSqlFor(ConnectionType database) {
-    final DatasourceConfig config = mock(DatasourceConfig.class);
-    when(config.isMySQL()).thenReturn(database == MYSQL);
-    final MockedStatic<DatasourceConfig> datasource = mockStatic(DatasourceConfig.class);
-    datasource.when(DatasourceConfig::getInstance).thenReturn(config);
-    return datasource;
-  }
-
-  private static Handle openHandle(ConnectionType database) {
-    final String jdbcUrl =
-        database == POSTGRES
-            ? "jdbc:postgresql://%s:%d/%s"
-                .formatted(
-                    POSTGRES_CONTAINER.getHost(), POSTGRES_CONTAINER.getMappedPort(5432), DATABASE)
-            : "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-                .formatted(
-                    MYSQL_CONTAINER.getHost(), MYSQL_CONTAINER.getMappedPort(3306), DATABASE);
-    final Jdbi jdbi =
-        Jdbi.create(jdbcUrl, database == POSTGRES ? "postgres" : "root", PASSWORD)
-            .installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(database.label));
-    return jdbi.open();
+  private static void withSeededHandle(ConnectionType database, Consumer<Handle> body) {
+    ScratchDatabase.withDatabase(
+        handle -> {
+          createTables(handle, database);
+          seedUsers(handle);
+          body.accept(handle);
+        });
   }
 
   private static void createTables(Handle handle, ConnectionType database) {
