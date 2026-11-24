@@ -34,8 +34,11 @@ import static org.openmetadata.it.tests.GlossaryTagChildFixtures.setColumnLabels
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
@@ -43,14 +46,24 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.APIServiceTestFactory;
 import org.openmetadata.it.tests.GlossaryTagChildFixtures.Fixture;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.CreateAPICollection;
+import org.openmetadata.schema.api.data.CreateAPIEndpoint;
+import org.openmetadata.schema.entity.data.APICollection;
+import org.openmetadata.schema.entity.data.APIEndpoint;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.type.APIRequestMethod;
+import org.openmetadata.schema.type.APISchema;
+import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.models.ListParams;
@@ -79,6 +92,10 @@ public class GlossaryTagChildPropagationIT {
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
   private static final String COLUMN_INDEX = "column_search_index";
   private static final String TEST_CASE_INDEX = "test_case_search_index";
+  private static final String API_SCHEMA_FIELDS_WITH_TAGS = "requestSchema,responseSchema,tags";
+  private static final String REQUEST_API_FIELD = "payload";
+  private static final String NESTED_API_FIELD = "customer_id";
+  private static final String RESPONSE_API_FIELD = "status";
 
   @Test
   void termOnTable_isReturnedOnEveryColumnIncludingNested(TestNamespace ns) throws Exception {
@@ -164,6 +181,90 @@ public class GlossaryTagChildPropagationIT {
         .filter(candidate -> table.getId().equals(candidate.getId()))
         .findFirst()
         .orElseThrow(() -> new AssertionError("table missing from the list: " + listed));
+  }
+
+  /**
+   * An API endpoint's schema fields sit under {@code <endpoint>.requestSchema} and {@code
+   * <endpoint>.responseSchema}, not directly under the endpoint, and still inherit its terms.
+   */
+  @Test
+  void termOnApiEndpoint_isReturnedOnRequestAndResponseSchemaFields(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    APICollection collection = createApiCollection(client, ns);
+    APIEndpoint endpoint = createEndpointWithNestedFields(client, ns, collection);
+    GlossaryTerm term = createTerm(client, ns, "api");
+
+    APIEndpoint toTag = client.apiEndpoints().get(endpoint.getId().toString(), "tags");
+    List<TagLabel> tags = new ArrayList<>(Optional.ofNullable(toTag.getTags()).orElse(List.of()));
+    tags.add(label(term, TagLabel.LabelType.MANUAL));
+    toTag.setTags(tags);
+    client.apiEndpoints().update(toTag.getId(), toTag);
+
+    assertSchemaFieldsInheritTerm(
+        client.apiEndpoints().get(endpoint.getId().toString(), API_SCHEMA_FIELDS_WITH_TAGS),
+        term,
+        "get");
+    ListParams params = new ListParams().setFields(API_SCHEMA_FIELDS_WITH_TAGS).setLimit(10);
+    params.addQueryParam("apiCollection", collection.getFullyQualifiedName());
+    APIEndpoint listed =
+        client.apiEndpoints().list(params).getData().stream()
+            .filter(candidate -> endpoint.getId().equals(candidate.getId()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("endpoint missing from the list"));
+    assertSchemaFieldsInheritTerm(listed, term, "list");
+  }
+
+  private static APICollection createApiCollection(OpenMetadataClient client, TestNamespace ns) {
+    ApiService service = APIServiceTestFactory.createRest(ns);
+    return client
+        .apiCollections()
+        .create(
+            new CreateAPICollection()
+                .withName(ns.shortPrefix("prop_apicol"))
+                .withService(service.getFullyQualifiedName())
+                .withEndpointURL(URI.create("https://localhost:8585/api/v1")));
+  }
+
+  private static APIEndpoint createEndpointWithNestedFields(
+      OpenMetadataClient client, TestNamespace ns, APICollection collection) {
+    Field nested = new Field().withName(NESTED_API_FIELD).withDataType(FieldDataType.STRING);
+    Field requestField =
+        new Field()
+            .withName(REQUEST_API_FIELD)
+            .withDataType(FieldDataType.RECORD)
+            .withChildren(List.of(nested));
+    Field responseField = new Field().withName(RESPONSE_API_FIELD).withDataType(FieldDataType.INT);
+    return client
+        .apiEndpoints()
+        .create(
+            new CreateAPIEndpoint()
+                .withName(ns.shortPrefix("prop_api"))
+                .withApiCollection(collection.getFullyQualifiedName())
+                .withEndpointURL(URI.create("https://localhost:8585/api/v1/prop"))
+                .withRequestMethod(APIRequestMethod.POST)
+                .withRequestSchema(new APISchema().withSchemaFields(List.of(requestField)))
+                .withResponseSchema(new APISchema().withSchemaFields(List.of(responseField))));
+  }
+
+  private static void assertSchemaFieldsInheritTerm(
+      APIEndpoint endpoint, GlossaryTerm term, String read) {
+    Field requestField = endpoint.getRequestSchema().getSchemaFields().get(0);
+    List<Field> fields =
+        List.of(
+            requestField,
+            requestField.getChildren().get(0),
+            endpoint.getResponseSchema().getSchemaFields().get(0));
+    for (Field field : fields) {
+      TagLabel inherited =
+          Optional.ofNullable(field.getTags()).orElse(List.of()).stream()
+              .filter(tag -> term.getFullyQualifiedName().equals(tag.getTagFQN()))
+              .findFirst()
+              .orElseThrow(
+                  () ->
+                      new AssertionError(
+                          read + ": field " + field.getName() + " lacks the endpoint's term"));
+      assertEquals(TagLabel.LabelType.DERIVED, inherited.getLabelType(), read);
+    }
   }
 
   @Test

@@ -96,7 +96,7 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
         throwException(ex);
       }
 
-      return getResponse(response, ex);
+      return getTypedResponse(response, webServiceException);
     } else if (ex instanceof WebApplicationException webApplicationException) {
       final Response response = webApplicationException.getResponse();
       Family family = response.getStatusInfo().getFamily();
@@ -119,6 +119,22 @@ public class CatalogGenericExceptionMapper implements ExceptionMapper<Throwable>
     return Response.fromResponse(response)
         .type(APPLICATION_JSON_TYPE)
         .entity(new ErrorMessage(response.getStatus(), ex.getLocalizedMessage()))
+        .build();
+  }
+
+  /**
+   * Keeps the error type a client branches on, such as SETTINGS_MANAGED_BY_ENVIRONMENT.
+   * ADR:2026-11-14-typed-client-errors-preserve-their-error-type
+   */
+  private Response getTypedResponse(Response response, WebServiceException ex) {
+    if (ex.getErrorType() == null) {
+      return getResponse(response, ex);
+    }
+    return Response.fromResponse(response)
+        .type(APPLICATION_JSON_TYPE)
+        .entity(
+            new WebServiceException.ErrorMessage(
+                response.getStatus(), ex.getErrorType(), ex.getLocalizedMessage()))
         .build();
   }
 

@@ -13,10 +13,9 @@
 import {
   Autocomplete,
   Box,
-  Button,
+  ButtonUtility,
   FormSelectItem,
   Select,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
@@ -197,15 +196,13 @@ export const ClassicTestCaseFilter = ({
             />
           )}
           {selection.selectedValues.length > 0 && (
-            <Tooltip title={t('label.clear')}>
-              <Button
-                aria-label={t('label.clear') + ' ' + filter.label}
-                color="tertiary"
-                iconLeading={XClose}
-                size="xs"
-                onPress={() => filter.onChange(undefined)}
-              />
-            </Tooltip>
+            <ButtonUtility
+              aria-label={t('label.clear') + ' ' + filter.label}
+              icon={XClose}
+              size="xs"
+              tooltip={t('label.clear')}
+              onPress={() => filter.onChange(undefined)}
+            />
           )}
         </Box>
       )}

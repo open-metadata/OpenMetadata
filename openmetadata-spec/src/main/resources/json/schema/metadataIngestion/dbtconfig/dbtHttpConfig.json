@@ -37,7 +37,8 @@
       "description": "Custom HTTP headers to include in every request when fetching dbt artifacts (e.g. Authorization for private GitLab/GitHub repos).",
       "type": "object",
       "additionalProperties": {
-        "type": "string"
+        "type": "string",
+        "format": "password"
       }
     },
     "dbtVerifySSL": {

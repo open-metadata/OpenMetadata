@@ -21,12 +21,14 @@ import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.exceptions.XMLException;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.ExpiryTimer;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -55,6 +57,22 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   private static final String CREATE_AND_RUN_INGESTION_PIPELINE_TASK =
       "createAndRunIngestionPipelineTask";
 
+  /**
+   * Subtypes whose delegates dereference the deserialized {@code recognizerFeedback} workflow
+   * variable (and so NPE without a null guard when the variable is missing). The schema for these
+   * nodes declares every {@code inputNamespaceMap} key as {@code required} with a {@code "global"}
+   * default — but only when the map itself is present. Deploying such a node with the
+   * {@code inputNamespaceMap} absent leaves the delegate reading {@code null} feedback and failing
+   * at runtime, so this shape is rejected by {@link #validateRecognizerFeedbackInputNamespaceMap}
+   * on creation and on graph-changing updates; a stored definition that predates the rule can still
+   * be edited for unrelated fields, with the delegate null-guard as a safety net.
+   */
+  private static final Set<String> RECOGNIZER_FEEDBACK_NODE_SUBTYPES =
+      Set.of(
+          "applyRecognizerFeedbackTask",
+          "rejectRecognizerFeedbackTask",
+          "createRecognizerFeedbackApprovalTask");
+
   public WorkflowDefinitionRepository() {
     super(
         WorkflowDefinitionResource.COLLECTION_PATH,
@@ -68,6 +86,40 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   @Override
   public List<WorkflowDefinition> getEntitiesFromSeedData() throws IOException {
     return getEntitiesFromSeedData(".*json/data/governance/workflows/.*\\.json$");
+  }
+
+  /** Runs on every start, after seed data, so the deployed workflows follow this server's code. */
+  public void deployChangedWorkflows() {
+    final List<String> deployed = WorkflowHandler.getInstance().deployChanged(listReadable());
+    LOG.info(
+        "Deployed {} workflow(s) that changed since their last deployment: {}",
+        deployed.size(),
+        deployed);
+  }
+
+  /**
+   * The stored, non-deleted workflows this server can read. A definition it cannot read, such as
+   * one with a node type from another version, is logged and left out, so it does not stop the
+   * others.
+   */
+  public List<WorkflowDefinition> listReadable() {
+    return readable(
+        getDao().listAfter(new ListFilter(Include.NON_DELETED), Integer.MAX_VALUE, "", ""));
+  }
+
+  static List<WorkflowDefinition> readable(List<String> storedDefinitions) {
+    final List<WorkflowDefinition> workflows = new ArrayList<>();
+    for (final String json : storedDefinitions) {
+      try {
+        workflows.add(JsonUtils.readValue(json, WorkflowDefinition.class));
+      } catch (JsonParsingException e) {
+        LOG.error(
+            "Skipping workflow '{}': this server cannot read its stored definition",
+            JsonUtils.readTree(json).path("name").asText(),
+            e);
+      }
+    }
+    return List.copyOf(workflows);
   }
 
   @Override
@@ -160,6 +212,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     WorkflowSinkSecrets.encrypt(original, updated);
     if (changesWorkflowGraph(original, updated)) {
       validateBatchAndSinkRules(updated);
+      validateRecognizerFeedbackInputNamespaceMap(updated);
     }
     return new WorkflowDefinitionRepository.WorkflowDefinitionUpdater(original, updated, operation);
   }
@@ -258,6 +311,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
   private static void prepareForCreate(WorkflowDefinition entity) {
     validateBatchAndSinkRules(entity);
+    validateRecognizerFeedbackInputNamespaceMap(entity);
     WorkflowDefinitionSecretGuards.requireNoMaskedSecrets(entity);
     WorkflowDefinitionSecretGuards.requireNoEncryptedSecrets(entity);
     WorkflowSinkSecrets.encrypt(entity);
@@ -292,6 +346,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   public void validateWorkflow(WorkflowDefinition workflowDefinition) {
     validateWorkflowStructure(workflowDefinition);
     validateBatchAndSinkRules(workflowDefinition);
+    validateRecognizerFeedbackInputNamespaceMap(workflowDefinition);
   }
 
   private void validateWorkflowStructure(WorkflowDefinition workflowDefinition) {
@@ -504,6 +559,37 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateBatchExecution(workflowDefinition);
     // Provider capabilities determine the entity types a sink can sync
     validateSinkEntityTypes(workflowDefinition);
+  }
+
+  /**
+   * Rejects a recognizer-feedback node deployed without an {@code inputNamespaceMap}: its delegate
+   * dereferences the deserialized {@code recognizerFeedback} variable and NPEs when the map is
+   * absent. Gated to creation and graph-changing updates (see {@link #changesWorkflowGraph}) so a
+   * stored definition that predates this rule can still be edited for unrelated fields; the
+   * runtime null-guard in the delegates remains as a safety net for those older definitions.
+   */
+  private static void validateRecognizerFeedbackInputNamespaceMap(
+      WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getNodes() == null || workflowDefinition.getNodes().isEmpty()) {
+      return;
+    }
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      if (!RECOGNIZER_FEEDBACK_NODE_SUBTYPES.contains(node.getSubType())) {
+        continue;
+      }
+      Map<String, String> inputNamespaceMap =
+          JsonUtils.readOrConvertValue(node.getInputNamespaceMap(), Map.class);
+      if (inputNamespaceMap == null) {
+        throw BadRequestException.of(
+            String.format(
+                "Invalid Workflow: Node '%s' of subType '%s' requires an inputNamespaceMap that "
+                    + "maps recognizerFeedback (and the related inputs) to a namespace, but the "
+                    + "inputNamespaceMap was omitted; provide an inputNamespaceMap with at least "
+                    + "{\"relatedEntity\":\"global\", \"updatedBy\":\"global\", "
+                    + "\"triggeringObjectId\":\"global\", \"recognizerFeedback\":\"global\"}",
+                node.getName(), node.getSubType()));
+      }
+    }
   }
 
   /** Checked on write only: a stored definition that fails it is still deployed and run. */

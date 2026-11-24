@@ -136,14 +136,24 @@ const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
   return maybeDefault ?? (mod as Record<string, unknown>);
 };
 
+const CSV_ESCAPE_CHAR_UI_SCHEMA = {
+  csvEscapeChar: {
+    'ui:emptyValue': '',
+  },
+};
+
 export const getDatabaseConfig = async (type: DatabaseServiceType) => {
   const loader = databaseSchemaLoaders[type];
   let schema: Record<string, unknown> = {};
-  const uiSchema = { ...COMMON_UI_SCHEMA };
+  const uiSchema: Record<string, unknown> = { ...COMMON_UI_SCHEMA };
 
   if (loader) {
     const mod = await loader();
     schema = resolveSchemaModule(mod);
+  }
+
+  if (type === DatabaseServiceType.Datalake) {
+    Object.assign(uiSchema, CSV_ESCAPE_CHAR_UI_SCHEMA);
   }
 
   return cloneDeep({ schema, uiSchema });

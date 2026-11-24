@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { QueryClient, useQueries, useQuery } from '@tanstack/react-query';
+import {
+  QueryClient,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
 import { Conversation } from '../../../../generated/entity/feed/conversation';
@@ -26,6 +31,10 @@ import {
   getUserActivity,
 } from '../../../../rest/activityAPI';
 import { listConversations } from '../../../../rest/conversationsAPI';
+import {
+  getTaskCommentMentions,
+  TaskCommentMention,
+} from '../../../../utils/tasks/TaskMentions.utils';
 import {
   ActivityFilter,
   ACTIVITY_LIMIT,
@@ -48,22 +57,32 @@ const INBOX_ACTIVITY_STALE_TIME = 30 * 1000;
 export interface InboxActivityResult {
   activities: ActivityEvent[];
   threads: Conversation[];
+  taskMentions?: TaskCommentMention[];
+  taskMentionsReadAt?: number;
   // Either list came back a full page, so the window may hold more.
   isCapped: boolean;
+  // Where the feed stops being whole: older items may be missing from here on.
+  // Unset when the cut can't be placed in the feed's own times.
+  cutAt?: number;
 }
 
-// Exactly one of `activity` or `feed`, matching ActivityFeedItem's props.
+// An inbox card represents one event, conversation, or task comment.
 export interface InboxActivityItem {
   activity?: ActivityEvent;
   feed?: Conversation;
+  taskMention?: TaskCommentMention;
 }
 
 export const getInboxItemId = (item: InboxActivityItem): string =>
-  String(item.activity?.id ?? item.feed?.id ?? '');
+  String(
+    item.activity?.id ?? item.feed?.id ?? item.taskMention?.comment.id ?? ''
+  );
 
 // When an item happened: an event's timestamp, a conversation's last activity.
 export const getInboxItemTimestamp = (item: InboxActivityItem): number =>
-  item.activity?.timestamp ?? (item.feed ? getFeedSortTimestamp(item.feed) : 0);
+  item.activity?.timestamp ??
+  item.taskMention?.comment.createdAt ??
+  (item.feed ? getFeedSortTimestamp(item.feed) : 0);
 
 // Each sub-tab's activity events. Mentions are the events whose replies name
 // the viewer; the conversations that name them come alongside.
@@ -146,20 +165,57 @@ const clipToWindow = (
         isWithinInboxRange(timestamp, dateRange)
       );
 
+const getEventTimestamp = ({ timestamp }: ActivityEvent) => timestamp ?? 0;
+
+/**
+ * A capped list stops at its oldest item, so the other list is cut there too:
+ * past it the feed would show one kind alone, as if the other had none.
+ * Mentions is left whole: its events carry their own time, not the mention's,
+ * so an old event mentioned today would fall before the cut. Its feed is then
+ * incomplete from where its conversations stop; where its events stop can't
+ * be told in their times.
+ * ADR:2026-11-16-a-capped-inbox-feed-is-cut-at-its-oldest-item
+ */
+const cutToCompleteSpan = (
+  filter: ActivityFilter,
+  activities: ActivityEvent[],
+  threads: Conversation[],
+  isActivityCapped: boolean
+): InboxActivityResult => {
+  const isThreadCapped = threads.length >= CONVERSATION_LIMIT;
+  const activityFloor = isActivityCapped
+    ? Math.min(...activities.map(getEventTimestamp))
+    : 0;
+  const threadFloor = isThreadCapped
+    ? Math.min(...threads.map(getFeedSortTimestamp))
+    : 0;
+  const isMentions = filter === ActivityFilter.Mentions;
+  const completeFrom = isMentions ? 0 : Math.max(activityFloor, threadFloor);
+  const cutAt = isMentions ? threadFloor : completeFrom;
+
+  return {
+    activities: activities.filter(
+      (activity) => getEventTimestamp(activity) >= completeFrom
+    ),
+    threads: threads.filter(
+      (thread) => getFeedSortTimestamp(thread) >= completeFrom
+    ),
+    isCapped: isActivityCapped || isThreadCapped,
+    cutAt: cutAt || undefined,
+  };
+};
+
 /**
  * The selected sub-tab's activity events plus its conversations, for the
  * viewer `userId` or, when `isScoped`, for another user `userId`.
  */
-export const fetchInboxActivity = async (
+const fetchActivityAndConversations = async (
   filter: ActivityFilter,
-  userId: string | undefined,
+  userId: string,
   startTs?: number,
   endTs?: number,
   isScoped = false
 ): Promise<InboxActivityResult> => {
-  if (!userId) {
-    return { activities: [], threads: [], isCapped: false };
-  }
   // startTs gives activity the same lower bound as the conversations: `days` is
   // capped at 30, which falls short of a window starting at the start of a day.
   const days = getActivityWindowDays({ startTs, endTs });
@@ -199,17 +255,107 @@ export const fetchInboxActivity = async (
 
   const clipped = clipToWindow(filter, activities, { startTs, endTs });
 
-  return {
-    activities: clipped,
+  // A full page may hold only the newest of more events, unless the clip
+  // dropped some: then the page already reached past the window's start, so
+  // the window is complete.
+  return cutToCompleteSpan(
+    filter,
+    clipped,
     threads,
-    // A full page may hold only the newest of more events, unless the clip
-    // dropped some: then the page already reached past the window's start, so
-    // the window is complete.
-    isCapped:
-      (activities.length >= ACTIVITY_LIMIT &&
-        clipped.length === activities.length) ||
-      threads.length >= CONVERSATION_LIMIT,
+    activities.length >= ACTIVITY_LIMIT && clipped.length === activities.length
+  );
+};
+
+const includesTaskMentions = (filter: ActivityFilter) =>
+  filter === ActivityFilter.All || filter === ActivityFilter.Mentions;
+
+const readTaskMentions = (
+  mentionedUser: string,
+  startTs?: number,
+  endTs?: number,
+  queryClient?: QueryClient
+) => {
+  const queryFn = async () => {
+    const taskMentionsReadAt = Date.now();
+    const taskMentions = await getTaskCommentMentions(mentionedUser, {
+      startTs,
+      endTs,
+      maxResults: CONVERSATION_LIMIT,
+    });
+
+    return { taskMentions, taskMentionsReadAt };
   };
+
+  return queryClient
+    ? queryClient.fetchQuery({
+        queryKey: ['inbox-task-mentions', mentionedUser, startTs, endTs],
+        queryFn,
+        staleTime: INBOX_ACTIVITY_STALE_TIME,
+      })
+    : queryFn();
+};
+
+const mergeTaskMentions = (
+  filter: ActivityFilter,
+  window: InboxActivityResult,
+  mentionsResult?: Pick<
+    InboxActivityResult,
+    'taskMentions' | 'taskMentionsReadAt'
+  >
+): InboxActivityResult => {
+  const taskMentions = mentionsResult?.taskMentions;
+  const isTaskCapped = (taskMentions?.length ?? 0) >= CONVERSATION_LIMIT;
+  const taskFloor = isTaskCapped
+    ? Math.min(...(taskMentions ?? []).map(({ comment }) => comment.createdAt))
+    : 0;
+  const completeFrom = filter === ActivityFilter.Mentions ? 0 : taskFloor;
+
+  return {
+    ...window,
+    activities: window.activities.filter(
+      (activity) => getEventTimestamp(activity) >= completeFrom
+    ),
+    threads: window.threads.filter(
+      (thread) => getFeedSortTimestamp(thread) >= completeFrom
+    ),
+    ...mentionsResult,
+    isCapped: window.isCapped || isTaskCapped,
+    cutAt: Math.max(window.cutAt ?? 0, taskFloor) || undefined,
+  };
+};
+
+export const fetchInboxActivity = async (
+  filter: ActivityFilter,
+  userId: string | undefined,
+  startTs?: number,
+  endTs?: number,
+  isScoped = false,
+  mentionedUser?: string,
+  queryClient?: QueryClient
+): Promise<InboxActivityResult> => {
+  if (!userId) {
+    return { activities: [], threads: [], isCapped: false };
+  }
+
+  const activityRequest = fetchActivityAndConversations(
+    filter,
+    userId,
+    startTs,
+    endTs,
+    isScoped
+  );
+  if (!includesTaskMentions(filter) || !mentionedUser) {
+    return activityRequest;
+  }
+
+  const [window, mentionsResult] = await Promise.all([
+    activityRequest,
+    readTaskMentions(mentionedUser, startTs, endTs, queryClient).catch(
+      () => undefined
+    ),
+  ]);
+
+  return mergeTaskMentions(filter, window, mentionsResult);
 };
 
 /**
@@ -243,11 +389,15 @@ const useFeedSubject = (userId?: string) => {
   return {
     subjectId: userId ?? currentUser?.id,
     isScoped: Boolean(userId) && userId !== currentUser?.id,
+    mentionedUser:
+      !userId || userId === currentUser?.id ? currentUser?.name : undefined,
   };
 };
 
 const getInboxTotal = (data: InboxActivityResult): number =>
-  pairFieldChanges(data.activities).length + data.threads.length;
+  pairFieldChanges(data.activities).length +
+  data.threads.length +
+  (data.taskMentions?.length ?? 0);
 
 // One query per sub-tab, window and user, so the list and every count share a
 // fetch. The user id keys it, so one user's feed never serves another's.
@@ -255,7 +405,9 @@ const inboxActivityQuery = (
   filter: ActivityFilter,
   userId: string | undefined,
   dateRange?: InboxDateRange,
-  isScoped = false
+  isScoped = false,
+  mentionedUser?: string,
+  queryClient?: QueryClient
 ) => ({
   queryKey: [
     INBOX_ACTIVITY_QUERY_KEY,
@@ -263,6 +415,7 @@ const inboxActivityQuery = (
     dateRange?.startTs,
     dateRange?.endTs,
     userId,
+    includesTaskMentions(filter) ? mentionedUser : undefined,
   ],
   queryFn: () =>
     fetchInboxActivity(
@@ -270,7 +423,9 @@ const inboxActivityQuery = (
       userId,
       dateRange?.startTs,
       dateRange?.endTs,
-      isScoped
+      isScoped,
+      mentionedUser,
+      queryClient
     ),
   enabled: Boolean(userId),
   staleTime: INBOX_ACTIVITY_STALE_TIME,
@@ -278,7 +433,11 @@ const inboxActivityQuery = (
 
 export interface UseInboxActivity extends InboxCount {
   items: InboxActivityItem[];
+  // See InboxActivityResult.
+  cutAt?: number;
   isLoading: boolean;
+  taskMentionsLoaded: boolean;
+  taskMentionsReadAt?: number;
   error: unknown;
   refetch: () => void;
 }
@@ -293,10 +452,18 @@ export const useInboxActivity = (
   dateRange?: InboxDateRange,
   userId?: string
 ): UseInboxActivity => {
-  const { subjectId, isScoped } = useFeedSubject(userId);
+  const { subjectId, isScoped, mentionedUser } = useFeedSubject(userId);
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery(
-    inboxActivityQuery(filter, subjectId, dateRange, isScoped)
+    inboxActivityQuery(
+      filter,
+      subjectId,
+      dateRange,
+      isScoped,
+      mentionedUser,
+      queryClient
+    )
   );
 
   const items: InboxActivityItem[] = useMemo(() => {
@@ -305,6 +472,7 @@ export const useInboxActivity = (
         activity,
       })),
       ...(data?.threads ?? []).map((feed) => ({ feed })),
+      ...(data?.taskMentions ?? []).map((taskMention) => ({ taskMention })),
     ];
 
     // Sort merges newest-first by last activity (updatedAt-first for
@@ -325,7 +493,10 @@ export const useInboxActivity = (
     items,
     total: items.length,
     isCapped: data?.isCapped ?? false,
+    cutAt: data?.cutAt,
     isLoading,
+    taskMentionsLoaded: data?.taskMentions !== undefined,
+    taskMentionsReadAt: data?.taskMentionsReadAt,
     // A failed background refresh keeps the cached feed on screen.
     error: data ? null : error,
     refetch,
@@ -342,11 +513,19 @@ export const useInboxActivityCounts = (
   dateRange?: InboxDateRange,
   userId?: string
 ): Partial<Record<ActivityFilter, InboxCount>> => {
-  const { subjectId, isScoped } = useFeedSubject(userId);
+  const { subjectId, isScoped, mentionedUser } = useFeedSubject(userId);
+  const queryClient = useQueryClient();
   const filters = Object.values(ActivityFilter);
   const results = useQueries({
     queries: filters.map((filter) =>
-      inboxActivityQuery(filter, subjectId, dateRange, isScoped)
+      inboxActivityQuery(
+        filter,
+        subjectId,
+        dateRange,
+        isScoped,
+        mentionedUser,
+        queryClient
+      )
     ),
   });
 
@@ -376,13 +555,21 @@ export const useInboxActivityCounts = (
 export const useUserActivityCount = (
   userId: string | undefined
 ): number | undefined => {
-  const { isScoped } = useFeedSubject(userId);
+  const { isScoped, mentionedUser } = useFeedSubject(userId);
+  const queryClient = useQueryClient();
   const dateRange = useMemo(
     () => ({ ...getDefaultInboxDateRange(), key: DEFAULT_INBOX_DATE_PRESET }),
     []
   );
   const { data } = useQuery(
-    inboxActivityQuery(ActivityFilter.All, userId, dateRange, isScoped)
+    inboxActivityQuery(
+      ActivityFilter.All,
+      userId,
+      dateRange,
+      isScoped,
+      mentionedUser,
+      queryClient
+    )
   );
 
   return data && getInboxTotal(data);

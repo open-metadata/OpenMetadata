@@ -48,6 +48,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.parser import InvalidWorkflowException
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.database.data360.client import get_dmo_mappings
@@ -57,6 +58,9 @@ from metadata.ingestion.source.database.data360.utils import (
     decode_html_entities,
     get_schema_name,
 )
+from metadata.ingestion.source.pipeline.data360pipeline.base import (
+    Data360PipelineBaseSource,
+)
 from metadata.ingestion.source.pipeline.data360pipeline.constant import (
     ConnectionTypesConstant,
     ResponseConstant,
@@ -64,9 +68,6 @@ from metadata.ingestion.source.pipeline.data360pipeline.constant import (
 from metadata.ingestion.source.pipeline.data360pipeline.exceptions import (
     QueryParseException,
     ResourceNotFoundException,
-)
-from metadata.ingestion.source.pipeline.data360pipeline.metadata import (
-    Data360PipelineSource,
 )
 from metadata.ingestion.source.pipeline.data360pipeline.models import (
     CalculatedInsightDetails,
@@ -82,31 +83,26 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class Data360PipelineLineageSource(Data360PipelineSource):
+class Data360PipelineLineageMixin(Data360PipelineBaseSource):
     """
     Extracts lineage from Salesforce Data 360 pipeline objects:
     - DataStream → DLO (source to lake object)
     - DLO → DMO (lake to model object, via DMO mappings)
     - DMO → CIO (model to calculated insight, via SQL expression parsing)
     - DataTransform → source/target DMOs
+
+    Every table it resolves lives in the Data 360 database service, so without
+    `data360DbServiceName` lineage is skipped with one warning.
     """
 
-    @classmethod
-    def create(
-        cls,
-        config_dict,
-        metadata,
-        pipeline_name: str | None = None,
-    ) -> "Data360PipelineLineageSource":
-        source = cast(
-            "Data360PipelineLineageSource",
-            super().create(config_dict, metadata, pipeline_name),
-        )
-        if not source.service_connection.data360DbServiceName:
-            raise InvalidWorkflowException(
-                "Please provide the Data360 database service name in the service connection to extract lineage."
+    @cached_property
+    def lineage_enabled(self) -> bool:
+        if not self.service_connection.data360DbServiceName:
+            self.log_warning(
+                "Skipping Data 360 lineage: set the Data 360 database service name in the service connection."
             )
-        return source
+            return False
+        return True
 
     @cached_property
     def service_mapping(self) -> dict:
@@ -148,7 +144,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
 
     @property
     def _db_service_name(self) -> str:
-        """`create` refuses to build the source without it, so it is never empty here."""
+        """Only read once `lineage_enabled` has confirmed it is set."""
         return str(self.service_connection.data360DbServiceName)
 
     def _get_dc_object_table_entity(self, dc_obj_name: str, dataspace_name: str) -> Table:
@@ -165,18 +161,20 @@ class Data360PipelineLineageSource(Data360PipelineSource):
         return table_entity[0]
 
     def _get_pipeline_entity(self, pipeline_details: DataCloudPipelineDetails) -> Pipeline:
+        """Read by name, not through search: the metadata agent creates the pipeline in
+        the same run, before the search index has caught up."""
         fqn_string = fqn.build(
             metadata=self.metadata,
             entity_type=Pipeline,
             service_name=self.config.serviceName,
             pipeline_name=pipeline_details.get_name(),
         )
-        pipeline_entity = self.metadata.es_search_from_fqn(entity_type=Pipeline, fqn_search_string=str(fqn_string))
+        pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=str(fqn_string))
         if not pipeline_entity:
             raise ResourceNotFoundException(
                 f"Could not find {pipeline_details.get_metadata_type()} pipeline entity for {pipeline_details.get_name()}"
             )
-        return pipeline_entity[0]
+        return pipeline_entity
 
     def _get_source_entity(self, pipeline_details: DataStreamDetails):
         source_entity = None
@@ -636,6 +634,8 @@ class Data360PipelineLineageSource(Data360PipelineSource):
         self, pipeline_details: DataCloudPipelineDetails
     ) -> Iterable[Either[AddLineageRequest]]:
         """Dispatches to the correct lineage extractor per pipeline type."""
+        if not self.lineage_enabled:
+            return
         try:
             dispatch = {
                 CalculatedInsightDetails: self._yield_ci_lineage,
@@ -666,7 +666,7 @@ class Data360PipelineLineageSource(Data360PipelineSource):
 
     def yield_pipeline_bulk_lineage_details(self) -> Iterable[Either[AddLineageRequest]]:  # pyright: ignore[reportIncompatibleMethodOverride]
         """Yields DLO → DMO lineage for all dataspaces when includeBulkLineage is enabled."""
-        if self.service_connection.includeBulkLineage:
+        if self.service_connection.includeBulkLineage and self.lineage_enabled:
             try:
                 yield from self._yield_dlo_to_dmo_lineage()
             except Exception as exc:
@@ -677,6 +677,28 @@ class Data360PipelineLineageSource(Data360PipelineSource):
                         stackTrace=traceback.format_exc(),
                     )
                 )
+
+
+class Data360PipelineLineageSource(Data360PipelineLineageMixin):
+    """Lineage-only source, kept for Lineage agents and `data360pipeline-lineage`
+    configs created before the metadata agent extracted lineage."""
+
+    @classmethod
+    def create(
+        cls,
+        config_dict,
+        metadata,
+        pipeline_name: str | None = None,
+    ) -> "Data360PipelineLineageSource":
+        source = cast(
+            "Data360PipelineLineageSource",
+            super().create(config_dict, metadata, pipeline_name),
+        )
+        if not source.service_connection.data360DbServiceName:
+            raise InvalidWorkflowException(
+                "Please provide the Data360 database service name in the service connection to extract lineage."
+            )
+        return source
 
     def yield_pipeline(self, pipeline_details: DataCloudPipelineDetails) -> Iterable[Either[CreatePipelineRequest]]:
         """Implemented in metadata ingestion."""
@@ -696,4 +718,9 @@ class Data360PipelineLineageSource(Data360PipelineSource):
 
     def yield_pipeline_usage(self, pipeline_details: Any) -> Iterable[Either[PipelineUsage]]:
         """Not implemented."""
+        return iter([])
+
+    def mark_pipelines_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
+        """Handled by metadata ingestion. The lineage bot may not delete pipelines, and
+        trying failed every lineage run."""
         return iter([])

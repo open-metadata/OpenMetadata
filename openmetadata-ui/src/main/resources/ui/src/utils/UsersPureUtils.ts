@@ -28,6 +28,13 @@ export const isMaskedEmail = (email: string) => {
 export const getVisibleEmail = (email?: string): string | undefined =>
   email && !isMaskedEmail(email) ? email : undefined;
 
+/**
+ * The value for a user table's Email column: the email, or the login when the email is missing or
+ * PII-masked, so the column always tells users who share a display name apart.
+ */
+export const getUserIdentifier = (user: Pick<User, 'email' | 'name'>) =>
+  getVisibleEmail(user.email) ?? user.name;
+
 export const getUserCreationErrorMessage = ({
   error,
   entity,

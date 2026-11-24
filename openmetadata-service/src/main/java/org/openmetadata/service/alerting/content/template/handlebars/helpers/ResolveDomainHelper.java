@@ -102,6 +102,6 @@ public class ResolveDomainHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{resolveDomain }}")
-                    .withExample("{{resolveDomain entity.domain.id}}")));
+                    .withExample("{{#each entity.domains}}{{resolveDomain this}} {{/each}}")));
   }
 }

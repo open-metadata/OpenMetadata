@@ -11,12 +11,17 @@
  *  limitations under the License.
  */
 
+import { migratedTo } from '../../../constant/migration';
 import { Domain } from '../../../support/domain/Domain';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
 import { expect, test } from '../../../support/fixtures/base';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+
+const RESOLUTION_IT = migratedTo.javaIT(
+  'TaskEntityTypeResolutionIT#approvedMetadataTaskAppliesToEntity'
+);
 
 /**
  * Task Tests for Dashboard Entities
@@ -178,158 +183,168 @@ test.describe('Task Creation and Resolution - Dashboard Entity', () => {
     }
   });
 
-  test('should create OwnershipUpdate task for Dashboard', async ({
-    browser,
-  }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create OwnershipUpdate task for Dashboard',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create a new user to be the new owner
-      const newOwner = new UserClass();
-      await newOwner.create(apiContext);
+      try {
+        // Create a new user to be the new owner
+        const newOwner = new UserClass();
+        await newOwner.create(apiContext);
 
-      // Create OwnershipUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
-          type: 'OwnershipUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            currentOwners: [{ id: ownerUser.responseData.id, type: 'user' }],
-            newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
-          },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('OwnershipUpdate');
-
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
+        // Create OwnershipUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
           data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
-
-      // Verify ownership changed
-      const dashboardResponse = await apiContext.get(
-        `/api/v1/dashboards/${dashboard.entityResponseData?.id}?fields=owners`
-      );
-      const updatedDashboard = await dashboardResponse.json();
-
-      expect(updatedDashboard.owners).toBeDefined();
-      expect(updatedDashboard.owners[0].id).toBe(newOwner.responseData.id);
-
-      // Cleanup new owner
-      await newOwner.delete(apiContext);
-    } finally {
-      await afterAction();
-    }
-  });
-
-  test('should create TierUpdate task for Dashboard', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    try {
-      // Create TierUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
-          type: 'TierUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            newTier: {
-              tagFQN: 'Tier.Tier5',
-              source: 'Classification',
-              labelType: 'Manual',
-              state: 'Confirmed',
+            about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
+            type: 'OwnershipUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              currentOwners: [{ id: ownerUser.responseData.id, type: 'user' }],
+              newOwners: [{ id: newOwner.responseData.id, type: 'user' }],
             },
           },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('TierUpdate');
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('OwnershipUpdate');
 
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      // Verify tier was applied
-      const dashboardResponse = await apiContext.get(
-        `/api/v1/dashboards/${dashboard.entityResponseData?.id}?fields=tags`
-      );
-      const updatedDashboard = await dashboardResponse.json();
+        // Verify ownership changed
+        const dashboardResponse = await apiContext.get(
+          `/api/v1/dashboards/${dashboard.entityResponseData?.id}?fields=owners`
+        );
+        const updatedDashboard = await dashboardResponse.json();
 
-      const hasTier = updatedDashboard.tags?.some(
-        (tag: { tagFQN: string }) => tag.tagFQN === 'Tier.Tier5'
-      );
-      expect(hasTier).toBe(true);
-    } finally {
-      await afterAction();
+        expect(updatedDashboard.owners).toBeDefined();
+        expect(updatedDashboard.owners[0].id).toBe(newOwner.responseData.id);
+
+        // Cleanup new owner
+        await newOwner.delete(apiContext);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
 
-  test('should create DomainUpdate task for Dashboard', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+  test(
+    'should create TierUpdate task for Dashboard',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      // Create DomainUpdate task
-      const taskResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
-          type: 'DomainUpdate',
-          category: 'MetadataUpdate',
-          assignees: [ownerUser.responseData.name],
-          payload: {
-            newDomain: {
-              id: domain.responseData.id,
-              type: 'domain',
-              fullyQualifiedName: domain.responseData.fullyQualifiedName,
+      try {
+        // Create TierUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
+            type: 'TierUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              newTier: {
+                tagFQN: 'Tier.Tier5',
+                source: 'Classification',
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
             },
           },
-        },
-      });
-      const task = await taskResponse.json();
-      expect(taskResponse.ok()).toBe(true);
-      expect(task.type).toBe('DomainUpdate');
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('TierUpdate');
 
-      // Resolve task
-      const resolveResponse = await apiContext.post(
-        `/api/v1/tasks/${task.id}/resolve`,
-        {
-          data: {
-            resolutionType: 'Approved',
-          },
-        }
-      );
-      expect(resolveResponse.ok()).toBe(true);
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
 
-      // Verify domain was applied
-      const dashboardResponse = await apiContext.get(
-        `/api/v1/dashboards/${dashboard.entityResponseData?.id}?fields=domains`
-      );
-      const updatedDashboard = await dashboardResponse.json();
+        // Verify tier was applied
+        const dashboardResponse = await apiContext.get(
+          `/api/v1/dashboards/${dashboard.entityResponseData?.id}?fields=tags`
+        );
+        const updatedDashboard = await dashboardResponse.json();
 
-      expect(updatedDashboard.domains?.length).toBeGreaterThan(0);
-      expect(updatedDashboard.domains[0].id).toBe(domain.responseData.id);
-    } finally {
-      await afterAction();
+        const hasTier = updatedDashboard.tags?.some(
+          (tag: { tagFQN: string }) => tag.tagFQN === 'Tier.Tier5'
+        );
+        expect(hasTier).toBe(true);
+      } finally {
+        await afterAction();
+      }
     }
-  });
+  );
+
+  test(
+    'should create DomainUpdate task for Dashboard',
+    RESOLUTION_IT,
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      try {
+        // Create DomainUpdate task
+        const taskResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::dashboard::${dashboard.entityResponseData?.fullyQualifiedName}>`,
+            type: 'DomainUpdate',
+            category: 'MetadataUpdate',
+            assignees: [ownerUser.responseData.name],
+            payload: {
+              newDomain: {
+                id: domain.responseData.id,
+                type: 'domain',
+                fullyQualifiedName: domain.responseData.fullyQualifiedName,
+              },
+            },
+          },
+        });
+        const task = await taskResponse.json();
+        expect(taskResponse.ok()).toBe(true);
+        expect(task.type).toBe('DomainUpdate');
+
+        // Resolve task
+        const resolveResponse = await apiContext.post(
+          `/api/v1/tasks/${task.id}/resolve`,
+          {
+            data: {
+              resolutionType: 'Approved',
+            },
+          }
+        );
+        expect(resolveResponse.ok()).toBe(true);
+
+        // Verify domain was applied
+        const dashboardResponse = await apiContext.get(
+          `/api/v1/dashboards/${dashboard.entityResponseData?.id}?fields=domains`
+        );
+        const updatedDashboard = await dashboardResponse.json();
+
+        expect(updatedDashboard.domains?.length).toBeGreaterThan(0);
+        expect(updatedDashboard.domains[0].id).toBe(domain.responseData.id);
+      } finally {
+        await afterAction();
+      }
+    }
+  );
 
   test('rejected task should NOT apply changes', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);

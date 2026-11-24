@@ -131,7 +131,11 @@ public class OntologyAxiomResource extends EntityResource<OntologyAxiom, Ontolog
       @Context final SecurityContext securityContext,
       @Valid final CreateOntologyAxiom request) {
     final OntologyAxiom entity = mapper.createToEntity(request, user(securityContext));
-    return create(uriInfo, securityContext, entity);
+    return OntologyResourceAccess.createOrRecreate(
+        repository,
+        entity,
+        () -> create(uriInfo, securityContext, entity),
+        () -> createOrUpdate(uriInfo, securityContext, entity));
   }
 
   @POST
@@ -210,7 +214,12 @@ public class OntologyAxiomResource extends EntityResource<OntologyAxiom, Ontolog
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @Valid final RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    return OntologyResourceAccess.restoreOrKeepLive(
+        authorizer,
+        securityContext,
+        repository,
+        restore.getId(),
+        () -> restoreEntity(uriInfo, securityContext, restore.getId()));
   }
 
   private static String user(final SecurityContext securityContext) {

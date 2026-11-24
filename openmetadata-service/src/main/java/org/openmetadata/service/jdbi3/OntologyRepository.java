@@ -35,13 +35,16 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRec
 import org.openmetadata.service.ontology.OntologyLayerValidator;
 import org.openmetadata.service.ontology.OntologyPackInstallations;
 import org.openmetadata.service.ontology.OntologyPublicationStatusResolver;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FreshReadScope;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 @Repository
 public class OntologyRepository extends OntologyEntityRepository<Ontology> {
   public static final String COLLECTION_PATH = "/v1/ontologies/";
+  private static final String ARCHIVED_REVIEW_COMMENT = "Closed because the ontology was archived";
 
   private static final String PUBLICATION_STATUS = "publicationStatus";
   private final OntologyPublicationStatusResolver publication;
@@ -55,6 +58,24 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
         "iri,namespace,layer,prefixes,approvalRule");
     fieldFetchers.put(PUBLICATION_STATUS, this::fetchPublicationStatus);
     publication = new OntologyPublicationStatusResolver(Entity.getCollectionDAO());
+  }
+
+  @Override
+  protected void postUpdate(Ontology original, Ontology updated) {
+    super.postUpdate(original, updated);
+    if (!Objects.equals(original.getOwners(), updated.getOwners())) {
+      PostCommitActionQueue.runOrDefer(() -> refreshActiveTerms(updated.getId()));
+    }
+  }
+
+  private void refreshActiveTerms(UUID ontologyId) {
+    final var search = Entity.getSearchRepository();
+    if (search != null) {
+      final var state = daoCollection.ontologyStateDAO().get(ontologyId);
+      if (state != null) {
+        search.refreshOntologyTerms(OntologyTermSearch.releaseTerms(state.getActiveReleaseId()));
+      }
+    }
   }
 
   @Override
@@ -239,6 +260,36 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
   @Override
   protected void entitySpecificCleanup(final Ontology entity) {
     requireNoRetainedReleases(entity.getId());
+  }
+
+  /**
+   * Archiving keeps the ontology's releases, so it withdraws their open review here: after the
+   * children check and cascade, so a refused delete (non-recursive with children) leaves the review
+   * open, and before the ontology is marked deleted, so the review closes the way Withdraw closes it.
+   * A hard delete never gets this far with a review open: an in-review release is retained.
+   */
+  @Override
+  protected void deleteChildren(
+      final UUID id, final boolean recursive, final boolean hardDelete, final String updatedBy) {
+    super.deleteChildren(id, recursive, hardDelete, updatedBy);
+    if (!hardDelete) {
+      withdrawOpenReviews(id, updatedBy);
+    }
+  }
+
+  /** Closing the review task runs the review's cancellation, which returns the release to Draft. */
+  private void withdrawOpenReviews(final UUID ontologyId, final String user) {
+    final TaskRepository tasks = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    daoCollection
+        .ontologyReleaseDAO()
+        .listByStatus(ontologyId, EntityStatus.IN_REVIEW.value())
+        .stream()
+        .map(json -> JsonUtils.readValue(json, OntologyRelease.class).getReviewTask())
+        .filter(Objects::nonNull)
+        .map(tasks::findCommittedTask)
+        .filter(task -> task != null && !TaskRepository.isTerminalStatus(task.getStatus()))
+        .forEach(
+            task -> tasks.closeTask(tasks.hydrateStoredTask(task), user, ARCHIVED_REVIEW_COMMENT));
   }
 
   private void requireNoRetainedReleases(final UUID id) {

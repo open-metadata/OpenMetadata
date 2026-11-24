@@ -21,7 +21,7 @@ import {
   HintText,
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
-import { isArray, map, startCase } from 'lodash';
+import { map, startCase } from 'lodash';
 import React, { ReactNode, useMemo } from 'react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -310,12 +310,6 @@ const CustomPropertyFormFields = ({
           field: t('label.column-plural'),
         }),
         validate: (value: AddCustomPropertyFormValues['columns']) => {
-          if (isArray(value) && value.length > 3) {
-            return t('message.maximum-count-allowed', {
-              count: 3,
-              label: t('label.column-plural'),
-            });
-          }
           if (
             value?.some((column) =>
               RESERVED_TABLE_COLUMN_NAMES.includes(toId(column))

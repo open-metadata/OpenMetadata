@@ -20,8 +20,8 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import {
-  Brush01,
   Edit01,
+  ImageBrush,
   Tag01,
   TagOff,
   Trash01,
@@ -544,7 +544,7 @@ const TagPage = () => {
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.tag-lowercase'),
                 })}
-                icon={Brush01}
+                icon={ImageBrush}
                 id="rename-button"
                 name={t('label.style')}
               />
@@ -679,7 +679,7 @@ const TagPage = () => {
                   handleClosePanel={() => setPreviewAsset(undefined)}
                 />
               ),
-              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.ENTITY_SUMMARY_PANEL,
               className:
                 'entity-summary-resizable-right-panel-container tag-resizable-panel-container',
             }}
@@ -801,7 +801,13 @@ const TagPage = () => {
 
     const statusBadge =
       shouldShowStatus && entityStatus ? (
-        <EntityStatusBadge showDivider={false} status={entityStatus} />
+        <EntityStatusBadge
+          entityId={tagItem.id}
+          entityType={EntityType.TAG}
+          fqn={tagItem.fullyQualifiedName}
+          showDivider={false}
+          status={entityStatus}
+        />
       ) : null;
 
     const disabledBadge = tagItem.disabled ? (

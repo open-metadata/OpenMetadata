@@ -46,7 +46,11 @@ const LoginSettings = (props: PlatformSettingsPageProps) => {
         title={t('label.access-block-time')}>
         <SettingValue
           testId="access-block-time"
-          value={config?.accessBlockTime?.toString()}
+          value={
+            config?.accessBlockTime === undefined
+              ? undefined
+              : `${config.accessBlockTime} ${t('label.second-plural')}`
+          }
         />
       </ReadOnlyRow>
       <ReadOnlyRow

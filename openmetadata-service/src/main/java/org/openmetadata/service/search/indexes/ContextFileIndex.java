@@ -1,10 +1,12 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.context.center.MemoryExtractionState.NEVER_EXTRACTED;
 
 import java.util.Map;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.MemoryExtractionState;
 
 public class ContextFileIndex implements TaggableIndex {
   final ContextFile file;
@@ -30,6 +32,8 @@ public class ContextFileIndex implements TaggableIndex {
     doc.put("fileExtension", file.getFileExtension());
     doc.put("contentType", file.getContentType());
     doc.put("processingStatus", file.getProcessingStatus());
+    // Computed here: the entity a write indexes carries no value, or a stale one.
+    doc.put(NEVER_EXTRACTED, MemoryExtractionState.neverExtracted(file));
     doc.put("sourceType", file.getSourceType());
     // What ContextMemorySearchVisibility filters on. A file with no shareConfig stamps a null
     // visibility, which that filter reads as unrestricted — the same answer the REST guard gives.

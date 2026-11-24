@@ -16,7 +16,7 @@ Tests for unitycatalog.connection.
 from unittest.mock import MagicMock
 
 import pytest
-from databricks.sdk.service.catalog import TableType
+from databricks.sdk.service.catalog import CatalogType, TableType
 from sqlalchemy.engine import Engine
 
 from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
@@ -33,6 +33,7 @@ from metadata.ingestion.source.database.unitycatalog.connection import (
     get_sqlalchemy_connection,
     get_tables,
     get_views,
+    read_tag_tables,
 )
 from metadata.ingestion.source.database.unitycatalog.models import DatabricksTable
 
@@ -93,6 +94,31 @@ class TestGetCatalogs:
         get_catalogs(client, table_obj)
 
         assert table_obj.catalog_name == "main"
+
+    def test_prefers_a_managed_catalog_over_a_foreign_one_listed_first(self):
+        # SDK 0.20 parses FOREIGN_CATALOG to None; a federated catalog keeps its connection_name.
+        foreign = _named_mock("postgres_catalog", catalog_type=None, connection_name="postgres_connection")
+        managed = _named_mock("demo", catalog_type=CatalogType.MANAGED_CATALOG)
+        client = _workspace_client(catalogs=[foreign, managed])
+        table_obj = DatabricksTable()
+
+        get_catalogs(client, table_obj)
+
+        assert table_obj.catalog_name == "demo"
+
+    def test_falls_back_to_the_first_listed_catalog_without_a_managed_one(self):
+        client = _workspace_client(
+            catalogs=[
+                _named_mock("__databricks_internal", catalog_type=CatalogType.SYSTEM_CATALOG),
+                _named_mock("postgres_catalog", catalog_type=None),
+                _named_mock("system", catalog_type=CatalogType.SYSTEM_CATALOG),
+            ]
+        )
+        table_obj = DatabricksTable()
+
+        get_catalogs(client, table_obj)
+
+        assert table_obj.catalog_name == "postgres_catalog"
 
     def test_validates_configured_catalog(self):
         client = _workspace_client()
@@ -214,3 +240,13 @@ class TestGetViews:
             get_views(client, table_obj)
 
         client.tables.list.assert_not_called()
+
+
+class TestReadTagTables:
+    def test_stops_before_any_sql_when_no_catalog_was_resolved(self):
+        engine = MagicMock()
+
+        with pytest.raises(SourceConnectionException, match="Could not resolve a catalog"):
+            read_tag_tables(engine, DatabricksTable())
+
+        engine.connect.assert_not_called()

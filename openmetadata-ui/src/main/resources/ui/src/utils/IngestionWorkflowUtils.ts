@@ -68,7 +68,8 @@ export const getMetadataSchemaByServiceCategory = (
 ) => METADATA_SCHEMA_BY_SERVICE_CATEGORY[serviceCategory] ?? {};
 
 const getWorkflowCustomProperties = (
-  workflowType: WorkflowType
+  workflowType: WorkflowType,
+  serviceType?: string
 ): RJSFSchema => {
   const customProperties: RJSFSchema = {
     displayName: {
@@ -89,7 +90,7 @@ const getWorkflowCustomProperties = (
 
   if (
     workflowType === WorkflowType.Profiler &&
-    !isUndefined(ProfilerConfigurationClassBase.getSparkAgentField())
+    !isUndefined(ProfilerConfigurationClassBase.getSparkAgentField(serviceType))
   ) {
     customProperties.rootProcessingEngine = {
       type: 'object',
@@ -152,9 +153,13 @@ const WORKFLOW_TYPE_SCHEMA_RESOLVERS: Partial<
  */
 export const getSchemaByWorkflowType = (
   workflowType: WorkflowType,
-  serviceCategory: ServiceCategory
+  serviceCategory: ServiceCategory,
+  serviceType?: string
 ) => {
-  const customProperties = getWorkflowCustomProperties(workflowType);
+  const customProperties = getWorkflowCustomProperties(
+    workflowType,
+    serviceType
+  );
   const schema =
     WORKFLOW_TYPE_SCHEMA_RESOLVERS[workflowType]?.(serviceCategory) ?? {};
   const rjsfSchema = schema as RJSFSchema;

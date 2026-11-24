@@ -203,7 +203,7 @@ const Ingestion: React.FC<IngestionProps> = ({
         <Tabs
           className="tw:w-full"
           data-testid="agents-sub-tabs-switch"
-          selectedKey={subTab}
+          selectedKey={subTab ?? ServiceAgentSubTabs.METADATA}
           onSelectionChange={handleSubTabChange}>
           <Tabs.List type="underline">{subTabItems}</Tabs.List>
         </Tabs>
