@@ -4,8 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrate;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.migrate;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.withDatabase;
 
 import jakarta.ws.rs.ClientErrorException;
 import java.net.URI;
@@ -16,21 +16,21 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
-class OntologyWorkingStateTest {
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void creatingDifferentOntologiesDoesNotLockTheSameMissingKeyRange(ConnectionType dialect) {
+@Execution(ExecutionMode.CONCURRENT)
+class OntologyWorkingStateIT {
+  @Test
+  void creatingDifferentOntologiesDoesNotLockTheSameMissingKeyRange() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           migrate(handle, dialect);
           final var ready = new CountDownLatch(2);
@@ -81,13 +81,10 @@ class OntologyWorkingStateTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void concurrentWritersInitializeAndLockWithoutDeadlocking(ConnectionType dialect) {
+  @Test
+  void concurrentWritersInitializeAndLockWithoutDeadlocking() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           migrate(handle, dialect);
           UUID ontologyId = UUID.randomUUID();
@@ -130,13 +127,10 @@ class OntologyWorkingStateTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void staleBulkSnapshotsCannotOverwriteNewerWorkingContent(ConnectionType dialect) {
+  @Test
+  void staleBulkSnapshotsCannotOverwriteNewerWorkingContent() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           migrate(handle, dialect);
           CollectionDAO dao = handle.attach(CollectionDAO.class);
@@ -169,14 +163,10 @@ class OntologyWorkingStateTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void recreatingADefinitionAnotherRequestRestoredConflictsInsteadOfOverwritingIt(
-      final ConnectionType dialect) {
+  @Test
+  void recreatingADefinitionAnotherRequestRestoredConflictsInsteadOfOverwritingIt() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           migrate(handle, dialect);
           final CollectionDAO dao = handle.attach(CollectionDAO.class);
@@ -210,13 +200,10 @@ class OntologyWorkingStateTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void aFinalizerThatKeepsWritingFailsTheMutationInsteadOfLooping(ConnectionType dialect) {
+  @Test
+  void aFinalizerThatKeepsWritingFailsTheMutationInsteadOfLooping() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           migrate(handle, dialect);
           CollectionDAO dao = handle.attach(CollectionDAO.class);

@@ -18,8 +18,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -29,17 +31,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.it.tests.ontology.OntologyTestDatabase;
+import org.openmetadata.it.util.ScratchDatabase;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.McpConsentColumns;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Ends a deleted user's MCP grants on the shipped tables: every grant under the name goes, whatever
@@ -49,11 +48,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * user-name index that made the revoked index the cheaper plan again. The MySQL user-name indexes
  * come from the 2.0.8 Java migration step, run twice to show a rerun is harmless.
  */
-@Testcontainers(disabledWithoutDocker = true)
 @Execution(ExecutionMode.SAME_THREAD)
-class McpGrantRevocationSqlTest {
-  private static final String DATABASE = "mcp_grants";
-  private static final String PASSWORD = "mcp-grants-test";
+class McpGrantRevocationSqlIT {
   private static final String MYSQL = "mysql";
   private static final List<String> MIGRATIONS = List.of("1.12.4", "1.13.0", "2.0.7", "2.1.0");
   private static final String CLIENT = "client-1";
@@ -67,55 +63,34 @@ class McpGrantRevocationSqlTest {
   private static final int MORE_USERS = 5;
 
   @Test
-  void deletingAUserEndsOnlyItsGrantsOnMysql() throws IOException {
-    try (GenericContainer<?> database =
-        new GenericContainer<>("mysql:8.4.13")
-            .withEnv("MYSQL_DATABASE", DATABASE)
-            .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-            .withEnv("MYSQL_ROOT_HOST", "%")
-            .withExposedPorts(3306)
-            .waitingFor(
-                Wait.forSuccessfulCommand(
-                    "mysql --protocol=TCP --host=127.0.0.1 --user=root --password="
-                        + PASSWORD
-                        + " --execute='SELECT 1'"))) {
-      database.start();
-      String url =
-          "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-              .formatted(database.getHost(), database.getMappedPort(3306), DATABASE);
-      Jdbi jdbi = connect(url, "root", "com.mysql.cj.jdbc.Driver", MYSQL);
-      assertEquals(3, countUserNameIndexes(jdbi));
-      runChecks(jdbi, "SET SESSION innodb_lock_wait_timeout = 2");
-    }
+  void deletingAUserEndsOnlyItsGrantsOnMysql() {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL lane only");
+    ScratchDatabase.withJdbi(
+        jdbi -> {
+          prepare(jdbi, MYSQL);
+          assertEquals(3, countUserNameIndexes(jdbi));
+          runChecks(jdbi, "SET SESSION innodb_lock_wait_timeout = 2");
+        });
   }
 
   @Test
-  void deletingAUserEndsOnlyItsGrantsOnPostgres() throws IOException {
-    try (GenericContainer<?> database =
-        new GenericContainer<>("postgres:15")
-            .withEnv("POSTGRES_DB", DATABASE)
-            .withEnv("POSTGRES_PASSWORD", PASSWORD)
-            .withExposedPorts(5432)
-            .waitingFor(
-                Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2))) {
-      database.start();
-      String url =
-          "jdbc:postgresql://%s:%d/%s"
-              .formatted(database.getHost(), database.getMappedPort(5432), DATABASE);
-      Jdbi jdbi = connect(url, "postgres", "org.postgresql.Driver", "postgres");
-      runChecks(jdbi, "SET lock_timeout = '2s'");
-    }
+  void deletingAUserEndsOnlyItsGrantsOnPostgres() {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.POSTGRES, "PostgreSQL lane only");
+    ScratchDatabase.withJdbi(
+        jdbi -> {
+          prepare(jdbi, "postgres");
+          runChecks(jdbi, "SET lock_timeout = '2s'");
+        });
   }
 
-  private Jdbi connect(String url, String username, String driver, String dialect)
-      throws IOException {
-    Jdbi jdbi = Jdbi.create(url, username, PASSWORD);
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class).setSqlLocator(new ConnectionAwareAnnotationSqlLocator(driver));
-    applyTableMigrations(jdbi, dialect);
+  private void prepare(Jdbi jdbi, String dialect) {
+    try {
+      applyTableMigrations(jdbi, dialect);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
     jdbi.useHandle(
         handle -> handle.execute("INSERT INTO oauth_clients (client_id) VALUES (?)", CLIENT));
-    return jdbi;
   }
 
   /** The delete stays open while another user's refresh rotates its token. */

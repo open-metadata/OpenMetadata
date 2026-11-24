@@ -1,15 +1,16 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
+import static org.openmetadata.it.tests.ontology.OntologyCaptureFixture.withCapture;
 
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease.VersionBump;
 import org.openmetadata.schema.entity.data.OntologyRelease;
@@ -20,12 +21,11 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseCapture;
 import org.openmetadata.service.ontology.OntologyReleaseHistory;
 
-class OntologyPublicationStorageTest {
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void rejectedCandidatesKeepTheirVersionAcrossLegacyCaptures(ConnectionType dialect) {
+@Isolated("swaps the static Entity collection DAO and repository registry to a scratch database")
+class OntologyPublicationStorageIT {
+  @Test
+  void rejectedCandidatesKeepTheirVersionAcrossLegacyCaptures() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -48,11 +48,9 @@ class OntologyPublicationStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void staleLatestRevisionCannotAllocateAnotherVersion(ConnectionType dialect) {
+  @Test
+  void staleLatestRevisionCannotAllocateAnotherVersion() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -67,11 +65,9 @@ class OntologyPublicationStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void chronologicalPagesKeepTheOriginalHighWaterAndNumericOrder(ConnectionType dialect) {
+  @Test
+  void chronologicalPagesKeepTheOriginalHighWaterAndNumericOrder() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -116,11 +112,9 @@ class OntologyPublicationStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void fiveCapturesAtOneRevisionAndVersionReturnOneRelease(ConnectionType dialect) {
+  @Test
+  void fiveCapturesAtOneRevisionAndVersionReturnOneRelease() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -137,11 +131,9 @@ class OntologyPublicationStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void aDifferentVersionCreatesANewDraft(ConnectionType dialect) {
+  @Test
+  void aDifferentVersionCreatesANewDraft() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -157,11 +149,9 @@ class OntologyPublicationStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void anEditedOntologyCapturesANewRelease(ConnectionType dialect) {
+  @Test
+  void anEditedOntologyCapturesANewRelease() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -174,11 +164,9 @@ class OntologyPublicationStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void aRejectedReleaseIsNotReusedByTheNextCapture(ConnectionType dialect) {
+  @Test
+  void aRejectedReleaseIsNotReusedByTheNextCapture() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {

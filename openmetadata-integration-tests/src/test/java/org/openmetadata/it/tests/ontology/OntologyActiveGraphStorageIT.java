@@ -1,4 +1,4 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -9,8 +9,8 @@ import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.repositoryRoot;
+import static org.openmetadata.it.tests.ontology.OntologyCaptureFixture.withCapture;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.repositoryRoot;
 
 import jakarta.json.Json;
 import java.time.Clock;
@@ -31,12 +31,13 @@ import org.apache.jena.update.UpdateAction;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.tests.ontology.OntologyCaptureFixture.Fixture;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.service.jdbi3.OntologyCaptureFixture.Fixture;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
@@ -44,13 +45,11 @@ import org.openmetadata.service.rdf.OntologyActiveGraph;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
-class OntologyActiveGraphStorageTest {
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void rebuildCannotOverwriteAnActivationDeliveredWhileItsModelWasBeingBuilt(
-      ConnectionType dialect) {
+@Isolated("swaps the static Entity collection DAO and repository registry to a scratch database")
+class OntologyActiveGraphStorageIT {
+  @Test
+  void rebuildCannotOverwriteAnActivationDeliveredWhileItsModelWasBeingBuilt() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -105,12 +104,9 @@ class OntologyActiveGraphStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void projectionFollowsOnlyTheActiveReleaseAndRebuildRemovesArchivedGraphs(
-      ConnectionType dialect) {
+  @Test
+  void projectionFollowsOnlyTheActiveReleaseAndRebuildRemovesArchivedGraphs() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -171,11 +167,9 @@ class OntologyActiveGraphStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void aWriteBeingDeliveredQueuesTheBoundAssetsItRefreshesAfterItself(ConnectionType dialect) {
+  @Test
+  void aWriteBeingDeliveredQueuesTheBoundAssetsItRefreshesAfterItself() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {

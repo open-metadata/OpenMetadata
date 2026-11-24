@@ -1,10 +1,10 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
+import static org.openmetadata.it.tests.ontology.OntologyCaptureFixture.withCapture;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -15,17 +15,20 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.jena.vocabulary.SKOS;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 /** The reciprocity finalizer and the restore exception, at the repository, on both engines. */
-class OntologyPropertyInverseStorageTest {
+@Isolated("swaps the static Entity collection DAO and repository registry to a scratch database")
+class OntologyPropertyInverseStorageIT {
   /** Every order of three properties' ids, lowest first: a write applies its changes by id. */
   private static final List<List<String>> ID_ORDERS =
       List.of(
@@ -36,11 +39,9 @@ class OntologyPropertyInverseStorageTest {
           List.of("wholeOf", "hasPart", "partOf"),
           List.of("wholeOf", "partOf", "hasPart"));
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void rejectedDeletionRollsBackThePartnerUpdate(ConnectionType dialect) {
+  @Test
+  void rejectedDeletionRollsBackThePartnerUpdate() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -72,11 +73,9 @@ class OntologyPropertyInverseStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void nonObjectPropertiesRetainTheirMetadataWithoutInverseLinks(ConnectionType dialect) {
+  @Test
+  void nonObjectPropertiesRetainTheirMetadataWithoutInverseLinks() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -111,11 +110,9 @@ class OntologyPropertyInverseStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void deleteClearsThePartnerAndRestoreRelinksOrDropsTheLink(ConnectionType dialect) {
+  @Test
+  void deleteClearsThePartnerAndRestoreRelinksOrDropsTheLink() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -139,11 +136,9 @@ class OntologyPropertyInverseStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void restoringTheOntologyKeepsTheLinkBetweenItsProperties(ConnectionType dialect) {
+  @Test
+  void restoringTheOntologyKeepsTheLinkBetweenItsProperties() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -162,11 +157,9 @@ class OntologyPropertyInverseStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void restoringTheOntologyDropsALinkItsPartnerNoLongerNamesBack(ConnectionType dialect) {
+  @Test
+  void restoringTheOntologyDropsALinkItsPartnerNoLongerNamesBack() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -184,11 +177,9 @@ class OntologyPropertyInverseStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void restoringTheOntologyDropsClaimsThatCompeteForALivePartner(ConnectionType dialect) {
+  @Test
+  void restoringTheOntologyDropsClaimsThatCompeteForALivePartner() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -213,11 +204,9 @@ class OntologyPropertyInverseStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void restoringTheOntologyRelinksALoneClaimOnALivePartner(ConnectionType dialect) {
+  @Test
+  void restoringTheOntologyRelinksALoneClaimOnALivePartner() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -237,11 +226,9 @@ class OntologyPropertyInverseStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void restoringTheOntologyKeepsClaimsOnAVocabularyProperty(ConnectionType dialect) {
+  @Test
+  void restoringTheOntologyKeepsClaimsOnAVocabularyProperty() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -261,11 +248,9 @@ class OntologyPropertyInverseStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void aSelfInverseSurvivesItsRestore(ConnectionType dialect) {
+  @Test
+  void aSelfInverseSurvivesItsRestore() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {

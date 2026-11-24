@@ -19,16 +19,14 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.PASSWORD;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrate;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrateRepositoryTables;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.migrate;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.migrateRepositoryTables;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.withDatabase;
 
 import java.net.URI;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -43,9 +41,13 @@ import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.it.tests.ontology.EntityRegistrySnapshot;
+import org.openmetadata.it.tests.ontology.OntologyTestDatabase;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
@@ -82,16 +84,14 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReview;
 import org.openmetadata.service.tasks.TaskReviewVotes;
 
-class OntologyEntityDAOTest {
+@Isolated("swaps the static Entity collection DAO and repository registry to a scratch database")
+class OntologyEntityDAOIT {
   private static final URI NAMESPACE = URI.create("https://example.org/sales/");
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void migrationResetsOnlyUnreleasedGlossaryAxioms(ConnectionType dialect) {
+  @Test
+  void migrationResetsOnlyUnreleasedGlossaryAxioms() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           migrateRepositoryTables(handle, dialect);
           final var axiomId = UUID.randomUUID();
@@ -183,13 +183,10 @@ class OntologyEntityDAOTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void migrationPreservesTermChangeSetsWhileResettingLegacyAxiomOperations(ConnectionType dialect) {
+  @Test
+  void migrationPreservesTermChangeSetsWhileResettingLegacyAxiomOperations() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           migrateRepositoryTables(handle, dialect);
           final String jsonValue =
@@ -258,21 +255,16 @@ class OntologyEntityDAOTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void storesIndependentEntitiesThroughStandardDaos(ConnectionType dialect) {
-    withDatabase(dialect, handle -> assertStorageContract(handle, dialect));
+  @Test
+  void storesIndependentEntitiesThroughStandardDaos() {
+    ConnectionType dialect = ScratchDatabase.dialect();
+    withDatabase(handle -> assertStorageContract(handle, dialect));
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void pagesInstalledOntologiesPastNonInstalledAndHiddenRows(ConnectionType dialect) {
+  @Test
+  void pagesInstalledOntologiesPastNonInstalledAndHiddenRows() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           migrate(handle, dialect);
           final var dao = handle.attach(CollectionDAO.class).ontologyEntityDAO();
@@ -319,7 +311,7 @@ class OntologyEntityDAOTest {
           assertTrue(dao.listJsonWithInstalledPacks(2, ids.get(3).toString()).isEmpty());
 
           migrateRepositoryTables(handle, dialect);
-          final CollectionDAO previous = Entity.getCollectionDAO();
+          final var registry = EntityRegistrySnapshot.capture();
           Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
           try {
             final OntologyRepository repository = new OntologyRepository();
@@ -336,24 +328,20 @@ class OntologyEntityDAOTest {
                     .map(Ontology::getId)
                     .toList());
           } finally {
-            Entity.setCollectionDAO(previous);
+            registry.restore();
           }
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void existingWorkflowEngineCountsDistinctVotesAndFailsClosed(ConnectionType dialect) {
-    withDatabase(dialect, handle -> assertWorkflowVoting(handle, dialect));
+  @Test
+  void existingWorkflowEngineCountsDistinctVotesAndFailsClosed() {
+    ConnectionType dialect = ScratchDatabase.dialect();
+    withDatabase(handle -> assertWorkflowVoting(handle, dialect));
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void cancellingTheCurrentReviewReturnsTheDefinitionToDraft(ConnectionType dialect) {
+  @Test
+  void cancellingTheCurrentReviewReturnsTheDefinitionToDraft() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withReviewRepositories(
         dialect,
         fixture -> {
@@ -383,11 +371,9 @@ class OntologyEntityDAOTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void cancellingASupersededReviewDoesNotChangeTheNewReview(ConnectionType dialect) {
+  @Test
+  void cancellingASupersededReviewDoesNotChangeTheNewReview() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withReviewRepositories(
         dialect,
         fixture -> {
@@ -398,11 +384,9 @@ class OntologyEntityDAOTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void cancellationRollsBackWithItsTaskAndRejectsStaleTaskWrites(ConnectionType dialect) {
+  @Test
+  void cancellationRollsBackWithItsTaskAndRejectsStaleTaskWrites() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withReviewRepositories(
         dialect,
         fixture -> {
@@ -442,11 +426,9 @@ class OntologyEntityDAOTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void cancellationCannotHoldADefinitionWhileWaitingForItsModule(ConnectionType dialect) {
+  @Test
+  void cancellationCannotHoldADefinitionWhileWaitingForItsModule() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withReviewRepositories(
         dialect,
         (handle, fixture) -> {
@@ -479,9 +461,9 @@ class OntologyEntityDAOTest {
   }
 
   @ParameterizedTest
-  @CsvSource({"MYSQL,false", "MYSQL,true", "POSTGRES,false", "POSTGRES,true"})
-  void reviewLocksSeeEditsAndArchivalCommittedWhileWaiting(
-      ConnectionType dialect, boolean archived) {
+  @ValueSource(booleans = {false, true})
+  void reviewLocksSeeEditsAndArchivalCommittedWhileWaiting(boolean archived) {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withReviewRepositories(
         dialect,
         (handle, fixture) -> {
@@ -586,14 +568,10 @@ class OntologyEntityDAOTest {
   private static void withReviewRepositories(
       ConnectionType dialect, BiConsumer<Handle, ReviewFixture> assertion) {
     withDatabase(
-        dialect,
         handle -> {
           migrate(handle, dialect);
           migrateRepositoryTables(handle, dialect);
-          CollectionDAO previous = Entity.getCollectionDAO();
-          SystemRepository previousSettings = Entity.getSystemRepository();
-          EntityRelationshipRepository previousRelationships =
-              Entity.getEntityRelationshipRepository();
+          final var registry = EntityRegistrySnapshot.capture();
           Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
           Entity.setEntityRelationshipRepository(
               new EntityRelationshipRepository(Entity.getCollectionDAO()));
@@ -604,9 +582,7 @@ class OntologyEntityDAOTest {
             new OntologyReleaseRepository();
             assertion.accept(handle, reviewFixture(new TaskRepository()));
           } finally {
-            Entity.setCollectionDAO(previous);
-            Entity.setSystemRepository(previousSettings);
-            Entity.setEntityRelationshipRepository(previousRelationships);
+            registry.restore();
           }
         });
   }
@@ -664,8 +640,7 @@ class OntologyEntityDAOTest {
 
   private static void assertWorkflowVoting(Handle handle, ConnectionType dialect) {
     migrateRepositoryTables(handle, dialect);
-    CollectionDAO previousDao = Entity.getCollectionDAO();
-    SystemRepository previousSettings = Entity.getSystemRepository();
+    final var registry = EntityRegistrySnapshot.capture();
     Entity.setCollectionDAO(handle.attach(CollectionDAO.class));
     new SystemRepository();
     try {
@@ -717,8 +692,7 @@ class OntologyEntityDAOTest {
       assertDecisionSurvivesAsyncCompletion(workflow, engine);
     } finally {
       WorkflowHandler.shutDown();
-      Entity.setCollectionDAO(previousDao);
-      Entity.setSystemRepository(previousSettings);
+      registry.restore();
     }
   }
 
@@ -895,20 +869,15 @@ class OntologyEntityDAOTest {
 
   private static OpenMetadataApplicationConfig workflowConfig(
       Handle handle, ConnectionType dialect) {
-    String externalUrl =
-        System.getProperty("ontology.test." + dialect.name().toLowerCase(Locale.ROOT) + ".url");
     HikariCPDataSourceFactory dataSource = new HikariCPDataSourceFactory();
     dataSource.setDriverClass(dialect.label);
     try {
-      dataSource.setUrl(
-          externalUrl == null ? handle.getConnection().getMetaData().getURL() : externalUrl);
+      dataSource.setUrl(handle.getConnection().getMetaData().getURL());
     } catch (SQLException exception) {
       throw new IllegalStateException("Cannot configure workflow test database", exception);
     }
-    if (externalUrl == null) {
-      dataSource.setUser(dialect == ConnectionType.MYSQL ? "root" : "postgres");
-      dataSource.setPassword(PASSWORD);
-    }
+    dataSource.setUser(OntologyTestDatabase.user());
+    dataSource.setPassword(OntologyTestDatabase.password());
     OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
     config.setDataSourceFactory(dataSource);
     return config;
@@ -993,8 +962,7 @@ class OntologyEntityDAOTest {
   private static void assertRepositoryContract(
       Handle handle, ConnectionType dialect, CollectionDAO dao) {
     migrateRepositoryTables(handle, dialect);
-    CollectionDAO previous = Entity.getCollectionDAO();
-    EntityRelationshipRepository previousRelationships = Entity.getEntityRelationshipRepository();
+    final var registry = EntityRegistrySnapshot.capture();
     Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
     Entity.setEntityRelationshipRepository(
         new EntityRelationshipRepository(Entity.getCollectionDAO()));
@@ -1043,8 +1011,7 @@ class OntologyEntityDAOTest {
           BadRequestException.class,
           () -> concepts.validateDefinition(concept(created).withConceptType(null)));
     } finally {
-      Entity.setCollectionDAO(previous);
-      Entity.setEntityRelationshipRepository(previousRelationships);
+      registry.restore();
     }
   }
 

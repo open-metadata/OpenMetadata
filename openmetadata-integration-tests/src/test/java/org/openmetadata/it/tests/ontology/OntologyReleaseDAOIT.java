@@ -1,4 +1,4 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -15,8 +15,10 @@ import java.util.function.Consumer;
 import java.util.stream.IntStream;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -25,16 +27,18 @@ import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.OntologyReleaseDAO;
+import org.openmetadata.service.jdbi3.OntologyStateDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseManifest;
 import org.openmetadata.service.ontology.OntologyReleaseRoles;
 
-class OntologyReleaseDAOTest {
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void roleCandidatesStayBoundedAndRetainAnOlderOpenReview(ConnectionType dialect) {
+@Execution(ExecutionMode.CONCURRENT)
+class OntologyReleaseDAOIT {
+  @Test
+  void roleCandidatesStayBoundedAndRetainAnOlderOpenReview() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withStorage(
         dialect,
         storage -> {
@@ -84,11 +88,9 @@ class OntologyReleaseDAOTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void retentionChecksIncludeReleasesCommittedAfterTheTransactionSnapshot(ConnectionType dialect) {
+  @Test
+  void retentionChecksIncludeReleasesCommittedAfterTheTransactionSnapshot() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withStorage(
         dialect,
         storage -> {
@@ -121,11 +123,9 @@ class OntologyReleaseDAOTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void onlySealedMembersAreReadableAndTheirMembershipIsImmutable(ConnectionType dialect) {
+  @Test
+  void onlySealedMembersAreReadableAndTheirMembershipIsImmutable() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withStorage(
         dialect,
         storage -> {
@@ -172,11 +172,9 @@ class OntologyReleaseDAOTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void batchedInsertsLandEveryMemberOfAnUnsealedReleaseAndNoneOfASealedOne(ConnectionType dialect) {
+  @Test
+  void batchedInsertsLandEveryMemberOfAnUnsealedReleaseAndNoneOfASealedOne() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withStorage(
         dialect,
         storage -> {
@@ -212,11 +210,9 @@ class OntologyReleaseDAOTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void activationRequiresAnApprovedOwnedReleaseAndNeverReusesARevision(ConnectionType dialect) {
+  @Test
+  void activationRequiresAnApprovedOwnedReleaseAndNeverReusesARevision() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withStorage(
         dialect,
         storage -> {
@@ -254,11 +250,9 @@ class OntologyReleaseDAOTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void memberPayloadsPreserveDecimalPrecision(ConnectionType dialect) {
+  @Test
+  void memberPayloadsPreserveDecimalPrecision() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withStorage(
         dialect,
         storage -> {
@@ -281,11 +275,9 @@ class OntologyReleaseDAOTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void candidateContentCountersAndAuditEventsRollBackTogether(ConnectionType dialect) {
+  @Test
+  void candidateContentCountersAndAuditEventsRollBackTogether() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withStorage(
         dialect,
         storage -> {
@@ -372,7 +364,6 @@ class OntologyReleaseDAOTest {
 
   private static void withStorage(ConnectionType dialect, Consumer<Storage> assertion) {
     OntologyTestDatabase.withDatabase(
-        dialect,
         handle -> {
           OntologyTestDatabase.migrate(handle, dialect);
           OntologyTestDatabase.migrate(handle, dialect);

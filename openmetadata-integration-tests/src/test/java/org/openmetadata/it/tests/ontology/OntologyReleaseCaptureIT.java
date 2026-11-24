@@ -1,4 +1,4 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
+import static org.openmetadata.it.tests.ontology.OntologyCaptureFixture.withCapture;
 
 import jakarta.ws.rs.ForbiddenException;
 import java.net.URI;
@@ -21,8 +21,9 @@ import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFParser;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.OntologyReleaseExportOptions;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
@@ -41,6 +42,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.OntologyValidationException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.TaskStateConflictException;
+import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseReader;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
@@ -48,12 +50,11 @@ import org.openmetadata.service.rdf.BoundAssetLinks;
 import org.openmetadata.service.rdf.OntologyExportFormat;
 import org.openmetadata.service.rdf.OntologyReleaseExporter;
 
-class OntologyReleaseCaptureTest {
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void decidedReleasesCannotBeSubmittedForAnotherReview(ConnectionType dialect) {
+@Isolated("swaps the static Entity collection DAO and repository registry to a scratch database")
+class OntologyReleaseCaptureIT {
+  @Test
+  void decidedReleasesCannotBeSubmittedForAnotherReview() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -71,12 +72,9 @@ class OntologyReleaseCaptureTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void invalidStoredContentCannotAllocateAReleaseAndReportsTheFailingMember(
-      ConnectionType dialect) {
+  @Test
+  void invalidStoredContentCannotAllocateAReleaseAndReportsTheFailingMember() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -121,11 +119,9 @@ class OntologyReleaseCaptureTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void referencesCommitAndRollBackWithTheCanonicalDefinition(ConnectionType dialect) {
+  @Test
+  void referencesCommitAndRollBackWithTheCanonicalDefinition() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -181,11 +177,9 @@ class OntologyReleaseCaptureTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void readingAnUninitializedStateDoesNotWriteUntilCapture(ConnectionType dialect) {
+  @Test
+  void readingAnUninitializedStateDoesNotWriteUntilCapture() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -213,11 +207,9 @@ class OntologyReleaseCaptureTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void rollbackRemovesMembersEventsAndReleaseAllocation(ConnectionType dialect) {
+  @Test
+  void rollbackRemovesMembersEventsAndReleaseAllocation() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -241,11 +233,9 @@ class OntologyReleaseCaptureTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void aDeniedMemberAbortsTheWholeCapture(ConnectionType dialect) {
+  @Test
+  void aDeniedMemberAbortsTheWholeCapture() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -266,11 +256,9 @@ class OntologyReleaseCaptureTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void anUnlockedReadSeesEveryPageOrFailsWhenAWriteLandsMeanwhile(ConnectionType dialect) {
+  @Test
+  void anUnlockedReadSeesEveryPageOrFailsWhenAWriteLandsMeanwhile() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -328,11 +316,9 @@ class OntologyReleaseCaptureTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void aSealedReleaseIsReadFromTheCacheAndStillAuthorizedOnEveryRead(ConnectionType dialect) {
+  @Test
+  void aSealedReleaseIsReadFromTheCacheAndStillAuthorizedOnEveryRead() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -367,11 +353,9 @@ class OntologyReleaseCaptureTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void releasesAboveTheParsedHeapBudgetRemainReadableWithoutBeingCached(ConnectionType dialect) {
+  @Test
+  void releasesAboveTheParsedHeapBudgetRemainReadableWithoutBeingCached() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -411,11 +395,9 @@ class OntologyReleaseCaptureTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void captureIncludesAllPagesAndRepeatCaptureReturnsTheSameRelease(ConnectionType dialect) {
+  @Test
+  void captureIncludesAllPagesAndRepeatCaptureReturnsTheSameRelease() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {

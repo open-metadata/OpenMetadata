@@ -1,19 +1,21 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
+import static org.openmetadata.it.tests.ontology.OntologyCaptureFixture.withCapture;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.Json;
 import jakarta.json.JsonPatch;
 import java.net.URI;
 import java.util.UUID;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.tests.ontology.OntologyCaptureFixture.Fixture;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyConceptType;
@@ -21,16 +23,15 @@ import org.openmetadata.schema.type.OntologyDefinitionStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
-import org.openmetadata.service.jdbi3.OntologyCaptureFixture.Fixture;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.EntityUtil;
 
-class OntologyConceptStatusStorageTest {
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void lifecycleStatusNeverReachesTheRowOrTheVersionHistory(ConnectionType dialect) {
+@Isolated("swaps the static Entity collection DAO and repository registry to a scratch database")
+class OntologyConceptStatusStorageIT {
+  @Test
+  void lifecycleStatusNeverReachesTheRowOrTheVersionHistory() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -69,11 +70,9 @@ class OntologyConceptStatusStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void patchesThatSetLifecycleStatusAreRejectedAsServerDerived(ConnectionType dialect) {
+  @Test
+  void patchesThatSetLifecycleStatusAreRejectedAsServerDerived() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {

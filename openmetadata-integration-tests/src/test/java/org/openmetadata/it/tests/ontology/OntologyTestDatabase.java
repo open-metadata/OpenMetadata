@@ -11,115 +11,44 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import org.jdbi.v3.core.Handle;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.statement.SqlStatements;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
 
-final class OntologyTestDatabase {
-  private static final String DATABASE = "ontology_entities";
-  static final String PASSWORD = "ontology-storage-test";
-  private static final Map<ConnectionType, GenericContainer<?>> SERVERS =
-      new EnumMap<>(ConnectionType.class);
-  private static final AtomicInteger DATABASES = new AtomicInteger();
-
+public final class OntologyTestDatabase {
   private OntologyTestDatabase() {}
 
-  static void withDatabase(ConnectionType dialect, Consumer<Handle> assertion) {
-    String externalUrl =
-        System.getProperty("ontology.test." + dialect.name().toLowerCase(Locale.ROOT) + ".url");
-    if (externalUrl != null) {
-      try (Handle handle = openHandle(Jdbi.create(externalUrl), dialect)) {
-        assertion.accept(handle);
-      }
-      return;
-    }
-    GenericContainer<?> server = server(dialect);
-    String database = DATABASE + "_" + DATABASES.incrementAndGet();
-    try (Handle admin = connect(server, dialect, DATABASE)) {
-      admin.execute("CREATE DATABASE " + database);
-    }
-    try (Handle handle = connect(server, dialect, database)) {
-      assertion.accept(handle);
-    } finally {
-      try (Handle admin = connect(server, dialect, DATABASE)) {
-        admin.execute(
-            "DROP DATABASE "
-                + database
-                + (dialect == ConnectionType.POSTGRES ? " WITH (FORCE)" : ""));
-      }
-    }
-  }
-
-  // One server per dialect for the whole JVM; Testcontainers' Ryuk removes it at exit. Each call
-  // still gets its own empty database, so tests keep the isolation of a fresh container.
-  private static synchronized GenericContainer<?> server(ConnectionType dialect) {
-    return SERVERS.computeIfAbsent(
-        dialect,
-        key -> {
-          GenericContainer<?> server = database(key);
-          server.start();
-          return server;
+  public static void withDatabase(Consumer<Handle> assertion) {
+    ScratchDatabase.withJdbi(
+        jdbi -> {
+          // An explicitly opened handle is not bound to the thread, so DAOs attached from other
+          // threads or configured after the handle opened see their own connections and config.
+          try (Handle handle = jdbi.open()) {
+            assertion.accept(handle);
+          }
         });
   }
 
-  private static GenericContainer<?> database(ConnectionType dialect) {
-    return dialect == ConnectionType.MYSQL
-        ? new GenericContainer<>("mysql:8.4.13")
-            .withEnv("MYSQL_DATABASE", DATABASE)
-            .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-            .withEnv("MYSQL_ROOT_HOST", "%")
-            .withExposedPorts(3306)
-            .waitingFor(Wait.forLogMessage(".*ready for connections.*port: 3306.*\\n", 1))
-        : new GenericContainer<>("postgres:15")
-            .withEnv("POSTGRES_DB", DATABASE)
-            .withEnv("POSTGRES_PASSWORD", PASSWORD)
-            .withExposedPorts(5432)
-            .waitingFor(
-                Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
+  public static String user() {
+    return ScratchDatabase.dialect() == ConnectionType.MYSQL
+        ? "root"
+        : TestSuiteBootstrap.getDatabaseContainer().getUsername();
   }
 
-  private static Handle connect(
-      GenericContainer<?> server, ConnectionType dialect, String database) {
-    boolean mysql = dialect == ConnectionType.MYSQL;
-    String url =
-        "jdbc:%s://%s:%d/%s%s"
-            .formatted(
-                mysql ? "mysql" : "postgresql",
-                server.getHost(),
-                server.getMappedPort(mysql ? 3306 : 5432),
-                database,
-                mysql
-                    ? "?allowPublicKeyRetrieval=true&useSSL=false&connectTimeout=5000&socketTimeout=30000"
-                    : "");
-    return openHandle(Jdbi.create(url, mysql ? "root" : "postgres", PASSWORD), dialect);
+  public static String password() {
+    return TestSuiteBootstrap.getDatabaseContainer().getPassword();
   }
 
-  private static Handle openHandle(Jdbi jdbi, ConnectionType dialect) {
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(dialect.label));
-    return jdbi.open();
-  }
-
-  static void migrateRepositoryTables(Handle handle, ConnectionType dialect) {
+  public static void migrateRepositoryTables(Handle handle, ConnectionType dialect) {
     Path sqlDirectory =
         repositoryRoot().resolve("bootstrap/sql/migrations/flyway").resolve(dialect.label);
     for (String migration :
@@ -188,7 +117,7 @@ final class OntologyTestDatabase {
     }
   }
 
-  static void migrate(Handle handle, ConnectionType dialect) {
+  public static void migrate(Handle handle, ConnectionType dialect) {
     migrateRepositoryTables(handle, dialect);
     Path migration =
         repositoryRoot()
@@ -202,7 +131,7 @@ final class OntologyTestDatabase {
         .forEach(handle::execute);
   }
 
-  static Path repositoryRoot() {
+  public static Path repositoryRoot() {
     Path root = Path.of("").toAbsolutePath();
     while (root != null && !Files.isDirectory(root.resolve("bootstrap/sql"))) {
       root = root.getParent();
