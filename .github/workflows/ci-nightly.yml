@@ -112,7 +112,6 @@ jobs:
       python-version: ${{ matrix.python }}
       ref: ${{ needs.plan.outputs.ref }}
       collect-coverage: ${{ matrix.python == needs.plan.outputs.python-lowest }}
-      run-meta-tests: ${{ matrix.python == needs.plan.outputs.python-highest }}
 
   python-integration:
     needs:

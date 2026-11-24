@@ -45,7 +45,8 @@ independently of its host interpreter.
 `ci-pr.yml`, `ci-merge-queue.yml` and `ci-nightly.yml` own their respective triggers, workload
 selection, Python matrices, dependencies, permissions and required `py-tests-status` check.
 The `py-static-checks` job also stays in the entrypoints. Reusable workflows execute
-the supplied Python version and source revision; they do not choose event policy. Shared
+the supplied Python version and source revision. The unit runner selects nightly tooling checks
+from the caller workflow name and the highest Python version in project configuration. Shared
 backend construction uses a complete reusable job. Aggregate jobs run on `ubuntu-slim`, verify
 the selected results without checking out the repository, and retain the required
 `py-tests-status` aggregate check. Other Python CI jobs run on `ubuntu-latest`. Playwright
@@ -66,8 +67,8 @@ raw test logs are uploaded for
 unsuccessful tests, and coverage text is rendered once centrally in CI.
 
 The nightly runs at 01:00 UTC. Manual dispatch runs the selected entrypoint's workloads,
-bypassing path filtering without simulating a merge-group commit. CI helper and offline E2E
-framework meta-tests run only in scheduled and manual nightly workloads,
+bypassing path filtering without simulating a merge-group commit. CI helper, Python tooling and
+offline E2E framework meta-tests run only in scheduled and manual nightly workloads,
 once on the highest supported interpreter. They are distinct from connector E2E execution;
 their failures still fail the nightly status and trigger its Slack notification.
 

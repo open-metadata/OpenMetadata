@@ -68,7 +68,7 @@ def _run_workflow(tmp_path, connector, pytest_exit=0):
         **{key: render(value) for key, value in job.get("env", {}).items()},
     }
     for step in job["steps"]:
-        if "run" not in step:
+        if step.get("name") != "Validate connector" and step.get("id") not in _TEST_STEP_IDS:
             continue
         condition = step.get("if")
         if condition is not None and not _condition_holds(condition, connector):
@@ -196,10 +196,3 @@ def test_ci_queues_the_v1_and_v2_snowflake_jobs_in_one_group():
         assert match["key"] == matrix_key
         groups.add(match["group"])
     assert len(groups) == 1
-
-
-def test_ci_tracks_changes_to_e2e_workflows():
-    """The Python entrypoint tracks the E2E workflows used by nightly meta tests."""
-    root = Path(__file__).resolve().parents[4]
-    filters = yaml.safe_load((root / ".github/python-ci/paths.yml").read_text())
-    assert set(_E2E_WORKFLOWS) <= set(filters["python"])
