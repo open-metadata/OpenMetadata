@@ -83,7 +83,9 @@ describe('AlertAiFormFieldsPureUtils', () => {
     const value = (enabled?: boolean) => ({ enabled } as AlertAiFormValue);
 
     it('leaves an enabled alert editable', () => {
-      expect(getAlertFieldAccess(false, value(true))).toEqual({
+      expect(
+        getAlertFieldAccess({ isEditMode: true, value: value(true) })
+      ).toEqual({
         isAlertEnabled: true,
         isFieldDisabled: false,
         areRulesReadOnly: undefined,
@@ -91,19 +93,34 @@ describe('AlertAiFormFieldsPureUtils', () => {
     });
 
     it('treats an alert with no enabled flag as enabled', () => {
-      expect(getAlertFieldAccess(false, value()).isFieldDisabled).toBe(false);
+      expect(
+        getAlertFieldAccess({ isEditMode: true, value: value() })
+          .isFieldDisabled
+      ).toBe(false);
     });
 
-    it('makes a disabled alert read-only', () => {
-      expect(getAlertFieldAccess(false, value(false))).toEqual({
+    it('makes a saved alert read-only while it is switched off', () => {
+      expect(
+        getAlertFieldAccess({ isEditMode: true, value: value(false) })
+      ).toEqual({
         isAlertEnabled: false,
         isFieldDisabled: true,
         areRulesReadOnly: true,
       });
     });
 
+    it('keeps a new alert editable when it is switched off', () => {
+      expect(getAlertFieldAccess({ value: value(false) })).toEqual({
+        isAlertEnabled: false,
+        isFieldDisabled: false,
+        areRulesReadOnly: undefined,
+      });
+    });
+
     it('makes a view-only form read-only whatever the alert state', () => {
-      expect(getAlertFieldAccess(true, value(true))).toEqual({
+      expect(
+        getAlertFieldAccess({ isViewOnly: true, value: value(true) })
+      ).toEqual({
         isAlertEnabled: true,
         isFieldDisabled: true,
         areRulesReadOnly: true,
@@ -111,9 +128,11 @@ describe('AlertAiFormFieldsPureUtils', () => {
     });
 
     it('keeps rules read-only when the alert has rules without selections', () => {
-      const access = getAlertFieldAccess(false, value(true), {
-        hasRulesWithoutSelections: true,
-      } as ModifiedEventSubscription);
+      const access = getAlertFieldAccess({
+        alert: { hasRulesWithoutSelections: true } as ModifiedEventSubscription,
+        isEditMode: true,
+        value: value(true),
+      });
 
       expect(access.isFieldDisabled).toBe(false);
       expect(access.areRulesReadOnly).toBe(true);

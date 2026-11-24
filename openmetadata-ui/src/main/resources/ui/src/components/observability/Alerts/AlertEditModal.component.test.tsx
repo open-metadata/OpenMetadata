@@ -19,8 +19,6 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { Operation } from '../../../generated/entity/policies/policy';
 import {
   AlertType,
   ProviderType,
@@ -31,7 +29,6 @@ import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
 } from '../../../utils/AlertsClassBase.interface';
-import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import AlertEditModal from './AlertEditModal.component';
 
 const mockUseAlertFormData = jest.fn();
@@ -45,29 +42,9 @@ jest.mock('../../../components/common/Loader/Loader', () => ({
   default: () => <div data-testid="loader" />,
 }));
 
-const mockUseEntityPermissions = jest.fn();
-
-// Mock the hook, run the real derivation over a minimal permission object.
-const setMockPermissions = (overrides: Partial<OperationPermission> = {}) => {
-  const permissions = overrides as OperationPermission;
-  mockUseEntityPermissions.mockReturnValue({
-    permissions,
-    isLoading: false,
-    error: null,
-    refresh: jest.fn(),
-    ...getDerivedPermissionFlags(permissions, false),
-  });
-};
-
-jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
-  useEntityPermissions: (...args: unknown[]) =>
-    mockUseEntityPermissions(...args),
-}));
-
 jest.mock('./AlertAiForm.component', () => ({
   __esModule: true,
   default: ({
-    canEditEnabled,
     mode,
     onChange,
     onSubmit,
@@ -77,7 +54,6 @@ jest.mock('./AlertAiForm.component', () => ({
     templatesLoading,
     value,
   }: {
-    canEditEnabled?: boolean;
     mode: string;
     onChange: (value: ModifiedCreateEventSubscription) => void;
     onSubmit: (value: ModifiedCreateEventSubscription) => void;
@@ -102,7 +78,6 @@ jest.mock('./AlertAiForm.component', () => ({
       <span data-testid="form-display-name">{value.displayName}</span>
       <span data-testid="form-show-hint">{String(showHint)}</span>
       <span data-testid="form-enabled">{String(value.enabled)}</span>
-      <span data-testid="form-can-edit-enabled">{String(canEditEnabled)}</span>
       <button
         data-testid="change-form"
         onClick={() => onChange({ ...value, name: 'updated-alert' })}>
@@ -154,7 +129,6 @@ const getHookState = (overrides = {}) => ({
 
 describe('AlertEditModal', () => {
   beforeEach(() => {
-    setMockPermissions({ [Operation.EditAll]: true });
     jest.clearAllMocks();
     mockUseAlertFormData.mockReturnValue(getHookState());
   });
@@ -285,7 +259,7 @@ describe('AlertEditModal', () => {
     );
   });
 
-  it('starts a new alert enabled, with a switch its creator can use', () => {
+  it('starts a new alert enabled', () => {
     render(
       <AlertEditModal
         isOpen
@@ -296,32 +270,6 @@ describe('AlertEditModal', () => {
     );
 
     expect(screen.getByTestId('form-enabled')).toHaveTextContent('true');
-    expect(screen.getByTestId('form-can-edit-enabled')).toHaveTextContent(
-      'true'
-    );
-  });
-
-  it('lets only someone who can edit the alert switch it off or on', () => {
-    setMockPermissions({ [Operation.EditAll]: false });
-
-    render(
-      <AlertEditModal
-        isOpen
-        fqn="alert.fqn"
-        mode="edit"
-        onClose={jest.fn()}
-        onSaved={jest.fn()}
-      />
-    );
-
-    expect(mockUseEntityPermissions).toHaveBeenCalledWith(
-      'eventsubscription',
-      'alert.fqn',
-      { enabled: true }
-    );
-    expect(screen.getByTestId('form-can-edit-enabled')).toHaveTextContent(
-      'false'
-    );
   });
 
   it('renders add form with empty alert values', () => {

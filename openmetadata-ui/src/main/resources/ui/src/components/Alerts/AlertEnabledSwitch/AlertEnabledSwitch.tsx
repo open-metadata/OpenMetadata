@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 interface AlertEnabledSwitchProps {
   isEnabled: boolean;
   /** False for a user who cannot edit the alert. */
-  canEdit: boolean;
+  canEdit?: boolean;
   onChange: (isEnabled: boolean) => void;
 }
 
@@ -27,7 +27,7 @@ interface AlertEnabledSwitchProps {
  */
 const AlertEnabledSwitch = ({
   isEnabled,
-  canEdit,
+  canEdit = true,
   onChange,
 }: AlertEnabledSwitchProps) => {
   const { t } = useTranslation();

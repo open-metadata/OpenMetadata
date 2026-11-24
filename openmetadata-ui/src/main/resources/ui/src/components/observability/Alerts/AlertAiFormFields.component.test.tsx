@@ -2526,12 +2526,14 @@ describe('AlertAi form field components', () => {
     };
     const renderFields = (
       next: ModifiedCreateEventSubscription,
-      onChange = jest.fn()
+      onChange = jest.fn(),
+      isEditMode = true
     ) => {
       render(
         <AlertAiFormFields
           shouldShowActionsSection
           shouldShowFiltersSection
+          isEditMode={isEditMode}
           selection={selectionOf()}
           value={next}
           onChange={onChange}
@@ -2552,7 +2554,18 @@ describe('AlertAi form field components', () => {
       );
     });
 
-    it('makes every field read-only and says a disabled alert sends nothing', () => {
+    it('keeps a new alert editable when it is switched off, so it can still be filled in', () => {
+      renderFields({ ...value, enabled: false }, jest.fn(), false);
+
+      expect(screen.getByLabelText('label.enabled')).not.toBeChecked();
+      expect(screen.getByTestId('alert-name-input')).not.toBeDisabled();
+      expect(screen.getByTestId('description')).not.toBeDisabled();
+      expect(screen.getByTestId('alert-enabled-description')).toHaveTextContent(
+        'message.alert-disabled-description'
+      );
+    });
+
+    it('makes every field of a saved alert read-only and says a disabled alert sends nothing', () => {
       renderFields({ ...value, enabled: false });
 
       expect(screen.getByLabelText('label.enabled')).not.toBeChecked();

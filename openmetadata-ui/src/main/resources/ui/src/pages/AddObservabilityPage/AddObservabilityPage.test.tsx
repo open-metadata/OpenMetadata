@@ -323,7 +323,7 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('starts a new alert enabled, and switching it off makes every field read-only and says why', async () => {
+  it('starts a new alert enabled, and keeps it editable when switched off so it can still be filled in', async () => {
     await act(async () => {
       render(<AddObservabilityPage {...mockProps} />, {
         wrapper: MemoryRouter,
@@ -335,6 +335,36 @@ describe('Add ObservabilityPage Alerts Page Tests', () => {
 
     expect(toggle).toBeChecked();
     expect(description).toHaveTextContent('message.alert-enabled-description');
+
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
+
+    expect(toggle).not.toBeChecked();
+    expect(description).toHaveTextContent('message.alert-disabled-description');
+    expect(screen.getByTestId('displayName')).not.toBeDisabled();
+    expect(screen.getByTestId('description')).toBeInTheDocument();
+    expect(AlertFormSourceItem).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isViewMode: false }),
+      expect.anything()
+    );
+  });
+
+  it('makes every field of a saved alert read-only while it is switched off, and says why', async () => {
+    mockFqn.fqn = 'alert-test';
+    mockEntityPermissions(true);
+    mockGetModifiedAlertDataForForm.mockReturnValue(MOCK_DATA[0]);
+
+    await act(async () => {
+      render(<AddObservabilityPage {...mockProps} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    const toggle = await screen.findByRole('switch', { name: 'label.enabled' });
+    const description = screen.getByTestId('alert-enabled-description');
+
+    expect(toggle).toBeChecked();
 
     await act(async () => {
       fireEvent.click(toggle);

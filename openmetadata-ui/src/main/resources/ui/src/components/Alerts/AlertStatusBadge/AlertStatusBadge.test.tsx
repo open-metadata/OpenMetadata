@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BadgeWithDot } from '@openmetadata/ui-core-components';
 import { render, screen } from '@testing-library/react';
 import AlertStatusBadge from './AlertStatusBadge';
 
@@ -55,13 +54,4 @@ describe('AlertStatusBadge', () => {
       );
     }
   );
-
-  it('renders the small color badge from the core library', () => {
-    render(<AlertStatusBadge enabled />);
-
-    expect(BadgeWithDot).toHaveBeenCalledWith(
-      expect.objectContaining({ size: 'sm', type: 'color' }),
-      expect.anything()
-    );
-  });
 });

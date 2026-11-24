@@ -24,13 +24,11 @@ import {
   FORM_DRAWER_WIDTH_WITHOUT_HINT,
   FORM_DRAWER_WIDTH_WITH_HINT,
 } from '../../../constants/common/formHint.constants';
-import { ResourceEntity } from '../../../enums/permissions.enum';
 import {
   AlertType,
   ProviderType,
 } from '../../../generated/events/eventSubscription';
 import { useAlertFormData } from '../../../hooks/observability/alerts/useAlertFormData';
-import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
@@ -104,13 +102,6 @@ function AlertEditModal({
     () => getEmptyInitialValues(alertType)
   );
   const [showHint, setShowHint] = useState(true);
-  // Only someone who can edit the alert can switch it off or on; whoever opens the add drawer
-  // may create alerts.
-  const { canEditAll } = useEntityPermissions(
-    ResourceEntity.EVENT_SUBSCRIPTION,
-    fqn ?? '',
-    { enabled: isEditMode }
-  );
   const {
     alert,
     extraFormButtons,
@@ -216,7 +207,6 @@ function AlertEditModal({
         ) : (
           <AlertAiForm
             alert={alert}
-            canEditEnabled={!isEditMode || canEditAll}
             formId={ALERT_AI_FORM_MODAL_ID}
             inlineAlert={inlineAlertDetails}
             mode={mode}

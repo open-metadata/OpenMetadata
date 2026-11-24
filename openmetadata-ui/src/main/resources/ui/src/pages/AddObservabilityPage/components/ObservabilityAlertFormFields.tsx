@@ -41,6 +41,13 @@ import { ObservabilityAlertFormFieldsProps } from '../hooks/useObservabilityAler
 import { getAlertSourceChanges } from '../../../utils/Alerts/AlertSelectionUtil';
 import { applyAlertValueChanges } from '../../../utils/Alerts/ClassicAlertForm.utils';
 
+interface ObservabilityAlertFormFieldsComponentProps
+  extends ObservabilityAlertFormFieldsProps {
+  validationErrors: AlertAiFormValidationErrors;
+  /** A saved alert that is switched off keeps its fields read-only until it is switched back on. */
+  isAlertDisabled?: boolean;
+}
+
 function ObservabilityAlertFormFields({
   alert,
   extraFormWidgets,
@@ -52,13 +59,7 @@ function ObservabilityAlertFormFields({
   templates,
   validationErrors,
   isAlertDisabled = false,
-}: Readonly<
-  ObservabilityAlertFormFieldsProps & {
-    validationErrors: AlertAiFormValidationErrors;
-    /** A disabled alert's fields are read-only until it is switched back on. */
-    isAlertDisabled?: boolean;
-  }
->) {
+}: Readonly<ObservabilityAlertFormFieldsComponentProps>) {
   const { t } = useTranslation();
   // Subscribe only to what this component reads, so typing in name or the
   // destination fields does not re-render the whole form.
@@ -129,7 +130,6 @@ function ObservabilityAlertFormFields({
               // editor with the current text.
               isAlertDisabled ? (
                 <div
-                  aria-disabled
                   className="tw:rounded-lg tw:border tw:border-secondary tw:bg-disabled_subtle tw:p-3"
                   data-testid="description-read-only">
                   <RichTextEditorPreviewerNew markdown={field.value ?? ''} />

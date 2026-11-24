@@ -198,16 +198,24 @@ export const getAlertAiSectionVisibility = ({
 });
 
 /**
- * A disabled alert's fields stay read-only until it is switched back on; the switch itself and
- * Save/Cancel stay active. A view-only form is read-only whatever the alert's state.
+ * A saved alert that is switched off keeps its fields read-only until it is switched back on; the
+ * switch itself and Save/Cancel stay active. A new alert stays editable when switched off, so it
+ * can still be filled in and saved disabled. A view-only form is read-only whatever the state.
  */
-export const getAlertFieldAccess = (
-  isViewOnly: boolean | undefined,
-  value: AlertAiFormValue,
-  alert?: ModifiedEventSubscription
-) => {
+export const getAlertFieldAccess = ({
+  alert,
+  isEditMode = false,
+  isViewOnly,
+  value,
+}: {
+  alert?: ModifiedEventSubscription;
+  isEditMode?: boolean;
+  isViewOnly?: boolean;
+  value: AlertAiFormValue;
+}) => {
   const isAlertEnabled = value.enabled !== false;
-  const isFieldDisabled = Boolean(isViewOnly) || !isAlertEnabled;
+  const isFieldDisabled =
+    Boolean(isViewOnly) || (isEditMode && !isAlertEnabled);
 
   return {
     isAlertEnabled,

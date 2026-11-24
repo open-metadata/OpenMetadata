@@ -94,6 +94,7 @@ const ReadOnlyRulesNotice = ({
 function AlertAiFormFields({
   alert,
   canEditEnabled = true,
+  isEditMode = false,
   isViewOnly,
   inlineAlert,
   onChange,
@@ -161,7 +162,7 @@ function AlertAiFormFields({
   });
 
   const { isAlertEnabled, isFieldDisabled, areRulesReadOnly } =
-    getAlertFieldAccess(isViewOnly, value, alert);
+    getAlertFieldAccess({ alert, isEditMode, isViewOnly, value });
 
   // `rendered` gates registration on the section actually being on screen.
   // useFieldDoc registers on the doc alone, so without it a source with no

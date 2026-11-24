@@ -43,7 +43,6 @@ const NO_ERRORS: AlertAiFormValidationErrors = {};
 function ObservabilityAlertForm({
   alert,
   breadcrumb,
-  canEditEnabled = true,
   extraFormButtons,
   extraFormWidgets,
   form,
@@ -58,7 +57,7 @@ function ObservabilityAlertForm({
   shouldShowFiltersSection,
   templateResourcePermission,
   templates,
-}: Readonly<ObservabilityAlertFormProps & { canEditEnabled?: boolean }>) {
+}: Readonly<ObservabilityAlertFormProps>) {
   const { t } = useTranslation();
   const [hasSubmitted, setHasSubmitted] = useState(false);
   // `compute` re-renders this form only when the errors change, not on every keystroke.
@@ -123,7 +122,6 @@ function ObservabilityAlertForm({
                 <FormField control={form.control} name="enabled">
                   {({ field }) => (
                     <AlertEnabledSwitch
-                      canEdit={canEditEnabled}
                       isEnabled={field.value !== false}
                       onChange={field.onChange}
                     />
@@ -135,7 +133,7 @@ function ObservabilityAlertForm({
                   alert={alert}
                   extraFormWidgets={extraFormWidgets}
                   form={form}
-                  isAlertDisabled={!isAlertEnabled}
+                  isAlertDisabled={isEditMode && !isAlertEnabled}
                   isLoading={isLoading}
                   shouldShowActionsSection={shouldShowActionsSection}
                   shouldShowFiltersSection={shouldShowFiltersSection}
