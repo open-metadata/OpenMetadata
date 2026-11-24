@@ -15,8 +15,11 @@ package org.openmetadata.service.jdbi3;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -32,6 +35,9 @@ import org.testcontainers.containers.wait.strategy.Wait;
 final class OntologyTestDatabase {
   private static final String DATABASE = "ontology_entities";
   static final String PASSWORD = "ontology-storage-test";
+  private static final Map<ConnectionType, GenericContainer<?>> SERVERS =
+      new EnumMap<>(ConnectionType.class);
+  private static final AtomicInteger DATABASES = new AtomicInteger();
 
   private OntologyTestDatabase() {}
 
@@ -44,12 +50,33 @@ final class OntologyTestDatabase {
       }
       return;
     }
-    try (GenericContainer<?> database = database(dialect)) {
-      database.start();
-      try (Handle handle = connect(database, dialect)) {
-        assertion.accept(handle);
+    GenericContainer<?> server = server(dialect);
+    String database = DATABASE + "_" + DATABASES.incrementAndGet();
+    try (Handle admin = connect(server, dialect, DATABASE)) {
+      admin.execute("CREATE DATABASE " + database);
+    }
+    try (Handle handle = connect(server, dialect, database)) {
+      assertion.accept(handle);
+    } finally {
+      try (Handle admin = connect(server, dialect, DATABASE)) {
+        admin.execute(
+            "DROP DATABASE "
+                + database
+                + (dialect == ConnectionType.POSTGRES ? " WITH (FORCE)" : ""));
       }
     }
+  }
+
+  // One server per dialect for the whole JVM; Testcontainers' Ryuk removes it at exit. Each call
+  // still gets its own empty database, so tests keep the isolation of a fresh container.
+  private static synchronized GenericContainer<?> server(ConnectionType dialect) {
+    return SERVERS.computeIfAbsent(
+        dialect,
+        key -> {
+          GenericContainer<?> server = database(key);
+          server.start();
+          return server;
+        });
   }
 
   private static GenericContainer<?> database(ConnectionType dialect) {
@@ -68,15 +95,16 @@ final class OntologyTestDatabase {
                 Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
   }
 
-  private static Handle connect(GenericContainer<?> database, ConnectionType dialect) {
+  private static Handle connect(
+      GenericContainer<?> server, ConnectionType dialect, String database) {
     boolean mysql = dialect == ConnectionType.MYSQL;
     String url =
         "jdbc:%s://%s:%d/%s%s"
             .formatted(
                 mysql ? "mysql" : "postgresql",
-                database.getHost(),
-                database.getMappedPort(mysql ? 3306 : 5432),
-                DATABASE,
+                server.getHost(),
+                server.getMappedPort(mysql ? 3306 : 5432),
+                database,
                 mysql
                     ? "?allowPublicKeyRetrieval=true&useSSL=false&connectTimeout=5000&socketTimeout=30000"
                     : "");
