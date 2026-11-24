@@ -468,7 +468,10 @@ describe('formatClientContent: XSS neutralisation', () => {
   it('should strip javascript: hrefs from markdown links', () => {
     const result = formatClientContent('[click](javascript:alert(1))');
 
-    expect(result).not.toContain('javascript:');
+    const doc = new DOMParser().parseFromString(result, 'text/html');
+
+    // CommonMark leaves unsafe markdown links as literal text, not anchors.
+    expect(doc.querySelector('a[href^="javascript:"]')).toBeNull();
   });
 
   it('should strip javascript: hrefs from anchor tags', () => {
@@ -742,5 +745,61 @@ describe('getTrimmedHtmlContent', () => {
     const html = '<p>First paragraph text</p><ul><li>item one</li></ul>';
 
     expect(getTrimmedHtmlContent(html, 10)).toBe('<p>First...</p>');
+  });
+});
+
+describe('getHtmlStringFromMarkdownString: CommonMark lists', () => {
+  it.each([2, 4])(
+    'preserves three list levels with %i-space indentation',
+    (indent) => {
+      const markdown = `- Parent item.\n${' '.repeat(
+        indent
+      )}- Pattern A\n${' '.repeat(indent * 2)}- Pattern B\n- Sibling`;
+      const doc = new DOMParser().parseFromString(
+        getHtmlStringFromMarkdownString(markdown),
+        'text/html'
+      );
+
+      expect(
+        doc.querySelector('ul > li > ul > li > ul > li')?.textContent
+      ).toBe('Pattern B');
+      expect(doc.querySelectorAll('body > ul > li')).toHaveLength(2);
+    }
+  );
+
+  it('preserves ordered and mixed nested lists', () => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString(
+        '1. Parent\n   - Child\n     1. Grandchild'
+      ),
+      'text/html'
+    );
+
+    expect(doc.querySelector('ol > li > ul > li > ol > li')?.textContent).toBe(
+      'Grandchild'
+    );
+  });
+
+  it('keeps list markers inside fenced code literal', () => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString('```\n- Parent\n  - Child\n```'),
+      'text/html'
+    );
+
+    expect(doc.querySelector('ul')).toBeNull();
+    expect(doc.querySelector('code')?.textContent).toContain('  - Child');
+  });
+
+  it('preserves supported inline formatting and links', () => {
+    const html = getHtmlStringFromMarkdownString(
+      '**bold** __underline__ ~~deleted~~ :smile: https://example.com'
+    );
+
+    expect(html).toContain('<strong>bold</strong>');
+    expect(html).toContain('<u>underline</u>');
+    expect(html).toContain('<del>deleted</del>');
+    expect(html).toContain('😄');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener noreferrer"');
   });
 });
