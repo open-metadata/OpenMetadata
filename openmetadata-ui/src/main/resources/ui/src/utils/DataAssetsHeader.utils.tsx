@@ -124,7 +124,7 @@ export const ExtraInfoLabel = ({
   }
 
   return (
-    <div className="tw:flex tw:flex-col tw:gap-1.5 extra-info-container header-extra-info-field">
+    <div className="tw:flex tw:flex-col tw:gap-1.5 tw:[&_button]:text-left extra-info-container header-extra-info-field">
       {!isEmpty(label) && (
         <Typography
           as="span"
