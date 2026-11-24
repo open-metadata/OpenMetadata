@@ -61,7 +61,6 @@ export class BundleTestSuiteClass {
           sourceConfig: {
             config: {
               type: 'TestSuite',
-              entityFullyQualifiedName: testSuiteData.fullyQualifiedName,
             },
           },
         },
