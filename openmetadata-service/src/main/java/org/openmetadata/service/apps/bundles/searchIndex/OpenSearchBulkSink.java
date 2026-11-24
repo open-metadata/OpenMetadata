@@ -56,6 +56,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OsUtils;
 import os.org.opensearch.client.json.JsonData;
@@ -328,6 +329,7 @@ public class OpenSearchBulkSink implements BulkSink {
 
     // Extract StageStatsTracker from context for stats recording
     StageStatsTracker tracker = extractTracker(contextData);
+    ReindexContext reindexContext = (ReindexContext) contextData.get(RECREATE_CONTEXT);
     boolean scriptedPartialUpdates =
         Boolean.TRUE.equals(contextData.get(SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY));
 
@@ -356,6 +358,18 @@ public class OpenSearchBulkSink implements BulkSink {
                 TARGET_INDEX_KEY, indexMapping.getIndexName(searchRepository.getClusterAlias()));
 
     try {
+      if (searchRepository.writeSpecializedIndexBatch(
+          entityType, entities, indexName, reindexContext)) {
+        int written = entities.size();
+        processSuccess.addAndGet(written);
+        totalSubmitted.addAndGet(written);
+        totalSuccess.addAndGet(written);
+        if (tracker != null) {
+          tracker.recordProcessBatch(written, 0, 0);
+          tracker.recordSinkBatch(written, 0);
+        }
+        return;
+      }
       // Process timing wraps the batch's parallel doc-build join. Each entity's runAsync builds
       // a search doc (Jackson serialize + tag enrichment) and submits to the bulk processor;
       // the actual OS bulk write is timed separately at the bulk-request site. So this is
@@ -376,11 +390,14 @@ public class OpenSearchBulkSink implements BulkSink {
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
       } else {
         List<EntityInterface<?>> entityInterfaces = (List<EntityInterface<?>>) entities;
-        ReindexContext reindexContext =
-            contextData.containsKey(RECREATE_CONTEXT)
-                ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
-                : null;
-
+        // Per-entity DocBuildContext is prepared by the upstream processor stage (see
+        // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
+        // transport-only: it just looks up each entity's context by id and hands it to
+        // buildSearchIndexDoc, with no awareness of what's inside (lineage today, more later).
+        @SuppressWarnings("unchecked")
+        Map<UUID, DocBuildContext> docBuildContexts =
+            (Map<UUID, DocBuildContext>)
+                contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
         // Pre-fetch cached embeddings for entities whose fingerprint is unchanged so we can splice
         // them into the staged doc instead of regenerating (avoids expensive embedding-provider
         // calls). The service-layer two-step keeps large vector payloads off the wire for entities
@@ -390,14 +407,6 @@ public class OpenSearchBulkSink implements BulkSink {
                 ? embeddingEnricher.reusableEmbeddings(entityInterfaces, indexName, reindexContext)
                 : Collections.emptyMap();
 
-        // Per-entity DocBuildContext is prepared by the upstream processor stage (see
-        // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
-        // transport-only: it just looks up each entity's context by id and hands it to
-        // buildSearchIndexDoc, with no awareness of what's inside (lineage today, more later).
-        @SuppressWarnings("unchecked")
-        Map<UUID, DocBuildContext> docBuildContexts =
-            (Map<UUID, DocBuildContext>)
-                contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
         Map<UUID, Long> relationshipRevisions =
             (Map<UUID, Long>)
                 contextData.getOrDefault(
@@ -502,9 +511,10 @@ public class OpenSearchBulkSink implements BulkSink {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       String docId = entity.getId().toString();
-      DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
+      final SearchIndex index = Entity.buildSearchIndex(entityType, entity);
+      final DocBuildContext ctx = docBuildContexts.get(entity.getId());
       Map<String, Object> searchIndexDoc =
-          new HashMap<>(Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx));
+          new HashMap<>(index.buildSearchIndexDoc(ctx == null ? DocBuildContext.empty() : ctx));
       Long relationshipRevision = relationshipRevisions.get(entity.getId());
       SearchRepository.applyRelationshipRevision(entity, searchIndexDoc, relationshipRevision);
       String json = JsonUtils.pojoToJson(searchIndexDoc);

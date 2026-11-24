@@ -28,10 +28,13 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.function.FailableRunnable;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.OntologyChunkIndex;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -65,6 +68,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private static final long UNKNOWN_COUNT = -1L;
   private static final String FINGERPRINT_FIELD = "fingerprint";
   private static final String PARENT_ID_FIELD = "parentId";
+  private static final String ENTITY_TYPE_FILTER = "entityType";
   private static final String CHUNK_HEADER_FIELDS =
       "fingerprint,chunkCount,docVersion,"
           + String.join(
@@ -115,6 +119,13 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   protected abstract boolean knnReturnsAtMostK(double threshold);
 
+  /**
+   * Whether ontology terms keep their chunks in {@link OntologyChunkIndex}. When they do not, a
+   * term's vector lives only on its term document and a kNN over ontology terms reads the term
+   * indexes. ADR:2026-11-23-ontology-terms-have-dedicated-search-indexes
+   */
+  protected abstract boolean chunksOntologyTerms();
+
   protected void registerVectorEmbeddingHandler() {
     try {
       VectorEmbeddingHandler handler = new VectorEmbeddingHandler(this);
@@ -163,6 +174,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private static final String CHUNK_INDEX_BASE = "data_asset_embeddings_chunks";
   private static final String INCOMPLETE_CHUNK_WRITES = "incompleteChunkWrites";
   private volatile boolean chunkIndexEnsured = false;
+  private volatile boolean ontologyChunkIndexEnsured;
 
   /**
    * Name of the dedicated chunk index (issue #4789). Lives alongside the entity indices; the
@@ -183,8 +195,12 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
 
   @Override
   public void updateEntityEmbeddingChunks(EntityInterface<?> entity) {
-    requireChunkIndexForWrite();
-    updateEntityEmbeddingChunks(entity, getChunkIndexName());
+    if (!OntologyTermSearch.isTerm(entity.getEntityReference().getType())) {
+      requireChunkIndexForWrite();
+      updateEntityEmbeddingChunks(entity, getChunkIndexName());
+    } else if (chunksOntologyTerms()) {
+      updateEntityEmbeddingChunks(entity, ontologyChunkWriteTarget());
+    }
   }
 
   /**
@@ -200,11 +216,11 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   public boolean backfillEntityChunks(EntityInterface<?> entity, String stagedChunkTarget) {
     boolean written;
     try {
-      String target = stagedChunkTarget == null ? liveChunkWriteTarget() : stagedChunkTarget;
+      String entityType = entity.getEntityReference().getType();
       written =
-          stagedChunkTarget == null
-              ? writeChunksIfStale(entity, target)
-              : backfillStagedChunks(entity, target);
+          stagedChunkTarget == null || OntologyTermSearch.isTerm(entityType)
+              ? writeChunksIfStale(entity, chunkWriteTarget(entityType, null))
+              : backfillStagedChunks(entity, stagedChunkTarget);
     } catch (IOException | RuntimeException e) {
       LOG.debug("Failed to backfill chunks for {}: {}", entity.getId(), e.getMessage());
       written = false;
@@ -215,6 +231,52 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
   private String liveChunkWriteTarget() {
     requireChunkIndexForWrite();
     return getChunkIndexName();
+  }
+
+  /** Ontology terms are not part of the data-asset chunk generation, staged or live. */
+  private String chunkWriteTarget(String entityType, String stagedChunkTarget) {
+    return OntologyTermSearch.isTerm(entityType)
+        ? ontologyChunkWriteTarget()
+        : dataAssetChunkWriteTarget(stagedChunkTarget);
+  }
+
+  private String dataAssetChunkWriteTarget(String stagedChunkTarget) {
+    return stagedChunkTarget == null ? liveChunkWriteTarget() : stagedChunkTarget;
+  }
+
+  /**
+   * Created on the first write without the data-asset read alias, since ontology terms are read
+   * through their own index. Like the data-asset chunk index, it is only marked ensured once its
+   * mapping is current, and a write is refused while it is not.
+   */
+  private String ontologyChunkWriteTarget() {
+    if (!chunksOntologyTerms()) {
+      throw new IllegalStateException(engineName() + " keeps no ontology chunk index");
+    }
+    String index = OntologyChunkIndex.name();
+    if (!ontologyChunkIndexEnsured) {
+      synchronized (this) {
+        if (!ontologyChunkIndexEnsured) {
+          ontologyChunkIndexEnsured = ensureOntologyChunkIndex(index);
+        }
+      }
+    }
+    if (!ontologyChunkIndexEnsured) {
+      throw new IllegalStateException("Ontology vector chunk index unavailable");
+    }
+    return index;
+  }
+
+  private boolean ensureOntologyChunkIndex(String index) {
+    String target = resolveLiveChunkTarget(index);
+    boolean ensured;
+    if (target == null) {
+      executeGenericRequest("PUT", "/" + index, buildChunkIndexMapping(false));
+      ensured = true;
+    } else {
+      ensured = applyChunkMappingUpgradeIfStale(target);
+    }
+    return ensured;
   }
 
   /**
@@ -266,10 +328,117 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   @Override
   public void updateEntityEmbeddings(EntityInterface<?> entity, String entityIndexName) {
-    if (embeddingClient.isAvailable()) {
-      refreshEntityEmbeddings(entity, entityIndexName);
-    } else {
+    updateEntityEmbeddings(entity, entityIndexName, null);
+  }
+
+  /**
+   * {@code ontologyBody} is the embedding text of an ontology term's active release. A term's
+   * embeddings are then written only while that release is still the published one, see {@link
+   * OntologyTermSearch#writeCurrentEmbedding}.
+   */
+  @Override
+  public void updateEntityEmbeddings(
+      EntityInterface<?> entity, String entityIndexName, String ontologyBody) {
+    if (!embeddingClient.isAvailable()) {
       LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
+    } else if (OntologyTermSearch.isTerm(entity.getEntityReference().getType())) {
+      refreshOntologyEmbeddings(entity, entityIndexName, ontologyBody);
+    } else {
+      refreshEntityEmbeddings(entity, entityIndexName);
+    }
+  }
+
+  private void refreshOntologyEmbeddings(
+      EntityInterface<?> entity, String entityIndexName, String ontologyBody) {
+    try {
+      String fingerprint = ontologyFingerprint(entity, ontologyBody);
+      if (chunksOntologyTerms()) {
+        refreshOntologyChunksAndEntityDoc(entity, entityIndexName, ontologyBody, fingerprint);
+      } else {
+        refreshOntologyEntityDoc(entity, entityIndexName, ontologyBody, fingerprint);
+      }
+    } catch (EmbeddingUnavailableException unavailable) {
+      LOG.debug("Skipping embeddings for entity {}: {}", entity.getId(), unavailable.getMessage());
+    } catch (Exception e) {
+      LOG.error("Failed to update embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
+    }
+  }
+
+  private static String ontologyFingerprint(EntityInterface<?> entity, String ontologyBody) {
+    return ontologyBody == null
+        ? VectorDocBuilder.computeFingerprintForEntity(entity)
+        : VectorDocBuilder.computeFingerprintForEntity(entity, ontologyBody);
+  }
+
+  private void refreshOntologyChunksAndEntityDoc(
+      EntityInterface<?> entity, String entityIndexName, String ontologyBody, String fingerprint)
+      throws IOException {
+    String parentId = entity.getId().toString();
+    String chunkIndexName = ontologyChunkWriteTarget();
+    boolean entityDocStale = !fingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
+    ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
+    ChunkRefresh refresh = chunkRefresh(entity, fingerprint, header);
+    if (entityDocStale || refresh != ChunkRefresh.NONE) {
+      List<Map<String, Object>> chunkDocs =
+          refresh == ChunkRefresh.RESTAMP
+              ? rebuildChunksReusingEmbeddings(
+                  entity, chunkIndexName, parentId, header, ontologyBody)
+              : VectorDocBuilder.fromEntity(entity, embeddingClient, ontologyBody);
+      writeOntologyEmbeddings(
+          entity,
+          ontologyBody,
+          fingerprint,
+          () -> writeOntologyChunksAndEntityDoc(entity, fingerprint, entityIndexName, chunkDocs));
+    }
+  }
+
+  /** The chunk header is read again, under the term lock when the write is guarded. */
+  private void writeOntologyChunksAndEntityDoc(
+      EntityInterface<?> entity,
+      String fingerprint,
+      String entityIndexName,
+      List<Map<String, Object>> chunkDocs)
+      throws IOException {
+    String parentId = entity.getId().toString();
+    String chunkIndexName = ontologyChunkWriteTarget();
+    ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
+    if (chunkRefresh(entity, fingerprint, header) != ChunkRefresh.NONE) {
+      replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
+    }
+    if (!chunkDocs.isEmpty()) {
+      partialUpdateEntity(
+          entityIndexName, parentId, VectorDocBuilder.legacyEmbeddingFields(chunkDocs.getFirst()));
+    }
+  }
+
+  private void refreshOntologyEntityDoc(
+      EntityInterface<?> entity, String entityIndexName, String ontologyBody, String fingerprint)
+      throws IOException {
+    String entityId = entity.getId().toString();
+    if (fingerprint.equals(getExistingFingerprint(entityIndexName, entityId))) {
+      LOG.debug("Skipping entity {} - fingerprint unchanged", entityId);
+    } else {
+      Map<String, Object> embeddingFields =
+          VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient, ontologyBody);
+      writeOntologyEmbeddings(
+          entity,
+          ontologyBody,
+          fingerprint,
+          () -> partialUpdateEntity(entityIndexName, entityId, embeddingFields));
+    }
+  }
+
+  /** A write without the release's text is not tied to a release, so it takes no term lock. */
+  private static void writeOntologyEmbeddings(
+      EntityInterface<?> entity,
+      String ontologyBody,
+      String fingerprint,
+      FailableRunnable<IOException> write)
+      throws IOException {
+    if (ontologyBody == null) {
+      write.run();
+    } else {
+      OntologyTermSearch.writeCurrentEmbedding(entity.getEntityReference(), fingerprint, write);
     }
   }
 
@@ -366,7 +535,9 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       String parentId, List<Map<String, Object>> chunkDocs, String stagedChunkTarget) {
     boolean written;
     try {
-      String target = stagedChunkTarget == null ? liveChunkWriteTarget() : stagedChunkTarget;
+      String entityType =
+          chunkDocs.isEmpty() ? null : (String) chunkDocs.getFirst().get(ENTITY_TYPE_FILTER);
+      String target = chunkWriteTarget(entityType, stagedChunkTarget);
       replaceChunks(target, parentId, chunkDocs, previousCount(getChunkHeader(target, parentId)));
       written = true;
     } catch (IOException | RuntimeException e) {
@@ -520,7 +691,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
         throw new RuntimeException("Failed to create staged chunk index " + generation, e);
       }
       stagedChunkIndex = generation;
-      stagedExpectedTypes = Set.copyOf(AvailableEntityTypes.SET);
+      stagedExpectedTypes = AvailableEntityTypes.DATA_ASSET_CHUNK_TYPES;
       stagedFinalizedTypes.clear();
       stagedKeptLiveTypes.clear();
       flaggedGenerations.clear();
@@ -1343,33 +1514,45 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
    */
   private List<Map<String, Object>> rebuildChunksReusingEmbeddings(
       EntityInterface<?> entity, String chunkIndexName, String parentId, ChunkHeader header) {
+    return rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header, null);
+  }
+
+  private List<Map<String, Object>> rebuildChunksReusingEmbeddings(
+      EntityInterface<?> entity,
+      String chunkIndexName,
+      String parentId,
+      ChunkHeader header,
+      String ontologyBody) {
     Map<Integer, float[]> vectors =
         fetchExistingChunkVectors(chunkIndexName, parentId, header.chunkCount());
     List<Map<String, Object>> chunkDocs;
     if (vectors.size() == header.chunkCount()) {
-      chunkDocs = reuseEmbeddingsOrReembed(entity, parentId, vectors);
+      chunkDocs = reuseEmbeddingsOrReembed(entity, parentId, vectors, ontologyBody);
     } else {
       LOG.info(
           "Chunk docVersion rebuild for {} recovered {}/{} cached vectors; re-embedding",
           parentId,
           vectors.size(),
           header.chunkCount());
-      chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
+      chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient, ontologyBody);
     }
     return chunkDocs;
   }
 
   private List<Map<String, Object>> reuseEmbeddingsOrReembed(
-      EntityInterface<?> entity, String parentId, Map<Integer, float[]> vectors) {
+      EntityInterface<?> entity,
+      String parentId,
+      Map<Integer, float[]> vectors,
+      String ontologyBody) {
     List<Map<String, Object>> chunkDocs;
     try {
-      chunkDocs = VectorDocBuilder.fromEntityReusingEmbeddings(entity, vectors);
+      chunkDocs = VectorDocBuilder.fromEntityReusingEmbeddings(entity, vectors, ontologyBody);
     } catch (RuntimeException e) {
       LOG.info(
           "Chunk docVersion rebuild for {} fell back to re-embedding: {}",
           parentId,
           e.getMessage());
-      chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
+      chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient, ontologyBody);
     }
     return chunkDocs;
   }
@@ -1791,7 +1974,7 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
         overFetchSize = Math.min(overFetchSize, k);
       }
 
-      String aliasName = getIndexAlias();
+      String aliasName = vectorSearchTarget(parameters.filters());
       Set<String> readableAnchorIds = readableAnchors.apply(parameters);
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
@@ -1802,6 +1985,10 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
         String endpoint =
             SearchUtils.appendPreferenceParam(
                 "/" + aliasName + "/_search", parameters.preference());
+        if (aliasName.contains(OntologyChunkIndex.name())) {
+          // The ontology chunk index is created only by the first ontology embedding write.
+          endpoint += (endpoint.contains("?") ? "&" : "?") + "ignore_unavailable=true";
+        }
         String responseBody = executeGenericRequest("POST", endpoint, queryJson);
 
         JsonNode root = MAPPER.readTree(responseBody);
@@ -1841,6 +2028,29 @@ public abstract class AbstractVectorIndexService implements VectorIndexService {
       LOG.error("Vector search failed: {}", e.getMessage(), e);
       throw new RuntimeException("Vector search failed", e);
     }
+  }
+
+  /**
+   * The data-asset alias, or the ontology terms' vector target when the filter asks for ontology
+   * terms. A filter that mixes both reads both.
+   */
+  String vectorSearchTarget(Map<String, List<String>> filters) {
+    List<String> types = filters == null ? null : filters.get(ENTITY_TYPE_FILTER);
+    String target = getIndexAlias();
+    if (types != null && types.stream().anyMatch(OntologyTermSearch::isTerm)) {
+      String ontologyTarget = ontologyVectorTarget();
+      target =
+          types.stream().allMatch(OntologyTermSearch::isTerm)
+              ? ontologyTarget
+              : getIndexAlias() + "," + ontologyTarget;
+    }
+    return target;
+  }
+
+  private String ontologyVectorTarget() {
+    return chunksOntologyTerms()
+        ? OntologyChunkIndex.name()
+        : Entity.getSearchRepository().getIndexOrAliasName(OntologyTermSearch.ALIAS);
   }
 
   private static int collectSearchHits(

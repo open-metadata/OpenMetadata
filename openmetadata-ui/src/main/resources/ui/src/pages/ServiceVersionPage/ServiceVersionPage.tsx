@@ -452,9 +452,6 @@ function ServiceVersionPage() {
   const pagingHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
-        getOtherDetails({
-          [cursorType]: paging[cursorType],
-        });
         handlePageChange(
           currentPage,
           {
@@ -465,7 +462,7 @@ function ServiceVersionPage() {
         );
       }
     },
-    [paging, pageSize, getOtherDetails, handlePageChange]
+    [paging, pageSize, handlePageChange]
   );
 
   const tabs: DetailsTabItem[] = useMemo(() => {

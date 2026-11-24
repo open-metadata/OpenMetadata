@@ -228,6 +228,11 @@ public class OpenSearchVectorService extends AbstractVectorIndexService {
   }
 
   @Override
+  protected boolean chunksOntologyTerms() {
+    return true;
+  }
+
+  @Override
   protected boolean knnReturnsAtMostK(double threshold) {
     // With min_score set, the knn query returns every neighbour above it, however many.
     return threshold <= 0.0;

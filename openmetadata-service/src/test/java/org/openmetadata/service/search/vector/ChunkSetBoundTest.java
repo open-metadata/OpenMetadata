@@ -215,6 +215,11 @@ class ChunkSetBoundTest {
     protected boolean knnReturnsAtMostK(double threshold) {
       return true;
     }
+
+    @Override
+    protected boolean chunksOntologyTerms() {
+      return true;
+    }
   }
 
   /**

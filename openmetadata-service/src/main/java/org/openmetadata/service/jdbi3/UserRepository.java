@@ -296,6 +296,7 @@ public class UserRepository extends EntityRepository<User> {
     }
     validateRoles(user.getRoles());
     validateDefaultDomain(user);
+    validateDefaultPersona(user);
   }
 
   /**
@@ -327,6 +328,20 @@ public class UserRepository extends EntityRepository<User> {
       user.setDefaultDomain(
           Entity.getEntityReferenceById(
               Entity.DOMAIN, user.getDefaultDomain().getId(), NON_DELETED));
+    }
+  }
+
+  /**
+   * A default persona selection must resolve to a real persona. The request body only requires id
+   * + type, so hydrate the reference here; otherwise the recorded ChangeDescription holds a sparse
+   * reference that governance rules (CheckChangeDescription) cannot match. Mirrors {@link
+   * #validateDefaultDomain}.
+   */
+  private void validateDefaultPersona(User user) {
+    if (user.getDefaultPersona() != null) {
+      user.setDefaultPersona(
+          Entity.getEntityReferenceById(
+              Entity.PERSONA, user.getDefaultPersona().getId(), NON_DELETED));
     }
   }
 

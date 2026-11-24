@@ -34,6 +34,6 @@ public class Migration extends MigrationProcessImpl {
         SuggestionTaskOwnerFallbackMigration.STEP_NAME,
         () ->
             SuggestionTaskOwnerFallbackMigration.routeUnownedSuggestionsToOwnersThenAdmins(
-                handle, POSTGRES, this));
+                handle, POSTGRES));
   }
 }

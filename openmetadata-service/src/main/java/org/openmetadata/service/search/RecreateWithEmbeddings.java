@@ -1,5 +1,7 @@
 package org.openmetadata.service.search;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -48,14 +50,15 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   }
 
   /**
-   * A recreate covering every vector-indexable entity type also recreates the dedicated chunk
+   * A recreate covering every type that writes to the data-asset chunk index also recreates the dedicated chunk
    * index, so chunks of entities that no longer exist (DB restore/wipe — no delete events) don't
    * survive the rebuild and keep surfacing in AI retrieval. The recreate is STAGED: the run writes
    * into a bare next-generation index (reusing the live generation's stored vectors for unchanged
    * entities, so the rebuild does not re-embed the whole catalog), and the generation goes live
-   * with the entity indexes — one atomic alias swap, old data removed — once every
-   * vector-indexable type has finalized and its staged entity index was promoted (see {@link
-   * #finalizeReindex}); a type whose entity index kept its live index keeps the old chunks live. Guarded two ways (see {@link #shouldStageChunkRecreate}): the run must
+   * with the entity indexes — one atomic alias swap, old data removed — once every data-asset
+   * chunk type has finalized and its staged entity index was promoted (see {@link
+   * #finalizeReindex}); a type whose entity index kept its live index keeps the old chunks live.
+   * Guarded two ways (see {@link #shouldStageChunkRecreate}): the run must
    * be job-driven (the jobless ops-CLI createIndexes path must not stage), and it must cover every
    * vector-indexable entity type (a partial recreate must not stage a sweep of types it will not
    * re-embed).
@@ -71,7 +74,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
             "Partial recreate ({} of {} vector-indexable types) — keeping the chunk index; "
                 + "orphaned chunks, if any, are only swept by a full recreate",
             coveredVectorTypeCount(entities),
-            AvailableEntityTypes.SET.size());
+            AvailableEntityTypes.DATA_ASSET_CHUNK_TYPES.size());
       }
     }
     return stagedGeneration;
@@ -88,19 +91,21 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   }
 
   /**
-   * Whether the run covers every vector-indexable entity type, compared case-insensitively: the
+   * Whether the run covers every type that writes to the data-asset chunk index, compared case-insensitively: the
    * reindex job carries canonical camelCase names ("glossaryTerm") while {@link
-   * AvailableEntityTypes#SET} is lowercased ("glossaryterm") — a case-sensitive containsAll would
+   * AvailableEntityTypes#DATA_ASSET_CHUNK_TYPES} is lowercased ("glossaryterm") — a case-sensitive containsAll would
    * never match and the chunk recreate would silently never fire.
    */
   static boolean coversAllVectorTypes(Set<String> entities) {
-    return coveredVectorTypeCount(entities) == AvailableEntityTypes.SET.size();
+    return coveredVectorTypeCount(entities) == AvailableEntityTypes.DATA_ASSET_CHUNK_TYPES.size();
   }
 
   static long coveredVectorTypeCount(Set<String> entities) {
     Set<String> normalized =
         entities.stream().map(e -> e.toLowerCase(Locale.ROOT)).collect(Collectors.toSet());
-    return AvailableEntityTypes.SET.stream().filter(normalized::contains).count();
+    return AvailableEntityTypes.DATA_ASSET_CHUNK_TYPES.stream()
+        .filter(normalized::contains)
+        .count();
   }
 
   @Override
@@ -119,6 +124,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
       superFailure = e;
     }
     markChunkTypeOutcomeAndRethrow(context, superFailure);
+    sweepOntologyChunksAfterPromotion(context, promoted, reindexSuccess);
     return promoted;
   }
 
@@ -138,6 +144,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
       superFailure = e;
     }
     markChunkTypeOutcomeAndRethrow(context, superFailure);
+    sweepOntologyChunksAfterPromotion(context, promoted, reindexSuccess);
 
     if (reindexSuccess && Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
       LOG.info(
@@ -145,6 +152,17 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
           context.getEntityType());
     }
     return promoted;
+  }
+
+  private void sweepOntologyChunksAfterPromotion(
+      EntityReindexContext context, boolean promoted, boolean success) {
+    if (promoted && success && OntologyTermSearch.isTerm(context.getEntityType())) {
+      try {
+        Entity.getSearchRepository().sweepOntologyChunks(context.getEntityType());
+      } catch (IOException failure) {
+        throw new UncheckedIOException(failure);
+      }
+    }
   }
 
   /**

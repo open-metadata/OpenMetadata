@@ -1423,6 +1423,10 @@ public class SearchRepository {
       return;
     }
 
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
+      return;
+    }
+
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
@@ -1886,6 +1890,15 @@ public class SearchRepository {
       if (nullOrEmpty(entityType)) {
         return;
       }
+      if (OntologyTermSearch.isTerm(entityType)) {
+        refreshOntologyTerms(
+            entities.stream()
+                .filter(Objects::nonNull)
+                .map(EntityInterface::getEntityReference)
+                .distinct()
+                .toList());
+        return;
+      }
       Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
       try {
         if (!getSearchClient().isClientAvailable()) {
@@ -2106,6 +2119,10 @@ public class SearchRepository {
       return;
     }
 
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
+      return;
+    }
+
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
@@ -2300,6 +2317,98 @@ public class SearchRepository {
     }
   }
 
+  private boolean refreshIfOntologyTerm(EntityReference reference) {
+    if (!OntologyTermSearch.isTerm(reference.getType())) {
+      return false;
+    }
+    refreshOntologyTerm(reference);
+    return true;
+  }
+
+  public void refreshOntologyTerm(EntityReference reference) {
+    refreshOntologyTerms(List.of(reference));
+  }
+
+  public void refreshOntologyTerms(List<EntityReference> references) {
+    final var pending =
+        references.stream()
+            .filter(ref -> getIndexMapping(ref.getType()) != null)
+            .filter(
+                ref ->
+                    !shouldSkipStreamingIndexing(
+                        ref.getType(),
+                        ref.getId().toString(),
+                        ref.getFullyQualifiedName(),
+                        "refreshOntologyTerm"))
+            .toList();
+    try {
+      writeOntologyTerms(pending);
+    } catch (IOException | RuntimeException failure) {
+      pending.forEach(
+          ref ->
+              SearchIndexRetryQueue.enqueue(
+                  ref.getId().toString(),
+                  ref.getFullyQualifiedName(),
+                  ref.getType(),
+                  SearchIndexRetryQueue.failureReason("refreshOntologyTerm", failure)));
+      LOG.error("Failed to refresh {} ontology search terms", pending.size(), failure);
+    }
+  }
+
+  public void reindexOntologyTerm(EntityReference reference) throws IOException {
+    if (getIndexMapping(reference.getType()) != null) {
+      writeOntologyTerms(List.of(reference));
+    }
+  }
+
+  private void writeOntologyTerms(List<EntityReference> references) throws IOException {
+    final var indexed =
+        OntologyTermBulkWrite.refresh(
+            searchClient,
+            clusterAlias,
+            references,
+            ref -> getWriteFanoutTargets(getIndexMapping(ref.getType()).getIndexName(clusterAlias)),
+            null,
+            null);
+    if (vectorEmbeddingHandler != null) {
+      indexed.forEach(
+          ref ->
+              EntityLifecycleEventDispatcher.getInstance()
+                  .enqueueOntologyEmbedding(
+                      ref, () -> vectorEmbeddingHandler.refreshOntologyEmbedding(ref)));
+    }
+  }
+
+  public boolean writeSpecializedIndexBatch(
+      String entityType, List<?> entities, String target, ReindexContext context)
+      throws IOException {
+    if (!OntologyTermSearch.isTerm(entityType)) {
+      return false;
+    }
+    final var references =
+        entities.stream()
+            .map(entity -> ((EntityInterface<?>) entity).getEntityReference())
+            .toList();
+    final String source =
+        context == null ? target : context.getOriginalIndex(entityType).orElse(target);
+    final var indexed =
+        OntologyTermBulkWrite.refresh(
+            searchClient,
+            clusterAlias,
+            references,
+            ref -> List.of(target),
+            vectorIndexService,
+            source);
+    if (vectorEmbeddingHandler != null) {
+      indexed.forEach(ref -> vectorEmbeddingHandler.refreshOntologyEmbedding(ref, List.of(target)));
+    }
+    return true;
+  }
+
+  void sweepOntologyChunks(String entityType) throws IOException {
+    OntologyChunkIndex.sweep(searchClient, clusterAlias, entityType);
+  }
+
   public void updateEntity(EntityReference entityReference) {
     updateEntity(entityReference, Include.NON_DELETED);
   }
@@ -2312,6 +2421,9 @@ public class SearchRepository {
             entityReference.getId() != null ? entityReference.getId().toString() : null,
             entityReference.getFullyQualifiedName(),
             entityReference.getType()))) {
+      return;
+    }
+    if (refreshIfOntologyTerm(entityReference)) {
       return;
     }
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
@@ -2498,6 +2610,9 @@ public class SearchRepository {
         continue;
       }
 
+      if (refreshIfOntologyTerm(entity.getEntityReference())) {
+        continue;
+      }
       String actualType = entity.getEntityReference().getType();
       entitiesByType.computeIfAbsent(actualType, k -> new ArrayList<>()).add(entity);
     }
@@ -4232,6 +4347,10 @@ public class SearchRepository {
       return;
     }
 
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
+      return;
+    }
+
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
@@ -4334,6 +4453,10 @@ public class SearchRepository {
   public void softDeleteOrRestoreEntityIndex(EntityInterface<?> entity, boolean delete) {
     if (entity == null) {
       LOG.debug("Entity or EntityReference is null, cannot perform soft delete or restore.");
+      return;
+    }
+
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
       return;
     }
 
