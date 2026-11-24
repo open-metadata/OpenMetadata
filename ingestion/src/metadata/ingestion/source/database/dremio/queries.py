@@ -14,8 +14,9 @@ Queries on the Dremio job history, read by the usage and lineage workflows
 
 from collections.abc import Iterator
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
+from metadata.generated.schema.type.basic import DateTime
 from metadata.generated.schema.type.tableQuery import TableQuery
 
 
@@ -75,14 +76,19 @@ LIMIT {result_limit}
 
 
 def to_table_query(row: dict, jobs: JobsTable, service_name: str) -> TableQuery:
+    """
+    The usage stage counts a query on the day of its `analysisDate`, so it is
+    the day the job was submitted, not the day of the run.
+    """
     submitted = row.get("submitted_epoch")
     cpu_time = row.get("cpu_time")
+    submitted_at = datetime.fromtimestamp(submitted / jobs.units_per_second, tz=timezone.utc) if submitted else None
     return TableQuery(
         query=row["query"],
         userName=row.get("user_name") or "",
         startTime=datetime.fromtimestamp(submitted / jobs.units_per_second).isoformat() if submitted else "",
         duration=cpu_time / jobs.units_per_second if cpu_time else 0,
-        analysisDate=datetime.now(),
+        analysisDate=DateTime(submitted_at or datetime.now(tz=timezone.utc)),
         serviceName=service_name,
     )
 

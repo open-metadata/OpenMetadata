@@ -12,7 +12,7 @@
 The queries on the Dremio job history
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -56,3 +56,13 @@ def test_epochs_are_read_in_the_unit_of_the_edition(jobs, scale):
     assert query.startTime == START.isoformat()
     assert query.duration == 1
     assert query.userName == "ada"
+
+
+@pytest.mark.parametrize(("jobs", "scale"), [(SOFTWARE_JOBS, 1_000), (CLOUD_JOBS, 1_000_000_000)])
+def test_usage_is_counted_on_the_day_the_job_was_submitted(jobs, scale):
+    submitted = datetime(2026, 10, 30, 23, 30, tzinfo=timezone.utc)
+    rows = [{"query": "SELECT 1", "submitted_epoch": int(submitted.timestamp() * scale)}]
+
+    (query,) = iter_table_queries(rows, jobs, "svc")
+
+    assert query.analysisDate.root == submitted
