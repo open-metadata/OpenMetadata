@@ -67,8 +67,9 @@ const openSelect = async (select: Locator) => {
 
 /**
  * Closes an open popover without Escape, which would also close the drawer, by clicking
- * the start of the drawer subtitle: static header text, identical in add and edit mode.
- * On the profile alert page a picker opens its list upwards over the subtitle's middle.
+ * the start of the header subtitle: static text, identical in add and edit mode. On the
+ * profile alert page (Collate's AlertNotificationTemplateAiMode spec, and closeSourcePicker)
+ * a picker opens its list upwards over the subtitle's middle.
  */
 export const dismissPopover = async (dialog: Locator) => {
   await dialog
