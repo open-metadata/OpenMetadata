@@ -32,7 +32,7 @@ export const ObservabilityFilled: FC<Props> = ({
     viewBox="0 0 21 21"
     width={size}
     {...props}>
-    <g clipPath="url(#a)">
+    <g clipPath="url(#observability-filled_a)">
       <path
         d="M17.649 2.75a7 7 0 1 0-.126 10.12"
         stroke="currentColor"
@@ -53,7 +53,7 @@ export const ObservabilityFilled: FC<Props> = ({
       <path d="m6.75 13.75 1-1" stroke="currentColor" strokeWidth={1.5} />
     </g>
     <defs>
-      <clipPath id="a">
+      <clipPath id="observability-filled_a">
         <path d="M0 0h21v21H0z" fill="#fff" />
       </clipPath>
     </defs>

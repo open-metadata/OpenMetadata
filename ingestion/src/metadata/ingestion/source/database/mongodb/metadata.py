@@ -17,6 +17,7 @@ from collections.abc import Iterable
 
 from pymongo.errors import OperationFailure
 
+from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBConnection,
 )
@@ -68,15 +69,22 @@ class MongodbSource(CommonNoSQLSource):
         return []
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
-        """
-        Method to get list of table names available within schema db
-        need to be overridden by sources
-        """
+        return self._list_collections(schema_name, {"type": {"$ne": "view"}}, TableType.Regular)
+
+    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
+        return self._list_collections(schema_name, {"type": "view"}, TableType.View)
+
+    def _list_collections(
+        self, schema_name: str, collection_filter: dict, table_type: TableType
+    ) -> list[TableNameAndType]:
         try:
             database = self.mongodb.get_database(schema_name)
-            return [TableNameAndType(name=name) for name in database.list_collection_names()]
+            return [
+                TableNameAndType(name=name, type_=table_type)
+                for name in database.list_collection_names(filter=collection_filter)
+            ]
         except Exception as exp:
-            logger.debug(f"Failed to list collection names for schema [{schema_name}]: {exp}")
+            logger.debug("Failed to list %s names for schema [%s]: %s", table_type.value, schema_name, exp)
             logger.debug(traceback.format_exc())
         return []
 

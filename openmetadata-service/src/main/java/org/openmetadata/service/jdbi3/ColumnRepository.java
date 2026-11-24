@@ -74,6 +74,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchColumnAggregat
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OpenSearchColumnAggregator;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ColumnFieldAccess;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.ViewPermissionFilter;
@@ -106,10 +107,12 @@ public class ColumnRepository {
   static final int MAX_SYNC_IMPORT_COLUMN_UPDATES = 200;
 
   private final Authorizer authorizer;
+  private final ViewPermissionFilter viewPermissionFilter;
   private final ColumnAggregator columnAggregator;
 
   public ColumnRepository(Authorizer authorizer, SearchClient searchClient) {
     this.authorizer = authorizer;
+    this.viewPermissionFilter = new ViewPermissionFilter(authorizer);
     if (searchClient instanceof ElasticSearchClient) {
       this.columnAggregator = new ElasticSearchColumnAggregator(searchClient.getHighLevelClient());
     } else if (searchClient instanceof OpenSearchClient) {
@@ -198,7 +201,7 @@ public class ColumnRepository {
           .enrichSingleColumnFields(
               (Table) parent,
               column,
-              fieldsParam,
+              readableTableColumnFields(securityContext, parent, fieldsParam),
               ((Table) parent).getOwners(),
               authorizer,
               securityContext);
@@ -207,6 +210,16 @@ public class ColumnRepository {
           .enrichSingleColumnFields((DashboardDataModel) parent, column, fieldsParam);
       default -> column;
     };
+  }
+
+  /** The parent was loaded with the authorization fields, so it is decided on as it stands. */
+  private String readableTableColumnFields(
+      SecurityContext securityContext, EntityInterface<?> table, String fieldsParam) {
+    return ColumnFieldAccess.readableFields(
+        viewPermissionFilter,
+        securityContext,
+        resourceContextFor(TABLE, table, Entity.getEntityRepository(TABLE)),
+        fieldsParam);
   }
 
   public FieldInterface updateChildByFQN(
@@ -340,7 +353,13 @@ public class ColumnRepository {
       triggerParentChangeEvent(patchResponse.entity(), user);
     }
 
-    return new ChildUpdate(child, pendingChangeRequestId);
+    // A published update answers with the column as written: a glossary term held back as
+    // pending is not on it, whatever the request sent.
+    FieldInterface written =
+        pendingChangeRequestId == null
+            ? ChildFieldResolver.locate(patchResponse.entity(), entityType, columnFQN).orElse(child)
+            : child;
+    return new ChildUpdate(written, pendingChangeRequestId);
   }
 
   @SuppressWarnings("unchecked")
@@ -618,9 +637,6 @@ public class ColumnRepository {
           "Either columnName (for search-based updates) or columnUpdates (for explicit updates) must be provided");
     }
 
-    // The preview has no per-column error, so a term the update would reject fails it outright.
-    ApprovedGlossaryTermGuard.checkNewlyApplied(requestedTags(columnUpdatesToProcess), Map.of());
-
     BulkColumnUpdatePreview preview = new BulkColumnUpdatePreview();
     preview.setTotalColumns(columnUpdatesToProcess.size());
 
@@ -783,53 +799,6 @@ public class ColumnRepository {
     return columnUpdates;
   }
 
-  /**
-   * What a search-based update would do, without applying it. A glossary term the write would
-   * reject is reported as a failure here too, so the preview matches the apply.
-   */
-  private BulkOperationResult previewColumnUpdates(List<ColumnUpdate> columnUpdates) {
-    Map<String, String> rejections =
-        ApprovedGlossaryTermGuard.rejectionsByTarget(requestedTags(columnUpdates), Map.of());
-    List<BulkResponse> passed = new ArrayList<>();
-    List<BulkResponse> failed = new ArrayList<>();
-    for (ColumnUpdate update : columnUpdates) {
-      String rejection = rejections.get(update.getColumnFQN());
-      BulkResponse response = new BulkResponse().withRequest(update);
-      if (rejection != null) {
-        failed.add(
-            response.withMessage(
-                "Failed to update column %s: %s".formatted(update.getColumnFQN(), rejection)));
-      } else {
-        passed.add(
-            response.withMessage("Would update column: %s".formatted(update.getColumnFQN())));
-      }
-    }
-    return new BulkOperationResult()
-        .withNumberOfRowsProcessed(columnUpdates.size())
-        .withNumberOfRowsPassed(passed.size())
-        .withNumberOfRowsFailed(failed.size())
-        .withSuccessRequest(passed)
-        .withFailedRequest(failed)
-        .withStatus(bulkStatus(passed.size(), failed.size()));
-  }
-
-  private static Map<String, List<TagLabel>> requestedTags(List<ColumnUpdate> columnUpdates) {
-    Map<String, List<TagLabel>> tagsByColumn = new HashMap<>();
-    columnUpdates.forEach(
-        update -> tagsByColumn.put(update.getColumnFQN(), listOrEmpty(update.getTags())));
-    return tagsByColumn;
-  }
-
-  private static ApiStatus bulkStatus(int passed, int failed) {
-    ApiStatus status = ApiStatus.PARTIAL_SUCCESS;
-    if (failed == 0) {
-      status = ApiStatus.SUCCESS;
-    } else if (passed == 0) {
-      status = ApiStatus.FAILURE;
-    }
-    return status;
-  }
-
   public BulkOperationResult bulkUpdateColumns(
       UriInfo uriInfo, SecurityContext securityContext, BulkColumnUpdateRequest request) {
     return bulkUpdateColumns(uriInfo, securityContext, request, null);
@@ -853,8 +822,22 @@ public class ColumnRepository {
     if (request.getColumnName() != null && !request.getColumnName().isEmpty()) {
       columnUpdatesToProcess = buildColumnUpdatesFromSearch(securityContext, request);
 
+      // If dry-run, just return the list of columns that would be updated
       if (Boolean.TRUE.equals(request.getDryRun())) {
-        return previewColumnUpdates(columnUpdatesToProcess);
+        result.setNumberOfRowsProcessed(columnUpdatesToProcess.size());
+        result.setNumberOfRowsPassed(columnUpdatesToProcess.size());
+        result.setNumberOfRowsFailed(0);
+        result.setStatus(ApiStatus.SUCCESS);
+
+        // Add all columns to success responses to show what would be updated
+        for (ColumnUpdate update : columnUpdatesToProcess) {
+          BulkResponse response = new BulkResponse();
+          response.setRequest(update);
+          response.setMessage(String.format("Would update column: %s", update.getColumnFQN()));
+          successResponses.add(response);
+        }
+        result.setSuccessRequest(successResponses);
+        return result;
       }
     }
     // Mode 2: Explicit column updates - use provided list
@@ -1074,19 +1057,19 @@ public class ColumnRepository {
               totalUpdates, maxColumnUpdates));
     }
 
-    Map<String, Set<String>> previewRejections =
-        dryRun ? previewRejections(parsedRows, occurrencesByName) : Map.of();
+    Map<String, Set<String>> refusedTerms = refusedGlossaryTerms(parsedRows, occurrencesByName);
     Map<List<String>, BulkOperationResult> resultByRow = new HashMap<>();
     for (String[] fields : parsedRows) {
       try {
-        List<ColumnOccurrence> occurrences = occurrencesByName.get(fields[0]);
-        if (occurrences == null || occurrences.isEmpty()) {
+        Set<String> acceptingColumns =
+            acceptingColumns(occurrencesByName.get(fields[0]), rowTags(fields), refusedTerms);
+        if (acceptingColumns.isEmpty()) {
           result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
           continue;
         }
 
         if (dryRun) {
-          countPreviewedRow(result, occurrences, rowTags(fields), previewRejections);
+          result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
           continue;
         }
 
@@ -1097,7 +1080,12 @@ public class ColumnRepository {
                     bulkUpdateColumns(
                         uriInfo,
                         securityContext,
-                        new BulkColumnUpdateRequest().withColumnUpdates(updatesByRow.get(key))));
+                        new BulkColumnUpdateRequest()
+                            .withColumnUpdates(
+                                updatesByRow.get(key).stream()
+                                    .filter(
+                                        update -> acceptingColumns.contains(update.getColumnFQN()))
+                                    .toList())));
         if (updateResult.getNumberOfRowsPassed() > 0) {
           result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
         } else {
@@ -1121,11 +1109,12 @@ public class ColumnRepository {
   }
 
   /**
-   * The glossary terms a dry run's rows would be rejected for, per column, judged in one guard call
-   * for the whole file: one term lookup and at most one stored-label read, however many rows it
-   * has. Rows naming the same column pool their labels; each row is then judged by its own terms.
+   * The glossary terms a CSV import refuses, per column: like an entity CSV import, it refuses a term
+   * that is not Approved and that a column does not already hold, instead of holding it as pending
+   * (ADR:2026-11-06-only-approved-glossary-terms-can-be-newly-applied-to-an-asset). Judged in one
+   * guard call for the whole file; rows naming the same column pool their labels.
    */
-  private Map<String, Set<String>> previewRejections(
+  private Map<String, Set<String>> refusedGlossaryTerms(
       List<String[]> parsedRows, Map<String, List<ColumnOccurrence>> occurrencesByName) {
     Map<String, List<TagLabel>> tagsByColumn = new HashMap<>();
     for (String[] fields : parsedRows) {
@@ -1136,30 +1125,20 @@ public class ColumnRepository {
             .addAll(tags);
       }
     }
-    return ApprovedGlossaryTermGuard.rejectedTermHashesByTarget(tagsByColumn, Map.of());
+    return ApprovedGlossaryTermGuard.heldTermHashesByTarget(tagsByColumn, Map.of());
   }
 
   private List<TagLabel> rowTags(String[] fields) {
     return parseTags(fields.length > 3 ? fields[3] : null, fields.length > 4 ? fields[4] : null);
   }
 
-  // The apply passes a row when any of its occurrences takes the update, so the preview does too.
-  private static void countPreviewedRow(
-      CsvImportResult result,
-      List<ColumnOccurrence> occurrences,
-      List<TagLabel> tags,
-      Map<String, Set<String>> rejections) {
-    boolean anyApplies =
-        occurrences.stream()
-            .anyMatch(
-                occurrence ->
-                    !ApprovedGlossaryTermGuard.appliesAnyOf(
-                        tags, rejections.getOrDefault(occurrence.getColumnFQN(), Set.of())));
-    if (anyApplies) {
-      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-    } else {
-      result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
-    }
+  // A row applies to the columns that take all of its terms; it fails when none does.
+  private static Set<String> acceptingColumns(
+      List<ColumnOccurrence> occurrences, List<TagLabel> tags, Map<String, Set<String>> refused) {
+    return listOrEmpty(occurrences).stream()
+        .map(ColumnOccurrence::getColumnFQN)
+        .filter(column -> !ApprovedGlossaryTermGuard.appliesAnyOf(tags, refused.get(column)))
+        .collect(Collectors.toSet());
   }
 
   /** Deduplicates write rows: same column name and payload means one shared update pass. */

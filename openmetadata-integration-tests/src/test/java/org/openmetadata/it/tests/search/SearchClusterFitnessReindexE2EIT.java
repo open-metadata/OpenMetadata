@@ -169,6 +169,7 @@ class SearchClusterFitnessReindexE2EIT {
     long ts = System.currentTimeMillis();
     String stagedIndex = canonical + "_rebuild_" + ts;
     boolean aliasRemoved = false;
+    boolean canonicalAliasRemoved = false;
     try {
       // Remove the OM alias from the live index so /_cat/aliases no longer marks it as an
       // OpenMetadata-alias target. isOpenMetadataIndex still matches both the live (canonical/
@@ -182,6 +183,7 @@ class SearchClusterFitnessReindexE2EIT {
       // the short alias and the canonical index name as aliases).
       if (indexCarriesAlias(liveIndex, canonical)) {
         removeAlias(liveIndex, canonical);
+        canonicalAliasRemoved = true;
       }
 
       createIndex(stagedIndex);
@@ -215,20 +217,25 @@ class SearchClusterFitnessReindexE2EIT {
           .as("exactly one footprint for the table canonical must remain after de-dup")
           .isEqualTo(1L);
     } finally {
-      // Best-effort restore: re-add the alias we removed so the cluster is left as we found it.
+      // Best-effort restore of every alias we removed. After a reindex the canonical name exists
+      // only as an alias on the _rebuild_ index, so leaving it off makes every later
+      // `index=table` search in this JVM fail with SEARCH_INDEX_NOT_FOUND.
       if (aliasRemoved) {
-        try {
-          addAlias(liveIndex, tableAlias);
-        } catch (Exception ignored) {
-          // best-effort
-        }
+        addAliasQuietly(liveIndex, tableAlias);
+      }
+      if (canonicalAliasRemoved) {
+        addAliasQuietly(liveIndex, canonical);
       }
       deleteIndexQuietly(stagedIndex);
     }
-    // Verify we actually restored the alias.
     if (liveHadAlias) {
       assertThat(indexCarriesAlias(liveIndex, tableAlias))
           .as("live index alias must be restored after the test")
+          .isTrue();
+    }
+    if (canonicalAliasRemoved) {
+      assertThat(indexCarriesAlias(liveIndex, canonical))
+          .as("live index canonical-name alias must be restored after the test")
           .isTrue();
     }
   }
@@ -363,6 +370,14 @@ class SearchClusterFitnessReindexE2EIT {
     if (status >= 300) {
       throw new IllegalStateException(
           "add alias " + alias + " to " + index + " failed: HTTP " + status);
+    }
+  }
+
+  private void addAliasQuietly(String index, String alias) {
+    try {
+      addAlias(index, alias);
+    } catch (Exception ignored) {
+      // best-effort: the caller asserts the alias is back
     }
   }
 

@@ -25,6 +25,9 @@ updates:
       # See ingestion/setup.py comment on the tableau pin.
       - dependency-name: "urllib3"
         versions: [">=2.0.0"]
+      # Runtime must match the 4.9.2 ANTLR CLI (ANTLR_VERSION in the root Makefile).
+      - dependency-name: "antlr4-python3-runtime"
+        versions: [">=4.10.0"]
 
   - package-ecosystem: "maven"
     directory: "/"
@@ -67,6 +70,21 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    ignore:
+      # Runtime must match the 4.9.2 ANTLR CLI (ANTLR_VERSION in the root Makefile).
+      - dependency-name: "antlr4"
+        versions: [">=4.10.0"]
+      - dependency-name: "@types/antlr4"
+        versions: [">=4.10.0"]
+      # Externals of openmetadata-ui-core-components: upgrade together with core.
+      - dependency-name: "react-aria-components"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "react-aria"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "echarts-for-react"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "react-hook-form"
+        update-types: ["version-update:semver-minor"]
 
   - package-ecosystem: "github-actions"
     directory: "/"

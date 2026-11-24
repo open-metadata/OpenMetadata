@@ -122,11 +122,14 @@ export interface TaskTimelineOptions {
   /** An incident's status records; they replace the guessed events. */
   incidentStatuses?: TestCaseResolutionStatus[];
   createdEvent?: TaskCreatedEventText;
+  /** The AI agent that proposed the task; it, not its bot, created it. */
+  proposingAgent?: string;
 }
 
 const getCreatedEvent = (
   task: Task,
-  createdEvent?: TaskCreatedEventText
+  createdEvent?: TaskCreatedEventText,
+  proposingAgent?: string
 ): TaskTimelineEvent => {
   const isIncident = task.category === TaskCategory.Incident;
   const defaultKey = isIncident
@@ -138,7 +141,9 @@ const getCreatedEvent = (
     id: 'created',
     actor: task.createdBy,
     textKey: createdEvent?.textKey ?? defaultKey,
-    textParams: createdEvent?.textParams,
+    textParams: proposingAgent
+      ? { user: proposingAgent, ...createdEvent?.textParams }
+      : createdEvent?.textParams,
     icon: isIncident ? 'incident' : 'created',
     timestamp: task.createdAt,
     tone: isIncident ? 'error' : 'default',
@@ -330,7 +335,7 @@ const getIncidentStatusEvents = (
  */
 export const buildTaskTimeline = (
   task: Task,
-  { incidentStatuses, createdEvent }: TaskTimelineOptions = {}
+  { incidentStatuses, createdEvent, proposingAgent }: TaskTimelineOptions = {}
 ): TaskTimelineEntry[] => {
   const comments: TaskTimelineEntry[] = (task.comments ?? []).map(
     (comment) => ({
@@ -349,7 +354,7 @@ export const buildTaskTimeline = (
   const events = incidentStatuses?.length
     ? getIncidentStatusEvents(task, incidentStatuses)
     : [
-        getCreatedEvent(task, createdEvent),
+        getCreatedEvent(task, createdEvent, proposingAgent),
         ...getAssignedEvent(task),
         ...getApprovalEvent(task, resolutionEvents),
         ...resolutionEvents,

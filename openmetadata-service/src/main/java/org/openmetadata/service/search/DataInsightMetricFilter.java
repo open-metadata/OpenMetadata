@@ -3,6 +3,9 @@ package org.openmetadata.service.search;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
+import java.util.Objects;
+import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +32,19 @@ public final class DataInsightMetricFilter {
   public static final String FILTER_AGG_KEY = "filter";
 
   private DataInsightMetricFilter() {}
+
+  /**
+   * Distinct query JSON of every metric's filter: the documents a categorical axis draws its
+   * categories from. Empty when a metric has no readable filter, because that metric counts every
+   * document (ADR:2026-11-16-a-categorical-axis-lists-only-the-categories-its-chart-counts).
+   */
+  public static List<String> populationFilters(List<LineChartMetric> metrics) {
+    List<String> filters =
+        metrics.stream().map(metric -> queryJson(metric.getFilter())).distinct().toList();
+    boolean everyMetricIsFiltered =
+        !filters.isEmpty() && filters.stream().noneMatch(Objects::isNull);
+    return everyMetricIsFiltered ? filters : List.of();
+  }
 
   /**
    * JSON text of the filter's {@code query} node, or null when the filter is absent, empty or

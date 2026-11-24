@@ -179,7 +179,7 @@ const DataEstateWidget: React.FC<DataEstateWidgetProps> = ({
                 className="tw:text-text-tertiary!"
                 size="text-xs"
                 weight="medium">
-                {t('label.total-assets')}
+                {t('label.data-asset-plural-by-connector')}
               </Typography>
               <Typography
                 className="tw:text-text-primary!"

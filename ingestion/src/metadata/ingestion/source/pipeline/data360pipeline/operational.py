@@ -37,14 +37,15 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.source.database.data360.client import (
     get_data_transform_run_history,
 )
+from metadata.ingestion.source.pipeline.data360pipeline.base import (
+    Data360PipelineBaseSource,
+)
 from metadata.ingestion.source.pipeline.data360pipeline.constant import (
+    STREAMING_DATA_TRANSFORM,
     ResponseConstant,
 )
 from metadata.ingestion.source.pipeline.data360pipeline.exceptions import (
     ResourceNotFoundException,
-)
-from metadata.ingestion.source.pipeline.data360pipeline.metadata import (
-    Data360PipelineSource,
 )
 from metadata.ingestion.source.pipeline.data360pipeline.models import (
     CalculatedInsightDetails,
@@ -59,21 +60,10 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
-class Data360PipelineOperationalSource(Data360PipelineSource):
+class Data360PipelineStatusMixin(Data360PipelineBaseSource):
     """
     Extracts run/status data from Salesforce Data 360 pipeline objects.
     """
-
-    def get_pipelines_list(self) -> Iterable[DataCloudPipelineDetails]:  # pyright: ignore[reportIncompatibleMethodOverride]
-        """Yields all active pipeline objects with minimal fields for status ingestion."""
-        self.existing_pipelines_set: set[str] = set()
-        for pipeline in self.metadata.list_all_entities(
-            entity=Pipeline, params={"service": str(self.config.serviceName)}
-        ):
-            self.existing_pipelines_set.add(pipeline.name.root)
-        yield from self._get_datastreams()
-        yield from self._get_calculated_insights()
-        yield from self._get_datatransforms()
 
     def _get_pipeline_status_type(self, status: str) -> StatusType:
         """Maps a Data 360 run status onto a StatusType.
@@ -105,6 +95,10 @@ class Data360PipelineOperationalSource(Data360PipelineSource):
         """Builds one pipeline status record, or None when Data 360 gave us no usable
         run window. A dropped record is reported: silently returning None here is
         how a pipeline ends up with no status at all and no explanation."""
+        if start_time is None and end_time is None:
+            # A Calculated Insight that was never run has neither; nothing to report.
+            logger.debug("Skipping %s run status: no run recorded in Data 360", pipeline_name)
+            return None
         if start_time is None or end_time is None:
             self.log_warning(
                 f"Skipping {pipeline_name} run status: Data 360 returned no "
@@ -137,6 +131,10 @@ class Data360PipelineOperationalSource(Data360PipelineSource):
     def yield_data_transform_status(
         self, pipeline_details: DataTransformDetails
     ) -> Iterable[Either[OMetaPipelineStatus]]:
+        if pipeline_details.type == STREAMING_DATA_TRANSFORM:
+            # Data 360 answers the run-history call for a streaming transform with a 404.
+            logger.debug("Skipping %s run status: streaming transforms have no run history", pipeline_details.name)
+            return
         run_histories = get_data_transform_run_history(
             client=self.client,
             name=pipeline_details.get_name(),
@@ -184,10 +182,6 @@ class Data360PipelineOperationalSource(Data360PipelineSource):
     ) -> Iterable[Either[OMetaPipelineStatus]]:
         """Yields pipeline run status records for all Data 360 pipeline types."""
         try:
-            if pipeline_details.get_name() not in self.existing_pipelines_set:
-                raise ResourceNotFoundException(  # noqa: TRY301
-                    f"Could not find {pipeline_details.get_metadata_type()} pipeline for {pipeline_details.get_name()}"
-                )
             if isinstance(pipeline_details, DataTransformDetails):
                 yield from self.yield_data_transform_status(pipeline_details)
             elif isinstance(pipeline_details, CalculatedInsightDetails):
@@ -208,6 +202,31 @@ class Data360PipelineOperationalSource(Data360PipelineSource):
                     stackTrace=traceback.format_exc(),
                 )
             )
+
+
+class Data360PipelineOperationalSource(Data360PipelineStatusMixin):
+    """Run-status-only source, kept for Usage agents and `data360pipeline-usage`
+    configs created before the metadata agent extracted run status."""
+
+    def get_pipelines_list(self) -> Iterable[DataCloudPipelineDetails]:  # pyright: ignore[reportIncompatibleMethodOverride]
+        """Yields all active pipeline objects with minimal fields for status ingestion."""
+        self.existing_pipelines_set: set[str] = set()
+        for pipeline in self.metadata.list_all_entities(
+            entity=Pipeline, params={"service": str(self.config.serviceName)}
+        ):
+            self.existing_pipelines_set.add(pipeline.name.root)
+        yield from super().get_pipelines_list()
+
+    def yield_pipeline_status(
+        self, pipeline_details: DataCloudPipelineDetails
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
+        """Only pipelines a metadata run already created can carry a status."""
+        if pipeline_details.get_name() not in self.existing_pipelines_set:
+            self.log_warning(
+                f"Could not find {pipeline_details.get_metadata_type()} pipeline for {pipeline_details.get_name()}"
+            )
+            return
+        yield from super().yield_pipeline_status(pipeline_details)
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: DataCloudPipelineDetails

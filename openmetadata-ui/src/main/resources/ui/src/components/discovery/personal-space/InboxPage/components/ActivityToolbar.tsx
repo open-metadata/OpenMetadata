@@ -81,8 +81,8 @@ const ActivityToolbar = ({
       Object.entries(INBOX_DATE_RANGE_OPTIONS).map(([value, preset]) => ({
         value,
         label: t(preset.title, preset.titleData),
-        // A single day reads as a time, a span as dates.
-        icon: preset.days === 1 ? Clock : Calendar,
+        // Today reads as a time, a span as dates.
+        icon: preset.days === 0 ? Clock : Calendar,
       })),
     [t]
   );

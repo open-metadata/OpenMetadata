@@ -51,7 +51,6 @@ import {
   searchEntity,
 } from './AlertsUtil';
 import {
-  getAlertActionTypeDisplayName,
   getAlertEventsFilterLabels,
   getChangeEventDataFromTypedEvent,
   getConfigHeaderArrayFromObject,
@@ -149,42 +148,6 @@ describe('AlertsUtil tests', () => {
 
     expect(icon).toStrictEqual(
       <Webhook className="tw:text-utility-gray-500" size={16} />
-    );
-  });
-
-  it('getAlertActionTypeDisplayName should return correct text for Slack', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.Slack)).toBe(
-      'label.slack'
-    );
-  });
-
-  it('getAlertActionTypeDisplayName should return correct text for Email', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.Email)).toBe(
-      'label.email'
-    );
-  });
-
-  it('getAlertActionTypeDisplayName should return correct text for MSTeam', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.MSTeams)).toBe(
-      'label.ms-team-plural'
-    );
-  });
-
-  it('getAlertActionTypeDisplayName should return correct text for ActivityFeed', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.ActivityFeed)).toBe(
-      'label.activity-feed-plural'
-    );
-  });
-
-  it('getAlertActionTypeDisplayName should return correct text for generic', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.Webhook)).toBe(
-      'label.webhook'
-    );
-  });
-
-  it('getAlertActionTypeDisplayName should return correct text for GChat', () => {
-    expect(getAlertActionTypeDisplayName(SubscriptionType.GChat)).toBe(
-      'label.g-chat'
     );
   });
 
@@ -482,6 +445,22 @@ describe('getAlertExtraInfo', () => {
     expect(totalEvents).toBeInTheDocument();
     expect(pendingEvents).toBeInTheDocument();
     expect(failedEvents).toBeInTheDocument();
+  });
+
+  it('says a disabled alert is not running instead of showing 0 pending', () => {
+    render(
+      getAlertExtraInfo(false, {
+        enabled: false,
+        failedEventsCount: 2,
+        pendingEventsCount: 0,
+        totalEventsCount: 100,
+      })
+    );
+
+    expect(screen.getByTestId('alert-not-running')).toBeInTheDocument();
+    expect(screen.queryByText('0')).not.toBeInTheDocument();
+    expect(screen.getByText('100')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
   });
 
   it('should return zero values when alertEventCounts is undefined', () => {

@@ -322,13 +322,9 @@ public class TypeRepository extends EntityRepository<Type> {
     if (uniqueColumns.size() != columns.size()) {
       throw new IllegalArgumentException("Column names must be unique.");
     }
-    if (columns.size() < tableConfig.getMinColumns()
-        || columns.size() > tableConfig.getMaxColumns()) {
+    if (columns.size() < tableConfig.getMinColumns()) {
       throw new IllegalArgumentException(
-          "Custom Property table has invalid value columns size must be between "
-              + tableConfig.getMinColumns()
-              + " and "
-              + tableConfig.getMaxColumns());
+          "Custom Property table must have at least " + tableConfig.getMinColumns() + " column(s)");
     }
 
     try {
