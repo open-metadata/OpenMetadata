@@ -11,7 +11,7 @@
 
 """SQLAlchemy validator for rule library SQL expression tests"""
 
-from typing import Dict, Tuple  # noqa: UP035
+from typing import Any
 
 from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy import text
@@ -22,6 +22,10 @@ from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressio
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.data_quality.validations.utils import (
+    build_typed_text_clause,
+    coerce_test_case_param_value,
+)
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import test_suite_logger
 
@@ -31,7 +35,7 @@ logger = test_suite_logger()
 class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
     """SQLAlchemy implementation of Column Rule Library SQL Expression validator."""
 
-    def compile_sql_expression(self, column_name: str, table_name: str) -> Tuple[str, Dict[str, str]]:  # noqa: UP006
+    def compile_sql_expression(self, column_name: str, table_name: str) -> tuple[str, dict[str, Any]]:
         """Compile SQL expression with SQLAlchemy bind parameters using Jinja2.
 
         For SQLAlchemy, user parameters are converted to bind parameters (:paramName)
@@ -48,22 +52,30 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
         if not sql_template:
             raise ValueError("Test definition does not have sqlExpression defined")
 
-        user_params = self._get_user_params()
+        raw_params = self._get_raw_user_params()
 
         bind_params_template = {
             "column_name": column_name,
             "table_name": table_name,
         }
-        for param_name in user_params:
+        for param_name in raw_params:
             bind_params_template[param_name] = f":{param_name}"
 
         # User-authored template: sandboxed so it cannot reach Python internals.
         template = SandboxedEnvironment().from_string(sql_template.root)
         compiled_sql = template.render(**bind_params_template)
 
-        return compiled_sql, user_params
+        bound_names = set(text(compiled_sql)._bindparams)
+        param_types = self._get_parameter_types()
+        bind_params = {
+            name: coerce_test_case_param_value(raw_value, param_types.get(name), param_name=name)
+            for name, raw_value in raw_params.items()
+            if name in bound_names
+        }
 
-    def _run_results(self, sql_expression: Tuple[str, Dict[str, str]]) -> int:  # noqa: UP006
+        return compiled_sql, bind_params
+
+    def _run_results(self, sql_expression: tuple[str, dict[str, Any]]) -> int:
         """Execute the compiled SQL and return the row count.
 
         Args:
@@ -77,8 +89,9 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
         if not is_safe_sql_query(compiled_sql):
             raise RuntimeError(f"SQL expression is not safe\n\n{compiled_sql}")
 
+        stmt = build_typed_text_clause(compiled_sql, bind_params, self._get_parameter_types())
         try:
-            result = self.runner._session.execute(text(compiled_sql), bind_params)
+            result = self.runner._session.execute(stmt, bind_params)
             return len(result.fetchall())
         except Exception as exc:
             self.runner._session.rollback()
