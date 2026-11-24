@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-11-20 (initial); v2 2026-11-23 (an unwritable chunk index keeps the entity
   embedding; the chunk generation goes live with the entity indexes, and only a missed delete
   blocks it; the header's count bounds every stored chunk id); v3 2026-11-23 (the Revisit clause
-  is resolved by a kNN query clause hook; fusing the two legs stays out of OpenMetadata)
+  is resolved by a kNN query clause hook; fusing the two legs stays out of OpenMetadata); v4
+  2026-11-24 (ontology terms keep the engine split of their own record)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `VectorChunkIndexIT` (each scenario on a real cluster of each engine),
   `ChunkSetBoundTest` (trims and deletes after a write that stopped part way),
@@ -13,6 +14,7 @@
   (what an entity index tells the chunk generation), `StoredEmbeddingReuseIT` (both engines);
   `reviewer` for a new caller that names an engine class
 - **Related:** ADR:2026-11-11-reindex-reuses-an-embedding-only-when-its-fingerprint-matches,
+  ADR:2026-11-23-ontology-terms-have-dedicated-search-indexes,
   ADR:2026-11-11-chunk-llm-context-lists-child-fields-under-columns,
   ADR:2026-10-21-opensearch-vectors-stay-in-source
 
@@ -111,7 +113,14 @@ Elasticsearch. With semantic search enabled on Elasticsearch:
   by id up to the header's count, then by a query on `parentId` for anything a header that was
   missing or behind did not cover, and chunk 0 last, so a delete that stops part way keeps the
   count for its retry. That query costs one delete-by-query per entity delete; writes never run
-  one unless chunks are stored without a header.
+  one unless chunks are stored without a header. A delete sends nothing to a chunk index that
+  does not exist yet.
+- **Ontology terms keep the layout their own record gives them.**
+  ADR:2026-11-23-ontology-terms-have-dedicated-search-indexes keeps their chunks in
+  `ontology_embeddings_chunks` on OpenSearch and their vectors on the term documents on
+  Elasticsearch, and only OpenSearch sweeps stale ontology chunks. The base class keeps that split
+  behind one hook, `chunksOntologyTerms`. Ontology terms are never part of the data-asset chunk
+  generation: its expected types are `AvailableEntityTypes.DATA_ASSET_CHUNK_TYPES`.
 - **Hybrid search stays OpenSearch-only.** The RRF search pipeline lives in
   `OpenSearchVectorService`, and `SearchRepository` creates and checks it only on OpenSearch.
 

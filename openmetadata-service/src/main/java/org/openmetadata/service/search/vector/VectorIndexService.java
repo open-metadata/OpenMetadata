@@ -47,6 +47,11 @@ public interface VectorIndexService {
    */
   void updateEntityEmbeddingChunks(EntityInterface<?> entity);
 
+  default void updateEntityEmbeddings(
+      EntityInterface<?> entity, String indexName, String ontologyBody) {
+    updateEntityEmbeddings(entity, indexName);
+  }
+
   /** Remove all chunk documents for the given parent entity (hard/soft delete cleanup). */
   void deleteEntityChunks(String parentId);
 

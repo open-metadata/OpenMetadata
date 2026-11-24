@@ -80,6 +80,14 @@ class RecreateWithEmbeddingsTest {
   }
 
   @Test
+  void stagesAssetChunksForExistingSavedEntityLists() {
+    Set<String> saved = new HashSet<>(AvailableEntityTypes.LIST);
+    saved.remove("ontologyConcept");
+    saved.remove("ontologyProperty");
+    assertTrue(RecreateWithEmbeddings.shouldStageChunkRecreate(new EventPublisherJob(), saved));
+  }
+
+  @Test
   void coversAllVectorTypes_falseWhenAnyTypeMissing() {
     Set<String> missingOne = new HashSet<>(AvailableEntityTypes.LIST);
     missingOne.remove("glossaryTerm");

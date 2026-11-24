@@ -147,6 +147,15 @@ class ChunkSetBoundTest {
     assertEquals(Set.of(), cluster.chunkIds(LIVE, parentId));
   }
 
+  @Test
+  void aDeleteBeforeTheChunkIndexExistsSendsNothingToIt() {
+    service.latchParticipantStagedTarget(STAGED);
+
+    service.deleteEntityChunks(parentId);
+
+    assertEquals(0, cluster.requestsToMissingIndices);
+  }
+
   private void growFromOneToThreeChunksWithTheHeaderFailing(String target) {
     service.latchParticipantStagedTarget(STAGED);
     assertTrue(write(target, chunks(1)));
@@ -221,17 +230,25 @@ class ChunkSetBoundTest {
     protected boolean knnReturnsAtMostK(double threshold) {
       return true;
     }
+
+    @Override
+    protected boolean chunksOntologyTerms() {
+      return true;
+    }
   }
 
   /**
    * Documents by index and id. A by-id read sees every write, as a realtime GET does; a
    * delete-by-query sees only documents stored as refreshed. A rejected header write is a chunk 0
-   * that carries a fingerprint.
+   * that carries a fingerprint. An index exists once it is created or written to; a delete sent to
+   * one that does not fails, as on a real cluster.
    */
   private static final class FakeCluster {
     private static final String DOC = "/_doc/";
     private final Map<String, Map<String, JsonNode>> indices = new HashMap<>();
+    private final Set<String> existing = new HashSet<>();
     private final Set<String> refreshed = new HashSet<>();
+    private int requestsToMissingIndices;
     private Predicate<String> rejectHeaderIndex = index -> false;
     private int bulkRequests;
 
@@ -244,6 +261,7 @@ class ChunkSetBoundTest {
     }
 
     void storeRefreshed(String index, String id, Map<String, Object> source) {
+      existing.add(index);
       docs(index).put(id, MAPPER.valueToTree(source));
       refreshed.add(index + DOC + id);
     }
@@ -267,12 +285,19 @@ class ChunkSetBoundTest {
     AbstractVectorIndexService.RawResponse handle(String method, String endpoint, String body)
         throws IOException {
       AbstractVectorIndexService.RawResponse response = ok("{}");
-      if (endpoint.endsWith("/_alias")) {
+      String index = endpoint.substring(1).split("[/?]")[0];
+      boolean wholeIndex = endpoint.indexOf('/', 1) < 0;
+      if (wholeIndex && "PUT".equals(method)) {
+        existing.add(index);
+      } else if (wholeIndex && "HEAD".equals(method)) {
+        response =
+            new AbstractVectorIndexService.RawResponse(existing.contains(index) ? 200 : 404, null);
+      } else if (endpoint.endsWith("/_alias")) {
         response = new AbstractVectorIndexService.RawResponse(404, "{\"status\":404}");
       } else if (endpoint.equals("/_bulk")) {
         response = bulk(body);
       } else if (endpoint.contains("/_delete_by_query")) {
-        response = deleteByQuery(endpoint.substring(1, endpoint.indexOf('/', 1)), body);
+        response = deleteByQuery(index, body);
       } else if (endpoint.contains(DOC)) {
         response = getById(method, endpoint);
       }
@@ -299,7 +324,7 @@ class ChunkSetBoundTest {
       for (int i = 0; i < lines.length; i++) {
         JsonNode action = MAPPER.readTree(lines[i]);
         if (action.has("delete")) {
-          remove(action.path("delete"));
+          errors |= !remove(action.path("delete"));
         } else {
           JsonNode meta = action.path("index");
           JsonNode source = MAPPER.readTree(lines[++i]);
@@ -315,31 +340,51 @@ class ChunkSetBoundTest {
       boolean rejected =
           rejectHeaderIndex.test(index) && id.endsWith("_0") && source.has("fingerprint");
       if (!rejected) {
+        existing.add(index);
         docs(index).put(id, source);
         refreshed.remove(index + DOC + id);
       }
       return !rejected;
     }
 
-    private void remove(JsonNode meta) {
+    private boolean remove(JsonNode meta) {
       String index = meta.path("_index").asText();
+      boolean found = existsOrCount(index);
       docs(index).remove(meta.path("_id").asText());
+      return found;
+    }
+
+    private boolean existsOrCount(String index) {
+      boolean found = existing.contains(index);
+      if (!found) {
+        requestsToMissingIndices++;
+      }
+      return found;
     }
 
     private AbstractVectorIndexService.RawResponse deleteByQuery(String index, String body)
         throws IOException {
-      JsonNode bool = MAPPER.readTree(body).path("query").path("bool");
-      String parentId = bool.path("filter").path(0).path("term").path("parentId").asText();
-      Set<String> kept = new HashSet<>();
-      bool.path("must_not").path(0).path("ids").path("values").forEach(id -> kept.add(id.asText()));
-      docs(index)
-          .entrySet()
-          .removeIf(
-              doc ->
-                  refreshed.contains(index + DOC + doc.getKey())
-                      && !kept.contains(doc.getKey())
-                      && parentId.equals(doc.getValue().path("parentId").asText()));
-      return ok("{\"failures\":[]}");
+      AbstractVectorIndexService.RawResponse response =
+          new AbstractVectorIndexService.RawResponse(404, "{\"error\":\"index_not_found\"}");
+      if (existsOrCount(index)) {
+        JsonNode bool = MAPPER.readTree(body).path("query").path("bool");
+        String parentId = bool.path("filter").path(0).path("term").path("parentId").asText();
+        Set<String> kept = new HashSet<>();
+        bool.path("must_not")
+            .path(0)
+            .path("ids")
+            .path("values")
+            .forEach(id -> kept.add(id.asText()));
+        docs(index)
+            .entrySet()
+            .removeIf(
+                doc ->
+                    refreshed.contains(index + DOC + doc.getKey())
+                        && !kept.contains(doc.getKey())
+                        && parentId.equals(doc.getValue().path("parentId").asText()));
+        response = ok("{\"failures\":[]}");
+      }
+      return response;
     }
 
     private Map<String, JsonNode> docs(String index) {

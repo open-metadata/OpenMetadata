@@ -667,6 +667,24 @@ public class SearchSourceBuilderFactoryTest {
     return factory.getSearchSourceBuilderV2(Entity.TABLE_COLUMN, query, 0, 15).query().toString();
   }
 
+  @Test
+  void ontologyPropertyLabelsAreSearchedThroughAliasAndIndex() {
+    var openSearch = new OpenSearchSourceBuilderFactory(shippedSearchSettings);
+    var elasticSearch = new ElasticSearchSourceBuilderFactory(shippedSearchSettings);
+    for (String index :
+        List.of(
+            OntologyTermSearch.ALIAS, Entity.ONTOLOGY_PROPERTY, "ontology_property_search_index")) {
+      String os =
+          serializeOpenSearchRequest(openSearch.getSearchSourceBuilderV2(index, "purchase", 0, 10));
+      String es =
+          elasticSearch.getSearchSourceBuilderV2(index, "purchase", 0, 10).query().toString();
+      for (String field : List.of("domainLabels", "rangeLabels")) {
+        assertTrue(os.contains(field), () -> index + " OpenSearch query omitted " + field);
+        assertTrue(es.contains(field), () -> index + " Elasticsearch query omitted " + field);
+      }
+    }
+  }
+
   private static String serializeOpenSearchRequest(OpenSearchRequestBuilder requestBuilder) {
     JacksonJsonpMapper mapper = new JacksonJsonpMapper();
     StringWriter writer = new StringWriter();

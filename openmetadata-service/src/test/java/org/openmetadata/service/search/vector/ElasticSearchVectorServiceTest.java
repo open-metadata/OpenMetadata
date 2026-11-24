@@ -10,8 +10,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,9 +48,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.search.vector.utils.DTOs;
@@ -533,6 +538,45 @@ class ElasticSearchVectorServiceTest {
                 "POST", "/table_search_index/_update/" + parentId + "?retry_on_conflict=3"));
     assertEquals(fingerprint, update.path("doc").path("fingerprint").asText());
     assertEquals("[0.1,0.2,0.3]", update.path("doc").path("embedding").toString());
+  }
+
+  @Test
+  void anOntologyTermKeepsItsVectorOnItsTermDocumentAndWritesNoChunk() throws Exception {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(true);
+    when(mockEmbeddingClient.getDimension()).thenReturn(3);
+    OntologyConcept concept =
+        spy(
+            new OntologyConcept()
+                .withId(UUID.randomUUID())
+                .withName("Customer")
+                .withDescription("A person who buys"));
+    doReturn(
+            new EntityReference()
+                .withId(concept.getId())
+                .withName("Customer")
+                .withType(Entity.ONTOLOGY_CONCEPT))
+        .when(concept)
+        .getEntityReference();
+    String termIndex = "ontology_concept_search_index";
+    answerByEndpointSuffix(Map.of());
+
+    vectorService.updateEntityEmbeddingChunks(concept);
+    vectorService.updateEntityEmbeddings(concept, termIndex);
+
+    ArgumentCaptor<Request> sent = ArgumentCaptor.forClass(Request.class);
+    verify(mockRestClient, atLeastOnce()).performRequest(sent.capture());
+    assertTrue(
+        sent.getAllValues().stream()
+            .noneMatch(
+                r -> r.getEndpoint().endsWith("/_bulk") || r.getEndpoint().contains("chunks")),
+        "Elasticsearch keeps no ontology chunk index");
+    JsonNode update =
+        bodyOf(
+            sentRequest(
+                "POST", "/" + termIndex + "/_update/" + concept.getId() + "?retry_on_conflict=3"));
+    assertEquals(
+        VectorDocBuilder.computeFingerprintForEntity(concept),
+        update.path("doc").path("fingerprint").asText());
   }
 
   @Test

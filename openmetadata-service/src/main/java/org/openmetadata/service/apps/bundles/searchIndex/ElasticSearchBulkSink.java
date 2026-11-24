@@ -66,6 +66,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.SearchIndex;
 
 /**
  * Elasticsearch implementation using new Java API client with custom bulk handler
@@ -346,6 +347,18 @@ public class ElasticSearchBulkSink implements BulkSink {
                 TARGET_INDEX_KEY, indexMapping.getIndexName(searchRepository.getClusterAlias()));
 
     try {
+      if (searchRepository.writeSpecializedIndexBatch(
+          entityType, entities, indexName, reindexContext)) {
+        int written = entities.size();
+        processSuccess.addAndGet(written);
+        totalSubmitted.addAndGet(written);
+        totalSuccess.addAndGet(written);
+        if (tracker != null) {
+          tracker.recordProcessBatch(written, 0, 0);
+          tracker.recordSinkBatch(written, 0);
+        }
+        return;
+      }
       long processStartNanos = System.nanoTime();
       // Check if these are time series entities
       if (!entities.isEmpty() && entities.get(0) instanceof EntityTimeSeriesInterface) {
@@ -364,6 +377,14 @@ public class ElasticSearchBulkSink implements BulkSink {
 
         boolean embeddingsEnabled = embeddingEnricher.isEnabledFor(entityType);
 
+        // Per-entity DocBuildContext is prepared by the upstream processor stage (see
+        // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
+        // transport-only: it just looks up each entity's context by id and hands it to
+        // buildSearchIndexDoc, with no awareness of what's inside (lineage today, more later).
+        @SuppressWarnings("unchecked")
+        Map<UUID, DocBuildContext> docBuildContexts =
+            (Map<UUID, DocBuildContext>)
+                contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
         // Pre-fetch cached embeddings for entities whose fingerprint is unchanged so we can splice
         // them into the staged doc instead of regenerating (avoids expensive embedding-provider
         // calls). The doc is always re-indexed via a full index op, so the embedding must be
@@ -373,14 +394,6 @@ public class ElasticSearchBulkSink implements BulkSink {
                 ? embeddingEnricher.reusableEmbeddings(entityInterfaces, indexName, reindexContext)
                 : Collections.emptyMap();
 
-        // Per-entity DocBuildContext is prepared by the upstream processor stage (see
-        // ReindexingUtil.populateDocBuildContext) and stuffed into contextData. The sink stays
-        // transport-only: it just looks up each entity's context by id and hands it to
-        // buildSearchIndexDoc, with no awareness of what's inside (lineage today, more later).
-        @SuppressWarnings("unchecked")
-        Map<UUID, DocBuildContext> docBuildContexts =
-            (Map<UUID, DocBuildContext>)
-                contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
         Map<UUID, Long> relationshipRevisions =
             (Map<UUID, Long>)
                 contextData.getOrDefault(
@@ -464,9 +477,10 @@ public class ElasticSearchBulkSink implements BulkSink {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       String docId = entity.getId().toString();
-      DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
+      final SearchIndex index = Entity.buildSearchIndex(entityType, entity);
+      final DocBuildContext ctx = docBuildContexts.get(entity.getId());
       Map<String, Object> searchIndexDoc =
-          new HashMap<>(Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx));
+          new HashMap<>(index.buildSearchIndexDoc(ctx == null ? DocBuildContext.empty() : ctx));
       Long relationshipRevision = relationshipRevisions.get(entity.getId());
       SearchRepository.applyRelationshipRevision(entity, searchIndexDoc, relationshipRevision);
       String json = JsonUtils.pojoToJson(searchIndexDoc);

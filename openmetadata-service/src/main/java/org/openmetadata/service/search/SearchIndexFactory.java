@@ -1,6 +1,7 @@
 package org.openmetadata.service.search;
 
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.OntologyEntityInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.AIFrameworkControl;
@@ -107,6 +108,7 @@ import org.openmetadata.service.search.indexes.MetricGroupIndex;
 import org.openmetadata.service.search.indexes.MetricIndex;
 import org.openmetadata.service.search.indexes.MlModelIndex;
 import org.openmetadata.service.search.indexes.MlModelServiceIndex;
+import org.openmetadata.service.search.indexes.OntologyTermIndex;
 import org.openmetadata.service.search.indexes.PageIndex;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.PipelineIndex;
@@ -192,6 +194,8 @@ public class SearchIndexFactory {
       case Entity.METRIC_GROUP -> new MetricGroupIndex((MetricGroup) entity);
       case Entity.GLOSSARY -> new GlossaryIndex((Glossary) entity);
       case Entity.GLOSSARY_TERM -> new GlossaryTermIndex((GlossaryTerm) entity);
+      case Entity.ONTOLOGY_CONCEPT, Entity.ONTOLOGY_PROPERTY -> new OntologyTermIndex(
+          (OntologyEntityInterface) entity);
       case Entity.RELATIONSHIP_TYPE -> new RelationshipTypeIndex((RelationshipType) entity);
       case Entity.MLMODEL -> new MlModelIndex((MlModel) entity);
       case Entity.LLM_MODEL -> new LlmModelIndex((LLMModel) entity);

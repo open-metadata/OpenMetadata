@@ -35,9 +35,11 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRec
 import org.openmetadata.service.ontology.OntologyLayerValidator;
 import org.openmetadata.service.ontology.OntologyPackInstallations;
 import org.openmetadata.service.ontology.OntologyPublicationStatusResolver;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FreshReadScope;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 @Repository
 public class OntologyRepository extends OntologyEntityRepository<Ontology> {
@@ -56,6 +58,24 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
         "iri,namespace,layer,prefixes,approvalRule");
     fieldFetchers.put(PUBLICATION_STATUS, this::fetchPublicationStatus);
     publication = new OntologyPublicationStatusResolver(Entity.getCollectionDAO());
+  }
+
+  @Override
+  protected void postUpdate(Ontology original, Ontology updated) {
+    super.postUpdate(original, updated);
+    if (!Objects.equals(original.getOwners(), updated.getOwners())) {
+      PostCommitActionQueue.runOrDefer(() -> refreshActiveTerms(updated.getId()));
+    }
+  }
+
+  private void refreshActiveTerms(UUID ontologyId) {
+    final var search = Entity.getSearchRepository();
+    if (search != null) {
+      final var state = daoCollection.ontologyStateDAO().get(ontologyId);
+      if (state != null) {
+        search.refreshOntologyTerms(OntologyTermSearch.releaseTerms(state.getActiveReleaseId()));
+      }
+    }
   }
 
   @Override

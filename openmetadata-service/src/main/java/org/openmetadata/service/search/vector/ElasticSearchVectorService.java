@@ -151,6 +151,12 @@ public class ElasticSearchVectorService extends AbstractVectorIndexService {
   }
 
   @Override
+  protected boolean chunksOntologyTerms() {
+    // Ontology term vectors stay on the term documents, read through the ontologyTerms alias.
+    return false;
+  }
+
+  @Override
   protected boolean knnReturnsAtMostK(double threshold) {
     // The native knn search never returns more than k hits; the threshold is applied afterwards.
     return true;
