@@ -2245,16 +2245,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
-  protected void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
-    super.postUpdate(original, updated);
-    List<EntityReference> peers = new ArrayList<>(changedRelatedTermPeers(original, updated));
-    if (targetIdentityChanged(original, updated)) {
-      peers.addAll(relatedTermPeers(getRelatedTerms(updated), updated.getId()));
-    }
-    refreshRelatedTermSearchDocs(deduplicatePeers(peers, updated.getId()));
-  }
-
-  @Override
   protected Runnable preparePostDeleteCleanup(List<GlossaryTerm> entities) {
     Set<UUID> termIds =
         listOrEmpty(entities).stream()
@@ -2286,6 +2276,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         GlossaryTermPendingLabels.dropRejected(updated);
       }
     }
+    List<EntityReference> peers = new ArrayList<>(changedRelatedTermPeers(original, updated));
+    if (targetIdentityChanged(original, updated)) {
+      peers.addAll(relatedTermPeers(getRelatedTerms(updated), updated.getId()));
+    }
+    refreshRelatedTermSearchDocs(deduplicatePeers(peers, updated.getId()));
   }
 
   @Override
