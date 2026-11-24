@@ -4719,10 +4719,10 @@ i18next-json-sync@^3.1.2:
     json-stable-stringify "^1.0.1"
     yargs "^17.0.0"
 
-i18next@^26.7.1:
-  version "26.7.1"
-  resolved "https://registry.yarnpkg.com/i18next/-/i18next-26.7.1.tgz#33bc0c45e6be754f0141cbb9289187db27aac485"
-  integrity sha512-cX+3RRVczel/V2kCMTACckSGSpqgtWYEA6beXNYVms7dOQiHojdPYHD26lT4IKimNeoGWrLvtPgjftbRvmZJVw==
+i18next@^27.2.2:
+  version "27.2.2"
+  resolved "https://registry.yarnpkg.com/i18next/-/i18next-27.2.2.tgz#2e22344c7a2c895a299b1f56065b159001f99f10"
+  integrity sha512-1/AJgz/bpE/YL6tqekQlZAzDhkmrUBbgU8+Xon/Lwv6c5WdYuyFZ9mb86OVfR2C2XujUDT7Rz23Ydaq4l981lA==
 
 iconv-lite@0.6.3:
   version "0.6.3"
