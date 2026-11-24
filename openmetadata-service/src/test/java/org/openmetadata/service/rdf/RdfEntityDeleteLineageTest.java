@@ -138,6 +138,6 @@ class RdfEntityDeleteLineageTest {
         new JsonLdTranslator(JsonUtils.getObjectMapper(), BASE),
         () -> null,
         new RdfProjectionLoaders(
-            null, null, null, (type, ids) -> Set.copyOf(ids), null, tableFqn -> {}));
+            null, null, null, null, null, (type, ids) -> Set.copyOf(ids), null, tableFqn -> {}));
   }
 }
