@@ -63,11 +63,11 @@ class DremioUsageSource(UsageSource, QueryParserSource):
             rows = self.client.execute_sql(query)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to read the Dremio job history from {self.jobs.name}: {exc}")
+            logger.error("Failed to read the Dremio job history from %s: %s", self.jobs.name, exc)
             return
         self.warn_if_query_log_truncated(len(rows), "usage")
         queries = list(iter_table_queries(rows, self.jobs, self.config.serviceName))
-        logger.info(f"Read {len(queries)} usage queries from Dremio")
+        logger.info("Read %d usage queries from Dremio", len(queries))
         if queries:
             yield TableQueries(queries=queries)
 

@@ -183,10 +183,10 @@ class DremioSource(DatabaseServiceSource):
             response = self.client.get(f"/catalog/{item['id']}")
             source_type = response.json().get("type", "") if response.status_code == 200 else ""
         except (RequestException, ValueError) as exc:
-            logger.debug(f"Could not read the type of the Dremio source {item.get('path')}: {exc}")
+            logger.debug("Could not read the type of the Dremio source %s: %s", item.get("path"), exc)
             return False
         if source_type.startswith(INTERNAL_SOURCE_TYPE_PREFIX):
-            logger.info(f"Skipping the internal Dremio source {item['path'][0]} of type {source_type}")
+            logger.info("Skipping the internal Dremio source %s of type %s", item["path"][0], source_type)
             return True
         return False
 
@@ -198,7 +198,7 @@ class DremioSource(DatabaseServiceSource):
             response = self.client.get(f"/catalog/{resource_id}/collaboration/wiki")
             text = response.json().get("text") if response.status_code == 200 else None
         except (RequestException, ValueError) as exc:
-            logger.debug(f"Could not read the Dremio wiki of {resource_id}: {exc}")
+            logger.debug("Could not read the Dremio wiki of %s: %s", resource_id, exc)
             return None
         return Markdown(text) if text else None
 
@@ -260,8 +260,9 @@ class DremioSource(DatabaseServiceSource):
         """
         if self._unread_folders:
             logger.warning(
-                f"Not marking the schemas of the Dremio database {self.context.get().database} as deleted:"
-                f" these folders could not be listed: {', '.join(self._unread_folders)}"
+                "Not marking the schemas of the Dremio database %s as deleted: these folders could not be listed: %s",
+                self.context.get().database,
+                ", ".join(self._unread_folders),
             )
             return
         yield from super().mark_schemas_as_deleted()
@@ -389,7 +390,7 @@ class DremioSource(DatabaseServiceSource):
             response = self.client.get(f"/catalog/{resource_id}/collaboration/tag")
             tags = response.json().get("tags", []) if response.status_code == 200 else []
         except (RequestException, ValueError, AttributeError) as exc:
-            logger.debug(f"Could not read the Dremio tags of {resource_id}: {exc}")
+            logger.debug("Could not read the Dremio tags of %s: %s", resource_id, exc)
             return []
         return list(dict.fromkeys(tag for tag in tags if isinstance(tag, str))) if isinstance(tags, list) else []
 

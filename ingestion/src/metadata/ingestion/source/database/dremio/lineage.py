@@ -62,7 +62,7 @@ class DremioLineageSource(LineageSource, QueryParserSource):
             rows = self.client.execute_sql(query)
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to read the Dremio job history from {self.jobs.name}: {exc}")
+            logger.error("Failed to read the Dremio job history from %s: %s", self.jobs.name, exc)
             return
         self.warn_if_query_log_truncated(len(rows), "lineage")
         yield from iter_table_queries(rows, self.jobs, self.config.serviceName)
