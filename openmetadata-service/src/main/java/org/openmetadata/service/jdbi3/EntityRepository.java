@@ -355,6 +355,7 @@ import software.amazon.awssdk.utils.Either;
 public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   public static final String BULK_IMPORT = "bulkImport";
+  private static final String DEFAULT_CERTIFICATION_VALIDITY = "P30D";
   private static final int RELATION_DELETE_BATCH_SIZE = 500;
 
   /**
@@ -2339,7 +2340,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         bundle.putTags(entity.getId(), dto.tags == null ? Collections.emptyList() : dto.tags);
         tagsFilledFromCache = true;
       }
-      if (dto.certificationLoaded && supportsCertification) {
+      if (dto.certificationLoaded && supportsCertification && hasBothDates(dto.certification)) {
         bundle.putCertification(entity.getId(), dto.certification);
         certificationFilledFromCache = true;
       }
@@ -2442,6 +2443,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
     return bundle;
+  }
+
+  /** Bundles cached by an older server can hold a certification without dates; rebuild those. */
+  private static boolean hasBothDates(AssetCertification certification) {
+    return certification == null
+        || (certification.getAppliedDate() != null && certification.getExpiryDate() != null);
   }
 
   private static boolean isReadPlanNonDeletedOnly(ReadPlan readPlan) {
@@ -5353,6 +5360,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return ApprovalGate.preview(original, updated, actor.userName(), edit);
   }
 
+  /** The ops a PATCH by {@code user} would make, gated or not, without storing anything. */
+  public final List<MutationOp> previewPatchOps(UUID id, String user, JsonPatch patch) {
+    T original = get(null, id, patchFields, NON_DELETED, false);
+    T updated = preparePatched(original, patch, user, null);
+    // The updater cleans a changed description before saving it; preview the text that is saved.
+    if (!Objects.equals(updated.getDescription(), original.getDescription())) {
+      updated.setDescription(
+          org.openmetadata.service.util.DescriptionSanitizer.sanitize(updated.getDescription()));
+    }
+    return ApprovalGate.previewOps(
+        original, updated, Edit.patch(JsonUtils.extractPatchedFields(patch)));
+  }
+
   /** Runs the preparation and validation a PATCH by {@code user} would, without storing anything. */
   public final void validatePatch(UUID id, String user, JsonPatch patch) {
     T original = get(null, id, patchFields, NON_DELETED, false);
@@ -8067,13 +8087,48 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     bundle.putCertification(entity.getId(), certification);
   }
 
+  /**
+   * Certification is read from any tag_usage row under the configured classification, but rows
+   * applied as plain tags (on create, by a dbt data model, or under a classification that became the
+   * certification one later) carry no expiry. The schema requires both dates, so a row that lacks
+   * them reads as the server would have stamped it
+   * (ADR:2026-11-20-certification-reads-derive-a-missing-expiry-from-the-validity-period).
+   */
   private static AssetCertification buildCertificationFromCertTag(TagLabel tagLabel) {
     TagLabelUtil.applyTagCommonFieldsGracefully(tagLabel);
+    // appliedAt is NULL on pre-1.11.5 Postgres rows and on rows the 1.12.5 migration moved with no
+    // appliedDate; the epoch makes them read as expired.
+    long appliedDate = tagLabel.getAppliedAt() != null ? tagLabel.getAppliedAt().getTime() : 0L;
+    Long storedExpiry =
+        tagLabel.getMetadata() != null ? tagLabel.getMetadata().getExpiryDate() : null;
     return new AssetCertification()
         .withTagLabel(tagLabel)
-        .withAppliedDate(tagLabel.getAppliedAt() != null ? tagLabel.getAppliedAt().getTime() : null)
+        .withAppliedDate(appliedDate)
         .withExpiryDate(
-            tagLabel.getMetadata() != null ? tagLabel.getMetadata().getExpiryDate() : null);
+            storedExpiry != null
+                ? storedExpiry
+                : derivedExpiry(appliedDate, getCertificationSettings().getValidityPeriod()));
+  }
+
+  /** A read must not fail on a validity period that today only breaks certification writes. */
+  static long derivedExpiry(long appliedDate, String validityPeriod) {
+    String period = Objects.requireNonNullElse(validityPeriod, DEFAULT_CERTIFICATION_VALIDITY);
+    try {
+      return expiryFor(appliedDate, period);
+    } catch (DateTimeParseException e) {
+      LOG.warn(
+          "Certification validityPeriod '{}' is not an ISO-8601 period; deriving expiry with {}",
+          period,
+          DEFAULT_CERTIFICATION_VALIDITY);
+      return expiryFor(appliedDate, DEFAULT_CERTIFICATION_VALIDITY);
+    }
+  }
+
+  static long expiryFor(long appliedDate, String validityPeriod) {
+    return LocalDateTime.ofInstant(Instant.ofEpochMilli(appliedDate), ZoneOffset.UTC)
+        .plus(Period.parse(validityPeriod))
+        .toInstant(ZoneOffset.UTC)
+        .toEpochMilli();
   }
 
   /**
@@ -8094,10 +8149,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     long appliedDate = System.currentTimeMillis();
     certification.setAppliedDate(appliedDate);
-    LocalDateTime appliedDateTime =
-        LocalDateTime.ofInstant(Instant.ofEpochMilli(appliedDate), ZoneOffset.UTC);
-    LocalDateTime expiryDateTime = appliedDateTime.plus(Period.parse(settings.getValidityPeriod()));
-    certification.setExpiryDate(expiryDateTime.toInstant(ZoneOffset.UTC).toEpochMilli());
+    certification.setExpiryDate(expiryFor(appliedDate, settings.getValidityPeriod()));
   }
 
   protected static void validateCertification(
@@ -8232,15 +8284,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             TagLabel.TagSource.CLASSIFICATION.ordinal(), certClassification + ".%", entityFQN);
   }
 
+  private static AssetCertificationSettings getCertificationSettings() {
+    return SettingsCache.getSettingOrDefault(
+        SettingsType.ASSET_CERTIFICATION_SETTINGS,
+        new AssetCertificationSettings()
+            .withAllowedClassification("Certification")
+            .withValidityPeriod(DEFAULT_CERTIFICATION_VALIDITY),
+        AssetCertificationSettings.class);
+  }
+
   protected String getCertificationClassification() {
     if (!supportsCertification) return null;
-    return SettingsCache.getSettingOrDefault(
-            SettingsType.ASSET_CERTIFICATION_SETTINGS,
-            new AssetCertificationSettings()
-                .withAllowedClassification("Certification")
-                .withValidityPeriod("P30D"),
-            AssetCertificationSettings.class)
-        .getAllowedClassification();
+    return getCertificationSettings().getAllowedClassification();
   }
 
   private Optional<List<EntityReference>> getRelationsFromReadBundle(
@@ -14498,12 +14553,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private void fetchAndSetCertification(List<T> entities, Fields fields) {
-    if (!fields.contains(FIELD_CERTIFICATION) || !supportsCertification || nullOrEmpty(entities)) {
+    if (!supportsCertification || nullOrEmpty(entities)) {
       return;
     }
-
-    Map<UUID, AssetCertification> certificationMap = batchFetchCertification(entities);
-
+    // A raw entity-row write can leave a stale certification copy in the row, so always overwrite
+    // it: with the tag_usage value when tags or certification is requested, otherwise with null.
+    Map<UUID, AssetCertification> certificationMap =
+        fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)
+            ? batchFetchCertification(entities)
+            : Map.of();
     for (T entity : entities) {
       entity.setCertification(certificationMap.get(entity.getId()));
     }
@@ -14713,16 +14771,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       if (entityId == null || result.containsKey(entityId)) {
         continue;
       }
-      TagLabel tagLabel = tagWithHash.toTagLabel();
-      TagLabelUtil.applyTagCommonFieldsGracefully(tagLabel);
-      result.put(
-          entityId,
-          new AssetCertification()
-              .withTagLabel(tagLabel)
-              .withAppliedDate(
-                  tagLabel.getAppliedAt() != null ? tagLabel.getAppliedAt().getTime() : null)
-              .withExpiryDate(
-                  tagLabel.getMetadata() != null ? tagLabel.getMetadata().getExpiryDate() : null));
+      result.put(entityId, buildCertificationFromCertTag(tagWithHash.toTagLabel()));
     }
 
     LOG.debug(
@@ -15334,7 +15383,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     storeVersions(List.of(original));
 
     // Directly update the entity in the database without calling other versioning methods
-    dao.update(updated.getId(), updated.getFullyQualifiedName(), JsonUtils.pojoToJson(updated));
+    dao.update(updated.getId(), updated.getFullyQualifiedName(), serializeForStorage(updated));
     invalidate(updated); // Invalidate cache
 
     // Create a ChangeEvent for the feed
