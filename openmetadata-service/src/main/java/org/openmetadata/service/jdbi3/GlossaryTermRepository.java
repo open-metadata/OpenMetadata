@@ -105,6 +105,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RelationProvenance;
@@ -150,13 +151,17 @@ import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.ViewPermissionFilter;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.IntakeFormValidator;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -2121,7 +2126,77 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public BulkOperationResult bulkRemoveGlossaryToAssets(
       UUID glossaryTermId, AddGlossaryToAssetsRequest request, PatchRequester requester) {
     GlossaryTerm term = this.get(null, glossaryTermId, getFields("id"));
-    return AssetTagLabelService.removeFromAssets(assetsRequest(term, request, requester));
+    BulkOperationResult result =
+        AssetTagLabelService.removeFromAssets(assetsRequest(term, request, requester));
+    if (!Boolean.TRUE.equals(request.getDryRun())) {
+      dropPendingOnRemovedAssets(term, result, requester);
+    }
+    return result;
+  }
+
+  /**
+   * Drops the term's pending labels on the assets it was removed from, held ones included: a
+   * pending label is not shown, so taking it back is not a change a reviewer sees. A pending-only
+   * removal patches nothing, so the asset is not authorized by the patch; the caller must be allowed
+   * to edit the asset's glossary terms, and an asset they may not edit is reported as failed.
+   */
+  private void dropPendingOnRemovedAssets(
+      GlossaryTerm term, BulkOperationResult result, PatchRequester requester) {
+    List<BulkResponse> passed = new ArrayList<>();
+    List<BulkResponse> denied = new ArrayList<>();
+    for (BulkResponse response : listOrEmpty(result.getSuccessRequest())) {
+      if (response.getRequest() instanceof EntityReference asset && isAddressed(asset)) {
+        try {
+          requester
+              .authorizer()
+              .authorize(
+                  requester.securityContext(),
+                  new OperationContext(owningType(asset), MetadataOperation.EDIT_GLOSSARY_TERMS),
+                  new ResourceContext<>(owningType(asset), owningId(asset), null));
+          GlossaryTermPendingLabels.dropPendingOn(term, asset);
+          passed.add(response);
+        } catch (AuthorizationException e) {
+          denied.add(
+              response
+                  .withStatus(Response.Status.FORBIDDEN.getStatusCode())
+                  .withMessage(e.getMessage()));
+        }
+      } else {
+        passed.add(response);
+      }
+    }
+    if (!denied.isEmpty()) {
+      List<BulkResponse> failed = new ArrayList<>(listOrEmpty(result.getFailedRequest()));
+      failed.addAll(denied);
+      result
+          .withSuccessRequest(passed)
+          .withFailedRequest(failed)
+          .withNumberOfRowsPassed(passed.size())
+          .withNumberOfRowsFailed(failed.size())
+          .withStatus(passed.isEmpty() ? ApiStatus.FAILURE : ApiStatus.PARTIAL_SUCCESS);
+    }
+  }
+
+  // A column is addressed by its FQN, any other asset by its id.
+  private static boolean isAddressed(EntityReference asset) {
+    return Entity.TABLE_COLUMN.equals(asset.getType())
+        ? asset.getFullyQualifiedName() != null
+        : asset.getId() != null;
+  }
+
+  // A column is authorized as its table.
+  private static String owningType(EntityReference asset) {
+    return Entity.TABLE_COLUMN.equals(asset.getType()) ? Entity.TABLE : asset.getType();
+  }
+
+  private static UUID owningId(EntityReference asset) {
+    return Entity.TABLE_COLUMN.equals(asset.getType())
+        ? Entity.getEntityReferenceByName(
+                Entity.TABLE,
+                ChildFieldResolver.parentFqnOf(asset.getFullyQualifiedName(), Entity.TABLE),
+                Include.NON_DELETED)
+            .getId()
+        : asset.getId();
   }
 
   protected EntityReference getGlossary(GlossaryTerm term) {
@@ -2193,6 +2268,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   @Override
   protected void postBulkSoftDelete(List<GlossaryTerm> entities) {
     refreshRelatedTermSearchDocs(relatedTermPeers(entities));
+  }
+
+  /**
+   * Labels applied while the term waited for approval are shown once it is approved and dropped
+   * once it is rejected. This runs after the term is stored, on every update path, bulk included,
+   * so neither happens for a status change that was never saved.
+   */
+  @Override
+  protected void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
+    super.postUpdate(original, updated);
+    EntityStatus to = updated.getEntityStatus();
+    if (to != null && to != original.getEntityStatus()) {
+      if (to == EntityStatus.APPROVED) {
+        PostCommitActionQueue.runOrDefer(() -> GlossaryTermPendingLabels.showWhenApproved(updated));
+      } else if (to == EntityStatus.REJECTED) {
+        GlossaryTermPendingLabels.dropRejected(updated);
+      }
+    }
   }
 
   @Override
