@@ -820,6 +820,31 @@ describe('getHtmlStringFromMarkdownString: CommonMark lists', () => {
     ]);
   });
 
+  it('preserves nested formatting inside underline', () => {
+    expect(
+      getHtmlStringFromMarkdownString('__underline with **bold**__')
+    ).toContain('<u>underline with <strong>bold</strong></u>');
+  });
+
+  it('leaves unknown and escaped emoji shortcodes as text', () => {
+    expect(getHtmlStringFromMarkdownString('\\:smile: :not_an_emoji:')).toBe(
+      '<p>:smile: :not_an_emoji:</p>'
+    );
+  });
+
+  it('leaves emoji shortcodes inside code literal', () => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString('`:smile:`\n\n```\n:smile:\n```'),
+      'text/html'
+    );
+
+    expect(
+      Array.from(doc.querySelectorAll('code'), (code) =>
+        code.textContent?.trim()
+      )
+    ).toEqual([':smile:', ':smile:']);
+  });
+
   it('preserves supported inline formatting and links', () => {
     const html = getHtmlStringFromMarkdownString(
       '**bold** __underline__ ~~deleted~~ :smile: https://example.com'

@@ -12,8 +12,8 @@
  */
 
 import { findLastIndex, isEmpty, sumBy } from 'lodash';
-import MarkdownIt from 'markdown-it';
-import { full as emoji } from 'markdown-it-emoji';
+import { Marked, Renderer } from 'marked';
+import Showdown from 'showdown';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import {
   getEntityDetail,
@@ -180,42 +180,58 @@ export const isHTMLString = (content: string) => {
   }
 };
 
-// CommonMark block parsing preserves each level of two-space-indented lists.
-const markdownConverter = new MarkdownIt({
-  html: true,
-  breaks: true,
-  linkify: true,
-}).use(emoji, { shortcuts: {} });
-
-// Dotted column/file names are not URLs; keep the legacy www-only shorthand.
-markdownConverter.linkify.set({ fuzzyLink: false }).add('www.', {
-  validate: new RegExp(
-    `^${markdownConverter.linkify.re.src_host_port_strict}${markdownConverter.linkify.re.src_path}`
-  ),
-  normalize: (match) => {
-    match.url = `http://${match.url}`;
-  },
+// Keep the existing emoji vocabulary without adding a second emoji package.
+const emojiConverter = new Showdown.Converter({
+  emoji: true,
+  literalMidWordUnderscores: true,
 });
+const defaultMarkdownRenderer = new Renderer();
 
-// Existing descriptions use double underscores for underline rather than bold.
-markdownConverter.renderer.rules.strong_open = (tokens, index) =>
-  tokens[index].markup === '__' ? '<u>' : '<strong>';
-markdownConverter.renderer.rules.strong_close = (tokens, index) =>
-  tokens[index].markup === '__' ? '</u>' : '</strong>';
-markdownConverter.renderer.rules.s_open = () => '<del>';
-markdownConverter.renderer.rules.s_close = () => '</del>';
-markdownConverter.renderer.rules.link_open = (
-  tokens,
-  index,
-  options,
-  _env,
-  self
-) => {
-  tokens[index].attrSet('target', '_blank');
-  tokens[index].attrSet('rel', 'noopener noreferrer');
+// CommonMark block parsing preserves each level of two-space-indented lists.
+const markdownConverter = new Marked({
+  gfm: true,
+  breaks: true,
+  renderer: {
+    // Preview truncation depends on the newline text following each break.
+    br: () => '<br>\n',
+    link(href, title, text) {
+      // Delegate URL/title escaping to marked before adding external-link attributes.
+      return defaultMarkdownRenderer
+        .link(href, title, text)
+        .replace(
+          /^<a ([^>]+)>/,
+          '<a $1 target="_blank" rel="noopener noreferrer">'
+        );
+    },
+  },
+  extensions: [
+    {
+      name: 'strong',
+      renderer(token) {
+        // Existing descriptions use double underscores for underline rather than bold.
+        const tag = token.raw.startsWith('__') ? 'u' : 'strong';
 
-  return self.renderToken(tokens, index, options);
-};
+        return `<${tag}>${this.parser.parseInline(
+          token.tokens ?? []
+        )}</${tag}>`;
+      },
+    },
+    {
+      name: 'emoji',
+      level: 'inline',
+      start: (source) => source.search(/:[a-zA-Z0-9_+-]+:/),
+      tokenizer(source) {
+        const match = /^:[a-zA-Z0-9_+-]+:/.exec(source);
+
+        return match ? { type: 'emoji', raw: match[0] } : undefined;
+      },
+      renderer(token) {
+        // A shortcode renders as one paragraph; only its inline content is needed.
+        return emojiConverter.makeHtml(token.raw).slice(3, -4);
+      },
+    },
+  ],
+});
 
 /**
  * Converts a markdown string to an HTML string. Content that is already HTML
@@ -224,7 +240,7 @@ markdownConverter.renderer.rules.link_open = (
 export const getHtmlStringFromMarkdownString = (content: string) => {
   return isHTMLString(content)
     ? content
-    : markdownConverter.render(content).trimEnd();
+    : markdownConverter.parser(markdownConverter.lexer(content)).trimEnd();
 };
 
 const MENTION_OR_HASHTAG_SELECTOR =
