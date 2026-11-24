@@ -325,12 +325,12 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_create_output_lineage_dict_empty_input(self):
         """Test with an empty input list."""
-        result = self.open_lineage_source._create_output_lineage_dict([])
+        result = self.open_lineage_source._create_output_lineage_dict({})
         self.assertEqual(result, {})
 
     def test_create_output_lineage_dict_single_lineage_entry(self):
         """Test with a single lineage entry."""
-        lineage_info = [("output_table", "input_table", "output_column", "input_column")]
+        lineage_info = {("output_table", "input_table", "output_column", None): ["input_column"]}
         result = self.open_lineage_source._create_output_lineage_dict(lineage_info)
         expected = {
             "output_table": {"input_table": [ColumnLineage(toColumn="output_column", fromColumns=["input_column"])]}
@@ -339,10 +339,10 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_create_output_lineage_dict_multiple_entries_different_outputs(self):
         """Test with multiple entries having different output tables."""
-        lineage_info = [
-            ("output_table1", "input_table", "output_column1", "input_column"),
-            ("output_table2", "input_table", "output_column2", "input_column"),
-        ]
+        lineage_info = {
+            ("output_table1", "input_table", "output_column1", None): ["input_column"],
+            ("output_table2", "input_table", "output_column2", None): ["input_column"],
+        }
         result = self.open_lineage_source._create_output_lineage_dict(lineage_info)
         expected = {
             "output_table1": {"input_table": [ColumnLineage(toColumn="output_column1", fromColumns=["input_column"])]},
@@ -352,10 +352,10 @@ class OpenLineageUnitTest(unittest.TestCase):
 
     def test_create_output_lineage_dict_multiple_entries_same_output(self):
         """Test with multiple entries sharing the same output table."""
-        lineage_info = [
-            ("output_table", "input_table1", "output_column", "input_column1"),
-            ("output_table", "input_table2", "output_column", "input_column2"),
-        ]
+        lineage_info = {
+            ("output_table", "input_table1", "output_column", None): ["input_column1"],
+            ("output_table", "input_table2", "output_column", None): ["input_column2"],
+        }
         result = self.open_lineage_source._create_output_lineage_dict(lineage_info)
         expected = {
             "output_table": {
@@ -518,6 +518,65 @@ class OpenLineageUnitTest(unittest.TestCase):
             }
         }
         self.assertEqual(result, expected)
+
+    def test_column_transformations_are_kept_with_their_input_columns(self):
+        event = copy.deepcopy(FULL_OL_KAFKA_EVENT)
+        fields = event["outputs"][0]["facets"]["columnLineage"]["fields"]
+        source = fields["id"]["inputFields"][0]
+        aggregate = [{"type": "DIRECT", "subtype": "AGGREGATION"}]
+        fields["id"] = {
+            "inputFields": [
+                {**source, "field": "amount", "transformations": aggregate},
+                {
+                    **source,
+                    "field": "flag",
+                    "transformations": [
+                        {"type": "INDIRECT", "subtype": "FILTER", "description": "eligible rows"},
+                        {"type": "DIRECT", "masking": True},
+                    ],
+                },
+                {**source, "field": "tax", "transformations": aggregate},
+                {**source, "field": "old", "transformations": []},
+            ],
+            "transformationDescription": "  legacy formula  ",
+            "transformationType": "IDENTITY",
+        }
+        fields["randomid"]["transformationType"] = "IDENTITY"
+        parsed = self.read_openlineage_event_from_kafka(event)
+        with (
+            patch.object(
+                OpenMetadataConnection,
+                "get_by_name",
+                create=True,
+                side_effect=lambda entity, fqn, **kwargs: Mock(id=Mock(root=uuid4()), columns=[]),
+            ),
+            patch.object(OpenMetadataConnection, "get_lineage_by_id", create=True, return_value=None),
+            patch.object(
+                self.open_lineage_source,
+                "_get_table_fqn_from_om",
+                side_effect=lambda table, services=None: f"svc.db.{table.name}",
+            ),
+        ):
+            (request,) = self.open_lineage_source.yield_pipeline_lineage_details(parsed)
+
+        columns = request.right.edge.lineageDetails.columnsLineage
+        self.assertEqual(
+            [
+                (
+                    col.toColumn.root.rsplit(".", 1)[1],
+                    col.function.root if col.function else None,
+                    [fqn.root.rsplit(".", 1)[1] for fqn in col.fromColumns],
+                )
+                for col in columns
+            ],
+            [
+                ("id", "DIRECT/AGGREGATION", ["amount", "tax"]),
+                ("id", "INDIRECT/FILTER (eligible rows), DIRECT [masked]", ["flag"]),
+                ("id", "  legacy formula  ", ["old"]),
+                ("randomid", "IDENTITY", ["products"]),
+                ("zip", None, ["platform"]),
+            ],
+        )
 
     @staticmethod
     def _mock_table_with_columns(table_fqn, fqn_segment_by_name):

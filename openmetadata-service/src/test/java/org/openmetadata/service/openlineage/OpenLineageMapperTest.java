@@ -51,6 +51,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.utils.JsonUtils;
 
 @ExtendWith(MockitoExtension.class)
 class OpenLineageMapperTest {
@@ -429,6 +430,62 @@ class OpenLineageMapperTest {
     assertEquals("service.db.schema.output_table.target_col", cl.getToColumn());
     assertTrue(cl.getFromColumns().contains("service.db.schema.input_table.source_col"));
     assertEquals("IDENTITY", cl.getFunction());
+  }
+
+  @Test
+  void mapRunEvent_preservesEachInputsTransformationsFromJson() {
+    OpenLineageRunEvent event =
+        JsonUtils.readValue(
+            """
+        {
+          "eventType":"COMPLETE","eventTime":"2024-01-15T10:00:00Z",
+          "producer":"https://example.org/producer","schemaURL":"https://openlineage.io/spec/2-0-2/OpenLineage.json",
+          "run":{"runId":"4ae4c65c-60b3-4ce5-80ac-c68e5fa0fe51"},"job":{"namespace":"ns","name":"totals"},
+          "inputs":[{"namespace":"ns","name":"orders"}],
+          "outputs":[{"namespace":"ns","name":"summary","facets":{"columnLineage":{"fields":{
+            "total":{"transformationType":"IDENTITY","inputFields":[
+              {"namespace":"ns","name":"orders","field":"amount","transformations":[{"type":"DIRECT","subtype":"AGGREGATION"}]},
+              {"namespace":"ns","name":"orders","field":"tax","transformations":[{"type":"DIRECT","subtype":"AGGREGATION"}]},
+              {"namespace":"ns","name":"orders","field":"customer","transformations":[
+                {"type":"INDIRECT","subtype":"FILTER","description":"active only","masking":true},
+                {"type":"INDIRECT","subtype":"JOIN"}]},
+              {"namespace":"ns","name":"orders","field":"legacy","transformations":[]}
+            ]}
+          }}}}]
+        }
+        """,
+            OpenLineageRunEvent.class);
+    when(entityResolver.resolveDataset(event.getInputs().getFirst(), UPDATED_BY))
+        .thenReturn(dataset(createEntityReference("i1", INPUT_FQN)));
+    when(entityResolver.resolveDataset(event.getOutputs().getFirst(), UPDATED_BY))
+        .thenReturn(dataset(createEntityReference("o1", OUTPUT_FQN)));
+
+    when(entityResolver.resolvePipeline("ns", "totals")).thenReturn(pipeline(null));
+
+    List<ColumnLineage> mappings =
+        mapper
+            .mapRunEvent(event, UPDATED_BY)
+            .lineageRequests()
+            .getFirst()
+            .getEdge()
+            .getLineageDetails()
+            .getColumnsLineage();
+
+    assertEquals(
+        List.of(
+            new ColumnLineage()
+                .withToColumn(OUTPUT_FQN + ".total")
+                .withFromColumns(List.of(INPUT_FQN + ".amount", INPUT_FQN + ".tax"))
+                .withFunction("DIRECT/AGGREGATION"),
+            new ColumnLineage()
+                .withToColumn(OUTPUT_FQN + ".total")
+                .withFromColumns(List.of(INPUT_FQN + ".customer"))
+                .withFunction("INDIRECT/FILTER (active only) [masked], INDIRECT/JOIN"),
+            new ColumnLineage()
+                .withToColumn(OUTPUT_FQN + ".total")
+                .withFromColumns(List.of(INPUT_FQN + ".legacy"))
+                .withFunction("IDENTITY")),
+        mappings);
   }
 
   @Test

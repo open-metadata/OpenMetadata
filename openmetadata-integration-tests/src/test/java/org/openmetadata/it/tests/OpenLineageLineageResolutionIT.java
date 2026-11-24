@@ -1192,6 +1192,66 @@ public class OpenLineageLineageResolutionIT {
         fromColumnsByToColumn(fetchOpenLineageEdgeDetails(inputName, outputName)));
   }
 
+  @Test
+  @Order(31)
+  void columnLineage_preservesDistinctFunctionsForTheSameOutputColumn() throws Exception {
+    String input = "ecommerce_db.shopify.raw_order";
+    String outputName = "ol_functions_" + uniqueSuffix();
+    Table output =
+        Tables.create().name(outputName).inSchema(schemaFqn).withColumns(DEFAULT_COLUMNS).execute();
+    Map<String, Object> aggregateInput =
+        Map.of(
+            "namespace",
+            serviceName,
+            "name",
+            input,
+            "field",
+            "id",
+            "transformations",
+            List.of(Map.of("type", "DIRECT", "subtype", "AGGREGATION")));
+    Map<String, Object> filterInput =
+        Map.of(
+            "namespace",
+            serviceName,
+            "name",
+            input,
+            "field",
+            "name",
+            "transformations",
+            List.of(Map.of("type", "INDIRECT", "subtype", "FILTER")));
+    Map<String, Object> fields =
+        Map.of("id", Map.of("inputFields", List.of(aggregateInput, filterInput)));
+    JsonNode response =
+        send(
+            completeEvent("ns", "ol_functions_" + uniqueSuffix())
+                .addInput(input, serviceName)
+                .addOutput(
+                    Map.of(
+                        "namespace",
+                        serviceName,
+                        "name",
+                        "ecommerce_db.shopify." + outputName,
+                        "facets",
+                        Map.of("columnLineage", Map.of("fields", fields)))));
+    assertEquals("success", response.path("status").asText(), response.toString());
+
+    List<?> mappings =
+        (List<?>) fetchOpenLineageEdgeDetails("raw_order", outputName).get("columnsLineage");
+    Map<Object, Object> functionByInputs = new HashMap<>();
+    for (Object mapping : mappings) {
+      Map<?, ?> columns = (Map<?, ?>) mapping;
+      assertEquals(output.getFullyQualifiedName() + ".id", columns.get("toColumn"));
+      functionByInputs.put(columns.get("fromColumns"), columns.get("function"));
+    }
+    assertEquals(
+        Map.of(
+            List.of(srcFqn + ".id"),
+            "DIRECT/AGGREGATION",
+            List.of(srcFqn + ".name"),
+            "INDIRECT/FILTER"),
+        functionByInputs);
+  }
+
   // ====================================================================================
   // Helpers
   // ====================================================================================
