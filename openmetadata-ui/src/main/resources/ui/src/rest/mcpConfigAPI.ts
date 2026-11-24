@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { OauthClient } from '../generated/api/mcp/oauthClient';
 import { MCPConfiguration } from '../generated/configuration/mcpConfiguration';
 import axiosClient from './axiosClient';
 
@@ -28,6 +29,12 @@ export const getMcpConfig = async () => {
   return response.data;
 };
 
+export const getMcpTools = async () => {
+  const response = await axiosClient.get<string[]>('/system/mcp/tools');
+
+  return response.data;
+};
+
 export const updateMcpConfig = async (payload: MCPConfiguration) => {
   const response = await axiosClient.put<MCPConfiguration>(
     '/system/mcp/config',
@@ -35,4 +42,22 @@ export const updateMcpConfig = async (payload: MCPConfiguration) => {
   );
 
   return response.data;
+};
+
+export const getMcpClients = async (after = '', limit = 25) => {
+  const response = await axiosClient.get<OauthClient[]>('/mcp/clients', {
+    params: { after, limit },
+  });
+
+  return response.data;
+};
+
+export const revokeMcpClient = async (clientId: string) => {
+  await axiosClient.delete(`/mcp/clients/${encodeURIComponent(clientId)}`);
+};
+
+export const revokeMcpClientTokens = async (clientId: string) => {
+  await axiosClient.delete(
+    `/mcp/clients/${encodeURIComponent(clientId)}/tokens`
+  );
 };

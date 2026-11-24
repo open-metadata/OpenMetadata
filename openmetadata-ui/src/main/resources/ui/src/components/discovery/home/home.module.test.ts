@@ -29,14 +29,12 @@ describe('homeModule', () => {
     expect(home && resolveNavHref(home.action)).toBe(ROUTES.HOME);
   });
 
-  it('is the active module on the landing page', () => {
+  it('is the active module on the landing page at / and /my-data', () => {
     expect(matchModuleByPathname(ROUTES.HOME, MODULES)).toBe('home');
+    expect(matchModuleByPathname(ROUTES.MY_DATA, MODULES)).toBe('home');
   });
 
-  it('leaves /my-data to the personal-space module and other paths to theirs', () => {
-    expect(matchModuleByPathname(ROUTES.MY_DATA, MODULES)).toBe(
-      personalSpaceModule.id
-    );
+  it('leaves other paths to their modules', () => {
     expect(matchModuleByPathname(ROUTES.EXPLORE, MODULES)).toBe(
       exploreModule.id
     );

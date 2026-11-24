@@ -12,10 +12,7 @@
  */
 
 import { BadgeWithDot, Button } from '@openmetadata/ui-core-components';
-import {
-  AlertTriangle,
-  ArrowUpRight,
-} from '@openmetadata/ui-core-components/icons';
+import { Alert, ArrowUpRight } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,7 +55,7 @@ const IncidentDetails = ({
       )}
       data-testid="test-case-last-run-incident">
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3">
-        <AlertTriangle
+        <Alert
           aria-hidden="true"
           className={classNames('tw:shrink-0', config.statusClassName)}
           data-testid="test-case-incident-icon"

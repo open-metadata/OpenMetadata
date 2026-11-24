@@ -614,7 +614,9 @@ test.describe('Learning Resources - Search and Filters', () => {
 
     await test.step('Verify filter chip is shown', async () => {
       await expect(
-        page.locator('.filter-selection-chip').filter({ hasText: 'Video' })
+        page
+          .locator('[data-testid^="filter-chip-"]')
+          .filter({ hasText: 'Video' })
       ).toBeVisible();
     });
   });

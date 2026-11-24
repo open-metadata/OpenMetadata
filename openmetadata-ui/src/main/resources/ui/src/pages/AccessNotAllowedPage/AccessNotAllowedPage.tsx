@@ -27,7 +27,12 @@ const AccessNotAllowedPage = () => {
         footer={
           <>
             <DocumentTitle title={t('label.access-denied')} />
-            <Typography as="p" className="w-80" style={{ marginBottom: '0' }}>
+            <Typography
+              as="p"
+              className="w-80"
+              color="secondary"
+              size="text-xs"
+              style={{ marginBottom: '0' }}>
               {t('message.error-self-signup-disabled')}
             </Typography>
           </>

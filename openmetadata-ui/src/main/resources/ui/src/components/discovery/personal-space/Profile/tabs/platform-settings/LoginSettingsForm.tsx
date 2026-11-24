@@ -22,6 +22,7 @@ import {
   Settings,
   SettingType,
 } from '../../../../../../generated/settings/settings';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import {
   getLoginConfig,
   updateSettingsConfig,
@@ -39,7 +40,6 @@ import SettingsFormLayout, {
   SettingsFormSection,
   SettingsSkeleton,
 } from './SettingsFormLayout';
-import { useFormFieldDocs } from './useFormFieldDocs';
 import { useSettingsFetch } from './useSettingsFetch';
 
 type LoginFormValues = Record<keyof LoginConfiguration, string>;

@@ -49,15 +49,15 @@ import {
   type Destination,
 } from '../../../generated/events/eventSubscription';
 import type { AlertSelection } from '../../../hooks/useAlertSelection';
-import {
-  ModifiedCreateEventSubscription,
-  ModifiedDestination,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import type { SelectionSupport } from '../../../utils/Alerts/AlertSelectionUtil';
 import { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 import alertsClassBase from '../../../utils/AlertsClassBase';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+} from '../../../utils/AlertsClassBase.interface';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import AlertAiDestinationItem from './AlertAiDestinationItem.component';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
@@ -196,6 +196,7 @@ jest.mock('../../../components/common/EntityDescription/Description', () => ({
 }));
 
 interface MockCoreProps {
+  'aria-label'?: string;
   children?: ReactNode;
   className?: string;
   'data-testid'?: string;
@@ -209,6 +210,7 @@ interface MockCoreProps {
   id?: string;
   onButtonClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onBlur?: () => void;
+  onClick?: () => void;
   onChange?: (value: string | boolean) => void;
   onItemCleared?: (key: string) => void;
   onItemInserted?: (key: string) => void;
@@ -346,6 +348,33 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <option value={id}>{children}</option>
   );
 
+  const Card = ({
+    children,
+    className,
+    'data-testid': testId,
+  }: MockCoreProps) => (
+    <section className={className} data-testid={testId}>
+      {children}
+    </section>
+  );
+
+  Card.Content = ({ children }: MockCoreProps) => <div>{children}</div>;
+  Card.Header = ({
+    title,
+    subtitle,
+    extra,
+  }: {
+    title?: ReactNode;
+    subtitle?: ReactNode;
+    extra?: ReactNode;
+  }) => (
+    <div>
+      {title}
+      {subtitle}
+      {extra}
+    </div>
+  );
+
   return {
     Accordion: ({ children }: MockCoreProps) => <div>{children}</div>,
     AccordionHeader: ({ children }: MockCoreProps) => <div>{children}</div>,
@@ -385,11 +414,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
-    Card: ({ children, className, 'data-testid': testId }: MockCoreProps) => (
-      <section className={className} data-testid={testId}>
-        {children}
-      </section>
+    ButtonUtility: ({
+      'data-testid': testId,
+      isDisabled,
+      onClick,
+    }: MockCoreProps) => (
+      <button data-testid={testId} disabled={isDisabled} onClick={onClick} />
     ),
+    Card,
     Checkbox: ({ 'data-testid': testId, isSelected }: MockCoreProps) => (
       <input
         readOnly
@@ -525,10 +557,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
         onChange={(event) => onChange?.(event.target.value)}
       />
     ),
-    Toggle: ({ isDisabled, isSelected, label, onChange }: MockCoreProps) => (
+    Toggle: ({
+      'aria-label': ariaLabel,
+      isDisabled,
+      isSelected,
+      label,
+      onChange,
+    }: MockCoreProps) => (
       <label>
         {label}
         <input
+          aria-label={ariaLabel}
           checked={Boolean(isSelected)}
           disabled={isDisabled}
           type="checkbox"
@@ -961,6 +1000,71 @@ describe('AlertAi form field components', () => {
     expect(searchQuery).toHaveBeenCalledWith(
       expect.objectContaining({ query: 'dom' })
     );
+  });
+
+  it('resolves the label of a saved value that arrives after the field mounted, once', async () => {
+    (searchQuery as jest.Mock).mockClear();
+    (searchQuery as jest.Mock).mockImplementation(({ queryFilter }) =>
+      Promise.resolve({
+        hits: {
+          hits: queryFilter
+            ? [
+                {
+                  _source: {
+                    displayName: 'Finance',
+                    fullyQualifiedName: 'finance',
+                  },
+                },
+              ]
+            : [],
+        },
+      })
+    );
+    const valueWith = (input: string[]) =>
+      ({
+        ...baseValue,
+        input: {
+          filters: [
+            {
+              arguments: [{ input, name: 'domainList' }],
+              effect: Effect.Include,
+              name: 'matchAnyDomain',
+            },
+          ],
+        },
+      } as ModifiedCreateEventSubscription);
+    const renderField = (input: string[]) => (
+      <RuleArgumentField
+        argument="domainList"
+        field="filters"
+        index={0}
+        name={0}
+        sourceSearch={makeSourceSearch()}
+        value={valueWith(input)}
+        onChange={jest.fn()}
+      />
+    );
+
+    const { rerender } = render(renderField([]));
+    await act(async () => {
+      rerender(renderField(['finance']));
+    });
+
+    expect(
+      screen.getByTestId('domainList-autocomplete-clear-finance')
+    ).toHaveTextContent('Finance');
+
+    await act(async () => {
+      rerender(renderField(['finance']));
+    });
+
+    const lookups = (searchQuery as jest.Mock).mock.calls.filter(
+      ([request]) => request.queryFilter
+    );
+
+    expect(lookups).toHaveLength(1);
+
+    (searchQuery as jest.Mock).mockReset();
   });
 
   it('renders fixed runtime options with the fqn autocomplete contract', () => {
@@ -2413,5 +2517,89 @@ describe('AlertAi form field components', () => {
     });
 
     expect(document.querySelector('[data-field-doc]')).toBeNull();
+  });
+
+  describe('Enabled switch', () => {
+    const value: ModifiedCreateEventSubscription = {
+      ...baseValue,
+      resources: ['table'],
+    };
+    const renderFields = (
+      next: ModifiedCreateEventSubscription,
+      onChange = jest.fn(),
+      isEditMode = true
+    ) => {
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          isEditMode={isEditMode}
+          selection={selectionOf()}
+          value={next}
+          onChange={onChange}
+        />
+      );
+
+      return onChange;
+    };
+
+    it('keeps the fields editable and describes what an enabled alert sends', () => {
+      renderFields({ ...value, enabled: true });
+
+      expect(screen.getByLabelText('label.enabled')).toBeChecked();
+      expect(screen.getByTestId('alert-name-input')).not.toBeDisabled();
+      expect(screen.getByTestId('description')).not.toBeDisabled();
+      expect(screen.getByTestId('alert-enabled-description')).toHaveTextContent(
+        'message.alert-enabled-description'
+      );
+    });
+
+    it('keeps a new alert editable when it is switched off, so it can still be filled in', () => {
+      renderFields({ ...value, enabled: false }, jest.fn(), false);
+
+      expect(screen.getByLabelText('label.enabled')).not.toBeChecked();
+      expect(screen.getByTestId('alert-name-input')).not.toBeDisabled();
+      expect(screen.getByTestId('description')).not.toBeDisabled();
+      expect(screen.getByTestId('alert-enabled-description')).toHaveTextContent(
+        'message.alert-disabled-description'
+      );
+    });
+
+    it('makes every field of a saved alert read-only and says a disabled alert sends nothing', () => {
+      renderFields({ ...value, enabled: false });
+
+      expect(screen.getByLabelText('label.enabled')).not.toBeChecked();
+      expect(screen.getByTestId('alert-name-input')).toBeDisabled();
+      expect(screen.getByTestId('description')).toBeDisabled();
+      expect(screen.getByTestId('alert-enabled-description')).toHaveTextContent(
+        'message.alert-disabled-description'
+      );
+      expect(screen.queryByTestId('alert-warning')).not.toBeInTheDocument();
+    });
+
+    it('switches the alert off through the form value', () => {
+      const onChange = renderFields({ ...value, enabled: true });
+
+      fireEvent.click(screen.getByLabelText('label.enabled'));
+
+      const updater = onChange.mock.calls[0][0];
+
+      expect(updater({ ...value, enabled: true }).enabled).toBe(false);
+    });
+
+    it('cannot be switched by someone who cannot edit the alert', () => {
+      render(
+        <AlertAiFormFields
+          shouldShowActionsSection
+          shouldShowFiltersSection
+          canEditEnabled={false}
+          selection={selectionOf()}
+          value={{ ...value, enabled: true }}
+          onChange={jest.fn()}
+        />
+      );
+
+      expect(screen.getByLabelText('label.enabled')).toBeDisabled();
+    });
   });
 });

@@ -21,14 +21,24 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
+import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
+import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -65,21 +75,40 @@ public interface KnowledgeAssetDAOs {
     }
   }
 
-  interface ContextFileDAO extends EntityDAO<org.openmetadata.schema.entity.data.ContextFile> {
+  interface ContextFileDAO extends EntityDAO<ContextFile> {
     @Override
     default String getTableName() {
       return "context_file";
     }
 
     @Override
-    default Class<org.openmetadata.schema.entity.data.ContextFile> getEntityClass() {
-      return org.openmetadata.schema.entity.data.ContextFile.class;
+    default Class<ContextFile> getEntityClass() {
+      return ContextFile.class;
     }
 
     @Override
     default String getNameHashColumn() {
       return "nameHash";
     }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_file SET json = :json, nameHash = :nameHash "
+                + "WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version "
+                + "AND JSON_EXTRACT(json, '$.updatedAt') = :updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE context_file SET json = (:json :: jsonb), nameHash = :nameHash "
+                + "WHERE id = :id AND json->>'version' = :version "
+                + "AND (json->>'updatedAt')::bigint = :updatedAt",
+        connectionType = POSTGRES)
+    int updateWithVersionAndTimestamp(
+        @Bind("id") String id,
+        @BindFQN("nameHash") String fullyQualifiedName,
+        @BindJson("json") String json,
+        @Bind("version") String version,
+        @Bind("updatedAt") Long updatedAt);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -97,6 +126,121 @@ public interface KnowledgeAssetDAOs {
         connectionType = POSTGRES)
     List<String> listByExtractedSourceHash(
         @Bind("sourceHash") String sourceHash, @Bind("excludeId") String excludeId);
+
+    /** Files by id without {@code extractedText}, the largest part of a stored file. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, JSON_REMOVE(json, '$.extractedText') FROM context_file "
+                + "WHERE id IN (<ids>) <cond>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT id, json - 'extractedText' FROM context_file WHERE id IN (<ids>) <cond>",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(EntityIdJsonPairMapper.class)
+    List<EntityIdJsonPair> findByIdsWithoutExtractedText(
+        @BindList("ids") List<String> ids, @Define("cond") String cond);
+
+    default List<ContextFile> findEntitiesWithoutExtractedText(List<UUID> ids, Include include) {
+      List<String> distinctIds = ids.stream().map(UUID::toString).distinct().toList();
+      return distinctIds.isEmpty()
+          ? List.of()
+          : findByIdsWithoutExtractedText(distinctIds, getCondition(include)).stream()
+              .map(pair -> jsonToEntity(pair.json(), pair.id()))
+              .toList();
+    }
+
+    // Counts by sharing read the `visibility` column: no value or Entity is visible to everyone a
+    // policy allows, any other value only to the file's user owners and, when Shared, the
+    // principals it names (ContextFileVisibility).
+    String OWNED_BY_CALLER =
+        "SELECT o.toId FROM entity_relationship o WHERE o.fromId = :userId "
+            + "AND o.fromEntity = 'user' AND o.toEntity = 'contextFile' AND o.relation = :owns";
+    String FOLDER_FILES =
+        "FROM entity_relationship er JOIN context_file cf ON er.toId = cf.id "
+            + "WHERE er.fromId IN (<folderIds>) AND er.fromEntity = 'folder' "
+            + "AND er.toEntity = 'contextFile' AND er.relation = :contains "
+            + "AND (cf.deleted = false OR cf.deleted IS NULL) ";
+    String FILTERED_FILES = "FROM (SELECT id, visibility FROM context_file <cond>) cf WHERE ";
+
+    @SqlQuery(
+        "SELECT er.fromId, COUNT(*) "
+            + FOLDER_FILES
+            + "AND (cf.visibility IS NULL OR cf.visibility = 'Entity') GROUP BY er.fromId")
+    @RegisterRowMapper(FolderCountMapper.class)
+    List<FolderCount> countOpenFilesByFolder(
+        @BindList("folderIds") List<String> folderIds, @Bind("contains") int contains);
+
+    @SqlQuery(
+        "SELECT er.fromId, COUNT(*) "
+            + FOLDER_FILES
+            + "AND cf.visibility <> 'Entity' AND cf.id IN ("
+            + OWNED_BY_CALLER
+            + ") GROUP BY er.fromId")
+    @RegisterRowMapper(FolderCountMapper.class)
+    List<FolderCount> countOwnedRestrictedFilesByFolder(
+        @BindList("folderIds") List<String> folderIds,
+        @Bind("contains") int contains,
+        @Bind("userId") String userId,
+        @Bind("owns") int owns);
+
+    @SqlQuery(
+        "SELECT er.fromId, cf.id "
+            + FOLDER_FILES
+            + "AND cf.visibility = 'Shared' AND cf.id NOT IN ("
+            + OWNED_BY_CALLER
+            + ")")
+    @RegisterRowMapper(FolderFileMapper.class)
+    List<FolderFile> listSharedFilesNotOwnedByFolder(
+        @BindList("folderIds") List<String> folderIds,
+        @Bind("contains") int contains,
+        @Bind("userId") String userId,
+        @Bind("owns") int owns);
+
+    @SqlQuery(
+        "SELECT count(*) " + FILTERED_FILES + "cf.visibility IS NULL OR cf.visibility = 'Entity'")
+    int countOpenFiles(@BindMap Map<String, ?> params, @Define("cond") String cond);
+
+    @SqlQuery(
+        "SELECT count(*) "
+            + FILTERED_FILES
+            + "cf.visibility <> 'Entity' AND cf.id IN ("
+            + OWNED_BY_CALLER
+            + ")")
+    int countOwnedRestrictedFiles(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("userId") String userId,
+        @Bind("owns") int owns);
+
+    @SqlQuery(
+        "SELECT cf.id "
+            + FILTERED_FILES
+            + "cf.visibility = 'Shared' AND cf.id NOT IN ("
+            + OWNED_BY_CALLER
+            + ")")
+    List<String> listSharedFilesNotOwned(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("userId") String userId,
+        @Bind("owns") int owns);
+
+    record FolderCount(UUID folderId, int count) {}
+
+    record FolderFile(UUID folderId, UUID fileId) {}
+
+    class FolderCountMapper implements RowMapper<FolderCount> {
+      @Override
+      public FolderCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new FolderCount(UUID.fromString(rs.getString(1)), rs.getInt(2));
+      }
+    }
+
+    class FolderFileMapper implements RowMapper<FolderFile> {
+      @Override
+      public FolderFile map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new FolderFile(UUID.fromString(rs.getString(1)), UUID.fromString(rs.getString(2)));
+      }
+    }
 
     @ConnectionAwareSqlQuery(
         value =
@@ -295,6 +439,25 @@ public interface KnowledgeAssetDAOs {
       return "fqnHash";
     }
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE knowledge_center SET json = :json, fqnHash = :fqnHash "
+                + "WHERE id = :id AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.version')) = :version "
+                + "AND JSON_EXTRACT(json, '$.updatedAt') = :updatedAt",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE knowledge_center SET json = (:json :: jsonb), fqnHash = :fqnHash "
+                + "WHERE id = :id AND json->>'version' = :version "
+                + "AND (json->>'updatedAt')::bigint = :updatedAt",
+        connectionType = POSTGRES)
+    int updateWithVersionAndTimestamp(
+        @Bind("id") String id,
+        @BindFQN("fqnHash") String fullyQualifiedName,
+        @BindJson("json") String json,
+        @Bind("version") String version,
+        @Bind("updatedAt") Long updatedAt);
+
     @Override
     default boolean supportsSoftDelete() {
       return false;
@@ -316,7 +479,8 @@ public interface KnowledgeAssetDAOs {
       String tagFQN = filter.getQueryParam("tagFQN");
       String tagListCondition =
           "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
-      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
       if (nullOrEmpty(tagFQN)) {
         tagListCondition = "";
         tagFilterCondition = "WHERE";
@@ -356,7 +520,7 @@ public interface KnowledgeAssetDAOs {
           getTableName(),
           getNameHashColumn(),
           filter.getQueryParams(),
-          getKnowledgePageWhereClause(knowledgePageQueryClause));
+          getKnowledgePageWhereClause(filter, knowledgePageQueryClause));
     }
 
     @Override
@@ -368,7 +532,8 @@ public interface KnowledgeAssetDAOs {
       String tagFQN = filter.getQueryParam("tagFQN");
       String tagListCondition =
           "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
-      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
       if (nullOrEmpty(tagFQN)) {
         tagListCondition = "";
         tagFilterCondition = "WHERE";
@@ -410,7 +575,7 @@ public interface KnowledgeAssetDAOs {
       return listBefore(
           getTableName(),
           filter.getQueryParams(),
-          getKnowledgePageWhereClause(knowledgePageQueryClause),
+          getKnowledgePageWhereClause(filter, knowledgePageQueryClause),
           limit,
           beforeName,
           beforeId);
@@ -424,7 +589,8 @@ public interface KnowledgeAssetDAOs {
       String tagFQN = filter.getQueryParam("tagFQN");
       String tagListCondition =
           "INNER JOIN tag_usage ON knowledge_center.fqnHash = tag_usage.targetFQNHash";
-      String tagFilterCondition = "WHERE tag_usage.tagFQN = :tagFQN and ";
+      String tagFilterCondition =
+          "WHERE tag_usage.tagFQN = :tagFQN and tag_usage." + TagUsageDAO.NOT_PENDING + " and ";
       if (nullOrEmpty(tagFQN)) {
         tagListCondition = "";
         tagFilterCondition = "WHERE";
@@ -466,7 +632,7 @@ public interface KnowledgeAssetDAOs {
       return listAfter(
           getTableName(),
           filter.getQueryParams(),
-          getKnowledgePageWhereClause(knowledgePageQueryClause),
+          getKnowledgePageWhereClause(filter, knowledgePageQueryClause),
           limit,
           afterName,
           afterId);
@@ -484,8 +650,12 @@ public interface KnowledgeAssetDAOs {
       }
     }
 
-    private String getKnowledgePageWhereClause(String knowledgePageQueryClause) {
-      return nullOrEmpty(knowledgePageQueryClause) ? "WHERE TRUE" : knowledgePageQueryClause;
+    // Keeps the filter's domain condition (e.g. the navbar pick), which the base list adds itself.
+    private String getKnowledgePageWhereClause(ListFilter filter, String knowledgePageQueryClause) {
+      String where =
+          nullOrEmpty(knowledgePageQueryClause) ? "WHERE TRUE" : knowledgePageQueryClause;
+      String domainCondition = filter.getDomainCondition(getTableName());
+      return nullOrEmpty(domainCondition) ? where : where + " AND " + domainCondition;
     }
 
     private String getKnowledgePageTypeQuery(String clause, String type) {

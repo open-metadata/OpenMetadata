@@ -11,9 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, Dropdown, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  ButtonUtility,
+  Dropdown,
+} from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import { FC, useState } from 'react';
+import { ICON_ONLY_SIZE } from './ActivityToolbarMenu.constants';
 
 export interface ActivityToolbarMenuOption {
   value: string;
@@ -62,15 +67,14 @@ const ActivityToolbarMenu = ({
   return (
     <Dropdown.Root onOpenChange={setIsOpen}>
       {iconOnly ? (
-        <Tooltip title={label}>
-          <Button
-            aria-label={label}
-            color={color}
-            data-testid={testId}
-            iconLeading={triggerIcon}
-            size={size}
-          />
-        </Tooltip>
+        <ButtonUtility
+          aria-label={label}
+          color={color}
+          data-testid={testId}
+          icon={triggerIcon}
+          size={ICON_ONLY_SIZE[size]}
+          tooltip={label}
+        />
       ) : (
         <Button
           color={color}

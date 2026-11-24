@@ -67,11 +67,12 @@ const renderPreview = (
   definition: TestDefinition,
   params: Record<string, unknown>,
   target?: string,
-  profilerConfig?: TableProfilerConfig
+  profilerConfig?: TableProfilerConfig,
+  useDynamicAssertion?: boolean
 ) => {
   const Wrapper = () => {
     const form = useForm<FormValues>({
-      defaultValues: { params } as FormValues,
+      defaultValues: { params, useDynamicAssertion } as FormValues,
     });
 
     return (
@@ -191,6 +192,76 @@ describe('ThresholdPreview', () => {
     ).toHaveTextContent(
       'A percentage deviation around a bound of 0 leaves that bound at 0'
     );
+  });
+
+  describe('a dynamic assertion, whose bounds are learned at run time', () => {
+    // The static-bound inputs are hidden in dynamic mode, but the form still
+    // holds values prefilled from a saved test case — the sentence must not
+    // quote them as the pass/fail range.
+    const statisticalDefinition = definitionOf('tableRowCountToBeBetween', [
+      { name: 'minValue' },
+      { name: 'maxValue' },
+    ]);
+
+    it('describes the tolerance around the learned bounds', () => {
+      renderPreview(
+        statisticalDefinition,
+        { minValue: 100, maxValue: 200, threshold: 10 },
+        undefined,
+        undefined,
+        true
+      );
+
+      expect(sentence()).toBe(
+        'Fail when the measured value falls outside the learned bounds, allowing a deviation of 10.'
+      );
+      expect(sentence()).not.toContain('100');
+      expect(
+        screen.queryByTestId('threshold-zero-bound-warning')
+      ).not.toBeInTheDocument();
+    });
+
+    it('previews with no static bounds at all', () => {
+      renderPreview(
+        statisticalDefinition,
+        { threshold: 5, thresholdUnit: { id: 'PERCENTAGE' } },
+        undefined,
+        undefined,
+        true
+      );
+
+      expect(sentence()).toBe(
+        'Fail when the measured value falls outside the learned bounds, allowing a deviation of 5%.'
+      );
+    });
+
+    it('drops the deviation clause when the threshold is zero', () => {
+      renderPreview(
+        statisticalDefinition,
+        { minValue: 100 },
+        undefined,
+        undefined,
+        true
+      );
+
+      expect(sentence()).toBe(
+        'Fail when the measured value falls outside the learned bounds.'
+      );
+    });
+
+    it('keeps the row-countable tolerance, which bounds cannot affect', () => {
+      renderPreview(
+        definitionOf('columnValuesToBeNotNull'),
+        { threshold: 1, thresholdUnit: { id: 'PERCENTAGE' } },
+        'email',
+        undefined,
+        true
+      );
+
+      expect(sentence()).toBe(
+        'Fail when more than 1% of rows in email fail this test.'
+      );
+    });
   });
 
   it('reads the custom SQL query through its operator and strategy', () => {

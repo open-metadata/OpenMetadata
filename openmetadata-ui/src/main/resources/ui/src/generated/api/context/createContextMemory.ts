@@ -31,9 +31,9 @@ export interface CreateContextMemory {
      */
     domains?: string[];
     /**
-     * Lifecycle stage the memory starts in. When omitted, the memory starts Unprocessed and is
-     * excluded from grounding until Approved. Superseded and legacy Deprecated memories require
-     * supersededBy.
+     * Lifecycle stage the memory starts in. When omitted, OSS starts it Approved. Distributions
+     * that require review start it Unprocessed and restrict approval to authorized reviewers.
+     * Superseded and legacy Deprecated memories require supersededBy.
      */
     entityStatus?:          ContextMemoryStatus;
     machineRepresentation?: MachineRepresentation;
@@ -83,9 +83,9 @@ export interface CreateContextMemory {
 }
 
 /**
- * Lifecycle stage the memory starts in. When omitted, the memory starts Unprocessed and is
- * excluded from grounding until Approved. Superseded and legacy Deprecated memories require
- * supersededBy.
+ * Lifecycle stage the memory starts in. When omitted, OSS starts it Approved. Distributions
+ * that require review start it Unprocessed and restrict approval to authorized reviewers.
+ * Superseded and legacy Deprecated memories require supersededBy.
  *
  * Lifecycle stage of a context memory. Unprocessed awaits reconciliation; only Approved
  * memories ground new memories and agent responses. Deprecated and Rejected remain readable

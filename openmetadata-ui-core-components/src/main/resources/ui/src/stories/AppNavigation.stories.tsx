@@ -25,6 +25,7 @@ import {
   Tag01,
   Users01,
 } from '../icons';
+import { ButtonUtility } from '../components/base/buttons/button-utility';
 import { NavAccountCard } from '../components/application/app-navigation/base-components/nav-account-card';
 import { NavItemButton } from '../components/application/app-navigation/base-components/nav-item-button';
 import { NavList } from '../components/application/app-navigation/base-components/nav-list';
@@ -171,14 +172,12 @@ export const TogglableSidebar: Story = {
               collapsed ? 'tw:justify-center' : 'tw:justify-between'
             }`}>
             <Home01 className="tw:size-8 tw:text-fg-primary" />
-            <button
-              aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              className={`tw:rounded-md tw:p-1.5 tw:text-fg-quaternary tw:transition tw:hover:bg-primary_hover tw:hover:text-fg-quaternary_hover ${
-                collapsed ? 'tw:mt-0' : ''
-              }`}
-              onClick={() => setCollapsed((c) => !c)}>
-              <Grid01 className="tw:size-4" />
-            </button>
+            <ButtonUtility
+              icon={Grid01}
+              size="lg"
+              tooltip={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              onClick={() => setCollapsed((c) => !c)}
+            />
           </div>
 
           {collapsed ? (

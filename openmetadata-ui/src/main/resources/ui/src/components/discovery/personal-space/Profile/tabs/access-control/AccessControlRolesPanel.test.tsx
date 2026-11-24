@@ -49,10 +49,14 @@ jest.mock(
   }
 );
 
+let mockPageSize: number | undefined;
+
 jest.mock('../../../../../../hooks/useSettingsHash', () => ({
   useHashPagingParams: () => ({
     page: 1,
-    pageSize: 10,
+    pageSize: mockPageSize,
+    resolvedPageSize: mockPageSize ?? 15,
+    savePageSize: jest.fn(),
     cursor: undefined,
     cursorType: undefined,
     setPage: jest.fn(),
@@ -79,7 +83,23 @@ const openDeletePopover = async () => {
 describe('AccessControlRolesPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPageSize = undefined;
     mockList(ROLES);
+  });
+
+  it('shows pagination for a single page of roles at the default page size', async () => {
+    render(<AccessControlRolesPanel onNavigate={jest.fn()} />);
+
+    expect(await screen.findByTestId('role-DataConsumer')).toBeInTheDocument();
+    expect(screen.getByTestId('rows-per-page-dropdown')).toBeInTheDocument();
+  });
+
+  it('keeps pagination at a non-default page size so it can be switched back', async () => {
+    mockPageSize = 25;
+    render(<AccessControlRolesPanel onNavigate={jest.fn()} />);
+
+    expect(await screen.findByTestId('role-DataConsumer')).toBeInTheDocument();
+    expect(screen.getByTestId('rows-per-page-dropdown')).toBeInTheDocument();
   });
 
   it('renders the roles list', async () => {

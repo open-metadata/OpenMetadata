@@ -14,6 +14,7 @@ Min Metric definition
 """
 
 from collections.abc import Callable
+from datetime import datetime
 from functools import partial
 from typing import TYPE_CHECKING, Optional
 
@@ -91,6 +92,7 @@ class Min(StaticMetric):
     """
 
     schema_metric_type = MetricType.min
+    preserve_datetime: bool = False
 
     @classmethod
     def name(cls):
@@ -122,14 +124,18 @@ class Min(StaticMetric):
 
     def get_pandas_computation(self) -> PandasComputation:
         """Returns the logic to compute this metrics using Pandas"""
-        return PandasComputation[float | None, float | None](
+        return PandasComputation[float | datetime | None, float | datetime | None](
             create_accumulator=lambda: None,
-            update_accumulator=lambda acc, df: Min.update_accumulator(acc, df, self.col),
+            update_accumulator=lambda acc, df: Min.update_accumulator(
+                acc, df, self.col, preserve_datetime=self.preserve_datetime
+            ),
             aggregate_accumulator=lambda acc: acc,
         )
 
     @staticmethod
-    def update_accumulator(current_min: float | None, df: "pd.DataFrame", column) -> float | None:
+    def update_accumulator(
+        current_min: float | datetime | None, df: "pd.DataFrame", column, preserve_datetime: bool = False
+    ) -> float | datetime | None:
         """Computes one DataFrame chunk and updates the running minimum
 
         Maintains a single minimum value (not a list). Compares chunk's min
@@ -138,16 +144,16 @@ class Min(StaticMetric):
         import pandas as pd
         from pandas import Timestamp
 
-        chunk_min: float | None = None
+        chunk_min: float | datetime | None = None
 
         if is_quantifiable(column.type):
             raw = df[column.name].min()
             chunk_min = float(raw) if not bool(pd.isnull(raw)) else None  # type: ignore[arg-type]
         elif is_date_time(column.type):
             if column.type in {DataType.DATETIME, DataType.DATE}:
-                min_val = pd.to_datetime(df[column.name]).min()
+                min_val = pd.to_datetime(df[column.name], utc=True).min()
                 if isinstance(min_val, Timestamp) and not pd.isnull(min_val):
-                    chunk_min = int(min_val.timestamp() * 1000)
+                    chunk_min = min_val.tz_localize(None) if preserve_datetime else int(min_val.timestamp() * 1000)
             elif column.type == DataType.TIME:
                 min_val = pd.to_timedelta(df[column.name]).min()
                 if not pd.isnull(min_val):

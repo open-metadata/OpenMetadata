@@ -339,9 +339,12 @@ export const msalMockProviderFixture: SsoProviderFixture = {
     // See the module-level comment. A day, like the PAT this replaced, so
     // no scenario runs into the expiry: every mocked renewal hands back this
     // same token.
+    // The authority names MOCK_TENANT_ID, so the server accepts only a token
+    // from that tenant, as it would from Entra ID.
     idpToken = await mintMockOidcIdToken(apiContext, {
       audience: MOCK_CLIENT_ID,
       expiresInSeconds: 24 * 60 * 60,
+      tenantId: MOCK_TENANT_ID,
     });
     const snapshot = await fetchSecurityConfig(apiContext);
     await applyProviderConfig(apiContext, snapshot, buildValidConfig());

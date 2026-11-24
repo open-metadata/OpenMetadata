@@ -152,6 +152,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkRetryPolicy;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
@@ -168,6 +169,7 @@ import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -176,8 +178,10 @@ import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.scripts.SoftDeleteScript;
+import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
@@ -199,6 +203,10 @@ public class SearchRepository {
   private static final Duration MAPPED_FIELD_CACHE_TTL = Duration.ofMinutes(1);
 
   private volatile SearchClient searchClient;
+
+  // Reads each background inherited-field propagation's status through whichever client is current.
+  private final InheritedFieldPropagationCheck propagationCheck =
+      new InheritedFieldPropagationCheck(taskId -> searchClient.childUpdateStatus(taskId));
   private final Cache<String, Boolean> mappedFieldCache =
       Caffeine.newBuilder()
           .maximumSize(MAPPED_FIELD_CACHE_MAX_SIZE)
@@ -213,6 +221,14 @@ public class SearchRepository {
   private static final int MAX_PARENT_IDS_PER_TERMS_QUERY = 1024;
 
   private static final int REFERENCE_REINDEX_BATCH_SIZE = 100;
+  private static final String REMOVE_STALE_MEMORY_VECTOR_FIELDS_SCRIPT =
+      """
+      if (!params.preserveCurrent || ctx._source.fingerprint != params.fingerprint) {
+        for (field in params.fieldsToRemove) {
+          ctx._source.remove(field);
+        }
+      }
+      """;
   // Bounds one custom-property cleanup request; more holders are split across requests.
   private static final int MAX_HOLDER_IDS_PER_CLEANUP_REQUEST = 10_000;
 
@@ -480,6 +496,9 @@ public class SearchRepository {
 
   @Getter @Setter public SearchIndexFactory searchIndexFactory = new SearchIndexFactory();
 
+  // The service types whose children carry a `service.id`, so a service's domain change propagates
+  // to them. A type missing here leaves its children searchable with no domain, which search RBAC
+  // then shows to everyone — so LLM and MCP services belong here with the rest.
   private static final Set<String> SERVICE_ENTITY_SET =
       Set.of(
           Entity.DATABASE_SERVICE,
@@ -491,7 +510,9 @@ public class SearchRepository {
           Entity.SEARCH_SERVICE,
           Entity.SECURITY_SERVICE,
           Entity.API_SERVICE,
-          Entity.DRIVE_SERVICE);
+          Entity.DRIVE_SERVICE,
+          Entity.LLM_SERVICE,
+          Entity.MCP_SERVICE);
 
   private static final Set<String> QUERY_DOMAIN_REINDEX_SOURCE_TYPES =
       Set.of(Entity.DATABASE_SERVICE, Entity.DATABASE, Entity.DATABASE_SCHEMA, Entity.TABLE);
@@ -1251,8 +1272,16 @@ public class SearchRepository {
         index, managedIndexMappings(), aliasIndexMap, clusterAlias);
   }
 
+  private static final String PIPELINE_RUN_INDEX = "pipelineStatus";
+
+  // A query cost record carries the query's SQL, so a deny rule on the query must reach its cost
+  // records too; they are indexed separately, so search RBAC treats them as a child of the query.
+  // A pipeline's runs are indexed separately too, with the pipeline's access fields copied on.
   private static final Map<String, Set<String>> RBAC_CHILD_TYPES =
-      Map.of(Entity.TABLE, Set.of(Entity.TABLE_COLUMN));
+      Map.of(
+          Entity.TABLE, Set.of(Entity.TABLE_COLUMN),
+          Entity.QUERY, Set.of(Entity.QUERY_COST_RECORD),
+          Entity.PIPELINE, Set.of(PIPELINE_RUN_INDEX));
 
   public List<String> getChildIndexAliases(String entityType) {
     Set<String> rbacChildren = RBAC_CHILD_TYPES.getOrDefault(entityType, Set.of());
@@ -1394,6 +1423,10 @@ public class SearchRepository {
       return;
     }
 
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
+      return;
+    }
+
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
@@ -1414,7 +1447,8 @@ public class SearchRepository {
     }
     try {
       IndexMapping indexMapping = entityIndexMap.get(entityType);
-      SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
+      SearchIndex index =
+          searchIndexFactory.buildIndex(entityType, withFieldsLoadedOnWrite(entityType, entity));
       String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
       searchClient.createEntity(getWriteIndexName(indexMapping), entityId, doc);
 
@@ -1483,11 +1517,12 @@ public class SearchRepository {
     }
 
     List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+    List<String> tablePolicyTags = SearchIndexUtils.policyTagFqns(table);
     List<Map<String, String>> docs = new ArrayList<>();
 
     for (Column column : flattenedColumns) {
       try {
-        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table, tablePolicyTags);
         String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
         String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
         docs.add(Collections.singletonMap(columnId, doc));
@@ -1581,8 +1616,87 @@ public class SearchRepository {
     }
   }
 
+  // A run carries its pipeline's task tags too, merged into its tags.
+  private static final Set<String> RUN_ACCESS_FIELD_NAMES =
+      Set.of(
+          Entity.FIELD_OWNERS,
+          Entity.FIELD_DOMAINS,
+          Entity.FIELD_TAGS,
+          Entity.FIELD_CERTIFICATION,
+          "tasks");
+
+  private boolean changesRunAccessFields(ChangeDescription changeDescription) {
+    return changeDescription == null
+        || changedFieldNames(changeDescription)
+            .anyMatch(name -> RUN_ACCESS_FIELD_NAMES.stream().anyMatch(name::startsWith));
+  }
+
+  private static final String RESTAMP_RUNS_SCRIPT =
+      "def fields = params.byPipeline[ctx._source.pipelineId];"
+          + " if (fields == null) { ctx.op = 'noop'; } else {"
+          + " for (def field : fields.entrySet()) { ctx._source[field.getKey()] = field.getValue(); } }";
+
+  /**
+   * Copies a pipeline's access fields onto its run documents, which search access control decides
+   * on as it does on the pipeline
+   * (ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads). Asynchronous, as a
+   * pipeline can have many runs.
+   */
+  private void restampPipelineRuns(Pipeline pipeline) {
+    IndexMapping runIndex = entityIndexMap.get(PIPELINE_RUN_INDEX);
+    if (runIndex == null) {
+      return;
+    }
+    try {
+      Pipeline loaded = PipelineExecutionIndex.withAccessFields(pipeline.getEntityReference());
+      String pipelineId = loaded.getId().toString();
+      searchClient.updateChildren(
+          List.of(getWriteIndexName(runIndex)),
+          new ImmutablePair<>("pipelineId", pipelineId),
+          new ImmutablePair<>(
+              RESTAMP_RUNS_SCRIPT,
+              Map.of(
+                  "byPipeline", Map.of(pipelineId, PipelineExecutionIndex.accessFields(loaded)))));
+    } catch (Exception e) {
+      LOG.error("Failed to update the runs of pipeline [{}]", pipeline.getFullyQualifiedName(), e);
+    }
+  }
+
+  /**
+   * Refreshes the access fields on the runs of pipelines being reindexed, which also fills them in
+   * on runs indexed before they were copied. The pipelines carry {@link
+   * PipelineExecutionIndex#ACCESS_FIELDS}, being loaded for their own documents. Synchronous, so a
+   * reindex does not queue a task per batch.
+   */
+  public void restampPipelineRuns(List<? extends EntityInterface<?>> pipelines) {
+    IndexMapping runIndex = entityIndexMap.get(PIPELINE_RUN_INDEX);
+    if (runIndex == null) {
+      return;
+    }
+    Map<String, Object> byPipeline = new HashMap<>();
+    for (EntityInterface<?> entity : pipelines) {
+      if (entity instanceof Pipeline pipeline) {
+        byPipeline.put(pipeline.getId().toString(), PipelineExecutionIndex.accessFields(pipeline));
+      }
+    }
+    if (byPipeline.isEmpty()) {
+      return;
+    }
+    try {
+      searchClient.updateChildren(
+          List.of(getWriteIndexName(runIndex)),
+          "pipelineId",
+          List.copyOf(byPipeline.keySet()),
+          new ImmutablePair<>(RESTAMP_RUNS_SCRIPT, Map.of("byPipeline", byPipeline)));
+    } catch (Exception e) {
+      LOG.error("Failed to update the runs of {} reindexed pipelines", byPipeline.size(), e);
+    }
+  }
+
   private void syncTableColumns(Table table, ChangeDescription changeDescription) {
-    if (hasColumnsChanged(changeDescription) || changesTagsWithOtherFields(changeDescription)) {
+    if (hasColumnsChanged(changeDescription)
+        || changesTagsWithOtherFields(changeDescription)
+        || changesColumnPolicyTags(changeDescription)) {
       // Rebuilt from the table: the column tree, the inherited fields and the inherited terms
       deleteTableColumns(table);
       indexTableColumns(table);
@@ -1590,6 +1704,16 @@ public class SearchRepository {
       // Only inherited fields changed - use efficient update
       updateTableColumnsInheritedFields(table);
     }
+  }
+
+  /**
+   * Column entries carry their table's tags in {@code policyTags}, which search access control
+   * matches tag rules on and the tag cascade does not maintain, so while access control is on a
+   * table's tag change rebuilds its column entries; the cascade arriving afterwards changes nothing
+   * (ADR:2026-10-08-column-entries-carry-only-their-own-tags).
+   */
+  private boolean changesColumnPolicyTags(ChangeDescription changeDescription) {
+    return isTagsOnlyChange(changeDescription) && SearchUtils.isAccessControlEnabled();
   }
 
   /**
@@ -1766,6 +1890,15 @@ public class SearchRepository {
       if (nullOrEmpty(entityType)) {
         return;
       }
+      if (OntologyTermSearch.isTerm(entityType)) {
+        refreshOntologyTerms(
+            entities.stream()
+                .filter(Objects::nonNull)
+                .map(EntityInterface::getEntityReference)
+                .distinct()
+                .toList());
+        return;
+      }
       Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
       try {
         if (!getSearchClient().isClientAvailable()) {
@@ -1788,9 +1921,13 @@ public class SearchRepository {
           }
           return;
         }
+        List<EntityInterface<?>> indexed = new ArrayList<>(entities);
+        if (!loadFieldsOnWriteOrRetry(entityType, indexed, "createEntitiesIndex")) {
+          return;
+        }
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         List<Map<String, String>> docs = new ArrayList<>();
-        for (EntityInterface<?> entity : entities) {
+        for (EntityInterface<?> entity : indexed) {
           try {
             if (!Entity.isSearchIndexable(entity)) {
               continue;
@@ -1840,9 +1977,10 @@ public class SearchRepository {
       }
 
       List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+      List<String> tablePolicyTags = SearchIndexUtils.policyTagFqns(table);
       for (Column column : flattenedColumns) {
         try {
-          ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+          ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table, tablePolicyTags);
           String doc = JsonUtils.pojoToJson(columnIndex.buildSearchIndexDoc());
           String columnId = ColumnSearchIndex.generateColumnId(column.getFullyQualifiedName());
           allColumnDocs.add(Collections.singletonMap(columnId, doc));
@@ -1981,6 +2119,10 @@ public class SearchRepository {
       return;
     }
 
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
+      return;
+    }
+
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
@@ -2045,8 +2187,10 @@ public class SearchRepository {
                 entityId,
                 getChangedFieldNames(changeDescription));
           }
-          SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
-          doc = searchIndex.buildSearchIndexDoc();
+          SearchIndex searchIndex =
+              searchIndexFactory.buildIndex(
+                  entityType, withFieldsLoadedOnWrite(entityType, entity));
+          doc = withRetiredFieldsRemoved(searchIndex, searchIndex.buildSearchIndexDoc());
           doc =
               SearchIndexUtils.stripDocMapIfOversized(
                   doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
@@ -2060,6 +2204,9 @@ public class SearchRepository {
       }
 
       searchClient.updateEntity(getWriteIndexName(indexMapping), entityId, doc, scriptTxt);
+      if (Entity.CONTEXT_MEMORY.equals(entityType)) {
+        invalidateMemoryEmbedding(entity);
+      }
 
       if (Entity.TABLE.equals(entityType)) {
         try {
@@ -2070,6 +2217,9 @@ public class SearchRepository {
               entity.getFullyQualifiedName(),
               e);
         }
+      }
+      if (Entity.PIPELINE.equals(entityType) && changesRunAccessFields(changeDescription)) {
+        restampPipelineRuns((Pipeline) entity);
       }
 
       long updateTime = System.currentTimeMillis() - startTime;
@@ -2124,14 +2274,29 @@ public class SearchRepository {
     }
   }
 
+  /**
+   * An update merges into the stored document, so a field the index retired is removed rather than
+   * left as an earlier release wrote it.
+   */
+  private static Map<String, Object> withRetiredFieldsRemoved(
+      SearchIndex searchIndex, Map<String, Object> doc) {
+    Set<String> retired = searchIndex.getRetiredFields();
+    if (!retired.isEmpty()) {
+      doc.put(SearchClient.FIELDS_TO_REMOVE, List.copyOf(retired));
+    }
+    return doc;
+  }
+
   public void bulkIndexPipelineExecutions(
       Pipeline pipeline, List<PipelineStatus> pipelineStatuses) {
     try {
       String indexName = routeToStagedIfActive(getIndexOrAliasName("pipeline_status_search_index"));
+      Pipeline withAccessFields =
+          PipelineExecutionIndex.withAccessFields(pipeline.getEntityReference());
       List<Map<String, String>> docsAndIds = new ArrayList<>();
       for (PipelineStatus pipelineStatus : pipelineStatuses) {
         PipelineExecutionIndex pipelineExecutionIndex =
-            new PipelineExecutionIndex(pipeline, pipelineStatus);
+            new PipelineExecutionIndex(withAccessFields, pipelineStatus);
         Map<String, Object> doc = pipelineExecutionIndex.buildSearchIndexDoc();
         String docId = PipelineExecutionIndex.getDocumentId(pipeline, pipelineStatus);
         String docJson = JsonUtils.pojoToJson(doc);
@@ -2152,14 +2317,113 @@ public class SearchRepository {
     }
   }
 
+  private boolean refreshIfOntologyTerm(EntityReference reference) {
+    if (!OntologyTermSearch.isTerm(reference.getType())) {
+      return false;
+    }
+    refreshOntologyTerm(reference);
+    return true;
+  }
+
+  public void refreshOntologyTerm(EntityReference reference) {
+    refreshOntologyTerms(List.of(reference));
+  }
+
+  public void refreshOntologyTerms(List<EntityReference> references) {
+    final var pending =
+        references.stream()
+            .filter(ref -> getIndexMapping(ref.getType()) != null)
+            .filter(
+                ref ->
+                    !shouldSkipStreamingIndexing(
+                        ref.getType(),
+                        ref.getId().toString(),
+                        ref.getFullyQualifiedName(),
+                        "refreshOntologyTerm"))
+            .toList();
+    try {
+      writeOntologyTerms(pending);
+    } catch (IOException | RuntimeException failure) {
+      pending.forEach(
+          ref ->
+              SearchIndexRetryQueue.enqueue(
+                  ref.getId().toString(),
+                  ref.getFullyQualifiedName(),
+                  ref.getType(),
+                  SearchIndexRetryQueue.failureReason("refreshOntologyTerm", failure)));
+      LOG.error("Failed to refresh {} ontology search terms", pending.size(), failure);
+    }
+  }
+
+  public void reindexOntologyTerm(EntityReference reference) throws IOException {
+    if (getIndexMapping(reference.getType()) != null) {
+      writeOntologyTerms(List.of(reference));
+    }
+  }
+
+  private void writeOntologyTerms(List<EntityReference> references) throws IOException {
+    final var indexed =
+        OntologyTermBulkWrite.refresh(
+            searchClient,
+            clusterAlias,
+            references,
+            ref -> getWriteFanoutTargets(getIndexMapping(ref.getType()).getIndexName(clusterAlias)),
+            null,
+            null);
+    if (vectorEmbeddingHandler != null) {
+      indexed.forEach(
+          ref ->
+              EntityLifecycleEventDispatcher.getInstance()
+                  .enqueueOntologyEmbedding(
+                      ref, () -> vectorEmbeddingHandler.refreshOntologyEmbedding(ref)));
+    }
+  }
+
+  public boolean writeSpecializedIndexBatch(
+      String entityType, List<?> entities, String target, ReindexContext context)
+      throws IOException {
+    if (!OntologyTermSearch.isTerm(entityType)) {
+      return false;
+    }
+    final var references =
+        entities.stream()
+            .map(entity -> ((EntityInterface<?>) entity).getEntityReference())
+            .toList();
+    final String source =
+        context == null ? target : context.getOriginalIndex(entityType).orElse(target);
+    final var indexed =
+        OntologyTermBulkWrite.refresh(
+            searchClient,
+            clusterAlias,
+            references,
+            ref -> List.of(target),
+            vectorIndexService,
+            source);
+    if (vectorEmbeddingHandler != null) {
+      indexed.forEach(ref -> vectorEmbeddingHandler.refreshOntologyEmbedding(ref, List.of(target)));
+    }
+    return true;
+  }
+
+  void sweepOntologyChunks(String entityType) throws IOException {
+    OntologyChunkIndex.sweep(searchClient, clusterAlias, entityType);
+  }
+
   public void updateEntity(EntityReference entityReference) {
+    updateEntity(entityReference, Include.NON_DELETED);
+  }
+
+  public void updateEntity(EntityReference entityReference, Include include) {
     if (deferSearchWrite(
         new DeferredSearchWrite(
-            () -> updateEntity(entityReference),
+            () -> updateEntity(entityReference, include),
             "updateEntity",
             entityReference.getId() != null ? entityReference.getId().toString() : null,
             entityReference.getFullyQualifiedName(),
             entityReference.getType()))) {
+      return;
+    }
+    if (refreshIfOntologyTerm(entityReference)) {
       return;
     }
     EntityRepository<?> entityRepository = Entity.getEntityRepository(entityReference.getType());
@@ -2172,9 +2436,38 @@ public class SearchRepository {
         String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
     EntityInterface<?> entity =
         entityRepository.get(
-            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
+            null,
+            entityReference.getId(),
+            entityRepository.getOnlySupportedFields(fields),
+            include,
+            false);
     clearChangeDescriptions(entity);
     updateEntityIndex(entity);
+    if (Entity.CONTEXT_MEMORY.equals(entityReference.getType())
+        && vectorEmbeddingHandler != null
+        && !Boolean.TRUE.equals(entity.getDeleted())) {
+      vectorEmbeddingHandler.updateEmbedding(entity);
+    }
+  }
+
+  private void invalidateMemoryEmbedding(EntityInterface<?> entity) {
+    if (vectorEmbeddingHandler != null) {
+      vectorEmbeddingHandler.invalidateStaleEmbedding(entity);
+    } else {
+      boolean preserveCurrent =
+          !Boolean.TRUE.equals(entity.getDeleted()) && Entity.isVectorEmbeddable(entity);
+      searchClient.updateEntity(
+          getWriteIndexName(getIndexMapping(Entity.CONTEXT_MEMORY)),
+          entity.getId().toString(),
+          Map.of(
+              "preserveCurrent",
+              preserveCurrent,
+              "fingerprint",
+              preserveCurrent ? VectorDocBuilder.computeFingerprintForEntity(entity) : "",
+              SearchClient.FIELDS_TO_REMOVE,
+              List.copyOf(ContextMemoryIndex.VECTOR_FIELDS)),
+          REMOVE_STALE_MEMORY_VECTOR_FIELDS_SCRIPT);
+    }
   }
 
   /**
@@ -2317,6 +2610,9 @@ public class SearchRepository {
         continue;
       }
 
+      if (refreshIfOntologyTerm(entity.getEntityReference())) {
+        continue;
+      }
       String actualType = entity.getEntityReference().getType();
       entitiesByType.computeIfAbsent(actualType, k -> new ArrayList<>()).add(entity);
     }
@@ -2360,6 +2656,9 @@ public class SearchRepository {
         for (EntityInterface<?> entity : typeEntities) {
           enqueueEntityRetry(entity, "updateEntitiesBulk: Search client unavailable");
         }
+        continue;
+      }
+      if (!loadFieldsOnWriteOrRetry(entityType, typeEntities, "updateEntitiesBulk")) {
         continue;
       }
 
@@ -2712,6 +3011,60 @@ public class SearchRepository {
     SearchIndexRetryQueue.enqueue(entity, operation, failure);
   }
 
+  /**
+   * Copies of {@code entities} carrying the fields their index loads on write, so a count computed
+   * on read is not indexed as 0. The callers' entities, and so the API responses, are untouched. A
+   * type that declares none gets the same list back, with no copy and no read.
+   *
+   * <p>ADR:2026-10-29-search-documents-load-computed-counts-on-every-write
+   */
+  private <E extends EntityInterface<?>> List<E> withFieldsLoadedOnWrite(
+      String entityType, List<E> entities) {
+    Set<String> fields = searchIndexFactory.getFieldsLoadedOnWriteFor(entityType);
+    List<E> result = entities;
+    if (!fields.isEmpty() && !entities.isEmpty()) {
+      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+      result = entities.stream().map(SearchRepository::copyOf).toList();
+      repository.loadFieldsForSearchIndex(result, fields);
+    }
+    return result;
+  }
+
+  private EntityInterface<?> withFieldsLoadedOnWrite(String entityType, EntityInterface<?> entity) {
+    return withFieldsLoadedOnWrite(entityType, List.of(entity)).getFirst();
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <E extends EntityInterface<?>> E copyOf(E entity) {
+    return (E) JsonUtils.deepCopy(entity, entity.getClass());
+  }
+
+  /**
+   * Swaps each entity for its copy with the fields loaded on write, in one batched read. When the
+   * load fails the batch is queued for retry, which re-reads every reindex field, instead of being
+   * written with zeros or not written at all.
+   */
+  private boolean loadFieldsOnWriteOrRetry(
+      String entityType, List<EntityInterface<?>> entities, String operation) {
+    boolean loaded = true;
+    try {
+      List<EntityInterface<?>> copies = withFieldsLoadedOnWrite(entityType, entities);
+      for (int i = 0; i < copies.size(); i++) {
+        entities.set(i, copies.get(i));
+      }
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "{}: loading fields on write failed for {} {} entities",
+          operation,
+          entities.size(),
+          entityType,
+          e);
+      entities.forEach(entity -> enqueueEntityRetry(entity, operation, e));
+      loaded = false;
+    }
+    return loaded;
+  }
+
   public void updateEntitiesBulk(List<? extends EntityInterface<?>> entities) {
     updateEntitiesIndex(entities);
   }
@@ -2945,7 +3298,10 @@ public class SearchRepository {
               entityType,
               descriptor -> !view.skippedFields().contains(descriptor.fieldName()));
       if (!nullOrEmpty(updates.getKey())) {
-        searchClient.updateChildren(withClusterAlias(group.getValue()), parentMatch, updates);
+        String taskId =
+            searchClient.updateChildrenInBackground(
+                withClusterAlias(group.getValue()), parentMatch, updates);
+        propagationCheck.watch(taskId, entity, changeDescription);
       }
     }
     Pair<String, Map<String, Object>> updates =
@@ -3079,6 +3435,21 @@ public class SearchRepository {
   private List<String> filterChildAliasesByCapability(
       IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
     return withClusterAlias(childAliasesWithCapability(indexMapping, includeCapability));
+  }
+
+  private List<String> filterChildWriteTargetsByCapability(
+      IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
+    List<String> childAliases = childAliasesWithCapability(indexMapping, includeCapability);
+    List<String> targets = new ArrayList<>(withClusterAlias(childAliases));
+    // Resolve each child's canonical key: fanning out a short alias would include staged indices
+    // of unrelated types, whose documents may not support this script's deleted field.
+    childAliases.stream()
+        .map(this::canonicalIndexFor)
+        .filter(Objects::nonNull)
+        .map(activeStagedIndices::get)
+        .filter(Objects::nonNull)
+        .forEach(targets::add);
+    return targets;
   }
 
   private List<String> childAliasesWithCapability(
@@ -3976,6 +4347,10 @@ public class SearchRepository {
       return;
     }
 
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
+      return;
+    }
+
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
@@ -4078,6 +4453,10 @@ public class SearchRepository {
   public void softDeleteOrRestoreEntityIndex(EntityInterface<?> entity, boolean delete) {
     if (entity == null) {
       LOG.debug("Entity or EntityReference is null, cannot perform soft delete or restore.");
+      return;
+    }
+
+    if (refreshIfOntologyTerm(entity.getEntityReference())) {
       return;
     }
 
@@ -4313,23 +4692,33 @@ public class SearchRepository {
   public void softDeleteOrRestoredChildren(
       EntityReference entityReference, IndexMapping indexMapping, boolean delete)
       throws IOException {
-    // Each childAlias is an entity-type name (per indexMapping.json). Use the typed script's
-    // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
-    SoftDeleteScript script = new SoftDeleteScript(delete);
-    List<String> targets = filterChildAliasesByCapability(indexMapping, script::compatibleWith);
-    if (targets.isEmpty()) {
-      return;
-    }
     String entityType = entityReference.getType();
     // Service entities propagate child deletions through a shared service.id field; everything
     // else uses the entity-type-specific <type>.id. Reuses the canonical SERVICE_ENTITY_SET that
     // updateChildrenForSearchPropagation also relies on, so the contract stays in one place.
     String parentIdField =
         SERVICE_ENTITY_SET.contains(entityType) ? "service.id" : entityType + ".id";
-    searchClient.softDeleteOrRestoreChildren(
-        targets,
-        script.painless(),
-        List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString())));
+    List<Pair<String, String>> parentMatch =
+        List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString()));
+    // Each childAlias is an entity-type name (per indexMapping.json) whose capability names the
+    // field that marks its docs deleted, so one script runs per field and never reaches an index
+    // without one. A cascade writes no search document per descendant, so this update is the only
+    // one: an incident under the parent takes its test case's flag here.
+    for (String deletedField : childDeletedFields(indexMapping)) {
+      SoftDeleteScript script = new SoftDeleteScript(delete, deletedField);
+      List<String> targets =
+          filterChildWriteTargetsByCapability(indexMapping, script::compatibleWith);
+      searchClient.softDeleteOrRestoreChildren(targets, script.painless(), parentMatch);
+    }
+  }
+
+  private List<String> childDeletedFields(IndexMapping indexMapping) {
+    return childAliasesWithCapability(
+            indexMapping, capability -> capability != null && capability.hasFieldDeleted())
+        .stream()
+        .map(alias -> EntityIndexCapabilityRegistry.get(alias).deletedField())
+        .distinct()
+        .toList();
   }
 
   public String getScriptWithParams(
@@ -4539,6 +4928,7 @@ public class SearchRepository {
   }
 
   public Response search(SearchRequest request, SubjectContext subjectContext) throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, request);
     if (targetsDisabledColumnIndex(request.getIndex())) {
       return emptySearchResponse();
     }
@@ -4562,6 +4952,7 @@ public class SearchRepository {
 
   public int countSearchResults(SearchRequest baseRequest, SubjectContext subjectContext)
       throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, baseRequest);
     SearchRequest countRequest =
         new SearchRequest()
             .withQuery(baseRequest.getQuery())
@@ -4591,6 +4982,7 @@ public class SearchRepository {
       int from,
       java.io.OutputStream output)
       throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, baseRequest);
     java.io.BufferedWriter writer =
         new java.io.BufferedWriter(
             new java.io.OutputStreamWriter(output, java.nio.charset.StandardCharsets.UTF_8));
@@ -4725,6 +5117,7 @@ public class SearchRepository {
 
   public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
       throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, request);
     if (targetsDisabledColumnIndex(request.getIndex())) {
       return emptySearchResponse();
     }
@@ -4972,6 +5365,7 @@ public class SearchRepository {
       int size,
       SubjectContext subjectContext)
       throws IOException {
+    PrivateSearchFields.refuseFieldReference(subjectContext, index, fieldName);
     return searchClient.searchByField(
         fieldName, fieldValue, index, deleted, from, size, subjectContext);
   }
@@ -5033,6 +5427,7 @@ public class SearchRepository {
 
   public Response aggregate(AggregationRequest request, SubjectContext subjectContext)
       throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, request);
     if (targetsDisabledColumnIndex(request.getIndex())) {
       return emptySearchResponse();
     }
@@ -5045,6 +5440,7 @@ public class SearchRepository {
 
   public Response getEntityTypeCounts(
       SearchRequest request, String index, SubjectContext subjectContext) throws IOException {
+    PrivateSearchFields.refuseReferences(subjectContext, index, request);
     return searchClient.getEntityTypeCounts(request, index, subjectContext);
   }
 
@@ -5198,6 +5594,7 @@ public class SearchRepository {
     }
   }
 
+  /** A sink for live indexing and the retry worker; see {@link BulkRetryPolicy#LIVE}. */
   public BulkSink createBulkSink(
       int batchSize, int maxConcurrentRequests, long maxPayloadSizeBytes) {
     ElasticSearchConfiguration.SearchType searchType = getSearchType();
@@ -5205,6 +5602,22 @@ public class SearchRepository {
       return new OpenSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
     } else {
       return new ElasticSearchBulkSink(this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+    }
+  }
+
+  /** A sink for a reindex job, retrying with the job's settings. */
+  public BulkSink createBulkSink(
+      int batchSize,
+      int maxConcurrentRequests,
+      long maxPayloadSizeBytes,
+      BulkRetryPolicy retryPolicy) {
+    ElasticSearchConfiguration.SearchType searchType = getSearchType();
+    if (searchType.equals(ElasticSearchConfiguration.SearchType.OPENSEARCH)) {
+      return new OpenSearchBulkSink(
+          this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes, retryPolicy);
+    } else {
+      return new ElasticSearchBulkSink(
+          this, batchSize, maxConcurrentRequests, maxPayloadSizeBytes, retryPolicy);
     }
   }
 

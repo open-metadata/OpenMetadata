@@ -19,12 +19,25 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit03 } from '@openmetadata/ui-core-components/icons';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { isString, toString } from 'lodash';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { Metric } from '../../../generated/entity/data/metric';
+import type {
+  ChangeDescription,
+  Metric,
+  MetricExpression as MetricExpressionValue,
+} from '../../../generated/entity/data/metric';
 import { Language } from '../../../generated/entity/data/metric';
+import {
+  getChangedEntityNewValue,
+  getChangedEntityOldValue,
+  getDiffByFieldName,
+} from '../../../utils/EntityDiffPureUtils';
+import { getTextDiff } from '../../../utils/EntityDiffUtils';
+import { stringToHTML } from '../../../utils/RichTextStringUtils';
+import { getJSONFromString } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 export interface MetricExpressionProps {
@@ -32,6 +45,7 @@ export interface MetricExpressionProps {
   onUpdate?: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
   canEdit?: boolean;
   isEmbedded?: boolean;
+  changeDescription?: ChangeDescription;
 }
 
 const canEditMetricExpression = (
@@ -40,11 +54,34 @@ const canEditMetricExpression = (
   onUpdate?: MetricExpressionProps['onUpdate']
 ) => canEdit && Boolean(onUpdate) && !metric.deleted;
 
+// A change description carries the whole expression object, parsed or as a JSON string.
+const getExpressionCode = (value: unknown): string => {
+  const expression = (isString(value) ? getJSONFromString(value) : value) as
+    | MetricExpressionValue
+    | null
+    | undefined;
+
+  return toString(expression?.code);
+};
+
+const getVersionedCode = (changeDescription?: ChangeDescription) => {
+  if (!changeDescription) {
+    return '';
+  }
+  const diff = getDiffByFieldName('metricExpression', changeDescription, true);
+
+  return getTextDiff(
+    getExpressionCode(getChangedEntityOldValue(diff)),
+    getExpressionCode(getChangedEntityNewValue(diff))
+  );
+};
+
 const MetricExpression = ({
   metric,
   onUpdate,
   canEdit = false,
   isEmbedded = false,
+  changeDescription,
 }: MetricExpressionProps) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -98,6 +135,8 @@ const MetricExpression = ({
       setIsUpdating(false);
     }
   };
+
+  const versionedCode = getVersionedCode(changeDescription);
 
   const content = isEditing ? (
     <form data-testid="metric-expression-form" onSubmit={handleSubmit}>
@@ -168,7 +207,7 @@ const MetricExpression = ({
         {canEditMetricExpression(canEdit, metric, onUpdate) ? (
           <Button
             color="secondary"
-            iconLeading={Edit03}
+            iconLeading={Edit01}
             size="sm"
             onPress={startEditing}>
             {t('label.edit-entity', { entity: t('label.expression') })}
@@ -178,7 +217,9 @@ const MetricExpression = ({
       <pre
         className="tw:m-0 tw:overflow-x-auto tw:bg-secondary tw:px-4 tw:py-3 tw:font-mono tw:text-sm tw:leading-5 tw:whitespace-pre-wrap tw:text-primary"
         data-testid="metric-expression-code">
-        {metric.metricExpression?.code || t('label.empty-dash')}
+        {versionedCode
+          ? stringToHTML(versionedCode)
+          : metric.metricExpression?.code || t('label.empty-dash')}
       </pre>
     </Box>
   );

@@ -34,6 +34,7 @@ import {
   TableHeader as AriaTableHeader,
   useTableOptions,
 } from 'react-aria-components';
+import { ScrollShadow } from '@/components/application/scroll-shadow/scroll-shadow';
 import { Badge } from '@/components/base/badges/badges';
 import { Checkbox } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
@@ -69,7 +70,7 @@ export const TableRowActionsDropdown = () => {
 /**
  * `compact` matches the density of the AntD tables this component replaces —
  * entity pages show 20+ rows at a time and the `sm`/`md` heights push a third of
- * them below the fold. See docs/antd-migration/table.md.
+ * them below the fold.
  */
 type TableSize = 'compact' | 'sm' | 'md';
 
@@ -159,7 +160,7 @@ export type TableCardVariant = 'default' | 'muted';
  */
 export const MUTED_TABLE_SURFACE_CLASSES = [
   'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
-  'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover',
+  'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover',
   'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!',
   'tw:dark:[&_tbody:not(table_table_tbody)>tr:hover]:[--markdown-clamp-fade-color:color-mix(in_srgb,var(--tw-color-bg-secondary),white_6%)]!',
 ].join(' ');
@@ -274,6 +275,11 @@ interface TableRootProps
    * `stickyHeader` sticking).
    */
   variant?: TableCardVariant;
+  /**
+   * Shadows whichever edge hides columns while the table scrolls horizontally —
+   * the only scroll cue where the scrollbar is an overlay (macOS). @default false
+   */
+  scrollShadows?: boolean;
 }
 
 const TableRoot = ({
@@ -283,35 +289,45 @@ const TableRoot = ({
   containerStyle,
   containerClassName,
   variant = 'default',
+  scrollShadows = false,
   ...props
 }: TableRootProps) => {
   const context = useContext(TableContext);
   // An explicit prop wins; otherwise inherit an enclosing TableCard's size.
   const resolvedSize = size ?? context?.size ?? DEFAULT_TABLE_SIZE;
 
+  const scrollerClassName = cx(
+    'tw:overflow-x-auto',
+    variant === 'muted' &&
+      cx(
+        'tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt',
+        MUTED_TABLE_SURFACE_CLASSES
+      ),
+    containerClassName
+  );
+  const table = (
+    <AriaTable
+      className={(state) =>
+        cx(
+          'tw:w-full tw:overflow-x-hidden tw:dark:bg-surface',
+          typeof className === 'function' ? className(state) : className
+        )
+      }
+      {...props}
+    />
+  );
+
   return (
     <TableContext.Provider value={{ size: resolvedSize, stickyHeader }}>
-      <div
-        className={cx(
-          'tw:overflow-x-auto',
-          variant === 'muted' &&
-            cx(
-              'tw:border tw:border-secondary tw:dark:border-primary tw:bg-primary_alt',
-              MUTED_TABLE_SURFACE_CLASSES
-            ),
-          containerClassName
-        )}
-        style={containerStyle}>
-        <AriaTable
-          className={(state) =>
-            cx(
-              'tw:w-full tw:overflow-x-hidden tw:dark:bg-surface',
-              typeof className === 'function' ? className(state) : className
-            )
-          }
-          {...props}
-        />
-      </div>
+      {scrollShadows ? (
+        <ScrollShadow className={scrollerClassName} style={containerStyle}>
+          {table}
+        </ScrollShadow>
+      ) : (
+        <div className={scrollerClassName} style={containerStyle}>
+          {table}
+        </div>
+      )}
     </TableContext.Provider>
   );
 };
@@ -382,16 +398,31 @@ interface TableHeadProps
   extends AriaColumnProps,
     Omit<
       ThHTMLAttributes<HTMLTableCellElement>,
-      'children' | 'className' | 'style' | 'id'
+      'children' | 'className' | 'style' | 'id' | 'align'
     > {
   label?: string;
   tooltip?: string;
+  /** Aligns the header content, e.g. `center` over a column of centred icons. @default 'start' */
+  align?: 'start' | 'center' | 'end';
+  /**
+   * Wraps a long `label` instead of keeping it on one line, for a column whose
+   * width is capped (it would otherwise spill into the next header). @default false
+   */
+  wrapLabel?: boolean;
 }
+
+const HEAD_ALIGN_CLASS = {
+  start: '',
+  center: 'tw:justify-center',
+  end: 'tw:justify-end',
+};
 
 const TableHead = ({
   className,
   tooltip,
   label,
+  align = 'start',
+  wrapLabel = false,
   children,
   ...props
 }: TableHeadProps) => {
@@ -418,10 +449,25 @@ const TableHead = ({
         // Layout only — a real Group (role="group") here makes Chromium
         // compute an EMPTY accessible name for the columnheader, breaking
         // every getByRole('columnheader', { name }) locator.
-        <div className="tw:flex tw:items-center tw:gap-1">
-          <div className="tw:flex tw:items-center tw:gap-1">
+        <div
+          className={cx(
+            'tw:flex tw:items-center tw:gap-1',
+            wrapLabel && 'tw:min-w-0',
+            HEAD_ALIGN_CLASS[align]
+          )}>
+          <div
+            className={cx(
+              'tw:flex tw:items-center tw:gap-1',
+              wrapLabel && 'tw:min-w-0'
+            )}>
             {label && (
-              <span className="tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-quaternary">
+              <span
+                className={cx(
+                  'tw:text-xs tw:font-semibold tw:text-quaternary',
+                  wrapLabel
+                    ? 'tw:text-start tw:whitespace-normal tw:wrap-anywhere'
+                    : 'tw:whitespace-nowrap'
+                )}>
                 {label}
               </span>
             )}
@@ -501,6 +547,7 @@ const TableRow = <T extends object>({
           // every table came up one column-share short of its own right edge.
           'tw:relative tw:outline-focus-ring tw:transition-colors tw:[&:hover]:bg-secondary tw:focus-visible:outline-2 tw:focus-visible:-outline-offset-2',
           TABLE_SIZES[size].rowHeight,
+          props.onAction && 'tw:cursor-pointer',
           highlightSelectedRow &&
             'tw:selected:bg-secondary tw:dark:selected:bg-primary_hover',
 

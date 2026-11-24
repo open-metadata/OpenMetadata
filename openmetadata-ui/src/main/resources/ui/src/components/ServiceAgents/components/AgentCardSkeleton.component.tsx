@@ -21,7 +21,7 @@ import { FC } from 'react';
  */
 const AgentCardSkeleton: FC = () => (
   <Card
-    className="tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:px-4.5 tw:py-4 tw:shadow-xs"
+    className="tw:rounded-2xl tw:border tw:border-secondary tw:bg-surface tw:px-4.5 tw:py-4 tw:shadow-xs"
     data-testid="agent-card-skeleton"
     variant="ghost">
     <Box align="center" className="tw:gap-3.5">

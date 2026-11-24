@@ -1,18 +1,33 @@
 package org.openmetadata.service.search.vector;
 
+import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventHandler;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
+  private static final Set<String> LIFECYCLE_TYPES =
+      AvailableEntityTypes.LIST.stream()
+          .filter(type -> !OntologyTermSearch.isTerm(type))
+          .collect(Collectors.toUnmodifiableSet());
   private final VectorIndexService vectorService;
+
+  @Override
+  public Set<String> getSupportedEntityTypes() {
+    return LIFECYCLE_TYPES;
+  }
 
   public VectorEmbeddingHandler(VectorIndexService vectorService) {
     this.vectorService = vectorService;
@@ -60,6 +75,28 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     deleteChunks(entity);
   }
 
+  /** Invalidates stale stored text without making a provider call on the index-writing thread. */
+  public void invalidateStaleEmbedding(EntityInterface<?> entity) {
+    if (!hasCurrentEmbedding(entity)) {
+      deleteChunks(entity);
+      clearEntityEmbedding(entity);
+    }
+  }
+
+  private boolean hasCurrentEmbedding(EntityInterface<?> entity) {
+    if (entity == null
+        || !isSupported(entity)
+        || Boolean.TRUE.equals(entity.getDeleted())
+        || !Entity.isVectorEmbeddable(entity)) {
+      return false;
+    }
+    String indexName = resolveEntityIndexName(extractEntityType(entity));
+    return indexName != null
+        && Objects.equals(
+            VectorDocBuilder.computeFingerprintForEntity(entity),
+            vectorService.getExistingFingerprint(indexName, entity.getId().toString()));
+  }
+
   @Override
   public void onEntitySoftDeletedOrRestored(
       EntityInterface<?> entity, boolean isDeleted, SubjectContext subjectContext) {
@@ -104,7 +141,23 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
     return entityType != null && isSupportedEntityType(entityType);
   }
 
-  private void updateEmbedding(EntityInterface<?> entity) {
+  public void refreshOntologyEmbedding(EntityReference reference) {
+    final var index = resolveEntityIndexName(reference.getType());
+    if (index != null) {
+      refreshOntologyEmbedding(
+          reference, Entity.getSearchRepository().getWriteFanoutTargets(index));
+    }
+  }
+
+  public void refreshOntologyEmbedding(EntityReference reference, List<String> targets) {
+    final var active = OntologyTermSearch.activeIndex(reference);
+    if (active != null) {
+      final var body = active.embeddingBody();
+      targets.forEach(target -> vectorService.updateEntityEmbeddings(active.term(), target, body));
+    }
+  }
+
+  public void updateEmbedding(EntityInterface<?> entity) {
     if (entity == null) {
       LOG.warn("Received null entity in updateEmbedding");
       return;

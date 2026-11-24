@@ -1,6 +1,7 @@
 package org.openmetadata.mcp.tools;
 
 import com.google.common.annotations.VisibleForTesting;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,16 +12,21 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.mcp.util.VectorPagingContract;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.VectorSearchParameters;
@@ -68,18 +74,23 @@ public class SemanticSearchTool implements McpTool {
   /** Sentinel unit meaning "see customUnitOfMeasurement" rather than a unit in its own right. */
   private static final String UNIT_OF_MEASUREMENT_OTHER = "OTHER";
 
-  /** Read-side ceiling on the metric expression a summary carries. */
-  private static final int MAX_METRIC_CODE_CHARS = 1000;
-
   private static final int MAX_COLUMN_NAMES = 60;
+  private static final String METRIC_HIERARCHY_FIELDS = "parent,childrenCount,metricGroup";
   private final PersonaSearchScope.Provider personaSearchScopeProvider;
   private final HitVisibility hitVisibility;
+  private final MetricHierarchy metricHierarchy;
 
   /** Whether the caller may view the entity a search hit belongs to. */
   @FunctionalInterface
   interface HitVisibility {
     boolean isViewable(
         Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> hit);
+  }
+
+  /** The named metrics with their parent, children count and group loaded. */
+  @FunctionalInterface
+  interface MetricHierarchy {
+    List<Metric> load(List<String> metricNames);
   }
 
   public SemanticSearchTool() {
@@ -94,8 +105,17 @@ public class SemanticSearchTool implements McpTool {
   @VisibleForTesting
   SemanticSearchTool(
       PersonaSearchScope.Provider personaSearchScopeProvider, HitVisibility hitVisibility) {
+    this(personaSearchScopeProvider, hitVisibility, SemanticSearchTool::loadMetricHierarchy);
+  }
+
+  @VisibleForTesting
+  SemanticSearchTool(
+      PersonaSearchScope.Provider personaSearchScopeProvider,
+      HitVisibility hitVisibility,
+      MetricHierarchy metricHierarchy) {
     this.personaSearchScopeProvider = personaSearchScopeProvider;
     this.hitVisibility = hitVisibility;
+    this.metricHierarchy = metricHierarchy;
   }
 
   @Override
@@ -107,7 +127,9 @@ public class SemanticSearchTool implements McpTool {
     String query = (String) params.get("query");
     String paramError = validateParams(query, params);
     if (paramError != null) {
-      return errorResponse(paramError);
+      Map<String, Object> rejected = errorResponse(paramError);
+      rejected.put(McpResponseTrim.STATUS_CODE_KEY, Response.Status.BAD_REQUEST.getStatusCode());
+      return rejected;
     }
 
     if (!Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
@@ -274,6 +296,7 @@ public class SemanticSearchTool implements McpTool {
     List<Map<String, Object>> ranked = collapseByParent(response.getHits());
     List<ViewableHit> viewable = viewableHits(ranked, isViewable);
     List<Map<String, Object>> cleanedResults = viewable.stream().map(ViewableHit::hit).toList();
+    attachMetricHierarchy(cleanedResults);
 
     result.put("results", cleanedResults);
     result.put("returnedCount", cleanedResults.size());
@@ -291,6 +314,50 @@ public class SemanticSearchTool implements McpTool {
             + "Adjust 'threshold' to filter by similarity score.");
     addParentTotal(result, from);
     return result;
+  }
+
+  /**
+   * The vector index carries no metric hierarchy, so a parent metric and its variants came back as
+   * unrelated hits. It is read from the entity store, in the shape search_metadata returns: a chunk
+   * is rewritten only when its embedded text changes, so a count kept there would go stale.
+   */
+  private void attachMetricHierarchy(List<Map<String, Object>> hits) {
+    List<Map<String, Object>> metricHits =
+        hits.stream().filter(SemanticSearchTool::isMetricHit).toList();
+    if (!metricHits.isEmpty()) {
+      Map<String, Metric> byName =
+          metricHierarchy.load(metricHits.stream().map(SemanticSearchTool::fqnOf).toList()).stream()
+              .collect(Collectors.toMap(Metric::getFullyQualifiedName, Function.identity()));
+      metricHits.forEach(hit -> putHierarchy(hit, byName.get(fqnOf(hit))));
+    }
+  }
+
+  private static List<Metric> loadMetricHierarchy(List<String> metricNames) {
+    MetricRepository repository = (MetricRepository) Entity.getEntityRepository(Entity.METRIC);
+    return repository.getByNames(
+        null, metricNames, repository.getFields(METRIC_HIERARCHY_FIELDS), Include.NON_DELETED);
+  }
+
+  private static boolean isMetricHit(Map<String, Object> hit) {
+    return Entity.METRIC.equals(hit.get("entityType")) && hit.get("fullyQualifiedName") != null;
+  }
+
+  private static String fqnOf(Map<String, Object> hit) {
+    return hit.get("fullyQualifiedName").toString();
+  }
+
+  private static void putHierarchy(Map<String, Object> hit, Metric metric) {
+    if (metric != null) {
+      putReference(hit, "parent", metric.getParent());
+      hit.put("childrenCount", metric.getChildrenCount());
+      putReference(hit, "metricGroup", metric.getMetricGroup());
+    }
+  }
+
+  private static void putReference(Map<String, Object> hit, String key, EntityReference reference) {
+    if (reference != null) {
+      hit.put(key, McpResponseTrim.slimRef(JsonUtils.getMap(reference)));
+    }
   }
 
   /** A hit the caller may view, with its position among every hit the page ranked. */
@@ -493,13 +560,7 @@ public class SemanticSearchTool implements McpTool {
    */
   private static void copyMetricExpression(Map<String, Object> hit, Map<String, Object> cleaned) {
     if (hit.get("metricExpression") instanceof Map<?, ?> expression) {
-      Map<String, Object> summary = new HashMap<>(expression.size());
-      expression.forEach((key, value) -> summary.put(String.valueOf(key), value));
-      Object code = summary.get("code");
-      if (code instanceof String sql) {
-        summary.put("code", McpResponseTrim.truncate(sql, MAX_METRIC_CODE_CHARS));
-      }
-      cleaned.put("metricExpression", summary);
+      cleaned.put("metricExpression", McpResponseTrim.cappedMetricExpression(expression));
     }
   }
 

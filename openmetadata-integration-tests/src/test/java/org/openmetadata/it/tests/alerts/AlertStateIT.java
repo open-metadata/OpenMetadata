@@ -29,6 +29,7 @@ import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.events.AlertHealth;
 import org.openmetadata.schema.entity.events.AlertMetrics;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.DestinationHealth;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
@@ -377,7 +378,13 @@ class AlertStateIT {
   @Test
   void testSendLeavesLiveHealthUnchanged(TestNamespace ns) throws Exception {
     EventSubscription alert = create(ns, "test_send_health", true);
-    SubscriptionDestination destination = alert.getDestinations().getFirst();
+    // Sent as a client reads it: the stored copy holds encrypted secrets a caller may not send.
+    SubscriptionDestination destination =
+        SdkClients.adminClient()
+            .eventSubscriptions()
+            .get(alert.getId().toString())
+            .getDestinations()
+            .getFirst();
     String before = health(alert);
     String storedBefore =
         JsonUtils.pojoToJson(AlertFixtures.stored(alert.getId()).getDestinations());
@@ -498,7 +505,7 @@ class AlertStateIT {
             .withConfig(new Webhook().withEndpoint(URI.create("http://localhost:9/unused")));
     return new CreateEventSubscription()
         .withName(ns.prefix(name))
-        .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+        .withAlertType(AlertType.NOTIFICATION)
         .withResources(List.of(Entity.TABLE))
         .withEnabled(enabled)
         .withPollInterval(ONE_DAY_SECONDS)

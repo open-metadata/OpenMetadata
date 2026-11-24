@@ -86,6 +86,7 @@ export const Colors: Story = {
           size="lg"
         />
         <Avatar colorVariant="neutral" initials="+5" size="lg" />
+        <Avatar colorVariant="plain" initials="AI" size="lg" />
       </div>
     </div>
   ),

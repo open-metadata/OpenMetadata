@@ -11,15 +11,17 @@
  *  limitations under the License.
  */
 
+import {
+  DataProduct,
+  DataProductFilled,
+  DomainsFilled,
+  Globe01,
+  Grid01,
+  GridFilled,
+  Marketplace,
+  MarketplaceFilled,
+} from '@openmetadata/ui-core-components/icons';
 import { lazy } from 'react';
-import { ReactComponent as DataProductsActiveIcon } from '../../../assets/svg/data-products-active.svg';
-import { ReactComponent as DataProductsIcon } from '../../../assets/svg/data-products-default.svg';
-import { ReactComponent as DomainsActiveIcon } from '../../../assets/svg/domains-active.svg';
-import { ReactComponent as DomainsIcon } from '../../../assets/svg/domains-default.svg';
-import { ReactComponent as MarketplaceActiveIcon } from '../../../assets/svg/marketplace-active.svg';
-import { ReactComponent as MarketplaceIcon } from '../../../assets/svg/marketplace-default.svg';
-import { ReactComponent as OverviewActiveIcon } from '../../../assets/svg/overview-active.svg';
-import { ReactComponent as OverviewIcon } from '../../../assets/svg/overview-default.svg';
 import { ROUTES } from '../../../constants/constants';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -55,8 +57,8 @@ export const marketplaceModule: AppModule = {
   id: 'marketplace',
   navOrder: 70,
   labelKey: 'label.data-marketplace',
-  icon: MarketplaceIcon,
-  activeIcon: MarketplaceActiveIcon,
+  icon: Marketplace,
+  activeIcon: MarketplaceFilled,
   prefix: ROUTES.DATA_MARKETPLACE,
   additionalPrefixes: [ROUTES.DOMAIN, ROUTES.DATA_PRODUCT],
   defaultPath: ROUTES.DATA_MARKETPLACE,
@@ -102,22 +104,22 @@ export const marketplaceModule: AppModule = {
         items: [
           {
             key: 'overview',
-            icon: OverviewIcon,
-            activeIcon: OverviewActiveIcon,
+            icon: Grid01,
+            activeIcon: GridFilled,
             labelKey: 'label.overview',
             path: ROUTES.DATA_MARKETPLACE,
           },
           {
             key: 'domains',
-            icon: DomainsIcon,
-            activeIcon: DomainsActiveIcon,
+            icon: Globe01,
+            activeIcon: DomainsFilled,
             labelKey: 'label.domain-plural',
             path: ROUTES.DOMAIN,
           },
           {
             key: 'data-products',
-            icon: DataProductsIcon,
-            activeIcon: DataProductsActiveIcon,
+            icon: DataProduct,
+            activeIcon: DataProductFilled,
             labelKey: 'label.data-product-plural',
             path: ROUTES.DATA_PRODUCT,
           },

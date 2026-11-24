@@ -12,12 +12,14 @@
  */
 
 import {
+  Box,
   Button,
   Dialog,
+  HintText,
+  Label,
   Modal,
   ModalOverlay,
   Select,
-  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
 import React, {
@@ -30,6 +32,8 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { TestCaseFailureReasonType } from '../../../../../generated/tests/testCaseResolutionStatus';
+import { isDescriptionContentEmpty } from '../../../../../utils/BlockEditorPureUtils';
+import RichTextEditor from '../../../../common/RichTextEditor/RichTextEditor';
 import TaskAssigneeSelect from './TaskAssigneeSelect';
 
 type TFunc = ReturnType<typeof useTranslation>['t'];
@@ -189,18 +193,19 @@ const TaskCommentField = ({
   const resolvedLabel = commentLabel ?? t('label.comment');
 
   return (
-    <TextArea
-      data-testid="task-action-comment"
-      hint={hint}
-      isDisabled={isLoading}
-      isInvalid={isInvalid}
-      isRequired={Boolean(requiredMessage)}
-      label={resolvedLabel}
-      placeholder={t('label.enter-entity', { entity: resolvedLabel })}
-      rows={4}
-      value={comment}
-      onChange={onChange}
-    />
+    <Box data-testid="task-action-comment" direction="col" gap={2}>
+      <Label isRequired={Boolean(requiredMessage)}>{resolvedLabel}</Label>
+      <RichTextEditor
+        aria-label={resolvedLabel}
+        initialValue={comment}
+        placeHolder={t('label.enter-entity', { entity: resolvedLabel })}
+        readonly={isLoading}
+        showMenu={false}
+        variant="comment"
+        onTextChange={onChange}
+      />
+      {hint && <HintText isInvalid>{hint}</HintText>}
+    </Box>
   );
 };
 
@@ -248,7 +253,9 @@ const TaskActionCommentModal: React.FC<TaskActionCommentModalProps> = ({
     isIncomplete,
   } = useMemo(() => {
     const commentMissing =
-      showComment && Boolean(requiredMessage) && !comment.trim();
+      showComment &&
+      Boolean(requiredMessage) &&
+      isDescriptionContentEmpty(comment);
     const rootCauseMissing = showRootCause && !rootCause;
     const assigneeMissing = showAssignee && !assignee;
 

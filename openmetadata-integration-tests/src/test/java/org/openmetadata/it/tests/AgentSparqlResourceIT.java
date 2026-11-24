@@ -27,7 +27,10 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.auth.JwtAuthProvider;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.schema.api.CreateBot;
@@ -391,6 +394,23 @@ public class AgentSparqlResourceIT {
         post(grantedToken, query("SELECT ?s WHERE { ?s ?p ?o } LIMIT 10001")),
         400,
         AgentSparqlErrorCode.QUERY_LIMIT_EXCEEDED);
+  }
+
+  /**
+   * A bare EXISTS block is a pattern element, not a FILTER expression, yet Fuseki evaluates the
+   * SERVICE inside it all the same.
+   */
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "SELECT ?s WHERE { ?s ?p ?o EXISTS { SERVICE <%s> { ?a ?b ?c } } }",
+        "SELECT ?s WHERE { ?s ?p ?o NOT EXISTS { SERVICE <%s> { ?a ?b ?c } } }"
+      })
+  void federationInsideABareExistsBlockIsRefused(String template) throws Exception {
+    assertError(
+        post(grantedToken, query(template.formatted(FusekiTestImage.SELF_PING_URL))),
+        403,
+        AgentSparqlErrorCode.FEDERATION_NOT_ALLOWED);
   }
 
   @Test

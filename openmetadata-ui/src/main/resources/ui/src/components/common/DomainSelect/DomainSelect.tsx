@@ -28,6 +28,7 @@ import {
 } from '../../../constants/constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
+import { useDomainStyles } from '../../../hooks/governance/domain/useDomainStyles';
 import {
   getDomainChildrenPaginated,
   searchDomains,
@@ -118,13 +119,16 @@ const DomainSelect: FC<DomainSelectProps> = ({
     [filterAllowedNodes]
   );
 
+  // A picker chooses among all domains, so its search skips the navbar domain
+  // filter (e.g. finding "Marketing" while "Finance" is picked).
   const fetchSearchHits = useCallback(
     async (searchTerm: string, signal?: AbortSignal) => {
       const results = (await searchDomains(
         buildDomainSearchQuery(searchTerm),
         1,
         undefined,
-        signal
+        signal,
+        true
       )) as unknown as Domain[];
 
       return { nodes: toNodes(results) };
@@ -263,6 +267,8 @@ const DomainSelect: FC<DomainSelectProps> = ({
   // staged (multi) mode wipes choices the user has not applied yet. Doing the
   // comparison here covers every caller in OSS and Collate, instead of each one
   // needing its own guard.
+  const domainStyles = useDomainStyles();
+
   const selectedDomainKey = getDomainsContentKey(selectedDomainList);
   const value = useMemo(() => {
     // Scope switchers sit on "All Domains" when nothing is selected. Without a
@@ -301,6 +307,12 @@ const DomainSelect: FC<DomainSelectProps> = ({
         | TreeSelectNode<EntityReference>[]
         | null
     ) => {
+      // A scope switcher clears only via "All Domains"; null means the active
+      // node was re-picked (e.g. the core tree toggling it off), so keep it.
+      if (!multiple && showAllDomains && selected === null) {
+        return;
+      }
+
       const domains = treeNodesToEntityReferences(selected);
 
       // Single mode: keep the current value when a clear is not allowed.
@@ -326,7 +338,14 @@ const DomainSelect: FC<DomainSelectProps> = ({
         setIsSubmitting(false);
       }
     },
-    [multiple, isClearable, onUpdate, selectedDomainList, isSubmitting]
+    [
+      multiple,
+      showAllDomains,
+      isClearable,
+      onUpdate,
+      selectedDomainList,
+      isSubmitting,
+    ]
   );
 
   // The core toast would show a raw axios string; showErrorToast maps an API
@@ -351,14 +370,17 @@ const DomainSelect: FC<DomainSelectProps> = ({
       // state never reaches it — it has to be locked explicitly, or a user
       // without edit permission could clear the domain from the chip.
       const isLocked = disabled || !hasPermission;
+      const style = domain?.id ? domainStyles.get(domain.id) : undefined;
 
       return (
         <DomainTag
+          color={style?.color}
           data-testid={`domain-tag-${node.value}`}
           disabled={isLocked}
           href={
             isClearable || !node.value ? undefined : getDomainPath(node.value)
           }
+          icon={style?.iconURL}
           inherited={domain?.inherited}
           label={domain ? getEntityName(domain) : node.label}
           size="sm"
@@ -376,7 +398,15 @@ const DomainSelect: FC<DomainSelectProps> = ({
         />
       );
     },
-    [isClearable, multiple, disabled, hasPermission, value, handleChange]
+    [
+      isClearable,
+      multiple,
+      disabled,
+      hasPermission,
+      value,
+      handleChange,
+      domainStyles,
+    ]
   );
 
   // Server already scoped the results, so skip the client-side label filter

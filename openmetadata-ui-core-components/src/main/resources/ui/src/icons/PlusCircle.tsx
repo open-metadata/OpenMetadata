@@ -24,19 +24,16 @@ export const PlusCircle: FC<Props> = ({
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M10 6.667v6.667m-3.333-3.333h6.667m5 0A8.334 8.334 0 1 1 10 1.667 8.333 8.333 0 0 1 18.333 10Z"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <circle cx={10} cy={10} r={7} stroke="currentColor" strokeWidth={1.3} />
+    <path d="M10 6.5v7m3.5-3.5h-7" stroke="currentColor" strokeWidth={1.3} />
   </svg>
 );
 PlusCircle.displayName = 'PlusCircle';

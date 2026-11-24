@@ -32,6 +32,7 @@ from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingCo
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
+from metadata.profiler.orm.types.custom_geometry import CustomGeometry
 from metadata.sampler.models import (
     ProfileSampleConfig,
     SampleConfig,
@@ -265,6 +266,31 @@ class SampleTest(TestCase):
             table_data = sampler.fetch_sample_data(columns=[geography_col])
 
         assert table_data.columns == []
+        super_fetch.assert_not_called()
+
+    def test_geometry_columns_are_not_sampled_through_pyodbc(self, sampler_mock):
+        """Geometry now maps to CustomGeometry instead of UndeterminedType; the remapped
+        name must stay in NOT_COMPUTE_PYODBC or geometry reaches the -151 crash again.
+        """
+        geometry_col = Column("shape", CustomGeometry())
+
+        sampler = AzureSQLSampler(
+            service_connection_config=self.azuresql_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+        )
+
+        with (
+            patch(
+                "metadata.sampler.sqlalchemy.azuresql.sampler.get_temporal_column_names",
+                return_value=frozenset(),
+            ),
+            patch.object(SQASampler, "fetch_sample_data") as super_fetch,
+        ):
+            table_data = sampler.fetch_sample_data(columns=[geometry_col])
+
+        assert table_data.columns == []
+        assert table_data.rows == []
         super_fetch.assert_not_called()
 
     def test_sampling_with_partition(self, sampler_mock):

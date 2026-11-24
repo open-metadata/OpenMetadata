@@ -35,6 +35,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUt
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppSchedule from '../../../../../Settings/Applications/AppSchedule/AppSchedule.component';
+import type { AppConfigFormProps } from './AppConfigForm';
 import AppDetail from './AppDetail';
 import type { ApplicationsHeader } from './Applications.types';
 
@@ -195,9 +196,10 @@ describe('AppDetail', () => {
       Trigger: true,
       Deploy: true,
     });
-    jest
-      .spyOn(applicationsClassBase, 'importSchema')
-      .mockResolvedValue({ type: 'object' });
+    jest.spyOn(applicationsClassBase, 'importSchema').mockResolvedValue({
+      type: 'object',
+      properties: { batchSize: { type: 'number' } },
+    });
     jest
       .spyOn(applicationsClassBase, 'getModalAppConfigurationComponent')
       .mockReturnValue(() => <div data-testid="config-form" />);
@@ -280,6 +282,9 @@ describe('AppDetail', () => {
       'href',
       'https://www.getcollate.io'
     );
+    // Same icon-to-text gap as the other meta items.
+    expect(screen.getByTestId('developer-website')).toHaveClass('tw:gap-1');
+    expect(screen.getByTestId('developer-website')).not.toHaveClass('tw:gap-0');
   });
 
   it('shows the hint toggle only on the configuration tab', async () => {
@@ -346,7 +351,10 @@ describe('AppDetail', () => {
 
     expect(uninstallApp).toHaveBeenCalledWith('DataInsightsApplication', true);
     expect(mockGetResourceLimit).toHaveBeenCalledWith('app', true, true);
-    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
+    expect(onNavigate).toHaveBeenCalledWith(
+      { type: 'list' },
+      { replace: true }
+    );
   });
 
   it('treats the uninstall as done when only the usage-count refresh fails', async () => {
@@ -363,7 +371,10 @@ describe('AppDetail', () => {
 
     expect(uninstallApp).toHaveBeenCalledTimes(1);
     expect(showErrorToast).not.toHaveBeenCalled();
-    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
+    expect(onNavigate).toHaveBeenCalledWith(
+      { type: 'list' },
+      { replace: true }
+    );
   });
 
   it('keeps the confirmation open when uninstall fails', async () => {
@@ -413,7 +424,10 @@ describe('AppDetail', () => {
     });
 
     expect(restoreApp).toHaveBeenCalledWith('app-1');
-    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
+    expect(onNavigate).toHaveBeenCalledWith(
+      { type: 'list' },
+      { replace: false }
+    );
   });
 
   it('hides the three-dot menu without delete permission', async () => {
@@ -447,6 +461,23 @@ describe('AppDetail', () => {
       expect.objectContaining({ isReadOnly: true }),
       expect.anything()
     );
+  });
+
+  it('returns to the applications list when the configuration is cancelled', async () => {
+    const configForm = jest.fn(() => <div data-testid="config-form" />);
+    jest
+      .spyOn(applicationsClassBase, 'getModalAppConfigurationComponent')
+      .mockReturnValue(configForm);
+    await renderDetail();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'label.configuration' }));
+    act(() => {
+      (
+        configForm.mock.calls.at(-1) as unknown as [AppConfigFormProps]
+      )[0].onCancel?.();
+    });
+
+    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
   });
 
   it('opens a run configuration as a sub-page and returns to the tabs', async () => {
@@ -526,6 +557,24 @@ describe('AppDetail', () => {
 
     expect(patchApplication).not.toHaveBeenCalled();
     expect(screen.getByTestId('app-schedule')).toBeInTheDocument();
+  });
+
+  it('shows an empty configuration state when the schema has no properties', async () => {
+    jest.spyOn(applicationsClassBase, 'importSchema').mockResolvedValue({
+      type: 'object',
+      description: 'Nothing to configure',
+      properties: {},
+    });
+    await renderDetail();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'label.configuration' }));
+
+    expect(screen.getByTestId('app-config-empty')).toHaveTextContent(
+      'label.no-entity'
+    );
+    // The schema's description is untranslated backend text, so it is not shown.
+    expect(screen.queryByText('Nothing to configure')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('config-form')).not.toBeInTheDocument();
   });
 
   it('shows an empty state with the reason when the app has no schema and no tabs', async () => {

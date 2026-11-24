@@ -18,8 +18,8 @@ import org.openmetadata.schema.api.events.AlertCapabilitiesRequest;
 import org.openmetadata.schema.api.events.AlertConditionCapability;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.AlertSourceCapability;
-import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.AlertSourceKind;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.EventFilterRule;
@@ -184,14 +184,20 @@ class SourceCapabilitiesTest {
   @Test
   void recipientsAreWhatTheSourcesOffer() {
     assertEquals(
-        List.of(SubscriptionCategory.ASSIGNEES, SubscriptionCategory.MENTIONS),
-        of(AlertType.NOTIFICATION, List.of("task"), null).getRecipientCategories());
-    assertEquals(
         List.of(
             SubscriptionCategory.ASSIGNEES,
             SubscriptionCategory.OWNERS,
             SubscriptionCategory.MENTIONS),
-        of(AlertType.NOTIFICATION, List.of("task", "conversation"), null).getRecipientCategories());
+        of(AlertType.NOTIFICATION, List.of("task"), null).getRecipientCategories());
+    assertEquals(
+        List.of(
+            SubscriptionCategory.USERS,
+            SubscriptionCategory.TEAMS,
+            SubscriptionCategory.ADMINS,
+            SubscriptionCategory.ASSIGNEES,
+            SubscriptionCategory.OWNERS,
+            SubscriptionCategory.MENTIONS),
+        of(AlertType.NOTIFICATION, List.of("task", "announcement"), null).getRecipientCategories());
   }
 
   @Test

@@ -29,7 +29,7 @@ import org.openmetadata.schema.type.OntologyPackModule;
 import org.openmetadata.service.ontology.OntologyPackContentLoader.PackContent;
 
 class OntologyPackVerifierTest {
-  private static final String RESOURCE_PATH = "rdf/ontology-packs/fhir/core.ttl";
+  private static final String RESOURCE_PATH = "rdf/ontology-packs/dcat/dcat.ttl";
   private static final String HASH_A = "a".repeat(64);
   private static final String HASH_B = "b".repeat(64);
   private static final URI SOURCE_URL = URI.create("https://spec.example.org/ontology.ttl");
@@ -39,7 +39,10 @@ class OntologyPackVerifierTest {
 
   @Test
   void verifyRejectsNullModules() {
-    final OntologyPackManifest manifest = new OntologyPackManifest().withBundled(false);
+    final OntologyPackManifest manifest =
+        new OntologyPackManifest()
+            .withIndustry(OntologyPackManifest.Industry.FINANCE)
+            .withBundled(false);
     manifest.setModules(null);
 
     final IllegalArgumentException exception =
@@ -237,6 +240,7 @@ class OntologyPackVerifierTest {
   private static OntologyPackManifest manifest(
       final boolean bundled, final OntologyPackModule... modules) {
     return new OntologyPackManifest()
+        .withIndustry(OntologyPackManifest.Industry.FINANCE)
         .withBundled(bundled)
         .withModules(new ArrayList<>(List.of(modules)));
   }

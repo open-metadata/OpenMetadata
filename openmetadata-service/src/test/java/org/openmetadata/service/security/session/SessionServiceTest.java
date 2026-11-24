@@ -93,6 +93,47 @@ class SessionServiceTest {
   }
 
   @Test
+  void recordPendingUser_attachesTheAccountAndClearsTheMatchedState() {
+    UserSession pending =
+        UserSession.builder()
+            .id(validSessionId('p'))
+            .status(SessionStatus.PENDING)
+            .state("request-id")
+            .version(3L)
+            .build();
+    when(repository.updateIfVersion(any(UserSession.class), eq(3L))).thenReturn(true);
+    User user = new User().withId(UUID.randomUUID()).withName("jane").withEmail("jane@x.com");
+
+    String code = sessionService.recordPendingUser(pending, user).orElseThrow();
+
+    ArgumentCaptor<UserSession> stored = ArgumentCaptor.forClass(UserSession.class);
+    verify(repository).updateIfVersion(stored.capture(), eq(3L));
+    UserSession recorded = stored.getValue();
+    assertEquals(SessionStatus.PENDING, recorded.getStatus());
+    assertEquals(user.getId().toString(), recorded.getUserId());
+    assertEquals("jane", recorded.getUsername());
+    assertNull(recorded.getState());
+    assertEquals(4L, recorded.getVersion());
+    assertNotEquals(code, recorded.getNonce(), "only the code's hash is stored");
+    assertTrue(sessionService.isCompletionCode(recorded, code));
+    assertFalse(sessionService.isCompletionCode(recorded, code + "x"));
+    assertFalse(sessionService.isCompletionCode(recorded, null));
+  }
+
+  @Test
+  void recordPendingState_losesToAConcurrentChange() {
+    UserSession pending =
+        UserSession.builder()
+            .id(validSessionId('p'))
+            .status(SessionStatus.PENDING)
+            .version(1L)
+            .build();
+    when(repository.updateIfVersion(any(UserSession.class), eq(1L))).thenReturn(false);
+
+    assertTrue(sessionService.recordPendingState(pending, "request-id").isEmpty());
+  }
+
+  @Test
   void activatePendingSession_promotesPendingSessionAndEncryptsTokens() {
     long now = System.currentTimeMillis();
     String pendingId = validSessionId('p');
@@ -304,6 +345,16 @@ class SessionServiceTest {
   }
 
   @Test
+  void acquireRefreshLease_withoutSessionCookie_leavesTheCookieAlone() {
+    when(request.getCookies()).thenReturn(null);
+
+    // Sent before a concurrent login's response set the pending-session cookie, an expiring
+    // Set-Cookie on this response would land after it and delete that login's session.
+    assertTrue(sessionService.acquireRefreshLease(request, response).isEmpty());
+    verify(response, never()).addHeader(eq("Set-Cookie"), any());
+  }
+
+  @Test
   void acquireRefreshLease_revokesASessionIssuedByAProviderNoLongerConfigured() {
     String sessionId = validSessionId('x');
     long now = System.currentTimeMillis();
@@ -326,6 +377,27 @@ class SessionServiceTest {
     ArgumentCaptor<UserSession> stored = ArgumentCaptor.forClass(UserSession.class);
     verify(repository).updateIfVersion(stored.capture(), eq(2L));
     assertEquals(SessionStatus.REVOKED, stored.getValue().getStatus());
+  }
+
+  @Test
+  void isFromAnotherProvider_followsTheConfigurationThisServerRunsNow() {
+    SessionService service =
+        new SessionService(
+            new AuthenticationConfiguration().withProvider(AuthProvider.GOOGLE),
+            repository,
+            Caffeine.newBuilder().build(),
+            scheduler);
+    UserSession googleSession =
+        UserSession.builder().id(validSessionId('g')).provider(AuthProvider.GOOGLE.value()).build();
+
+    assertFalse(service.isFromAnotherProvider(googleSession));
+
+    service.updateConfiguration(new AuthenticationConfiguration().withProvider(AuthProvider.AZURE));
+    assertTrue(service.isFromAnotherProvider(googleSession));
+
+    service.updateConfiguration(
+        new AuthenticationConfiguration().withProvider(AuthProvider.GOOGLE));
+    assertFalse(service.isFromAnotherProvider(googleSession));
   }
 
   @Test

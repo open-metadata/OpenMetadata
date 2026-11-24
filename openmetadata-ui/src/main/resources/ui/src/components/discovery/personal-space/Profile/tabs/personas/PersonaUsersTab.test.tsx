@@ -13,8 +13,12 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
+import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
+import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { searchQuery } from '../../../../../../rest/searchAPI';
+import { getUserByName } from '../../../../../../rest/userAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import PersonaUsersTab from './PersonaUsersTab';
 
@@ -36,49 +40,43 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   Trash01: () => <span />,
 }));
 
+const PICKED_USERS: EntityReference[] = [
+  { id: 'u1', name: 'alice', type: 'user' },
+  { id: 'u2', name: 'bob', type: 'user' },
+  { id: 'u3', name: 'carol', type: 'user' },
+];
+
+// Stands in for the user picker popover: one click submits a fixed selection.
+jest.mock(
+  '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component',
+  () => ({
+    UserTeamSelectableList: ({
+      children,
+      onUpdate,
+    }: React.PropsWithChildren<{
+      onUpdate: (users: EntityReference[]) => void;
+    }>) => (
+      <div>
+        {children}
+        <button
+          data-testid="pick-persona-users"
+          type="button"
+          onClick={() => onUpdate(PICKED_USERS)}>
+          pick
+        </button>
+      </div>
+    ),
+  })
+);
+
+jest.mock('../../../../../../rest/userAPI', () => ({
+  getUserByName: jest.fn(),
+}));
+
 type Column = { id: string; label: string };
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const actual = jest.requireActual('@openmetadata/ui-core-components');
-  const { FormProvider, useFormContext } =
-    jest.requireActual('react-hook-form');
-
-  // Picks a fixed user, standing in for the react-aria Autocomplete.
-  const FormFields = ({
-    fields,
-  }: {
-    fields: Array<{ name: string; props?: { 'data-testid'?: string } }>;
-  }) => {
-    const { setValue } = useFormContext();
-
-    return (
-      <>
-        {fields.map((field) => (
-          <button
-            data-testid={field.props?.['data-testid']}
-            key={field.name}
-            type="button"
-            onClick={() =>
-              setValue(field.name, [
-                {
-                  id: 'u1',
-                  label: 'alice',
-                  value: { id: 'u1', name: 'alice', type: 'user' },
-                },
-                {
-                  id: 'u3',
-                  label: 'carol',
-                  value: { id: 'u3', name: 'carol', type: 'user' },
-                },
-              ])
-            }>
-            pick
-          </button>
-        ))}
-      </>
-    );
-  };
-
   const Table = Object.assign(
     ({
       children,
@@ -155,32 +153,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
-    ButtonUtility: ({
-      'data-testid': testId,
-      isDisabled,
-      onPress,
-    }: {
-      'data-testid'?: string;
-      isDisabled?: boolean;
-      onPress?: () => void;
-    }) => (
-      <button
-        aria-label={testId}
-        data-testid={testId}
-        disabled={isDisabled}
-        type="button"
-        onClick={onPress}
-      />
-    ),
     EmptyPlaceholder: ({ title }: { title: string }) => (
       <div data-testid="empty-placeholder">{title}</div>
-    ),
-    FormFields,
-    HookForm: ({
-      children,
-      form,
-    }: React.PropsWithChildren<{ form: Record<string, unknown> }>) => (
-      <FormProvider {...form}>{children}</FormProvider>
     ),
     Skeleton: () => <div data-testid="skeleton" />,
     Table,
@@ -209,6 +183,7 @@ const USER_DETAILS = {
     id: 'u1',
     name: 'alice',
     displayName: 'Alice',
+    email: 'alice@example.com',
     teams: [{ id: 't1', name: 'Data', type: 'team' }],
     roles: [
       { id: 'r1', name: 'DataSteward', type: 'role' },
@@ -218,7 +193,7 @@ const USER_DETAILS = {
   u2: { id: 'u2', name: 'bob', teams: [], roles: [] },
 } as Record<string, unknown>;
 
-const mockOnUsersChange = jest.fn();
+const mockOnUsersChange = jest.fn().mockResolvedValue(true);
 
 // Only the bulk details lookup filters by `_id`; the user picker's search does not.
 const mockSearchUsers = (indexedIds: string[]) =>
@@ -238,15 +213,18 @@ const renderTab = (
   render(
     <PersonaUsersTab
       canEdit
+      personaName="Data Engineer"
       users={USERS}
       onUsersChange={mockOnUsersChange}
       {...props}
-    />
+    />,
+    { wrapper: MemoryRouter }
   );
 
 describe('PersonaUsersTab', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useApplicationStore.setState({ userProfilePics: {} });
     mockSearchUsers(Object.keys(USER_DETAILS));
   });
 
@@ -257,7 +235,9 @@ describe('PersonaUsersTab', () => {
 
     const names = await screen.findAllByTestId('persona-user-name');
 
-    expect(names.map((n) => n.textContent)).toEqual(['Alice', 'bob']);
+    expect(names).toHaveLength(2);
+    expect(names[0]).toHaveTextContent('Alice');
+    expect(names[1]).toHaveTextContent('bob');
     expect(searchQuery).toHaveBeenCalledTimes(1);
     expect(searchQuery).toHaveBeenCalledWith(
       expect.objectContaining({ pageSize: 2, searchIndex: 'user' })
@@ -265,6 +245,32 @@ describe('PersonaUsersTab', () => {
     expect(screen.getByText('Data')).toBeInTheDocument();
     expect(screen.getByText('DataSteward, DataConsumer')).toBeInTheDocument();
     expect(screen.getAllByText('--')).toHaveLength(2);
+    expect(screen.getByTestId('alice')).toHaveTextContent('Alice');
+    expect(screen.getByTestId('alice')).toHaveAttribute(
+      'href',
+      expect.stringContaining('alice')
+    );
+    expect(screen.getByText('alice@example.com')).toBeInTheDocument();
+    expect(screen.getByTestId('bob')).toHaveTextContent('bob');
+    expect(screen.getAllByText('bob')).toHaveLength(2);
+  });
+
+  it('keeps a cached profile photo when the search document has none', async () => {
+    const cachedAlice = {
+      id: 'u1',
+      name: 'alice',
+      email: 'alice@example.com',
+      profile: { images: { image: 'https://example.com/alice.png' } },
+    } as User;
+    useApplicationStore.setState({ userProfilePics: { alice: cachedAlice } });
+    (getUserByName as jest.Mock).mockRejectedValue(new Error('offline'));
+
+    renderTab();
+
+    expect(await screen.findByTestId('alice')).toHaveTextContent('Alice');
+    expect(useApplicationStore.getState().userProfilePics.alice).toBe(
+      cachedAlice
+    );
   });
 
   it('skips users missing from the search index', async () => {
@@ -297,12 +303,32 @@ describe('PersonaUsersTab', () => {
     expect(searchQuery).not.toHaveBeenCalled();
   });
 
-  it('removes a user from the persona', async () => {
+  it('removes a user only after confirming', async () => {
     renderTab();
 
     fireEvent.click(await screen.findByTestId('remove-user-Alice'));
 
-    expect(mockOnUsersChange).toHaveBeenCalledWith([USERS[1]]);
+    expect(mockOnUsersChange).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(
+        'message.are-you-sure-you-want-to-remove-child-from-parent'
+      )
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.remove'));
+
+    await waitFor(() =>
+      expect(mockOnUsersChange).toHaveBeenCalledWith([USERS[1]])
+    );
+  });
+
+  it('keeps the user when removal is cancelled', async () => {
+    renderTab();
+
+    fireEvent.click(await screen.findByTestId('remove-user-Alice'));
+    fireEvent.click(await screen.findByText('label.cancel'));
+
+    expect(mockOnUsersChange).not.toHaveBeenCalled();
   });
 
   it('disables removal and hides add without edit permission', async () => {
@@ -312,45 +338,14 @@ describe('PersonaUsersTab', () => {
     expect(screen.queryByTestId('add-persona-user')).not.toBeInTheDocument();
   });
 
-  it('adds picked users without duplicating existing ones', async () => {
+  it('saves the selection made in the user picker popover', async () => {
     renderTab();
     await screen.findAllByTestId('persona-user-name');
 
-    fireEvent.click(screen.getByTestId('add-persona-user'));
-
-    expect(screen.queryByTestId('add-persona-user')).not.toBeInTheDocument();
-    expect(screen.getByTestId('save-persona-users')).toBeDisabled();
-
-    fireEvent.click(screen.getByTestId('add-persona-users-select'));
-
-    const save = screen.getByTestId('save-persona-users');
-
-    await waitFor(() => expect(save).toBeEnabled());
-
-    fireEvent.click(save);
-
-    expect(mockOnUsersChange).toHaveBeenCalledWith([
-      USERS[0],
-      USERS[1],
-      { id: 'u3', name: 'carol', type: 'user' },
-    ]);
-    expect(screen.queryByTestId('save-persona-users')).not.toBeInTheDocument();
     expect(screen.getByTestId('add-persona-user')).toBeInTheDocument();
-  });
 
-  it('discards picked users on cancel', async () => {
-    renderTab();
-    await screen.findAllByTestId('persona-user-name');
+    fireEvent.click(screen.getByTestId('pick-persona-users'));
 
-    fireEvent.click(screen.getByTestId('add-persona-user'));
-    fireEvent.click(screen.getByTestId('add-persona-users-select'));
-    fireEvent.click(screen.getByText('label.cancel'));
-
-    expect(screen.queryByTestId('save-persona-users')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('add-persona-user'));
-
-    expect(screen.getByTestId('save-persona-users')).toBeDisabled();
-    expect(mockOnUsersChange).not.toHaveBeenCalled();
+    expect(mockOnUsersChange).toHaveBeenCalledWith(PICKED_USERS);
   });
 });

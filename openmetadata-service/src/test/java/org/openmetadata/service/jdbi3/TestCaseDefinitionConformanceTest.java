@@ -46,6 +46,18 @@ class TestCaseDefinitionConformanceTest {
           .withSupportedDataTypes(List.of(ColumnDataType.VARCHAR, ColumnDataType.STRING))
           .withSupportsDynamicAssertion(true);
 
+  private static final Table NESTED_TABLE =
+      new Table()
+          .withColumns(
+              List.of(
+                  new Column()
+                      .withName("address")
+                      .withDataType(ColumnDataType.STRUCT)
+                      .withChildren(
+                          List.of(
+                              new Column().withName("note").withDataType(ColumnDataType.VARCHAR),
+                              new Column().withName("count").withDataType(ColumnDataType.INT)))));
+
   private static EntityLink table() {
     return EntityLink.parse("<#E::table::svc.db.sch.orders>");
   }
@@ -134,6 +146,25 @@ class TestCaseDefinitionConformanceTest {
         () ->
             TestCaseDefinitionConformance.validate(
                 new TestCase(), LENGTHS, TABLE, column("untyped")));
+  }
+
+  @Test
+  void aNestedColumnOfAnUnsupportedTypeIsRejected() {
+    IllegalArgumentException error =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                TestCaseDefinitionConformance.validate(
+                    new TestCase(), LENGTHS, NESTED_TABLE, column("address.count")));
+    assertTrue(error.getMessage().contains("does not support column type"), error.getMessage());
+  }
+
+  @Test
+  void aNestedColumnOfASupportedTypeIsAccepted() {
+    assertDoesNotThrow(
+        () ->
+            TestCaseDefinitionConformance.validate(
+                new TestCase(), LENGTHS, NESTED_TABLE, column("address.note")));
   }
 
   @Test

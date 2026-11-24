@@ -12,9 +12,9 @@
  */
 
 import { Box, Card } from '@openmetadata/ui-core-components';
+import { Check } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, KeyboardEvent } from 'react';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/check-colored.svg';
 import { BetaBadge } from '../Badge/Badge.component';
 import './selection-card-group.less';
 import {
@@ -67,7 +67,7 @@ export const SelectionCard: FC<SelectionCardProps> = ({
         </Box>
         {isSelected ? (
           <div className="custom-radio checked">
-            <CheckIcon />
+            <Check />
           </div>
         ) : (
           <div className="custom-radio unchecked" />

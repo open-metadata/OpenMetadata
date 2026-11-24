@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { TreeSelectNode } from './tree-select.types';
 import { TreeSelect } from './tree-select';
@@ -99,6 +100,40 @@ describe('TreeSelect', () => {
     expect(fetchData).not.toHaveBeenCalled();
   });
 
+  it('focuses the search box and keeps its keys from the host when opened', async () => {
+    const onHostKeyDown = vi.fn();
+    render(
+      <div onKeyDown={onHostKeyDown}>
+        <TreeSelect
+          isOpen
+          searchable
+          data-testid="picker"
+          fetchData={fetchNodes()}
+          renderTrigger={() => <span>trigger</span>}
+        />
+      </div>
+    );
+
+    const search = await screen.findByTestId('picker-search');
+    await waitFor(() => expect(search).toHaveFocus());
+
+    fireEvent.keyDown(search, { key: 'ArrowDown' });
+
+    expect(onHostKeyDown).not.toHaveBeenCalled();
+  });
+
+  it('shows the empty state when nothing matches', async () => {
+    render(
+      <TreeSelect
+        isOpen
+        fetchData={vi.fn().mockResolvedValue({ nodes: [] })}
+        renderTrigger={() => <span>trigger</span>}
+      />
+    );
+
+    expect(await screen.findByTestId('tree-select-empty')).toBeInTheDocument();
+  });
+
   it('fetches the root when the picker first opens', async () => {
     const fetchData = fetchNodes();
     const { rerender } = renderCustomTrigger(fetchData, false);
@@ -181,6 +216,53 @@ describe('TreeSelect', () => {
       'data-selected',
       'false'
     );
+  });
+
+  it('keeps a staged pick when the parent re-renders with an equal value', async () => {
+    const fetchData = vi.fn().mockResolvedValue({
+      nodes: [{ id: 'a', label: 'Node A', value: 'a', isLeaf: true }],
+    });
+    const onChange = vi.fn();
+    // An entity refetch rebuilds the parent's array: same ids, new identity.
+    const renderPicker = () => (
+      <TreeSelect
+        isOpen
+        multiple
+        commitMode="staged"
+        fetchData={fetchData}
+        renderTrigger={() => <span>trigger</span>}
+        value={[]}
+        onChange={onChange}
+      />
+    );
+    const { rerender } = render(renderPicker());
+
+    fireEvent.click(await screen.findByText('Node A'));
+    rerender(renderPicker());
+    fireEvent.click(screen.getByTestId('update-btn'));
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(emittedAt(onChange, 0).map((node) => node.id)).toEqual(['a']);
+  });
+
+  it("shows a selected node's new label when the parent renames it", async () => {
+    const fetchData = vi.fn().mockResolvedValue({ nodes: [] });
+    const renderPicker = (label: string) => (
+      <TreeSelect
+        multiple
+        fetchData={fetchData}
+        value={[{ id: 'a', label, value: 'a' }]}
+        onChange={vi.fn()}
+      />
+    );
+    const { rerender } = render(renderPicker('Old name'));
+
+    expect(await screen.findByText('Old name')).toBeInTheDocument();
+
+    rerender(renderPicker('New name'));
+
+    expect(await screen.findByText('New name')).toBeInTheDocument();
+    expect(screen.queryByText('Old name')).not.toBeInTheDocument();
   });
 
   it('opens the dropdown below the trigger by default', async () => {
@@ -781,5 +863,224 @@ describe('TreeSelect Select All and mutual exclusivity', () => {
     expect(ids).not.toContain('PII');
     // The surrounding regular nodes are still selected (order reflects the walk).
     expect([...ids].sort()).toEqual(['Finance', 'Glossary', 'TermA']);
+  });
+});
+
+// A disabled node is locked: a click on its row was never the only way in, so
+// every other control must leave it as it is too, ticked or not.
+describe('TreeSelect disabled nodes', () => {
+  const LOCKED: TreeSelectNode = {
+    id: 'locked',
+    label: 'Locked',
+    value: 'locked',
+    isLeaf: true,
+    disabled: true,
+  };
+  const BLOCKED: TreeSelectNode = {
+    id: 'blocked',
+    label: 'Blocked',
+    value: 'blocked',
+    isLeaf: true,
+    disabled: true,
+  };
+  const FREE: TreeSelectNode = {
+    id: 'free',
+    label: 'Free',
+    value: 'free',
+    isLeaf: true,
+  };
+
+  const fetchLockedTree = () =>
+    vi.fn().mockResolvedValue({ nodes: [LOCKED, BLOCKED, FREE] });
+
+  // A pick as a consumer passes it, so only the tree says it is disabled.
+  const pick = ({ id, label, value }: TreeSelectNode): TreeSelectNode => ({
+    id,
+    label,
+    value,
+  });
+
+  const emittedIds = (onChange: ReturnType<typeof vi.fn>, call: number) =>
+    emittedAt(onChange, call).map((node) => node.id);
+
+  const rowOf = (id: string) =>
+    screen
+      .getByTestId(`tree-node-${id}`)
+      .closest('[role="row"]') as HTMLElement;
+
+  // Enter is the row's action key. Space is react-aria's selection key, and the
+  // tree has no selection mode, so Space never toggled a row.
+  it.each(['staged', 'immediate'] as const)(
+    'keeps a locked radio sibling selected when another is picked (%s)',
+    async (commitMode) => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(
+        <TreeSelect
+          isOpen
+          multiple
+          commitMode={commitMode}
+          defaultExpandedKeys={['PII']}
+          fetchData={vi.fn().mockResolvedValue({
+            nodes: [
+              {
+                id: 'PII',
+                label: 'PII',
+                value: 'PII',
+                children: [{ ...PII_EMAIL, disabled: true }, PII_SSN],
+              },
+            ],
+          })}
+          renderTrigger={() => <span>trigger</span>}
+          value={[PII_EMAIL]}
+          onChange={onChange}
+        />
+      );
+      await screen.findByTestId('tree-node-PII.SSN');
+      rowOf(PII_SSN.id).focus();
+      await user.keyboard('{Enter}');
+
+      expect(screen.getByTestId('tree-node-PII.Email')).toHaveAttribute(
+        'data-selected',
+        'true'
+      );
+      expect(screen.getByTestId('tree-node-PII.SSN')).toHaveAttribute(
+        'data-selected',
+        'false'
+      );
+      expect(onChange).not.toHaveBeenCalled();
+      if (commitMode === 'staged') {
+        fireEvent.click(screen.getByTestId('update-btn'));
+        expect(emittedIds(onChange, 0)).toEqual([PII_EMAIL.id]);
+      }
+    }
+  );
+
+  it('ignores Enter on a disabled row, ticked or not', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        fetchData={fetchLockedTree()}
+        renderTrigger={() => <span>trigger</span>}
+        value={[pick(LOCKED)]}
+        onChange={onChange}
+      />
+    );
+    await screen.findByText('Free');
+
+    rowOf(LOCKED.id).focus();
+    await user.keyboard('{Enter}');
+    rowOf(BLOCKED.id).focus();
+    await user.keyboard('{Enter}');
+
+    expect(onChange).not.toHaveBeenCalled();
+    expect(screen.getByTestId('tree-node-locked')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('tree-node-blocked')).toHaveAttribute(
+      'data-selected',
+      'false'
+    );
+
+    // The same key still toggles an enabled row.
+    rowOf(FREE.id).focus();
+    await user.keyboard('{Enter}');
+
+    expect(emittedIds(onChange, 0)).toEqual(['locked', 'free']);
+  });
+
+  it.each(['staged', 'immediate'] as const)(
+    'keeps a ticked disabled node through Clear (%s)',
+    async (commitMode) => {
+      const onChange = vi.fn();
+      render(
+        <TreeSelect
+          isOpen
+          multiple
+          commitMode={commitMode}
+          fetchData={fetchLockedTree()}
+          renderTrigger={() => <span>trigger</span>}
+          value={[pick(LOCKED), pick(FREE)]}
+          onChange={onChange}
+        />
+      );
+      await screen.findByText('Free');
+
+      fireEvent.click(screen.getByTestId('clear-filter-btn'));
+      if (commitMode === 'staged') {
+        fireEvent.click(screen.getByTestId('update-btn'));
+      }
+
+      expect(emittedIds(onChange, 0)).toEqual(['locked']);
+      // Only the locked node is left, so there is nothing more to clear.
+      expect(screen.getByTestId('clear-filter-btn')).toBeDisabled();
+    }
+  );
+
+  it('shows no remove button on the chip of a disabled pick', () => {
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        multiple
+        fetchData={fetchLockedTree()}
+        value={[LOCKED, FREE]}
+        onChange={onChange}
+      />
+    );
+
+    expect(screen.getByText('Locked')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.remove Locked' })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.remove Free' }));
+
+    expect(emittedIds(onChange, 0)).toEqual(['locked']);
+  });
+
+  it('lets Backspace skip a disabled chip to remove the last removable one', () => {
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        multiple
+        fetchData={fetchLockedTree()}
+        value={[FREE, LOCKED]}
+        onChange={onChange}
+      />
+    );
+    const input = screen.getByRole('combobox');
+
+    fireEvent.keyDown(input, { key: 'Backspace' });
+    // Only the locked chip is left, so this press removes nothing.
+    fireEvent.keyDown(input, { key: 'Backspace' });
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(emittedIds(onChange, 0)).toEqual(['locked']);
+  });
+
+  it('keeps Select all from ticking or clearing a disabled node', async () => {
+    const onChange = vi.fn();
+    render(
+      <TreeSelect
+        isOpen
+        multiple
+        showSelectAll
+        fetchData={fetchLockedTree()}
+        renderTrigger={() => <span>trigger</span>}
+        value={[pick(LOCKED)]}
+        onChange={onChange}
+      />
+    );
+    await screen.findByText('Free');
+
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+    fireEvent.click(screen.getByText(SELECT_ALL_LABEL));
+
+    expect(emittedIds(onChange, 0)).toEqual(['locked', 'free']);
+    expect(emittedIds(onChange, 1)).toEqual(['locked']);
   });
 });

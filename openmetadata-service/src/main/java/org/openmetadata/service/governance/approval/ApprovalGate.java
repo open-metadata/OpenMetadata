@@ -18,12 +18,14 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.isBotChange;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -36,6 +38,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
+import org.openmetadata.schema.governance.changeRequest.MutationOp;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
@@ -181,6 +184,46 @@ public final class ApprovalGate {
   public static Optional<StagedChange> preview(
       EntityInterface original, EntityInterface updated, String user, Edit edit) {
     return evaluate(original, updated, user, null, edit, false);
+  }
+
+  /** The ops an edit would make, whether or not a workflow gates it; nothing is stored. */
+  public static List<MutationOp> previewOps(
+      EntityInterface original, EntityInterface updated, Edit edit) {
+    Edited edited = edited(Entity.getEntityTypeFromObject(updated), original, updated, edit);
+    return MutationPlanner.plan(
+        withoutDerivedTags(edited.base()),
+        withoutDerivedTags(edited.proposed()),
+        edited.changed(),
+        Set.of());
+  }
+
+  /**
+   * The entity without its DERIVED tag labels, the ones it inherits or a glossary term implies. A
+   * save ignores them, and preparing a patch drops them, so planning with them would report a removal
+   * the save never makes.
+   */
+  private static JsonNode withoutDerivedTags(JsonNode entity) {
+    JsonNode copy = entity.deepCopy();
+    dropDerivedTags(copy);
+    return copy;
+  }
+
+  private static void dropDerivedTags(JsonNode node) {
+    if (node == null || !node.isObject()) {
+      return;
+    }
+    if (node.get("tags") instanceof ArrayNode tags) {
+      for (Iterator<JsonNode> it = tags.elements(); it.hasNext(); ) {
+        if (TagLabel.LabelType.DERIVED.value().equals(it.next().path("labelType").asText())) {
+          it.remove();
+        }
+      }
+    }
+    for (String nested : List.of("columns", "children")) {
+      if (node.get(nested) instanceof ArrayNode items) {
+        items.forEach(ApprovalGate::dropDerivedTags);
+      }
+    }
   }
 
   private static Optional<StagedChange> evaluate(
@@ -335,18 +378,24 @@ public final class ApprovalGate {
       String user,
       String impersonatedBy,
       Edit edit) {
+    return stage(
+        rules, entityType, edited(entityType, original, updated, edit), user, impersonatedBy);
+  }
+
+  /** The edit as both a gated and an ungated preview plan it. */
+  private static Edited edited(
+      String entityType, EntityInterface original, EntityInterface updated, Edit edit) {
     keepStoredStatusWhenOmitted(original, updated);
     EntityInterface published =
         edit.kind() == Edit.Kind.PUT ? publishedByPut(original, updated, edit) : updated;
     JsonNode base = JsonUtils.valueToTree(original);
     JsonNode proposed = JsonUtils.valueToTree(published);
-    Set<String> changed = changedFields(entityType, original, base, proposed, edit);
-    return stage(
-        rules,
-        entityType,
-        new Edited(original, published, base, proposed, changed),
-        user,
-        impersonatedBy);
+    return new Edited(
+        original,
+        published,
+        base,
+        proposed,
+        changedFields(entityType, original, base, proposed, edit));
   }
 
   private static Optional<StagedChange> stage(
@@ -359,7 +408,7 @@ public final class ApprovalGate {
         gatingWorkflows(
             rules,
             entityType,
-            edited.published(),
+            edited,
             triggerNames(edited.base(), edited.proposed(), edited.changed()));
     Optional<StagedChange> staged = Optional.empty();
     if (!gating.isEmpty()) {
@@ -393,14 +442,11 @@ public final class ApprovalGate {
   }
 
   private static List<GatedBy> gatingWorkflows(
-      List<GatingRule> rules,
-      String entityType,
-      EntityInterface updated,
-      Map<String, List<String>> changed) {
+      List<GatingRule> rules, String entityType, Edited edited, Map<String, List<String>> changed) {
     List<GatedBy> gating = new ArrayList<>();
     for (GatingRule rule : rules) {
       Set<String> fields =
-          WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), updated)
+          isExcludedBeforeAndAfter(rule, edited)
               ? Set.of()
               : gatedFields(rule, entityType, changed);
       if (!fields.isEmpty()) {
@@ -408,6 +454,14 @@ public final class ApprovalGate {
       }
     }
     return gating;
+  }
+
+  // The filter is judged on the stored entity as well as the proposed one: an edit that moves the
+  // asset out of the filter is itself reviewed, and only an asset the filter leaves out both
+  // before and after the edit is not.
+  private static boolean isExcludedBeforeAndAfter(GatingRule rule, Edited edited) {
+    return WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), edited.original())
+        && WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), edited.published());
   }
 
   private static void rejectAmbiguousReview(List<GatedBy> gating) {

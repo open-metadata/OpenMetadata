@@ -60,6 +60,13 @@
       },
       "default": null
     },
+    "odcsPreservedFields": {
+      "description": "ODCS metadata without a native OpenMetadata mapping, retained as a generic JSON document for export. Native fields remain authoritative. Omission on PUT preserves it; an empty object clears it.",
+      "type": "object",
+      "existingJavaType": "com.fasterxml.jackson.databind.JsonNode",
+      "additionalProperties": true,
+      "default": null
+    },
     "odcsElementExtensions": {
       "description": "ODCS schema element attributes with no OpenMetadata equivalent, kept for round-trip compatibility with ODCS export.",
       "type": "array",

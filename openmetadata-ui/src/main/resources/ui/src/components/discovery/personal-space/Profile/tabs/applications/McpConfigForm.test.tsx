@@ -27,6 +27,7 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../../../../../rest/mcpConfigAPI', () => ({
   getMcpConfig: jest.fn(),
+  getMcpTools: jest.fn().mockResolvedValue(['search_metadata']),
   updateMcpConfig: jest.fn(),
 }));
 
