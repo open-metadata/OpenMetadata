@@ -163,3 +163,29 @@ it('names a bundle after its shared type and falls back to the family when mixed
   expect(screen.getByText('Finance')).toBeVisible();
   expect(screen.getByText('Pere Miquel Brull')).toBeVisible();
 });
+
+it('titles a follower bundle from the raw predicate when the label is translated', () => {
+  const followers = {
+    ...node,
+    data: {
+      ...node.data,
+      type: 'user',
+      presentation: {
+        level: 2,
+        position: { x: 0, y: 0 },
+        size: [222, 152],
+        predicate: 'Hat Follower',
+        relationType: 'hasFollower',
+        members: [
+          { id: 'pere', label: 'Pere Miquel Brull', type: 'user' },
+          { id: 'karan', label: 'Karan Hotchandani', type: 'user' },
+        ],
+      },
+    },
+  };
+  renderNode(followers);
+
+  expect(screen.getByTestId('label')).toHaveTextContent(
+    'label.follower-plural'
+  );
+});

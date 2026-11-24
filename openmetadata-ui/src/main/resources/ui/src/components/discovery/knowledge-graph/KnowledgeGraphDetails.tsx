@@ -456,7 +456,7 @@ const KnowledgeGraphDetails = ({
             { text: dataType, dataType: column.dataType },
             terms.length > 0
               ? { text: getTagsText(terms), tags: terms }
-              : { text: t('label.kg-' + mapping), tone: 'muted' },
+              : { text: '—', tone: 'muted' },
             classificationTags.length > 0
               ? {
                   text: getTagsText(classificationTags),
@@ -627,6 +627,7 @@ const KnowledgeGraphDetails = ({
           {drawer !== 'coverage' && (
             <Input
               aria-label={t('label.search')}
+              autoComplete="off"
               className="tw:w-52 tw:max-w-full"
               placeholder={t('label.search')}
               size="sm"
@@ -687,7 +688,7 @@ const KnowledgeGraphDetails = ({
           ) : null}
           <Box
             aria-busy={view.loading}
-            className="tw:flex-1 tw:min-h-0"
+            className="tw:flex-1 tw:min-h-0 tw:px-3.5 tw:py-2"
             direction="col">
             <Table
               aria-label={titles[drawer]}

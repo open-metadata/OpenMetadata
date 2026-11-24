@@ -235,13 +235,7 @@ class DomoDatabaseUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection")
     @patch("metadata.ingestion.source.database.domodatabase.connection.Domo")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        domo_client,  # pylint: disable=unused-argument
-        test_connection,
-    ) -> None:
-        super().__init__(methodName)
+    def setUp(self, domo_client, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_domodatabase_config)
         self.domodatabase = DomodatabaseSource.create(

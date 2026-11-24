@@ -28,7 +28,9 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.Stats;
+import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.service.apps.bundles.insights.workflows.DataInsightsWorkflow;
+import org.openmetadata.service.apps.bundles.insights.workflows.WorkflowStats;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobDataMap;
@@ -36,6 +38,27 @@ import org.quartz.JobDetail;
 import org.quartz.JobExecutionContext;
 
 class DataInsightsAppTest {
+
+  @Test
+  void jobStatsSumAccumulatedStepsWithoutCountingProgressSnapshotsTwice() {
+    DataInsightsApp app = new DataInsightsApp(null, null);
+    app.jobData = new EventPublisherJob().withStats(new Stats().withJobStats(new StepStats()));
+    WorkflowStats workflowStats = new WorkflowStats("test");
+    String stepName = "processor";
+    workflowStats.accumulateWorkflowStepStats(
+        stepName, new StepStats().withTotalRecords(50).withSuccessRecords(45).withFailedRecords(5));
+    app.updateStats(stepName, workflowStats.getWorkflowStepStats().get(stepName));
+    workflowStats.accumulateWorkflowStepStats(
+        stepName, new StepStats().withTotalRecords(70).withSuccessRecords(70));
+    app.updateStats(stepName, workflowStats.getWorkflowStepStats().get(stepName));
+    app.updateStats("sink", workflowStats.getWorkflowStepStats().get(stepName));
+
+    StepStats jobStats = app.jobData.getStats().getJobStats();
+    assertEquals(2, app.jobData.getStats().getEntityStats().getAdditionalProperties().size());
+    assertEquals(240, jobStats.getTotalRecords());
+    assertEquals(230, jobStats.getSuccessRecords());
+    assertEquals(10, jobStats.getFailedRecords());
+  }
 
   @Test
   void createsDatabaseSafeLockOwnerFromLongQuartzFireInstanceId() {

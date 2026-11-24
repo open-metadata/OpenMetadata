@@ -53,6 +53,7 @@ import {
   assignGlossaryTerm,
   assignGlossaryTermToChildren,
   assignTag,
+  getEncodedFqn,
   updateDescription,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
@@ -1921,19 +1922,25 @@ test.describe('Glossary tests', () => {
       await performUserLogin(browser, dataConsumerUser);
 
     try {
+      await redirectToHomePage(dataConsumerPage);
       // Listings leave out rows a deny rule refuses (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read),
       // so the denied glossary is reachable only by its URL.
-      await dataConsumerPage.goto(
-        `/glossary/${encodeURIComponent(
-          glossary1.responseData.fullyQualifiedName
-        )}`
+      const fqn = glossary1.responseData.fullyQualifiedName;
+      const deniedResponse = dataConsumerPage.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          decodeURIComponent(new URL(response.url()).pathname) ===
+            `/api/v1/glossaries/name/${fqn}`
       );
+      await dataConsumerPage.goto(`${GLOSSARY_ROUTE}/${getEncodedFqn(fqn)}`, {
+        waitUntil: 'commit',
+      });
+      expect((await deniedResponse).status()).toBe(403);
+      await expect(dataConsumerPage).toHaveURL(/\/403$/);
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toContainText(
-        "You don't have necessary permissions. Please check with the admin to get the Resource permission."
-      );
+      ).toBeVisible();
     } finally {
       await consumerAfterAction();
       await cleanup(apiContext);
@@ -1946,7 +1953,6 @@ test.describe('Glossary tests', () => {
 
     const { dataConsumerUser, glossary1, glossaryTerm1, cleanup } =
       await setupGlossaryDenyPermissionTest(apiContext, false);
-    glossary1.data.terms = [glossaryTerm1];
 
     const {
       page: dataConsumerPage,
@@ -1955,6 +1961,7 @@ test.describe('Glossary tests', () => {
     } = await performUserLogin(browser, dataConsumerUser);
 
     try {
+      await redirectToHomePage(dataConsumerPage);
       // Listings leave out rows a deny rule refuses (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read).
       const termList = await okJson<{ data: { id: string }[] }>(
         await dataConsumerApiContext.get(
@@ -1966,18 +1973,22 @@ test.describe('Glossary tests', () => {
       expect(termList.data.map((term) => term.id)).not.toContain(
         glossaryTerm1.responseData.id
       );
-
-      await dataConsumerPage.goto(
-        `/glossary/${encodeURIComponent(
-          glossaryTerm1.responseData.fullyQualifiedName
-        )}`
+      const fqn = glossaryTerm1.responseData.fullyQualifiedName;
+      const deniedResponse = dataConsumerPage.waitForResponse(
+        (response) =>
+          response.request().method() === 'GET' &&
+          decodeURIComponent(new URL(response.url()).pathname) ===
+            `/api/v1/glossaryTerms/name/${fqn}`
       );
+      await dataConsumerPage.goto(`${GLOSSARY_ROUTE}/${getEncodedFqn(fqn)}`, {
+        waitUntil: 'commit',
+      });
+      expect((await deniedResponse).status()).toBe(403);
+      await expect(dataConsumerPage).toHaveURL(/\/403$/);
 
       await expect(
         dataConsumerPage.getByTestId('permission-error-placeholder')
-      ).toContainText(
-        "You don't have necessary permissions. Please check with the admin to get the Resource permission."
-      );
+      ).toBeVisible();
     } finally {
       await consumerAfterAction();
       await cleanup(apiContext);
@@ -2829,6 +2840,165 @@ test.describe('Glossary tests', () => {
       await glossaryTerm.delete(apiContext);
       await glossary.delete(apiContext);
       await afterAction();
+    }
+  });
+
+  test('Expanding a matching parent term in search results renders child term once without crashing', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+    const runId = uuid();
+    const glossary = new Glossary(`PWGlossary37909_${runId}`);
+    const parentTerm = new GlossaryTerm(
+      glossary,
+      undefined,
+      `AcmeParent_${runId}`
+    );
+    parentTerm.data.displayName = 'Acme Platform';
+
+    let childTerm: GlossaryTerm | undefined;
+    let siblingTerm: GlossaryTerm | undefined;
+
+    try {
+      await glossary.create(apiContext);
+      await parentTerm.create(apiContext);
+
+      childTerm = new GlossaryTerm(
+        glossary,
+        parentTerm.responseData.fullyQualifiedName,
+        `AcmeChild_${runId}`
+      );
+      childTerm.data.displayName = 'ACME:Platform data';
+      await childTerm.create(apiContext);
+
+      siblingTerm = new GlossaryTerm(
+        glossary,
+        parentTerm.responseData.fullyQualifiedName,
+        `PlatformMetrics_${runId}`
+      );
+      siblingTerm.data.displayName = 'Platform Metrics';
+      await siblingTerm.create(apiContext);
+
+      const parentFqn = parentTerm.responseData.fullyQualifiedName;
+      const childFqn = childTerm.responseData.fullyQualifiedName;
+      const siblingFqn = siblingTerm.responseData.fullyQualifiedName;
+
+      await test.step('Open glossary Terms tab and search for acme', async () => {
+        const initialTermsPromise = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'GET' &&
+            new URL(response.url()).pathname === '/api/v1/glossaryTerms' &&
+            new URL(response.url()).searchParams.get('directChildrenOf') ===
+              glossary.responseData.fullyQualifiedName
+        );
+        await page.goto(
+          `/glossary/${encodeURIComponent(
+            glossary.responseData.fullyQualifiedName
+          )}`,
+          { waitUntil: 'domcontentloaded' }
+        );
+        const initialTermsRes = await initialTermsPromise;
+
+        expect(initialTermsRes.status()).toBe(200);
+
+        await waitForAllLoadersToDisappear(page);
+
+        const searchInput = page.getByTestId('search-glossary-terms-input');
+
+        await expect(searchInput).toBeVisible();
+
+        const searchResponsePromise = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'GET' &&
+            new URL(response.url()).pathname ===
+              '/api/v1/glossaryTerms/search' &&
+            new URL(response.url()).searchParams.get('q') === 'acme'
+        );
+        await searchInput.fill('acme');
+        const searchResponse = await searchResponsePromise;
+
+        expect(searchResponse.status()).toBe(200);
+
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      const parentRow = page.locator(
+        `[data-row-key=${JSON.stringify(parentFqn)}]`
+      );
+      const childRow = page.locator(
+        `[data-row-key=${JSON.stringify(childFqn)}]`
+      );
+      const siblingRow = page.locator(
+        `[data-row-key=${JSON.stringify(siblingFqn)}]`
+      );
+
+      // react-aria overwrites data-level with its own (flat) collection level,
+      // so nesting is asserted through row order: an expanded parent's
+      // children are rendered directly after it.
+      const getRowKeys = () =>
+        page
+          .locator('[role="row"][data-row-key]')
+          .evaluateAll((rows) =>
+            rows.map((row) => row.getAttribute('data-row-key'))
+          );
+
+      await test.step('Verify both matching rows are listed once before expansion', async () => {
+        await expect(parentRow).toHaveCount(1);
+        await expect(childRow).toHaveCount(1);
+        await expect(siblingRow).toHaveCount(0);
+      });
+
+      await test.step('Expand parent term and verify child term renders once under it', async () => {
+        const childrenResponsePromise = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'GET' &&
+            new URL(response.url()).pathname === '/api/v1/glossaryTerms' &&
+            new URL(response.url()).searchParams.get('directChildrenOf') ===
+              parentFqn
+        );
+        await parentRow.getByTestId('expand-icon').click();
+        const childrenResponse = await childrenResponsePromise;
+
+        expect(childrenResponse.status()).toBe(200);
+
+        await expect(siblingRow).toHaveCount(1);
+        await expect(childRow).toHaveCount(1);
+        await expect
+          .poll(async () => {
+            const keys = await getRowKeys();
+            const parentIndex = keys.indexOf(parentFqn);
+
+            return keys.slice(parentIndex + 1, parentIndex + 3).sort();
+          })
+          .toEqual([childFqn, siblingFqn].sort());
+      });
+
+      await test.step('Collapse parent term and verify child term returns to the root list', async () => {
+        await parentRow.getByTestId('expand-icon').click();
+
+        await expect(siblingRow).toHaveCount(0);
+        await expect(childRow).toHaveCount(1);
+        await expect
+          .poll(async () => {
+            const keys = await getRowKeys();
+
+            return keys[keys.indexOf(parentFqn) + 1];
+          })
+          .not.toBe(childFqn);
+      });
+    } finally {
+      try {
+        await Promise.allSettled([
+          ...(siblingTerm ? [siblingTerm.delete(apiContext)] : []),
+          ...(childTerm ? [childTerm.delete(apiContext)] : []),
+        ]);
+        await Promise.allSettled([parentTerm.delete(apiContext)]);
+        await Promise.allSettled([glossary.delete(apiContext)]);
+      } finally {
+        await afterAction();
+      }
     }
   });
 

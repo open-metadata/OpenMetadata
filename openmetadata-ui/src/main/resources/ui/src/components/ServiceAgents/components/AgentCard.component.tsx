@@ -21,18 +21,18 @@ import {
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import {
+  Alert,
   AlertCircle,
-  AlertTriangle,
   AlignLeft,
   Calendar,
   Clock,
   Database01,
+  PlayFilled,
   Terminal,
 } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { useScheduleDescriptionTexts } from '../../../hooks/useScheduleDescriptionTexts';
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import { useAgentActionAvailability } from '../hooks/useAgentActionAvailability';
@@ -324,7 +324,7 @@ const AgentAlerts: FC<AgentAlertsProps> = ({ agent, t }) => {
       {agent.warnings > 0 && (
         <Metric
           dataTestId="agent-warnings-metric"
-          icon={<AlertTriangle size={15} />}
+          icon={<Alert size={15} />}
           label={t('label.warning-plural-lowercase')}
           tone="warn"
           value={agent.warnings}
@@ -372,7 +372,7 @@ const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
           className="tw:font-semibold"
           color="primary"
           data-testid="diagnose-button"
-          iconLeading={AlertTriangle}
+          iconLeading={Alert}
           size="sm"
           onClick={() => onRunDetails(agent)}>
           {t('label.diagnose')}
@@ -408,7 +408,7 @@ const AgentActionsBlock: FC<AgentActionsBlockProps> = ({
               className="tw:font-semibold tw:text-brand-tertiary tw:after:outline-secondary"
               color="secondary"
               data-testid="run-agent-button"
-              iconLeading={PlayIcon}
+              iconLeading={PlayFilled}
               isDisabled={isUnavailable}
               size="sm"
               onClick={() => onRun(agent)}>
@@ -451,7 +451,7 @@ const AgentCard: FC<AgentCardProps> = ({
 
   return (
     <Card
-      className={`tw:relative tw:overflow-hidden tw:rounded-2xl tw:border tw:bg-primary tw:px-4.5 tw:py-4 tw:shadow-xs ${
+      className={`tw:relative tw:overflow-hidden tw:rounded-2xl tw:border tw:bg-surface tw:px-4.5 tw:py-4 tw:shadow-xs ${
         isFailed ? 'tw:border-utility-error-200' : 'tw:border-secondary'
       }`}
       data-testid={`agent-card-${agent.fqn}`}

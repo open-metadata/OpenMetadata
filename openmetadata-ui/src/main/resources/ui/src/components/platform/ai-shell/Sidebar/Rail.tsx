@@ -16,12 +16,12 @@ import {
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
+import { ExpandPanel } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React from 'react';
 import { Link as AriaLink } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExpandPanelIcon } from '../../../../assets/svg/expand-panel.svg';
 import {
   useAppModeSidebarHeader,
   useAppModeSidebarRailFooter,
@@ -168,7 +168,7 @@ const Rail: React.FC<RailProps> = ({ nodes, onToggle }) => {
           <ButtonUtility
             className="ask-rail__expand-btn"
             data-testid="ask-rail-expand-btn"
-            icon={ExpandPanelIcon}
+            icon={ExpandPanel}
             size="lg"
             tooltip={t('label.expand')}
             tooltipPlacement="right"

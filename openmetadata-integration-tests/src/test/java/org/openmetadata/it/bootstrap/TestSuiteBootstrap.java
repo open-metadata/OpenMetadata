@@ -135,7 +135,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
 
   // Default images (can be overridden by system properties)
   private static final String DEFAULT_POSTGRES_IMAGE = "postgres:15";
-  private static final String DEFAULT_MYSQL_IMAGE = "mysql:8.3.0";
+  private static final String DEFAULT_MYSQL_IMAGE = "mysql:8.4.13";
   private static final String DEFAULT_MYSQL_MAX_ALLOWED_PACKET = "64M";
   private static final String DEFAULT_ELASTICSEARCH_IMAGE =
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
@@ -933,6 +933,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     if (appendPayloadBytes != null) {
       rdfConfig.setMaxAppendPayloadBytes(appendPayloadBytes);
     }
+    // Small enough that an ontology of a few hundred definitions takes the staged, chunked path
+    // that a production ontology takes above 16 MiB.
+    rdfConfig.setGraphReplaceChunkBytes(Integer.getInteger("rdfGraphReplaceChunkBytes", 65_536));
     final Integer appendEntityBatchSize = Integer.getInteger("rdfAppendEntityBatchSize");
     if (appendEntityBatchSize != null) {
       rdfConfig.setBulkAppendEntityBatchSize(appendEntityBatchSize);

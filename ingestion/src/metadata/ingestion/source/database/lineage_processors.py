@@ -43,6 +43,7 @@ from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.lineage.tsql import TSQL_SWITCH_STATEMENT
 from metadata.ingestion.models.ometa_lineage import (
     LineageRequest,
+    OMetaDeleteLineageBySource,
     OMetaFQNLineageRequest,
     OMetaLineageRequest,
 )
@@ -50,7 +51,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
-from metadata.utils.db_utils import ViewLineageExtension, get_view_lineage
+from metadata.utils.db_utils import ViewLineageExtension, ViewLineageParserFactory, get_view_lineage
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
 
@@ -441,6 +442,7 @@ def view_lineage_processor(
     overrideViewLineage: bool,  # noqa: N803
     parser_type: QueryParserType,
     extension: ViewLineageExtension | None = None,
+    parser_factory: ViewLineageParserFactory | None = None,
 ) -> None:
     """
     Generate lineage for a list of views
@@ -460,8 +462,12 @@ def view_lineage_processor(
                 timeout_seconds=parsingTimeoutLimit,
                 parser_type=parser_type,
                 extension=extension,
+                parser_factory=parser_factory,
             ):
-                if lineage.right is not None:
+                if isinstance(lineage.right, OMetaDeleteLineageBySource):
+                    if overrideViewLineage:
+                        queue.put(lineage)
+                elif lineage.right is not None:
                     view_fqn = fqn.build(
                         metadata=metadata,
                         entity_type=Table,

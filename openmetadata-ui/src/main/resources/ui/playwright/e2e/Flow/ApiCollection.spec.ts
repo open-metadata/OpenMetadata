@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { migratedTo } from '../../constant/migration';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -37,70 +38,72 @@ test.describe('API Collection Entity Special Test Cases', () => {
     await entity.visitEntityPage(page);
   });
 
-  test("Verify Owner Propagation: owner should be propagated to the API Collection's API Endpoint", async ({
-    page,
-  }) => {
-    test.slow(true);
-
-    await test.step("Verify user Owner Propagation: owner should be propagated to the API Collection's API Endpoint", async () => {
-      const OWNER1 = EntityDataClass.user1.getUserDisplayName();
-      const OWNER2 = EntityDataClass.user2.getUserDisplayName();
-      await addMultiOwner({
-        page,
-        ownerNames: [OWNER1, OWNER2],
-        activatorBtnDataTestId: 'edit-owner',
-        resultTestId: 'data-assets-header',
-        endpoint: entity.endpoint,
-        type: 'Users',
-      });
-
-      // Verify Owner Propagation
-      await entity.verifyOwnerPropagation(page, OWNER2);
-
-      await removeOwner({
-        page,
-        endpoint: entity.endpoint,
-        ownerName: OWNER2,
-        type: 'Users',
-        dataTestId: 'data-assets-header',
-      });
-    });
-
-    await test.step("Verify team Owner Propagation: owner should be propagated to the API Collection's API Endpoint", async () => {
+  test(
+    "Verify Owner Propagation: owner should be propagated to the API Collection's API Endpoint",
+    migratedTo.javaIT('APICollectionResourceIT#test_ownerInheritedByEndpoints'),
+    async ({ page }) => {
       test.slow(true);
 
-      const OWNER1 = EntityDataClass.team1.responseData.displayName;
-      const OWNER2 = EntityDataClass.team2.responseData.displayName;
+      await test.step("Verify user Owner Propagation: owner should be propagated to the API Collection's API Endpoint", async () => {
+        const OWNER1 = EntityDataClass.user1.getUserDisplayName();
+        const OWNER2 = EntityDataClass.user2.getUserDisplayName();
+        await addMultiOwner({
+          page,
+          ownerNames: [OWNER1, OWNER2],
+          activatorBtnDataTestId: 'edit-owner',
+          resultTestId: 'data-assets-header',
+          endpoint: entity.endpoint,
+          type: 'Users',
+        });
 
-      await addOwner({
-        page,
-        owner: OWNER1,
-        type: 'Teams',
-        endpoint: entity.endpoint,
-        dataTestId: 'data-assets-header',
+        // Verify Owner Propagation
+        await entity.verifyOwnerPropagation(page, OWNER2);
+
+        await removeOwner({
+          page,
+          endpoint: entity.endpoint,
+          ownerName: OWNER2,
+          type: 'Users',
+          dataTestId: 'data-assets-header',
+        });
       });
-      // Verify Owner Propagation
-      await entity.verifyOwnerPropagation(page, OWNER1);
 
-      // Update the owner
-      await updateOwner({
-        page,
-        owner: OWNER2,
-        type: 'Teams',
-        endpoint: entity.endpoint,
-        dataTestId: 'data-assets-header',
+      await test.step("Verify team Owner Propagation: owner should be propagated to the API Collection's API Endpoint", async () => {
+        test.slow(true);
+
+        const OWNER1 = EntityDataClass.team1.responseData.displayName;
+        const OWNER2 = EntityDataClass.team2.responseData.displayName;
+
+        await addOwner({
+          page,
+          owner: OWNER1,
+          type: 'Teams',
+          endpoint: entity.endpoint,
+          dataTestId: 'data-assets-header',
+        });
+        // Verify Owner Propagation
+        await entity.verifyOwnerPropagation(page, OWNER1);
+
+        // Update the owner
+        await updateOwner({
+          page,
+          owner: OWNER2,
+          type: 'Teams',
+          endpoint: entity.endpoint,
+          dataTestId: 'data-assets-header',
+        });
+
+        // Verify updated Owner Propagation
+        await entity.verifyOwnerPropagation(page, OWNER2);
+
+        await removeOwner({
+          page,
+          endpoint: entity.endpoint,
+          ownerName: OWNER2,
+          type: 'Teams',
+          dataTestId: 'data-assets-header',
+        });
       });
-
-      // Verify updated Owner Propagation
-      await entity.verifyOwnerPropagation(page, OWNER2);
-
-      await removeOwner({
-        page,
-        endpoint: entity.endpoint,
-        ownerName: OWNER2,
-        type: 'Teams',
-        dataTestId: 'data-assets-header',
-      });
-    });
-  });
+    }
+  );
 });

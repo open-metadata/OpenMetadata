@@ -13,9 +13,11 @@
 Test SQA Interface
 """
 
+import gc
 import os
 from datetime import datetime
-from unittest.mock import Mock, patch
+from pathlib import Path
+from unittest.mock import Mock, call, patch
 from uuid import uuid4
 
 import pytest
@@ -41,6 +43,7 @@ from metadata.generated.schema.entity.services.connections.database.sqliteConnec
 )
 from metadata.generated.schema.type.basic import Timestamp
 from metadata.profiler.api.models import ThreadPoolMetrics
+from metadata.profiler.interface.sqlalchemy import profiler_interface
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -55,6 +58,8 @@ from metadata.profiler.metrics.static.row_count import RowCount
 from metadata.profiler.processor.default import get_default_metrics
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.sampler.sqlalchemy.sampler import SQASampler
+
+from ..conftest import GC_STUBBED_MODULES  # noqa: TID252
 
 
 class _Base(DeclarativeBase):
@@ -290,7 +295,26 @@ def test_get_all_metrics(class_sqa_profiler_interface, metrics):
     assert id_column_profile.median == 1.0
 
 
-def test_compute_metrics_in_thread_success(sqa_profiler_interface):
+@pytest.fixture
+def collect_spy():
+    """Count full collections while still running the real gc.collect."""
+    with patch.object(gc, "collect", wraps=gc.collect) as spy:
+        yield spy
+
+
+def test_profiler_interface_uses_the_real_gc_module():
+    """Fails if the conftest stub leaks into this module."""
+    assert profiler_interface.gc is gc
+
+
+def test_gc_stub_targets_existing_modules_only():
+    """A renamed module would silently fall back to the slow path."""
+    profiler_tests = Path(__file__).parents[1]
+    assert GC_STUBBED_MODULES
+    assert all((profiler_tests / module).is_file() for module in GC_STUBBED_MODULES)
+
+
+def test_compute_metrics_in_thread_success(sqa_profiler_interface, collect_spy):
     """Test successful execution of compute_metrics_in_thread"""
     # Create a mock metric function
     mock_metric = ThreadPoolMetrics(
@@ -310,9 +334,10 @@ def test_compute_metrics_in_thread_success(sqa_profiler_interface):
     assert result == {"rowCount": 2}
     assert column is None
     assert metric_type == MetricTypes.Table.value
+    collect_spy.assert_called_once_with()
 
 
-def test_compute_metrics_in_thread_disconnect_retry_success(sqa_profiler_interface):
+def test_compute_metrics_in_thread_disconnect_retry_success(sqa_profiler_interface, collect_spy):
     """Test successful retry after disconnection error"""
     # Create a mock metric function
     mock_metric = ThreadPoolMetrics(
@@ -339,6 +364,7 @@ def test_compute_metrics_in_thread_disconnect_retry_success(sqa_profiler_interfa
     assert column is None
     assert metric_type == MetricTypes.Table.value
     assert mock_fn.call_count == 2  # Called twice - once for error, once for success
+    assert collect_spy.call_args_list == [call(), call()]
 
 
 def test_compute_metrics_in_thread_max_retries_exceeded(sqa_profiler_interface):
@@ -370,7 +396,7 @@ def test_compute_metrics_in_thread_max_retries_exceeded(sqa_profiler_interface):
     assert mock_fn.call_count == 3  # Called 3 times (max_retries)
 
 
-def test_compute_metrics_in_thread_other_exception(sqa_profiler_interface):
+def test_compute_metrics_in_thread_other_exception(sqa_profiler_interface, collect_spy):
     """Test behavior with non-disconnection exception"""
     # Create a mock metric function
     mock_metric = ThreadPoolMetrics(
@@ -397,6 +423,8 @@ def test_compute_metrics_in_thread_other_exception(sqa_profiler_interface):
     assert column is None
     assert metric_type is None
     assert mock_fn.call_count == 1  # Called only once before breaking
+    assert sqa_profiler_interface.status.failures
+    collect_spy.assert_called_once_with()
 
 
 def test_compute_query_metrics_mixed_case_column(sqa_profiler_interface):

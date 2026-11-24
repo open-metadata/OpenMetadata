@@ -21,8 +21,8 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT</integrationTests.globalStateTests>
-    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CsvExportMultiNodeIT</integrationTests.multiNodeTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT,DataProductPortsAtomicityIT</integrationTests.globalStateTests>
+    <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CsvExportMultiNodeIT,RdfDisabledMarkLifecycleIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tests that need the RDF store. The rdf lane runs them against the published
          openmetadata/fuseki image pinned in FusekiTestImage (override with -DrdfContainerImage);
@@ -277,13 +277,13 @@
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-ooxml</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -469,6 +469,10 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -477,13 +481,14 @@
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <databaseImage>mysql:8.4.13</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -526,6 +531,7 @@
                     <exclude>**/DataContractValidationAppIT.java</exclude>
                     <exclude>**/SystemResourceIT.java</exclude>
                     <exclude>**/Sso*IT.java</exclude>
+                    <exclude>**/OntologyConcurrentHardDeleteIT.java</exclude>
                     <exclude>**/tests/search/*IT.java</exclude>
                     <exclude>**/VectorEmbeddingIntegrationIT.java</exclude>
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
@@ -534,6 +540,10 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -542,6 +552,7 @@
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
@@ -559,7 +570,7 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <databaseImage>mysql:8.4.13</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
 
@@ -630,6 +641,10 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -638,6 +653,7 @@
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
@@ -695,6 +711,10 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -703,6 +723,7 @@
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
@@ -792,6 +813,10 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -800,6 +825,7 @@
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
@@ -858,6 +884,10 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -866,6 +896,7 @@
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
@@ -955,6 +986,10 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -963,6 +998,7 @@
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
@@ -1020,6 +1056,10 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -1028,6 +1068,7 @@
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
@@ -1116,6 +1157,10 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -1124,13 +1169,14 @@
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <databaseImage>mysql:8.4.13</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
 
@@ -1181,6 +1227,10 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -1189,6 +1239,7 @@
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
@@ -1206,7 +1257,7 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <databaseImage>mysql:8.4.13</databaseImage>
                     <searchType>opensearch</searchType>
                     <searchImage>opensearchproject/opensearch:3.4.0</searchImage>
 
@@ -1276,6 +1327,10 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -1284,13 +1339,14 @@
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
                   </includes>
                   <systemPropertyVariables>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <databaseImage>mysql:8.4.13</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -1342,6 +1398,10 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -1350,6 +1410,7 @@
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
@@ -1367,7 +1428,7 @@
                   <systemPropertyVariables>
                     <enableRdf>${integrationTests.enableRdf}</enableRdf>
                     <databaseType>mysql</databaseType>
-                    <databaseImage>mysql:8.3.0</databaseImage>
+                    <databaseImage>mysql:8.4.13</databaseImage>
                     <searchType>elasticsearch</searchType>
                     <searchImage>docker.elastic.co/elasticsearch/elasticsearch:9.3.0</searchImage>
                     <cacheProvider>redis</cacheProvider>
@@ -1454,6 +1515,10 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -1462,6 +1527,7 @@
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
@@ -1521,6 +1587,10 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -1529,6 +1599,7 @@
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>
@@ -1624,6 +1695,10 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
+                    <include>**/NativeOntologyEveryPackInstallIT.java</include>
+                    <include>**/DataProductDeleteRaceIT.java</include>
+                    <include>**/DataProductPortsAtomicityIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
                     <include>**/CredentialDatabaseOutageIT.java</include>
                     <include>**/CredentialRedisNoRoundTripIT.java</include>
@@ -1632,6 +1707,7 @@
                     <include>**/SessionRedisMultiNodeIT.java</include>
                     <include>**/CredentialRevocationTwoProcessIT.java</include>
                     <include>**/RevokeWaitForPropagationIT.java</include>
+                    <include>**/RdfDisabledMarkLifecycleIT.java</include>
                     <include>**/OpsRegenerateBotTokensIT.java</include>
                     <include>**/CsvExportMultiNodeIT.java</include>
                     <include>**/SearchIndexRetryQueueIT.java</include>
@@ -1690,6 +1766,10 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
+                    <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
+                    <exclude>**/DataProductDeleteRaceIT.java</exclude>
+                    <exclude>**/DataProductPortsAtomicityIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
                     <exclude>**/CredentialDatabaseOutageIT.java</exclude>
                     <exclude>**/CredentialRedisNoRoundTripIT.java</exclude>
@@ -1698,6 +1778,7 @@
                     <exclude>**/SessionRedisMultiNodeIT.java</exclude>
                     <exclude>**/CredentialRevocationTwoProcessIT.java</exclude>
                     <exclude>**/RevokeWaitForPropagationIT.java</exclude>
+                    <exclude>**/RdfDisabledMarkLifecycleIT.java</exclude>
                     <exclude>**/OpsRegenerateBotTokensIT.java</exclude>
                     <exclude>**/CsvExportMultiNodeIT.java</exclude>
                     <exclude>**/SearchIndexRetryQueueIT.java</exclude>

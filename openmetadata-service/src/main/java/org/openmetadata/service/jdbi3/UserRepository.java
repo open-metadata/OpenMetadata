@@ -296,6 +296,7 @@ public class UserRepository extends EntityRepository<User> {
     }
     validateRoles(user.getRoles());
     validateDefaultDomain(user);
+    validateDefaultPersona(user);
   }
 
   /**
@@ -327,6 +328,20 @@ public class UserRepository extends EntityRepository<User> {
       user.setDefaultDomain(
           Entity.getEntityReferenceById(
               Entity.DOMAIN, user.getDefaultDomain().getId(), NON_DELETED));
+    }
+  }
+
+  /**
+   * A default persona selection must resolve to a real persona. The request body only requires id
+   * + type, so hydrate the reference here; otherwise the recorded ChangeDescription holds a sparse
+   * reference that governance rules (CheckChangeDescription) cannot match. Mirrors {@link
+   * #validateDefaultDomain}.
+   */
+  private void validateDefaultPersona(User user) {
+    if (user.getDefaultPersona() != null) {
+      user.setDefaultPersona(
+          Entity.getEntityReferenceById(
+              Entity.PERSONA, user.getDefaultPersona().getId(), NON_DELETED));
     }
   }
 
@@ -650,17 +665,25 @@ public class UserRepository extends EntityRepository<User> {
         .deleteAllForUser(entityInterface.getId());
   }
 
-  /* Validate if the user is already part of the given team */
-  public void validateTeamAddition(UUID userId, UUID teamId) {
-    User user = find(userId, NON_DELETED);
-    List<EntityReference> teams = getTeams(user);
-    Optional<EntityReference> team =
-        teams.stream().filter(t -> t.getId().equals(teamId)).findFirst();
-    if (team.isPresent()) {
-      throw new IllegalArgumentException(
-          CatalogExceptionMessage.userAlreadyPartOfTeam(
-              user.getName(), team.get().getDisplayName()));
+  /** Refuses a team list that names a team twice, as adding a team the user is in does. */
+  public void validateTeamsListedOnce(User user, List<UUID> teamIds) {
+    Set<UUID> seen = new HashSet<>();
+    for (UUID teamId : teamIds) {
+      if (!seen.add(teamId)) {
+        throw new IllegalArgumentException(
+            CatalogExceptionMessage.userAlreadyPartOfTeam(
+                user.getName(), teamDisplayName(user, teamId)));
+      }
     }
+  }
+
+  private static String teamDisplayName(User user, UUID teamId) {
+    EntityReference team =
+        listOrEmpty(user.getTeams()).stream()
+            .filter(stored -> stored.getId().equals(teamId))
+            .findFirst()
+            .orElseGet(() -> Entity.getEntityReferenceById(Entity.TEAM, teamId, ALL));
+    return nullOrEmpty(team.getDisplayName()) ? team.getName() : team.getDisplayName();
   }
 
   public boolean checkEmailAlreadyExists(String emailId) {

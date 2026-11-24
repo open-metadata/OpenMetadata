@@ -12,6 +12,7 @@
  */
 
 import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { ZoomIn } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
   memo,
@@ -24,7 +25,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Handle, NodeProps, Position, useReactFlow } from 'reactflow';
-import { ReactComponent as ZoomInIcon } from '../../../assets/svg/ic-zoom-in.svg';
 import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
@@ -172,11 +172,14 @@ const SceneDrillButton = ({
     <ButtonUtility
       // Less paints the static light brand tint (@primary-1) in every state.
       className="lineage-scene-drill-button nodrag nopan tw:dark:bg-brand-primary!"
-      icon={ZoomInIcon}
+      icon={ZoomIn}
       size="lg"
       tooltip={drillLabel}
       onClick={(event: MouseEvent<HTMLButtonElement>) => {
         event.stopPropagation();
+        // The drilled scene unmounts this button; blurring first closes its
+        // focus tooltip, which otherwise stays on screen without an anchor.
+        event.currentTarget.blur();
         onDrill(node);
       }}
     />
@@ -184,6 +187,7 @@ const SceneDrillButton = ({
 };
 
 const CustomNodeV1 = (props: NodeProps) => {
+  const { t } = useTranslation();
   const { data, type } = props;
 
   const { onNodeCollapse, loadChildNodesHandler, onNodeClick } =
@@ -467,7 +471,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       style={{ width: nodeWidth }}>
       {isRootNode && (
         <div className={badgeClass}>
-          <div className="lineage-node-badge" />
+          <div className="lineage-node-badge">{t('label.base')}</div>
         </div>
       )}
       <div

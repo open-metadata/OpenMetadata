@@ -32,8 +32,11 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v208.AuditLogEntityTypeIndex;
 import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
+import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v208.MigrationUtil;
 import org.openmetadata.service.migration.utils.v208.WorkflowRedeployMigration;
 
@@ -42,10 +45,13 @@ class WorkflowRedeployEntryPointTest {
   @ParameterizedTest(name = "{0}")
   @MethodSource("migrationEntryPoints")
   void runDataMigrationRewritesThenRedeploysTheWorkflows(
-      String database, Function<MigrationFile, MigrationProcessImpl> createMigration)
+      String database,
+      Function<MigrationFile, MigrationProcessImpl> createMigration,
+      int mySqlStepRuns)
       throws Exception {
     MigrationProcessImpl migration = createMigration.apply(mock(MigrationFile.class));
-    setField(migration, "handle", mock(Handle.class));
+    Handle handle = mock(Handle.class);
+    setField(migration, "handle", handle);
     setField(migration, "collectionDAO", mock(CollectionDAO.class));
     setField(migration, "migrationDAO", mock(MigrationDAO.class));
 
@@ -56,13 +62,26 @@ class WorkflowRedeployEntryPointTest {
         MockedStatic<MigrationUtil> migrationUtil = mockStatic(MigrationUtil.class);
         MockedStatic<WorkflowRedeployMigration> workflowRedeploy =
             mockStatic(WorkflowRedeployMigration.class);
-        MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class)) {
+        MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
+        MockedStatic<McpGrantUserNameIndexes> grantUserNameIndexes =
+            mockStatic(McpGrantUserNameIndexes.class);
+        MockedStatic<AuditLogEntityTypeIndex> auditLogIndex =
+            mockStatic(AuditLogEntityTypeIndex.class);
+        MockedStatic<EntityExtensionCollationAlignment> collationAlignment =
+            mockStatic(EntityExtensionCollationAlignment.class)) {
       migration.runDataMigration();
 
       migrationUtil.verify(MigrationUtil::rewriteWorkflowRules);
       // `migrate` runs before Flowable starts, so the steps that deploy workflows start it.
       workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)), times(2));
       workflowRedeploy.verify(WorkflowRedeployMigration::redeploy);
+      grantUserNameIndexes.verify(
+          () -> McpGrantUserNameIndexes.addOnMySql(handle), times(mySqlStepRuns));
+      collationAlignment.verify(
+          () -> EntityExtensionCollationAlignment.alignOnMySql(handle), times(mySqlStepRuns));
+      auditLogIndex.verify(() -> AuditLogEntityTypeIndex.addOnMySql(handle), times(mySqlStepRuns));
+      auditLogIndex.verify(
+          () -> AuditLogEntityTypeIndex.addOnPostgres(handle), times(1 - mySqlStepRuns));
     }
   }
 
@@ -71,11 +90,13 @@ class WorkflowRedeployEntryPointTest {
         Arguments.of(
             "MySQL",
             (Function<MigrationFile, MigrationProcessImpl>)
-                org.openmetadata.service.migration.mysql.v208.Migration::new),
+                org.openmetadata.service.migration.mysql.v208.Migration::new,
+            1),
         Arguments.of(
             "PostgreSQL",
             (Function<MigrationFile, MigrationProcessImpl>)
-                org.openmetadata.service.migration.postgres.v208.Migration::new));
+                org.openmetadata.service.migration.postgres.v208.Migration::new,
+            0));
   }
 
   private static void setField(MigrationProcessImpl migration, String fieldName, Object value)

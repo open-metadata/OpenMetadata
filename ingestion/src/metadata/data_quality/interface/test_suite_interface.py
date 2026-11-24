@@ -141,13 +141,13 @@ class TestSuiteInterface(ABC):
             raise ValueError(f"Test definition {test_definition_id.root} must include entityType")
         entity_type: str = test_definition.entityType.value
 
+        # Keep the validator available when parameter resolution fails.
         validator_builder = self._get_validator_builder(test_case, entity_type)
-        validator_builder.set_runtime_params(runtime_params_setters)
         validator: BaseTestValidator = validator_builder.validator
-        # Timed here, around the whole call, so work a validator does before or after the base
-        # validation (runtime parameters, predicted values) is counted too.
+        # Parameter resolution belongs in both the duration and Aborted-result handling.
         start = time.perf_counter()
         try:
+            validator_builder.set_runtime_params(runtime_params_setters)
             test_result = validator.run_validation()
             test_result.duration = elapsed_ms(start)
             response = TestCaseResultResponse(testCaseResult=test_result, testCase=test_case)

@@ -38,6 +38,7 @@ class OntologyReferencesTest {
             .withInverse(iri("inverse"))
             .withPropertyChain(List.of(iri("first"), iri("second"), iri("first")))
             .withDisjointWith(List.of(iri("disjoint")))
+            .withSuperProperties(List.of(iri("parent")))
             .withEnumValues(
                 List.of(new OntologyLiteral().withValue("value").withDatatypeIri(iri("datatype"))));
     List<OntologyReference> references = OntologyReferences.collect(property);
@@ -49,6 +50,7 @@ class OntologyReferencesTest {
             "PROPERTY_CHAIN:first",
             "PROPERTY_CHAIN:second",
             "DISJOINT_PROPERTY:disjoint",
+            "SUPER_PROPERTY:parent",
             "DATATYPE:datatype"),
         keys(references));
     for (OntologyReference reference : references) {

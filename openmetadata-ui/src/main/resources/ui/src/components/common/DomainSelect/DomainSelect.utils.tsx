@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 import type { TreeSelectNode } from '@openmetadata/ui-core-components';
-import { Globe01 as DomainIcon } from '@openmetadata/ui-core-components/icons';
-import { ReactComponent as SubDomainIcon } from '../../../assets/svg/ic-subdomain.svg';
+import { Globe01, GlobeLinked } from '@openmetadata/ui-core-components/icons';
 import { EntityType } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
@@ -118,9 +117,9 @@ export function withDomainIcon(
   return nodes.map((node) => ({
     ...node,
     icon: isSubDomain ? (
-      <SubDomainIcon height={16} width={16} />
+      <GlobeLinked className="tw:text-utility-gray-500" size={16} />
     ) : (
-      <DomainIcon height={16} width={16} />
+      <Globe01 className="tw:text-utility-gray-500" size={16} />
     ),
     children: node.children
       ? withDomainIcon(node.children, true)

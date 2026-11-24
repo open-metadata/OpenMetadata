@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import type { RJSFSchema } from '@rjsf/utils';
 import type { App } from '../../../../../../generated/entity/applications/app';
@@ -38,7 +39,10 @@ export type ApplicationsHeader = Omit<
 };
 
 export interface ApplicationsViewProps {
-  onNavigate: (view: ApplicationsView) => void;
+  onNavigate: (
+    view: ApplicationsView,
+    options?: SettingsNavigateOptions
+  ) => void;
   onHeaderChange: (header: ApplicationsHeader) => void;
 }
 

@@ -13,7 +13,10 @@ import org.jdbi.v3.sqlobject.config.RegisterConstructorMapper;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.customizer.Define;
+import org.jdbi.v3.sqlobject.statement.BatchChunkSize;
+import org.jdbi.v3.sqlobject.statement.SqlBatch;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.OntologyReleaseEvent;
@@ -78,6 +81,36 @@ public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
       @Bind("memberKind") String memberKind,
       @BindList("memberIds") List<String> memberIds);
 
+  /**
+   * The members among {@code memberIds} of the active release of a live ontology: the definitions
+   * its serving graph describes (ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release).
+   */
+  @SqlQuery(
+      "SELECT m.* FROM ontology_release_member m "
+          + "JOIN ontology_state s ON s.activeReleaseId = m.releaseId "
+          + "JOIN ontology_entity o ON o.id = s.ontologyId "
+          + "WHERE m.memberKind = :memberKind AND m.memberId IN (<memberIds>) "
+          + "AND (o.deleted IS NULL OR o.deleted = FALSE)")
+  @RegisterRowMapper(MemberMapper.class)
+  List<OntologyReleaseMember> listActiveMembers(
+      @Bind("memberKind") String memberKind, @BindList("memberIds") List<String> memberIds);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT m.* FROM ontology_release_member m JOIN ontology_release_entity r ON r.id = m.releaseId "
+              + "WHERE m.releaseId = :releaseId AND r.sealedAt IS NOT NULL AND m.memberKind = 'CONCEPT' "
+              + "AND JSON_UNQUOTE(JSON_EXTRACT(m.payload, '$.iri')) COLLATE utf8mb4_bin IN (<iris>)",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT m.* FROM ontology_release_member m JOIN ontology_release_entity r ON r.id = m.releaseId "
+              + "WHERE m.releaseId = :releaseId AND r.sealedAt IS NOT NULL AND m.memberKind = 'CONCEPT' "
+              + "AND m.payload::jsonb ->> 'iri' IN (<iris>)",
+      connectionType = POSTGRES)
+  @RegisterRowMapper(MemberMapper.class)
+  List<OntologyReleaseMember> listConceptsByIri(
+      @BindUUID("releaseId") UUID releaseId, @BindList("iris") List<String> iris);
+
   /** Versions of the non-deleted working definitions that {@code ownerColumn} ties to an ontology. */
   @ConnectionAwareSqlQuery(
       value =
@@ -94,21 +127,6 @@ public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
       @Define("table") String table,
       @Define("ownerColumn") String ownerColumn,
       @BindList("ontologyIds") List<String> ontologyIds);
-
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json_unquote(json_extract(json, '$.semanticVersion')) FROM ontology_release_entity "
-              + "WHERE ontologyId = :ontologyId AND sealedAt IS NOT NULL "
-              + "AND json_unquote(json_extract(json, '$.semanticVersion')) IS NOT NULL "
-              + "ORDER BY releaseRevision DESC LIMIT 1 FOR UPDATE",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json ->> 'semanticVersion' FROM ontology_release_entity "
-              + "WHERE ontologyId = :ontologyId AND sealedAt IS NOT NULL "
-              + "AND json ->> 'semanticVersion' IS NOT NULL ORDER BY releaseRevision DESC LIMIT 1 FOR UPDATE",
-      connectionType = POSTGRES)
-  String findLatestSemanticVersion(@BindUUID("ontologyId") UUID ontologyId);
 
   @SqlQuery(
       "SELECT json FROM ontology_release_entity WHERE ontologyId = :ontologyId "
@@ -149,6 +167,14 @@ public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
     // A purge must see captures committed after its MySQL transaction snapshot began.
     return findRetainedReleaseForUpdate(ontologyId) != null;
   }
+
+  /** Releases of one ontology that were activated at least once, including ones since replaced. */
+  @SqlQuery(
+      "SELECT json FROM ontology_release_entity WHERE ontologyId = :ontologyId "
+          + "AND (deleted IS NULL OR deleted = false) AND id IN ("
+          + "SELECT releaseId FROM ontology_release_event "
+          + "WHERE ontologyId = :ontologyId AND eventType = 'ACTIVATED')")
+  List<String> listPublished(@BindUUID("ontologyId") UUID ontologyId);
 
   @SqlQuery(
       "SELECT json FROM ontology_release_event WHERE releaseId = :releaseId "
@@ -204,6 +230,48 @@ public interface OntologyReleaseDAO extends EntityDAO<OntologyRelease> {
         member.getPayload().toString(),
         member.getPayloadDigest(),
         member.getPayloadBytes());
+  }
+
+  /** One member as the batch insert binds it. */
+  record MemberRow(
+      String releaseId,
+      String memberKind,
+      String memberId,
+      Double sourceVersion,
+      String payload,
+      String payloadDigest,
+      long payloadBytes) {
+    static MemberRow of(final OntologyReleaseMember member) {
+      return new MemberRow(
+          member.getReleaseId().toString(),
+          member.getMemberKind().value(),
+          member.getMemberId().toString(),
+          member.getSourceVersion(),
+          member.getPayload().toString(),
+          member.getPayloadDigest(),
+          member.getPayloadBytes());
+    }
+  }
+
+  @SqlBatch(
+      "INSERT INTO ontology_release_member (releaseId, memberKind, memberId, sourceVersion, "
+          + "payload, payloadDigest, payloadBytes) "
+          + "SELECT :releaseId, :memberKind, :memberId, :sourceVersion, "
+          + ":payload, :payloadDigest, :payloadBytes FROM ontology_release_entity "
+          + "WHERE id = :releaseId AND sealedAt IS NULL")
+  @BatchChunkSize(500)
+  int[] insertMemberRows(@BindMethods List<MemberRow> rows);
+
+  /** Inserts the members of one unsealed release in chunks and returns how many rows landed. */
+  default int insertMembers(final List<OntologyReleaseMember> members) {
+    if (members.isEmpty()) {
+      return 0;
+    }
+    int inserted = 0;
+    for (final int count : insertMemberRows(members.stream().map(MemberRow::of).toList())) {
+      inserted += count;
+    }
+    return inserted;
   }
 
   @ConnectionAwareSqlUpdate(

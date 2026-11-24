@@ -36,7 +36,6 @@ public class PaginatedEntityTimeSeriesSource
   private final int batchSize;
   private final String entityType;
   private final List<String> fields;
-  private final List<String> readerErrors = new ArrayList<>();
   private final StepStats stats = new StepStats();
   private String lastFailedCursor = null;
 
@@ -294,12 +293,6 @@ public class PaginatedEntityTimeSeriesSource
       }
     }
     return cursors;
-  }
-
-  @Override
-  public void reset() {
-    cursor.set(null);
-    isDone.set(false);
   }
 
   @Override

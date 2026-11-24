@@ -20,35 +20,37 @@ SHOW FULL COLUMNS FROM {table_name}
     """
 )
 
-DORIS_GET_TABLE_NAMES = textwrap.dedent(
+# Async materialized views of a schema: SHOW FULL TABLES and information_schema.tables list them as base tables
+DORIS_GET_MATERIALIZED_VIEW_NAMES = textwrap.dedent(
     """
-    select TABLE_NAME as name, `ENGINE` as engine
-    from INFORMATION_SCHEMA.tables 
-    where TABLE_SCHEMA = :schema
-    """  # noqa: W291
+SELECT Name FROM mv_infos('database' = :schema)
+    """
 )
 
-DORIS_TABLE_COMMENTS = textwrap.dedent(
+DORIS_SHOW_CREATE_TABLE = textwrap.dedent(
     """
-SELECT TABLE_COMMENT
-FROM information_schema.tables
-WHERE TABLE_SCHEMA = :schema
-AND TABLE_NAME = :table_name
-"""
+SHOW CREATE TABLE {table_name}
+    """
 )
 
-DORIS_VIEW_DEFINITIONS = textwrap.dedent(
+# SHOW CREATE TABLE refuses an async materialized view
+DORIS_SHOW_CREATE_MATERIALIZED_VIEW = textwrap.dedent(
     """
-select
-	TABLE_NAME as view_name,
-	TABLE_SCHEMA as schema,
-	'' as view_def
-from information_schema.tables where engine in ['MaterializedView', 'View']
-"""
+SHOW CREATE MATERIALIZED VIEW {table_name}
+    """
 )
 
-DORIS_PARTITION_DETAILS = textwrap.dedent(
+# information_schema.partitions has one row per partition, or a single UNPARTITIONED row for a table
+# without partition columns. A table whose partitions are yet to be created has no row, nor has a view.
+DORIS_GET_PARTITIONS = textwrap.dedent(
     """
-SHOW PARTITIONS FROM {table_name}
+SELECT t.TABLE_NAME, t.ENGINE, p.PARTITION_METHOD, p.PARTITION_EXPRESSION
+FROM information_schema.tables t
+LEFT JOIN (
+    SELECT DISTINCT TABLE_NAME, PARTITION_METHOD, PARTITION_EXPRESSION
+    FROM information_schema.partitions
+    WHERE TABLE_SCHEMA = :schema
+) p ON p.TABLE_NAME = t.TABLE_NAME
+WHERE t.TABLE_SCHEMA = :schema
     """
 )

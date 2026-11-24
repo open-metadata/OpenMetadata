@@ -53,6 +53,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -155,8 +156,10 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.SystemTokenDAOs.SystemDAO;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.TestLoginCallbackPage;
@@ -3116,6 +3119,154 @@ public class SystemResourceIT {
     assertTrue(
         teamRules.stream()
             .anyMatch(rule -> rule.getName().equals("Multiple Users or Single Team Ownership")));
+  }
+
+  @Test
+  void test_patchEntityRule_changesOneRuleAndPreservesOthers() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+    List<SemanticsRule> originalRules = entityRules(original);
+    assertFalse(originalRules.isEmpty(), "Pre-condition: seed entity rules must exist");
+
+    try {
+      final SemanticsRule target = originalRules.getFirst();
+      final boolean isEnabled = !Boolean.TRUE.equals(target.getEnabled());
+
+      Settings response =
+          EntityRulesUtil.patchRule(client, target.getName(), replaceEnabled(isEnabled));
+
+      List<SemanticsRule> expected =
+          originalRules.stream()
+              .map(
+                  rule ->
+                      rule.getName().equals(target.getName()) ? copyWith(rule, isEnabled) : rule)
+              .toList();
+      assertEquals(expected, entityRules(response));
+      assertEquals(expected, entityRules(EntityRulesUtil.getEntityRulesSettings(client)));
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
+  }
+
+  /**
+   * #35639: toggling a rule used to send back the toggling client's copy of the whole list, which
+   * dropped a rule another writer added after that copy was read. The patch sends only the change.
+   */
+  @Test
+  void test_patchEntityRule_keepsARuleAddedByAnotherWriter() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+    List<SemanticsRule> originalRules = entityRules(original);
+    final SemanticsRule target = originalRules.getFirst();
+    final SemanticsRule addedElsewhere =
+        copyWith(target, false).withName("it-concurrent-rule-" + UUID.randomUUID());
+
+    try {
+      Settings withAddedRule =
+          new Settings()
+              .withConfigType(SettingsType.ENTITY_RULES_SETTINGS)
+              .withConfigValue(
+                  new EntityRulesSettings()
+                      .withEntitySemantics(
+                          Stream.concat(originalRules.stream(), Stream.of(addedElsewhere))
+                              .toList()));
+      EntityRulesUtil.updateSettings(client, withAddedRule);
+
+      EntityRulesUtil.patchRule(
+          client, target.getName(), replaceEnabled(!Boolean.TRUE.equals(target.getEnabled())));
+
+      List<SemanticsRule> stored = entityRules(EntityRulesUtil.getEntityRulesSettings(client));
+      assertTrue(
+          stored.contains(addedElsewhere),
+          "A rule added by another writer must survive a patch on a different rule");
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
+  }
+
+  @Test
+  void test_patchEntityRule_rejectsNonAdminsUnknownRulesAndPatchesThatBreakTheList()
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+    final String ruleName = entityRules(original).getFirst().getName();
+
+    try {
+      assertPatchFails(SdkClients.user1Client(), ruleName, replaceEnabled(true), 403);
+      assertPatchFails(client, "no-such-rule-name", replaceEnabled(true), 404);
+      assertPatchFails(
+          client, ruleName, "[{\"op\":\"replace\",\"path\":\"/name\",\"value\":\"renamed\"}]", 400);
+      assertPatchFails(client, ruleName, "[{\"op\":\"remove\",\"path\":\"\"}]", 400);
+      assertPatchFails(client, ruleName, "[{\"op\":\"remove\",\"path\":\"/rule\"}]", 400);
+      assertPatchFails(
+          client, ruleName, "[{\"op\":\"replace\",\"path\":\"enabled\",\"value\":true}]", 400);
+
+      assertEquals(
+          entityRules(original),
+          entityRules(EntityRulesUtil.getEntityRulesSettings(client)),
+          "A rejected patch must leave the stored rules unchanged");
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
+  }
+
+  /**
+   * The rule patch writes through {@code replaceSettingIfCurrent} with the JSON it read; a write
+   * that lands in between must turn the stale write into a 412 and keep the newer row.
+   */
+  @Test
+  void test_entityRulesCompareAndSet_rejectsAStaleWriteWith412() {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SystemDAO dao = Entity.getCollectionDAO().systemDAO();
+    Settings original = EntityRulesUtil.getEntityRulesSettings(client);
+
+    try {
+      final String expectedJson =
+          dao.getConfigJsonWithKey(SettingsType.ENTITY_RULES_SETTINGS.value());
+      final EntityRulesSettings concurrent =
+          JsonUtils.readValue(expectedJson, EntityRulesSettings.class);
+      final SemanticsRule changed = concurrent.getEntitySemantics().getLast();
+      changed.setEnabled(!Boolean.TRUE.equals(changed.getEnabled()));
+      final String concurrentJson = JsonUtils.pojoToJson(concurrent);
+      dao.insertSettings(SettingsType.ENTITY_RULES_SETTINGS.value(), concurrentJson);
+
+      final Settings stale =
+          new Settings()
+              .withConfigType(SettingsType.ENTITY_RULES_SETTINGS)
+              .withConfigValue(JsonUtils.readValue(expectedJson, EntityRulesSettings.class));
+      assertThrows(
+          PreconditionFailedException.class,
+          () -> Entity.getSystemRepository().replaceSettingIfCurrent(stale, expectedJson));
+      assertEquals(
+          JsonUtils.readTree(concurrentJson),
+          JsonUtils.readTree(dao.getConfigJsonWithKey(SettingsType.ENTITY_RULES_SETTINGS.value())),
+          "The newer row must survive the rejected stale write");
+    } finally {
+      EntityRulesUtil.updateSettings(client, original);
+    }
+  }
+
+  private static void assertPatchFails(
+      OpenMetadataClient client, String ruleName, String jsonPatch, int expectedStatus) {
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> EntityRulesUtil.patchRule(client, ruleName, jsonPatch));
+    assertEquals(expectedStatus, error.getStatusCode(), jsonPatch);
+  }
+
+  private static String replaceEnabled(boolean isEnabled) {
+    return "[{\"op\":\"replace\",\"path\":\"/enabled\",\"value\":" + isEnabled + "}]";
+  }
+
+  private static List<SemanticsRule> entityRules(Settings settings) {
+    return MAPPER
+        .convertValue(settings.getConfigValue(), EntityRulesSettings.class)
+        .getEntitySemantics();
+  }
+
+  private static SemanticsRule copyWith(SemanticsRule rule, boolean isEnabled) {
+    return MAPPER.convertValue(rule, SemanticsRule.class).withEnabled(isEnabled);
   }
 
   @Test

@@ -2,13 +2,13 @@ package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
-import org.apache.jena.rdf.model.Model;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -21,7 +21,6 @@ import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.NativeOntologyCsvCodec.Column;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
-import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 class NativeOntologyImportListRulesTest {
   private static final String EX = "https://example.org/";
@@ -66,9 +65,11 @@ class NativeOntologyImportListRulesTest {
         importer.read(
             csv(
                 property("e", "DATA", Column.ENUM_VALUES, "a;b"),
+                property("x", "OBJECT", Column.LABEL, "x"),
+                property("y", "OBJECT", Column.LABEL, "y"),
                 property("c", "OBJECT", Column.PROPERTY_CHAIN, EX + "x;" + EX + "y")));
 
-    assertEquals(2, importer.preview(source, empty()).getSummary().getCounts().getNewProperties());
+    assertEquals(4, importer.preview(source, empty()).getSummary().getCounts().getNewProperties());
   }
 
   @Test
@@ -98,32 +99,24 @@ class NativeOntologyImportListRulesTest {
       delimiter = '|',
       value = {
         "ex:q a owl:DatatypeProperty ; rdfs:range [ a rdfs:Datatype ; owl:oneOf (\"a\") ] .|"
-            + "enumValues|"
-            + ONE_VALUE,
+            + "http://www.w3.org/2000/01/rdf-schema#range",
         "ex:q a owl:DatatypeProperty ; rdfs:range [ a rdfs:Datatype ; owl:oneOf (\"a\" \"a\") ] .|"
-            + "enumValues|"
-            + DUPLICATE,
+            + "http://www.w3.org/2000/01/rdf-schema#range",
         "ex:p a owl:ObjectProperty . ex:q a owl:ObjectProperty ; owl:propertyChainAxiom (ex:p) .|"
-            + "propertyChain|"
-            + SHORT_CHAIN,
+            + "http://www.w3.org/2002/07/owl#propertyChainAxiom",
+        "ex:q a owl:DatatypeProperty ; owl:inverseOf ex:p .|"
+            + "http://www.w3.org/2002/07/owl#inverseOf",
       })
-  void rdfPreviewRefusesTheSameLists(
-      final String statements, final String field, final String rule) {
-    final PreviewNativeOntologyImport request =
-        new PreviewNativeOntologyImport()
-            .withFormat(NativeOntologyImportFormat.TURTLE)
-            .withData(
-                """
-                @prefix owl: <http://www.w3.org/2002/07/owl#> .
-                @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-                @prefix ex: <https://example.org/> .
-                """
-                    + statements);
+  void rdfPreviewSkipsAndReportsWhatApplyWouldRefuse(
+      final String statements, final String skippedPredicate) {
+    final var summary = importer.preview(importer.read(turtle(statements)), empty()).getSummary();
 
-    final BadRequestException thrown =
-        assertThrows(
-            BadRequestException.class, () -> importer.preview(importer.read(request), empty()));
-    assertEquals("Property " + EX + "q, " + field + ": " + rule, thrown.getMessage());
+    assertEquals(1, summary.getSkippedStatements().getTotal());
+    assertEquals(
+        skippedPredicate, summary.getSkippedStatements().getGroups().getFirst().getPredicate());
+    assertTrue(
+        importer.read(turtle(statements)).document().properties().stream()
+            .anyMatch(property -> property.getIri().toString().equals(EX + "q")));
   }
 
   @Test
@@ -145,34 +138,6 @@ class NativeOntologyImportListRulesTest {
     assertRefusedByPreviewAndSummary(
         request,
         "CSV row 2, column enumValues: An ontology property supports at most 1000 enum values");
-  }
-
-  @Test
-  void rdfPreviewRefusesAnInverseOnADatatypeProperty() {
-    final PreviewNativeOntologyImport request =
-        turtle("ex:q a owl:DatatypeProperty ; owl:inverseOf ex:p .");
-
-    assertRefusedByPreviewAndSummary(
-        request,
-        "Property "
-            + EX
-            + "q, inverse: Only object properties can have inverses or property chains");
-  }
-
-  @Test
-  void reconcileRefusesTheListsPreviewRefuses() {
-    final Model model =
-        importer.parse(
-            turtle(
-                    "ex:p a owl:ObjectProperty . ex:q a owl:ObjectProperty ;"
-                        + " owl:propertyChainAxiom (ex:p) .")
-                .getData(),
-            RdfSerializationFormat.TURTLE);
-
-    assertEquals(
-        "Property " + EX + "q, propertyChain: " + SHORT_CHAIN,
-        assertThrows(BadRequestException.class, () -> importer.reconcile(model, empty()))
-            .getMessage());
   }
 
   private void assertRefusedByPreviewAndSummary(

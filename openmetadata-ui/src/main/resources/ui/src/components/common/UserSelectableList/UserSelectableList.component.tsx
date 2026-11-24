@@ -11,15 +11,11 @@
  *  limitations under the License.
  */
 import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { Bot, Edit01 } from '@openmetadata/ui-core-components/icons';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as BotIcon } from '../../../assets/svg/bot.svg';
-import {
-  PAGE_SIZE_MEDIUM,
-  TEXT_GREY_MUTED,
-} from '../../../constants/constants';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -183,12 +179,11 @@ export const UserSelectableList = ({
             excludeTriggerFromTabOrder
             title={t('label.bot')}
             triggerClassName="tw:inline-flex tw:shrink-0">
-            <BotIcon
+            <Bot
               aria-label={t('label.bot')}
-              color={TEXT_GREY_MUTED}
+              className="tw:text-utility-gray-500"
               data-testid="bot-indicator"
-              height={16}
-              width={16}
+              size={16}
             />
           </Tooltip>
         )}
