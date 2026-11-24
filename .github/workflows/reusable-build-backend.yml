@@ -20,7 +20,7 @@ on:
       maven-args:
         description: Maven arguments that produce the backend distribution
         type: string
-        default: -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
+        default: -Dmaven.test.skip=true -DonlyBackend package -pl openmetadata-dist -am
 permissions:
   contents: read
 jobs:
