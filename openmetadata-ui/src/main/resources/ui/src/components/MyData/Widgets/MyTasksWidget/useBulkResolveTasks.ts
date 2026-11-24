@@ -67,6 +67,7 @@ export const useBulkResolveTasks = () => {
             throw new Error(NEEDS_INPUT);
           }
 
+          // eslint-disable-next-line openmetadata-imports/no-api-calls-in-iteration -- bulk API drops payloads
           return resolveTask(task.id, buildResolveBody(action, task));
         })
       );

@@ -26,11 +26,7 @@ import {
 } from '../../../../../generated/entity/tasks/task';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
 import { TaskPayload } from '../../../../../rest/tasksAPI';
-// The shared field renderer lives in the page layer; `TaskTabNew` reaches it
-// the same way to drive its transition form modal. The eslint
-// `no-lower-layer-page-imports` rule warns rather than blocks this — the
-// alternative (lazy-loading) would defer the only meaningful content of the
-// modal behind a suspense fallback on every open.
+// eslint-disable-next-line openmetadata-imports/no-lower-layer-page-imports -- shared with TaskTabNew
 import TaskPayloadSchemaFields from '../../../../../pages/TasksPage/shared/TaskPayloadSchemaFields';
 import { isDescriptionContentEmpty } from '../../../../../utils/BlockEditorPureUtils';
 import {
