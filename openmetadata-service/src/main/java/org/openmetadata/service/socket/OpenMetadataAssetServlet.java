@@ -24,6 +24,7 @@ import jakarta.servlet.http.HttpServletResponseWrapper;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
@@ -87,6 +88,11 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       throws ServletException, IOException {
     setSecurityHeader(webConfiguration, resp);
     applyCacheControl(req, resp);
+
+    if (!staysWithinRoot(resourcePath, requestedPath(req))) {
+      resp.sendError(HttpServletResponse.SC_NOT_FOUND);
+      return;
+    }
 
     String requestUri = req.getRequestURI();
 
@@ -406,6 +412,32 @@ public class OpenMetadataAssetServlet extends AssetServlet {
       }
     }
     return 1.0;
+  }
+
+  /**
+   * Whether {@code requestedPath} resolves inside {@code resourceRoot}. A path that normalizes to a
+   * location outside the root (for example one carrying parent-directory segments) is rejected so it
+   * is answered with 404 like any unknown asset instead of being resolved further. A null or empty
+   * path maps to the root itself.
+   */
+  static boolean staysWithinRoot(String resourceRoot, String requestedPath) {
+    if (requestedPath == null || requestedPath.isEmpty()) {
+      return true;
+    }
+    try {
+      Path root = Paths.get(resourceRoot).normalize();
+      Path resolved = Paths.get(resourceRoot, requestedPath).normalize();
+      return resolved.startsWith(root);
+    } catch (InvalidPathException e) {
+      // A path the filesystem cannot even parse never addresses a real asset; fail closed.
+      return false;
+    }
+  }
+
+  private static String requestedPath(HttpServletRequest req) {
+    String servletPath = req.getServletPath() == null ? "" : req.getServletPath();
+    String pathInfo = req.getPathInfo() == null ? "" : req.getPathInfo();
+    return servletPath + pathInfo;
   }
 
   private String getPathToCheck(HttpServletRequest req, String requestUri, String extension) {
