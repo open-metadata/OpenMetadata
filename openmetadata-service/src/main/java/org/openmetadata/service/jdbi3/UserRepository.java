@@ -415,17 +415,15 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   /**
-   * Records a login with a single-row JSON update, the same way {@link #updateUserLastActivityTime}
-   * does. The previous implementation applied a JSON patch through the full entity update path.
-   * That path carries no useful change (lastLoginTime is excluded from change descriptions), but
-   * when the same user logged in again within the EntityUpdater session window (10 minutes), the
-   * change-consolidation step reloaded the user with every field, including {@code owns}, which
-   * costs one lookup per entity owned by the user's teams: ~2,600 queries and ~9 s per login for a
-   * user whose teams own ~300 assets, versus ~150 queries and ~1 s for the first login in a session.
+   * Records a login with a single-row JSON update rather than an entity patch. A patch inside the
+   * EntityUpdater session window consolidates changes by reloading the user with every field,
+   * including {@code owns}, which costs one lookup per asset the user's teams own. The direct write
+   * emits no change event and does not reindex the user; see
+   * ADR:2026-10-30-user-writes-keep-login-and-activity-times.
    */
   @Transaction
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
-    String fqn = quoteName(orginalUser.getName().toLowerCase());
+    String fqn = quoteName(canonicalUserName(orginalUser.getName()));
     LOG.debug("Updating lastLoginTime for user: {} to: {}", orginalUser.getName(), lastLoginTime);
     // @BindFQN hashes the fqn, so it is passed unhashed
     daoCollection.userDAO().updateLastLoginTime(fqn, lastLoginTime);
