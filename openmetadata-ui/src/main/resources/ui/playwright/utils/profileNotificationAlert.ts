@@ -548,11 +548,13 @@ export const navigateToAlertsList = async (page: Page): Promise<void> => {
   await expect(page.getByTestId('alerts-list-container')).toBeVisible();
 };
 
+// Clicks the start of the header subtitle, left of the form column: a picker low in the form
+// opens its list upwards over the middle of the subtitle.
 export const closeSourcePicker = async (page: Page) => {
   await page
     .getByTestId('ai-profile-page')
     .getByText('Stay current with timely alerts using webhooks.')
-    .click();
+    .click({ position: { x: 4, y: 4 } });
   await expect(page.getByRole('listbox')).toBeHidden();
 };
 

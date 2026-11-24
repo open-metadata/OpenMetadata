@@ -235,6 +235,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ObservabilityAlertsPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/AddObservabilityPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/AlertDetailsPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/NotificationListPage/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/testAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/incidentManagerAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/dataQualityDashboardAPI.ts",
