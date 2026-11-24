@@ -92,7 +92,8 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
             typed_binds = [
                 bindparam(name, type_=sa_type)
                 for name in bind_params
-                if (sa_type := get_sqlalchemy_bind_type(param_types.get(name))) is not None
+                if name in stmt._bindparams
+                and (sa_type := get_sqlalchemy_bind_type(param_types.get(name))) is not None
             ]
             if typed_binds:
                 stmt = stmt.bindparams(*typed_binds)

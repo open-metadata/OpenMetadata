@@ -623,7 +623,9 @@ class TestRuleLibraryParamTypeCoercion:
         p_int.name, p_int.value = "min_rows", "5"
         p_bool = Mock(name="p_bool")
         p_bool.name, p_bool.value = "is_active", "true"
-        validator.test_case = Mock(parameterValues=[p_float, p_int, p_bool])
+        p_unused = Mock(name="p_unused")
+        p_unused.name, p_unused.value = "unused_threshold", "10"
+        validator.test_case = Mock(parameterValues=[p_float, p_int, p_bool, p_unused])
 
         d_float = Mock()
         d_float.name, d_float.dataType = "threshold", TestDataType.FLOAT
@@ -631,12 +633,15 @@ class TestRuleLibraryParamTypeCoercion:
         d_int.name, d_int.dataType = "min_rows", TestDataType.INT
         d_bool = Mock()
         d_bool.name, d_bool.dataType = "is_active", TestDataType.BOOLEAN
+        d_unused = Mock()
+        d_unused.name, d_unused.dataType = "unused_threshold", TestDataType.NUMBER
 
         validator.runtime_params = Mock()
         validator.runtime_params.test_definition.parameterDefinition = [
             d_float,
             d_int,
             d_bool,
+            d_unused,
         ]
         validator.runtime_params.test_definition.sqlExpression = Mock(
             root=(
@@ -650,7 +655,12 @@ class TestRuleLibraryParamTypeCoercion:
             kwargs["column_name"] = "score"
 
         compiled_sql, bind_params = validator.compile_sql_expression(**kwargs)
-        assert bind_params == {"threshold": 3.14, "min_rows": 5, "is_active": True}
+        assert bind_params == {
+            "threshold": 3.14,
+            "min_rows": 5,
+            "is_active": True,
+            "unused_threshold": 10,
+        }
         assert isinstance(bind_params["threshold"], float)
         assert isinstance(bind_params["min_rows"], int)
         assert isinstance(bind_params["is_active"], bool)
@@ -659,7 +669,13 @@ class TestRuleLibraryParamTypeCoercion:
         assert count == 1
 
         stmt, passed_params = session.execute.call_args.args
-        assert passed_params == {"threshold": 3.14, "min_rows": 5, "is_active": True}
+        assert passed_params == {
+            "threshold": 3.14,
+            "min_rows": 5,
+            "is_active": True,
+            "unused_threshold": 10,
+        }
         assert isinstance(stmt._bindparams["threshold"].type, Float)
         assert isinstance(stmt._bindparams["min_rows"].type, Integer)
         assert isinstance(stmt._bindparams["is_active"].type, Boolean)
+        assert "unused_threshold" not in stmt._bindparams
