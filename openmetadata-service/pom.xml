@@ -12,6 +12,7 @@
   <name>OpenMetadata Service</name>
 
   <properties>
+    <unitTests.forkCount>1C</unitTests.forkCount>
     <dropwizard.swagger.version>4.0.5-1</dropwizard.swagger.version>
     <azure-identity.version>1.15.2</azure-identity.version>
     <azure-kv.version>4.10.7</azure-kv.version>
@@ -1292,6 +1293,9 @@
             <include>**/*Tests.java</include>
             <include>**/*TestCase.java</include>
           </includes>
+          <!-- Separate JVMs, so the static Entity registry and per-fork test containers stay isolated. -->
+          <forkCount>${unitTests.forkCount}</forkCount>
+          <reuseForks>true</reuseForks>
           <!--
             Entity schema used only by SchemaFieldExtractorTest to prove that schema lookup follows
             the directory layout. Kept out of src/test/resources so that it stays out of the
