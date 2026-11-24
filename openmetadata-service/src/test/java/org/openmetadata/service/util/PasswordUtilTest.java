@@ -60,10 +60,10 @@ public class PasswordUtilTest {
    * upgrade changes it, update that regex and the list in PasswordStrength.utils.test.ts.
    */
   @Test
-  void testSpecialCharacterSet_MatchesUiConstant() {
+  void testSpecialCharacterSet_PinnedToPassay166() {
     assertEquals(
         "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~–—―‗‘’‚‛“”„†‡•…‰′″‹›‼‾⁄⁊₠₡₢₣₤₥₦₧₨₩₪₫€₭₮₯₰₱₲₳₴₵₶₷₸₹₺₻₼₽₾"
-            + "¡¢£¤¥¦§¨©ª«¬­®¯°±²³´µ¶·¸¹º»¼½¾¿×÷",
+            + "¡¢£¤¥¦§¨©ª«¬\u00AD®¯°±²³´µ¶·¸¹º»¼½¾¿×÷",
         EnglishCharacterData.Special.getCharacters());
   }
 
