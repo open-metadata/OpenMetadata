@@ -792,6 +792,20 @@ describe('ActivityTab', () => {
       expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
     });
 
+    it('does not stamp the seen-mark when the feed is capped', () => {
+      activityState = {
+        items: [],
+        total: 0,
+        isLoading: false,
+        isCapped: true,
+        cutAt: 1000,
+        taskMentionsReadAt: 2000,
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
     // The bug: the mark fired on mount regardless of feed state. A feed that
     // starts loading and then resolves must stamp the mark only after the
     // transition to loaded.
@@ -813,6 +827,25 @@ describe('ActivityTab', () => {
       activityState = {
         ...activityState,
         error: { response: { status: 500 } },
+      };
+      const { rerender } = render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+
+      activityState = { items: [], total: 0, isLoading: false };
+      rerender(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
+
+    it('stamps the seen-mark once a capped feed becomes complete', () => {
+      activityState = {
+        items: [],
+        total: 0,
+        isLoading: false,
+        isCapped: true,
+        cutAt: 1000,
+        taskMentionsReadAt: 2000,
       };
       const { rerender } = render(<ActivityTab />);
 

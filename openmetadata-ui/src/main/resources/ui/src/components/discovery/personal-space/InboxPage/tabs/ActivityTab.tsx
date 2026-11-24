@@ -391,13 +391,16 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
       taskMentionsReadAt !== undefined &&
       !isFiltered &&
       typeKeys.length === 0;
-    if (!isOtherUser && !isLoading && !error && showsUnfilteredTaskMentions) {
+    const ownViewLoadedWhole =
+      !isOtherUser && !isLoading && !error && !isCapped;
+    if (ownViewLoadedWhole && showsUnfilteredTaskMentions) {
       markInboxActivitySeen(taskMentionsReadAt);
     }
   }, [
     isOtherUser,
     isLoading,
     error,
+    isCapped,
     taskMentionsLoaded,
     taskMentionsReadAt,
     isFiltered,
