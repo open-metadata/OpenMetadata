@@ -9,9 +9,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
+import com.google.common.collect.Comparators;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
@@ -182,17 +185,21 @@ public final class FailedRowsSamplePolicy {
   }
 
   public static boolean changesColumnPaths(Table original, Table updated) {
-    List<ColumnState> before = columns(original);
-    List<ColumnState> after = columns(updated);
-    return before.stream().anyMatch(column -> find(after, column.path()) == null)
-        || after.stream().anyMatch(column -> find(before, column.path()) == null);
+    return !columnPaths(original).equals(columnPaths(updated));
+  }
+
+  private static Set<List<String>> columnPaths(Table table) {
+    Set<List<String>> paths =
+        new TreeSet<>(Comparators.lexicographical(String.CASE_INSENSITIVE_ORDER));
+    columns(table).forEach(column -> paths.add(column.path()));
+    return paths;
   }
 
   public static RemovalRecord append(RemovalRecord record, Table original, Table updated) {
-    List<ColumnState> after = columns(updated);
+    Set<List<String>> after = columnPaths(updated);
     List<RemovalFact> facts =
         columns(original).stream()
-            .filter(before -> find(after, before.path()) == null)
+            .filter(before -> !after.contains(before.path()))
             .map(before -> new RemovalFact(before.path(), sensitive(before)))
             .toList();
     if (facts.isEmpty()) {

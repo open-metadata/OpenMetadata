@@ -1,11 +1,14 @@
 package org.openmetadata.service.security.mask;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -313,6 +316,97 @@ class FailedRowsSamplePolicyTest {
         FailedRowsSamplePolicy.bind(
             data, table(column("source", false)), FailedRowsSamplePolicy.emptyRecord());
     assertEquals(data, FailedRowsSamplePolicy.decode(JsonUtils.pojoToJson(record)).data());
+  }
+
+  @Test
+  void wideReorderedCaseOnlySchemaPreservesRemovalRecord() {
+    List<Column> before = new ArrayList<>();
+    List<Column> after = new ArrayList<>();
+    for (int index = 0; index < 1000; index++) {
+      before.add(column("column" + index, true));
+      after.add(column("COLUMN" + index, false).withDataType(ColumnDataType.INT));
+    }
+    Collections.reverse(after);
+    assertUnchangedPaths(table(before.toArray(Column[]::new)), table(after.toArray(Column[]::new)));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"I,ı", "İ,i", "Σ,ς", "σ,Σ", "𐐀,𐐨"})
+  void pathMembershipPreservesUnicodeCaseEquivalence(String original, String updated) {
+    assertTrue(original.equalsIgnoreCase(updated));
+    assertUnchangedPaths(
+        table(column(original, true).withChildren(List.of(column("CHILD", true)))),
+        table(column(updated, false).withChildren(List.of(column("child", false)))));
+  }
+
+  @Test
+  void emptyAndDuplicatePathsKeepMembershipSemantics() {
+    assertUnchangedPaths(table(), table());
+    assertUnchangedPaths(
+        table(column("Name", false), column("NAME", true)), table(column("name", false)));
+    var record = FailedRowsSamplePolicy.emptyRecord();
+    assertTrue(FailedRowsSamplePolicy.changesColumnPaths(table(), table(column("added", false))));
+    assertSame(
+        record, FailedRowsSamplePolicy.append(record, table(), table(column("added", false))));
+    assertTrue(FailedRowsSamplePolicy.changesColumnPaths(table(column("removed", false)), table()));
+    assertEquals(
+        List.of(
+            new FailedRowsSamplePolicy.RemovalFact(List.of("Name"), false),
+            new FailedRowsSamplePolicy.RemovalFact(List.of("NAME"), true)),
+        FailedRowsSamplePolicy.append(
+                record, table(column("Name", false), column("NAME", true)), table())
+            .batches()
+            .getFirst()
+            .facts());
+  }
+
+  @Test
+  void literalDotsRemainDistinctFromNestedSegmentsDuringRemoval() {
+    Table before =
+        table(column("a.b", true), column("a", false).withChildren(List.of(column("b", false))));
+    Table nestedOnly = table(column("A", false).withChildren(List.of(column("B", false))));
+    assertTrue(FailedRowsSamplePolicy.changesColumnPaths(before, nestedOnly));
+    assertEquals(
+        List.of(new FailedRowsSamplePolicy.RemovalFact(List.of("a.b"), true)),
+        FailedRowsSamplePolicy.append(FailedRowsSamplePolicy.emptyRecord(), before, nestedOnly)
+            .batches()
+            .getFirst()
+            .facts());
+    Table literalOnly = table(column("A.B", false), column("a", false));
+    assertEquals(
+        List.of(new FailedRowsSamplePolicy.RemovalFact(List.of("a", "b"), false)),
+        FailedRowsSamplePolicy.append(FailedRowsSamplePolicy.emptyRecord(), before, literalOnly)
+            .batches()
+            .getFirst()
+            .facts());
+  }
+
+  @Test
+  void nestedRenamesPreserveFactOrderAndCommittedSensitivity() {
+    Table before =
+        table(
+            column("parent", true)
+                .withChildren(List.of(column("first", false), column("second", true))),
+            column("plain", false));
+    Table after = table(column("PARENT", false).withChildren(List.of(column("renamed", false))));
+    assertTrue(FailedRowsSamplePolicy.changesColumnPaths(before, after));
+    var record = FailedRowsSamplePolicy.append(FailedRowsSamplePolicy.emptyRecord(), before, after);
+    assertEquals(1L, record.sequence());
+    assertEquals(0L, record.coverageThrough());
+    assertEquals(
+        List.of(
+            new FailedRowsSamplePolicy.RemovalFact(List.of("parent", "first"), true),
+            new FailedRowsSamplePolicy.RemovalFact(List.of("parent", "second"), true),
+            new FailedRowsSamplePolicy.RemovalFact(List.of("plain"), false)),
+        record.batches().getFirst().facts());
+  }
+
+  private void assertUnchangedPaths(Table original, Table updated) {
+    assertFalse(FailedRowsSamplePolicy.changesColumnPaths(original, updated));
+    var record =
+        FailedRowsSamplePolicy.append(
+            FailedRowsSamplePolicy.emptyRecord(), table(column("retired", false)), table());
+    assertSame(record, FailedRowsSamplePolicy.append(record, original, updated));
   }
 
   private Table table(Column... columns) {
