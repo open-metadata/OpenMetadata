@@ -1014,13 +1014,17 @@ public final class Entity {
   public static <T extends FieldInterface> void populateEntityFieldTags(
       String entityType, List<T> fields, String fqnPrefix, boolean setTags) {
     EntityRepository<?> repository = Entity.getEntityRepository(entityType);
-    // Get Flattened Fields
-    List<T> flattenedFields = getFlattenedEntityField(fields);
-
     // Fetch all tags belonging to the prefix. "%" rather than ".%" so the parent's own row arrives
     // in the same query: fields inherit its glossary terms below. The DAO returns null for an
     // entity type that does not support tags.
     Map<String, List<TagLabel>> prefixTags = repository.getTagsByPrefix(fqnPrefix, "%");
+    populateEntityFieldTags(fields, fqnPrefix, setTags, prefixTags);
+  }
+
+  /** Hydrate fields from prefetched labels while retaining parent glossary inheritance. */
+  public static <T extends FieldInterface> void populateEntityFieldTags(
+      List<T> fields, String fqnPrefix, boolean setTags, Map<String, List<TagLabel>> prefixTags) {
+    List<T> flattenedFields = getFlattenedEntityField(fields);
     Map<String, List<TagLabel>> allTags = prefixTags == null ? Map.of() : prefixTags;
     String parentHash = FullyQualifiedName.buildHash(fqnPrefix);
     List<TagLabel> inheritedTerms = inheritedParentTerms(allTags.get(parentHash));

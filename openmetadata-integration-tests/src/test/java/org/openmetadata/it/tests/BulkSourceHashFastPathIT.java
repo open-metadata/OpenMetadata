@@ -102,6 +102,48 @@ public class BulkSourceHashFastPathIT {
   }
 
   @Test
+  void test_matchingSourceHash_wideSchemaSkipsDiffUntilNestedPathRemoval(TestNamespace ns)
+      throws Exception {
+    String schemaFqn = setupSchema(ns);
+    List<Column> columns = new ArrayList<>();
+    for (int index = 0; index < 250; index++) {
+      columns.add(new Column().withName("column" + index).withDataType(ColumnDataType.STRING));
+    }
+    columns.add(
+        new Column()
+            .withName("nested")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(
+                List.of(
+                    new Column().withName("retained").withDataType(ColumnDataType.STRING),
+                    new Column().withName("removed").withDataType(ColumnDataType.STRING))));
+    CreateTable request =
+        table(ns, schemaFqn, "fp_wide", "original description", "wide-stable-hash")
+            .withColumns(columns);
+    assertEquals(1, BulkApi.upsert("tables", List.of(request)).getNumberOfRowsPassed());
+    String fqn = tableFqn(schemaFqn, request.getName());
+    Table created = getTable(fqn);
+
+    request.setDescription("changed description");
+    assertEquals(1, BulkApi.upsert("tables", List.of(request)).getNumberOfRowsPassed());
+    Table unchanged = getTable(fqn);
+    assertEquals(created.getVersion(), unchanged.getVersion());
+    assertEquals("original description", unchanged.getDescription());
+    assertEquals(2, unchanged.getColumns().getLast().getChildren().size());
+
+    columns.getLast().setChildren(List.of(columns.getLast().getChildren().getFirst()));
+    assertEquals(1, BulkApi.upsert("tables", List.of(request)).getNumberOfRowsPassed());
+    Table removed = getTable(fqn);
+    assertTrue(removed.getVersion() > created.getVersion());
+    assertEquals("changed description", removed.getDescription());
+    assertEquals(251, removed.getColumns().size());
+    assertEquals(
+        List.of("retained"),
+        removed.getColumns().getLast().getChildren().stream().map(Column::getName).toList());
+    assertEquals("wide-stable-hash", removed.getSourceHash());
+  }
+
+  @Test
   void test_matchingSourceHash_storesSchemaDefinitionTheRowLacks(TestNamespace ns)
       throws Exception {
     String schemaFqn = setupSchema(ns);

@@ -11601,6 +11601,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     private void flushUpdateBody(boolean useOptimisticStore, boolean importMode) {
+      beforeEntityMutation();
       boolean consolidateChanges;
       try (var ignored = phase("entityUpdateConsolidate")) {
         consolidateChanges = consolidateChanges(original, updated, operation);
@@ -11969,6 +11970,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         updateChangeSummary();
       }
     }
+
+    /**
+     * Runs inside the canonical transaction before generic tags or entity-specific fields change.
+     * {@link #updateWithDeferredStore()} bypasses this hook; subclasses requiring it for bulk writes
+     * must route those writes through {@code requiresAtomicBulkUpdate}.
+     */
+    protected void beforeEntityMutation() {}
 
     protected void entitySpecificUpdate(boolean consolidatingChanges) {
       // Default implementation. Override this to add any entity specific field updates
@@ -15593,6 +15601,73 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return false;
   }
 
+  protected boolean requiresAtomicBulkUpdate(T original, T updated) {
+    return false;
+  }
+
+  private EntityUpdater prepareBulkPutUpdater(
+      T original, T entity, String userName, boolean overrideMetadata) {
+    entity.setUpdatedBy(userName);
+    entity.setUpdatedAt(System.currentTimeMillis());
+    ChangeActor actor = ChangeActor.recorded(userName, null);
+    authorizeDomainWrite(original, entity, actor, Edit.Kind.PUT);
+    authorizeUserWrite(original, entity, actor, Edit.bulkPut(overrideMetadata));
+    evaluatePutRulesDeferredUntilInherited(original, entity);
+    if (Boolean.TRUE.equals(original.getDeleted())) {
+      restoreEntity(userName, original.getId());
+    }
+    EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
+    updater.setOverrideMetadata(overrideMetadata);
+    return updater;
+  }
+
+  private EntityUpdater atomicBulkUpdate(T entity, String userName, boolean overrideMetadata) {
+    if (lockManager != null) {
+      lockManager.checkModificationAllowed(entity);
+    }
+    T original = findByName(entity.getFullyQualifiedName(), ALL, false);
+    setFieldsInternal(original, putFields);
+    EntityUpdater updater = prepareBulkPutUpdater(original, entity, userName, overrideMetadata);
+    updater.update();
+    setInheritedFields(entity, getBulkUpdateInheritanceFields());
+    return updater;
+  }
+
+  private void updateAtomicBulkEntities(
+      List<T> entities,
+      String userName,
+      boolean overrideMetadata,
+      List<BulkResponse> successRequests,
+      List<BulkResponse> failedRequests,
+      List<Long> latencies) {
+    for (T entity : entities) {
+      long started = System.nanoTime();
+      try {
+        EntityUpdater updater = atomicBulkUpdate(entity, userName, overrideMetadata);
+        createChangeEventForBulkOperation(entity, updater.getChangeType(), userName);
+        successRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.OK.getStatusCode()));
+        recordEntityMetrics(entityType, System.nanoTime() - started, 0, true);
+      } catch (AuthorizationException e) {
+        failedRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.FORBIDDEN.getStatusCode())
+                .withMessage(e.getMessage()));
+      } catch (Exception e) {
+        failedRequests.add(
+            new BulkResponse()
+                .withRequest(entity.getFullyQualifiedName())
+                .withStatus(Status.BAD_REQUEST.getStatusCode())
+                .withMessage(e.getMessage()));
+      } finally {
+        latencies.add(System.nanoTime() - started);
+      }
+    }
+  }
+
   private void bulkUpdateEntities(
       UriInfo uriInfo,
       List<T> updateEntities,
@@ -15603,6 +15678,31 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       List<BulkResponse> failedRequests,
       List<Long> entityLatenciesNanos) {
 
+    if (updateEntities.isEmpty()) return;
+
+    Set<String> atomicFqns =
+        updateEntities.stream()
+            .filter(
+                entity ->
+                    requiresAtomicBulkUpdate(
+                        existingByFqn.get(entity.getFullyQualifiedName()), entity))
+            .map(T::getFullyQualifiedName)
+            .collect(Collectors.toSet());
+    List<T> atomicEntities =
+        updateEntities.stream()
+            .filter(entity -> atomicFqns.contains(entity.getFullyQualifiedName()))
+            .toList();
+    updateAtomicBulkEntities(
+        atomicEntities,
+        userName,
+        overrideMetadata,
+        successRequests,
+        failedRequests,
+        entityLatenciesNanos);
+    updateEntities =
+        updateEntities.stream()
+            .filter(entity -> !atomicFqns.contains(entity.getFullyQualifiedName()))
+            .toList();
     if (updateEntities.isEmpty()) return;
 
     long batchStartTime = System.nanoTime();
@@ -15688,19 +15788,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               updateFrequencyByFqn.getOrDefault(fqn, 0) > 1
                   ? JsonUtils.deepCopy(hydratedOriginal, entityClass)
                   : hydratedOriginal;
-          entity.setUpdatedBy(userName);
-          entity.setUpdatedAt(System.currentTimeMillis());
-          final ChangeActor actor = ChangeActor.recorded(userName, null);
-          authorizeDomainWrite(original, entity, actor, Edit.Kind.PUT);
-          authorizeUserWrite(original, entity, actor, Edit.bulkPut(overrideMetadata));
-
-          evaluatePutRulesDeferredUntilInherited(original, entity);
-          if (Boolean.TRUE.equals(original.getDeleted())) {
-            restoreEntity(entity.getUpdatedBy(), original.getId());
-          }
-
-          EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
-          updater.setOverrideMetadata(overrideMetadata);
+          EntityUpdater updater =
+              prepareBulkPutUpdater(original, entity, userName, overrideMetadata);
           updater.updateWithDeferredStore();
           updaters.add(updater);
         } catch (AuthorizationException e) {

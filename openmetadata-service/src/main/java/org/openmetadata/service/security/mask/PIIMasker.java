@@ -560,7 +560,7 @@ public class PIIMasker {
         .anyMatch(SENSITIVE_PII_TAG::equals);
   }
 
-  private static boolean hasPiiSensitiveTag(Column column) {
+  static boolean hasPiiSensitiveTag(Column column) {
     return ColumnUtil.getAllTags(column).stream().anyMatch(SENSITIVE_PII_TAG::equals);
   }
 
