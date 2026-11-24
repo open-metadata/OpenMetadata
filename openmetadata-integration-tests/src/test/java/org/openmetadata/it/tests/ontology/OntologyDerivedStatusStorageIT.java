@@ -1,20 +1,21 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
+import static org.openmetadata.it.tests.ontology.OntologyCaptureFixture.withCapture;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
 import java.time.Clock;
 import java.util.UUID;
 import java.util.function.Consumer;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.tests.ontology.OntologyCaptureFixture.Fixture;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -32,20 +33,19 @@ import org.openmetadata.schema.type.OntologyReviewLock;
 import org.openmetadata.schema.type.OntologyReviewLockRelease;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.OntologyCaptureFixture.Fixture;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseComparison;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RequestEntityCache;
 
-@Isolated
-class OntologyDerivedStatusStorageTest {
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void reviewLocksNeverReachStorageOrVersionHistory(ConnectionType dialect) {
+@Isolated("swaps the static Entity collection DAO and repository registry to a scratch database")
+class OntologyDerivedStatusStorageIT {
+  @Test
+  void reviewLocksNeverReachStorageOrVersionHistory() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -97,11 +97,9 @@ class OntologyDerivedStatusStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void capturesPersistDisjointConceptAndPropertyDeprecationCounts(ConnectionType dialect) {
+  @Test
+  void capturesPersistDisjointConceptAndPropertyDeprecationCounts() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -150,11 +148,9 @@ class OntologyDerivedStatusStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void definitionStatusFollowsTheReleaseThatHoldsTheDefinition(ConnectionType dialect) {
+  @Test
+  void definitionStatusFollowsTheReleaseThatHoldsTheDefinition() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -192,11 +188,9 @@ class OntologyDerivedStatusStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void publicationStatusCountsExactlyTheRowsOfTheWorkingDiff(ConnectionType dialect) {
+  @Test
+  void publicationStatusCountsExactlyTheRowsOfTheWorkingDiff() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -263,11 +257,9 @@ class OntologyDerivedStatusStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void publicationStatusCountsPropertyAndOntologyEditsAfterActivation(ConnectionType dialect) {
+  @Test
+  void publicationStatusCountsPropertyAndOntologyEditsAfterActivation() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {

@@ -1,10 +1,10 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrate;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.migrate;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.withDatabase;
 
 import java.util.List;
 import java.util.Locale;
@@ -12,16 +12,21 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.IntStream;
 import org.jdbi.v3.core.Handle;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.api.data.NativeOntologyLoadedPrefix;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.OntologyDAO;
 import org.openmetadata.service.jdbi3.OntologyDAO.LineagePosition;
 import org.openmetadata.service.jdbi3.OntologyDAO.PrefixFilter;
 import org.openmetadata.service.jdbi3.OntologyDAO.PrefixLineageQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
-class OntologyPrefixLineageDaoTest {
+@Execution(ExecutionMode.CONCURRENT)
+class OntologyPrefixLineageDaoIT {
   private static final String FROM_TYPE_RELATION_INDEX =
       "idx_entity_relationship_from_type_relation";
   private static final Pattern POSTGRES_FROM_ID_PROBE =
@@ -31,13 +36,10 @@ class OntologyPrefixLineageDaoTest {
   private static final UUID ORDER = new UUID(0xc2, 0);
   private static final UUID INVOICE = new UUID(0xc3, 0);
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void edgesJoinOnlyAssetsInsideTheLoadedPrefixes(final ConnectionType dialect) {
+  @Test
+  void edgesJoinOnlyAssetsInsideTheLoadedPrefixes() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           seedBindings(handle, dialect);
           relate(handle, 1, 2, "");
@@ -72,13 +74,10 @@ class OntologyPrefixLineageDaoTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void theQueryProbesRelationshipsByFromIdInsteadOfScanningTheTable(final ConnectionType dialect) {
+  @Test
+  void theQueryProbesRelationshipsByFromIdInsteadOfScanningTheTable() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           seedBindings(handle, dialect);
           relate(handle, 1, 2, "");

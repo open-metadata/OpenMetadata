@@ -10,26 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
-import org.jdbi.v3.sqlobject.SqlObjects;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.it.util.ScratchDatabase;
+import org.openmetadata.service.jdbi3.OAuthDAOs;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.v210.McpConsentColumns;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Exercises the MCP consent SQL on the shipped migrations: a consent is stored once per request,
@@ -38,11 +37,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * rerun is harmless. 2.0.7 is applied as it shipped, without them.
  * ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
  */
-@Testcontainers(disabledWithoutDocker = true)
 @Execution(ExecutionMode.SAME_THREAD)
-class McpPendingConsentSqlTest {
-  private static final String DATABASE = "mcp_consent";
-  private static final String PASSWORD = "mcp-consent-test";
+class McpPendingConsentSqlIT {
   private static final String TABLE = "mcp_pending_auth_requests";
   private static final String MYSQL = "mysql";
   private static final List<String> MIGRATIONS_BEFORE_CONSENT =
@@ -58,49 +54,23 @@ class McpPendingConsentSqlTest {
   private static final long LATER = NOW + 600_000L;
 
   @Test
-  void consentIsStoredOnceAndClaimedOnceOnMysql() throws IOException {
-    try (GenericContainer<?> database =
-        new GenericContainer<>("mysql:8.4.13")
-            .withEnv("MYSQL_DATABASE", DATABASE)
-            .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
-            .withEnv("MYSQL_ROOT_HOST", "%")
-            .withExposedPorts(3306)
-            .waitingFor(
-                Wait.forSuccessfulCommand(
-                    "mysql --protocol=TCP --host=127.0.0.1 --user=root --password="
-                        + PASSWORD
-                        + " --execute='SELECT 1'"))) {
-      database.start();
-      String url =
-          "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
-              .formatted(database.getHost(), database.getMappedPort(3306), DATABASE);
-      runChecks(url, "root", "com.mysql.cj.jdbc.Driver", MYSQL);
-    }
+  void consentIsStoredOnceAndClaimedOnceOnMysql() {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.MYSQL, "MySQL lane only");
+    ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, MYSQL));
   }
 
   @Test
-  void consentIsStoredOnceAndClaimedOnceOnPostgres() throws IOException {
-    try (GenericContainer<?> database =
-        new GenericContainer<>("postgres:15")
-            .withEnv("POSTGRES_DB", DATABASE)
-            .withEnv("POSTGRES_PASSWORD", PASSWORD)
-            .withExposedPorts(5432)
-            .waitingFor(
-                Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2))) {
-      database.start();
-      String url =
-          "jdbc:postgresql://%s:%d/%s"
-              .formatted(database.getHost(), database.getMappedPort(5432), DATABASE);
-      runChecks(url, "postgres", "org.postgresql.Driver", "postgres");
-    }
+  void consentIsStoredOnceAndClaimedOnceOnPostgres() {
+    assumeTrue(ScratchDatabase.dialect() == ConnectionType.POSTGRES, "PostgreSQL lane only");
+    ScratchDatabase.withJdbi(jdbi -> runChecks(jdbi, "postgres"));
   }
 
-  private void runChecks(String url, String username, String driver, String dialect)
-      throws IOException {
-    Jdbi jdbi = Jdbi.create(url, username, PASSWORD);
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class).setSqlLocator(new ConnectionAwareAnnotationSqlLocator(driver));
-    applyTableMigrations(jdbi, dialect);
+  private void runChecks(Jdbi jdbi, String dialect) {
+    try {
+      applyTableMigrations(jdbi, dialect);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
     OAuthDAOs.McpPendingAuthRequestDAO dao =
         jdbi.onDemand(OAuthDAOs.McpPendingAuthRequestDAO.class);
     assertStoreAndClaim(dao);

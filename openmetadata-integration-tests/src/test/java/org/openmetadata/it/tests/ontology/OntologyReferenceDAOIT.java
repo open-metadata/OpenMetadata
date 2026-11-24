@@ -1,29 +1,30 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrate;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.migrate;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.withDatabase;
 
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyReference;
 import org.openmetadata.schema.type.OntologyReferenceRole;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
-class OntologyReferenceDAOTest {
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void reverseLookupIsExactAndScopedToTheOwningModule(ConnectionType dialect) {
+@Execution(ExecutionMode.CONCURRENT)
+class OntologyReferenceDAOIT {
+  @Test
+  void reverseLookupIsExactAndScopedToTheOwningModule() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           migrate(handle, dialect);
           var dao = handle.attach(CollectionDAO.class).ontologyReferenceDAO();
@@ -57,13 +58,10 @@ class OntologyReferenceDAOTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void referencesHaveStablePagingAndShareTheirWritersTransaction(ConnectionType dialect) {
+  @Test
+  void referencesHaveStablePagingAndShareTheirWritersTransaction() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           migrate(handle, dialect);
           var dao = handle.attach(CollectionDAO.class).ontologyReferenceDAO();

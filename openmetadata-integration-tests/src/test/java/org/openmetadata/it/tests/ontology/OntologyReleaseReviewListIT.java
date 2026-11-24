@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrate;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.migrate;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.withDatabase;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -34,9 +34,10 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.SqlStatements;
 import org.jdbi.v3.core.statement.StatementContext;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.mockito.MockedStatic;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyRelease;
@@ -52,6 +53,12 @@ import org.openmetadata.schema.type.TaskReviewVote;
 import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
+import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
+import org.openmetadata.service.jdbi3.OntologyRepository;
+import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseReviewReader.View;
 import org.openmetadata.service.ontology.OntologyReview;
@@ -63,14 +70,13 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * the way {@link TaskRepository#storeEntity} stores them: {@code about} and the people on the task
  * live in relationship rows, not in the task JSON.
  */
-class OntologyReleaseReviewListTest {
+@Isolated("swaps the static Entity collection DAO and repository registry to a scratch database")
+class OntologyReleaseReviewListIT {
   private static final int DEFAULT_PAGE_SIZE = 25;
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void eachViewListsTheCallersOpenReviewsNewestFirst(ConnectionType dialect) {
+  @Test
+  void eachViewListsTheCallersOpenReviewsNewestFirst() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withReviews(
         dialect,
         reviews -> {
@@ -93,11 +99,9 @@ class OntologyReleaseReviewListTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void theCallersGlossaryApprovalsAreNeverReadToListTheirReleaseReview(ConnectionType dialect) {
+  @Test
+  void theCallersGlossaryApprovalsAreNeverReadToListTheirReleaseReview() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withReviews(
         dialect,
         reviews -> {
@@ -120,11 +124,9 @@ class OntologyReleaseReviewListTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void aSupersededReviewTaskIsNotListed(ConnectionType dialect) {
+  @Test
+  void aSupersededReviewTaskIsNotListed() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withReviews(
         dialect,
         reviews -> {
@@ -144,11 +146,9 @@ class OntologyReleaseReviewListTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void anOntologyFilterListsOnlyThatOntologysReviewsInEachView(ConnectionType dialect) {
+  @Test
+  void anOntologyFilterListsOnlyThatOntologysReviewsInEachView() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withReviews(
         dialect,
         reviews -> {
@@ -167,11 +167,9 @@ class OntologyReleaseReviewListTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void anArchivedOntologysOpenReviewIsNotListed(ConnectionType dialect) {
+  @Test
+  void anArchivedOntologysOpenReviewIsNotListed() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withReviews(
         dialect,
         reviews -> {
@@ -200,12 +198,9 @@ class OntologyReleaseReviewListTest {
 
   private static void withReviews(ConnectionType dialect, Consumer<Reviews> test) {
     withDatabase(
-        dialect,
         handle -> {
           migrate(handle, dialect);
-          CollectionDAO previous = Entity.getCollectionDAO();
-          EntityRelationshipRepository previousRelationships =
-              Entity.getEntityRelationshipRepository();
+          final var registry = EntityRegistrySnapshot.capture();
           Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
           Entity.setEntityRelationshipRepository(
               new EntityRelationshipRepository(Entity.getCollectionDAO()));
@@ -223,8 +218,7 @@ class OntologyReleaseReviewListTest {
                     new OntologyReleaseRepository(),
                     new TaskRepository()));
           } finally {
-            Entity.setCollectionDAO(previous);
-            Entity.setEntityRelationshipRepository(previousRelationships);
+            registry.restore();
           }
         });
   }

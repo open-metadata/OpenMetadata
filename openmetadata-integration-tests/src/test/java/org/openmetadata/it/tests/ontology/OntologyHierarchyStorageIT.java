@@ -1,11 +1,11 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
+import static org.openmetadata.it.tests.ontology.OntologyCaptureFixture.withCapture;
 
 import jakarta.json.Json;
 import java.net.URI;
@@ -18,8 +18,10 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.tests.ontology.OntologyCaptureFixture.Fixture;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
@@ -34,16 +36,18 @@ import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.OntologyValidationException;
-import org.openmetadata.service.jdbi3.OntologyCaptureFixture.Fixture;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
+import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.EntityUtil;
 
-class OntologyHierarchyStorageTest {
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void incomingInverseDeclarationsHaveTheSameRulesForPreviewSaveAndCapture(ConnectionType dialect) {
+@Isolated("swaps the static Entity collection DAO and repository registry to a scratch database")
+class OntologyHierarchyStorageIT {
+  @Test
+  void incomingInverseDeclarationsHaveTheSameRulesForPreviewSaveAndCapture() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -81,11 +85,9 @@ class OntologyHierarchyStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void previewsDoNotWaitForWriters(ConnectionType dialect) {
+  @Test
+  void previewsDoNotWaitForWriters() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -112,11 +114,9 @@ class OntologyHierarchyStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void unrelatedInvalidDefinitionsDoNotBlockEditingOrRepair(ConnectionType dialect) {
+  @Test
+  void unrelatedInvalidDefinitionsDoNotBlockEditingOrRepair() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -146,11 +146,9 @@ class OntologyHierarchyStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void previewsUseTheWholeWorkingHierarchyWithoutChangingRowsOrRevisions(ConnectionType dialect) {
+  @Test
+  void previewsUseTheWholeWorkingHierarchyWithoutChangingRowsOrRevisions() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -172,11 +170,9 @@ class OntologyHierarchyStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void hierarchyReadsAreDerivedAndReferencesProtectDeclarations(ConnectionType dialect) {
+  @Test
+  void hierarchyReadsAreDerivedAndReferencesProtectDeclarations() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -252,12 +248,9 @@ class OntologyHierarchyStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void concurrentOppositeEdgesCannotCommitACycleEvenWithAnOlderReadSnapshot(
-      ConnectionType dialect) {
+  @Test
+  void concurrentOppositeEdgesCannotCommitACycleEvenWithAnOlderReadSnapshot() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {

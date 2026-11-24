@@ -157,6 +157,11 @@
       <version>3.27.7</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
     <!-- Dropwizard testing harness -->
     <dependency>
       <groupId>io.dropwizard</groupId>

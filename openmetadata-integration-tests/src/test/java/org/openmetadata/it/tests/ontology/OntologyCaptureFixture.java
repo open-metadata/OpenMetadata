@@ -1,7 +1,7 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrate;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.migrate;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.withDatabase;
 
 import java.net.URI;
 import java.time.Clock;
@@ -21,22 +21,27 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
+import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
+import org.openmetadata.service.jdbi3.OntologyConceptRepository;
+import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
+import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
+import org.openmetadata.service.jdbi3.OntologyRepository;
+import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseCapture;
 
-final class OntologyCaptureFixture {
+public final class OntologyCaptureFixture {
   private OntologyCaptureFixture() {}
 
-  static void withCapture(ConnectionType dialect, Consumer<Fixture> assertion) {
+  public static void withCapture(ConnectionType dialect, Consumer<Fixture> assertion) {
     withDatabase(
-        dialect,
         handle -> {
           migrate(handle, dialect);
-          CollectionDAO previous = Entity.getCollectionDAO();
-          SystemRepository previousSettings = Entity.getSystemRepository();
-          EntityRelationshipRepository previousRelationships =
-              Entity.getEntityRelationshipRepository();
+          final var registry = EntityRegistrySnapshot.capture();
           Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
           Entity.setEntityRelationshipRepository(
               new EntityRelationshipRepository(Entity.getCollectionDAO()));
@@ -45,19 +50,17 @@ final class OntologyCaptureFixture {
             new TaskRepository();
             assertion.accept(new Fixture(handle));
           } finally {
-            Entity.setCollectionDAO(previous);
-            Entity.setSystemRepository(previousSettings);
-            Entity.setEntityRelationshipRepository(previousRelationships);
+            registry.restore();
           }
         });
   }
 
-  static final class Fixture {
-    final Handle handle;
-    final OntologyRepository ontologies = new OntologyRepository();
-    final OntologyConceptRepository concepts = new OntologyConceptRepository();
-    final OntologyReleaseRepository releases = new OntologyReleaseRepository();
-    final OntologyReleaseCapture capture =
+  public static final class Fixture {
+    public final Handle handle;
+    public final OntologyRepository ontologies = new OntologyRepository();
+    public final OntologyConceptRepository concepts = new OntologyConceptRepository();
+    public final OntologyReleaseRepository releases = new OntologyReleaseRepository();
+    public final OntologyReleaseCapture capture =
         new OntologyReleaseCapture(
             releases,
             ontologies,
@@ -66,7 +69,7 @@ final class OntologyCaptureFixture {
                 MemberKind.PROPERTY, new OntologyPropertyRepository(),
                 MemberKind.AXIOM, new OntologyAxiomRepository()),
             Clock.systemUTC());
-    final Ontology ontology;
+    public final Ontology ontology;
     private UUID lastCaptureId;
 
     private Fixture(Handle handle) {
@@ -84,7 +87,7 @@ final class OntologyCaptureFixture {
                   .withUpdatedBy("admin"));
     }
 
-    OntologyRelease capture(Consumer<EntityReference> authorize) {
+    public OntologyRelease capture(Consumer<EntityReference> authorize) {
       OntologyRelease release =
           capture.capture(
               ontology.getId(),
@@ -100,7 +103,7 @@ final class OntologyCaptureFixture {
       return release;
     }
 
-    void addConcept(String name) {
+    public void addConcept(String name) {
       concepts.create(
           null,
           new OntologyConcept()
@@ -113,7 +116,7 @@ final class OntologyCaptureFixture {
               .withUpdatedBy("admin"));
     }
 
-    void addConcepts(int count) {
+    public void addConcepts(int count) {
       List<OntologyConcept> members =
           IntStream.range(0, count)
               .mapToObj(
@@ -130,7 +133,7 @@ final class OntologyCaptureFixture {
       members.forEach(member -> concepts.create(null, member));
     }
 
-    void activate(OntologyRelease release, long expectedActivationRevision) {
+    public void activate(OntologyRelease release, long expectedActivationRevision) {
       releases.getDao().update(release.withEntityStatus(EntityStatus.APPROVED));
       new OntologyReleaseActivation(ontologies, releases, Clock.systemUTC(), ignored -> {})
           .activate(
@@ -141,7 +144,7 @@ final class OntologyCaptureFixture {
               new OntologyReleaseActivation.Access("admin", ignored -> {}));
     }
 
-    int rowCount(String table) {
+    public int rowCount(String table) {
       boolean member = table.equals("ontology_release_member");
       UUID id = member ? lastCaptureId : ontology.getId();
       return handle

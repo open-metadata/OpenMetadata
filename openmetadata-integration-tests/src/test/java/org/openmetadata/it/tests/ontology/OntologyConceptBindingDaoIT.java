@@ -1,29 +1,29 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrate;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.migrate;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.withDatabase;
 
 import java.util.List;
 import java.util.UUID;
 import org.jdbi.v3.core.Handle;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.ScratchDatabase;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
-class OntologyConceptBindingDaoTest {
+@Execution(ExecutionMode.CONCURRENT)
+class OntologyConceptBindingDaoIT {
   private static final UUID TRANSFER = new UUID(0xa1, 0);
   private static final UUID CUSTOMER = new UUID(0xa2, 0);
   private static final UUID UNBOUND = new UUID(0xa3, 0);
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void firstTablesReadsTheEarliestTableRowsOfEveryConceptInOneStatement(
-      final ConnectionType dialect) {
+  @Test
+  void firstTablesReadsTheEarliestTableRowsOfEveryConceptInOneStatement() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           handle.execute("DROP TABLE IF EXISTS ontology_concept_binding");
           migrate(handle, dialect);

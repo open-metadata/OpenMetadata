@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrateRepositoryTables;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.migrateRepositoryTables;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.withDatabase;
 
 import java.util.List;
 import java.util.Map;
@@ -24,13 +24,17 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jdbi.v3.core.Handle;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.jdbi3.ClassificationTagDAOs.TagUsageDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
-class TagUsageDeletedFilterTest {
+@Execution(ExecutionMode.CONCURRENT)
+class TagUsageDeletedFilterIT {
 
   private static final String TARGET_HASH = "entityHash";
   private static final String LIVE_TAG_FQN = "PII.Sensitive";
@@ -63,13 +67,10 @@ class TagUsageDeletedFilterTest {
           + "\"deleted\":true,\"updatedAt\":1,\"updatedBy\":\"admin\","
           + "\"displayName\":\"Old Term Display\",\"description\":\"Old term\"}";
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void getTagsInternalByTargetHashes_excludesSoftDeletedTagsAndTerms(ConnectionType dialect) {
+  @Test
+  void getTagsInternalByTargetHashes_excludesSoftDeletedTagsAndTerms() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           seedData(handle, dialect);
           TagUsageDAO tagUsageDAO = handle.attach(CollectionDAO.class).tagUsageDAO();
@@ -97,13 +98,10 @@ class TagUsageDeletedFilterTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void getTagsByTargetFQNHashes_excludesSoftDeletedTagsAndTerms(ConnectionType dialect) {
+  @Test
+  void getTagsByTargetFQNHashes_excludesSoftDeletedTagsAndTerms() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           seedData(handle, dialect);
           TagUsageDAO tagUsageDAO = handle.attach(CollectionDAO.class).tagUsageDAO();
@@ -135,13 +133,10 @@ class TagUsageDeletedFilterTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void getTagsByPrefix_excludesSoftDeletedTagsAndTerms(ConnectionType dialect) {
+  @Test
+  void getTagsByPrefix_excludesSoftDeletedTagsAndTerms() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           seedData(handle, dialect);
           TagUsageDAO tagUsageDAO = handle.attach(CollectionDAO.class).tagUsageDAO();

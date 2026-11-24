@@ -1,21 +1,24 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.repositoryRoot;
-import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.repositoryRoot;
+import static org.openmetadata.it.tests.ontology.OntologyTestDatabase.withDatabase;
 
 import java.util.List;
 import org.jdbi.v3.core.Handle;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
-class GlossaryOntologyCleanupMigrationTest {
+@Execution(ExecutionMode.CONCURRENT)
+class GlossaryOntologyCleanupMigrationIT {
   private static final List<String> RETIRED_TERM_FIELDS =
       List.of(
           "attributes",
@@ -37,13 +40,10 @@ class GlossaryOntologyCleanupMigrationTest {
        "ontologyConfiguration":{"layer":"Domain"}}
       """;
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void cleanupPreservesReleasedGlossariesRelationsAndNativeDefinitions(ConnectionType dialect) {
+  @Test
+  void cleanupPreservesReleasedGlossariesRelationsAndNativeDefinitions() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withDatabase(
-        dialect,
         handle -> {
           createFixture(handle, dialect);
           List<String> statements = cleanupStatements(dialect);

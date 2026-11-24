@@ -1,16 +1,17 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
+import static org.openmetadata.it.tests.ontology.OntologyCaptureFixture.withCapture;
 
 import jakarta.ws.rs.ForbiddenException;
 import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.EntityStatus;
@@ -23,12 +24,11 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseComparison;
 
-class OntologyReleaseComparisonStorageTest {
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void groupedWorkingPagesKeepTheirRevisionAndCursorKind(ConnectionType dialect) {
+@Isolated("swaps the static Entity collection DAO and repository registry to a scratch database")
+class OntologyReleaseComparisonStorageIT {
+  @Test
+  void groupedWorkingPagesKeepTheirRevisionAndCursorKind() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -88,11 +88,9 @@ class OntologyReleaseComparisonStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void workingChangesPreviewActiveReleaseWithoutAllocatingAnotherRelease(ConnectionType dialect) {
+  @Test
+  void workingChangesPreviewActiveReleaseWithoutAllocatingAnotherRelease() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -141,11 +139,9 @@ class OntologyReleaseComparisonStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void changesRetainBothSnapshotsAndTheirPermissions(ConnectionType dialect) {
+  @Test
+  void changesRetainBothSnapshotsAndTheirPermissions() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {

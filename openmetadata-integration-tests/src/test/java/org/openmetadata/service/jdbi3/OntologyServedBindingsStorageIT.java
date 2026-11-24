@@ -11,7 +11,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
+import static org.openmetadata.it.tests.ontology.OntologyCaptureFixture.withCapture;
 
 import jakarta.ws.rs.ClientErrorException;
 import java.util.ArrayList;
@@ -19,9 +19,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.tests.ontology.OntologyCaptureFixture.Fixture;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.api.data.UpdateOntologyConceptBinding;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
@@ -34,7 +35,6 @@ import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.OntologyCaptureFixture.Fixture;
 import org.openmetadata.service.jdbi3.OntologyConceptBindingDAO.BoundAsset;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyConceptBindingService;
@@ -47,18 +47,16 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
 /** The SQL that decides which bindings the serving graph states, on both databases. */
-@Isolated
-class OntologyServedBindingsStorageTest {
+@Isolated("swaps the static Entity collection DAO and repository registry to a scratch database")
+class OntologyServedBindingsStorageIT {
   private static final UUID TABLE = new UUID(0, 1);
   private static final UUID TOPIC = new UUID(0, 2);
   private static final UUID UNBOUND = new UUID(0, 3);
   private static final String ASSET_TABLE = "rdf_binding_test_asset";
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void onlyCommittedBindingChangesQueueAnAssetRefresh(final ConnectionType dialect) {
+  @Test
+  void onlyCommittedBindingChangesQueueAnAssetRefresh() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -136,12 +134,9 @@ class OntologyServedBindingsStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void onlyConceptsAndPropertiesOfALiveOntologysActiveReleaseAreServed(
-      final ConnectionType dialect) {
+  @Test
+  void onlyConceptsAndPropertiesOfALiveOntologysActiveReleaseAreServed() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -176,11 +171,9 @@ class OntologyServedBindingsStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void theAssetsBoundToAnOntologysConceptsArePagedOnceEachInIdOrder(final ConnectionType dialect) {
+  @Test
+  void theAssetsBoundToAnOntologysConceptsArePagedOnceEachInIdOrder() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -211,12 +204,9 @@ class OntologyServedBindingsStorageTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void theHardDeleteCleanupOfAConceptReprojectsTheAssetsItWasBoundTo(final ConnectionType dialect)
-      throws Exception {
+  @Test
+  void theHardDeleteCleanupOfAConceptReprojectsTheAssetsItWasBoundTo() throws Exception {
+    final ConnectionType dialect = ScratchDatabase.dialect();
     final List<RdfLiveWrite> submitted = new ArrayList<>();
     try (final var ignored = RdfUpdater.captureWrites(submitted::addAll)) {
       withCapture(

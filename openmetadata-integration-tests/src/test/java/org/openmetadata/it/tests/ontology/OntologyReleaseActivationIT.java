@@ -1,9 +1,9 @@
-package org.openmetadata.service.jdbi3;
+package org.openmetadata.it.tests.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
+import static org.openmetadata.it.tests.ontology.OntologyCaptureFixture.withCapture;
 
 import jakarta.json.Json;
 import jakarta.ws.rs.ClientErrorException;
@@ -14,8 +14,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.util.ScratchDatabase;
 import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.EntityStatus;
@@ -26,12 +27,11 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 
-class OntologyReleaseActivationTest {
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void immutableContentChecksDoNotHoldTheOntologyWriteLock(ConnectionType dialect) {
+@Isolated("swaps the static Entity collection DAO and repository registry to a scratch database")
+class OntologyReleaseActivationIT {
+  @Test
+  void immutableContentChecksDoNotHoldTheOntologyWriteLock() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -82,11 +82,9 @@ class OntologyReleaseActivationTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void projectionEnqueueFailureRollsBackThePointerAndAuditEvent(ConnectionType dialect) {
+  @Test
+  void projectionEnqueueFailureRollsBackThePointerAndAuditEvent() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -123,11 +121,9 @@ class OntologyReleaseActivationTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void aDraftWithoutReviewersPublishesDirectlyAndRecordsWhy(ConnectionType dialect) {
+  @Test
+  void aDraftWithoutReviewersPublishesDirectlyAndRecordsWhy() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -162,11 +158,9 @@ class OntologyReleaseActivationTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void aDraftIsRefusedWithoutChangeWhenReviewersAreListed(ConnectionType dialect) {
+  @Test
+  void aDraftIsRefusedWithoutChangeWhenReviewersAreListed() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
@@ -208,11 +202,9 @@ class OntologyReleaseActivationTest {
         });
   }
 
-  @ParameterizedTest
-  @EnumSource(
-      value = ConnectionType.class,
-      names = {"MYSQL", "POSTGRES"})
-  void activatingTheActiveReleaseAddsNoEvent(ConnectionType dialect) {
+  @Test
+  void activatingTheActiveReleaseAddsNoEvent() {
+    ConnectionType dialect = ScratchDatabase.dialect();
     withCapture(
         dialect,
         fixture -> {
