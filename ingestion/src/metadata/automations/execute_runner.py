@@ -46,6 +46,17 @@ def execute(encrypted_automation_workflow: AutomationWorkflow) -> Any:
 
     automation_workflow = metadata.get_by_name(entity=AutomationWorkflow, fqn=encrypted_automation_workflow.name.root)
 
+    if automation_workflow is None:
+        # The workflow may have been hard-deleted while its Kubernetes Job was
+        # still waiting for a Pod (e.g. a ResourceQuota delay). get_by_name then
+        # returns None. Terminate cleanly instead of raising AttributeError on
+        # ``.request``, which the Job would retry as a transient failure.
+        logger.warning(
+            f"Automation workflow [{encrypted_automation_workflow.name.root}] no longer "
+            "exists. Skipping execution (it may have been deleted before the runner started)."
+        )
+        return None
+
     ingestion_runner = getattr(automation_workflow.request, "ingestionRunner", None)
     if ingestion_runner:
         logger.info(f"Executing automation [{automation_workflow.name.root}] in Runner [{ingestion_runner}]")
