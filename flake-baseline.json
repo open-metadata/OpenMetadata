@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-23T03:12:00Z",
+  "generatedAt": "2026-11-24T03:11:11Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "43668471513",
-      "sourceSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
-      "recordedAt": "2026-11-15T03:48:35Z"
-    },
     {
       "runId": "43793180722",
       "sourceSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
@@ -53,6 +48,11 @@
       "runId": "45101283550",
       "sourceSha": "5af6f6ab7a271eba9f48322be42db574b9bbf8bd",
       "recordedAt": "2026-11-23T03:12:00Z"
+    },
+    {
+      "runId": "45313589314",
+      "sourceSha": "3cdf00c82c293eed3ad2aa5dc5dd4a16eb65399c",
+      "recordedAt": "2026-11-24T03:11:11Z"
     }
   ],
   "entries": {
@@ -96,19 +96,8 @@
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
       "hardFailure": false
     },
-    "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a a reviewer assigned by the workflow sees and approves the held edit": {
-      "observations": [
-        "43668471513"
-      ],
-      "project": "GlobalSettings",
-      "file": "Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
-      "title": "Change request review lifecycle \u203a a reviewer assigned by the workflow sees and approves the held edit",
-      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
-      "hardFailure": false
-    },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a accepting one of two competing edits supersedes the other": {
       "observations": [
-        "43668471513",
         "44004103039",
         "44224347886",
         "44445461359"
@@ -171,7 +160,6 @@
     },
     "Ingestion :: Features/DataQuality/AddTestCaseNewFlow.spec.ts :: Add TestCase New Flow \u203a Add Column Test Case": {
       "observations": [
-        "43668471513",
         "43793180722",
         "44004103039",
         "44224347886",
@@ -179,12 +167,13 @@
         "44661891093",
         "44856696294",
         "44976793294",
-        "45101283550"
+        "45101283550",
+        "45313589314"
       ],
       "project": "Ingestion",
       "file": "Features/DataQuality/AddTestCaseNewFlow.spec.ts",
       "title": "Add TestCase New Flow \u203a Add Column Test Case",
-      "lastSeenSha": "5af6f6ab7a271eba9f48322be42db574b9bbf8bd",
+      "lastSeenSha": "3cdf00c82c293eed3ad2aa5dc5dd4a16eb65399c",
       "hardFailure": false
     },
     "Ingestion :: Features/DataQuality/DataQuality.spec.ts :: Data Quality \u203a shows every section for a scheduled failed test case run": {
@@ -231,7 +220,6 @@
     },
     "Knowledge Graph :: Features/KnowledgeGraph.spec.ts :: Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it": {
       "observations": [
-        "43668471513",
         "43793180722",
         "44502789545",
         "44976793294"
@@ -427,29 +415,8 @@
       "lastSeenSha": "d9fb1341521854772fc411d16d0e8341ae3b929e",
       "hardFailure": true
     },
-    "chromium :: Features/OntologyNativeDataMode.spec.ts :: Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API": {
-      "observations": [
-        "43668471513"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyNativeDataMode.spec.ts",
-      "title": "Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API",
-      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
-      "hardFailure": false
-    },
-    "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases": {
-      "observations": [
-        "43668471513"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyReview.spec.ts",
-      "title": "Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases",
-      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
-      "hardFailure": false
-    },
     "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed": {
       "observations": [
-        "43668471513",
         "43793180722"
       ],
       "project": "chromium",
@@ -536,16 +503,6 @@
       "file": "Pages/Teams.spec.ts",
       "title": "Teams Page with EditUser Permission \u203a Add and Remove User for Team",
       "lastSeenSha": "8a7d55493a1605c03100c4914051f4308228ef34",
-      "hardFailure": true
-    },
-    "data-insight-application :: dataInsightApp.ts :: Run Data Insight application and wait until success": {
-      "observations": [
-        "43668471513"
-      ],
-      "project": "data-insight-application",
-      "file": "dataInsightApp.ts",
-      "title": "Run Data Insight application and wait until success",
-      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
       "hardFailure": true
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Classic settings light \u203a classic-settings-notifications-announcements": {
@@ -1461,16 +1418,6 @@
       "lastSeenSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "hardFailure": true
     },
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-long-results": {
-      "observations": [
-        "43668471513"
-      ],
-      "project": "visual-regression",
-      "file": "VisualRegression/exploreInteractions.spec.ts",
-      "title": "Explore interactions dark \u203a explore-long-results",
-      "lastSeenSha": "d4c91910b1ad0c91fb23e2b9cf020d43d677f4c1",
-      "hardFailure": true
-    },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-search-error": {
       "observations": [
         "44004103039"
@@ -1786,7 +1733,6 @@
     "chromium :: Features/AIMode/InboxTaskMatrix.spec.ts :: Inbox task matrix \u203a an incident is acknowledged, then resolved with a reason",
     "chromium :: Features/AIMode/InboxTasks.spec.ts :: Inbox \u2014 Triage \u203a rejecting a task asks for a comment and lowers the sidebar count",
     "chromium :: Features/McpAdministration.spec.ts :: admin controls MCP access and revokes registered clients",
-    "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-schema-definition",
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets dark",
