@@ -84,7 +84,7 @@ class MongodbSource(CommonNoSQLSource):
                 for name in database.list_collection_names(filter=collection_filter)
             ]
         except Exception as exp:
-            logger.debug(f"Failed to list {table_type.value} names for schema [{schema_name}]: {exp}")
+            logger.debug("Failed to list %s names for schema [%s]: %s", table_type.value, schema_name, exp)
             logger.debug(traceback.format_exc())
         return []
 
