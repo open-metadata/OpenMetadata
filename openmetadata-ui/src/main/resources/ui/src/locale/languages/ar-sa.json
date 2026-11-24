@@ -2796,6 +2796,7 @@
     "update-request-tag-plural": "تحديث طلب الوسوم",
     "updated": "تم التحديث",
     "updated-at": "آخر تحديث",
+    "updated-at-source": "تم التحديث في المصدر",
     "updated-by": "حدثه",
     "updated-by-user-time-ago": "حدّثه {{user}} {{time}}",
     "updated-field-for-lowercase": "تم تحديث {{field}}",

@@ -2796,6 +2796,7 @@
     "update-request-tag-plural": "요청 태그 업데이트",
     "updated": "업데이트됨",
     "updated-at": "업데이트 일시",
+    "updated-at-source": "소스에서 업데이트됨",
     "updated-by": "업데이트한 사람",
     "updated-by-user-time-ago": "{{user}}님이 {{time}}에 업데이트",
     "updated-field-for-lowercase": "{{field}} 업데이트됨",

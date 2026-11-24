@@ -63,7 +63,11 @@ import { SearchService } from '../generated/entity/services/searchService';
 import { SecurityService } from '../generated/entity/services/securityService';
 import { StorageService } from '../generated/entity/services/storageService';
 import { EntityReference } from '../generated/type/entityReference';
-import { formatDateTime } from './date-time/DateTimeUtils';
+import {
+  DATE_TIME_12_HOUR_FORMAT,
+  formatDateTime,
+  formatDateTimeLong,
+} from './date-time/DateTimeUtils';
 import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import {
   getBreadcrumbForEntitiesWithServiceOnly,
@@ -74,6 +78,10 @@ import i18n from './i18next/LocalUtil';
 import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringUtils';
 import { getUsagePercentile } from './TablePureUtils';
+
+export const isRecordedLifeCycleTimestamp = (
+  timestamp?: number
+): timestamp is number => timestamp !== undefined && timestamp >= 0;
 
 const { t } = i18n;
 
@@ -88,11 +96,13 @@ export const ExtraInfoLabel = ({
   label,
   value,
   dataTestId,
+  tooltip,
   inlineLayout = false,
 }: {
   label: string;
   value: string | number | React.ReactNode;
   dataTestId?: string;
+  tooltip?: React.ReactNode;
   inlineLayout?: boolean;
 }) => {
   if (inlineLayout) {
@@ -129,7 +139,7 @@ export const ExtraInfoLabel = ({
         as="span"
         className="tw:whitespace-nowrap tw:text-primary"
         data-testid={dataTestId}
-        ellipsis={{ tooltip: true }}
+        ellipsis={{ tooltip: tooltip ?? true }}
         size="text-sm"
         weight="medium">
         {value ?? NO_DATA_PLACEHOLDER}
@@ -769,8 +779,13 @@ export const getDataAssetsHeaderInfo = (
             <>
               <HeaderDotSeparator />
               <ExtraInfoLabel
+                dataTestId="spreadsheet-created-time"
                 label={t('label.created-time')}
-                value={formatDateTime(spreadsheet.createdTime)}
+                tooltip={formatDateTime(spreadsheet.createdTime)}
+                value={formatDateTimeLong(
+                  spreadsheet.createdTime,
+                  DATE_TIME_12_HOUR_FORMAT
+                )}
               />
             </>
           )}

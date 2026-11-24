@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Tooltip, Typography } from 'antd';
 import React from 'react';
 import { EntityType } from '../enums/entity.enum';
@@ -45,6 +46,10 @@ import {
   getDataAssetsHeaderInfo,
   getEntityExtraInfoLength,
 } from './DataAssetsHeader.utils';
+import {
+  DATE_TIME_12_HOUR_FORMAT,
+  formatDateTimeLong,
+} from './date-time/DateTimeUtils';
 
 // Mock only ExtraInfoLink, not ExtraInfoLabel as we want to test it
 jest.mock('./DataAssetsHeader.utils', () => ({
@@ -525,6 +530,38 @@ describe('Tests for DataAssetsHeaderUtils', () => {
 
     expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
       'http://localhost:8585/api/v1/databaseSchemas/48261b8c-4c99-4c5d-9ec7-cb758cc9f9c1'
+    );
+  });
+
+  it('shows the spreadsheet creation time without its UTC offset and the full time on hover', async () => {
+    const createdAt = 1609459200000;
+    const { extraInfo } = getDataAssetsHeaderInfo(
+      EntityType.SPREADSHEET,
+      {
+        id: 'spreadsheet-123',
+        name: 'test-spreadsheet',
+        createdTime: createdAt,
+        service: { id: 'service-123', type: 'driveService' },
+      } as Spreadsheet,
+      'name',
+      []
+    );
+
+    render(<>{extraInfo}</>);
+
+    const createdTime = screen.getByTestId('spreadsheet-created-time');
+
+    expect(createdTime).toHaveTextContent(
+      formatDateTimeLong(createdAt, DATE_TIME_12_HOUR_FORMAT)
+    );
+    expect(createdTime).not.toHaveTextContent('UTC');
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    fireEvent.mouseMove(document);
+    await user.hover(createdTime);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      `formatted-${createdAt}`
     );
   });
 

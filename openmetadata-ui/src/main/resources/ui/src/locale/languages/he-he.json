@@ -2796,6 +2796,7 @@
     "update-request-tag-plural": "עדכן תגי בקשה",
     "updated": "מעודכן",
     "updated-at": "עודכן ב",
+    "updated-at-source": "עודכן במקור",
     "updated-by": "עודכן על ידי",
     "updated-by-user-time-ago": "עודכן על ידי {{user}} {{time}}",
     "updated-field-for-lowercase": "עדכן {{field}}",
