@@ -170,9 +170,14 @@ public class PersonaRepository extends EntityRepository<Persona> {
     if (persona.getId().equals(projectedContextPatch.get())) {
       return MAX_PROJECTED_RULES;
     }
-    // Allow metadata updates on personas whose rule list already came from a projection.
-    PersonaContextDefinition stored =
-        find(persona.getId(), Include.ALL, false).getContextDefinition();
+    // Allow metadata updates on personas whose rule list already came from a projection. Look the
+    // stored persona up by name: a PUT builds the incoming persona with a new id.
+    String fqn =
+        persona.getFullyQualifiedName() != null
+            ? persona.getFullyQualifiedName()
+            : persona.getName();
+    Persona existing = findByNameOrNull(fqn, Include.ALL);
+    PersonaContextDefinition stored = existing == null ? null : existing.getContextDefinition();
     boolean keepsStoredRules =
         stored != null && Objects.equals(stored.getRules(), context.getRules());
     return keepsStoredRules ? MAX_PROJECTED_RULES : MAX_RULES;
