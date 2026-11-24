@@ -133,7 +133,7 @@ const TaskActionButton = ({
  * The task's identity and what can be done about it: type chip, task id, the
  * state it is waiting in, and its actions.
  *
- * Two actions stay visible as buttons — the affirmative one filled — and the
+ * Two actions stay visible as buttons — the leading one filled — and the
  * rest fold into an overflow menu, so a task with many transitions does not
  * spread its header across the pane. An assignee action keeps its own picker
  * trigger, which a menu item cannot host.
@@ -149,7 +149,10 @@ const TaskDetailHeader: React.FC<TaskDetailHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { primary, secondary, overflow } = splitTaskActions(actions);
+  const { primary, secondary, overflow } = splitTaskActions(
+    actions,
+    task.workflowStageId
+  );
   // An assignee action opens a picker rather than firing, so it cannot live in
   // the menu — it stays a button even when it did not win a header slot.
   const menuActions = overflow.filter((action) => action.kind !== 'assignee');

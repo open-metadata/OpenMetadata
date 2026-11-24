@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import {
   Box,
@@ -65,6 +66,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import AlertPendingEvents from '../../../../../Alerts/AlertPendingEvents/AlertPendingEvents';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
@@ -78,7 +80,10 @@ import NotificationRecentEvents from './NotificationRecentEvents';
 
 interface NotificationAlertDetailProps {
   fqn: string;
-  onNavigate: (view: NotificationView) => void;
+  onNavigate: (
+    view: NotificationView,
+    options?: SettingsNavigateOptions
+  ) => void;
   onNameResolved?: (name: string) => void;
   onSetHeaderActions?: (node: React.ReactNode) => void;
 }
@@ -190,10 +195,7 @@ const DiagnosticStatsSummary: FC<{
           {`${t('label.pending-entity', { entity: t('label.event-plural') })}:`}
         </Typography>
         <Typography size="text-sm" weight="medium">
-          {formatEventCount(
-            eventsRecord.pendingEventsCount,
-            eventsRecord.countsAreLowerBound
-          )}
+          <AlertPendingEvents counts={eventsRecord} />
         </Typography>
       </Box>
       <Box align="center" direction="row" gap={1}>
@@ -232,7 +234,10 @@ function buildHeaderActions({
   handleSync: () => void;
   isSystemProvider: boolean;
   isSyncing: boolean;
-  onNavigate: (view: NotificationView) => void;
+  onNavigate: (
+    view: NotificationView,
+    options?: SettingsNavigateOptions
+  ) => void;
   t: ReturnType<typeof useTranslation>['t'];
 }): React.ReactNode {
   return (
@@ -415,7 +420,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
   }, [fqn, t]);
 
   const handleAfterDelete = useCallback(
-    () => onNavigate({ type: 'list' }),
+    () => onNavigate({ type: 'list' }, { replace: true }),
     [onNavigate]
   );
 

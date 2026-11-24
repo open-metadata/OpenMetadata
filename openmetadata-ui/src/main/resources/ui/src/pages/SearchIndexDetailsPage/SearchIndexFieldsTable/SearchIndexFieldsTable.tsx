@@ -30,7 +30,7 @@ import {
 } from '../../../components/common/Table/Table.interface';
 
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import CopyLinkButton from '../../../components/common/CopyLinkButton/CopyLinkButton';
+import CopyButton from '../../../components/common/CopyButton/CopyButton';
 import NoSearchResultsPlaceholder from '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Table from '../../../components/common/Table/TableV2';
@@ -68,6 +68,7 @@ import {
 } from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getEntityDetailsUrl } from '../../../utils/RouterUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -318,9 +319,15 @@ const SearchIndexFieldsTable = ({
                 highlightSearchText(getEntityName(record), searchText)
               )}
             </span>
-            <CopyLinkButton
-              entityType={EntityType.SEARCH_INDEX}
-              fieldFqn={record.fullyQualifiedName || ''}
+            <CopyButton
+              className="hover-cell-icon"
+              isDisabled={!record.fullyQualifiedName}
+              size="xs"
+              testId="copy-field-link-button"
+              value={getEntityDetailsUrl(
+                EntityType.SEARCH_INDEX,
+                record.fullyQualifiedName ?? ''
+              )}
             />
           </div>
         ),

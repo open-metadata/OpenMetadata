@@ -962,6 +962,12 @@ export interface OntologyProperty {
      */
     replacedBy?: string;
     /**
+     * Semantic IRIs of the named properties this property specializes (rdfs:subPropertyOf).
+     * Each must be a declared property of the same kind; a property cannot name itself, and the
+     * links cannot form a cycle.
+     */
+    superProperties?: string[];
+    /**
      * Unit IRI or display symbol for a DATA property, retained as an annotation without
      * implying conversion.
      */
@@ -1229,7 +1235,35 @@ export interface OntologyPackSource {
      */
     moduleIds: string[];
     packId:    string;
-    version:   string;
+    /**
+     * Set when a library install job cut the pack into change sets. Applying the change set
+     * verifies its operations against the job's recorded plan.
+     */
+    slice?:  Slice;
+    version: string;
+}
+
+/**
+ * Set when a library install job cut the pack into change sets. Applying the change set
+ * verifies its operations against the job's recorded plan.
+ */
+export interface Slice {
+    /**
+     * Number of slices in the plan.
+     */
+    count: number;
+    /**
+     * Zero-based position of this slice in the plan.
+     */
+    index: number;
+    /**
+     * Background job that planned this slice.
+     */
+    jobId: number;
+    /**
+     * SHA-256 of the plan's ordered slice digests.
+     */
+    planDigest: string;
 }
 
 export enum DraftState {

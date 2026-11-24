@@ -666,6 +666,34 @@ describe('MembersTeamDetail', () => {
       },
     });
 
+    it('serves the next page from the team index, in name order, when the list has no cursor', async () => {
+      (getTeams as jest.Mock).mockResolvedValue({
+        data: firstPage.data,
+        paging: { total: 40 },
+      });
+      (searchQuery as jest.Mock).mockResolvedValue(
+        searchHits(subTeams(15, 'page-two'), 40)
+      );
+      renderWithRouter(
+        <MembersTeamDetail fqn="engineering" onNavigate={jest.fn()} />
+      );
+
+      fireEvent.click(await screen.findByTestId('next'));
+
+      await waitFor(() =>
+        expect(searchQuery).toHaveBeenCalledWith(
+          expect.objectContaining({
+            pageNumber: 2,
+            sortField: 'name.keyword',
+            sortOrder: 'asc',
+          })
+        )
+      );
+      await waitFor(() =>
+        expect(latestSubTeamRows()?.[0]?.name).toBe('page-two-0')
+      );
+    });
+
     it('finds a sub-team that is not on the loaded page through the team index', async () => {
       (getTeams as jest.Mock).mockResolvedValue(firstPage);
       (searchQuery as jest.Mock).mockResolvedValue(

@@ -14,12 +14,14 @@ package org.openmetadata.service.security.saml;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.onelogin.saml2.Auth;
 import com.onelogin.saml2.authn.SamlResponse;
 import com.onelogin.saml2.http.HttpRequest;
 import com.onelogin.saml2.servlet.ServletUtils;
 import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.util.Constants;
 import com.onelogin.saml2.util.Util;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import org.joda.time.DateTime;
@@ -41,17 +43,54 @@ public final class SamlResponseValidator {
 
   private SamlResponseValidator() {}
 
+  /** java-saml's verdict on the response it processed, as the live login and Test Login read it. */
+  public static boolean isAccepted(Auth auth) {
+    return auth.isAuthenticated() && auth.getErrors().isEmpty();
+  }
+
+  /**
+   * Why java-saml did not accept the response, such as "The Message of the Response is not signed
+   * and the SP requires it", or its error codes when it gave no reason.
+   */
+  public static String rejectionReason(Auth auth) {
+    String reason = auth.getLastErrorReason();
+    return nullOrEmpty(reason) ? String.join(", ", auth.getErrors()) : reason;
+  }
+
+  /** Fails the login with java-saml's reason, so the person signing in learns what to fix. */
+  public static void requireAccepted(Auth auth) {
+    if (!isAccepted(auth)) {
+      throw rejected(rejectionReason(auth));
+    }
+  }
+
   public static void validate(Saml2Settings settings, HttpServletRequest request) {
     validate(settings, ServletUtils.makeHttpRequest(request));
   }
 
   static void validate(Saml2Settings settings, HttpRequest request) {
     try {
+      requireEncryptedAssertion(settings, request);
       validate(settings, new SamlResponse(settings, request));
     } catch (AuthenticationException e) {
       throw e;
     } catch (Exception e) {
       throw rejected(e.getMessage());
+    }
+  }
+
+  private static void requireEncryptedAssertion(Saml2Settings settings, HttpRequest request)
+      throws Exception {
+    if (settings.getWantAssertionsEncrypted()) {
+      final Document document =
+          Util.loadXML(
+              new String(
+                  Util.base64decoder(request.getParameter("SAMLResponse")),
+                  StandardCharsets.UTF_8));
+      if (Util.query(document, "/samlp:Response/saml:EncryptedAssertion").getLength() != 1
+          || Util.query(document, "/samlp:Response/saml:Assertion").getLength() != 0) {
+        throw rejected("the assertion is not encrypted and the SP requires it");
+      }
     }
   }
 

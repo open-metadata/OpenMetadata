@@ -77,10 +77,43 @@ EXPECTED_TYPES = {
 }
 
 
-def _make_source():
+# Verbatim type fields of real rows from GET /api/2.1/unity-catalog/tables (names
+# changed). databricks-sdk 0.20.0's TableType has no METRIC_VIEW or FOREIGN, so
+# TableInfo.from_dict leaves table_type None for them; securable_kind names all three.
+SECURABLE_KIND_TYPED_ROWS = [
+    {
+        "name": "orders_metrics",
+        "table_type": "METRIC_VIEW",
+        "data_source_format": None,
+        "securable_kind": "TABLE_METRIC_VIEW",
+    },
+    {
+        "name": "events_stream",
+        "table_type": "STREAMING_TABLE",
+        "data_source_format": None,
+        "securable_kind": "TABLE_STREAMING_LIVE_TABLE",
+    },
+    {
+        "name": "pg_orders",
+        "table_type": "FOREIGN",
+        "data_source_format": "POSTGRESQL_FORMAT",
+        "securable_kind": "TABLE_FOREIGN_POSTGRESQL",
+    },
+]
+
+EXPECTED_SECURABLE_KIND_TYPES = {
+    "orders_metrics": TableType.View,
+    "events_stream": TableType.Stream,
+    "pg_orders": TableType.Foreign,
+}
+
+
+def _make_source(include_tables=True, include_views=True):
     source = Mock()
     source._state_lock = RLock()
     source.config.sourceConfig.config.useFqnForFiltering = False
+    source.source_config.includeTables = include_tables
+    source.source_config.includeViews = include_views
     return source
 
 
@@ -103,8 +136,8 @@ def _listed(source, catalog="demo", schema="s"):
     return list(UnitycatalogSource._list_tables(source, catalog, schema))
 
 
-def _run(table, securable_kind=""):
-    source = _make_source()
+def _run(table, securable_kind="", **include):
+    source = _make_source(**include)
     with (
         patch(f"{UC_METADATA_MODULE}.fqn") as fqn_mock,
         patch(f"{UC_METADATA_MODULE}.filter_by_table", return_value=False),
@@ -290,3 +323,46 @@ def test_delta_sharing_not_classified_delta_lake():
         data_source_format=DataSourceFormat.DELTASHARING,
     )
     assert _run(table) == [("ds", TableType.Regular)]
+
+
+@pytest.mark.parametrize("row", SECURABLE_KIND_TYPED_ROWS, ids=[row["name"] for row in SECURABLE_KIND_TYPED_ROWS])
+def test_types_the_sdk_cannot_parse_come_from_the_securable_kind(row):
+    # A metric view is a view: it is created with CREATE VIEW ... WITH METRICS and
+    # SHOW VIEWS lists it (isMetric=true). As View it is skipped by the profiler,
+    # which cannot SELECT * from it.
+    table = TableInfo.from_dict(row)
+    assert _run(table, row["securable_kind"]) == [(row["name"], EXPECTED_SECURABLE_KIND_TYPES[row["name"]])]
+
+
+@pytest.mark.parametrize("securable_kind", ["TABLE_STREAMING_LIVE_TABLE", "TABLE_FOREIGN_HIVE_METASTORE_MANAGED"])
+def test_a_delta_format_still_wins_over_stream_and_foreign(securable_kind):
+    # Control: a Delta table federated from a Hive metastore was DeltaLake before
+    # Stream and Foreign were mapped, and stays DeltaLake.
+    table = TableInfo(name="t", data_source_format=DataSourceFormat.DELTA)
+    assert _run(table, securable_kind) == [("t", TableType.DeltaLake)]
+
+
+VIEW_KINDS = [
+    (TableInfo(name="v", table_type=SdkTableType.VIEW), "TABLE_VIEW"),
+    (TableInfo(name="v", table_type=SdkTableType.MATERIALIZED_VIEW), "TABLE_MATERIALIZED_VIEW"),
+    (TableInfo.from_dict(SECURABLE_KIND_TYPED_ROWS[0]), "TABLE_METRIC_VIEW"),
+    (TableInfo(name="v"), "TABLE_FOREIGN_HIVE_METASTORE_VIEW"),
+]
+TABLE_KINDS = [
+    (TableInfo(name="t", table_type=SdkTableType.MANAGED, data_source_format=DataSourceFormat.DELTA), "TABLE_DELTA"),
+    (TableInfo.from_dict(SECURABLE_KIND_TYPED_ROWS[1]), "TABLE_STREAMING_LIVE_TABLE"),
+    (TableInfo.from_dict(SECURABLE_KIND_TYPED_ROWS[2]), "TABLE_FOREIGN_POSTGRESQL"),
+]
+
+
+@pytest.mark.parametrize(("table", "securable_kind"), VIEW_KINDS, ids=[kind for _, kind in VIEW_KINDS])
+def test_include_views_off_skips_every_kind_of_view(table, securable_kind):
+    assert _run(table, securable_kind, include_views=False) == []
+    [(_, table_type)] = _run(table, securable_kind, include_tables=False)
+    assert table_type in (TableType.View, TableType.MaterializedView)
+
+
+@pytest.mark.parametrize(("table", "securable_kind"), TABLE_KINDS, ids=[kind for _, kind in TABLE_KINDS])
+def test_include_tables_off_skips_every_table_that_is_not_a_view(table, securable_kind):
+    assert _run(table, securable_kind, include_tables=False) == []
+    assert len(_run(table, securable_kind, include_views=False)) == 1

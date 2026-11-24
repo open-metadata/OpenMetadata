@@ -140,6 +140,15 @@ else
   fail "the java runtime did not report Java 21: $(echo "$version" | head -3 | tr '\n' ' ')"
 fi
 
+# ADR:2026-11-18-shipped-jvm-images-run-on-corretto: the runtime
+# carries the November 2026 OpenJDK security fixes, which start at 21.0.13.1.
+runtime="$(echo "$version" | sed -n 's/.*version "\([0-9][0-9.]*\)".*/\1/p' | head -1)"
+if [ -n "$runtime" ] && [ "$(printf '%s\n' 21.0.13.1 "$runtime" | sort -V | head -1)" = "21.0.13.1" ]; then
+  pass "the java runtime is $runtime, 21.0.13.1 or later"
+else
+  fail "the java runtime is ${runtime:-unknown}, older than 21.0.13.1"
+fi
+
 # Why the base is debian13 plus the C++ runtime from distroless cc, and not
 # base-debian12, cc-debian12 or alpine. -L follows the libstdc++.so.6 symlink, so
 # a symlink left without its target fails here.

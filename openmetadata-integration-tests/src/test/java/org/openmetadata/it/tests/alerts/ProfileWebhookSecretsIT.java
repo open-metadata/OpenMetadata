@@ -45,7 +45,6 @@ import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.TeamDAO;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UserDAO;
-import org.openmetadata.service.secrets.BoundCiphertext;
 
 /**
  * The webhooks a user or a team keeps on its profile carry the secrets of an alert destination's
@@ -80,8 +79,8 @@ class ProfileWebhookSecretsIT {
     List<String> secrets = List.of(clientSecret, slackHook);
 
     JsonNode stored = storedTeam(team.getId());
-    assertEquals(clientSecret, opened(Entity.TEAM, stored, "generic", "/authType/clientSecret"));
-    assertEquals(slackHook, opened(Entity.TEAM, stored, "slack", "/endpoint"));
+    assertEquals(clientSecret, opened(stored, "generic", "/authType/clientSecret"));
+    assertEquals(slackHook, opened(stored, "slack", "/endpoint"));
     assertEquals(TOKEN_URL, stored.at("/profile/subscription/generic/authType/tokenUrl").asText());
 
     OpenMetadataClient viewer = plainUserClient();
@@ -146,9 +145,7 @@ class ProfileWebhookSecretsIT {
 
     List<String> secrets = List.of(signingKey, "https://hooks.example.com/" + name);
     assertNoSecretOrCiphertext(JsonUtils.pojoToJson(patched), secrets);
-    assertEquals(
-        signingKey,
-        opened(Entity.USER, storedUser(user.getId()), "generic", "/authType/secretKey"));
+    assertEquals(signingKey, opened(storedUser(user.getId()), "generic", "/authType/secretKey"));
     OpenMetadataClient viewer = plainUserClient();
     List.of(
             "/v1/users/name/" + name + "?fields=profile",
@@ -306,14 +303,12 @@ class ProfileWebhookSecretsIT {
     return JsonUtils.readTree(dao.findById(dao.getTableName(), id, ""));
   }
 
-  /** The value a stored user or team keeps at {@code field} of one profile webhook, opened for it. */
-  private static String opened(String entityType, JsonNode row, String slot, String field) {
+  /** The value a stored user or team keeps encrypted at {@code field} of a profile webhook. */
+  private static String opened(JsonNode row, String slot, String field) {
     String value = row.at("/profile/subscription/" + slot + field).asText();
-    assertTrue(BoundCiphertext.isBound(value), "not bound to its webhook: " + value);
-    UUID id = UUID.fromString(row.path("id").asText());
+    assertTrue(Fernet.isTokenized(value), "not encrypted: " + value);
     Profile profile = JsonUtils.treeToValue(row.path("profile"), Profile.class);
-    Profile sendable =
-        ProfileWebhookSecrets.decrypted(new ProfileWebhookSecrets.Holder(entityType, id), profile);
+    Profile sendable = ProfileWebhookSecrets.decrypted("a team", profile);
     return JsonUtils.valueToTree(sendable).at("/subscription/" + slot + field).asText();
   }
 

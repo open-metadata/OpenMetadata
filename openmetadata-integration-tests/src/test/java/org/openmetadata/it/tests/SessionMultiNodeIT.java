@@ -30,6 +30,7 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
@@ -182,6 +183,43 @@ class SessionMultiNodeIT {
         getRawWithBearer(
             client, accessToken, cluster.nodeBBaseUrl() + "/api/v1/users/loggedInUser");
     assertEquals(401, meOnBAfterLogout.statusCode(), meOnBAfterLogout.body());
+  }
+
+  /**
+   * Rewriting the session's provider stands in for switching the server's: the predicate compares
+   * the two, and switching the shared IT server's provider would break concurrently running tests.
+   */
+  @Test
+  void pushFeedHandshakeRejectsASessionIssuedByAProviderNoLongerConfigured(TestNamespace ns)
+      throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+
+    SessionCookies cookies = new SessionCookies();
+    HttpClient client = HttpClient.newHttpClient();
+
+    JsonNode loginResponse =
+        login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    String accessToken = loginResponse.get("accessToken").asText();
+    HttpResponse<String> handshakeBeforeSwitch =
+        pushFeedHandshake(client, cookies, cluster.nodeBBaseUrl());
+    assertEquals(200, handshakeBeforeSwitch.statusCode(), handshakeBeforeSwitch.body());
+
+    UserSession current = loadSession(cookies.get("OM_SESSION"));
+    persistSession(
+        current.toBuilder()
+            .provider(AuthProvider.GOOGLE.value())
+            .updatedAt(System.currentTimeMillis())
+            .version(safeVersion(current) + 1)
+            .build());
+
+    HttpResponse<String> apiOnB =
+        getRawWithBearer(
+            client, accessToken, cluster.nodeBBaseUrl() + "/api/v1/users/loggedInUser");
+    assertEquals(401, apiOnB.statusCode(), apiOnB.body());
+    HttpResponse<String> handshakeAfterSwitch =
+        pushFeedHandshake(client, cookies, cluster.nodeBBaseUrl());
+    assertEquals(401, handshakeAfterSwitch.statusCode(), handshakeAfterSwitch.body());
   }
 
   @Test
@@ -485,6 +523,16 @@ class SessionMultiNodeIT {
     HttpRequest request =
         HttpRequest.newBuilder(URI.create(url))
             .header("Authorization", "Bearer " + bearerToken)
+            .GET()
+            .build();
+    return client.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private HttpResponse<String> pushFeedHandshake(
+      HttpClient client, SessionCookies cookies, String baseUrl) throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder(URI.create(baseUrl + "/api/v1/push/feed/?EIO=4&transport=polling"))
+            .header("Cookie", cookies.asHeaderValue())
             .GET()
             .build();
     return client.send(request, HttpResponse.BodyHandlers.ofString());

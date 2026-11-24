@@ -29,7 +29,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Conversation,
-  Copy01,
   DotsVertical,
   Edit01,
   ExpandPanel,
@@ -81,11 +80,11 @@ import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import DomainSelectableList from '../../common/DomainSelectableList/DomainSelectableList.component';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { HeaderVersionButton } from '../../common/HeaderVersionButton/HeaderVersionButton.component';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import { ArticleDetailHeaderProps } from './ArticleDetailHeader.interface';
 
 const TOOLTIP_TRIGGER_CLASS = 'tw:leading-0';
@@ -290,8 +289,20 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       return null;
     }
 
-    return <EntityStatusBadge showDivider={false} status={entityStatus} />;
-  }, [knowledgePage?.entityStatus]);
+    return (
+      <EntityStatusBadge
+        entityId={knowledgePage?.id}
+        entityType={EntityType.KNOWLEDGE_PAGE}
+        fqn={knowledgePage?.fullyQualifiedName}
+        showDivider={false}
+        status={entityStatus}
+      />
+    );
+  }, [
+    knowledgePage?.entityStatus,
+    knowledgePage?.fullyQualifiedName,
+    knowledgePage?.id,
+  ]);
 
   const contentChangeIcon = useMemo(() => {
     if (contentChangeState === ContentChangeState.SAVED) {
@@ -535,9 +546,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           tooltip={isFollowing ? t('label.un-follow') : t('label.follow')}
           onClick={handleFollowClick}
         />
-        <CopyLinkButton testId="copy-btn" url={window.location.href}>
-          <Copy01 data-icon />
-        </CopyLinkButton>
+        <CopyButton testId="copy-btn" value={window.location.href} />
 
         {permissions?.Delete && (
           <Dropdown.Root>

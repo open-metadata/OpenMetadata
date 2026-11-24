@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -109,6 +110,49 @@ class OpenLineageColumnMapperTest {
     assertEquals(
         ColumnDataType.UNKNOWN,
         OpenLineageColumnMapper.toColumn(new SchemaField().withName("c")).getDataType());
+  }
+
+  @Test
+  void reservedSequencesBecomeTheKeywordsConnectorsStore() {
+    assertEquals("a__reserved__arrow__b", OpenLineageColumnMapper.toStoredName("a>b"));
+    assertEquals("a__reserved__colon__b", OpenLineageColumnMapper.toStoredName("a::b"));
+    assertEquals("a__reserved__quote__b", OpenLineageColumnMapper.toStoredName("a\"b"));
+    assertEquals("a__reserved__newline__b", OpenLineageColumnMapper.toStoredName("a\nb"));
+    assertEquals("a__reserved__carriage_return__b", OpenLineageColumnMapper.toStoredName("a\rb"));
+    assertEquals("a__reserved__tab__b", OpenLineageColumnMapper.toStoredName("a\tb"));
+  }
+
+  @Test
+  void namesWithoutReservedSequencesAreStoredUnchanged() {
+    assertEquals("c.d", OpenLineageColumnMapper.toStoredName("c.d"));
+    assertEquals("a:b", OpenLineageColumnMapper.toStoredName("a:b"));
+  }
+
+  @Test
+  void createdColumnTakesItsStoredName() {
+    Column column =
+        OpenLineageColumnMapper.toColumn(new SchemaField().withName("a>b").withType("int"));
+
+    assertEquals("a__reserved__arrow__b", column.getName());
+  }
+
+  @Test
+  void fieldPathsTellADottedNameFromANestedChild() {
+    Column dotted = new Column().withName("c.d").withFullyQualifiedName("table.\"c.d\"");
+    Column struct =
+        new Column()
+            .withName("s")
+            .withFullyQualifiedName("table.s")
+            .withChildren(List.of(new Column().withName("x").withFullyQualifiedName("table.s.x")));
+
+    assertEquals(
+        Map.of("c.d", "table.\"c.d\"", "s", "table.s", "s.x", "table.s.x"),
+        OpenLineageColumnMapper.fqnsByFieldPath(List.of(dotted, struct)));
+  }
+
+  @Test
+  void noColumnsGiveNoFieldPaths() {
+    assertTrue(OpenLineageColumnMapper.fqnsByFieldPath(null).isEmpty());
   }
 
   @Test

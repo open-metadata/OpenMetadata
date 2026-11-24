@@ -54,7 +54,7 @@ final class OntologyTestDatabase {
 
   private static GenericContainer<?> database(ConnectionType dialect) {
     return dialect == ConnectionType.MYSQL
-        ? new GenericContainer<>("mysql:8.0")
+        ? new GenericContainer<>("mysql:8.4.13")
             .withEnv("MYSQL_DATABASE", DATABASE)
             .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
             .withEnv("MYSQL_ROOT_HOST", "%")
@@ -167,8 +167,10 @@ final class OntologyTestDatabase {
             .resolve("bootstrap/sql/migrations/native/2.1.0")
             .resolve(dialect == ConnectionType.MYSQL ? "mysql" : "postgres")
             .resolve("schemaChanges.sql");
+    // Only ontology statements: the rest of the file needs tables this database lacks.
     MigrationFile.parseSQLFile(migration.toFile(), dialect).stream()
         .dropWhile(statement -> !statement.contains("CREATE TABLE IF NOT EXISTS ontology_entity ("))
+        .filter(statement -> statement.toLowerCase(Locale.ROOT).contains("ontology"))
         .forEach(handle::execute);
   }
 

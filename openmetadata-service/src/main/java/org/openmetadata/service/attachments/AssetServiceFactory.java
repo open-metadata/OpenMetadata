@@ -4,6 +4,7 @@ import java.util.Locale;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
+import org.openmetadata.service.events.consumer.ServerStopping;
 
 @Slf4j
 public class AssetServiceFactory {
@@ -125,8 +126,21 @@ public class AssetServiceFactory {
     if (shutdownHookRegistered) {
       return;
     }
-    Runtime.getRuntime()
-        .addShutdownHook(new Thread(AssetServiceFactory::shutdown, "asset-service-shutdown"));
+    Runtime.getRuntime().addShutdownHook(new Thread(shutdownHookTask(), "asset-service-shutdown"));
     shutdownHookRegistered = true;
+  }
+
+  /** What the {@code asset-service-shutdown} hook runs. */
+  static Runnable shutdownHookTask() {
+    return () -> signalStopThenClose(AssetServiceFactory::shutdown);
+  }
+
+  /**
+   * Raises the stop signal before closing, so work the close breaks counts as a server stop.
+   * ADR:2026-11-09-a-server-stop-leaves-memory-extraction-for-recovery
+   */
+  static void signalStopThenClose(Runnable close) {
+    ServerStopping.set(true);
+    close.run();
   }
 }

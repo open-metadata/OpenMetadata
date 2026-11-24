@@ -100,7 +100,7 @@ jest.mock('../../Database/TableTags/TableTags.component', () =>
     </div>
   ))
 );
-jest.mock('../../common/CopyLinkButton/CopyLinkButton', () =>
+jest.mock('../../common/CopyButton/CopyButton', () =>
   jest.fn(() => <div data-testid="copy-link-button" />)
 );
 jest.mock('../../common/ToggleExpandButton/ToggleExpandButton', () =>

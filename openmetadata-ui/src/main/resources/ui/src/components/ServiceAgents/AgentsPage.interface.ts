@@ -14,7 +14,13 @@
 import { ReactNode } from 'react';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 
-export type AgentStatus = 'running' | 'success' | 'failed' | 'queued' | 'none';
+export type AgentStatus =
+  | 'running'
+  | 'success'
+  | 'failed'
+  | 'stopped'
+  | 'queued'
+  | 'none';
 
 export type RunStatus =
   | 'success'
@@ -104,9 +110,12 @@ export interface RunTotals {
 
 export interface AgentRun {
   id: string;
+  // The server run id. Absent when the status carries none; `id` is then a timestamp the
+  // run-scoped logs endpoint cannot address.
+  runId?: string;
   status: RunStatus;
   startedAt: string;
-  duration: number;
+  durationMs?: number;
   totals: RunTotals;
   steps: RunStep[];
 }

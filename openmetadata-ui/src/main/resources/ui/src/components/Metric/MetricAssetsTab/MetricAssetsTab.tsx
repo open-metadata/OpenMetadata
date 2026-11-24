@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { useMemo, useState } from 'react';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { Metric } from '../../../generated/entity/data/metric';
@@ -57,6 +58,7 @@ export const MetricAssetsTab = ({
         className: 'glossary-term-resizable-panel-container',
         children: (
           <AssetsTabs
+            useQueryPost
             assetCount={assetIds?.length ?? 0}
             entityFqn={metric.fullyQualifiedName ?? ''}
             isEntityDeleted={metric.deleted}
@@ -84,10 +86,10 @@ export const MetricAssetsTab = ({
             }
           />
         ),
+        ...COMMON_RESIZABLE_PANEL_CONFIG.ENTITY_SUMMARY_PANEL,
         className:
           'entity-summary-resizable-right-panel-container glossary-term-resizable-panel-container',
         flex: 0.3,
-        minWidth: 400,
         wrapInCard: false,
       }}
     />
