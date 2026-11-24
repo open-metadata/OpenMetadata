@@ -223,7 +223,12 @@ describe('PlatformSettingsPanel', () => {
 
     fireEvent.click(screen.getByTestId('platform-settings-card-email'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('platform-settings', 'email');
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'platform-settings',
+      'email',
+      undefined,
+      { push: true }
+    );
   });
 
   it.each(['Enter', ' '])(
@@ -235,7 +240,12 @@ describe('PlatformSettingsPanel', () => {
         key,
       });
 
-      expect(mockSetHash).toHaveBeenCalledWith('platform-settings', 'lineage');
+      expect(mockSetHash).toHaveBeenCalledWith(
+        'platform-settings',
+        'lineage',
+        undefined,
+        { push: true }
+      );
     }
   );
 
@@ -275,7 +285,12 @@ describe('PlatformSettingsPanel', () => {
 
     lastHeader().onBreadcrumbAction('search');
 
-    expect(mockSetHash).toHaveBeenCalledWith('platform-settings', 'search');
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'platform-settings',
+      'search',
+      undefined,
+      { push: true }
+    );
   });
 
   it('keeps the learning list state while a resource preview replaces the list', () => {
@@ -320,7 +335,9 @@ describe('PlatformSettingsPanel', () => {
 
     expect(mockSetHash).toHaveBeenCalledWith(
       'platform-settings',
-      'learning-resources'
+      'learning-resources',
+      undefined,
+      { push: true }
     );
   });
 
@@ -408,16 +425,22 @@ describe('PlatformSettingsPanel', () => {
 
     lastHeader().onBreadcrumbAction('brand-url');
 
+    // Leaving the editor replaces, so Back does not reopen the form.
     expect(mockSetHash).toHaveBeenLastCalledWith(
       'platform-settings',
-      'brand-url'
+      'brand-url',
+      undefined,
+      { push: false }
     );
 
+    // The mocked hash still holds the editor, so the root crumb leaves it too.
     lastHeader().onBreadcrumbAction('platform-settings');
 
     expect(mockSetHash).toHaveBeenLastCalledWith(
       'platform-settings',
-      undefined
+      undefined,
+      undefined,
+      { push: false }
     );
   });
 

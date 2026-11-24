@@ -25,6 +25,7 @@ from metadata.data_quality.validations.base_test_handler import (
     TestEvaluation,
 )
 from metadata.generated.schema.tests.basic import (
+    TestCaseAppliedThreshold,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
@@ -45,6 +46,13 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
     ALLOWED_VALUES = "allowedValues"
     MATCH_ENUM = "matchEnum"
 
+    def result_applied_threshold(self, status: TestCaseStatus | None) -> TestCaseAppliedThreshold | None:
+        if status is not TestCaseStatus.Aborted and not utils.get_bool_test_case_param(
+            self.test_case.parameterValues or [], self.MATCH_ENUM
+        ):
+            return TestCaseAppliedThreshold(applied=False)
+        return super().result_applied_threshold(status)
+
     def _run_validation(self) -> TestCaseResult:
         """Execute the specific test validation logic
 
@@ -57,15 +65,14 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         try:
             test_params = self._get_test_parameters()
             column: SQALikeColumn | Column = self.get_column()
-            count_in_set = self._run_results(Metrics.countInSet, column, values=test_params[self.ALLOWED_VALUES])
-
-            metric_values = {
-                Metrics.countInSet.name: count_in_set,
-            }
-
             if test_params[self.MATCH_ENUM]:
-                row_count = self._run_results(Metrics.rowCount, column, values=test_params[self.ALLOWED_VALUES])
-                metric_values[Metrics.rowCount.name] = row_count
+                metric_values = self._run_results_and_row_count(
+                    Metrics.countInSet, column, values=test_params[self.ALLOWED_VALUES]
+                )
+            else:
+                metric_values = self._run_results_with_row_count(
+                    Metrics.countInSet, column, values=test_params[self.ALLOWED_VALUES]
+                )
 
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
@@ -82,10 +89,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         result_message = self._format_result_message(metric_values, test_params=test_params)
         test_result_values = self._get_test_result_values(metric_values)
 
-        if self.test_case.computePassedFailedRowCount:
-            row_count = self.get_row_count()
-        else:
-            row_count = None
+        row_count = metric_values.get(Metrics.rowCount.name) if self.test_case.computePassedFailedRowCount else None
 
         return self.get_test_case_result_object(
             self.execution_date,

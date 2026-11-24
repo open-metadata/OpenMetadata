@@ -773,6 +773,11 @@ public final class SearchUtils {
     };
   }
 
+  public static boolean isOntologyIndex(String indexName) {
+    String mapped = mapEntityTypesToIndexNames(indexName);
+    return OntologyTermSearch.ALIAS.equals(mapped) || OntologyTermSearch.isTerm(mapped);
+  }
+
   public static String mapEntityTypesToIndexNames(String indexName) {
     return switch (indexName) {
       case "topic_search_index", Entity.TOPIC -> Entity.TOPIC;
@@ -794,6 +799,9 @@ public final class SearchUtils {
       case "search_entity_search_index", Entity.SEARCH_INDEX -> Entity.SEARCH_INDEX;
       case "tag_search_index", Entity.TAG -> Entity.TAG;
       case "glossary_term_search_index", Entity.GLOSSARY_TERM -> Entity.GLOSSARY_TERM;
+      case OntologyTermSearch.ALIAS -> OntologyTermSearch.ALIAS;
+      case "ontology_concept_search_index", Entity.ONTOLOGY_CONCEPT -> Entity.ONTOLOGY_CONCEPT;
+      case "ontology_property_search_index", Entity.ONTOLOGY_PROPERTY -> Entity.ONTOLOGY_PROPERTY;
       case SearchClient.RELATIONSHIP_TYPE_SEARCH_INDEX, Entity.RELATIONSHIP_TYPE -> Entity
           .RELATIONSHIP_TYPE;
       case "glossary_search_index", Entity.GLOSSARY -> Entity.GLOSSARY;
@@ -817,12 +825,15 @@ public final class SearchUtils {
    * input on non-alphanumeric characters ({@code token_chars: [letter, digit]}), so it reflects
    * the actual number of terms the ngram path will process for a fuzzy multi_match — which is
    * the driver of clause count, not whitespace word count.
+   *
+   * <p>The split uses {@code \p{L}\p{Nd}} rather than POSIX {@code \p{Alnum}} because
+   * {@code token_chars} is Unicode-aware, while POSIX character classes match US-ASCII only.
    */
   private static int analyzedSubTokenCount(String query) {
     if (query == null || query.isBlank()) {
       return 0;
     }
-    String[] parts = query.trim().split("[^\\p{Alnum}]+");
+    String[] parts = query.trim().split("[^\\p{L}\\p{Nd}]+");
     int count = 0;
     for (String p : parts) {
       if (!p.isEmpty()) count++;

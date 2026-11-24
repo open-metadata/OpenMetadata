@@ -1141,7 +1141,7 @@ public interface TimeSeriesDAOs {
                 + "  AND eets.timestamp >= :startTs "
                 + "  AND eets.timestamp <= :endTs "
                 + "  <pipelineFqnFilter> "
-                + "  <serviceTypeFilter> "
+                + "  <mysqlServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <mysqlStatusFilter> "
                 + "  <domainFilter> "
@@ -1163,7 +1163,7 @@ public interface TimeSeriesDAOs {
                 + "  AND eets.timestamp >= :startTs "
                 + "  AND eets.timestamp <= :endTs "
                 + "  <pipelineFqnFilter> "
-                + "  <serviceTypeFilter> "
+                + "  <postgresServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <postgresStatusFilter> "
                 + "  <domainFilter> "
@@ -1177,7 +1177,8 @@ public interface TimeSeriesDAOs {
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs,
         @Define("pipelineFqnFilter") String pipelineFqnFilter,
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
@@ -1204,7 +1205,7 @@ public interface TimeSeriesDAOs {
                 + "    AND eets.timestamp >= :startTs "
                 + "    AND eets.timestamp <= :endTs "
                 + "    <pipelineFqnFilter> "
-                + "    <serviceTypeFilter> "
+                + "    <mysqlServiceTypeFilter> "
                 + "    <serviceFilter> "
                 + "    <mysqlStatusFilter> "
                 + "    <domainFilter> "
@@ -1239,7 +1240,7 @@ public interface TimeSeriesDAOs {
                 + "    AND eets.timestamp >= :startTs "
                 + "    AND eets.timestamp <= :endTs "
                 + "    <pipelineFqnFilter> "
-                + "    <serviceTypeFilter> "
+                + "    <postgresServiceTypeFilter> "
                 + "    <serviceFilter> "
                 + "    <postgresStatusFilter> "
                 + "    <domainFilter> "
@@ -1263,7 +1264,8 @@ public interface TimeSeriesDAOs {
         @Bind("startTs") Long startTs,
         @Bind("endTs") Long endTs,
         @Define("pipelineFqnFilter") String pipelineFqnFilter,
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
@@ -1285,7 +1287,7 @@ public interface TimeSeriesDAOs {
                 + "  ON pe.fqnHash = eets.entityFQNHash "
                 + "  AND eets.extension = 'pipeline.pipelineStatus' "
                 + "WHERE pe.deleted = 0 "
-                + "  <serviceTypeFilter> "
+                + "  <mysqlServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <mysqlStatusFilter> "
                 + "  <domainFilter> "
@@ -1305,7 +1307,7 @@ public interface TimeSeriesDAOs {
                 + "  ON pe.fqnHash = eets.entityFQNHash "
                 + "  AND eets.extension = 'pipeline.pipelineStatus' "
                 + "WHERE pe.deleted = false "
-                + "  <serviceTypeFilter> "
+                + "  <postgresServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <postgresStatusFilter> "
                 + "  <domainFilter> "
@@ -1317,7 +1319,8 @@ public interface TimeSeriesDAOs {
         connectionType = POSTGRES)
     @RegisterRowMapper(SharedRowMappers.ServiceBreakdownRowMapper.class)
     List<SharedRowMappers.ServiceBreakdownRow> getServiceBreakdown(
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
@@ -1343,7 +1346,7 @@ public interface TimeSeriesDAOs {
                 + "  ON pe.fqnHash = eets.entityFQNHash "
                 + "  AND eets.extension = 'pipeline.pipelineStatus' "
                 + "WHERE pe.deleted = 0 "
-                + "  <serviceTypeFilter> "
+                + "  <mysqlServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <mysqlStatusFilter> "
                 + "  <domainFilter> "
@@ -1364,7 +1367,7 @@ public interface TimeSeriesDAOs {
                 + "  ON pe.fqnHash = eets.entityFQNHash "
                 + "  AND eets.extension = 'pipeline.pipelineStatus' "
                 + "WHERE pe.deleted = false "
-                + "  <serviceTypeFilter> "
+                + "  <postgresServiceTypeFilter> "
                 + "  <serviceFilter> "
                 + "  <postgresStatusFilter> "
                 + "  <domainFilter> "
@@ -1375,7 +1378,8 @@ public interface TimeSeriesDAOs {
         connectionType = POSTGRES)
     @RegisterRowMapper(SharedRowMappers.PipelineMetricsRowMapper.class)
     SharedRowMappers.PipelineMetricsRow getPipelineMetricsData(
-        @Define("serviceTypeFilter") String serviceTypeFilter,
+        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
+        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
         @Define("serviceFilter") String serviceFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
@@ -1805,6 +1809,66 @@ public interface TimeSeriesDAOs {
     String TABLE_PROFILE_EXTENSION = "table.tableProfile";
     String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
     String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE <table> set json = :json where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json ->> '$.profileData.operation' = :operation",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE <table> set json = (:json :: jsonb) where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json #>>'{profileData,operation}' = :operation",
+        connectionType = POSTGRES)
+    void updateSystemProfile(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @BindJson("json") String json,
+        @Bind("timestamp") Long timestamp,
+        @Bind("operation") String operation);
+
+    default void updateSystemProfile(
+        String entityFQNHash, String extension, String json, Long timestamp, String operation) {
+      updateSystemProfile(
+          getTimeSeriesTableName(), entityFQNHash, extension, json, timestamp, operation);
+    }
+
+    // System-profile operation is stored under profileData, and the unique key is built from that
+    // same path via the generated operation column, so the lookup must read the identical path.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp AND json ->> '$.profileData.operation' = :operation",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp AND json #>>'{profileData,operation}' = :operation",
+        connectionType = POSTGRES)
+    String getSystemProfileAtTimestamp(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @Bind("timestamp") long timestamp,
+        @Bind("operation") String operation);
+
+    default String getSystemProfileAtTimestamp(
+        String entityFQNHash, String extension, long timestamp, String operation) {
+      return getSystemProfileAtTimestamp(
+          getTimeSeriesTableName(), entityFQNHash, extension, timestamp, operation);
+    }
+
+    default void storeSystemProfile(
+        String fqn,
+        String extension,
+        String jsonSchema,
+        String entityJson,
+        Long timestamp,
+        String operation,
+        boolean update) {
+      if (update) {
+        updateSystemProfile(fqn, extension, entityJson, timestamp, operation);
+      } else {
+        insert(fqn, extension, jsonSchema, entityJson);
+      }
+    }
 
     @SqlQuery(
         "SELECT json FROM profiler_data_time_series "
@@ -2901,6 +2965,50 @@ public interface TimeSeriesDAOs {
     default List<String> listLastTestCaseResultsForTestSuite(UUID testSuiteId) {
       return listLastTestCaseResultsForTestSuite(Map.of("testSuiteId", testSuiteId.toString()));
     }
+
+    /** Status of each live test case's latest result at or before {@code asOf}. */
+    @ConnectionAwareSqlQuery(
+        value =
+            """
+            WITH suite_test_cases AS (
+                SELECT tc.fqnHash
+                FROM entity_relationship er
+                INNER JOIN test_case tc ON er.toId = tc.id
+                WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
+                AND er.fromId = :testSuiteId AND (tc.deleted = FALSE OR tc.deleted IS NULL)
+            ),
+            latest_results AS (
+                SELECT JSON_UNQUOTE(JSON_EXTRACT(dqdts.json, '$.testCaseStatus')) as testCaseStatus,
+                       ROW_NUMBER() OVER (PARTITION BY dqdts.entityFQNHash ORDER BY dqdts.timestamp DESC) as rn
+                FROM data_quality_data_time_series dqdts
+                WHERE dqdts.entityFQNHash IN (SELECT fqnHash FROM suite_test_cases)
+                AND dqdts.timestamp <= :asOf
+            )
+            SELECT testCaseStatus FROM latest_results WHERE rn = 1
+            """,
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            """
+            WITH suite_test_cases AS (
+                SELECT tc.fqnHash
+                FROM entity_relationship er
+                INNER JOIN test_case tc ON er.toId = tc.id
+                WHERE er.fromEntity = 'testSuite' AND er.toEntity = 'testCase'
+                AND er.fromId = :testSuiteId AND (tc.deleted = FALSE OR tc.deleted IS NULL)
+            ),
+            latest_results AS (
+                SELECT dqdts.json->>'testCaseStatus' as testCaseStatus,
+                       ROW_NUMBER() OVER (PARTITION BY dqdts.entityFQNHash ORDER BY dqdts.timestamp DESC) as rn
+                FROM data_quality_data_time_series dqdts
+                WHERE dqdts.entityFQNHash IN (SELECT fqnHash FROM suite_test_cases)
+                AND dqdts.timestamp <= :asOf
+            )
+            SELECT testCaseStatus FROM latest_results WHERE rn = 1
+            """,
+        connectionType = POSTGRES)
+    List<String> listLatestTestCaseStatusesAsOf(
+        @Bind("testSuiteId") String testSuiteId, @Bind("asOf") long asOf);
 
     record ResultSummaryRow(
         String testSuiteId, String testCaseFQN, String testCaseStatus, long timestamp) {}

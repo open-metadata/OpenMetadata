@@ -179,6 +179,9 @@ make playwright_affected_run ARGS="--update-pr"   # full impacted run for merge 
 Without `gh`, paste `playwright/output/local-pr-results.md` between the
 `local-playwright-results` markers under "Playwright (UI) tests".
 
+**Visual regression baselines:** not required. The visual lane is off on every event
+(ADR:2026-11-19-the-playwright-visual-lane-is-off-until-baselines-are-checked-before-merge), so do not refresh or list baselines.
+
 For each, note the actual coverage % and test file paths in the PR body.
 
 > Tip: hand off the heavy lifting — `/test-enforcement` produces the same evidence and enforces 90% coverage on changed classes. Run it first if the user hasn't already.

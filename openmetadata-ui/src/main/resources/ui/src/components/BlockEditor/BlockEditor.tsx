@@ -27,6 +27,7 @@ import {
   formatServerContent,
   setEditorContent,
 } from '../../utils/BlockEditorUtils';
+import { getLanguageDirection } from '../../utils/i18next/i18nextUtil';
 import Banner from '../common/Banner/Banner';
 import { useEntityAttachment } from '../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import BarMenu from './BarMenu/BarMenu';
@@ -48,6 +49,8 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   (
     {
       content = '',
+      ariaLabel,
+      variant = 'document',
       editable = true,
       menuType = 'bubble',
       autoFocus,
@@ -100,7 +103,12 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         // tiptap v3 gives every editor role="textbox". A read-only viewer is
         // not a text field, so it keeps the generic semantics it had on v2.
         attributes: () => ({
-          class: 'om-block-editor',
+          class: classNames('om-block-editor', {
+            'tw:min-h-24': variant === 'comment',
+            'tw:[&>p:last-child]:pb-[30vh]':
+              variant === 'document' && editableRef.current,
+          }),
+          ...(ariaLabel ? { 'aria-label': ariaLabel } : {}),
           ...(autoFocus ? { autofocus: 'true' } : {}),
           ...(editableRef.current ? {} : { role: 'presentation' }),
         }),
@@ -282,8 +290,9 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       if (!editorWrapper) {
         return;
       }
-      editorWrapper.setAttribute('dir', i18n.dir());
-      editorWrapper.style.textAlign = i18n.dir() === 'rtl' ? 'right' : 'left';
+      const direction = getLanguageDirection(i18n);
+      editorWrapper.setAttribute('dir', direction);
+      editorWrapper.style.textAlign = direction === 'rtl' ? 'right' : 'left';
     }, [i18n]);
 
     return (

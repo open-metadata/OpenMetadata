@@ -328,6 +328,9 @@
       "processingStatus": {
         "type": "keyword"
       },
+      "neverExtracted": {
+        "type": "boolean"
+      },
       "sourceType": {
         "type": "keyword"
       },

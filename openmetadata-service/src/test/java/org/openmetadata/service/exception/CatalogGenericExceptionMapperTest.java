@@ -13,12 +13,14 @@
 
 package org.openmetadata.service.exception;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.sdk.PipelineServiceClientInterface.DEPLOYMENT_ERROR;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.jersey.errors.ErrorMessage;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
@@ -29,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.api.rdf.AgentSparqlError;
 import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.OntologyProfileViolation;
 import org.openmetadata.schema.type.OntologyProfileViolationCode;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
@@ -99,6 +102,66 @@ class CatalogGenericExceptionMapperTest {
         response.getEntity() instanceof ErrorMessage, "Neighboring endpoints keep ErrorMessage");
   }
 
+  /** Clients branch on the error type of a typed rejection, not on its wording. */
+  @Test
+  void aTypedRejectionKeepsItsErrorTypeInTheBody() {
+    Response response =
+        new CatalogGenericExceptionMapper()
+            .toResponse(
+                new SettingsManagedByEnvironmentException(
+                    SettingsType.EMAIL_CONFIGURATION,
+                    "EMAIL_CONFIG_SOURCE",
+                    List.of("/senderMail")));
+
+    JsonNode body = JsonUtils.valueToTree(response.getEntity());
+    assertEquals(409, response.getStatus());
+    assertEquals(409, body.path("code").asInt());
+    assertEquals("SETTINGS_MANAGED_BY_ENVIRONMENT", body.path("errorType").asText());
+    assertTrue(body.path("message").asText().contains("EMAIL_CONFIG_SOURCE=ENV"));
+  }
+
+  /**
+   * A {@link CustomExceptionMessage} raised with a non-enum HTTP status (424, what the basic-auth
+   * email-failure paths throw with {@code FAILED_SEND_EMAIL}) used to crash the mapper: the SDK
+   * {@code WebServiceException} stored a null {@link Response.Status} and {@code getResponse()}
+   * threw {@link IllegalArgumentException} from inside the mapper, surfacing as a generic 500. It
+   * must now render the intended 424 with the typed {@code FAILED_SEND_EMAIL} body (regression
+   * introduced by bb1395fc72 / PR #23239).
+   */
+  @Test
+  void aNonEnumStatusCodeIsRenderedWithItsTypedErrorBody() {
+    Response response =
+        assertDoesNotThrow(
+            () ->
+                new CatalogGenericExceptionMapper()
+                    .toResponse(
+                        new CustomExceptionMessage(
+                            424, "FAILED_SEND_EMAIL", "Email sending issue")));
+
+    assertEquals(424, response.getStatus());
+    assertEquals(Response.Status.Family.CLIENT_ERROR, response.getStatusInfo().getFamily());
+    JsonNode body = JsonUtils.valueToTree(response.getEntity());
+    assertEquals(424, body.path("code").asInt(), "body.code");
+    assertEquals("FAILED_SEND_EMAIL", body.path("errorType").asText(), "body.errorType");
+    assertEquals("Email sending issue", body.path("message").asText(), "body.message");
+  }
+
+  /** What {@code BasicAuthenticator.sendEmailVerification}/{@code sendPasswordResetLink}/ {@code
+   * resetUserPasswordWithToken} throw on a {@code TemplateException} — the exact constants the
+   * client contract expects. */
+  @Test
+  void basicAuthEmailFailureConstantsRenderAs424FailedSendEmail() {
+    Response response =
+        new CatalogGenericExceptionMapper()
+            .toResponse(
+                new CustomExceptionMessage(424, "FAILED_SEND_EMAIL", "Email sending issue"));
+
+    assertEquals(424, response.getStatus());
+    JsonNode body = JsonUtils.valueToTree(response.getEntity());
+    assertEquals("FAILED_SEND_EMAIL", body.path("errorType").asText());
+    assertEquals("Email sending issue", body.path("message").asText());
+  }
+
   @Test
   void aFailedRunIsSentWithTheStatusItWasRaisedWith() {
     // Airflow unreachable, Airflow answering 500, and the cluster rejecting the job.
@@ -124,9 +187,9 @@ class CatalogGenericExceptionMapperTest {
     Response response = new CatalogGenericExceptionMapper().toResponse(exception);
 
     assertEquals(status, response.getStatus());
-    ErrorMessage error = (ErrorMessage) response.getEntity();
-    assertEquals(status, error.getCode());
-    assertEquals(exception.getMessage(), error.getMessage());
+    JsonNode error = JsonUtils.valueToTree(response.getEntity());
+    assertEquals(status, error.path("code").asInt());
+    assertEquals(exception.getMessage(), error.path("message").asText());
   }
 
   private static CatalogGenericExceptionMapper mapperForAgentPath() {

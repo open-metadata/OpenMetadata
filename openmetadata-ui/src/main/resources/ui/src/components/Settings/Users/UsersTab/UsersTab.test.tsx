@@ -57,7 +57,8 @@ describe('UsersTab', () => {
       });
     });
 
-    expect(await screen.findByText('label.username')).toBeInTheDocument();
+    expect(await screen.findByText('label.name')).toBeInTheDocument();
+    expect(await screen.findByText('label.email')).toBeInTheDocument();
     expect(await screen.findByText('label.team-plural')).toBeInTheDocument();
     expect(await screen.findByText('label.role-plural')).toBeInTheDocument();
     expect(await screen.findByText('label.action-plural')).toBeInTheDocument();
@@ -70,7 +71,10 @@ describe('UsersTab', () => {
       });
     });
 
-    expect(await screen.findAllByText('Aaron Johnson')).toHaveLength(2);
+    expect(await screen.findAllByText('Aaron Johnson')).toHaveLength(1);
+    expect(
+      await screen.findByText('aaron_johnson0@gmail.com')
+    ).toBeInTheDocument();
     expect(await screen.findByText('Sales')).toBeInTheDocument();
     expect(await screen.findByText('Data Steward')).toBeInTheDocument();
   });

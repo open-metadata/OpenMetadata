@@ -84,4 +84,31 @@ describe('IntakeFormDesignerBody', () => {
       })
     );
   });
+
+  it('reports an edit, and reads clean once the edit is undone', async () => {
+    (getCustomPropertiesByEntityType as jest.Mock).mockResolvedValue([]);
+    const onDirtyChange = jest.fn();
+    await act(async () => {
+      render(
+        <IntakeFormDesignerBody
+          open
+          entityType={TargetEntityType.Domain}
+          initialValue={initialValue}
+          onDirtyChange={onDirtyChange}
+          onSubmit={jest.fn()}
+        />
+      );
+    });
+    const message = within(screen.getByTestId('error-displayName')).getByRole(
+      'textbox'
+    );
+
+    fireEvent.change(message, { target: { value: 'Required' } });
+
+    expect(onDirtyChange).toHaveBeenLastCalledWith(true);
+
+    fireEvent.change(message, { target: { value: '' } });
+
+    expect(onDirtyChange).toHaveBeenLastCalledWith(false);
+  });
 });

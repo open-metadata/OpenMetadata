@@ -31,11 +31,17 @@ RUN mkdir -p /opt/openmetadata && \
     mkdir -p /shim/usr/bin && \
     ln -s /busybox/env /shim/usr/bin/env
 
-FROM eclipse-temurin:21-jdk AS jre-builder
+# Amazon Corretto 21's generic Linux build, from its official image. Only the jlinked runtime
+# leaves this stage, not the image's Amazon Linux 2 base. Not plain `amazoncorretto:21`: that
+# is Amazon Linux 2023's own build, which links system freetype, libjpeg and libpng that the
+# runtime does not ship. See ADR:2026-11-18-shipped-jvm-images-run-on-corretto.
+FROM amazoncorretto:21-al2-generic AS jre-builder
 
+# --strip-java-debug-attributes, not --strip-debug: Corretto ships its native libraries
+# stripped, and --strip-debug would need objcopy for nothing.
 RUN jlink \
       --add-modules ALL-MODULE-PATH \
-      --strip-debug \
+      --strip-java-debug-attributes \
       --no-man-pages \
       --no-header-files \
       --compress=zip-6 \
@@ -45,8 +51,8 @@ RUN jlink \
 # eMudhra's compromised intermediates chain to three emSign roots (ECC G3, ECC C3, C1). Oracle JDK
 # 21.0.13.0.3 also removes emSign G1, G2 and Comodo's AAA Certificate Services from cacerts, so
 # this step drops those too.
-# Until eclipse-temurin:21-jdk ships none of them, drop them here by SHA-256 and fail
-# the build if any is still trusted. Once the base no longer ships them nothing is deleted.
+# Corretto's cacerts has none of them, so nothing is deleted today. The step stays as the check:
+# it drops any that come back by SHA-256 and fails the build if one is still trusted.
 # Roots, not the advisory's intermediate fingerprints in blocked.certs: an ECDSA signature
 # re-encoded as (r, n-s) gives an intermediate a new fingerprint that still verifies.
 RUN set -eu; \

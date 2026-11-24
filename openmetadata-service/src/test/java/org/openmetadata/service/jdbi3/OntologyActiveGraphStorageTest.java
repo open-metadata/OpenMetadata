@@ -14,6 +14,7 @@ import static org.openmetadata.service.jdbi3.OntologyTestDatabase.repositoryRoot
 
 import jakarta.json.Json;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -27,6 +28,8 @@ import org.apache.jena.query.Dataset;
 import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.update.UpdateAction;
+import org.apache.jena.vocabulary.OWL2;
+import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -77,7 +80,7 @@ class OntologyActiveGraphStorageTest {
                       return call.callRealMethod();
                     })
                 .when(storage)
-                .replaceGraph(anyString(), any(Model.class));
+                .replaceGraph(anyString(), any(), any(Model.class));
             final var rebuilding = workers.submit(() -> projection.rebuild(storage));
             try {
               assertTrue(modelBuilt.await(10, TimeUnit.SECONDS));
@@ -124,6 +127,7 @@ class OntologyActiveGraphStorageTest {
             projection.refresh(id, storage);
             final Model original = dataset.getNamedModel(OntologyActiveGraph.graph(id));
             assertTrue(original.contains(null, RDFS.label, fixture.ontology.getName()));
+            assertFalse(original.contains(null, RDF.type, OWL2.Axiom));
             fixture.ontologies.patch(
                 null,
                 id,
@@ -164,6 +168,32 @@ class OntologyActiveGraphStorageTest {
           } finally {
             dataset.close();
           }
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void aWriteBeingDeliveredQueuesTheBoundAssetsItRefreshesAfterItself(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          migrateQueue(fixture, dialect);
+          final var queue = new RdfLiveWriteStore(fixture.handle.getJdbi(), Clock.systemUTC());
+          final List<String> delivered = new ArrayList<>();
+          queue.enqueue("release");
+          assertTrue(
+              queue.processNext(
+                  payload -> {
+                    delivered.add(payload);
+                    queue.enqueueAll(List.of("asset-1", "asset-2"));
+                  }));
+          while (queue.processNext(delivered::add)) {
+            assertTrue(delivered.size() <= 3, () -> "delivered " + delivered);
+          }
+          assertEquals(List.of("release", "asset-1", "asset-2"), delivered);
+          assertEquals(0, queue.pendingWrites());
         });
   }
 

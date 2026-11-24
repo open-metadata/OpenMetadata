@@ -28,7 +28,7 @@ import java.util.function.Supplier;
  * as for a public client, an Entra ID token must still come from the tenant the deployment names:
  * a multi-tenant application registration accepts sign-ins from every tenant.
  */
-final class ProviderTokenValidator {
+public final class ProviderTokenValidator {
   private static final String TENANT_ID_PLACEHOLDER = "{tenantid}";
   private static final String TENANT_ID_CLAIM = "tid";
   private static final String GOOGLE_ISSUER = "https://accounts.google.com";
@@ -108,7 +108,7 @@ final class ProviderTokenValidator {
   }
 
   /** Google documents both forms as the issuer of its ID tokens. */
-  private static boolean isGoogleSchemelessIssuer(String expectedIssuer, String issuer) {
+  public static boolean isGoogleSchemelessIssuer(String expectedIssuer, String issuer) {
     return GOOGLE_ISSUER.equals(expectedIssuer) && GOOGLE_SCHEMELESS_ISSUER.equals(issuer);
   }
 }

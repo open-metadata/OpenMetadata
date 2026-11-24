@@ -91,6 +91,8 @@ const AppearanceConfigSettingsPage = () => {
     try {
       const configValues = {
         customLogoConfig: {
+          // Keep the dark-mode URLs set in Platform Settings; this page has no fields for them.
+          ...applicationConfig?.customLogoConfig,
           customLogoUrlPath: orEmpty(values?.customLogoUrlPath),
           customMonogramUrlPath: orEmpty(values?.customMonogramUrlPath),
           customFaviconUrlPath: orEmpty(values?.customFaviconUrlPath),

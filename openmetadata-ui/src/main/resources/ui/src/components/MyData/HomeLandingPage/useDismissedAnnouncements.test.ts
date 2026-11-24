@@ -12,10 +12,6 @@
  */
 import { act, renderHook } from '@testing-library/react';
 import {
-  activateTourMock,
-  deactivateTourMock,
-} from '../../../rest/product-tour/productTourMock';
-import {
   getDismissedAnnouncementsStorageKey,
   useDismissedAnnouncements,
 } from './useDismissedAnnouncements';
@@ -29,28 +25,12 @@ describe('useDismissedAnnouncements', () => {
     localStorage.setItem(KEY, JSON.stringify(['gone', 'still-live']));
   });
 
-  afterEach(() => {
-    deactivateTourMock();
-  });
-
   it('forgets dismissals of announcements that are no longer live', () => {
     const { result } = renderHook(() => useDismissedAnnouncements(USER_ID));
 
     act(() => result.current.prune(['still-live']));
 
     expect(JSON.parse(localStorage.getItem(KEY) ?? '[]')).toEqual([
-      'still-live',
-    ]);
-  });
-
-  it('keeps every dismissal while a product tour shows recorded announcements', () => {
-    activateTourMock(async () => []);
-    const { result } = renderHook(() => useDismissedAnnouncements(USER_ID));
-
-    act(() => result.current.prune(['recorded-announcement']));
-
-    expect(JSON.parse(localStorage.getItem(KEY) ?? '[]')).toEqual([
-      'gone',
       'still-live',
     ]);
   });

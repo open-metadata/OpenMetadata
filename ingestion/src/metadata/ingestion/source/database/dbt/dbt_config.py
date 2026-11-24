@@ -121,6 +121,23 @@ def _(config: DbtLocalConfig):
         raise DBTConfigException(f"Error fetching dbt files from local: {exc}")  # noqa: B904
 
 
+def _request_headers(config: DbtHttpConfig) -> dict:
+    """dbtHttpHeaders values are CustomSecretStr (format: password in the schema). With an
+    external secrets manager the server hands out `secret:` references, resolved here; under
+    the default DB provider a header starting with `secret:` is the literal value and is kept."""
+    if not config.dbtHttpHeaders:
+        return {}
+    from metadata.utils.secrets.db_secrets_manager import (  # pylint: disable=import-outside-toplevel
+        DBSecretsManager,
+    )
+    from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
+        SecretsManagerFactory,
+    )
+
+    literal = isinstance(SecretsManagerFactory().get_secrets_manager(), DBSecretsManager)
+    return {key: value.get_secret_value(skip_secret_manager=literal) for key, value in config.dbtHttpHeaders.items()}
+
+
 @get_dbt_details.register
 def _(config: DbtHttpConfig):  # noqa: C901
     try:
@@ -128,7 +145,7 @@ def _(config: DbtHttpConfig):  # noqa: C901
         ssl_verify = verify_ssl_fn(config.dbtSSLConfig) if config.dbtVerifySSL else None
         if ssl_verify is None:
             ssl_verify = True
-        request_headers = dict(config.dbtHttpHeaders) if config.dbtHttpHeaders else {}
+        request_headers = _request_headers(config)
 
         manifest_url = config.dbtManifestHttpPath
         logger.debug(f"Requesting [dbtManifestHttpPath] to: {manifest_url}")

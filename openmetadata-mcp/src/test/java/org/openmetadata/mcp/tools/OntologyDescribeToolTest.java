@@ -16,6 +16,7 @@ package org.openmetadata.mcp.tools;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -24,13 +25,24 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Resource;
+import org.apache.jena.riot.Lang;
+import org.apache.jena.riot.RDFDataMgr;
+import org.apache.jena.vocabulary.OWL;
+import org.apache.jena.vocabulary.RDF;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
+import org.openmetadata.service.rdf.OntologyDocument;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -223,5 +235,76 @@ class OntologyDescribeToolTest {
             .execute(AUTHORIZER, SECURITY_CONTEXT, Map.of("format", "json-ld"));
 
     assertEquals("jsonld", result.format());
+  }
+
+  @Test
+  void aTermIsReadFromTheBundledOntologyWithoutPermissionOrRepository() throws IOException {
+    final OntologyDescribeTool.Result result =
+        new OntologyDescribeTool(() -> null)
+            .execute(
+                RdfToolAuthorization.denyingAuthorizer(),
+                SECURITY_CONTEXT,
+                Map.of("term", "om:Column"));
+
+    assertEquals("term", result.scope());
+    assertEquals("https://open-metadata.org/ontology/Column", result.resource());
+    assertEquals("turtle", result.format());
+    assertFalse(result.truncated());
+    assertTrue(result.body().contains("rdfs:comment"), result.body());
+  }
+
+  @Test
+  void everyClassReadsBackWholeWithinTheResponseBudget() throws IOException {
+    final OntologyDescribeTool tool = new OntologyDescribeTool(() -> null);
+    int largest = 0;
+    for (String type : ontologyClasses()) {
+      final OntologyDescribeTool.Result result =
+          tool.execute(AUTHORIZER, SECURITY_CONTEXT, Map.of("term", type));
+      assertFalse(result.truncated(), type + " needs " + result.byteCount() + " bytes");
+      largest = Math.max(largest, result.byteCount());
+    }
+    assertTrue(largest > 0 && largest <= RdfBody.maxBytes(), "largest class: " + largest);
+  }
+
+  @Test
+  void anUndeclaredTermIsRejected() {
+    final IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new OntologyDescribeTool(() -> null)
+                    .execute(AUTHORIZER, SECURITY_CONTEXT, Map.of("term", "om:NoSuchTerm")));
+
+    assertEquals(
+        "'term' is not declared in the OpenMetadata ontology: om:NoSuchTerm",
+        exception.getMessage());
+  }
+
+  @Test
+  void aTermAndAResourceAreNotCombined() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new OntologyDescribeTool(() -> null)
+                .execute(
+                    AUTHORIZER,
+                    SECURITY_CONTEXT,
+                    Map.of("term", "om:Column", "resource", "https://open-metadata.org/entity/x")));
+  }
+
+  private static List<String> ontologyClasses() {
+    final String body = OntologyDocument.serialize("turtle").body();
+    final Model ontology = ModelFactory.createDefaultModel();
+    RDFDataMgr.read(
+        ontology, new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8)), Lang.TURTLE);
+    final List<String> classes =
+        ontology
+            .listResourcesWithProperty(RDF.type, OWL.Class)
+            .filterKeep(Resource::isURIResource)
+            .mapWith(Resource::getURI)
+            .filterKeep(uri -> uri.startsWith("https://open-metadata.org/ontology/"))
+            .toList();
+    assertFalse(classes.isEmpty());
+    return classes;
   }
 }

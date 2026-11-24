@@ -136,7 +136,7 @@ class CredentialMcpRevocationIT extends McpTestBase {
               Map.of(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER, token));
       return getTool(tool)
           .callHandler()
-          .apply(context, new McpSchema.CallToolRequest(toolName, Map.of()));
+          .apply(context, McpSchema.CallToolRequest.builder(toolName).arguments(Map.of()).build());
     }
   }
 }

@@ -17,8 +17,6 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
 import static org.openmetadata.service.migration.utils.v206.MigrationUtil.ACTIVITY_FEED_ALERT_STEP;
 import static org.openmetadata.service.migration.utils.v206.MigrationUtil.addContractAndStatusToActivityFeedAlert;
-import static org.openmetadata.service.migration.utils.v207.MigrationUtil.MCP_CONSENT_COLUMNS_STEP;
-import static org.openmetadata.service.migration.utils.v207.MigrationUtil.addMcpConsentColumnsOnMySql;
 import static org.openmetadata.service.migration.utils.v210.AlertBacklogMigration.skipBacklogOfAlertsThePreviousReleaseCouldNotSend;
 import static org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets;
 import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.backfillCreationAudit;
@@ -27,6 +25,7 @@ import static org.openmetadata.service.migration.utils.v210.DataQualityDimension
 import static org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration.retireDeltaLakeServices;
 import static org.openmetadata.service.migration.utils.v210.DottedServiceFqnMigration.repairDottedServiceChildFqns;
 import static org.openmetadata.service.migration.utils.v210.FlowableCharsetMigration.alignFlowableTableCharsets;
+import static org.openmetadata.service.migration.utils.v210.HealthyDataAssetsChartMigration.repairHealthyDataAssetsCharts;
 import static org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil.backfillSourceConfigTypes;
 import static org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration.removeCreatedSentinel;
 import static org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines;
@@ -46,10 +45,12 @@ import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
 import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
+import org.openmetadata.service.migration.utils.v209.ServiceVersionSecretsMasking;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
+import org.openmetadata.service.migration.utils.v210.ContextFileFqnRepair;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
@@ -57,9 +58,13 @@ import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigr
 import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
+import org.openmetadata.service.migration.utils.v210.IncidentWorkflowTransitionMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
+import org.openmetadata.service.migration.utils.v210.McpConsentColumns;
+import org.openmetadata.service.migration.utils.v210.MicroStrategyChartRename;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
 import org.openmetadata.service.migration.utils.v210.TaskFieldPathMigration;
 import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
@@ -75,6 +80,7 @@ public class Migration extends MigrationProcessImpl {
     // First, so no later step loads an entity still typed DeltaLake:
     // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
     retireDeltaLakeServices(handle, MYSQL, getPipelineServiceClient());
+    ODCSCustomPropertiesMigration.migrate(handle, MYSQL);
     alignFlowableTableCharsets(handle);
     ConversationMigration.migrate(handle, MYSQL);
     ConversationReferenceMigration.migrate(handle, MYSQL);
@@ -142,12 +148,12 @@ public class Migration extends MigrationProcessImpl {
     // Lineage edges written before pipelines were type-restricted can name any entity — a database
     // service among them — which the edge copied into the downstream search document
     // (ANT-2026-RL0ZDKB8). Clear those references from the stored edges; each one is logged for
-    // credential rotation. DB-agnostic, so it also runs on Postgres.
+    // credential rotation. It runs on both engines, each with its own page query.
     runOnce(
         migrationDAO,
         getVersion(),
         LineageEdgePipelineCleanupMigration.STEP_NAME,
-        () -> clearNonPipelineEdgePipelines(collectionDAO));
+        () -> clearNonPipelineEdgePipelines(handle, MYSQL));
     runOnce(
         migrationDAO,
         getVersion(),
@@ -160,6 +166,9 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         AlertBacklogMigration.STEP_NAME,
         () -> skipBacklogOfAlertsThePreviousReleaseCouldNotSend(collectionDAO));
+    // Platform Insights 'Healthy Data Assets' always showed 0%: fix the v190 chart and split out
+    // its live counterpart. Idempotent.
+    repairHealthyDataAssetsCharts();
     // Alerts name their consumer by its registered id, no longer by its Java class.
     runOnce(
         migrationDAO,
@@ -172,19 +181,12 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         DestinationIdMigration.STEP_NAME,
         () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
-    // New writes encrypt each webhook secret for the alert destination or profile webhook that
-    // holds it; this does the same for what is already stored. Each destination's id owns its
-    // secrets, so this runs after the destination id step. Idempotent.
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        WebhookSecretsMigration.PROFILE_STEP_NAME,
-        () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, MYSQL));
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        WebhookSecretsMigration.ALERT_STEP_NAME,
-        () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, MYSQL));
+    // New writes encrypt each webhook secret with the configured Fernet keys; these do the same
+    // for what is already stored. A value a 2.1 pre-release encrypted with a key derived from its
+    // destination's id is encrypted again, so they run after the destination id step. Each runs
+    // once, in one transaction with the marker that records it.
+    WebhookSecretsMigration.encryptProfileWebhookSecrets(handle, getVersion(), MYSQL);
+    WebhookSecretsMigration.encryptAlertDestinationSecrets(handle, getVersion(), MYSQL);
     // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
     // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
     // harmless.
@@ -193,13 +195,13 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ACTIVITY_FEED_ALERT_STEP,
         () -> addContractAndStatusToActivityFeedAlert(handle));
-    // Same for the 2.0.7 MCP consent columns. The step adds only missing columns, so running it
-    // after 2.0.7 already did is harmless.
+    // The MCP consent columns ship in 2.1.0, so every database upgrading to 2.1 adds them here. The
+    // step adds only missing columns, so a database that already has them is left as it is.
     runOnce(
         migrationDAO,
         getVersion(),
-        MCP_CONSENT_COLUMNS_STEP,
-        () -> addMcpConsentColumnsOnMySql(handle));
+        McpConsentColumns.STEP_NAME,
+        () -> McpConsentColumns.addOnMySql(handle));
     // Same for the 2.0.8 MCP user-name indexes, on a database that recorded 2.0.8 before they were
     // added to it.
     runOnce(
@@ -214,6 +216,13 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         DataProductDomainContainmentRepair.STEP_NAME,
         () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
+    // Renames MicroStrategy charts by dossier. It reads charts through the repository, so it runs
+    // after the conversation and custom property migrations above.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        MicroStrategyChartRename.STEP_NAME,
+        () -> MicroStrategyChartRename.renameAll(handle, collectionDAO));
     // Same for the 2.0.8 entity_extension collation alignment. It only acts when the column
     // differs from its table, so running it after 2.0.8 already did changes nothing.
     runOnce(
@@ -230,6 +239,14 @@ public class Migration extends MigrationProcessImpl {
           initializeWorkflowHandler();
           GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
         });
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        IncidentWorkflowTransitionMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          IncidentWorkflowTransitionMigration.addAssignedStatusTransitions();
+        });
     // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
     AppCreatedAlerts.logForReviewOnMySql(handle);
     UnsupportedNotificationTemplates.review(handle);
@@ -240,5 +257,19 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         OntologyRolesMigration.STEP_NAME,
         () -> OntologyRolesMigration.attachOntologyPoliciesToDataSteward(collectionDAO));
+    // Released versions stored a Context Center file edited inside a folder under its bare name;
+    // each such file is given the FQN its folder derives again.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ContextFileFqnRepair.STEP_NAME,
+        () -> ContextFileFqnRepair.repairAll(handle, MYSQL));
+    // A database that recorded 2.1.0 before the 2.0.9 masking step existed never runs 2.0.9's data
+    // migration again, so the plain text secrets in its service version history are masked here.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ServiceVersionSecretsMasking.STEP_NAME,
+        () -> ServiceVersionSecretsMasking.maskPlainTextSecrets(handle, MYSQL));
   }
 }

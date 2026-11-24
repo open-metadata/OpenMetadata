@@ -48,13 +48,6 @@ public class TestSuiteBuilder {
   }
 
   /**
-   * Set custom extension data.
-   */
-  public TestSuiteBuilder extension(Object extension) {
-    return this;
-  }
-
-  /**
    * Build the CreateTestSuite request without executing it.
    */
   public CreateTestSuite build() {

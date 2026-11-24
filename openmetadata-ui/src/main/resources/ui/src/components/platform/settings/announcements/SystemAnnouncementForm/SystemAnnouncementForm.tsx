@@ -22,11 +22,13 @@ import classNames from 'classnames';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../../../generated/entity/feed/announcement';
+import { useUnsavedChangesPrompt } from '../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { useSaveSystemAnnouncement } from '../../../../../hooks/platform/useSystemAnnouncements';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { CUSTOM_TYPE_NAME_MAX_LENGTH } from '../../../../../utils/AnnouncementsUtils';
 import { isDescriptionContentEmpty } from '../../../../../utils/BlockEditorPureUtils';
 import RichTextEditor from '../../../../common/RichTextEditor/RichTextEditor';
+import UnsavedChangesPrompt from '../../../../discovery/personal-space/Profile/components/UnsavedChangesPrompt';
 import {
   AnnouncementDateField,
   AnnouncementFieldError,
@@ -34,6 +36,7 @@ import {
 import {
   ANNOUNCEMENT_TITLE_MAX_LENGTH,
   ANNOUNCEMENT_TITLE_MIN_LENGTH,
+  applyAnnouncementTypeChange,
   toAnnouncementTypeFields,
 } from '../../../../Modals/AnnouncementModal/announcementFormUtils';
 import { AnnouncementFormValues } from '../../../../Modals/AnnouncementModal/AnnouncementModal.interface';
@@ -77,6 +80,9 @@ const SystemAnnouncementForm = ({
   const values = useWatch({ control: form.control }) as AnnouncementFormValues;
   const isCustom = values.type === AnnouncementType.Custom;
   const saveMutation = useSaveSystemAnnouncement(onSaved);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    form.formState.isDirty
+  );
 
   const requiredMessage = (fieldText: string) =>
     t('message.field-text-is-required', { fieldText });
@@ -107,10 +113,7 @@ const SystemAnnouncementForm = ({
     onChange: (value: AnnouncementType) => void
   ) => {
     onChange(value);
-    // Leaving Custom drops its colour and name requirements, so their errors go too.
-    if (value !== AnnouncementType.Custom) {
-      form.clearErrors(['color', 'customTypeName']);
-    }
+    applyAnnouncementTypeChange(form, value);
   };
 
   return (
@@ -329,11 +332,12 @@ const SystemAnnouncementForm = ({
         gap={3}
         justify="end">
         <Button
-          color="secondary"
+          color="tertiary"
           data-testid="announcement-cancel"
-          onPress={onCancel}>
+          onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="announcement-submit"

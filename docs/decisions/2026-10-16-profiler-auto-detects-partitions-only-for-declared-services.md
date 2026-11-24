@@ -1,7 +1,7 @@
 # The profiler auto-detects partitions only for services that declare support, on by default
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-16 (initial)
+- **Revisions:** v1 2026-10-16 (initial) · v2 2026-11-18 (Doris reports partition types by method and column type)
 - **Deciders:** Teddy Crepineau
 - **Guard:** `ingestion/tests/unit/test_partition.py`
 - **Related:** open-metadata/openmetadata-collate#3048
@@ -34,3 +34,11 @@ arithmetic filter only compiles on some dialects.
 Adding a service is a schema change (the capability) plus confirming its dialect compiles the date
 filter. Revisit the default if users rely on full-table profiles for the newly enabled services, and
 the test-suite exclusion if data quality should follow the profiler's scope.
+
+## Amendment
+v2 2026-11-18 (open-metadata/OpenMetadata#37542): Doris no longer reports every partition key as
+`TIME-UNIT`. LIST partition columns are `COLUMN-VALUE`; RANGE columns are `TIME-UNIT` on DATE/DATETIME,
+carrying the AUTO or dynamic partition unit as the interval, and `INTEGER-RANGE` on integers. So
+inference now skips Doris LIST partitions, and an integer RANGE partition gets the 1–10000 range: a table
+partitioned on an integer-encoded date such as `20260101` needs its partitioning set in the table
+profiler config, or auto-detection turned off.

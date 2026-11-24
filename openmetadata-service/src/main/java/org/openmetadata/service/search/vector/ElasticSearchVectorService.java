@@ -23,7 +23,9 @@ import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.OntologyTermSearch;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.MeteredElasticsearchTransport;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -158,7 +160,7 @@ public class ElasticSearchVectorService implements VectorIndexService {
       // can push from+size past index.max_result_window and 400 the request. Clamp unconditionally.
       overFetchSize = Math.min(overFetchSize, k);
 
-      String indexName = getIndexAlias();
+      String indexName = vectorSearchTarget(parameters);
       Set<String> readableAnchorIds = readableAnchors.apply(parameters);
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
@@ -282,6 +284,18 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
+  private String vectorSearchTarget(VectorSearchParameters parameters) {
+    final var types = parameters.filters() == null ? null : parameters.filters().get("entityType");
+    if (types == null || types.stream().noneMatch(OntologyTermSearch::isTerm)) {
+      return getIndexAlias();
+    }
+    final var ontologyAlias =
+        Entity.getSearchRepository().getIndexOrAliasName(OntologyTermSearch.ALIAS);
+    return types.stream().allMatch(OntologyTermSearch::isTerm)
+        ? ontologyAlias
+        : getIndexAlias() + "," + ontologyAlias;
+  }
+
   /**
    * Read an HttpEntity body as UTF-8, tolerating a null or unreadable entity. Some ES
    * endpoints return no body on 4xx; dereferencing entity.getContent() unconditionally
@@ -300,23 +314,44 @@ public class ElasticSearchVectorService implements VectorIndexService {
 
   @Override
   public Map<String, Object> generateEmbeddingFields(EntityInterface<?> entity) {
-    return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient);
+    return generateEmbeddingFields(entity, null);
+  }
+
+  public Map<String, Object> generateEmbeddingFields(
+      EntityInterface<?> entity, String ontologyBody) {
+    return VectorDocBuilder.buildEmbeddingFields(entity, embeddingClient, ontologyBody);
   }
 
   @Override
   public void updateEntityEmbedding(EntityInterface<?> entity, String entityIndexName) {
+    updateEntityEmbeddings(entity, entityIndexName, null);
+  }
+
+  @Override
+  public void updateEntityEmbeddings(
+      EntityInterface<?> entity, String entityIndexName, String ontologyBody) {
     try {
       String entityId = entity.getId().toString();
       String existingFingerprint = getExistingFingerprint(entityIndexName, entityId);
-      String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
+      String currentFingerprint =
+          ontologyBody == null
+              ? VectorDocBuilder.computeFingerprintForEntity(entity)
+              : VectorDocBuilder.computeFingerprintForEntity(entity, ontologyBody);
 
       if (currentFingerprint.equals(existingFingerprint)) {
         LOG.debug("Skipping entity {} - fingerprint unchanged", entityId);
         return;
       }
 
-      Map<String, Object> embeddingFields = generateEmbeddingFields(entity);
-      partialUpdateEntity(entityIndexName, entityId, embeddingFields);
+      Map<String, Object> embeddingFields = generateEmbeddingFields(entity, ontologyBody);
+      if (ontologyBody == null) {
+        partialUpdateEntity(entityIndexName, entityId, embeddingFields);
+      } else {
+        OntologyTermSearch.writeCurrentEmbedding(
+            entity.getEntityReference(),
+            currentFingerprint,
+            () -> partialUpdateEntity(entityIndexName, entityId, embeddingFields));
+      }
     } catch (Exception e) {
       LOG.error("Failed to update embedding for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
@@ -390,14 +425,6 @@ public class ElasticSearchVectorService implements VectorIndexService {
     }
   }
 
-  /**
-   * Per-entity input to {@link #getExistingEmbeddingsBatch(String, Map)}. Mirrors the OpenSearch
-   * service; kept engine-local so the ES path stays self-contained.
-   */
-  public record EntityFingerprintInput(Long updatedAt, Supplier<String> currentFingerprint) {}
-
-  private static final List<String> FINGERPRINT_HEADER_FIELDS = List.of("fingerprint", "updatedAt");
-
   private static final List<String> EMBEDDING_SOURCE_FIELDS =
       List.of(
           "fingerprint",
@@ -409,25 +436,30 @@ public class ElasticSearchVectorService implements VectorIndexService {
           "parentId");
 
   /**
-   * Two-step batch fetch of cached embedding documents for entities whose cached state matches the
-   * caller-provided current state. Step 1 reads only fingerprint+updatedAt and keeps matching ids;
-   * step 2 pulls the full embedding _source for those, so large vectors stay off the wire for
-   * entities that will be re-embedded anyway. Mirrors OpenSearchVectorService (ES uses _search).
+   * Two-step batch fetch of the stored embeddings a reindex may reuse, keyed by entity id. Step 1
+   * reads only the stored fingerprint and keeps the ids whose fingerprint equals the current one
+   * (see {@link StoredEmbeddingReuse}); step 2 pulls the full embedding _source for those, so large
+   * vectors stay off the wire for entities that will be re-embedded anyway. Mirrors
+   * OpenSearchVectorService (ES uses _search).
+   *
+   * @param currentFingerprintById each entity's current fingerprint, computed only when a stored
+   *     one exists
    */
+  @Override
   public Map<String, JsonNode> getExistingEmbeddingsBatch(
-      String indexName, Map<String, EntityFingerprintInput> currentById) {
-    if (currentById == null || currentById.isEmpty()) {
+      String indexName, Map<String, Supplier<String>> currentFingerprintById) {
+    if (currentFingerprintById == null || currentFingerprintById.isEmpty()) {
       return Collections.emptyMap();
     }
     try {
-      List<String> entityIds = new ArrayList<>(currentById.keySet());
+      List<String> entityIds = new ArrayList<>(currentFingerprintById.keySet());
       List<String> matchingIds = new ArrayList<>();
       for (Map.Entry<String, JsonNode> entry :
-          fetchSourceByIds(indexName, entityIds, FINGERPRINT_HEADER_FIELDS).entrySet()) {
-        EntityFingerprintInput input = currentById.get(entry.getKey());
-        if (input != null
-            && entry.getValue().isObject()
-            && cachedStateMatches(entry.getValue(), input)) {
+          fetchSourceByIds(indexName, entityIds, StoredEmbeddingReuse.HEADER_FIELDS).entrySet()) {
+        Supplier<String> currentFingerprint = currentFingerprintById.get(entry.getKey());
+        if (currentFingerprint != null
+            && StoredEmbeddingReuse.fingerprintMatches(
+                entry.getKey(), entry.getValue(), currentFingerprint)) {
           matchingIds.add(entry.getKey());
         }
       }
@@ -437,7 +469,7 @@ public class ElasticSearchVectorService implements VectorIndexService {
       Map<String, JsonNode> result = new HashMap<>();
       for (Map.Entry<String, JsonNode> entry :
           fetchSourceByIds(indexName, matchingIds, EMBEDDING_SOURCE_FIELDS).entrySet()) {
-        if (isSpliceable(entry.getValue())) {
+        if (StoredEmbeddingReuse.isSpliceable(entry.getValue())) {
           result.put(entry.getKey(), entry.getValue());
         }
       }
@@ -446,29 +478,6 @@ public class ElasticSearchVectorService implements VectorIndexService {
       LOG.error("Failed to batch get embeddings in index={}", indexName, e);
       return Collections.emptyMap();
     }
-  }
-
-  private static boolean cachedStateMatches(JsonNode header, EntityFingerprintInput input) {
-    JsonNode cachedUpdatedAt = header.path("updatedAt");
-    if (cachedUpdatedAt.isIntegralNumber()
-        && input.updatedAt() != null
-        && cachedUpdatedAt.asLong() == input.updatedAt()) {
-      return true;
-    }
-    String cachedFp = header.path("fingerprint").asText(null);
-    return cachedFp != null && cachedFp.equals(input.currentFingerprint().get());
-  }
-
-  private static boolean isSpliceable(JsonNode cached) {
-    if (cached == null || !cached.isObject()) {
-      return false;
-    }
-    JsonNode embedding = cached.path("embedding");
-    if (!embedding.isArray() || embedding.isEmpty()) {
-      return false;
-    }
-    JsonNode fingerprint = cached.path("fingerprint");
-    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
   }
 
   private Map<String, JsonNode> fetchSourceByIds(

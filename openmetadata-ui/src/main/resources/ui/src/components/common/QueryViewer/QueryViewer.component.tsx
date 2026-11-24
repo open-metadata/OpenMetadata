@@ -10,16 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, ButtonUtility, Card } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import { Badge, Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty, split } from 'lodash';
 import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import { getSchemaEditorValue } from '../../../utils/SchemaEditor.utils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import CopyButton from '../CopyButton/CopyButton';
 import NoDataPlaceholder from '../EmptyPlaceholder/NoDataPlaceholder';
 import './query-viewer.style.less';
 
@@ -57,8 +56,6 @@ const QueryViewer = ({
     };
   }, [sqlQuery, hasQuery]);
 
-  const { onCopyToClipBoard } = useClipboard(formattedQuery);
-
   return (
     <Card className="w-auto dbt-tab-container">
       {(title || hasQuery) && (
@@ -80,13 +77,11 @@ const QueryViewer = ({
                   size="sm">
                   {queryLine}
                 </Badge>
-                <ButtonUtility
-                  data-testid="query-entity-copy-button"
-                  icon={Copy01}
-                  size="lg"
+                <CopyButton
+                  testId="query-entity-copy-button"
                   tooltip={t('message.copy-to-clipboard')}
                   tooltipPlacement="top end"
-                  onClick={() => onCopyToClipBoard()}
+                  value={formattedQuery}
                 />
               </div>
             ) : null
