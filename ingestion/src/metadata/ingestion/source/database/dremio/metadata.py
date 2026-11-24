@@ -264,8 +264,15 @@ class DremioSource(DatabaseServiceSource):
     def _get_schema_datasets(self) -> list[DremioDataset]:
         return self._datasets.get(self.context.get().database_schema, [])
 
+    def _is_included(self, dataset: DremioDataset) -> bool:
+        if dataset.table_type == TableType.View:
+            return self.source_config.includeViews
+        return self.source_config.includeTables
+
     def get_tables_name_and_type(self) -> Iterable[TableNameAndType]:
         for dataset in self._get_schema_datasets():
+            if not self._is_included(dataset):
+                continue
             table_fqn = fqn.build(
                 self.metadata,
                 entity_type=Table,

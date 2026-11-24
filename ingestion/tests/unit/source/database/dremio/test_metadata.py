@@ -12,6 +12,7 @@
 The Dremio metadata source, on a fake REST API
 """
 
+import pytest
 import requests
 
 from metadata.generated.schema.entity.data.table import DataType, TableType
@@ -83,6 +84,31 @@ class TestNames:
         )
 
         assert list(source.get_database_names()) == ["reporting"]
+
+    @pytest.mark.parametrize(
+        ("source_config", "expected"),
+        [
+            ({"includeViews": False}, ["archived_table"]),
+            ({"includeTables": False}, ["archived"]),
+        ],
+    )
+    def test_the_include_switches_keep_tables_or_views_out(self, make_source, source_config, expected):
+        source = make_source(
+            {
+                **CATALOG,
+                "/catalog/by-path/reporting/reporting": {
+                    "children": [
+                        dataset("reporting", "reporting", "archived", view=True),
+                        dataset("reporting", "reporting", "archived_table"),
+                    ]
+                },
+            },
+            source_config=source_config,
+        )
+        schemas_of(source, "reporting")
+        source.context.get().database_schema = "reporting"
+
+        assert [table.name for table in source.get_tables_name_and_type()] == expected
 
     def test_the_database_filter(self, make_source):
         source = make_source(CATALOG, source_config={"databaseFilterPattern": {"includes": ["^lake$"]}})
