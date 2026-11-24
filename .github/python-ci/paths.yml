@@ -1,16 +1,31 @@
 python:
   - '**/pom.xml'
-  - openmetadata-dist/src/main/assembly/**
-  - bin/**
-  - bootstrap/**
-  - conf/**
+  - bin/openmetadata.sh
+  - bin/openmetadata-server-start.sh
+  - bootstrap/openmetadata-ops.sh
+  - bootstrap/sql/**
+  - conf/openmetadata.yaml
+  - conf/openmetadata-env.sh
+  - conf/operations.yaml
+  - conf/public_key.der
+  - conf/private_key.der
   - docker/run_local_docker.sh
   - docker/run_local_docker_common.sh
   - docker/development/docker-compose.yml
-  - docker/development/Dockerfile
-  - docker/development/Dockerfile.dockerignore
-  - docker/mysql/**
-  - ingestion/**
+  - ingestion/src/**/!(*.md)
+  - ingestion/tests/**/!(*.md)
+  - ingestion/stubs/**
+  - ingestion/scripts/**
+  - ingestion/examples/**
+  - ingestion/operators/**/*.py
+  - ingestion/pipelines/**
+  - ingestion/*.py
+  - ingestion/Makefile
+  - ingestion/pyproject.toml
+  - ingestion/uv.lock
+  - ingestion/.basedpyright/**
+  - ingestion/.ruff-g004-baseline.json
+  - ingestion/.importlinter
   - scripts/check_generated_models.py
   - scripts/datamodel_generation.py
   - scripts/generate_ingestion_models.py
@@ -40,22 +55,23 @@ python:
   - .github/scripts/python_ci_diagnostics.sh
   - .github/scripts/configure_docker_storage.sh
   - docker/development/docker-compose-postgres.yml
-  - docker/validate_compose.py
   - .github/scripts/classify_test_outcome.py
   - Makefile
 airflow-apis:
   - '**/pom.xml'
-  - openmetadata-dist/src/main/assembly/**
-  - bin/**
-  - bootstrap/**
-  - conf/**
+  - bin/openmetadata.sh
+  - bin/openmetadata-server-start.sh
+  - bootstrap/openmetadata-ops.sh
+  - bootstrap/sql/**
+  - conf/openmetadata.yaml
+  - conf/openmetadata-env.sh
+  - conf/operations.yaml
+  - conf/public_key.der
+  - conf/private_key.der
   - docker/run_local_docker.sh
   - docker/run_local_docker_common.sh
   - docker/development/docker-compose.yml
-  - docker/development/Dockerfile
-  - docker/development/Dockerfile.dockerignore
-  - docker/mysql/**
-  - openmetadata-airflow-apis/**
+  - openmetadata-airflow-apis/**/!(*.md)
   - .github/workflows/reusable-py-airflow-apis.yml
   - .github/actions/report-test-results/**
   - .github/actions/setup-python/**
