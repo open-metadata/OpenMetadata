@@ -1018,7 +1018,7 @@ public class AIContextBuilder {
     } else if (!nullOrEmpty(pill.getAnswer())) {
       content = pill.getAnswer();
     }
-    return unescapeRichText(content);
+    return PromptText.forContentRead(content);
   }
 
   private List<KnowledgeItem> resolveMetrics(EntityInterface<?> entity) {
@@ -1070,44 +1070,9 @@ public class AIContextBuilder {
     } else if (entity instanceof ContextMemory pill) {
       content = pillContent(pill);
     } else {
-      content = unescapeRichText(entity.getDescription());
+      content = PromptText.forContentRead(entity.getDescription());
     }
     return content;
-  }
-
-  /**
-   * The prompt-ready full body of a knowledge entity for the
-   * {@code get_entity_details(include=["content"])} progressive-disclosure path. Strips inline
-   * images and render-only HTML via {@link PromptText#forPrompt} on rich-text descriptions while
-   * keeping metric expression code verbatim so SQL operators such as {@code <} and {@code >} are
-   * never HTML-escaped.
-   */
-  public static String promptContentOf(EntityInterface<?> entity) {
-    String content;
-    if (entity instanceof Metric metric) {
-      content = promptMetricContent(metric);
-    } else if (entity instanceof ContextMemory pill) {
-      content = PromptText.forPrompt(pillContent(pill));
-    } else {
-      content = PromptText.forPrompt(unescapeRichText(entity.getDescription()));
-    }
-    return content;
-  }
-
-  private static String promptMetricContent(Metric metric) {
-    StringBuilder content = new StringBuilder();
-    String description = PromptText.forPrompt(unescapeRichText(metric.getDescription()));
-    if (!nullOrEmpty(description) && !description.isBlank()) {
-      content.append(description);
-    }
-    MetricExpression expression = metric.getMetricExpression();
-    if (expression != null && !nullOrEmpty(expression.getCode())) {
-      if (content.length() > 0) {
-        content.append('\n');
-      }
-      content.append(expression.getCode());
-    }
-    return content.toString();
   }
 
   /**
@@ -1121,8 +1086,9 @@ public class AIContextBuilder {
 
   static String metricContent(Metric metric) {
     StringBuilder content = new StringBuilder();
-    if (!nullOrEmpty(metric.getDescription())) {
-      content.append(unescapeRichText(metric.getDescription()));
+    String description = PromptText.forContentRead(metric.getDescription());
+    if (!nullOrEmpty(description) && !description.isBlank()) {
+      content.append(description);
     }
     MetricExpression expression = metric.getMetricExpression();
     if (expression != null && !nullOrEmpty(expression.getCode())) {

@@ -68,9 +68,6 @@ public final class AIContextMarkdown {
   private static final String COLUMN_MAPPING_CAP_NOTE =
       "\n_Column mappings are capped at %d per edge — fetch the full lineage graph with "
           + "get_entity_lineage(entityType=`%s`, fqn=`%s`)._\n";
-  private static final String KNOWLEDGE_CONTENT_HINT =
-      "\n_Excerpt — fetch the full content with get_entity_details(entityType=%s, fqn=%s,"
-          + " include=[\"content\"])._\n";
   private static final Set<ContextSection> LEGACY_RENDER_SECTIONS =
       EnumSet.complementOf(EnumSet.of(ContextSection.TAGS));
 
@@ -670,11 +667,12 @@ public final class AIContextMarkdown {
       }
     }
     if (Boolean.TRUE.equals(item.getContentTruncated())) {
-      markdown.append(
-          KNOWLEDGE_CONTENT_HINT.formatted(
-              inlineCodeSpan(item.getType() == null ? "" : item.getType().value()),
-              inlineCodeSpan(
-                  nullOrEmpty(item.getFullyQualifiedName()) ? "" : item.getFullyQualifiedName())));
+      markdown
+          .append("\n_Excerpt — fetch the full content with get_entity_details(entityType=`")
+          .append(item.getType() == null ? "" : item.getType().value())
+          .append("`, fqn=`")
+          .append(nullOrEmpty(item.getFullyQualifiedName()) ? "" : item.getFullyQualifiedName())
+          .append("`, include=[\"content\"])._\n");
     }
   }
 
@@ -823,36 +821,6 @@ public final class AIContextMarkdown {
 
   static String inlineCodeValue(String value) {
     return nullOrEmpty(value) ? "" : value.replace("`", "").replaceAll("\\R+", " ").strip();
-  }
-
-  /**
-   * Wraps an identifier in a CommonMark inline code span wide enough to preserve any backticks in
-   * the value verbatim while flattening line breaks to spaces.
-   */
-  private static String inlineCodeSpan(String value) {
-    String singleLine = value.replaceAll("\\R+", " ");
-    String fence = "`".repeat(longestBacktickRun(singleLine) + 1);
-    boolean pad =
-        singleLine.startsWith("`")
-            || singleLine.endsWith("`")
-            || (singleLine.startsWith(" ") && singleLine.endsWith(" ") && !singleLine.isBlank());
-    return pad ? fence + " " + singleLine + " " + fence : fence + singleLine + fence;
-  }
-
-  private static int longestBacktickRun(String value) {
-    int longest = 0;
-    int current = 0;
-    for (int i = 0; i < value.length(); i++) {
-      if (value.charAt(i) == '`') {
-        current++;
-        if (current > longest) {
-          longest = current;
-        }
-      } else {
-        current = 0;
-      }
-    }
-    return longest;
   }
 
   private static void appendTags(StringBuilder markdown, List<String> tags, String headingPrefix) {

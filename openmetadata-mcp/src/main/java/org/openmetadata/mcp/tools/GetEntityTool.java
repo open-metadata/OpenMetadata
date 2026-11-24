@@ -19,6 +19,7 @@ import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.AIContext;
@@ -99,8 +100,6 @@ public class GetEntityTool implements McpTool {
   private static final String FORMAT_MARKDOWN = "markdown";
   private static final int DEFAULT_PASSAGES = 3;
   private static final int MAX_PASSAGES = 10;
-  private static final String METRIC_CODE_START = "; metricCode: ```";
-  private static final String METRIC_CODE_END = "\n```; ";
   private static final String TEST_SUITE_KEY = "testSuite";
   private static final String CERTIFICATION_KEY = "certification";
 
@@ -429,11 +428,11 @@ public class GetEntityTool implements McpTool {
     String query = ctx.options().query();
     List<String> found =
         query != null && !query.isBlank() && vectorSearchEnabled()
-            ? sanitizePassages(ctx.entity(), passages(ctx, query))
+            ? passages(ctx, query)
             : List.of();
     Object rendered;
     if (found.isEmpty()) {
-      String body = AIContextBuilder.promptContentOf(ctx.entity());
+      String body = AIContextBuilder.fullContentOf(ctx.entity());
       rendered = renderText(ctx, body == null ? "" : body);
     } else {
       rendered =
@@ -442,39 +441,6 @@ public class GetEntityTool implements McpTool {
               : renderText(ctx, String.join("\n\n---\n\n", found));
     }
     return rendered;
-  }
-
-  /**
-   * Strips inline images and render-only markup from retrieved chunk passages (page chunks can
-   * carry raw HTML from the block editor) and drops passages that reduce to blank text, while
-   * keeping saved metric expression code outside the HTML sanitizer so SQL operators such as
-   * {@code <b AND b>} stay verbatim.
-   */
-  private static List<String> sanitizePassages(EntityInterface<?> entity, List<String> passages) {
-    if (nullOrEmpty(passages)) {
-      return List.of();
-    }
-    return passages.stream()
-        .map(
-            entity instanceof Metric ? GetEntityTool::sanitizeMetricPassage : PromptText::forPrompt)
-        .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
-        .toList();
-  }
-
-  private static String sanitizeMetricPassage(String passage) {
-    if (nullOrEmpty(passage)) {
-      return passage;
-    }
-    // VectorDocBuilder wraps SQL in a labeled code field in both current and older indexed chunks.
-    int start = passage.indexOf(METRIC_CODE_START);
-    int end = passage.indexOf(METRIC_CODE_END, start + METRIC_CODE_START.length());
-    if (start < 0 || end < 0) {
-      return PromptText.forPrompt(passage);
-    }
-    int afterCode = end + METRIC_CODE_END.length();
-    return PromptText.forPrompt(passage.substring(0, start))
-        + passage.substring(start, afterCode)
-        + PromptText.forPrompt(passage.substring(afterCode));
   }
 
   private static boolean masksTestCaseContent(IncludeContext ctx) {
@@ -488,12 +454,21 @@ public class GetEntityTool implements McpTool {
    * caller then gets the full body rather than nothing.
    */
   private static List<String> passages(IncludeContext ctx, String query) {
-    return OpenSearchVectorService.getInstance()
-        .searchChunksByParent(
-            ctx.entity().getId().toString(),
-            query,
-            ctx.options().passages(),
-            getSubjectContext(ctx.securityContext()));
+    List<String> found =
+        OpenSearchVectorService.getInstance()
+            .searchChunksByParent(
+                ctx.entity().getId().toString(),
+                query,
+                ctx.options().passages(),
+                getSubjectContext(ctx.securityContext()));
+    // PageBodyTextContributor includes the raw editor HTML in indexed page chunks.
+    if (ctx.entity() instanceof Page) {
+      return found.stream()
+          .map(PromptText::forContentRead)
+          .filter(passage -> !nullOrEmpty(passage) && !passage.isBlank())
+          .toList();
+    }
+    return found;
   }
 
   private static Object renderText(IncludeContext ctx, String text) {

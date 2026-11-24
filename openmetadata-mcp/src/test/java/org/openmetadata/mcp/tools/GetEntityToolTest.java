@@ -64,6 +64,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -221,13 +222,16 @@ class GetEntityToolTest {
   @ValueSource(strings = {"markdown", "json"})
   void contentQueryPassagesStripInlineImagesAndDropImageOnlyChunks(String format) throws Exception {
     String fqn = "Knowledge.DiagramGuide";
-    String diagram = "B".repeat(5_000);
+    String diagram = "iVBORw0KGgoAAAANSUhEUg";
     Page page =
         new Page()
             .withId(UUID.randomUUID())
             .withName("DiagramGuide")
             .withFullyQualifiedName(fqn)
-            .withDescription("<p>Fallback body.</p>");
+            .withDescription(
+                "<p>Matched passage: x &gt;&#61; 1.</p><img src=\"data:image/png;base64,"
+                    + diagram
+                    + "\">");
     CatalogSecurityContext securityContext = securityContextFor("alice");
     SubjectContext alice = new SubjectContext(new User().withName("alice"), null, null);
     SearchRepository searchRepository = mock(SearchRepository.class);
@@ -236,7 +240,7 @@ class GetEntityToolTest {
     when(vectorService.searchChunksByParent(page.getId().toString(), "diagram", 3, alice))
         .thenReturn(
             List.of(
-                "<p>Matched passage.</p><img src=\"data:image/png;base64," + diagram + "\">",
+                PageBodyTextContributor.INSTANCE.extractor().extract(page),
                 "<img src=\"data:image/png;base64," + diagram + "\">"));
     Map<String, Object> result;
 
@@ -274,13 +278,13 @@ class GetEntityToolTest {
       List<String> passages = (List<String>) contentMap.get("passages");
       assertThat(passages).hasSize(1);
       assertThat(passages.getFirst())
-          .contains("Matched passage.")
+          .contains("Matched passage: x >= 1.")
           .doesNotContain("base64")
           .doesNotContain("<img");
     } else {
       String rendered = (String) contentMap.get("content");
       assertThat(rendered)
-          .contains("Matched passage.")
+          .contains("Matched passage: x >= 1.")
           .doesNotContain("base64")
           .doesNotContain("<img")
           .doesNotContain("---");
@@ -340,7 +344,7 @@ class GetEntityToolTest {
   }
 
   @Test
-  void contentQueryPreservesMetricSqlOperatorsWhileSanitizingDescriptionMarkup() throws Exception {
+  void contentQueryReturnsIndexedMetricSqlVerbatim() throws Exception {
     String fqn = "net_revenue";
     String sql = "SELECT SUM(amount) FROM orders WHERE amount <b AND b> 0";
     Metric metric =
@@ -356,12 +360,7 @@ class GetEntityToolTest {
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
     when(vectorService.searchChunksByParent(metric.getId().toString(), "amount", 3, alice))
-        .thenReturn(
-            List.of(
-                "name: net_revenue; metricCode: ```SQL\n"
-                    + sql
-                    + "\n```; tier:  | description: <p>Gross revenue</p>"
-                    + "<img src=\"data:image/png;base64,AAAA\"> | chunk 1/1"));
+        .thenReturn(List.of(sql));
     Map<String, Object> result;
 
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
@@ -391,11 +390,7 @@ class GetEntityToolTest {
     }
 
     String rendered = (String) castMap(result.get("content")).get("content");
-    assertThat(rendered)
-        .contains(sql)
-        .contains("Gross revenue")
-        .doesNotContain("base64")
-        .doesNotContain("<img");
+    assertThat(rendered).isEqualTo(sql);
   }
 
   /** A call with neither a batch nor an entity is the caller's mistake, not a backend fault. */

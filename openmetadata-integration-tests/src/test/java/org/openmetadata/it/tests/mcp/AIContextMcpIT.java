@@ -468,7 +468,7 @@ class AIContextMcpIT extends McpTestBase {
             + "<p><img src=\"data:image/png;base64,"
             + base64Payload
             + "\" alt=\"Architecture\"></p>"
-            + "<p>End of summary.</p>";
+            + "<p>Keep x &gt;&#61; 1 and label &#39;a&#39;.</p>";
     Map<String, Object> createPage =
         Map.of(
             "name",
@@ -503,7 +503,7 @@ class AIContextMcpIT extends McpTestBase {
 
       assertThat(content)
           .contains("Architecture summary for revenue reporting.")
-          .contains("End of summary.")
+          .contains("Keep x >= 1 and label 'a'.")
           .doesNotContain("base64")
           .doesNotContain("<img")
           .doesNotContain(base64Payload);

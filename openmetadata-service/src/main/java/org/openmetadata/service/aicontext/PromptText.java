@@ -12,11 +12,9 @@
  */
 package org.openmetadata.service.aicontext;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
 import java.util.regex.Pattern;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.openmetadata.service.util.DescriptionSanitizer;
 import org.owasp.html.HtmlPolicyBuilder;
 import org.owasp.html.PolicyFactory;
@@ -105,172 +103,37 @@ public final class PromptText {
   private PromptText() {}
 
   /**
-   * The description with render-only markup and inline {@code data:} images removed, or the input
-   * unchanged when it carries neither HTML nor Markdown {@code data:} images. Null and blank inputs
-   * are returned as given so callers keep their existing emptiness checks.
+   * The description with render-only markup removed, or the input unchanged when it carries no
+   * HTML. Null and blank inputs are returned as given so callers keep their existing emptiness
+   * checks.
    */
   public static String forPrompt(String description) {
-    if (description == null || description.isBlank()) {
+    if (description == null || description.isBlank() || !hasHtmlTag(description)) {
       return description;
     }
-    String text = stripMarkdownDataImages(description);
-    if (!hasHtmlTag(text)) {
-      return text;
-    }
-    return DescriptionSanitizer.sanitizeWith(PROMPT_POLICY, text);
+    return DescriptionSanitizer.sanitizeWith(PROMPT_POLICY, description);
   }
 
-  /** Removes inline data images while preserving the original Markdown around them. */
-  private static String stripMarkdownDataImages(String text) {
-    if (!text.contains("![")) {
-      return text;
+  /** Decodes editor entities after stripping markup so prompt text retains operators and quotes. */
+  public static String forContentRead(String richText) {
+    String content = forPrompt(richText);
+    if (content == null || content.indexOf('&') < 0) {
+      return content;
     }
-    DataImageScanner scanner = new DataImageScanner(text);
-    scanner.scan();
-    return scanner.withoutImages();
-  }
-
-  private record ImageRange(int start, int end) {}
-
-  /** Matches escaped and nested brackets without rescanning unclosed labels. */
-  private static final class DataImageScanner {
-    private static final int TEXT_BRACKET = -1;
-
-    private final String text;
-    private final Deque<Integer> brackets = new ArrayDeque<>();
-    private final List<ImageRange> images = new ArrayList<>();
-    private int uriEnd = -1;
-    private int tailStart = -1;
-    private int tailEnd = -1;
-
-    private DataImageScanner(String text) {
-      this.text = text;
+    String decoded = StringEscapeUtils.unescapeHtml4(content);
+    if (decoded.indexOf('<') < 0) {
+      return decoded;
     }
-
-    private void scan() {
-      for (int index = 0; index < text.length(); index++) {
-        switch (text.charAt(index)) {
-          case '\\' -> index = skipEscapedCharacter(index);
-          case '\r', '\n' -> brackets.clear();
-          case '[' -> brackets.push(TEXT_BRACKET);
-          case ']' -> index = closeBracket(index);
-          case '!' -> {
-            if (hasCharacterAt(index + 1, '[')) {
-              brackets.push(index);
-              index++;
-            }
-          }
-          default -> {}
-        }
-      }
+    // An editor can store the image tag itself as entity-encoded text.
+    if (StringUtils.containsIgnoreCase(decoded, "<img")) {
+      content = DescriptionSanitizer.sanitizeWith(PROMPT_POLICY, decoded);
     }
-
-    private int skipEscapedCharacter(int index) {
-      if (index + 1 < text.length() && isMarkdownEscape(text.charAt(index + 1))) {
-        return index + 1;
-      }
-      return index;
-    }
-
-    private int closeBracket(int index) {
-      if (brackets.isEmpty()) {
-        return index;
-      }
-      int imageStart = brackets.pop();
-      if (imageStart == TEXT_BRACKET || !hasCharacterAt(index + 1, '(')) {
-        return index;
-      }
-      int imageEnd = dataDestinationEnd(index + 2);
-      if (imageEnd < 0) {
-        return index;
-      }
-      // An outer image covers any image already found in its alt text.
-      while (!images.isEmpty() && images.getLast().start() > imageStart) {
-        images.removeLast();
-      }
-      images.add(new ImageRange(imageStart, imageEnd));
-      return imageEnd - 1;
-    }
-
-    private int dataDestinationEnd(int start) {
-      int uriStart = skipWhitespace(start);
-      boolean hasAngleBrackets = hasCharacterAt(uriStart, '<');
-      if (hasAngleBrackets) {
-        uriStart++;
-      }
-      if (!text.regionMatches(true, uriStart, "data:", 0, 5)) {
-        return -1;
-      }
-      int payloadStart = uriStart + 5;
-      int end = endOfUri(payloadStart);
-      if (end == payloadStart || hasAngleBrackets != hasCharacterAt(end, '>')) {
-        return -1;
-      }
-      return endOfImage(hasAngleBrackets ? end + 1 : end);
-    }
-
-    private int endOfImage(int start) {
-      // Failed candidates sharing a URI run also share the whitespace and title after it.
-      if (start != tailStart) {
-        tailStart = start;
-        int close = skipTitle(start);
-        tailEnd = hasCharacterAt(close, ')') ? close + 1 : -1;
-      }
-      return tailEnd;
-    }
-
-    private int endOfUri(int start) {
-      // Several failed candidates may end in the same uninterrupted URI run.
-      // Scan each run at most once, even when it contains another image opener.
-      if (start >= uriEnd) {
-        uriEnd = start;
-        while (uriEnd < text.length() && !isUriTerminator(text.charAt(uriEnd))) {
-          uriEnd++;
-        }
-      }
-      return uriEnd;
-    }
-
-    private int skipTitle(int index) {
-      int start = skipWhitespace(index);
-      if (start == index || (!hasCharacterAt(start, '"') && !hasCharacterAt(start, '\''))) {
-        return start;
-      }
-      int titleEnd = text.indexOf(text.charAt(start), start + 1);
-      return titleEnd < 0 ? -1 : skipWhitespace(titleEnd + 1);
-    }
-
-    private int skipWhitespace(int index) {
-      while (index < text.length() && Character.isWhitespace(text.charAt(index))) {
-        index++;
-      }
-      return index;
-    }
-
-    private boolean hasCharacterAt(int index, char expected) {
-      return index >= 0 && index < text.length() && text.charAt(index) == expected;
-    }
-
-    private String withoutImages() {
-      if (images.isEmpty()) {
-        return text;
-      }
-      StringBuilder result = new StringBuilder();
-      int from = 0;
-      for (ImageRange image : images) {
-        result.append(text, from, image.start());
-        from = image.end();
-      }
-      return result.append(text, from, text.length()).toString();
-    }
-
-    private static boolean isMarkdownEscape(char character) {
-      return character == '\\' || character == '!' || character == '[' || character == ']';
-    }
-
-    private static boolean isUriTerminator(char character) {
-      return character == '>' || character == ')' || Character.isWhitespace(character);
-    }
+    // Keep markup delimiters and quoted attributes escaped in the returned fragment.
+    return content
+        .replace("&gt;", ">")
+        .replace("&#61;", "=")
+        .replace("&#39;", "'")
+        .replace("&#96;", "`");
   }
 
   private static boolean hasHtmlTag(String description) {

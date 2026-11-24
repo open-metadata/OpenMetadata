@@ -989,25 +989,25 @@ class AIContextBuilderTest {
   }
 
   @Test
-  void promptContentOf_stripsImagesFromArticleAndKeepsMetricExpressionVerbatim() {
+  void fullContentOf_stripsImagesFromArticleAndKeepsMetricExpressionVerbatim() {
     String payload = "A".repeat(5_000);
     Page article =
         new Page()
             .withName("architecture")
             .withDescription(
-                "<p class=\"om-p\">Overview</p>"
+                "<p class=\"om-p\">Overview: x &gt;&#61; 1 and &#39;a&#39;</p>"
                     + "<p><img src=\"data:image/png;base64,"
                     + payload
                     + "\"></p>"
                     + "<p>References <a data-entitytype=\"table\" data-fqn=\"svc.db.sch.orders\""
                     + " class=\"om-mention\">Orders</a>.</p>");
 
-    String pageContent = AIContextBuilder.promptContentOf(article);
+    String pageContent = AIContextBuilder.fullContentOf(article);
 
     assertFalse(pageContent.contains("base64"));
     assertFalse(pageContent.contains("<img"));
     assertFalse(pageContent.contains("class="));
-    assertTrue(pageContent.contains("Overview"));
+    assertTrue(pageContent.contains("Overview: x >= 1 and 'a'"), pageContent);
     assertTrue(pageContent.contains("data-fqn=\"svc.db.sch.orders\""));
 
     Metric metric =
@@ -1019,7 +1019,7 @@ class AIContextBuilderTest {
                 new MetricExpression()
                     .withCode("SELECT SUM(amount) FROM orders WHERE amount > 0 AND amount < 1000"));
 
-    String metricContent = AIContextBuilder.promptContentOf(metric);
+    String metricContent = AIContextBuilder.fullContentOf(metric);
 
     assertFalse(metricContent.contains("base64"));
     assertTrue(metricContent.contains("Net revenue"));
@@ -1032,14 +1032,14 @@ class AIContextBuilderTest {
             .withName("image_only")
             .withDescription("<img src=\"data:image/png;base64," + payload + "\">")
             .withMetricExpression(new MetricExpression().withCode("COUNT(*)"));
-    assertEquals("COUNT(*)", AIContextBuilder.promptContentOf(imageOnlyMetric));
+    assertEquals("COUNT(*)", AIContextBuilder.fullContentOf(imageOnlyMetric));
 
     ContextMemory memory =
         new ContextMemory()
             .withName("memo")
             .withAnswer(
                 "<p>Keep active accounts.</p><img src=\"data:image/png;base64," + payload + "\">");
-    String memoryContent = AIContextBuilder.promptContentOf(memory);
+    String memoryContent = AIContextBuilder.fullContentOf(memory);
     assertFalse(memoryContent.contains("base64"));
     assertTrue(memoryContent.contains("Keep active accounts."));
   }
