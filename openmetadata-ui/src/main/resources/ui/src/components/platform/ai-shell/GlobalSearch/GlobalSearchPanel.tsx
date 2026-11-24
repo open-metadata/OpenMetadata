@@ -193,14 +193,16 @@ const GlobalSearchPanel = () => {
   );
 
   // A type with no hits leaves the bar, so fall back to All rather than
-  // strand the user on a tab they can no longer see.
+  // strand the user on a tab they can no longer see. A zero the user's own
+  // filters caused keeps the tab, so they can see and undo the selection.
   useEffect(() => {
-    const isStranded =
-      trimmed && !isLoading && filter !== 'all' && !results[filter]?.count;
+    const hasFacets = Object.values(facets).some((values) => values.length);
+    const isTypeEmpty = filter !== 'all' && !results[filter]?.count;
+    const isStranded = trimmed && !isLoading && !hasFacets && isTypeEmpty;
     if (isStranded && !isScoped) {
       setFilter('all');
     }
-  }, [trimmed, isLoading, isScoped, filter, results]);
+  }, [trimmed, isLoading, isScoped, filter, facets, results]);
 
   const changeFilter = useCallback((next: GlobalSearchFilter) => {
     setFilter(next);

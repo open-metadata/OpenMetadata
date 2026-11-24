@@ -197,7 +197,11 @@ const fetchAssets = async (params: GlobalSearchQuery, signal: AbortSignal) => {
     pageNumber: 1,
     pageSize: pageSizeFor(ASSETS_CATEGORY, params.filter),
     trackTotalHits: true,
-    queryFilter: getFacetQueryFilter(params.facets),
+    // Facets belong to the active tab; another type's filters must not
+    // narrow the asset count.
+    queryFilter: getFacetQueryFilter(
+      params.filter === ASSETS_CATEGORY ? params.facets : {}
+    ),
     sortField: params.sort,
     sortOrder: params.sortOrder,
     signal,

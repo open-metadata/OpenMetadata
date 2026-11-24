@@ -289,7 +289,9 @@ describe('useGlobalSearchResults', () => {
     const facets = {
       [EntityFields.OWNERS]: [{ key: 'alice', label: 'Alice' }],
     };
-    renderHook(() => useGlobalSearchResults({ ...baseParams, facets }));
+    renderHook(() =>
+      useGlobalSearchResults({ ...baseParams, filter: 'assets', facets })
+    );
     await flushDebounce();
 
     const expected = getFacetQueryFilter(facets);
@@ -332,6 +334,13 @@ describe('useGlobalSearchResults', () => {
             },
           },
         },
+      })
+    );
+    // Another type's filters leave the data asset query unfiltered.
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        searchIndex: SearchIndex.DATA_ASSET,
+        queryFilter: getFacetQueryFilter({}),
       })
     );
   });

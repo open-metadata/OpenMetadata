@@ -65,9 +65,39 @@ jest.mock(
   })
 );
 
-jest.mock('../../../Explore/ExploreQuickFilters', () => () => (
-  <div data-testid="explore-quick-filters" />
-));
+jest.mock(
+  '../../../Explore/ExploreQuickFilters',
+  () =>
+    ({
+      onFieldValueSelect,
+    }: {
+      onFieldValueSelect: (field: {
+        key: string;
+        label: string;
+        value: { key: string; label: string }[];
+      }) => void;
+    }) =>
+      (
+        <button
+          aria-label="filter"
+          data-testid="explore-quick-filters"
+          onClick={() =>
+            onFieldValueSelect({
+              key: 'owners.displayName.keyword',
+              label: 'Owners',
+              value: [{ key: 'nobody', label: 'nobody' }],
+            })
+          }
+        />
+      )
+);
+
+// The real class pulls DomainUtils, whose import cycle leaves Task enums
+// undefined when loaded from the modal.
+jest.mock('../../../../utils/Domain/DomainClassBase', () => ({
+  __esModule: true,
+  default: { getListingFilters: () => [] },
+}));
 
 jest.mock('../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
@@ -315,6 +345,37 @@ describe('GlobalSearchModal', () => {
     });
 
     expect(screen.getByTestId('global-search-input')).toHaveFocus();
+  });
+
+  it('keeps the tab when its own filter matches nothing so it can be undone', async () => {
+    useGlobalSearchStore.setState({ isOpen: true, entry: 'all' });
+    renderModal();
+    await type('customer');
+    await userEvent.click(screen.getByTestId('global-search-tab-domain'), {
+      advanceTimers: jest.advanceTimersByTime,
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
+    (searchQuery as jest.Mock).mockImplementation(({ searchIndex }) =>
+      Promise.resolve({
+        hits: {
+          total: { value: searchIndex === 'dataAsset' ? 2 : 0 },
+          hits: [],
+        },
+      })
+    );
+
+    fireEvent.click(screen.getByTestId('explore-quick-filters'));
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
+
+    expect(screen.getByTestId('global-search-tab-domain')).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
   });
 
   it('clears the text, tab and filters together from the clear button', async () => {
