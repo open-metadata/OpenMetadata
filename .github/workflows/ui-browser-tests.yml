@@ -1,5 +1,15 @@
 # UI integration tests (Vitest Browser Mode + MSW). No backend; every
 # /api call is mocked, so the only network use is installing deps and Chromium.
+#
+# A pull request runs only the test files that execute the code it changes
+# (scripts/select-browser-tests.mjs), using the map of what each test file
+# executes from the latest full merge-queue run. The merge queue runs every
+# test file, so nothing a selection misses reaches main. A missing map, or a
+# change to test setup, configs or dependencies, runs everything on the pull
+# request too.
+#
+# Core components are treated like a library: a change there runs core's own
+# tests (the `core components` job) and selects no browser tests.
 name: UI Browser Tests
 
 on:
@@ -9,54 +19,348 @@ on:
       - "openmetadata-ui-core-components/src/main/resources/ui/**"
       - ".github/workflows/ui-browser-tests.yml"
       - ".github/actions/ui-browser-setup/**"
+  merge_group:
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ui-browser-tests-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  group: ui-browser-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   UI_DIR: openmetadata-ui/src/main/resources/ui
+  CORE_DIR: openmetadata-ui-core-components/src/main/resources/ui
+  # At most this many runners; with ~1,070 tests three ran past 10 min each.
+  SHARDS: 5
+  # Test files per runner when only some run (130 files over 5 runners).
+  FILES_PER_SHARD: 26
+  # What a change must touch for the merge queue to run the suite
+  # (merge_group has no `paths` filter). Core components are included: a
+  # core-only pull request runs core's own tests, and the queue's full run
+  # catches a core change that breaks the app before it reaches main.
+  UI_PATHS: >-
+    openmetadata-ui/src/main/resources/ui/
+    openmetadata-ui-core-components/src/main/resources/ui/
+    .github/workflows/ui-browser-tests.yml
+    .github/actions/ui-browser-setup/
 
 jobs:
+  select:
+    name: select browser tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      # Downloads the impact map from the latest merge-queue run.
+      actions: read
+    outputs:
+      mode: ${{ steps.plan.outputs.mode }}
+      summary: ${{ steps.plan.outputs.summary }}
+      shards: ${{ steps.plan.outputs.shards }}
+      shard-count: ${{ steps.plan.outputs.shard-count }}
+      core: ${{ steps.changes.outputs.core }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          # A pull request checks out its merge commit: HEAD^1 is the base.
+          fetch-depth: 2
+      - name: Changed areas
+        id: changes
+        env:
+          BASE: ${{ github.event.merge_group.base_sha || 'HEAD^1' }}
+        run: |
+          if [ "${{ github.event_name }}" = "merge_group" ]; then
+            git fetch --no-tags --depth=1 origin "$BASE"
+          fi
+          changed=$(git diff --name-only "$BASE" HEAD)
+          ui=false
+          for prefix in $UI_PATHS; do
+            if grep -q "^$prefix" <<< "$changed"; then ui=true; fi
+          done
+          core=false
+          if grep -q "^$CORE_DIR/" <<< "$changed"; then core=true; fi
+          { echo "ui=$ui"; echo "core=$core"; } >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@v5
+        if: github.event_name == 'pull_request'
+        with:
+          node-version-file: ${{ env.UI_DIR }}/.nvmrc
+      # Only esbuild is needed to read the import graph; the full UI install
+      # builds core components first.
+      - name: Install esbuild
+        if: github.event_name == 'pull_request'
+        run: |
+          version=$(awk '/^"?esbuild@/ {found=1} found && /^  version / {gsub(/"/, "", $2); print $2; exit}' "$UI_DIR/yarn.lock")
+          mkdir -p "$RUNNER_TEMP/esbuild"
+          cd "$RUNNER_TEMP/esbuild"
+          echo '{"private": true}' > package.json
+          yarn add --silent "esbuild@$version"
+          echo "ESBUILD_PATH=$RUNNER_TEMP/esbuild/node_modules/esbuild/lib/main.js" >> "$GITHUB_ENV"
+      # Merge-queue runs are on temporary branches whose caches a pull request
+      # cannot read, so the map travels as an artifact of the latest full run.
+      - name: Download the impact map from the merge queue
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for run in $(gh run list -R "$GITHUB_REPOSITORY" --workflow ui-browser-tests.yml \
+              --event merge_group --status success --limit 20 --json databaseId --jq '.[].databaseId'); do
+            if gh run download "$run" -R "$GITHUB_REPOSITORY" -n browser-impact-map -D "$UI_DIR" 2>/dev/null; then
+              echo "Impact map from merge-queue run $run" >> "$GITHUB_STEP_SUMMARY"
+              break
+            fi
+          done
+      - name: Test the selection script
+        if: github.event_name == 'pull_request'
+        working-directory: ${{ env.UI_DIR }}
+        run: |
+          node --test scripts/select-browser-tests.test.mjs scripts/browser-tests-report.test.mjs
+      - name: Select tests
+        id: plan
+        working-directory: ${{ env.UI_DIR }}
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            node scripts/select-browser-tests.mjs --map impact-map.json --base HEAD^1 --out selection.json \
+              | tee -a "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ github.event_name }}" = "merge_group" ] && [ "${{ steps.changes.outputs.ui }}" = "false" ]; then
+            echo '{"mode": "none", "reason": "no UI change in this merge-queue entry", "tests": [], "uncovered": []}' > selection.json
+          else
+            echo '{"mode": "all", "reason": "full run on ${{ github.event_name }}", "tests": [], "uncovered": []}' > selection.json
+          fi
+          mode=$(jq -r .mode selection.json)
+          count=$(jq '.tests | length' selection.json)
+          shard_count=0
+          if [ "$mode" = "all" ]; then
+            shard_count=$SHARDS
+          elif [ "$mode" = "selected" ]; then
+            shard_count=$(( (count + FILES_PER_SHARD - 1) / FILES_PER_SHARD ))
+            shard_count=$(( shard_count > SHARDS ? SHARDS : shard_count ))
+          fi
+          {
+            echo "mode=$mode"
+            echo "summary=$(jq -r .reason selection.json)"
+            echo "shard-count=$shard_count"
+            echo "shards=$(jq -cn --argjson n "$shard_count" '[range(1; $n + 1)]')"
+          } >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: browser-selection
+          path: ${{ env.UI_DIR }}/selection.json
+          retention-days: 1
+      # When nothing runs, the report job is skipped; leave a comment saying
+      # why, so an earlier push's results are not left standing.
+      - name: Report that no browser test ran
+        if: github.event_name == 'pull_request' && steps.plan.outputs.mode == 'none'
+        working-directory: ${{ env.UI_DIR }}
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/browser-tests-comment"
+          {
+            echo '<!-- ui-browser-tests -->'
+            echo '### UI browser tests'
+            echo
+            echo "**Ran:** none ($(jq -r .reason selection.json))"
+            uncovered=$(jq -r '.uncovered[] | "- `\(.)`"' selection.json)
+            if [ -n "$uncovered" ]; then
+              echo
+              echo '<details><summary>Changed files no browser test loads</summary>'
+              echo
+              echo "$uncovered"
+              echo
+              echo '</details>'
+            fi
+          } > "$RUNNER_TEMP/browser-tests-comment/comment.md"
+          echo "$PR" > "$RUNNER_TEMP/browser-tests-comment/pr-number"
+          cat "$RUNNER_TEMP/browser-tests-comment/comment.md" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: github.event_name == 'pull_request' && steps.plan.outputs.mode == 'none'
+        with:
+          name: browser-tests-comment
+          path: ${{ runner.temp }}/browser-tests-comment/
+          retention-days: 3
+
+  # Core components' own tests, run whenever core changes. A core change
+  # selects no browser tests, so this is its gate.
+  core-components:
+    name: core components
+    needs: select
+    if: needs.select.outputs.core == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: ${{ env.UI_DIR }}/.nvmrc
+      - name: Install
+        working-directory: ${{ env.CORE_DIR }}
+        run: |
+          for attempt in 1 2 3; do
+            yarn install --frozen-lockfile --network-timeout 120000 && exit 0
+            echo "yarn install failed (attempt $attempt), retrying"
+            sleep 15
+          done
+          exit 1
+      - name: Test
+        working-directory: ${{ env.CORE_DIR }}
+        run: yarn test
+      - name: Build
+        working-directory: ${{ env.CORE_DIR }}
+        run: yarn build
+
   browser-tests:
-    name: browser tests + coverage
-    # Playwright 1.57 supports Ubuntu up to 24.04; ubuntu-latest moved past it.
+    name: browser tests + coverage (shard ${{ matrix.shard }})
+    needs: select
+    if: needs.select.outputs.mode != 'none'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: ${{ fromJSON(needs.select.outputs.shards) }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ./.github/actions/ui-browser-setup
+      - uses: actions/download-artifact@v7
+        with:
+          name: browser-selection
+          path: ${{ env.UI_DIR }}
       - name: Run browser tests with coverage
         id: tests
         working-directory: ${{ env.UI_DIR }}
         continue-on-error: true
+        env:
+          # Every full run records what each test file executes; the merge
+          # queue's becomes the impact map pull requests select from.
+          BROWSER_IMPACT_DIR: ${{ needs.select.outputs.mode == 'all' && format('{0}/{1}/.impact', github.workspace, env.UI_DIR) || '' }}
+        # The blob report carries this shard's results and coverage for the
+        # merge in browser-tests-report.
         run: |
-          yarn test:ui:coverage
-      # Pull-request jobs are read-only, so results go to the job summary.
-      - name: Summary
+          files=()
+          if [ "${{ needs.select.outputs.mode }}" = "selected" ]; then
+            mapfile -t files < <(jq -r '.tests[]' selection.json)
+          fi
+          yarn test:ui:coverage --shard=${{ matrix.shard }}/${{ needs.select.outputs.shard-count }} \
+            --passWithNoTests --reporter=default --reporter=blob "${files[@]}"
+      - uses: actions/upload-artifact@v7
         if: always()
-        working-directory: ${{ env.UI_DIR }}
-        run: |
-          {
-            echo "### UI browser tests"
-            jq -r '.total | "Lines \(.lines.pct)% · Statements \(.statements.pct)% · Branches \(.branches.pct)% · Functions \(.functions.pct)%"' \
-              src/test/browser/coverage/coverage-summary.json 2>/dev/null || echo "No coverage summary."
-          } >> "$GITHUB_STEP_SUMMARY"
+        with:
+          name: browser-blob-${{ matrix.shard }}
+          path: ${{ env.UI_DIR }}/.vitest-reports/*
+          include-hidden-files: true
+          retention-days: 1
+      - uses: actions/upload-artifact@v7
+        if: always() && needs.select.outputs.mode == 'all'
+        with:
+          name: browser-impact-${{ matrix.shard }}
+          path: ${{ env.UI_DIR }}/.impact/*.jsonl
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 1
       - name: Upload failure screenshots
         if: always() && steps.tests.outcome == 'failure'
         uses: actions/upload-artifact@v7
         with:
-          name: ui-browser-failures
+          name: ui-browser-failures-${{ matrix.shard }}
           path: |
             ${{ env.UI_DIR }}/src/**/__screenshots__/**
             ${{ env.UI_DIR }}/.vitest-attachments/**
           if-no-files-found: ignore
       - name: Fail if tests failed
         if: always() && steps.tests.outcome == 'failure'
+        run: exit 1
+
+  # Merges the shards into one result. A pull request gets one report (posted
+  # as a comment by ui-browser-tests-comment.yml): what ran and why, the
+  # result, and the changed code the tests executed. A full run publishes the
+  # impact map.
+  browser-tests-report:
+    name: browser tests + coverage
+    needs: [select, browser-tests]
+    # Runs (and fails) when select fails: a skipped required check would pass
+    # with no tests run.
+    if: always() && (needs.select.result != 'success' || needs.select.outputs.mode != 'none')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Fail if test selection failed
+        if: needs.select.result != 'success'
+        run: |
+          echo "::error::Browser-test selection failed, so no tests ran."
+          exit 1
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          # The changed-code coverage diffs against the base (HEAD^1).
+          fetch-depth: 2
+      - uses: ./.github/actions/ui-browser-setup
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: browser-blob-*
+          merge-multiple: true
+          path: ${{ env.UI_DIR }}/.vitest-reports
+      - uses: actions/download-artifact@v7
+        with:
+          name: browser-selection
+          path: ${{ env.UI_DIR }}
+      - name: Merge shard reports
+        working-directory: ${{ env.UI_DIR }}
+        run: |
+          npx vitest --config vitest.browser.config.ts --merge-reports --coverage \
+            --reporter=default --reporter=junit \
+            --outputFile.junit=src/test/browser/junit.xml
+      - name: Write the report
+        if: always() && needs.select.result == 'success' && github.event_name == 'pull_request'
+        working-directory: ${{ env.UI_DIR }}
+        run: |
+          node scripts/browser-tests-report.mjs --base HEAD^1 --selection selection.json \
+            --junit src/test/browser/junit.xml \
+            --coverage src/test/browser/coverage/coverage-final.json > "$RUNNER_TEMP/comment.md"
+          cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
+      # Pull-request jobs are read-only, so the comment is posted by
+      # ui-browser-tests-comment.yml from this artifact once the run ends.
+      - name: Save the report for the comment
+        if: always() && needs.select.result == 'success' && github.event_name == 'pull_request'
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/browser-tests-comment"
+          cp "$RUNNER_TEMP/comment.md" "$RUNNER_TEMP/browser-tests-comment/comment.md"
+          echo "$PR" > "$RUNNER_TEMP/browser-tests-comment/pr-number"
+      - uses: actions/upload-artifact@v7
+        if: always() && needs.select.result == 'success' && github.event_name == 'pull_request'
+        with:
+          name: browser-tests-comment
+          path: ${{ runner.temp }}/browser-tests-comment/
+          retention-days: 3
+      - uses: actions/download-artifact@v7
+        if: needs.select.outputs.mode == 'all'
+        with:
+          # One folder per shard: each names its file after its process id,
+          # which can repeat across runners.
+          pattern: browser-impact-*
+          path: impact
+      # Only a fully passing run is trusted as the map: a failed test may have
+      # stopped before reaching the code it covers.
+      - name: Build the impact map
+        if: needs.select.outputs.mode == 'all' && needs.browser-tests.result == 'success'
+        run: |
+          cat impact/*/*.jsonl | jq -s 'map({(.test): .used}) | add' > "$UI_DIR/impact-map.json"
+          echo "Impact map: $(jq length "$UI_DIR/impact-map.json") test files" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: needs.select.outputs.mode == 'all' && needs.browser-tests.result == 'success'
+        with:
+          name: browser-impact-map
+          path: ${{ env.UI_DIR }}/impact-map.json
+          retention-days: 30
+      - name: Fail if any shard failed
+        if: always() && needs.browser-tests.result != 'success'
         run: exit 1

@@ -120,11 +120,11 @@ const AppInstallDetailsStep: FC<{
             justify="center">
             <Icon className="tw:size-8 tw:text-fg-secondary" />
           </Box>
-          <Box
-            align="center"
-            className="tw:w-24 tw:border-t tw:border-dashed tw:border-secondary"
-            justify="center">
-            <CheckCircle className="tw:-mt-2.5 tw:size-5 tw:bg-primary tw:text-fg-success-primary" />
+          {/* The dashed connector stops either side of the tick, so the tick needs no background to mask it. */}
+          <Box align="center" className="tw:w-24" direction="row" gap={1}>
+            <span className="tw:flex-1 tw:border-t tw:border-dashed tw:border-secondary" />
+            <CheckCircle className="tw:size-5 tw:shrink-0 tw:text-fg-success-primary" />
+            <span className="tw:flex-1 tw:border-t tw:border-dashed tw:border-secondary" />
           </Box>
           <Box
             align="center"
