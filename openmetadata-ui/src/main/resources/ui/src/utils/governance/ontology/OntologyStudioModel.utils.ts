@@ -131,8 +131,9 @@ export const humanizeName = (name: string): string =>
     .trim()
     .toLocaleLowerCase();
 
+// The name, not a humanized copy: `patientId` and a property named `patient id` must stay distinct.
 export const getPropertyLabel = (property: OntologyProperty): string =>
-  property.displayName || humanizeName(property.name);
+  property.displayName || property.name;
 
 export const getRelationPropertyLabel = (
   relation: Pick<OntologyModelRelation, 'property' | 'propertyIri'>
@@ -155,8 +156,17 @@ export const getDatatypeLabel = (property: OntologyProperty): string => {
   return range ? getIriLocalName(range) : 'string';
 };
 
+/**
+ * Data types whose range is not the xsd type of the same name. OWL 2 has no xsd:date, so a Date
+ * property ranges over om:date (ADR:2026-11-16-ontology-date-properties-range-over-om-date).
+ */
+const DATATYPE_IRIS: Partial<Record<StudioDatatype, string>> = {
+  date: 'https://open-metadata.org/ontology/date',
+  enum: `${XSD}string`,
+};
+
 export const getDatatypeIri = (datatype: StudioDatatype): string =>
-  `${XSD}${datatype === 'enum' ? 'string' : datatype}`;
+  DATATYPE_IRIS[datatype] ?? `${XSD}${datatype}`;
 
 const restrictionOf = (
   axiom: OntologyAxiom
@@ -597,6 +607,20 @@ export const buildReusePropertyPatch = (
           { domain: [...(property.domain ?? []), concept.iri] }
         ),
       ];
+
+/** Takes a concept off a property's domain; the inverse of buildReusePropertyPatch. */
+export const buildDetachPropertyPatch = (
+  property: OntologyProperty,
+  concept: OntologyConcept
+): Operation[] => [
+  ...(property.version === undefined
+    ? []
+    : [{ op: 'test' as const, path: '/version', value: property.version }]),
+  ...compare(
+    { domain: property.domain ?? [] },
+    { domain: (property.domain ?? []).filter((iri) => iri !== concept.iri) }
+  ),
+];
 
 export const buildDataPropertyRequest = (
   model: OntologyStudioModel,

@@ -23,7 +23,9 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -93,8 +95,7 @@ public class SamlSettingsHolder {
     samlData.put(
         SettingsBuilder.IDP_SINGLE_LOGOUT_SERVICE_BINDING_PROPERTY_KEY,
         "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect");
-    samlData.put(
-        SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, samlConfig.getIdp().getIdpX509Certificate());
+    putIdpCertificates(samlData, samlConfig.getIdp().getIdpX509Certificate());
 
     // Security Settings
     SamlSecurityConfig securityConfig = samlConfig.getSecurity();
@@ -113,6 +114,9 @@ public class SamlSettingsHolder {
         securityConfig.getWantAssertionEncrypted());
     samlData.put(SettingsBuilder.SECURITY_WANT_NAMEID_ENCRYPTED, false);
     samlData.put(SettingsBuilder.SECURITY_REQUESTED_AUTHNCONTEXTCOMPARISON, "exact");
+    // IdPs such as Keycloak send one Attribute element per value (one "Role" per role); java-saml
+    // rejects a repeated name unless told to merge the values into one attribute.
+    samlData.put(SettingsBuilder.SECURITY_ALLOW_REPEAT_ATTRIBUTE_NAME_PROPERTY_KEY, true);
     samlData.put(
         SettingsBuilder.SECURITY_SIGNATURE_ALGORITHM,
         "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
@@ -121,6 +125,20 @@ public class SamlSettingsHolder {
     putSpCredentials(samlData, samlConfig.getSp(), securityConfig);
     samlData.put(SettingsBuilder.UNIQUE_ID_PREFIX_PROPERTY_KEY, "OPENMETADATA_");
     return new SettingsBuilder().fromValues(samlData).build();
+  }
+
+  private static void putIdpCertificates(Map<String, Object> samlData, String pem)
+      throws CertificateException {
+    if (!CommonUtil.nullOrEmpty(pem)) {
+      // Runtime keys are explicitly pinned. Expiry must not turn a later restart into a server
+      // outage; validity is checked when validating new settings. Remove retired keys explicitly.
+      // ADR:2026-11-20-saml-runtime-trust-preserves-configured-signing-keys
+      final List<X509Certificate> certificates = SamlCertificates.parse(pem);
+      samlData.put(SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, certificates.getFirst());
+      for (int i = 0; i < certificates.size(); i++) {
+        samlData.put(SettingsBuilder.IDP_X509CERTMULTI_PROPERTY_KEY + "." + i, certificates.get(i));
+      }
+    }
   }
 
   /**
@@ -133,9 +151,7 @@ public class SamlSettingsHolder {
   private static void putSpCredentials(
       Map<String, Object> samlData, ServiceProviderConfig sp, SamlSecurityConfig securityConfig)
       throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
-    boolean credentialsRequired =
-        securityConfig.getSendSignedAuthRequest() || securityConfig.getWantAssertionEncrypted();
-    if (credentialsRequired && hasKeyStore(securityConfig)) {
+    if (readsSpCredentialsFromKeyStore(securityConfig)) {
       KeyStore keyStore =
           loadKeyStore(
               securityConfig.getKeyStoreFilePath(),
@@ -146,10 +162,25 @@ public class SamlSettingsHolder {
     } else if (hasPemCredentials(sp)) {
       samlData.put(SettingsBuilder.SP_PRIVATEKEY_PROPERTY_KEY, sp.getSpPrivateKey());
       samlData.put(SettingsBuilder.SP_X509CERT_PROPERTY_KEY, sp.getSpX509Certificate());
-    } else if (credentialsRequired) {
+    } else if (needsSpCredentials(securityConfig)) {
       throw new IllegalArgumentException(
           "Either Specify (KeyStoreFilePath, KeyStoreAlias and KeyStorePassword) or (Sp X509 Certificate and Private Key) as one of both is mandatory.");
     }
+  }
+
+  /**
+   * Whether sign-in takes the SP key and certificate from the keystore rather than from the PEM
+   * values: only when signing requests or decrypting assertions needs them and the keystore's path,
+   * alias and password are all set. The save check asks the same question, so the two cannot
+   * disagree about which credentials a configuration supplies.
+   */
+  public static boolean readsSpCredentialsFromKeyStore(SamlSecurityConfig securityConfig) {
+    return needsSpCredentials(securityConfig) && hasKeyStore(securityConfig);
+  }
+
+  private static boolean needsSpCredentials(SamlSecurityConfig securityConfig) {
+    return Boolean.TRUE.equals(securityConfig.getSendSignedAuthRequest())
+        || Boolean.TRUE.equals(securityConfig.getWantAssertionEncrypted());
   }
 
   private static boolean hasKeyStore(SamlSecurityConfig securityConfig) {

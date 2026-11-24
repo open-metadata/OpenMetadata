@@ -42,9 +42,12 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.tests.TestCase;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Databases;
+import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.AsyncJobResponse;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -140,6 +143,66 @@ public class RestoreHierarchyIT {
             });
 
     assertHierarchyRestored(h);
+  }
+
+  /**
+   * A table's basic test suite is soft-deleted one level below the table, before the table level
+   * re-indexes its tables. Reading the suite as live there turned a recursive soft delete of the
+   * database into a 404 for the suite.
+   */
+  @Test
+  void recursiveSoftDeleteAndRestore_ofADatabaseWhoseTableHasATestCase(TestNamespace ns) {
+    Hierarchy h = createShortNamedHierarchy(ns, "dbtc");
+    TestCase testCase = createTestCase(ns, h.tables.get(0));
+
+    softDeleteAndAssertCascade(h);
+    assertTestCaseDeleted(testCase, true);
+
+    Databases.find(h.database.getId().toString()).restore().execute();
+
+    assertHierarchyRestored(h);
+    assertTestCaseDeleted(testCase, false);
+  }
+
+  @Test
+  void recursiveSoftDeleteAndRestore_ofASchemaWhoseTableHasATestCase(TestNamespace ns) {
+    Hierarchy h = createShortNamedHierarchy(ns, "schtc");
+    DatabaseSchema schema = h.schemas.get(0);
+    Table table = h.tables.get(0);
+    TestCase testCase = createTestCase(ns, table);
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    client.databaseSchemas().delete(schema.getId().toString(), Map.of("recursive", "true"));
+    Table deleted = client.tables().get(table.getId().toString(), "deleted", Include.ALL.value());
+    assertTrue(Boolean.TRUE.equals(deleted.getDeleted()), "the schema's table was not deleted");
+    assertTestCaseDeleted(testCase, true);
+
+    client.databaseSchemas().restore(schema.getId());
+
+    Table restored = client.tables().get(table.getId().toString());
+    assertFalse(Boolean.TRUE.equals(restored.getDeleted()), "the schema's table was not restored");
+    assertTestCaseDeleted(testCase, false);
+  }
+
+  private static TestCase createTestCase(TestNamespace ns, Table table) {
+    return TestCaseBuilder.create(SdkClients.adminClient())
+        .name(ns.shortPrefix("column_count"))
+        .forTable(table)
+        .testDefinition("tableColumnCountToEqual")
+        .parameter("columnCount", "2")
+        .create();
+  }
+
+  private static void assertTestCaseDeleted(TestCase testCase, boolean deleted) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase fetched =
+        client.testCases().get(testCase.getId().toString(), "testSuite", Include.ALL.value());
+    assertEquals(deleted, Boolean.TRUE.equals(fetched.getDeleted()), "test case deleted flag");
+    TestSuite suite =
+        client
+            .testSuites()
+            .get(testCase.getTestSuite().getId().toString(), "deleted", Include.ALL.value());
+    assertEquals(deleted, Boolean.TRUE.equals(suite.getDeleted()), "basic test suite deleted flag");
   }
 
   @Test
@@ -267,7 +330,21 @@ public class RestoreHierarchyIT {
   private Hierarchy createHierarchy(TestNamespace ns, String tag) {
     DatabaseService service = DatabaseServiceTestFactory.create(ns, "Postgres");
     Database database = DatabaseTestFactory.create(ns, service.getFullyQualifiedName());
+    return createHierarchy(ns, tag, service, database);
+  }
 
+  /** Short names keep the FQN of a table's basic test suite within the column limit. */
+  private Hierarchy createShortNamedHierarchy(TestNamespace ns, String tag) {
+    DatabaseService service =
+        DatabaseServiceTestFactory.createPostgresWithName(ns.shortPrefix(tag + "_svc"), ns);
+    Database database =
+        DatabaseTestFactory.createWithName(
+            service.getFullyQualifiedName(), ns.shortPrefix(tag + "_db"));
+    return createHierarchy(ns, tag, service, database);
+  }
+
+  private Hierarchy createHierarchy(
+      TestNamespace ns, String tag, DatabaseService service, Database database) {
     List<DatabaseSchema> schemas = new java.util.ArrayList<>();
     List<Table> tables = new java.util.ArrayList<>();
     for (int s = 0; s < SCHEMA_COUNT; s++) {

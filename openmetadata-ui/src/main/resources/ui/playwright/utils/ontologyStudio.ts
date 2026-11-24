@@ -126,14 +126,17 @@ export async function openInspectorRelationChooser(
 export async function openReleaseHistory(page: Page) {
   const readerChip = page.getByTestId('ontology-release-history-trigger');
   const publish = page.getByTestId('ontology-publication-trigger');
-  // A user has exactly one of the two, so the union never matches twice.
+  // A user has exactly one of the two, so the union never matches twice. Which one
+  // can still swap while permissions load, so the pick and click retry together.
   await expect(readerChip.or(publish)).toBeVisible();
-  if (await readerChip.isVisible()) {
-    await readerChip.click();
-
+  let isReader = false;
+  await expect(async () => {
+    isReader = await readerChip.isVisible();
+    await (isReader ? readerChip : publish).click({ timeout: 2000 });
+  }).toPass({ timeout: 15_000 });
+  if (isReader) {
     return;
   }
-  await publish.click();
   await page.getByTestId('ontology-publication-tab-releases').click();
   await expect(
     page.getByTestId('ontology-publication-tab-releases')

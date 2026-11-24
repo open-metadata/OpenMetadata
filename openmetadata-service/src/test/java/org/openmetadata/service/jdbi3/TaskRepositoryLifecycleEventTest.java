@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.withSettings;
 import jakarta.ws.rs.core.Response;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.tasks.Task;
@@ -84,6 +86,9 @@ class TaskRepositoryLifecycleEventTest {
   private static TaskRepository repositoryPersisting(Task task) {
     TaskRepository repository =
         mock(TaskRepository.class, withSettings().defaultAnswer(CALLS_REAL_METHODS));
+    doAnswer(invocation -> invocation.<Supplier<?>>getArgument(0).get())
+        .when(repository)
+        .executeInTransaction(any());
     Fields allFields = new Fields(Set.of());
     doReturn(allFields).when(repository).getFields("*");
     doReturn(task).when(repository).get(isNull(), eq(task.getId()), eq(allFields));

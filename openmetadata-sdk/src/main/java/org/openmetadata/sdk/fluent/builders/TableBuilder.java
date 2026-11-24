@@ -275,6 +275,7 @@ public class TableBuilder {
    * Set custom extension data.
    */
   public TableBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

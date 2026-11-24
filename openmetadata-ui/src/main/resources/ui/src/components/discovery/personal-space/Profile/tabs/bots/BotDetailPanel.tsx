@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import {
   Autocomplete,
@@ -430,6 +431,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
                   contains(String(item.id), filterText)
                 }
                 items={roleItems}
+                maxVisibleItems={5}
                 placeholder={t('label.search-entity', {
                   entity: t('label.role-lowercase-plural'),
                 })}
@@ -454,7 +456,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
             <Box className="tw:mt-2.5 tw:flex-wrap" direction="row" gap={2}>
               {botUserData.isAdmin && (
                 <Badge size="md" type="modern">
-                  {TERM_ADMIN}
+                  {t('label.admin-superuser')}
                 </Badge>
               )}
               {botUserData.roles?.map((role) => (
@@ -506,7 +508,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
 
 interface BotDetailPanelProps {
   fqn: string;
-  onNavigate: (view: BotsView) => void;
+  onNavigate: (view: BotsView, options?: SettingsNavigateOptions) => void;
   onRename?: (newDisplayName: string) => void;
   onSetHeaderActions?: (actions: React.ReactNode) => void;
   onSetHeaderTitleInput?: (titleInput: React.ReactNode) => void;
@@ -674,7 +676,7 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
 
   const handleDeleteAction = useCallback(async () => {
     await getResourceLimit('bot', true, true);
-    onNavigate({ type: 'list' });
+    onNavigate({ type: 'list' }, { replace: true });
   }, [onNavigate, getResourceLimit]);
 
   const handleRestore = useCallback(async () => {
@@ -738,20 +740,25 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
     }));
 
     if (botUserData && !botUserData.isAdmin) {
-      items.push({ id: toLower(TERM_ADMIN), label: TERM_ADMIN });
+      items.push({
+        id: toLower(TERM_ADMIN),
+        label: t('label.admin-superuser'),
+      });
     }
 
     return items;
-  }, [roles, botUserData]);
+  }, [roles, botUserData, t]);
 
   const selectedRoleItems = useMemo<SelectItemType[]>(
     () =>
       selectedRoles.map((id) => {
         const match = roleItems.find((r) => r.id === id);
+        const fallbackLabel =
+          id === toLower(TERM_ADMIN) ? t('label.admin-superuser') : id;
 
-        return { id, label: match?.label || id };
+        return { id, label: match?.label || fallbackLabel };
       }),
-    [selectedRoles, roleItems]
+    [selectedRoles, roleItems, t]
   );
 
   useDetailHeaderInjection({

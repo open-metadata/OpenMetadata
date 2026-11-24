@@ -296,6 +296,7 @@ public class UserRepository extends EntityRepository<User> {
     }
     validateRoles(user.getRoles());
     validateDefaultDomain(user);
+    validateDefaultPersona(user);
   }
 
   /**
@@ -330,6 +331,20 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  /**
+   * A default persona selection must resolve to a real persona. The request body only requires id
+   * + type, so hydrate the reference here; otherwise the recorded ChangeDescription holds a sparse
+   * reference that governance rules (CheckChangeDescription) cannot match. Mirrors {@link
+   * #validateDefaultDomain}.
+   */
+  private void validateDefaultPersona(User user) {
+    if (user.getDefaultPersona() != null) {
+      user.setDefaultPersona(
+          Entity.getEntityReferenceById(
+              Entity.PERSONA, user.getDefaultPersona().getId(), NON_DELETED));
+    }
+  }
+
   @Override
   public void restorePatchAttributes(User original, User updated) {
     // Patch can't make changes to following fields. Ignore the changes
@@ -358,7 +373,7 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   protected User createNewEntity(User user) {
-    user.setProfile(ProfileWebhookSecrets.ofANewEntity(holderOf(user), user.getProfile()));
+    user.setProfile(ProfileWebhookSecrets.ofANewEntity(user.getProfile()));
     return super.createNewEntity(user);
   }
 
@@ -401,12 +416,7 @@ public class UserRepository extends EntityRepository<User> {
 
   private static User withNewProfileEncrypted(User user) {
     User stored = JsonUtils.deepCopy(user, User.class);
-    return stored.withProfile(
-        ProfileWebhookSecrets.ofANewEntity(holderOf(stored), stored.getProfile()));
-  }
-
-  private static ProfileWebhookSecrets.Holder holderOf(User user) {
-    return new ProfileWebhookSecrets.Holder(Entity.USER, user.getId());
+    return stored.withProfile(ProfileWebhookSecrets.ofANewEntity(stored.getProfile()));
   }
 
   @Override
@@ -533,16 +543,13 @@ public class UserRepository extends EntityRepository<User> {
   public EntityRepository<User>.EntityUpdater getUpdater(
       User original, User updated, Operation operation, ChangeSource changeSource) {
     // Before the diff, so the change description and the stored row carry ciphertext only.
-    updated.setProfile(
-        ProfileWebhookSecrets.updated(
-            holderOf(original), original.getProfile(), updated.getProfile()));
+    updated.setProfile(ProfileWebhookSecrets.updated(original.getProfile(), updated.getProfile()));
     return new UserUpdater(original, updated, operation);
   }
 
   @Override
   protected void validatePatch(User original, User updated, JsonPatch patch) {
-    ProfileWebhookSecrets.validatePatch(
-        holderOf(original), original.getProfile(), updated.getProfile(), patch);
+    ProfileWebhookSecrets.validatePatch(original.getProfile(), updated.getProfile(), patch);
   }
 
   @Override

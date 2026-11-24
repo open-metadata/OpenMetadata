@@ -109,6 +109,7 @@ function AlertAiForm(props: Readonly<AlertAiFormProps>) {
       onSubmit={handleSubmit}>
       <AlertAiFormFields
         {...fieldProps}
+        isEditMode={mode === 'edit'}
         isViewOnly={isViewMode}
         showBasicFields={!isViewMode}
         validationErrors={validationErrors}

@@ -61,7 +61,7 @@ import {
 import { getMetricByFqn } from '../../../rest/metricsAPI';
 import { addMetricTabAssets } from '../../../rest/metricTabsAPI';
 import { domainAssetsCountQueryKey } from '../../../rest/queries/domainQuery';
-import { searchQuery } from '../../../rest/searchAPI';
+import { searchQuery, searchQueryPost } from '../../../rest/searchAPI';
 import { addAssetsToTags, getTagByFqn } from '../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchPureUtils';
 import { getDomainDryRunImpacts } from '../../../utils/Domain/DomainDryRunUtils';
@@ -87,6 +87,13 @@ export interface UseAssetSelectionStateProps {
   onSave?: () => void;
   onCancel?: () => void;
   queryFilter?: QueryFilterInterface;
+  /**
+   * Route the asset picker's search through `POST /v1/search/query`
+   * (searchAPI.searchQueryPost) instead of GET. Set for callers whose `queryFilter`
+   * can grow large enough to overflow the server's request-line size limit — e.g. the
+   * metric Add-Assets modal, whose `must_not` filter embeds every already-linked asset id.
+   */
+  useQueryPost?: boolean;
 }
 
 const SCROLL_BOTTOM_THRESHOLD_PX = 50;
@@ -119,6 +126,7 @@ export const useAssetSelectionState = ({
   type = AssetsOfEntity.GLOSSARY,
   variant = 'modal',
   queryFilter,
+  useQueryPost = false,
 }: UseAssetSelectionStateProps) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
@@ -131,7 +139,7 @@ export const useAssetSelectionState = ({
   const [selectedItems, setSelectedItems] =
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<SearchIndex>(
+  const [activeFilter] = useState<SearchIndex>(
     [
       AssetsOfEntity.GLOSSARY,
       AssetsOfEntity.DATA_PRODUCT_INPUT_PORT,
@@ -179,7 +187,8 @@ export const useAssetSelectionState = ({
     }) => {
       try {
         setIsLoading(true);
-        const res = await searchQuery({
+        const searchFn = useQueryPost ? searchQueryPost : searchQuery;
+        const res = await searchFn({
           pageNumber: page,
           pageSize: PAGE_SIZE_MEDIUM,
           searchIndex: index,
@@ -196,7 +205,7 @@ export const useAssetSelectionState = ({
         setIsLoading(false);
       }
     },
-    [setActiveFilter]
+    [activeFilter, useQueryPost]
   );
 
   const fetchCurrentEntity = useCallback(async () => {

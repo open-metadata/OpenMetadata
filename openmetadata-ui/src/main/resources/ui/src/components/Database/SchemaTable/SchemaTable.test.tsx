@@ -418,6 +418,9 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest
     .fn()
     .mockImplementation((_entityType, fqn) => `/table/${fqn}`),
+  getEntityDetailsUrl: jest
+    .fn()
+    .mockImplementation((_entityType, fqn) => `http://localhost/table/${fqn}`),
 }));
 
 jest.mock('../../../utils/TableColumn.util', () => ({

@@ -46,6 +46,7 @@ import org.junit.jupiter.api.parallel.Resources;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.UserTestFactory;
@@ -59,6 +60,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
+import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -71,8 +73,11 @@ import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.DimensionValue;
+import org.openmetadata.schema.tests.type.TestCaseAppliedThreshold;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseErrorDetails;
 import org.openmetadata.schema.tests.type.TestCaseEvaluationScope;
@@ -81,6 +86,7 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.tests.type.TestResultValue;
+import org.openmetadata.schema.tests.type.ThresholdUnit;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.BulkCreateConflictPolicy;
 import org.openmetadata.schema.type.BulkCreateItemResult;
@@ -95,6 +101,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableExecutionSource;
 import org.openmetadata.schema.type.TableProfile.ProfileSampleType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -1204,6 +1211,307 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertNull(tableTestSuite(table));
   }
 
+  @Test
+  void put_createWithDisabledDefinition_4xx_leavesNoTestSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    TestDefinition definition = disableDefinition(createTableDefinition(ns, "put_disabled"));
+    CreateTestCase request =
+        new CreateTestCase()
+            .withName(ns.prefix("put_disabled_case"))
+            .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">")
+            .withTestDefinition(definition.getName());
+
+    Exception error =
+        assertThrows(Exception.class, () -> SdkClients.adminClient().testCases().upsert(request));
+    assertTrue(error.getMessage().contains("is disabled"), error.getMessage());
+    assertNull(tableTestSuite(table));
+  }
+
+  @Test
+  void put_createWithMissingRequiredParameter_4xx_leavesNoTestSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request =
+        rowCountRequest(table, ns.prefix("put_missing_param")).withParameterValues(List.of());
+
+    assertThrows(Exception.class, () -> SdkClients.adminClient().testCases().upsert(request));
+    assertNull(tableTestSuite(table));
+  }
+
+  @Test
+  void put_updateAfterDefinitionDisabled_200(TestNamespace ns) {
+    Table table = createTable(ns);
+    TestDefinition definition = createTableDefinition(ns, "put_update_disabled");
+    CreateTestCase request =
+        new CreateTestCase()
+            .withName(ns.prefix("put_update_disabled_case"))
+            .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">")
+            .withTestDefinition(definition.getName());
+    TestCase created = SdkClients.adminClient().testCases().upsert(request);
+
+    disableDefinition(definition);
+    request.setDescription("Edited after its definition was disabled");
+    TestCase updated = SdkClients.adminClient().testCases().upsert(request);
+
+    assertEquals(created.getId(), updated.getId());
+    assertEquals(request.getDescription(), updated.getDescription());
+  }
+
+  @Test
+  void csvImport_newRowDisabledDefinition_failsRealAndDryRun(TestNamespace ns) {
+    Table table = createTable(ns);
+    TestDefinition definition = disableDefinition(createTableDefinition(ns, "csv_disabled"));
+    String csv =
+        CSV_HEADER
+            + csvRow(
+                ns.prefix("csv_disabled_case"),
+                "",
+                definition.getName(),
+                table.getFullyQualifiedName(),
+                "");
+
+    assertAllRowsFailed(performImportCsv(ns, csv, true), "is disabled");
+    assertAllRowsFailed(performImportCsv(ns, csv, false), "is disabled");
+    assertNull(tableTestSuite(table));
+  }
+
+  @Test
+  void csvImport_newRowMissingRequiredParameter_failsRealAndDryRun(TestNamespace ns) {
+    Table table = createTable(ns);
+    String csv =
+        CSV_HEADER
+            + csvRow(
+                ns.prefix("csv_missing_param"),
+                "",
+                "tableRowCountToEqual",
+                table.getFullyQualifiedName(),
+                "");
+
+    assertAllRowsFailed(performImportCsv(ns, csv, true), null);
+    assertAllRowsFailed(performImportCsv(ns, csv, false), null);
+  }
+
+  @Test
+  void csvImport_updateExistingRow_succeeds(TestNamespace ns) {
+    Table table = createTable(ns);
+    String name = ns.prefix("csv_update");
+    SdkClients.adminClient().testCases().upsert(rowCountRequest(table, name));
+    String csv =
+        CSV_HEADER
+            + csvRow(
+                name,
+                "Edited by CSV import",
+                "tableRowCountToEqual",
+                table.getFullyQualifiedName(),
+                ROW_COUNT_100);
+
+    CsvImportResult result = performImportCsv(ns, csv, false);
+
+    assertAllRowsPassed(result);
+    assertTrue(importRows(result).getFirst().contains(EntityCsv.ENTITY_UPDATED));
+    String fqn = table.getFullyQualifiedName() + "." + name;
+    assertEquals(
+        "Edited by CSV import",
+        SdkClients.adminClient().testCases().getByName(fqn).getDescription());
+  }
+
+  @Test
+  void csvImport_dryRunMatchesRealImportRowResults(TestNamespace ns) {
+    Table table = createTable(ns);
+    TestDefinition disabled = disableDefinition(createTableDefinition(ns, "csv_match_disabled"));
+    String csv =
+        CSV_HEADER
+            + csvRow(
+                ns.prefix("csv_match_new"),
+                "",
+                "tableRowCountToEqual",
+                table.getFullyQualifiedName(),
+                ROW_COUNT_100)
+            + csvRow(
+                ns.prefix("csv_match_missing"),
+                "",
+                "tableRowCountToEqual",
+                table.getFullyQualifiedName(),
+                "")
+            + csvRow(
+                ns.prefix("csv_match_disabled"),
+                "",
+                disabled.getName(),
+                table.getFullyQualifiedName(),
+                "");
+
+    List<String> dryRunNew = importRows(performImportCsv(ns, csv, true));
+    List<String> realNew = importRows(performImportCsv(ns, csv, false));
+    List<String> dryRunExisting = importRows(performImportCsv(ns, csv, true));
+    List<String> realExisting = importRows(performImportCsv(ns, csv, false));
+
+    assertEquals(realNew, dryRunNew);
+    assertEquals(realExisting, dryRunExisting);
+    assertTrue(dryRunNew.getFirst().contains(EntityCsv.ENTITY_CREATED), dryRunNew.getFirst());
+    assertTrue(
+        dryRunExisting.getFirst().contains(EntityCsv.ENTITY_UPDATED), dryRunExisting.getFirst());
+  }
+
+  @Test
+  void csvImport_dryRun_createsNoTestSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    String csv =
+        CSV_HEADER
+            + csvRow(
+                ns.prefix("csv_dry_no_suite"),
+                "",
+                "tableRowCountToEqual",
+                table.getFullyQualifiedName(),
+                ROW_COUNT_100);
+
+    assertAllRowsPassed(performImportCsv(ns, csv, true));
+    assertNull(tableTestSuite(table));
+  }
+
+  @Test
+  void csvImport_keepsRowSuppliedTestSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    createEntity(rowCountRequest(table, ns.prefix("csv_suite_seed")));
+    EntityReference suppliedSuite = tableTestSuite(table);
+    String csv = rowCountCsv(table, ns.prefix("csv_supplied_suite_case"), suppliedSuite);
+
+    assertAllRowsPassed(performImportCsv(ns, csv, true));
+    assertAllRowsPassed(performImportCsv(ns, csv, false));
+    TestCase imported =
+        SdkClients.adminClient()
+            .testCases()
+            .getByName(
+                table.getFullyQualifiedName() + "." + ns.prefix("csv_supplied_suite_case"),
+                "testSuite,testSuites");
+
+    assertEquals(suppliedSuite.getId(), imported.getTestSuite().getId());
+    assertTrue(
+        imported.getTestSuites().stream()
+            .anyMatch(suite -> suite.getId().equals(lastCreatedTestSuite.getId())));
+  }
+
+  @Test
+  void csvImport_rejectsLogicalSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    TestSuite logicalSuite =
+        SdkClients.adminClient()
+            .testSuites()
+            .create(new CreateTestSuite().withName(ns.prefix("csv_logical_suite")));
+    String name = ns.prefix("csv_logical_case");
+    String csv = rowCountCsv(table, name, logicalSuite.getEntityReference());
+
+    assertAllRowsFailed(performImportCsv(ns, csv, true), "must be the basic test suite");
+    assertAllRowsFailed(performImportCsv(ns, csv, false), "must be the basic test suite");
+    assertNull(tableTestSuite(table));
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            SdkClients.adminClient()
+                .testCases()
+                .getByName(table.getFullyQualifiedName() + "." + name));
+  }
+
+  @Test
+  void csvImport_rejectsBasicSuiteForAnotherTable(TestNamespace ns) {
+    Table table = createTable(ns);
+    Table suiteTable = createTable(ns);
+    createEntity(rowCountRequest(suiteTable, ns.prefix("csv_other_suite_seed")));
+    String name = ns.prefix("csv_other_suite_case");
+    String csv = rowCountCsv(table, name, tableTestSuite(suiteTable));
+
+    assertAllRowsFailed(performImportCsv(ns, csv, true), "must be the basic test suite");
+    assertAllRowsFailed(performImportCsv(ns, csv, false), "must be the basic test suite");
+    assertNull(tableTestSuite(table));
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            SdkClients.adminClient()
+                .testCases()
+                .getByName(table.getFullyQualifiedName() + "." + name));
+  }
+
+  private static String rowCountCsv(Table table, String name, EntityReference suite) {
+    return CSV_HEADER
+        + String.join(
+            ",",
+            name,
+            "",
+            "",
+            "tableRowCountToEqual",
+            table.getFullyQualifiedName(),
+            suite.getFullyQualifiedName(),
+            ROW_COUNT_100,
+            "",
+            "",
+            "",
+            "",
+            "")
+        + "\n";
+  }
+
+  private static final String CSV_HEADER =
+      "name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,"
+          + "computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms\n";
+  private static final String ROW_COUNT_100 =
+      "\"{\"\"name\"\":\"\"value\"\",\"\"value\"\":\"\"100\"\"}\"";
+
+  private static String csvRow(
+      String name,
+      String description,
+      String testDefinition,
+      String entityFqn,
+      String parameterValues) {
+    return String.join(
+            ",",
+            name,
+            "",
+            description,
+            testDefinition,
+            entityFqn,
+            "",
+            parameterValues,
+            "",
+            "",
+            "",
+            "",
+            "")
+        + "\n";
+  }
+
+  private static List<String> importRows(CsvImportResult result) {
+    List<String> rows = result.getImportResultsCsv().lines().skip(1).toList();
+    assertFalse(rows.isEmpty(), result.getImportResultsCsv());
+    return rows;
+  }
+
+  private static void assertAllRowsPassed(CsvImportResult result) {
+    assertTrue(
+        importRows(result).stream().allMatch(row -> row.startsWith(EntityCsv.IMPORT_SUCCESS + ",")),
+        result.getImportResultsCsv());
+  }
+
+  private static void assertAllRowsFailed(CsvImportResult result, String reason) {
+    assertTrue(
+        importRows(result).stream().allMatch(row -> row.startsWith(EntityCsv.IMPORT_FAILED + ",")),
+        result.getImportResultsCsv());
+    if (reason != null) {
+      assertTrue(result.getImportResultsCsv().contains(reason), result.getImportResultsCsv());
+    }
+  }
+
+  private static TestDefinition createTableDefinition(TestNamespace ns, String suffix) {
+    CreateTestDefinition request = new CreateTestDefinition();
+    request.setName(ns.prefix(suffix));
+    request.setDescription("Test definition created by integration test");
+    request.setEntityType(TestDefinitionEntityType.TABLE);
+    request.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
+    return SdkClients.adminClient().testDefinitions().create(request);
+  }
+
+  private static TestDefinition disableDefinition(TestDefinition definition) {
+    definition.setEnabled(false);
+    return SdkClients.adminClient().testDefinitions().update(definition.getId(), definition);
+  }
+
   private static EntityReference tableTestSuite(Table table) {
     return SdkClients.adminClient()
         .tables()
@@ -1528,6 +1836,72 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     TestCase updated = patchEntity(testCase.getId().toString(), testCase);
 
     assertEquals("edited", updated.getDescription());
+  }
+
+  @Test
+  void patch_entityLinkMoveReassignsTestSuiteToNewTable(TestNamespace ns) {
+    Table originalTable = createTable(ns);
+    Table newTable = createTable(ns);
+    TestCase testCase = createEntity(rowCountRequest(originalTable, ns.prefix("patch_suite_move")));
+    EntityReference originalSuite = tableTestSuite(originalTable);
+    createEntity(rowCountRequest(newTable, ns.prefix("patch_suite_target_seed")));
+    EntityReference newTableSuite = tableTestSuite(newTable);
+    TestSuite logicalSuite =
+        SdkClients.adminClient()
+            .testSuites()
+            .create(new CreateTestSuite().withName(ns.prefix("patch_move_logical_suite")));
+    addTestCasesToLogicalTestSuite(
+        SdkClients.adminClient(), logicalSuite.getId(), List.of(testCase.getId()));
+
+    String entityLink = "<#E::table::" + newTable.getFullyQualifiedName() + ">";
+    var patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch.addObject().put("op", "replace").put("path", "/entityLink").put("value", entityLink);
+    TestCase patched =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PATCH,
+                TestCaseResource.COLLECTION_PATH + testCase.getId(),
+                patch,
+                TestCase.class);
+    TestCase updated =
+        SdkClients.adminClient()
+            .testCases()
+            .get(testCase.getId().toString(), "testSuite,testSuites");
+
+    assertEquals(entityLink, patched.getEntityLink());
+    assertEquals(newTableSuite.getId(), updated.getTestSuite().getId());
+    assertNotEquals(originalSuite.getId(), updated.getTestSuite().getId());
+    assertTrue(
+        updated.getTestSuites().stream()
+            .anyMatch(suite -> suite.getId().equals(logicalSuite.getId())));
+    assertFalse(
+        updated.getTestSuites().stream()
+            .anyMatch(suite -> suite.getId().equals(originalSuite.getId())));
+    assertTrue(
+        SdkClients.adminClient()
+            .testSuites()
+            .get(logicalSuite.getId().toString(), "tests")
+            .getTests()
+            .stream()
+            .anyMatch(test -> test.getId().equals(testCase.getId())));
+  }
+
+  @Test
+  void patch_suppliedTestSuiteIsReplacedByEntityLinkSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    TestCase testCase = createEntity(rowCountRequest(table, ns.prefix("patch_supplied_suite")));
+    Table otherTable = createTable(ns);
+    createEntity(rowCountRequest(otherTable, ns.prefix("patch_suite_seed")));
+    EntityReference otherTableSuite = tableTestSuite(otherTable);
+
+    testCase.setTestSuite(otherTableSuite);
+    patchEntity(testCase.getId().toString(), testCase);
+    TestCase updated =
+        SdkClients.adminClient().testCases().get(testCase.getId().toString(), "testSuite");
+
+    assertEquals(tableTestSuite(table).getId(), updated.getTestSuite().getId());
+    assertNotEquals(otherTableSuite.getId(), updated.getTestSuite().getId());
   }
 
   @Test
@@ -3863,6 +4237,63 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             });
   }
 
+  @Test
+  void test_searchListFiltersByTestDefinition(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    String rowCountCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("by_definition_row_count"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create()
+            .getName();
+    String columnCountCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("by_definition_column_count"))
+            .forTable(table)
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "5")
+            .create()
+            .getName();
+    Awaitility.await("both test cases are searchable before checking the definition filter")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    searchTestCasesForSuite(null, tableEntityLink(table))
+                        .containsAll(List.of(rowCountCase, columnCountCase)),
+                    "Both test cases must be indexed before checking the definition filter"));
+
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityLink", tableEntityLink(table))
+            .queryParam("testDefinition", "tableRowCountToEqual")
+            .queryParam("limit", "50")
+            .build();
+
+    Awaitility.await("search/list filters test cases by test definition")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
+              List<String> names = namesUnder(JsonUtils.readTree(response).path("data"));
+              assertTrue(names.contains(rowCountCase), "Expected the row count test case");
+              assertFalse(
+                  names.contains(columnCountCase),
+                  "A test case of another definition must be filtered out");
+            });
+  }
+
   /**
    * Regression: Lucene reserved characters in {@code q} produced a query_shard_exception. The
    * display name deliberately carries reserved characters so the test proves the term still
@@ -5257,31 +5688,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   "bulk list derivation must also clear the pointer after resolve");
             });
 
-    client
-        .testCaseResolutionStatuses()
-        .create(
-            new CreateTestCaseResolutionStatus()
-                .withTestCaseReference(testCase.getFullyQualifiedName())
-                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
-
-    Awaitility.await("reopen restores the same incident pointer")
-        .atMost(90, TimeUnit.SECONDS)
-        .pollInterval(Duration.ofSeconds(2))
-        .untilAsserted(
-            () -> {
-              org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestStatus =
-                  latestIncidentStatus(client, testCase.getFullyQualifiedName());
-              assertEquals(
-                  TestCaseResolutionStatusTypes.Ack,
-                  latestStatus.getTestCaseResolutionStatusType());
-              assertEquals(stateId, latestStatus.getStateId());
-              TestCase fetched = client.testCases().get(testCase.getId().toString(), "incidentId");
-              assertEquals(stateId, fetched.getIncidentId());
-              assertEquals(
-                  stateId,
-                  bulkListedIncidentId(client, table, testCase),
-                  "bulk list derivation must agree with the single read");
-            });
+    CreateTestCaseResolutionStatus ackAfterResolve =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack);
+    assertThrows(
+        OpenMetadataException.class,
+        () -> client.testCaseResolutionStatuses().create(ackAfterResolve),
+        "a resolved incident is final and must not accept Ack");
+    assertNull(
+        client.testCases().get(testCase.getId().toString(), "incidentId").getIncidentId(),
+        "a rejected reopen must leave the incident closed");
 
     client
         .testCaseResults()
@@ -5289,6 +5706,29 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             testCase.getFullyQualifiedName(),
             new CreateTestCaseResult()
                 .withTimestamp(System.currentTimeMillis() + 1)
+                .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+                .withResult("Failing again after resolution"));
+
+    final UUID reopenedIncidentId =
+        Awaitility.await("a failure after resolution opens a new incident")
+            .atMost(90, TimeUnit.SECONDS)
+            .pollInterval(Duration.ofSeconds(2))
+            .until(
+                () ->
+                    client
+                        .testCases()
+                        .get(testCase.getId().toString(), "incidentId")
+                        .getIncidentId(),
+                java.util.Objects::nonNull);
+    assertNotEquals(
+        stateId, reopenedIncidentId, "the new failure must not reuse the resolved incident");
+
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis() + 2)
                 .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Success)
                 .withResult("Passing while incident open"));
 
@@ -5303,7 +5743,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               assertEquals(
                   org.openmetadata.schema.tests.type.TestCaseStatus.Success,
                   fetched.getTestCaseResult().getTestCaseStatus());
-              assertEquals(stateId, fetched.getIncidentId());
+              assertEquals(reopenedIncidentId, fetched.getIncidentId());
             });
   }
 
@@ -5891,6 +6331,83 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   "latest test case result must be returned once indexed");
               assertEquals(
                   scope, JsonUtils.readValue(response, TestCaseResult.class).getEvaluationScope());
+            });
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void test_thresholdSnapshotSurvivesPersistenceAndSearch(boolean applied, TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createRowCountTestCase(client, ns, "threshold_snapshot_" + applied);
+    long timestamp = System.currentTimeMillis();
+    TestCaseAppliedThreshold threshold =
+        new TestCaseAppliedThreshold()
+            .withApplied(applied)
+            .withValue(5.0)
+            .withUnit(ThresholdUnit.PERCENTAGE);
+    CreateTestCaseResult create =
+        new CreateTestCaseResult()
+            .withTimestamp(timestamp)
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withAppliedThreshold(threshold)
+            .withConfiguredMaxBound(110.0)
+            .withMaxBound(115.5)
+            .withDimensionResults(
+                List.of(
+                    new TestCaseDimensionResult()
+                        .withId(UUID.randomUUID())
+                        .withTestCaseResultId(UUID.randomUUID())
+                        .withTimestamp(timestamp)
+                        .withDimensionKey("channel=web")
+                        .withDimensionValues(
+                            List.of(new DimensionValue().withName("channel").withValue("web")))
+                        .withTestCaseStatus(TestCaseStatus.Success)
+                        .withConfiguredMaxBound(110.0)
+                        .withMaxBound(115.5)));
+    client.testCaseResults().create(testCase.getFullyQualifiedName(), create);
+
+    TestCaseResult stored = listTestCaseResults(testCase.getFullyQualifiedName()).getFirst();
+    assertEquals(threshold, stored.getAppliedThreshold());
+    assertNull(stored.getConfiguredMinBound());
+    assertEquals(110.0, stored.getConfiguredMaxBound());
+    assertEquals(115.5, stored.getMaxBound());
+
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/dataQuality/testCases/dimensionResults/"
+                    + URLEncoder.encode(testCase.getFullyQualifiedName(), StandardCharsets.UTF_8)
+                        .replace("+", "%20"),
+                null,
+                RequestOptions.builder()
+                    .queryParam("startTs", String.valueOf(timestamp - 1))
+                    .queryParam("endTs", String.valueOf(timestamp + 1))
+                    .build());
+    TestCaseDimensionResult dimension =
+        JsonUtils.readValue(response, new TypeReference<ResultList<TestCaseDimensionResult>>() {})
+            .getData()
+            .getFirst();
+    assertEquals(threshold, dimension.getAppliedThreshold());
+    assertNull(dimension.getConfiguredMinBound());
+    assertEquals(110.0, dimension.getConfiguredMaxBound());
+    assertEquals(115.5, dimension.getMaxBound());
+
+    Awaitility.await()
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              String latest =
+                  searchLatestTestCaseResult(
+                      testCase.getFullyQualifiedName(), TEST_CASE_RESULT_FIELDS);
+              assertTrue(latest != null && !latest.isBlank());
+              TestCaseResult indexed = JsonUtils.readValue(latest, TestCaseResult.class);
+              assertEquals(threshold, indexed.getAppliedThreshold());
+              assertNull(indexed.getConfiguredMinBound());
+              assertEquals(110.0, indexed.getConfiguredMaxBound());
+              assertEquals(115.5, indexed.getMaxBound());
             });
   }
 

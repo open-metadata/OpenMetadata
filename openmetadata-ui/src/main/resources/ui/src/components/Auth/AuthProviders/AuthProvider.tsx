@@ -57,7 +57,6 @@ import {
   hydrateBackendSyncedPreferences,
   resetBackendSyncState,
 } from '../../../hooks/currentUserStore/useCurrentUserStore';
-import { useProductTourStore } from '../../../hooks/product-tour/useProductTourStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   AppModeHint,
@@ -75,6 +74,7 @@ import {
 } from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
+import { useProductTourStore } from '../../../hooks/useProductTourStore';
 import { queryClient } from '../../../queryClient';
 import axiosClient from '../../../rest/axiosClient';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
@@ -435,10 +435,8 @@ export const AuthProvider = ({
       clearEtagCache();
       queryClient.clear();
 
-      // End a tour this user left running, before the app mode is cleared:
-      // its step, return page and mode snapshot are theirs, and its mock
-      // must not answer the next user's requests.
-      useProductTourStore.getState().exit();
+      // A tour this user left open must not reopen for whoever signs in next.
+      useProductTourStore.getState().close();
 
       // Drop the tab-scoped app-mode session so the next user boots into
       // their own persona/preference-resolved mode rather than inheriting
@@ -559,12 +557,14 @@ export const AuthProvider = ({
    * Stores redirect URL for successful login. The query string is kept so a
    * re-authentication lands back on the same view (filters, tabs, search).
    */
-  const handleStoreProtectedRedirectPath = useCallback(() => {
-    const { pathname, search } = locationRef.current;
-    if (applicationRoutesClass.isProtectedRoute(pathname)) {
-      storeRedirectPath(`${pathname}${search}`);
-    }
-  }, [storeRedirectPath]);
+  const handleStoreProtectedRedirectPath = useCallback(
+    ({ pathname, search } = locationRef.current) => {
+      if (applicationRoutesClass.isProtectedRoute(pathname)) {
+        storeRedirectPath(`${pathname}${search}`);
+      }
+    },
+    [storeRedirectPath]
+  );
 
   const resetUserDetails = (forceLogout = false) => {
     clearPersonaSession();
@@ -987,9 +987,10 @@ export const AuthProvider = ({
 
   // Signed-in session: load the user unless this is the SSO callback route.
   const resumeSignedInSession = async () => {
+    const entryLocation = locationRef.current;
     const oidcToken = await getOidcToken();
     if (!oidcToken) {
-      handleStoreProtectedRedirectPath();
+      handleStoreProtectedRedirectPath(entryLocation);
       setApplicationLoading(false);
 
       return;

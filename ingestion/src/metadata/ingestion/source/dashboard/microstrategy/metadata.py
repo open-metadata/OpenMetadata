@@ -11,8 +11,13 @@
 """MicroStrategy source module"""
 
 import traceback
-from collections.abc import Iterable
+from collections import Counter, OrderedDict, defaultdict
+from collections.abc import Iterable, Mapping
+from functools import partial
+from types import MappingProxyType
+from typing import Any, cast
 
+from metadata.entity_resolution.table_search import get_table_fqn_from_query_name
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -25,6 +30,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
     MicroStrategyConnection,
@@ -46,23 +52,42 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
     Uuid,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import ColumnLineage, EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.delete import DeleteEntity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import get_table_entities_from_query
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_table_entities_from_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.microstrategy.client import MicroStrategyApiError, MicroStrategyClient
+from metadata.ingestion.source.dashboard.microstrategy.client import (
+    CACHE_SIZE,
+    DATA_IMPORT_CUBE_SUBTYPES,
+    MicroStrategyApiError,
+    MicroStrategyClient,
+    cached,
+)
+from metadata.ingestion.source.dashboard.microstrategy.column_lineage import (
+    NO_ALIASES,
+    AliasReads,
+    ParsedCube,
+    SourceColumn,
+    name_match,
+    normalized,
+    read_projections,
+    same_table,
+    table_matches,
+)
 from metadata.ingestion.source.dashboard.microstrategy.helpers import (
     MicroStrategyColumnParser,
 )
 from metadata.ingestion.source.dashboard.microstrategy.models import (
+    MstrAvailableObject,
     MstrDashboard,
     MstrDashboardDetails,
     MstrDataset,
@@ -82,6 +107,25 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# The column name limit that truncate_column_name applies
+COLUMN_NAME_LENGTH = 256
+
+
+def unique_column_name(name: str, taken: set[str]) -> str:
+    """
+    The server rejects a data model that repeats a column name, and MicroStrategy lets two
+    objects of a dataset share one (an attribute and a metric, or two metrics).
+    """
+    candidate = truncate_column_name(name)
+    suffix = 2
+    while candidate in taken:
+        # The suffix goes after the truncation, or a name at the length limit would lose it.
+        tag = f" ({suffix})"
+        candidate = truncate_column_name(name)[: COLUMN_NAME_LENGTH - len(tag)] + tag
+        suffix += 1
+    taken.add(candidate)
+    return candidate
+
 
 def chart_name(dossier_id: str, page_key: str, visualization_key: str) -> str:
     """
@@ -90,6 +134,13 @@ def chart_name(dossier_id: str, page_key: str, visualization_key: str) -> str:
     ADR:2026-11-05-microstrategy-charts-are-named-by-dossier-and-the-search-is-paged
     """
     return f"{dossier_id}_{page_key}{visualization_key}"
+
+
+def remember(cache: OrderedDict, key: Any, value: Any) -> None:
+    """Store in a bounded LRU cache"""
+    cache[key] = value
+    if len(cache) > CACHE_SIZE:
+        cache.popitem(last=False)
 
 
 class MicrostrategySource(DashboardServiceSource):
@@ -107,6 +158,10 @@ class MicrostrategySource(DashboardServiceSource):
         self.definition_failed = False
         # A dossier whose existing charts could not be read from OpenMetadata produced no charts.
         self.charts_unknown = False
+        self._dialects: OrderedDict[str, Dialect | None] = OrderedDict()
+        self._service_databases: OrderedDict[str, frozenset[str]] = OrderedDict()
+        self._source_tables: OrderedDict[tuple[str, Dialect], ParsedCube | None] = OrderedDict()
+        self._tables_with_columns: OrderedDict[str, Table | None] = OrderedDict()
 
     @property
     def _service(self) -> str:
@@ -145,9 +200,16 @@ class MicrostrategySource(DashboardServiceSource):
             if filter_by_project(self.source_config.projectFilterPattern, project.name):
                 self.status.filter(project.name, "Project Filtered Out")
                 continue
+            documents = 0
             try:
                 for result in self.client.iter_search_results(project.id):
                     self.dashboard_listing.count_listed()
+                    if not result.is_dossier:
+                        # The dossier definition API answers HTTP 500 for a document.
+                        documents += 1
+                        self.dashboard_listing.count_filtered()
+                        self.status.filter(result.name, "Not a dossier: Report Services documents are not ingested")
+                        continue
                     # Filtered here as well as in the base, so the listing can count it.
                     if filter_by_dashboard(self.source_config.dashboardFilterPattern, result.name):
                         self.dashboard_listing.count_filtered()
@@ -158,6 +220,11 @@ class MicrostrategySource(DashboardServiceSource):
                     )
             except Exception as exc:
                 self._fail_listing(f"the dossiers of project {project.name}", exc)
+            if documents:
+                self.status.warning(
+                    project.name,
+                    f"Skipped {documents} Report Services documents, templates or themes: only dossiers are ingested",
+                )
         if self.client.skipped_objects:
             self._fail_listing(
                 "every object", MicroStrategyApiError(f"{self.client.skipped_objects} objects did not parse")
@@ -286,60 +353,55 @@ class MicrostrategySource(DashboardServiceSource):
         if not db_service_prefix or not dashboard_details.datasets:
             return
 
-        (
-            prefix_db_service_name,
-            prefix_database_name,
-            prefix_schema_name,
-            prefix_table_name,
-        ) = self.parse_db_service_prefix(db_service_prefix)
-
-        database_service = self.metadata.get_by_name(entity=DatabaseService, fqn=prefix_db_service_name)
-        if not database_service:
-            logger.warning("Database service [%s] from dbServicePrefixes was not found", prefix_db_service_name)
+        service_name, database_name, schema_name, table_name = self.parse_db_service_prefix(db_service_prefix)
+        if not service_name:
             return
-        dialect = ConnectionTypeDialectMapper.dialect_of(database_service.serviceType.value)
+        dialect = self._dialect_of(service_name)
+        if not dialect:
+            return
 
         for dataset in dashboard_details.datasets:
             try:
-                cube_sql = self.client.get_cube_sql_details(dashboard_details.projectId, dataset.id)
-                if not cube_sql:
+                parsed = cached(
+                    self._source_tables,
+                    (dataset.id, dialect),
+                    partial(self._parse_cube, dashboard_details.projectId, dataset.id, dialect),
+                    f"the tables of cube {dataset.id}",
+                )
+                if not parsed or not parsed.tables:
                     continue
                 datamodel_entity = self.metadata.get_by_name(
                     entity=DashboardDataModel,
                     fqn=self._fqn(DashboardDataModel, data_model_name=dataset.id),
+                    fields=["columns"],
                 )
                 if not datamodel_entity:
                     logger.debug("Data model [%s] not found, skipping its lineage", dataset.id)
                     continue
-                lineage_parser = LineageParser(cube_sql, dialect=dialect, parser_type=self.get_query_parser_type())
-                for table in lineage_parser.source_tables:
-                    table_entities = get_table_entities_from_query(
-                        metadata=self.metadata,
-                        service_names=prefix_db_service_name,
-                        database_name="*",
-                        database_schema="*",
-                        table_name=str(table),
+                for table_entity in self._source_table_entities(
+                    parsed.tables, service_name, database_name, schema_name, table_name
+                ):
+                    columns_lineage = self._safe_column_lineage(
+                        dashboard_details.projectId,
+                        dataset,
+                        parsed.read_columns,
+                        table_entity,
+                        datamodel_entity,
+                        parsed.cube,
+                        parsed.alias_reads,
                     )
-                    if not table_entities:
-                        logger.debug("[%s] Table not found in metadata: %s", lineage_parser.query_hash, table)
-                        continue
-                    for table_entity in table_entities:
-                        if not self._matches_prefix(
-                            table_entity, prefix_database_name, prefix_schema_name, prefix_table_name
-                        ):
-                            continue
-                        yield Either(
-                            left=None,
-                            right=AddLineageRequest(
-                                edge=EntitiesEdge(
-                                    fromEntity=EntityReference(id=Uuid(table_entity.id.root), type="table"),
-                                    toEntity=EntityReference(
-                                        id=Uuid(datamodel_entity.id.root), type="dashboardDataModel"
-                                    ),
-                                    lineageDetails=LineageDetails(source=LineageSource.DashboardLineage),
-                                )
-                            ),
-                        )
+                    yield Either(
+                        left=None,
+                        right=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(id=Uuid(table_entity.id.root), type="table"),
+                                toEntity=EntityReference(id=Uuid(datamodel_entity.id.root), type="dashboardDataModel"),
+                                lineageDetails=LineageDetails(
+                                    source=LineageSource.DashboardLineage, columnsLineage=columns_lineage or None
+                                ),
+                            )
+                        ),
+                    )
             except Exception as exc:
                 yield Either(
                     right=None,
@@ -349,6 +411,295 @@ class MicrostrategySource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     ),
                 )
+
+    def _dialect_of(self, service_name: str) -> Dialect | None:
+        """
+        The dialect of a dbServicePrefixes service. A service that exists or is confirmed missing
+        is remembered; a failed lookup is not, so it is tried again for the next dossier.
+        """
+        if service_name in self._dialects:
+            self._dialects.move_to_end(service_name)
+            return self._dialects[service_name]
+        try:
+            database_service = self.metadata.get_by_name(entity=DatabaseService, fqn=service_name)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not read database service [%s] from dbServicePrefixes: %s", service_name, exc)
+            return None
+        if not database_service:
+            logger.warning("Database service [%s] from dbServicePrefixes was not found", service_name)
+        dialect = (
+            ConnectionTypeDialectMapper.dialect_of(database_service.serviceType.value) if database_service else None
+        )
+        remember(self._dialects, service_name, dialect)
+        return dialect
+
+    def _parse_cube(self, project_id: str, cube_id: str, dialect: Dialect) -> ParsedCube:
+        """
+        The tables a cube's SQL reads, and the columns its projections read. Parsed once per
+        cube and dialect: the base class asks for lineage once per dbServicePrefixes entry, and a
+        cube is shared by many dossiers.
+        """
+        details = self.client.get_cube_sql_details(project_id, cube_id)
+        if not details:
+            return ParsedCube()
+        cube_sql = details.sql
+        parser = LineageParser(cube_sql, dialect=dialect, parser_type=self.get_query_parser_type())
+        # The third-party cached_property is not read as a descriptor by type checkers.
+        tables = tuple(str(table) for table in cast("list", parser.source_tables))
+        try:
+            columns, alias_reads = read_projections(cube_sql, dialect)
+        except Exception as exc:
+            # The tables were read; losing the columns must not lose them.
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not read the columns of cube %s: %s", cube_id, exc)
+            columns, alias_reads = frozenset(), NO_ALIASES
+        return ParsedCube(tables=tables, read_columns=columns, cube=details.cube, alias_reads=alias_reads)
+
+    def _safe_column_lineage(self, *args: Any) -> list[ColumnLineage]:
+        """Column lineage, or none: a failure here must not drop the table lineage it decorates"""
+        try:
+            return self._column_lineage(*args)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not build the column lineage of a MicroStrategy data model: %s", exc)
+            return []
+
+    def _column_lineage(
+        self,
+        project_id: str,
+        dataset: MstrDataset,
+        cube_reads: frozenset[SourceColumn],
+        table_entity: Table,
+        datamodel_entity: DashboardDataModel,
+        sql_cube: str | None = None,
+        alias_reads: AliasReads = NO_ALIASES,
+    ) -> list[ColumnLineage]:
+        """
+        Column lineage from one table to a data model. A data model column is matched on the
+        warehouse columns the cube SQL reads: for a Data Import cube on its name, which the import
+        derives from the column; for a schema attribute through its form expressions; for a schema
+        metric through the alias MicroStrategy derives from its name, else through its definition.
+        ``sql_cube`` is the cube the SQL came from, whose type decides how objects are matched.
+        """
+        schema = getattr(table_entity.databaseSchema, "name", None)
+        database = getattr(table_entity.database, "name", None)
+        reads = {
+            (table, column)
+            for table, column in cube_reads
+            if table_matches(table, table_entity.name.root, schema, database)
+        }
+        if not reads:
+            return []
+        table_entity = self._with_columns(table_entity)
+        data_import = self.client.get_dataset_subtype(project_id, sql_cube or dataset.id) in DATA_IMPORT_CUBE_SUBTYPES
+        targets = self._data_model_columns(dataset, datamodel_entity)
+        # A dataset may list one object more than once; it is still one data model column.
+        objects = {available_object.id: available_object for available_object in dataset.availableObjects or []}
+        keys = Counter(normalized(available_object.name or "") for available_object in objects.values())
+        ambiguous = {key for key, count in keys.items() if count > 1}
+        # Every object claims the SQL name it is projected under, before any metric is matched: a
+        # metric's column alias can name another metric's projection. A metric that cannot be read
+        # still claims its name, so no other metric takes a projection that may be its own.
+        owners: dict[str, set[str]] = defaultdict(set)
+        for available_object in objects.values():
+            claim = available_object.name
+            if available_object.type == "metric" and not data_import:
+                sql_name = self.client.get_metric_sql_name(project_id, available_object.id, claim or "")
+                claim = sql_name or claim
+            if claim and (key := normalized(claim)):
+                owners[key].add(available_object.id)
+        names = Counter((available_object.name or "").casefold() for available_object in objects.values())
+        repeated = {name for name, count in names.items() if count > 1}
+        lineage = []
+        for available_object in objects.values():
+            for target, columns in self._object_columns(
+                project_id, available_object, data_import, reads, targets, ambiguous, repeated, alias_reads, owners
+            ):
+                from_columns = sorted({fqn for column in columns if (fqn := get_column_fqn(table_entity, column))})
+                if from_columns:
+                    lineage.append(
+                        ColumnLineage(
+                            fromColumns=[FullyQualifiedEntityName(fqn) for fqn in from_columns],
+                            toColumn=FullyQualifiedEntityName(target),
+                        )
+                    )
+        return lineage
+
+    def _object_columns(
+        self,
+        project_id: str,
+        available_object: MstrAvailableObject,
+        data_import: bool,
+        reads: set[SourceColumn],
+        targets: dict[str, str],
+        ambiguous: set[str],
+        repeated: set[str],
+        alias_reads: AliasReads = NO_ALIASES,
+        owners: Mapping[str, set[str]] = MappingProxyType({}),
+    ) -> Iterable[tuple[str, set[str]]]:
+        """
+        (data model column FQN, warehouse columns of this table it reads) for one dataset object.
+        An attribute maps to its own column, not to its forms: the lineage view draws no edge to a
+        nested column.
+        """
+        target = targets.get(available_object.id)
+        if not target:
+            return
+        if data_import:
+            match = name_match(available_object.name or "", {column for _, column in reads}, ambiguous, repeated)
+            columns = {match} if match else set()
+        elif available_object.type == "attribute":
+            form_columns = self.client.get_attribute_form_columns(project_id, available_object.id) or {}
+            expressions = [form_columns.get(str(form.get("id")), frozenset()) for form in available_object.forms or []]
+            columns = {
+                column
+                for table, column in reads
+                for expression in expressions
+                for form_table, form_column in expression
+                if form_column == column and same_table(table, form_table)
+            }
+        elif available_object.type == "metric":
+            columns = self._metric_columns(project_id, available_object, reads, alias_reads, owners)
+        else:
+            columns = set()
+        if columns:
+            yield target, columns
+
+    def _metric_columns(
+        self,
+        project_id: str,
+        metric: MstrAvailableObject,
+        reads: set[SourceColumn],
+        alias_reads: AliasReads,
+        owners: Mapping[str, set[str]],
+    ) -> set[str]:
+        """
+        The warehouse columns of this table a schema metric reads. The SQL names a metric's
+        projection after its column alias when one is set, else after its name (``Revenue Rank`` is
+        ``REVENUERANK``), unless the alias is a generated one (``WJXBFS1``); a metric the SQL does
+        not name is followed through its definition: to the projections of the metrics it is built
+        from, and to the columns of the facts it aggregates. A projection is a metric's only when no
+        other object of the dataset claims that name: ``% Revenue`` is not given ``Revenue``'s
+        ``REVENUE``, whether or not it is in the dataset itself.
+        """
+
+        def owns(object_id: str, sql_name: str) -> bool:
+            key = normalized(sql_name)
+            return bool(key) and key in alias_reads and owners.get(key, {object_id}) == {object_id}
+
+        # Unread, a metric's column alias is unknown, so its projection cannot be told apart from
+        # another's: without modeling privileges metrics get no column edge.
+        sql_name = self.client.get_metric_sql_name(project_id, metric.id, metric.name or "")
+        if sql_name and owns(metric.id, sql_name):
+            return {column for table, column in alias_reads[normalized(sql_name)] & reads}
+        parts = self.client.get_metric_parts(project_id, metric.id, known=owns)
+        if not parts:
+            return set()
+        columns = {
+            column
+            for object_id, name in parts.metrics
+            if owns(object_id, name)
+            for table, column in alias_reads[normalized(name)] & reads
+        }
+        for fact in parts.facts:
+            fact_columns = self.client.get_fact_columns(project_id, fact) or frozenset()
+            columns.update(
+                column
+                for table, column in reads
+                for fact_table, fact_column in fact_columns
+                if fact_column == column and same_table(table, fact_table)
+            )
+        return columns
+
+    def _data_model_columns(self, dataset: MstrDataset, datamodel_entity: DashboardDataModel) -> dict[str, str]:
+        """
+        The FQN of each object's data model column by object id. Names are rebuilt the way the
+        data model was, suffixes included.
+        """
+        by_name = {column.name.root: column for column in datamodel_entity.columns or []}
+        targets = {}
+        for object_id, name in self._column_names(dataset).items():
+            column = by_name.get(name)
+            if column and column.fullyQualifiedName:
+                targets[object_id] = column.fullyQualifiedName.root
+        return targets
+
+    def _with_columns(self, table_entity: Table) -> Table:
+        """The table with its columns, read once when the lineage search returned it without them"""
+        if table_entity.columns:
+            return table_entity
+        fqn = table_entity.fullyQualifiedName.root if table_entity.fullyQualifiedName else None
+        if not fqn:
+            return table_entity
+        return (
+            cached(
+                self._tables_with_columns,
+                fqn,
+                lambda: self.metadata.get_by_name(entity=Table, fqn=fqn, fields=["columns"]),
+                f"the columns of table {fqn}",
+            )
+            or table_entity
+        )
+
+    def _source_table_entities(
+        self,
+        source_tables: tuple[str, ...],
+        service_name: str,
+        database_name: str | None,
+        schema_name: str | None,
+        table_name: str | None,
+    ) -> Iterable[Table]:
+        for source_table in source_tables:
+            if not self._may_hold(source_table, service_name, database_name):
+                continue
+            table_entities = get_table_entities_from_query(
+                metadata=self.metadata,
+                service_names=service_name,
+                database_name="*",
+                database_schema="*",
+                table_name=source_table,
+            )
+            if not table_entities:
+                logger.debug("Table [%s] not found in database service [%s]", source_table, service_name)
+                continue
+            yield from (
+                table_entity
+                for table_entity in table_entities
+                if self._matches_prefix(table_entity, database_name, schema_name, table_name)
+            )
+
+    def _may_hold(self, source_table: str, service_name: str, database_name: str | None) -> bool:
+        """
+        Whether a prefix can hold a table the SQL names in a database (a BigQuery project): it
+        must name that database, or the service must have it. Such a table is not searched for in
+        the other services, which would only log that it is not there.
+        """
+        queried = get_table_fqn_from_query_name(source_table)[0]
+        if not queried:
+            return True
+        if database_name:
+            return database_name.lower() == queried.lower()
+        databases = self._databases_of(service_name)
+        return databases is None or queried.lower() in databases
+
+    def _databases_of(self, service_name: str) -> frozenset[str] | None:
+        """
+        The database names of a dbServicePrefixes service, lowercased. A failed read is not
+        remembered, and every database is then assumed possible.
+        """
+        if service_name in self._service_databases:
+            self._service_databases.move_to_end(service_name)
+        else:
+            try:
+                databases = self.metadata.list_all_entities(entity=Database, params={"service": service_name})
+                names = frozenset(model_str(database.name).lower() for database in databases)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Could not list the databases of service [%s]: %s", service_name, exc)
+                return None
+            remember(self._service_databases, service_name, names)
+        return self._service_databases[service_name]
 
     @staticmethod
     def _matches_prefix(
@@ -422,15 +773,36 @@ class MicrostrategySource(DashboardServiceSource):
             f"charts are left as they are and stale charts are kept in this run: {exc}",
         )
 
+    @staticmethod
+    def _column_names(dataset: MstrDataset) -> dict[str, str]:
+        """
+        The data model column name of each dataset object. Suffixes go out in id order, so an
+        object keeps its column name, and what users added to the column, when MicroStrategy
+        lists the objects in another order.
+        """
+        taken: set[str] = set()
+        column_names: dict[str, str] = {}
+        for available_object in sorted(dataset.availableObjects or [], key=lambda obj: (obj.name, obj.id)):
+            if available_object.id not in column_names:
+                column_names[available_object.id] = unique_column_name(available_object.name, taken)
+        return column_names
+
     def _get_column_info(self, dataset: MstrDataset) -> list[Column]:
         """Attributes become columns with their forms as children; metrics are leaf columns"""
         datasource_columns = []
-        for available_object in dataset.availableObjects or []:
+        objects = dataset.availableObjects or []
+        column_names = self._column_names(dataset)
+        seen_ids: set[str] = set()
+        for available_object in objects:
+            if available_object.id in seen_ids:
+                logger.debug("Data model [%s] lists [%s] twice; keeping one", dataset.name, available_object.name)
+                continue
+            seen_ids.add(available_object.id)
             try:
                 children = [MicroStrategyColumnParser.parse(form) for form in available_object.forms or []]
                 datasource_columns.append(
                     Column(
-                        name=ColumnName(truncate_column_name(available_object.name)),
+                        name=ColumnName(column_names[available_object.id]),
                         displayName=available_object.name,
                         dataTypeDisplay=available_object.type.title(),
                         dataType=DataType.UNKNOWN,
