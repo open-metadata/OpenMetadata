@@ -54,7 +54,7 @@ jobs:
         run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
 
   backend:
-    name: Build Backend Distribution
+    name: Build backend image
     needs: plan
     if: ${{ needs.plan.outputs.python == 'true' || needs.plan.outputs.airflow-apis == 'true' }}
     uses: ./.github/workflows/reusable-build-backend.yml
@@ -121,7 +121,7 @@ jobs:
     uses: ./.github/workflows/reusable-py-airflow-apis.yml
     with:
       ref: ${{ needs.plan.outputs.ref }}
-      use-backend-artifact: true
+      use-backend-image: true
       python-version: ${{ needs.plan.outputs.python-lowest }}
 
   py-tests-status:

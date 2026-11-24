@@ -25,7 +25,7 @@ permissions:
   contents: read
 jobs:
   build:
-    name: Build backend distribution
+    name: Build backend image
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -53,11 +53,14 @@ jobs:
           read -r -a args <<< "$BACKEND_MAVEN_ARGS"
           mvn "${args[@]}"
         shell: bash
-      - name: Upload backend distribution
+      - name: Build and pack backend image
+        run: bash .github/scripts/python_ci_backend_image.sh build "$RUNNER_TEMP/python-ci-backend.tar.zst"
+        shell: bash
+      - name: Upload backend image
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: openmetadata-backend-distribution
-          path: openmetadata-dist/target/openmetadata-*.tar.gz
+          name: python-ci-backend-image
+          path: ${{ runner.temp }}/python-ci-backend.tar.zst
           if-no-files-found: error
           compression-level: 0
           retention-days: 1

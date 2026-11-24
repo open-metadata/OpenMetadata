@@ -79,10 +79,11 @@ saves persistent model caches. Consumer jobs retain read-only cache access and i
 before the final classification profile synchronization and verification. Local preparation
 reuses the runner's installed uv.
 
-Build one backend distribution per selected integration/nightly run. Both reusable runners consume
-the same `openmetadata-backend-distribution` artifact, and server startup skips Maven. Unit tests
-run once per selected interpreter, independently of the integration database matrix. Static
-checks run once on the minimum interpreter.
+Build one backend image per selected integration/nightly run. Integration, API and connector
+runners load the same `python-ci-backend-image` artifact, verify its source revision, and reuse
+it for both migration and server containers. Server startup skips Maven and backend image builds.
+Unit tests run once per selected interpreter, independently of the integration database matrix.
+Static checks run once on the minimum interpreter.
 
 `reusable-py-cli-e2e-tests.yml` contains only connector E2E jobs. Preserve the 17 legacy connector lanes,
 their test environment, cloud authentication, diagnostics and Snowflake concurrency with

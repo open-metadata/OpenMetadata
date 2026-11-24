@@ -58,7 +58,7 @@ jobs:
         run: python3 scripts/python_ci.py connectors --output "$GITHUB_OUTPUT"
 
   backend:
-    name: Build Backend Distribution
+    name: Build backend image
     needs: plan
     uses: ./.github/workflows/reusable-build-backend.yml
     with:
@@ -152,7 +152,7 @@ jobs:
     with:
       ref: ${{ needs.plan.outputs.ref }}
       python-version: ${{ needs.plan.outputs.python-lowest }}
-      use-backend-artifact: true
+      use-backend-image: true
       collect-coverage: true
 
   py-tests-status:

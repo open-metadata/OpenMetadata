@@ -271,3 +271,104 @@ def test_diagnostics_keeps_runner_evidence_without_docker(tmp_path):
     artifacts = runner / "python-ci-diagnostics"
     assert (artifacts / "disk-usage.txt").read_text() == "runner disk evidence\n"
     assert (artifacts / "memory-usage.txt").read_text() == "runner memory evidence\n"
+
+
+@pytest.fixture
+def docker_commands(tmp_path, monkeypatch):
+    binaries = tmp_path / "bin"
+    binaries.mkdir()
+    commands = tmp_path / "docker-commands.jsonl"
+    docker = binaries / "docker"
+    docker.write_text(
+        "#!/usr/bin/env python3\n"
+        "import json, os, sys\n"
+        "args = sys.argv[1:]\n"
+        "with open(os.environ['DOCKER_COMMANDS'], 'a') as output:\n"
+        "    output.write(json.dumps(args) + '\\n')\n"
+        "if args == ['load']:\n"
+        "    sys.stdin.buffer.read()\n"
+        "elif args[:2] == ['image', 'inspect']:\n"
+        "    print(os.environ['IMAGE_REVISION'])\n"
+        "elif 'config' in args:\n"
+        "    if '--services' in args:\n"
+        "        print('mysql\\nelasticsearch\\nexecute-migrate-all\\nopenmetadata-server\\ningestion')\n"
+        "    else:\n"
+        "        print(json.dumps({'name': 'ci-demo', 'services': {\n"
+        "            'execute-migrate-all': {}, 'openmetadata-server': {'image': 'ci-demo-server'}}}))\n"
+        "elif 'up' in args:\n"
+        "    sys.exit(1)\n"
+    )
+    docker.chmod(0o755)
+    monkeypatch.setenv("PATH", str(binaries) + os.pathsep + os.environ["PATH"])
+    monkeypatch.setenv("DOCKER_COMMANDS", str(commands))
+    return commands
+
+
+@pytest.mark.parametrize("matching_revision", [True, False])
+def test_backend_image_load_checks_revision_and_prepares_compose_tags(
+    tmp_path, monkeypatch, docker_commands, matching_revision
+):
+    source = tmp_path / "image.tar"
+    source.write_bytes(b"image archive")
+    archive = tmp_path / "image.tar.zst"
+    compressed = run("zstd", "-q", source, "-o", archive)
+    assert compressed.returncode == 0, compressed.stderr
+    revision = run("git", "rev-parse", "HEAD").stdout.strip()
+    monkeypatch.setenv("IMAGE_REVISION", revision if matching_revision else "other-source")
+    environment = tmp_path / "environment"
+    monkeypatch.setenv("GITHUB_ENV", str(environment))
+    result = run("bash", ROOT / ".github/scripts/python_ci_backend_image.sh", "load", archive)
+    commands = [json.loads(line) for line in docker_commands.read_text().splitlines()]
+    tags = [command[-1] for command in commands if command[:2] == ["image", "tag"]]
+    if matching_revision:
+        assert result.returncode == 0, result.stderr
+        assert set(tags) == {"ci-demo-execute-migrate-all", "ci-demo-server"}
+        assert environment.read_text() == "OM_BACKEND_IMAGE_PRELOADED=true\n"
+        assert not archive.exists()
+    else:
+        assert result.returncode != 0
+        assert not tags
+        assert not environment.exists()
+        assert archive.exists()
+
+
+@pytest.mark.parametrize(
+    "database, ingestion, backend_preloaded, ingestion_preloaded, expected",
+    [
+        ("mysql", False, False, False, {"mysql", "elasticsearch", "execute-migrate-all", "openmetadata-server"}),
+        ("mysql", False, True, False, {"mysql", "elasticsearch"}),
+        ("postgresql", False, True, False, {"postgresql", "opensearch"}),
+        ("mysql", True, True, False, {"mysql", "elasticsearch", "ingestion"}),
+        ("mysql", True, True, True, {"mysql", "elasticsearch"}),
+        ("mysql", True, False, True, {"mysql", "elasticsearch", "execute-migrate-all", "openmetadata-server"}),
+    ],
+)
+def test_stack_builds_only_services_without_preloaded_images(
+    monkeypatch, docker_commands, database, ingestion, backend_preloaded, ingestion_preloaded, expected
+):
+    monkeypatch.setenv("OM_BACKEND_IMAGE_PRELOADED", str(backend_preloaded).lower())
+    monkeypatch.setenv("OM_INGESTION_IMAGE_PRELOADED", str(ingestion_preloaded).lower())
+    monkeypatch.setenv("VIRTUAL_ENV", "")
+    result = run(
+        "bash",
+        ROOT / "docker/run_local_docker.sh",
+        "-m",
+        "no-ui",
+        "-s",
+        "true",
+        "-r",
+        "false",
+        "-d",
+        database,
+        "-i",
+        str(ingestion).lower(),
+    )
+    assert result.returncode == 1
+    assert "Failed to start Docker instances" in result.stdout
+    commands = [json.loads(line) for line in docker_commands.read_text().splitlines()]
+    builds = [command for command in commands if "build" in command]
+    assert len(builds) == 1
+    arguments = builds[0][builds[0].index("build") + 1 :]
+    if arguments[:1] == ["--build-arg"]:
+        arguments = arguments[2:]
+    assert set(arguments) == expected

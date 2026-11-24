@@ -22,7 +22,7 @@ on:
         required: true
         type: string
       ref:
-        description: Git commit SHA to test; must match the shared backend distribution
+        description: Git commit SHA to test; must match the shared backend image
         type: string
         required: true
       use-ingestion-image:
@@ -67,11 +67,6 @@ jobs:
           role-to-assume: ${{ secrets.E2E_AWS_IAM_ROLE_ARN }}
           role-session-name: github-ci-aws-e2e-tests
           aws-region: ${{ secrets.E2E_AWS_REGION }}
-      - name: Download shared backend distribution
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          name: openmetadata-backend-distribution
-          path: openmetadata-dist/target
       - name: Download ingestion image
         if: inputs.use-ingestion-image
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
@@ -85,6 +80,7 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
+          use-backend-image: 'true'
           args: -m no-ui -s true
       - name: Prepare Python environment
         uses: ./.github/actions/prepare-python-environment

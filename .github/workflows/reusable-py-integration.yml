@@ -17,7 +17,7 @@ on:
         type: string
         required: true
       ref:
-        description: Git commit SHA to test; must match the shared backend distribution
+        description: Git commit SHA to test; must match the shared backend image
         type: string
         required: true
       collect-coverage:
@@ -54,6 +54,7 @@ jobs:
           - name: shard-3
             nox-args: --ignore=tests/integration/automations --ignore=tests/integration/data_quality --ignore=tests/integration/mysql --ignore=tests/integration/postgres --ignore=tests/integration/powerbi --ignore=tests/integration/sas --ignore=tests/integration/superset --ignore=tests/integration/alationsink --ignore=tests/integration/auto_classification --ignore=tests/integration/datalake --ignore=tests/integration/profiler --ignore=tests/integration/sources --ignore=tests/integration/sql_server --ignore=tests/integration/ssrs
     steps:
+      # TODO: Measure shard 1/3 disk usage before limiting this cleanup to shard 2.
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@ceedf095f4ec1a097402bc6bd80831f2e1a6fde6
         with:
@@ -72,14 +73,10 @@ jobs:
       - name: Use runner data disk for Docker
         if: matrix.shard.needs-disk
         run: bash .github/scripts/configure_docker_storage.sh
-      - name: Download backend distribution
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          name: openmetadata-backend-distribution
-          path: openmetadata-dist/target
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
+          use-backend-image: 'true'
           args: ${{ matrix.database.compose-args }}
       - name: Prepare Python environment
         uses: ./.github/actions/prepare-python-environment

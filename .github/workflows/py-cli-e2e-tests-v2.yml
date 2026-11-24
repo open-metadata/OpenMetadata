@@ -100,11 +100,6 @@ jobs:
           persist-credentials: false
           fetch-depth: 1
 
-      - name: Download backend distribution
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
-        with:
-          name: openmetadata-backend-distribution
-          path: openmetadata-dist/target
       - name: Download ingestion image
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
@@ -117,6 +112,7 @@ jobs:
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
+          use-backend-image: 'true'
           args: -m no-ui -s true
 
       - name: Prepare Python environment

@@ -46,6 +46,7 @@ python:
   - .github/workflows/reusable-py-integration.yml
   - .github/python-ci/**
   - .github/workflows/reusable-build-backend.yml
+  - .github/scripts/python_ci_backend_image.sh
   - .github/actions/python-*/**
   - .github/actions/report-test-results/**
   - .github/actions/setup-uv/**
@@ -93,6 +94,7 @@ airflow-apis:
   - ingestion/uv.lock
   - .github/scripts/classify_test_outcome.py
   - .github/workflows/reusable-build-backend.yml
+  - .github/scripts/python_ci_backend_image.sh
 static:
   - scripts/update_version.py
   - .github/scripts/tests/test_python_ci.py
