@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -62,7 +63,8 @@ final class OntologyTestDatabase {
     SystemRepository previousSettings = Entity.getSystemRepository();
     EntityRelationshipRepository previousRelationships = Entity.getEntityRelationshipRepository();
     Map<String, EntityRepository<?>> repositories = registeredRepositories();
-    Map<String, EntityRepository<?>> previousRepositories = Map.copyOf(repositories);
+    // Other tests can leave null registrations that must also be restored.
+    Map<String, EntityRepository<?>> previousRepositories = new HashMap<>(repositories);
     try (OntologyFixtureWork work = new OntologyFixtureWork()) {
       Entity.setJdbi(handle.getJdbi());
       Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
@@ -84,7 +86,7 @@ final class OntologyTestDatabase {
   }
 
   @SuppressWarnings("unchecked")
-  private static Map<String, EntityRepository<?>> registeredRepositories() {
+  static Map<String, EntityRepository<?>> registeredRepositories() {
     try {
       Field registry = Entity.class.getDeclaredField("ENTITY_REPOSITORY_MAP");
       registry.setAccessible(true);

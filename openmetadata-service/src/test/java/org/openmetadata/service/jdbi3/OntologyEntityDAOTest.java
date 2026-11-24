@@ -94,6 +94,32 @@ class OntologyEntityDAOTest {
   @EnumSource(
       value = ConnectionType.class,
       names = {"MYSQL", "POSTGRES"})
+  void fixtureRestoresNullRepositoryRegistration(ConnectionType dialect) {
+    withDatabase(
+        dialect,
+        handle -> {
+          var repositories = OntologyTestDatabase.registeredRepositories();
+          String entityType = Entity.WORKFLOW_DEFINITION;
+          boolean wasRegistered = repositories.containsKey(entityType);
+          var previous = repositories.put(entityType, null);
+          try {
+            withRepositories(handle, () -> assertNotNull(repositories.get(entityType)));
+            assertTrue(repositories.containsKey(entityType));
+            assertNull(repositories.get(entityType));
+          } finally {
+            if (wasRegistered) {
+              repositories.put(entityType, previous);
+            } else {
+              repositories.remove(entityType);
+            }
+          }
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
   void migrationResetsOnlyUnreleasedGlossaryAxioms(ConnectionType dialect) {
     withDatabase(
         dialect,
