@@ -1,12 +1,14 @@
 package org.openmetadata.service.migration;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -23,7 +25,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v2010.LogicalTestSuitePipelineMigration;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -39,21 +43,29 @@ class LogicalTestSuitePipelineMigrationTest {
 
   @ParameterizedTest
   @ValueSource(strings = {MYSQL, "postgres"})
-  void removesOnlyLogicalSuiteTableSettingsAndCanBeReplayed(final String dialect) {
+  void removesOnlyLogicalSuiteTableSettingsAndCanBeReplayed(final String dialect)
+      throws ReflectiveOperationException {
     try (GenericContainer<?> database = database(dialect)) {
       database.start();
       try (Handle handle = open(database, dialect)) {
-        createTables(handle, dialect);
         for (final String version : VERSIONS) {
+          createTables(handle, dialect);
           final Map<String, JsonNode> expected = seedPipelines(handle, dialect);
-          final List<String> statements = migrationStatements(version, dialect);
-          assertFalse(statements.isEmpty(), version + " must normalize logical suite pipelines");
-          statements.forEach(handle::execute);
+          runMigration(handle, dialect, version);
           assertSuiteIdIndex(handle, dialect);
-          assertIndexedSuiteLookup(handle, dialect, statements);
+          assertIndexedSuiteLookup(handle, dialect);
           assertEquals(expected, storedPipelines(handle), version + " first run");
-          statements.forEach(handle::execute);
-          assertEquals(expected, storedPipelines(handle), version + " replay");
+          invalidatePostgresIndex(handle, dialect);
+          try (Handle retry = open(database, dialect)) {
+            runMigration(retry, dialect, version);
+            assertSuiteIdIndex(retry, dialect);
+            assertIndexedSuiteLookup(retry, dialect);
+            assertEquals(expected, storedPipelines(retry), version + " retry in a new session");
+          }
+          for (final String table :
+              List.of("entity_relationship", "ingestion_pipeline_entity", "test_suite")) {
+            handle.execute("DROP TABLE " + table);
+          }
         }
       }
     }
@@ -132,22 +144,29 @@ class LogicalTestSuitePipelineMigrationTest {
     batch.execute();
   }
 
-  private static void assertIndexedSuiteLookup(
-      final Handle handle, final String dialect, final List<String> statements) {
+  private static void assertIndexedSuiteLookup(final Handle handle, final String dialect)
+      throws ReflectiveOperationException {
     handle.execute(MYSQL.equals(dialect) ? "ANALYZE TABLE test_suite" : "ANALYZE test_suite");
-    final String update =
-        statements.stream()
-            .filter(sql -> sql.contains("entityFullyQualifiedName"))
-            .findFirst()
-            .orElseThrow();
+    final Field cleanup =
+        LogicalTestSuitePipelineMigration.class.getDeclaredField(
+            MYSQL.equals(dialect) ? "MYSQL_CLEANUP" : "POSTGRES_CLEANUP");
+    cleanup.setAccessible(true);
     final String explain =
         MYSQL.equals(dialect) ? "EXPLAIN FORMAT=JSON " : "EXPLAIN (FORMAT JSON) ";
     final JsonNode plan =
-        JsonUtils.readTree(handle.createQuery(explain + update).mapTo(String.class).one());
+        JsonUtils.readTree(
+            handle.createQuery(explain + cleanup.get(null)).mapTo(String.class).one());
     final String key = MYSQL.equals(dialect) ? "key" : "Index Name";
     assertTrue(
         plan.findValues(key).stream().anyMatch(value -> "idx_test_suite_id".equals(value.asText())),
         "The populated suite table should be joined through its id index: " + plan);
+  }
+
+  private static void invalidatePostgresIndex(final Handle handle, final String dialect) {
+    if (!MYSQL.equals(dialect)) {
+      handle.execute(
+          "UPDATE pg_index SET indisvalid = false WHERE indexrelid = 'idx_test_suite_id'::regclass");
+    }
   }
 
   private static void assertSuiteIdIndex(final Handle handle, final String dialect) {
@@ -385,7 +404,8 @@ class LogicalTestSuitePipelineMigrationTest {
     return rows;
   }
 
-  private static List<String> migrationStatements(final String version, final String dialect) {
+  private static void runMigration(final Handle handle, final String dialect, final String version)
+      throws ReflectiveOperationException {
     Path root = Path.of("").toAbsolutePath();
     while (root != null && !Files.isDirectory(root.resolve("bootstrap/sql/migrations"))) {
       root = root.getParent();
@@ -393,21 +413,28 @@ class LogicalTestSuitePipelineMigrationTest {
     if (root == null) {
       throw new IllegalStateException("Cannot find migration scripts");
     }
-    final MigrationFile migration =
+    final MigrationDAO migrationDAO = mock(MigrationDAO.class);
+    // Unrelated steps in these release entry points have their own regression suites.
+    when(migrationDAO.getSqlQuery(anyString(), anyString())).thenReturn("already applied");
+    final MigrationFile file =
         new MigrationFile(
             root.resolve("bootstrap/sql/migrations/native").resolve(version).toFile(),
-            mock(MigrationDAO.class),
+            migrationDAO,
             MYSQL.equals(dialect) ? ConnectionType.MYSQL : ConnectionType.POSTGRES,
             new OpenMetadataApplicationConfig(),
             false);
-    migration.parseSQLFiles();
-    return migration.getSchemaChanges().stream()
-        .filter(
-            sql ->
-                sql.contains("entityFullyQualifiedName")
-                    || sql.contains("logical_suite_index")
-                    || sql.contains("idx_test_suite_id"))
-        .toList();
+    final MigrationProcessImpl migration =
+        (MigrationProcessImpl)
+            Class.forName(file.getMigrationProcessClassName())
+                .getConstructor(MigrationFile.class)
+                .newInstance(file);
+    for (final var entry :
+        Map.of("handle", (Object) handle, "migrationDAO", migrationDAO).entrySet()) {
+      final Field field = MigrationProcessImpl.class.getDeclaredField(entry.getKey());
+      field.setAccessible(true);
+      field.set(migration, entry.getValue());
+    }
+    migration.runDataMigration();
   }
 
   private record Fixture(
