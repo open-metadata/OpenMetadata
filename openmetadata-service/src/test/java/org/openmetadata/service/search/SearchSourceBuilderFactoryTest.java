@@ -227,8 +227,8 @@ public class SearchSourceBuilderFactoryTest {
   /**
    * Without ranking, n-gram fields go through the unranked fuzzy match. Fuzzy-expanding every gram
    * of a 16-char token (~105 grams) exceeds OpenSearch's 1024-clause cap and fails the search with
-   * a 500 (SearchScoringIT on run id e5c1df09d6f64f0387781ba669f92717). The n-gram clause keeps the
-   * field's own analyzer, so partial names still match, and is not fuzzy.
+   * a 500 (SearchScoringIT on run id e5c1df09d6f64f0387781ba669f92717). Past the clause budget the
+   * n-gram clause is not fuzzy, and it keeps the field's own analyzer so partial names still match.
    */
   @Test
   public void testUnrankedNgramMatchIsNotFuzzyAndKeepsFieldAnalyzer() {
@@ -250,11 +250,39 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   @Test
-  public void testFuzzinessIsDisabledOnlyForNgramOnlyFields() {
+  public void testUnrankedNgramMatchStaysFuzzyForATypo() {
+    OpenSearchRequestBuilder osBuilder =
+        new OpenSearchSourceBuilderFactory(searchSettings)
+            .getSearchSourceBuilderV2("table", "custmer", 0, 10);
+    ElasticSearchRequestBuilder esBuilder =
+        new ElasticSearchSourceBuilderFactory(searchSettings)
+            .getSearchSourceBuilderV2("table", "custmer", 0, 10);
+
+    for (JsonNode clause :
+        List.of(
+            ngramFuzzyClause(osBuilder.query().toJsonString()),
+            ngramFuzzyClause(esBuilder.query().toString()))) {
+      assertEquals("1", clause.path("fuzziness").asText(), clause.toString());
+    }
+  }
+
+  @Test
+  public void testNgramFuzzinessIsDisabledOnlyPastTheClauseBudget() {
+    List<String> ngramFields = List.of("name.ngram", "displayName.ngram");
+
+    assertEquals(300, SearchUtils.estimatedNgramFuzzyClauses("custmer", ngramFields));
+    assertEquals(620, SearchUtils.estimatedNgramFuzzyClauses("customer_orders", ngramFields));
+    assertEquals(2100, SearchUtils.estimatedNgramFuzzyClauses("e5c1df09f5c39786", ngramFields));
+    assertEquals(0, SearchUtils.estimatedNgramFuzzyClauses("e5c1df09f5c39786", List.of("name")));
+
+    assertEquals("1", SearchUtils.getFuzziness("custmer", ngramFields));
+    assertEquals("1", SearchUtils.getFuzziness("customer_orders", ngramFields));
+    assertEquals("0", SearchUtils.getFuzziness("e5c1df09f5c39786", ngramFields));
     assertEquals(
-        "0", SearchUtils.getFuzziness("customer", List.of("name.ngram", "displayName.ngram")));
+        "0",
+        SearchUtils.getFuzziness("e5c1df09f5c39786", List.of("name.ngram", "columnNamesFuzzy")));
     assertEquals(
-        "1", SearchUtils.getFuzziness("customer", List.of("name.ngram", "columnNamesFuzzy")));
+        "1", SearchUtils.getFuzziness("e5c1df09f5c39786", List.of("name", "columnNamesFuzzy")));
   }
 
   private static JsonNode ngramFuzzyClause(String queryJson) {
