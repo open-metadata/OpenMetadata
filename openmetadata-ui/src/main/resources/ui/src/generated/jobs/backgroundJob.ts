@@ -44,9 +44,11 @@ export interface BackgroundJob {
      */
     jobArgs: EnumCleanupArgs;
     /**
-     * Type of the job.
+     * Type of the job. An open set: OpenMetadata's own types are constants in
+     * BackgroundJobTypes, and a distribution can add its own without changing this schema. The
+     * worker runs a job with the handler named by methodName.
      */
-    jobType: JobType;
+    jobType: string;
     /**
      * Latest human-readable job status message.
      */
@@ -221,28 +223,6 @@ export interface Retype {
      */
     termIds?:             string[];
     toRelationshipTypeId: string;
-}
-
-/**
- * Type of the job.
- */
-export enum JobType {
-    AdminOpsAppConfig = "ADMIN_OPS_APP_CONFIG",
-    AdminOpsAuthorizerConfig = "ADMIN_OPS_AUTHORIZER_CONFIG",
-    AdminOpsDeployPipelines = "ADMIN_OPS_DEPLOY_PIPELINES",
-    AdminOpsLimitsConfig = "ADMIN_OPS_LIMITS_CONFIG",
-    AdminOpsReindex = "ADMIN_OPS_REINDEX",
-    AdminOpsSsoConfig = "ADMIN_OPS_SSO_CONFIG",
-    AuditExport = "AUDIT_EXPORT",
-    CSVExport = "CSV_EXPORT",
-    CSVImport = "CSV_IMPORT",
-    ContextMemoryExtraction = "CONTEXT_MEMORY_EXTRACTION",
-    CustomPropertyEnumCleanup = "CUSTOM_PROPERTY_ENUM_CLEANUP",
-    DeleteEntity = "DELETE_ENTITY",
-    DeleteToken = "DELETE_TOKEN",
-    MemoryGlossaryDerivation = "MEMORY_GLOSSARY_DERIVATION",
-    OntologyBulk = "ONTOLOGY_BULK",
-    OntologyPackInstall = "ONTOLOGY_PACK_INSTALL",
 }
 
 /**

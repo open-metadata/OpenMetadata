@@ -58,6 +58,8 @@ DATA_IMPORT_CUBE_SUBTYPES = frozenset({779, 780})
 # ADR:2026-11-05-microstrategy-charts-are-named-by-dossier-and-the-search-is-paged
 SEARCH_PAGE_SIZE = 500
 CACHE_SIZE = 512
+# The most metrics read to resolve one metric into its parts, so a deep definition stays bounded.
+MAX_METRIC_PARTS = 100
 LOGIN_TIMEOUT = (10, 60)
 # The sqlView endpoint appends this block, which is not SQL, after the statement. Left in, it
 # fails SqlGlot and SqlFluff, and the parser falls back to SqlParse.
@@ -106,6 +108,49 @@ class CubeSql(NamedTuple):
     sql: str
 
 
+def _tree_values(tree: Any) -> Iterable[str]:
+    """The column names an expression tree reads, at any depth"""
+    if isinstance(tree, dict):
+        if tree.get("columnName"):
+            yield tree["columnName"]
+        for child in tree.get("children") or []:
+            yield from _tree_values(child)
+
+
+def _token_references(tokens: Any) -> Iterable[tuple[str, str, str]]:
+    """
+    (subtype, id, name) of each object an expression's resolved tokens reference. Tokens, not the
+    tree: a metric built in Workstation wraps its aggregation in an embedded object that no endpoint
+    serves, and only the tokens resolve the fact inside it.
+    """
+    for token in tokens if isinstance(tokens, list) else ():
+        target = token.get("target") if isinstance(token, dict) and token.get("type") == "object_reference" else None
+        if isinstance(target, dict) and target.get("objectId"):
+            yield target.get("subType") or "", target["objectId"], target.get("name") or ""
+
+
+class MetricDefinition(NamedTuple):
+    """
+    A schema metric as the modeling API defines it: the column alias set on it, which the SQL
+    generator names its projection after in place of the metric's name, and the (subtype, id, name)
+    of each object its expression references.
+    """
+
+    column_alias: str | None
+    references: tuple[tuple[str, str, str], ...]
+
+
+class MetricParts(NamedTuple):
+    """
+    What a schema metric is built from, through every metric it references: the ids of the facts
+    it aggregates, and the (id, SQL name) of the metrics it references. A metric's SQL name is its
+    column alias when one is set, else its name.
+    """
+
+    facts: frozenset[str]
+    metrics: frozenset[tuple[str, str]]
+
+
 class MicroStrategyApiError(Exception):
     """A MicroStrategy REST call failed or answered with an unexpected body"""
 
@@ -139,7 +184,9 @@ class MicroStrategyClient:
         self._owner_emails: OrderedDict[str, str | None] = OrderedDict()
         self._dataset_subtypes: OrderedDict[str, int | None] = OrderedDict()
         self._form_columns: OrderedDict[str, dict[str, frozenset[tuple[str, str]]] | None] = OrderedDict()
-        self._attribute_failure_reported = False
+        self._failures_reported: set[str] = set()
+        self._metric_definitions: OrderedDict[str, MetricDefinition | None] = OrderedDict()
+        self._fact_columns: OrderedDict[str, frozenset[tuple[str, str]] | None] = OrderedDict()
         self._physical_tables: OrderedDict[str, str | None] = OrderedDict()
         # Reading schema objects needs modeling privileges; their absence is reported once.
         self.modeling_denied = False
@@ -395,17 +442,15 @@ class MicroStrategyClient:
             attribute = self._get(
                 f"/model/attributes/{attribute_id}", params={"showExpressionAs": "tree"}, project_id=project_id
             )
-            forms = {
-                form["id"]: frozenset(self._form_expression_columns(project_id, form)) for form in attribute["forms"]
-            }
+            forms = {form["id"]: frozenset(self._expression_columns(project_id, form)) for form in attribute["forms"]}
         except MicroStrategyApiError as exc:
             if exc.status_code == 403:
                 self._deny_modeling(exc)
                 return None
-            self._attribute_failed(attribute_id, exc)
+            self._schema_object_failed("attribute", attribute_id, exc)
             forms = None
         except Exception as exc:
-            self._attribute_failed(attribute_id, exc)
+            self._schema_object_failed("attribute", attribute_id, exc)
             forms = None
         if self.modeling_denied:
             # A table read was refused while reading the forms: what was read is incomplete.
@@ -426,29 +471,125 @@ class MicroStrategyClient:
         )
         self.modeling_denied = True
 
-    def _attribute_failed(self, attribute_id: str, exc: Exception) -> None:
-        """One warning for the run, so a server refusing many attributes does not flood the log"""
+    def _schema_object_failed(self, kind: str, object_id: str, exc: Exception) -> None:
+        """One warning per kind for the run, so a server refusing many objects does not flood the log"""
         logger.debug(traceback.format_exc())
-        if self._attribute_failure_reported:
-            logger.debug("Could not read schema attribute %s: %s", attribute_id, exc)
+        if kind in self._failures_reported:
+            logger.debug("Could not read schema %s %s: %s", kind, object_id, exc)
             return
-        self._attribute_failure_reported = True
+        self._failures_reported.add(kind)
         logger.warning(
-            "Could not read schema attribute %s, so its columns get no column-level lineage; further attributes "
+            "Could not read schema %s %s, so its columns get no column-level lineage; further %ss "
             "that cannot be read are logged at debug level: %s",
-            attribute_id,
+            kind,
+            object_id,
+            kind,
             exc,
         )
 
-    def _form_expression_columns(self, project_id: str, form: dict[str, Any]) -> Iterable[tuple[str, str]]:
-        for expression in form.get("expressions") or []:
-            column = (expression.get("expression") or {}).get("tree", {}).get("columnName")
-            if not column:
+    def _read_schema_object(
+        self, project_id: str, kind: str, object_id: str, expression_as: str = "tree"
+    ) -> dict[str, Any] | None:
+        """
+        A schema object from the modeling API, its expressions as trees or resolved tokens. None when
+        it cannot be read: a 403 stops all modeling calls, any other failure is reported once per kind.
+        """
+        if self.modeling_denied:
+            return None
+        try:
+            return self._get(
+                f"/model/{kind}s/{object_id}", params={"showExpressionAs": expression_as}, project_id=project_id
+            )
+        except MicroStrategyApiError as exc:
+            if exc.status_code == 403:
+                self._deny_modeling(exc)
+                return None
+            self._schema_object_failed(kind, object_id, exc)
+        except Exception as exc:
+            self._schema_object_failed(kind, object_id, exc)
+        return None
+
+    def _expression_columns(self, project_id: str, holder: dict[str, Any]) -> Iterable[tuple[str, str]]:
+        """
+        The (physical table, column) pairs the expressions of an attribute form or a fact read: every
+        column an expression names, on every table it is mapped to.
+        """
+        for expression in holder.get("expressions") or []:
+            columns = {column.lower() for column in _tree_values((expression.get("expression") or {}).get("tree"))}
+            if not columns:
                 continue
             for table in expression.get("tables") or []:
                 physical = self.get_physical_table(project_id, table["objectId"])
                 if physical:
-                    yield physical, column.lower()
+                    yield from ((physical, column) for column in columns)
+
+    def get_metric_parts(
+        self, project_id: str, metric_id: str, known: Callable[[str, str], bool] = lambda _id, _name: False
+    ) -> MetricParts | None:
+        """
+        The facts and metrics a schema metric is built from, followed through every metric it
+        references, except those ``known`` already tells the columns of (by id and SQL name). A
+        referenced metric that cannot be read is left out. None when the metric itself cannot be
+        read: a metric derived in a dossier has no schema definition, and reading one needs modeling
+        privileges.
+        """
+        if self._definition(project_id, metric_id) is None:
+            return None
+        facts: set[str] = set()
+        metrics: set[tuple[str, str]] = set()
+        seen, pending = {metric_id}, [metric_id]
+        while pending:
+            definition = self._definition(project_id, pending.pop())
+            for sub_type, object_id, name in definition.references if definition else ():
+                if sub_type == "fact":
+                    facts.add(object_id)
+                elif sub_type == "metric" and object_id not in seen and len(seen) < MAX_METRIC_PARTS:
+                    seen.add(object_id)
+                    sql_name = self.get_metric_sql_name(project_id, object_id, name)
+                    if sql_name is None:
+                        continue
+                    metrics.add((object_id, sql_name))
+                    if not known(object_id, sql_name):
+                        pending.append(object_id)
+        return MetricParts(facts=frozenset(facts), metrics=frozenset(metrics))
+
+    def get_metric_sql_name(self, project_id: str, metric_id: str, name: str) -> str | None:
+        """
+        The name the SQL generator gives a schema metric's projection: the column alias set on the
+        metric, else its name. None when the metric cannot be read.
+        """
+        definition = self._definition(project_id, metric_id)
+        if definition is None:
+            return None
+        return definition.column_alias or name
+
+    def _definition(self, project_id: str, metric_id: str) -> MetricDefinition | None:
+        """A schema metric's column alias and references, read once per metric"""
+
+        def fetch() -> MetricDefinition | None:
+            metric = self._read_schema_object(project_id, "metric", metric_id, expression_as="tokens")
+            if metric is None:
+                return None
+            alias = metric.get("columnNameAlias")
+            return MetricDefinition(
+                column_alias=alias if isinstance(alias, str) and alias.strip() else None,
+                references=tuple(_token_references((metric.get("expression") or {}).get("tokens"))),
+            )
+
+        return cached(self._metric_definitions, metric_id, fetch, f"metric {metric_id}")
+
+    def get_fact_columns(self, project_id: str, fact_id: str) -> frozenset[tuple[str, str]] | None:
+        """The (physical table, column) pairs a fact's expressions read, lowercased"""
+
+        def fetch() -> frozenset[tuple[str, str]] | None:
+            fact = self._read_schema_object(project_id, "fact", fact_id)
+            if fact is None:
+                return None
+            columns = frozenset(self._expression_columns(project_id, fact))
+            # A table read refused while reading the expressions leaves them incomplete.
+            return None if self.modeling_denied else columns
+
+        return cached(self._fact_columns, fact_id, fetch, f"fact {fact_id}")
 
     def get_physical_table(self, project_id: str, logical_table_id: str) -> str | None:
         """

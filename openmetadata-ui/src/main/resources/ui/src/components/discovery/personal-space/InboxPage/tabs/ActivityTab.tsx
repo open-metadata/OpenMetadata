@@ -34,7 +34,9 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import { TaskMentionCard } from '../../../../NotificationBox/TaskMentionCard';
 import ActivityFeedItem from '../components/ActivityFeedItem';
+import { ACTIVITY_CARD_CLASS } from '../components/ActivityFeedItem.constants';
 import ActivitySkeleton from '../components/ActivitySkeleton';
 import ActivityToolbar from '../components/ActivityToolbar';
 import {
@@ -65,10 +67,10 @@ import { useIsScrolled } from '../useIsScrolled';
 // but a small DOM keeps a modal over it (a delete confirm, say) cheap to open.
 const ACTIVITY_RENDER_BATCH = 40;
 
-const getItemEntity = ({ activity, feed }: InboxActivityItem) =>
-  activity?.entity ?? feed?.entityRef;
-const getItemActor = ({ activity, feed }: InboxActivityItem) =>
-  activity?.actor ?? feed?.createdBy;
+const getItemEntity = ({ activity, feed, taskMention }: InboxActivityItem) =>
+  activity?.entity ?? feed?.entityRef ?? taskMention?.task.about;
+const getItemActor = ({ activity, feed, taskMention }: InboxActivityItem) =>
+  activity?.actor ?? feed?.createdBy ?? taskMention?.comment.author;
 
 // An Asset group leads with its asset's icon, a User group with the user.
 const AssetGroupIcon = ({ item }: { item: InboxActivityItem }) => {
@@ -303,6 +305,15 @@ const ActivityGroupList = ({
           </Box>
           {group.items.map((item) => {
             const itemId = getInboxItemId(item);
+            if (item.taskMention) {
+              return (
+                <Box className={ACTIVITY_CARD_CLASS} key={itemId}>
+                  <Box className="tw:p-4">
+                    <TaskMentionCard mention={item.taskMention} />
+                  </Box>
+                </Box>
+              );
+            }
 
             return (
               <ActivityFeedItem
@@ -337,6 +348,12 @@ const ActivityGroupList = ({
   );
 };
 
+const showsEveryUnread = (
+  isCapped: boolean,
+  cutAt: number | undefined,
+  seenTs: number | null
+) => seenTs === null || !isCapped || (cutAt !== undefined && cutAt <= seenTs);
+
 const ActivityTab: React.FC<ActivityTabProps> = ({
   user,
   initialFilter = ActivityFilter.All,
@@ -355,6 +372,9 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   const markInboxActivitySeen = usePersonalSpaceStore(
     (s) => s.markInboxActivitySeen
   );
+  const inboxActivitySeenTs = usePersonalSpaceStore(
+    (s) => s.inboxActivitySeenTs
+  );
   const { dateRange, isFiltered, onDatePresetChange } =
     useActivityDateRange(windowProps);
   const userFirstName = useViewedUserFirstName(user);
@@ -362,19 +382,45 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   const userId = user?.id;
 
   // Shared with the badge (one fetch); merge semantics documented on the hook.
-  const { items, isCapped, cutAt, isLoading, error, refetch } =
-    useInboxActivity(filter, dateRange, userId);
+  const {
+    items,
+    isCapped,
+    cutAt,
+    isLoading,
+    error,
+    refetch,
+    taskMentionsLoaded,
+    taskMentionsReadAt,
+  } = useInboxActivity(filter, dateRange, userId);
 
-  // Looking at the list is what clears the sidebar's unread badge; feeds have no
-  // server-side read state to update. Another user's feed is not the inbox.
-  // Only a successfully loaded view of the viewer's own feed is "looking at
-  // the list" — a loading skeleton or an error screen is not, so the mark is
-  // not stamped until the feed resolves without error.
+  // Keep the unread badge until a view that includes the viewer's mentions loads.
   useEffect(() => {
-    if (!isOtherUser && !isLoading && !error) {
-      markInboxActivitySeen();
+    const showsUnfilteredTaskMentions =
+      taskMentionsLoaded &&
+      taskMentionsReadAt !== undefined &&
+      !isFiltered &&
+      typeKeys.length === 0;
+    const ownViewLoaded = !isOtherUser && !isLoading && !error;
+    if (
+      ownViewLoaded &&
+      showsEveryUnread(isCapped, cutAt, inboxActivitySeenTs) &&
+      showsUnfilteredTaskMentions
+    ) {
+      markInboxActivitySeen(taskMentionsReadAt);
     }
-  }, [isOtherUser, isLoading, error, markInboxActivitySeen]);
+  }, [
+    isOtherUser,
+    isLoading,
+    error,
+    isCapped,
+    cutAt,
+    inboxActivitySeenTs,
+    taskMentionsLoaded,
+    taskMentionsReadAt,
+    isFiltered,
+    typeKeys.length,
+    markInboxActivitySeen,
+  ]);
   const counts = useInboxActivityCounts(dateRange, userId);
   // The Mentions feed (already read for its count) marks the cards that name
   // the feed's user, whichever tab they appear under.
@@ -413,25 +459,33 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
   // Groups keep the feed's newest-first order, as does each group's cards. Only
   // the revealed batch renders, but a header counts its whole group.
-  // A capped feed is incomplete from the day it was cut, so only that day's
-  // count can fall short. The cut is where the feed's lists stopped, not its
-  // last card: a type filter, or an old event mentioned today, can leave a
-  // card past it (ADR:2026-11-16-a-capped-inbox-feed-is-cut-at-its-oldest-item).
+  // Older task mentions stay visible in All when the activity and conversation
+  // lists stop. Their days and the cut day only have a lower bound.
   const groups = useMemo(() => {
     const { key, title } = GROUPING[grouping];
     const totals = countBy(filteredItems, key);
     const cutKey =
       cutAt && grouping === ActivityGrouping.Day ? getDayKey(cutAt) : undefined;
 
-    return Object.values(groupBy(visibleItems, key)).map((groupItems) => ({
-      key: key(groupItems[0]),
-      first: groupItems[0],
-      title: title(groupItems[0], t),
-      items: groupItems,
-      total: totals[key(groupItems[0])],
-      isFloor: key(groupItems[0]) === cutKey,
-    }));
-  }, [filteredItems, visibleItems, grouping, cutAt, t]);
+    const marksOlderDays =
+      cutKey !== undefined && filter === ActivityFilter.All;
+
+    return Object.values(groupBy(visibleItems, key)).map((groupItems) => {
+      const first = groupItems[0];
+      const groupKey = key(first);
+      const isOlderDay =
+        marksOlderDays && getInboxItemTimestamp(first) < (cutAt ?? 0);
+
+      return {
+        key: groupKey,
+        first,
+        title: title(first, t),
+        items: groupItems,
+        total: totals[groupKey],
+        isFloor: groupKey === cutKey || isOlderDay,
+      };
+    });
+  }, [filteredItems, visibleItems, grouping, cutAt, filter, t]);
   const GroupIcon = GROUPING[grouping].Icon;
   const timeFormat =
     grouping === ActivityGrouping.Day

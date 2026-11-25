@@ -134,7 +134,7 @@ def classify_targets(
 # the raw log.
 BUDGET_TARGET_DETAILS: dict[str, dict[str, Any]] = {
     # TRANSITIONAL: threshold widened from 300 → 480 s while the
-    # `playwright-chromium-deps-v2` apt cache is still populating across
+    # `playwright-chromium-deps-v3` apt cache is still populating across
     # branches (a cache miss triggers a real apt install that can take
     # 6-7 min on a slow Azure mirror; a cache hit is <5 s). The keeps
     # step-level `timeout` wrappers on `install-deps` in the workflow are

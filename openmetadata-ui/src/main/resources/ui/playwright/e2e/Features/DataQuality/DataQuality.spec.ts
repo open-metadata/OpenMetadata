@@ -981,7 +981,8 @@ test.describe(
 
         await expect(viewIncidentButton).toHaveText('View incident');
         await viewIncidentButton.click();
-        await expect(page).toHaveURL(/\/issues$/);
+        // The link selects the incident's task on the Issues tab.
+        await expect(page).toHaveURL(/\/issues\?taskId=[0-9a-f-]{36}$/);
         await expect(page.getByTestId('issue-tab-container')).toBeVisible();
       } finally {
         await failedRunTable.delete(apiContext);
