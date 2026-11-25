@@ -668,11 +668,11 @@ public final class AIContextMarkdown {
     }
     if (Boolean.TRUE.equals(item.getContentTruncated())) {
       markdown
-          .append("\n_Excerpt — fetch the full content with get_knowledge_content(entityType=`")
+          .append("\n_Excerpt — fetch the full content with get_entity_details(entityType=`")
           .append(item.getType() == null ? "" : item.getType().value())
           .append("`, fqn=`")
           .append(nullOrEmpty(item.getFullyQualifiedName()) ? "" : item.getFullyQualifiedName())
-          .append("`)._\n");
+          .append("`, include=[\"content\"])._\n");
     }
   }
 

@@ -51,7 +51,7 @@ this is the expected result rather than a contradiction — these are
 load-dependent and an idle laptop does not reproduce them. **More local runs
 will not settle them** — but neither will waiting for CI: the only thing under
 `.github/` that sets `PLAYWRIGHT_RUN_QUARANTINED` is the *Inventory existing
-quarantined coverage* step in `playwright-e2e-reusable.yml`, and it runs
+quarantined coverage* step in `reusable-playwright-e2e.yml`, and it runs
 `playwright test --list`. Listing is not executing, so a quarantined test still
 runs in no lane at all and has produced no evidence since it was tagged. The
 soak lane this file describes does not exist; the inventory step only makes the

@@ -19,7 +19,11 @@ import { Classification } from '../../../generated/entity/classification/classif
 import { Tag } from '../../../generated/entity/classification/tag';
 import { ENTITY_PERMISSIONS } from '../../../mocks/Permissions.mock';
 import { postExactAggregateFieldOptions } from '../../../rest/miscAPI';
-import { getTags } from '../../../rest/tagAPI';
+import {
+  getClassificationByName,
+  getTags,
+  patchClassification,
+} from '../../../rest/tagAPI';
 import { renderWithQueryClient as render } from '../../../test/unit/test-utils';
 import ClassificationDetails from './ClassificationDetails';
 
@@ -165,6 +169,8 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 }));
 
 jest.mock('../../../rest/tagAPI', () => ({
+  getClassificationByName: jest.fn(),
+  patchClassification: jest.fn(),
   getTags: jest.fn().mockResolvedValue({
     data: [],
     paging: { total: 0 },
@@ -244,22 +250,25 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
 }));
 
 jest.mock('../../common/WidgetCard/WidgetCard', () =>
-  jest
-    .fn()
-    .mockImplementation(
-      ({ children, title }: { children?: React.ReactNode; title?: string }) => (
-        <div data-testid="widget-card">
-          {title && <div>{title}</div>}
-          {children}
-        </div>
-      )
-    )
+  jest.fn().mockImplementation(({ children, headerExtra, title }) => (
+    <div data-testid="widget-card">
+      {title && <div>{title}</div>}
+      {headerExtra}
+      {children}
+    </div>
+  ))
 );
 
-jest.mock('../../common/DomainLabel/DomainLabel.component', () => ({
-  DomainLabel: jest
-    .fn()
-    .mockImplementation(() => <div data-testid="domain-label">Domain</div>),
+jest.mock('../../common/DomainSelect/DomainSelect', () =>
+  jest.fn().mockImplementation(({ onUpdate }) => (
+    <button type="button" onClick={() => onUpdate([])}>
+      Apply
+    </button>
+  ))
+);
+
+jest.mock('../../../rest/domainAPI', () => ({
+  getDomainStyles: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
 jest.mock('../../common/Badge/Badge.component', () =>
@@ -470,7 +479,7 @@ describe('ClassificationDetails', () => {
       'TestClassification'
     );
     expect(screen.getByTestId('tag-row-Tag2')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-label')).toBeInTheDocument();
+    expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
     expect(screen.getByTestId('owner-label')).toBeInTheDocument();
   });
 
@@ -692,6 +701,10 @@ describe('ClassificationDetails', () => {
     );
 
     expect(screen.queryByTestId('add-new-tag-button')).not.toBeInTheDocument();
+    expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Apply' })
+    ).not.toBeInTheDocument();
 
     unmount();
 
@@ -793,7 +806,7 @@ describe('ClassificationDetails', () => {
     expect(screen.getByTestId('loader')).toBeInTheDocument();
     expect(screen.queryByTestId('header')).not.toBeInTheDocument();
     expect(screen.queryByTestId('tags-table')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('domain-label')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.domain-plural')).not.toBeInTheDocument();
     expect(screen.queryByTestId('owner-label')).not.toBeInTheDocument();
   });
 
@@ -827,8 +840,45 @@ describe('ClassificationDetails', () => {
     expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
     expect(screen.getByTestId('header')).toBeInTheDocument();
     expect(screen.getByTestId('tags-table')).toBeInTheDocument();
-    expect(screen.getByTestId('domain-label')).toBeInTheDocument();
+    expect(screen.getByText('label.domain-plural')).toBeInTheDocument();
     expect(screen.getByTestId('owner-label')).toBeInTheDocument();
+  });
+
+  it('should show the assigned domain and apply domain changes to the classification', async () => {
+    const classification = {
+      ...mockClassification,
+      domains: [{ id: 'domain-id', type: 'domain', name: 'Finance' }],
+    };
+    jest.mocked(getClassificationByName).mockResolvedValue(classification);
+    jest
+      .mocked(patchClassification)
+      .mockResolvedValue({ ...classification, domains: [] });
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <ClassificationDetails
+            {...defaultProps}
+            currentClassification={classification}
+          />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByText('Finance')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+
+    await waitFor(() => {
+      expect(getClassificationByName).toHaveBeenCalledWith(
+        classification.fullyQualifiedName,
+        { fields: 'domains' }
+      );
+      expect(patchClassification).toHaveBeenCalledWith(classification.id, [
+        { op: 'remove', path: '/domains/0' },
+      ]);
+      expect(screen.queryByText('Finance')).not.toBeInTheDocument();
+    });
   });
 
   it('should pass currentClassification directly to GenericProvider', async () => {
