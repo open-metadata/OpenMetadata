@@ -9707,7 +9707,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // parent identity is stable. Other relationship types (OWNS, HAS, FOLLOWS, ...) change
     // per-write and must always hit the DB so downstream inheritance sees the freshest record.
     CachedRelationshipDao cacheDao =
-        (fromEntityType == null && relationship == Relationship.CONTAINS)
+        (fromEntityType == null
+                && relationship == Relationship.CONTAINS
+                && isCacheableEntityType(toEntity))
             ? CacheBundle.getCachedRelationshipDao()
             : null;
     if (cacheDao != null) {
@@ -9983,7 +9985,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Try to get from cache first (only for NON_DELETED as cache stores non-deleted data)
-    var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
+    var cachedRelationshipDao =
+        isCacheableEntityType(entityType) ? CacheBundle.getCachedRelationshipDao() : null;
     if (include == NON_DELETED && cachedRelationshipDao != null) {
       List<EntityReference> cached = cachedRelationshipDao.getOwners(entityType, entity.getId());
       if (cached != null) {
@@ -10037,7 +10040,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Try to get from cache first (only for NON_DELETED as cache stores non-deleted data)
-    var cachedRelationshipDao = CacheBundle.getCachedRelationshipDao();
+    var cachedRelationshipDao =
+        isCacheableEntityType(entityType) ? CacheBundle.getCachedRelationshipDao() : null;
     if (include == NON_DELETED && cachedRelationshipDao != null) {
       List<EntityReference> cached = cachedRelationshipDao.getDomains(entityType, entity.getId());
       if (cached != null) {
@@ -13846,13 +13850,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             try {
               Class<? extends EntityInterface<?>> entityClass = repository.getEntityClass();
               EntityInterface<?> entity = JsonUtils.readValue(cachedJson.get(), entityClass);
-              if (entity.getId() == null
-                  || entity.getFullyQualifiedName() == null
-                  || !fqnMatches(entityType, fqn, entity.getFullyQualifiedName())) {
+              if (entity.getId() == null || entity.getFullyQualifiedName() == null) {
                 LOG.error(
-                    "CACHE ERROR: Cached entity from name lookup is invalid or FQN-mismatched! Evicting. Type: {}, Name: {}",
+                    "CACHE ERROR: Cached entity from name lookup is invalid! Evicting. Type: {}, Name: {}",
                     entityType,
                     fqn);
+                cachedEntityDao.deleteByName(entityType, fqn);
+              } else if (!fqnMatches(entityType, fqn, entity.getFullyQualifiedName())) {
+                LOG.debug(
+                    "Stale cached name pointer (FQN mismatch), evicting and reloading from database. Type: {}, Expected: {}, Cached: {}",
+                    entityType,
+                    fqn,
+                    entity.getFullyQualifiedName());
                 cachedEntityDao.deleteByName(entityType, fqn);
               } else {
                 return cachedJson.get();

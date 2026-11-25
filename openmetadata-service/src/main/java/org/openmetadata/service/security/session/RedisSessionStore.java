@@ -85,20 +85,21 @@ public class RedisSessionStore implements SessionStore {
           + "redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3])\n"
           + "return 1\n";
 
-  // Single-key Lua script that records a session in its user ZSET index and ensures the ZSET key
-  // carries a TTL at least as long as the session's TTL. Existing longer TTLs (from another live
-  // session of the same user) are preserved, while abandoned indexes eventually expire. Touches
-  // only KEYS[1] so it stays in a single Redis Cluster hash slot.
+  // Single-key Lua script that records a session in its user ZSET index and ensures newly created
+  // or finite-TTL indexes carry a TTL at least as long as the session's TTL. Reads TTL before ZADD
+  // so a new key (-2) is distinguished from a pre-upgrade persistent index (-1), preventing a short
+  // session from prematurely expiring a legacy index that still tracks longer live sessions.
+  // Touches only KEYS[1] so it stays in a single Redis Cluster hash slot.
   //
   //   KEYS[1] = user index ZSET key
   //   ARGV[1] = score (lastAccessedAt)
   //   ARGV[2] = member (session ID)
   //   ARGV[3] = TTL seconds (never below MIN_TTL_SECONDS)
   private static final String ZADD_WITH_MAX_TTL_LUA =
-      "redis.call('ZADD', KEYS[1], ARGV[1], ARGV[2])\n"
-          + "local ttl = redis.call('TTL', KEYS[1])\n"
+      "local prior = redis.call('TTL', KEYS[1])\n"
+          + "redis.call('ZADD', KEYS[1], ARGV[1], ARGV[2])\n"
           + "local target = tonumber(ARGV[3])\n"
-          + "if ttl < 0 or ttl < target then\n"
+          + "if prior == -2 or (prior >= 0 and prior < target) then\n"
           + "  redis.call('EXPIRE', KEYS[1], target)\n"
           + "end\n"
           + "return 1\n";

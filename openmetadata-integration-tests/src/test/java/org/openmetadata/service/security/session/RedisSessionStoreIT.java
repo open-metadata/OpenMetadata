@@ -222,4 +222,35 @@ class RedisSessionStoreIT extends SessionStoreContractBase {
         ttlAfterExtend > TimeUnit.MINUTES.toSeconds(230),
         "updating a session with a longer horizon must extend the user index TTL");
   }
+
+  @Test
+  void preUpgradePersistentUserIndexIsNotShortenedByNewShortSession() {
+    RedisSessionStore redisStore = (RedisSessionStore) store;
+    String userId = UUID.randomUUID().toString();
+    String indexKey = "om-test:session:idx:user:" + userId + ":ACTIVE";
+    long now = System.currentTimeMillis();
+
+    // Simulate a legacy persistent user index (TTL == -1) holding an active pre-upgrade session.
+    commands.zadd(indexKey, (double) now, "legacy-session-id");
+    assertEquals(-1L, commands.ttl(indexKey));
+
+    UserSession shortSession =
+        UserSession.builder()
+            .id(UUID.randomUUID().toString())
+            .type(SessionType.AUTH)
+            .provider("basic")
+            .status(SessionStatus.ACTIVE)
+            .userId(userId)
+            .version(0L)
+            .lastAccessedAt(now)
+            .expiresAt(now + TimeUnit.MINUTES.toMillis(10))
+            .idleExpiresAt(now + TimeUnit.MINUTES.toMillis(10))
+            .build();
+    redisStore.create(shortSession);
+
+    assertEquals(
+        -1L,
+        commands.ttl(indexKey),
+        "a pre-upgrade persistent user index must not be shortened to a single short session's TTL");
+  }
 }
