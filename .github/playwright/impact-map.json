@@ -1384,7 +1384,13 @@
     {
       "_comment": "The limits store backs every LimitWrapper-gated create button and the post-delete limit refresh. Limits are off outside Collate, so the banner it raises cannot show here, but Bots exercises the disabled path end to end: the gated Add Bot button and the forced bot-limit refresh after a delete.",
       "sources": ["openmetadata-ui/src/main/resources/ui/src/context/LimitsProvider/**"],
-      "projects": ["chromium"],
+      "projects": ["Basic"],
+      "specs": ["playwright/e2e/Pages/Bots.spec.ts"]
+    },
+    {
+      "_comment": "The Bots settings page route and its browser tests; Bots.spec.ts is the end-to-end journey through the same page.",
+      "sources": ["openmetadata-ui/src/main/resources/ui/src/pages/BotsPageV1/**"],
+      "projects": ["Basic"],
       "specs": ["playwright/e2e/Pages/Bots.spec.ts"]
     },
     {
