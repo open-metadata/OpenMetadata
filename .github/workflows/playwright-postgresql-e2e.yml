@@ -12,7 +12,7 @@
 # Dispatcher for the postgresql Playwright E2E PR gate.
 #
 # The heavy lifting (gate → build → shard) lives in
-# `playwright-e2e-reusable.yml`; this file adds two top-level jobs that
+# `reusable-playwright-e2e.yml`; this file adds two top-level jobs that
 # MUST stay in the caller so branch protection can find them by their
 # UN-PREFIXED check names:
 #
@@ -81,7 +81,7 @@ permissions:
 jobs:
   playwright:
     if: ${{ github.event_name != 'pull_request' }}
-    uses: ./.github/workflows/playwright-e2e-reusable.yml
+    uses: ./.github/workflows/reusable-playwright-e2e.yml
     # secrets: inherit passes the full TEST_* / GITHUB_TOKEN set into the
     # reusable without re-listing each one; the reusable only reads what it
     # needs.
@@ -619,16 +619,11 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      # If gate itself didn't produce a valid decision (crash, cancelled,
-      # unknown), FAIL loudly rather than silently reporting green below.
-      # Without this guard, the "should_run != 'true'" branch (or any
-      # negative match) would treat an unset gate output the same as an
-      # explicit skip decision — hiding the gate failure and letting a
-      # required check pass on an invalid pipeline state.
-      - name: Guard against missing gate decision
+      # A missing selection result must not be interpreted as an intentional skip.
+      - name: Require successful selection
         if: ${{ github.event_name != 'merge_group' && needs.playwright.outputs.gate_result != 'success' }}
         run: |
-          echo "::error::gate did not succeed (result=${{ needs.playwright.outputs.gate_result }}, should_run=${{ needs.playwright.outputs.gate_should_run }}). Refusing synthetic green — this playwright-summary must not report success without a valid gate decision."
+          echo "::error::Workload selection did not succeed (result=${{ needs.playwright.outputs.gate_result }}, should_run=${{ needs.playwright.outputs.gate_should_run }})."
           exit 1
 
       - name: Render consolidated job summary and gate on results
