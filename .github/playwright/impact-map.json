@@ -1738,6 +1738,19 @@
         "playwright/e2e/Features/Glossary/GlossaryTermMoveApproval.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts"
       ]
+    },
+    {
+      "_comment": "ChildFieldPageReader serves every paginated child endpoint (table columns, data model columns, topic fields, ...): these specs page, sort and search those children through the server. Dashboards.spec.ts, which opens the data model Model tab, is already in the smoke set.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ChildFieldPageReader.java"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/Pagination.spec.ts",
+        "playwright/e2e/Features/Table.spec.ts",
+        "playwright/e2e/Features/Topic.spec.ts",
+        "playwright/e2e/Features/ColumnSorting.spec.ts"
+      ]
     }
   ]
 }
