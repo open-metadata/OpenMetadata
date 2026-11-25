@@ -52,6 +52,9 @@ class PromptTextTest {
     assertEquals(
         "Diagram  end.",
         PromptText.forContentRead("Diagram ![architecture](data:image/png;base64,AAAA) end."));
+    assertEquals(
+        "Diagram  end.",
+        PromptText.forContentRead("Diagram ![Wow! diagram](data:image/png;base64,AAAA) end."));
   }
 
   @Test

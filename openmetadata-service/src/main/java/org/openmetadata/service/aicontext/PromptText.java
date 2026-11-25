@@ -101,13 +101,13 @@ public final class PromptText {
 
   /**
    * An image the decode exposes: a tag the editor stored as encoded text, or a Markdown body's
-   * {@code ![alt](data:...)} diagram. Each attempt stops at the next {@code <} or {@code !}/{@code
-   * [}, so many unclosed openings cost one pass, not one pass each.
+   * {@code ![alt](data:...)} diagram. Each attempt stops at the next {@code <} or {@code [}, so many
+   * unclosed openings cost one pass, not one pass each.
    */
   private static final Pattern DECODED_IMAGE =
       Pattern.compile(
           "(?i)<img\\b(?:[^<>\"']|\"[^\"<]*+\"|'[^'<]*+')*+>"
-              + "|!\\[[^\\]\\[!\\n]*+\\]\\(\\s*+data:[^()!\\[\\]]*+\\)");
+              + "|!\\[[^\\]\\[\\n]*+\\]\\(\\s*+data:[^()!\\[\\]]*+\\)");
 
   private PromptText() {}
 
