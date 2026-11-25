@@ -17,7 +17,7 @@
  *   node scripts/select-browser-tests.mjs --map impact-map.json --base <sha> [--out selection.json]
  *
  * The impact map ({ testFile: [source files it executed] }) comes from the
- * merge queue's full run with BROWSER_IMPACT_DIR set (src/test/browser/impact.ts). The static
+ * latest passing full run with BROWSER_IMPACT_DIR set (src/test/browser/impact.ts). The static
  * import graph is too entangled to select from on its own (lazy imports tie
  * ~1,000 modules into one cycle), so it is used only
  * for what coverage cannot see: test helpers, the direct imports of executed
@@ -162,7 +162,11 @@ export const selectTests = ({
 
   for (const path of changed.filter((file) => file.startsWith(UI))) {
     const file = path.slice(UI.length);
-    if (!file.startsWith('src/') || file.startsWith('src/locale/')) {
+    if (
+      !file.startsWith('src/') ||
+      file.startsWith('src/locale/') ||
+      file.endsWith('.md')
+    ) {
       continue;
     }
     // A screenshot baseline sits beside its test:
@@ -258,6 +262,18 @@ const buildGraph = async (tests) => {
       logLevel: 'silent',
       tsconfig: 'tsconfig.json',
       loader: empty,
+      // The ANTLR parsers are generated at build time and git-ignored; the
+      // select job has no build, and their grammar is not UI code.
+      plugins: [
+        {
+          name: 'generated-antlr',
+          setup: (b) =>
+            b.onResolve({ filter: /\/generated\/antlr\// }, (args) => ({
+              path: args.path,
+              external: true,
+            })),
+        },
+      ],
     });
 
     return Object.fromEntries(

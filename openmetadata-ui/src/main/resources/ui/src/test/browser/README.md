@@ -49,16 +49,17 @@ ADR:2026-10-28-page-behaviour-is-tested-in-vitest-browser-mode-and-e2e-tests-lea
 
 A pull request runs only the test files that execute the code it changes.
 `scripts/select-browser-tests.mjs` reads a map of the source files each test
-file executed (recorded by `impact.ts` during the full merge-queue run, published
-as a workflow artifact). It also follows the test helpers a test imports, and the direct
+file executed (recorded by `impact.ts` during the latest passing full run, published
+as a workflow artifact, never committed). It also follows the test helpers a test imports, and the direct
 imports of every executed file (constants, styles, assets). Changed `en-us.json`
 keys select the tests whose code names them.
 
 Everything runs when the map is missing, or when a change touches test setup,
 the Vitest/Vite config or dependencies. Changed code that no browser test
 executes is listed in the PR comment, along with how many of the changed lines
-the tests that ran executed. The merge queue runs every test file whenever the
-queued change touches this UI, so nothing a selection misses reaches main. To
+the tests that ran executed. Every push to main that touches this UI runs every
+test file, which refreshes the map and surfaces anything a selection missed
+(the merge queue does the same before main, when it is on). To
 see what a branch would run:
 
 ```bash
@@ -73,7 +74,7 @@ The static import graph alone cannot do this here: lazy imports tie about
 **Core components are treated like a library on pull requests.** A change to
 `openmetadata-ui-core-components` runs core's own tests and build (the
 `core components` job), not the browser tests: core guards its components with
-its own tests, and this suite tests the app. The merge queue still runs every
-browser test for a core change, so one that breaks the app cannot reach main. A core change that alters behaviour
+its own tests, and this suite tests the app. The full run on main still runs
+every browser test for a core change, so one that breaks the app is caught. A core change that alters behaviour
 the app depends on needs a core test for that behaviour. A change touching both
 core and this UI selects browser tests for the UI part only.

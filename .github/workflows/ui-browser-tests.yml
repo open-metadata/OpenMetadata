@@ -3,10 +3,12 @@
 #
 # A pull request runs only the test files that execute the code it changes
 # (scripts/select-browser-tests.mjs), using the map of what each test file
-# executes from the latest full merge-queue run. The merge queue runs every
-# test file, so nothing a selection misses reaches main. A missing map, or a
-# change to test setup, configs or dependencies, runs everything on the pull
-# request too.
+# executes from the latest passing full run: a push to main, a merge-queue
+# entry, or a pull request that ran everything. The map is an artifact, never
+# committed. A push to main and the merge queue run every test file, so a
+# selection miss surfaces on main (or, with the queue on, before it). A missing
+# map, or a change to test setup, configs or dependencies, runs everything on
+# the pull request too.
 #
 # Core components are treated like a library: a change there runs core's own
 # tests (the `core components` job) and selects no browser tests.
@@ -14,6 +16,15 @@ name: UI Browser Tests
 
 on:
   pull_request:
+    paths:
+      - "openmetadata-ui/src/main/resources/ui/**"
+      - "openmetadata-ui-core-components/src/main/resources/ui/**"
+      - ".github/workflows/ui-browser-tests.yml"
+      - ".github/actions/ui-browser-setup/**"
+  # Without the merge queue, the full run after each merge keeps the map fresh.
+  push:
+    branches:
+      - main
     paths:
       - "openmetadata-ui/src/main/resources/ui/**"
       - "openmetadata-ui-core-components/src/main/resources/ui/**"
@@ -53,7 +64,7 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      # Downloads the impact map from the latest merge-queue run.
+      # Downloads the impact map from the latest passing full run.
       actions: read
     outputs:
       mode: ${{ steps.plan.outputs.mode }}
@@ -98,18 +109,20 @@ jobs:
           echo '{"private": true}' > package.json
           yarn add --silent "esbuild@$version"
           echo "ESBUILD_PATH=$RUNNER_TEMP/esbuild/node_modules/esbuild/lib/main.js" >> "$GITHUB_ENV"
-      # Merge-queue runs are on temporary branches whose caches a pull request
-      # cannot read, so the map travels as an artifact of the latest full run.
-      - name: Download the impact map from the merge queue
+      # The map travels as an artifact of the latest passing full run (push to
+      # main, merge queue, or a pull request that ran everything). Only runs
+      # from this repository's own branches count: a fork's map comes from
+      # unreviewed code and could hide tests from every later pull request.
+      - name: Download the impact map from the latest full run
         if: github.event_name == 'pull_request'
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for run in $(gh run list -R "$GITHUB_REPOSITORY" --workflow ui-browser-tests.yml \
-              --event merge_group --status success --limit 20 --json databaseId --jq '.[].databaseId'); do
+          for run in $(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ui-browser-tests.yml/runs?status=success&per_page=50" \
+              --jq ".workflow_runs[] | select(.head_repository.full_name == \"$GITHUB_REPOSITORY\") | .id"); do
             if gh run download "$run" -R "$GITHUB_REPOSITORY" -n browser-impact-map -D "$UI_DIR" 2>/dev/null; then
-              echo "Impact map from merge-queue run $run" >> "$GITHUB_STEP_SUMMARY"
+              echo "Impact map from run $run" >> "$GITHUB_STEP_SUMMARY"
               break
             fi
           done
@@ -238,8 +251,8 @@ jobs:
         working-directory: ${{ env.UI_DIR }}
         continue-on-error: true
         env:
-          # Every full run records what each test file executes; the merge
-          # queue's becomes the impact map pull requests select from.
+          # Every full run records what each test file executes; a passing
+          # one becomes the impact map pull requests select from.
           BROWSER_IMPACT_DIR: ${{ needs.select.outputs.mode == 'all' && format('{0}/{1}/.impact', github.workspace, env.UI_DIR) || '' }}
         # The blob report carries this shard's results and coverage for the
         # merge in browser-tests-report.
