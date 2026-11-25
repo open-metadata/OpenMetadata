@@ -21,7 +21,7 @@ import {
   getActiveFieldNameForAppDocs,
   getSearchIndexFromService,
 } from './ServicePureUtils';
-import { getOptionalFields } from './ServiceUtils';
+import { getOptionalFields, processDocMarkdown } from './ServiceUtils';
 
 describe('getSearchIndexFromService', () => {
   it.each([
@@ -89,4 +89,24 @@ describe('MLflow service card fields', () => {
       }
     }
   );
+});
+
+describe('processDocMarkdown', () => {
+  it('preserves documentation sections, heading anchors, and admonitions', () => {
+    const markdown =
+      '# Setup\n\n$$section\n$(id="credentials")\n## Credentials\n\n**Key**\n$$\n\n$$note\nKeep `token` private.\n$$';
+    const doc = new DOMParser().parseFromString(
+      processDocMarkdown(markdown),
+      'text/html'
+    );
+
+    expect(doc.querySelector('h1')?.id).toBe('setup');
+    expect(doc.querySelector('section[data-id="credentials"] h2')?.id).toBe(
+      'credentials'
+    );
+    expect(doc.querySelector('section strong')?.textContent).toBe('Key');
+    expect(
+      doc.querySelector('[data-admonition="note"] code')?.textContent
+    ).toBe('token');
+  });
 });

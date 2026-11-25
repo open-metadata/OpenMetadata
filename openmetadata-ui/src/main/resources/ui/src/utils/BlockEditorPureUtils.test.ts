@@ -876,6 +876,37 @@ describe('getHtmlStringFromMarkdownString: CommonMark lists', () => {
     ).toContain('<u>underline with <strong>bold</strong></u>');
   });
 
+  it.each([
+    [':+1:', '👍'],
+    [':heart:', '❤️'],
+    [':smile:', '😄'],
+  ])('keeps the existing Unicode value for %s', (shortcode, emoji) => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString(shortcode),
+      'text/html'
+    );
+
+    expect(doc.body.textContent).toBe(emoji);
+  });
+
+  it('preserves the existing image-based emoji', () => {
+    const doc = new DOMParser().parseFromString(
+      getHtmlStringFromMarkdownString(':octocat:'),
+      'text/html'
+    );
+
+    expect(doc.querySelector('img')?.getAttribute('alt')).toBe(':octocat:');
+    expect(doc.querySelector('img')?.getAttribute('src')).toBe(
+      'https://assets-cdn.github.com/images/icons/emoji/octocat.png'
+    );
+  });
+
+  it('does not resolve inherited object properties as emoji', () => {
+    expect(getHtmlStringFromMarkdownString(':constructor: :toString:')).toBe(
+      '<p>:constructor: :toString:</p>'
+    );
+  });
+
   it('leaves unknown and escaped emoji shortcodes as text', () => {
     expect(getHtmlStringFromMarkdownString('\\:smile: :not_an_emoji:')).toBe(
       '<p>:smile: :not_an_emoji:</p>'

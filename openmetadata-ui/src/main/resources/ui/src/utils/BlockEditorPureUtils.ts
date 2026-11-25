@@ -13,8 +13,8 @@
 
 import { findLastIndex, isEmpty, sumBy } from 'lodash';
 import { Marked, Renderer } from 'marked';
-import Showdown from 'showdown';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
+import { MARKDOWN_EMOJIS } from '../constants/MarkdownEmojis.constants';
 import {
   getEntityDetail,
   getHashTagList,
@@ -180,11 +180,6 @@ export const isHTMLString = (content: string) => {
   }
 };
 
-// Keep the existing emoji vocabulary without adding a second emoji package.
-const emojiConverter = new Showdown.Converter({
-  emoji: true,
-  literalMidWordUnderscores: true,
-});
 const defaultMarkdownRenderer = new Renderer();
 
 // CommonMark block parsing preserves each level of two-space-indented lists.
@@ -228,17 +223,22 @@ const markdownConverter = new Marked({
       level: 'inline',
       start: (source) => source.search(/:[a-zA-Z0-9_+-]+:/),
       tokenizer(source) {
-        const match = /^:[a-zA-Z0-9_+-]+:/.exec(source);
+        const match = /^:([a-zA-Z0-9_+-]+):/.exec(source);
 
         if (!match) {
           return undefined;
         }
 
-        // A shortcode renders as one paragraph; only its inline content is needed.
-        const html = emojiConverter.makeHtml(match[0]).slice(3, -4);
+        // Only own entries are shortcodes; names such as constructor stay ordinary text.
+        const html = Object.prototype.hasOwnProperty.call(
+          MARKDOWN_EMOJIS,
+          match[1]
+        )
+          ? MARKDOWN_EMOJIS[match[1]]
+          : undefined;
 
         // Unknown shortcodes can contain URL schemes; leave them to Marked's autolinker.
-        return html === match[0]
+        return html === undefined
           ? undefined
           : { type: 'emoji', raw: match[0], html };
       },
