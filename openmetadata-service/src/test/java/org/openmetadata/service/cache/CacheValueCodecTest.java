@@ -93,4 +93,24 @@ class CacheValueCodecTest {
     assertFalse(CacheValueCodec.exceedsMaxEntrySize(cjk, 0));
     assertFalse(CacheValueCodec.exceedsMaxEntrySize(null, 10));
   }
+
+  @Test
+  void encodeCompressesNonAsciiValuesUsingUtf8ByteLengthForThresholdAndSavings() {
+    // Build a CJK string whose UTF-16 char count is below the 2048-byte threshold, while its
+    // UTF-8 byte length exceeds 2048 bytes and shrinks meaningfully under GZIP+Base64.
+    final StringBuilder cjkPayload = new StringBuilder();
+    for (int i = 0; i < 80; i++) {
+      cjkPayload.append("数据目录资产元数据表").append(i).append(',');
+    }
+    final String raw = cjkPayload.toString();
+    final int rawUtf8Bytes = CacheValueCodec.encodedByteSize(raw);
+    assertTrue(raw.length() < 2048, "UTF-16 char count should be below byte threshold");
+    assertTrue(rawUtf8Bytes >= 2048, "UTF-8 byte length should meet byte threshold");
+
+    final String encoded = CacheValueCodec.encode(raw, 2048);
+
+    assertTrue(CacheValueCodec.isCompressed(encoded));
+    assertTrue(encoded.length() < rawUtf8Bytes);
+    assertEquals(raw, CacheValueCodec.decode(encoded));
+  }
 }
