@@ -16,6 +16,7 @@ import re
 import traceback
 from collections import defaultdict
 from collections.abc import Iterable
+from typing import Any, cast
 
 from cachetools import LRUCache
 from pydantic import BaseModel
@@ -96,6 +97,7 @@ _DATAMODEL_LINEAGE_SENTINEL = object()
 
 OMNI_SQL_VIEW_REF = re.compile(r"\$\{([^}]+)\}")
 OMNI_SQL_VIEW_PLACEHOLDER = "omni_view_ref"
+OMNI_SQL_COMMENT = re.compile(r"--[^\n]*|/\*.*?\*/", re.DOTALL)
 
 # Map Omni field data types to OpenMetadata column types.
 OMNI_DATATYPE_MAP = {
@@ -563,7 +565,7 @@ class OmniSource(DashboardServiceSource):
     ) -> Iterable[Table]:
         """Resolve the warehouse tables named in the hand-written SQL of a document's tiles."""
         sql_tiles = [
-            tile
+            (tile, tile.query.userEditedSQL)
             for tile in dashboard_details.dashboard.queryPresentations or []
             if tile.query and tile.query.userEditedSQL and tile.query.userEditedSQL.strip()
         ]
@@ -577,14 +579,14 @@ class OmniSource(DashboardServiceSource):
         ) = self.parse_db_service_prefix(db_service_prefix)
         dialect = self._sql_dialect(prefix_service_name)
         seen: set[str] = set()
-        for tile in sql_tiles:
+        for tile, sql in sql_tiles:
             try:
                 parser = LineageParser(
-                    OMNI_SQL_VIEW_REF.sub(OMNI_SQL_VIEW_PLACEHOLDER, tile.query.userEditedSQL),
+                    OMNI_SQL_VIEW_REF.sub(OMNI_SQL_VIEW_PLACEHOLDER, sql),
                     dialect,
                     parser_type=self.get_query_parser_type(),
                 )
-                for source_table in parser.source_tables:
+                for source_table in cast("list[Any]", parser.source_tables):
                     parts = fqn.split(str(source_table))
                     table_name = parts[-1]
                     schema_name = self.check_database_schema_name(parts[-2]) if len(parts) > 1 else None
@@ -607,7 +609,17 @@ class OmniSource(DashboardServiceSource):
                         ),
                         fetch_multiple_entities=True,
                     )
-                    for table in [tables] if isinstance(tables, Table) else tables or []:
+                    matches = [tables] if isinstance(tables, Table) else tables or []
+                    if len(matches) > 1:
+                        logger.warning(
+                            "Table %r in SQL of tile %r in document %s matches %d tables; skipping lineage",
+                            str(source_table),
+                            tile.name,
+                            dashboard_details.document.identifier,
+                            len(matches),
+                        )
+                        continue
+                    for table in matches:
                         if str(table.id.root) not in seen:
                             seen.add(str(table.id.root))
                             yield table
@@ -633,7 +645,10 @@ class OmniSource(DashboardServiceSource):
             return
         refs = [tile.query.table]
         refs.extend(field.split(".")[0] for field in tile.query.fields or [] if "." in field)
-        refs.extend(ref.split(".")[0] for ref in OMNI_SQL_VIEW_REF.findall(tile.query.userEditedSQL or ""))
+        refs.extend(
+            ref.split(".")[0]
+            for ref in OMNI_SQL_VIEW_REF.findall(OMNI_SQL_COMMENT.sub(" ", tile.query.userEditedSQL or ""))
+        )
         # Distinct references can resolve to the same data model (a bare view name
         # and its schema-qualified handle), so dedupe on what they resolve to.
         seen: set[str] = set()

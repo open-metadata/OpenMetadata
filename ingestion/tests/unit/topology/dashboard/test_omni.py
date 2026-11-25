@@ -975,6 +975,21 @@ def test_sql_tile_tables_dedupes_and_skips_unparsable_sql(omni_source):
     assert list(omni_source._sql_tile_tables(details, None)) == [same]
 
 
+def test_tile_topics_ignores_view_references_in_sql_comments(omni_source):
+    orders = OmniTopic(model_id="m1", model_name="sales", name="Orders")
+    for key in omni_source._topic_name_keys(orders):
+        omni_source._topic_name_index[key].append(orders)
+    sql = "select 1 -- from ${Orders}\n/* join ${Orders}\n on true */"
+    tile = QueryPresentation(name="SQL", query=OmniQuery(userEditedSQL=sql))
+    assert list(omni_source._tile_topics(tile)) == []
+
+
+def test_sql_tile_tables_skips_a_table_found_in_several_services(omni_source):
+    omni_source.metadata.search_in_any_service = lambda **_: [_table("ORDERS"), _table("ORDERS")]
+    omni_source._sql_dialect = lambda _: Dialect.SNOWFLAKE
+    assert list(omni_source._sql_tile_tables(_sql_details("select * from sales.orders"), None)) == []
+
+
 def test_yield_dashboard_lineage_details_links_sql_tables_to_the_dashboard(omni_source):
     dashboard_entity = Dashboard(
         id="550e8400-e29b-41d4-a716-446655440012",
