@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ChangeEvent, EventType } from '../../generated/type/changeEvent';
 import { AuditLogEntry } from '../../types/auditLogs.interface';
 import {
+  formatDate,
   formatDateTime,
   getRelativeTime,
 } from '../../utils/date-time/DateTimeUtils';
@@ -53,211 +54,190 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
+jest.mock('../Database/SchemaEditor/SchemaEditor', () => ({
+  __esModule: true,
+  default: ({ value }: { value: string }) => (
+    <pre data-testid="schema-editor">{value}</pre>
+  ),
+}));
+
 const renderWithRouter = (ui: React.ReactElement) => {
   return render(<MemoryRouter>{ui}</MemoryRouter>);
 };
 
 describe('AuditLogList', () => {
+  const NOW = Date.now();
+
+  const updateLog = (
+    changeDescription: ChangeEvent['changeDescription'],
+    overrides: Partial<AuditLogEntry> = {}
+  ): AuditLogEntry => ({
+    id: 1,
+    eventTs: NOW,
+    eventType: EventType.EntityUpdated,
+    userName: 'admin',
+    actorType: 'USER',
+    entityType: 'table',
+    entityFQN: 'sample_data.ecommerce_db.shopify.dim_customer',
+    summary: 'Server summary that must not win over field changes',
+    changeEvent: mockChangeEvent({
+      eventType: EventType.EntityUpdated,
+      entityType: 'table',
+      changeDescription: {
+        fieldsAdded: [],
+        fieldsUpdated: [],
+        fieldsDeleted: [],
+        ...changeDescription,
+      },
+    }),
+    ...overrides,
+  });
+
   const mockLogs: AuditLogEntry[] = [
     {
       id: 1,
       changeEventId: 'event-1',
-      eventTs: Date.now() - 60000,
+      eventTs: NOW - 60000,
       eventType: EventType.EntityCreated,
       userName: 'admin',
-      entityType: 'table',
-      entityFQN: 'sample_data.ecommerce_db.shopify.orders',
-      changeEvent: mockChangeEvent({
-        id: 'ce-1',
-        eventType: EventType.EntityCreated,
-        entityType: 'table',
-        entityFullyQualifiedName: 'sample_data.ecommerce_db.shopify.orders',
-        entity: {
-          id: 'table-1',
-          name: 'orders',
-          displayName: 'Orders',
-          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.orders',
-        },
-        changeDescription: {
-          fieldsAdded: [],
-          fieldsUpdated: [],
-          fieldsDeleted: [],
-        },
-        timestamp: Date.now() - 60000,
-      }),
+      entityType: 'glossary',
+      entityFQN: 'AuditDemoGlossary',
+      summary: 'Created glossary: AuditDemoGlossary',
     },
-    {
-      id: 2,
-      changeEventId: 'event-2',
-      eventTs: Date.now() - 120000,
-      eventType: EventType.EntityUpdated,
-      userName: 'test_user',
-      entityType: 'table',
-      entityFQN: 'sample_data.ecommerce_db.shopify.products',
-      changeEvent: mockChangeEvent({
-        id: 'ce-2',
-        eventType: EventType.EntityUpdated,
-        entityType: 'table',
-        entityFullyQualifiedName: 'sample_data.ecommerce_db.shopify.products',
-        entity: {
-          id: 'table-2',
-          name: 'products',
-          displayName: 'Products',
-          fullyQualifiedName: 'sample_data.ecommerce_db.shopify.products',
-        },
-        changeDescription: {
-          fieldsAdded: [
-            {
-              name: 'tags',
-              newValue: JSON.stringify([
-                { tagFQN: 'PII.Sensitive', name: 'Sensitive' },
-              ]),
-            },
-          ],
-          fieldsUpdated: [],
-          fieldsDeleted: [],
-        },
-        timestamp: Date.now() - 120000,
-      }),
-    },
+    updateLog(
+      {
+        fieldsAdded: [
+          {
+            name: 'tags',
+            newValue: JSON.stringify([
+              { tagFQN: 'PII.Sensitive', name: 'Sensitive' },
+            ]),
+          },
+        ],
+      },
+      { id: 2, userName: 'test_user', eventTs: NOW - 120000 }
+    ),
   ];
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+  const renderLogs = (logs: AuditLogEntry[]) =>
+    renderWithRouter(<AuditLogList isLoading={false} logs={logs} />);
 
-  it('should render loading state with skeleton loaders', () => {
+  it('should render the skeleton while loading, without the loaded list', () => {
     renderWithRouter(<AuditLogList isLoading logs={[]} />);
 
-    const skeletons = screen.getAllByTestId('skeleton');
-
-    expect(skeletons.length).toBeGreaterThan(0);
     expect(screen.getByTestId('audit-log-list-skeleton')).toBeInTheDocument();
+    expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
     // Playwright treats `audit-log-list` as "loaded", so loading must not render it.
     expect(screen.queryByTestId('audit-log-list')).not.toBeInTheDocument();
   });
 
-  it('should render empty state with EmptyPlaceholder when no logs', () => {
-    renderWithRouter(<AuditLogList isLoading={false} logs={[]} />);
+  it('should render the empty state when there are no logs', () => {
+    renderLogs([]);
 
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
   });
 
-  it('should render list with items', () => {
-    renderWithRouter(<AuditLogList isLoading={false} logs={mockLogs} />);
+  it('should render one card per log with avatar and user link', () => {
+    renderLogs(mockLogs);
 
-    expect(screen.getByTestId('audit-log-list')).toBeInTheDocument();
-
-    const listItems = screen.getAllByTestId('audit-log-list-item');
-
-    expect(listItems).toHaveLength(2);
+    expect(screen.getAllByTestId('audit-log-list-item')).toHaveLength(2);
+    expect(screen.getAllByTestId('profile-picture')).toHaveLength(2);
+    expect(screen.getByRole('link', { name: 'admin' })).toHaveAttribute(
+      'href',
+      '/users/admin'
+    );
+    expect(screen.getByRole('link', { name: 'test_user' })).toHaveAttribute(
+      'href',
+      '/users/test_user'
+    );
   });
 
-  it('should display profile pictures for each log entry', () => {
-    renderWithRouter(<AuditLogList isLoading={false} logs={mockLogs} />);
-
-    const profilePictures = screen.getAllByTestId('profile-picture');
-
-    expect(profilePictures).toHaveLength(2);
-  });
-
-  it('should display user names as links', () => {
-    renderWithRouter(<AuditLogList isLoading={false} logs={mockLogs} />);
-
-    const adminLink = screen.getByRole('link', { name: 'admin' });
-
-    expect(adminLink).toHaveAttribute('href', '/users/admin');
-
-    const testUserLink = screen.getByRole('link', { name: 'test_user' });
-
-    expect(testUserLink).toHaveAttribute('href', '/users/test_user');
-  });
-
-  it('should display event types', () => {
-    renderWithRouter(<AuditLogList isLoading={false} logs={mockLogs} />);
+  it('should label each event type with a short badge', () => {
+    renderLogs(mockLogs);
 
     const eventTypes = screen.getAllByTestId('event-type');
 
-    expect(eventTypes).toHaveLength(2);
-    expect(eventTypes[0]).toHaveTextContent('Entity Created');
-    expect(eventTypes[1]).toHaveTextContent('Entity Updated');
+    expect(eventTypes[0]).toHaveTextContent('label.created');
+    expect(eventTypes[1]).toHaveTextContent('label.updated');
   });
 
-  it('should display entity type badges', () => {
-    renderWithRouter(<AuditLogList isLoading={false} logs={mockLogs} />);
+  it('should fall back to a humanized label for unknown event types', () => {
+    renderLogs([
+      { id: 1, eventTs: NOW, eventType: 'lineageAdded', userName: 'admin' },
+    ]);
 
-    const entityTypeBadges = screen.getAllByTestId('entity-type-badge');
-
-    expect(entityTypeBadges).toHaveLength(2);
-    expect(entityTypeBadges[0]).toHaveTextContent('Table');
+    expect(screen.getByTestId('event-type')).toHaveTextContent('Lineage Added');
   });
 
-  it('should display the exact date-time alongside the relative time', () => {
-    renderWithRouter(<AuditLogList isLoading={false} logs={mockLogs} />);
+  it('should group logs under a header per day, marking today', () => {
+    const lastWeek = NOW - 7 * 24 * 60 * 60 * 1000;
+    renderLogs([...mockLogs, { ...mockLogs[0], id: 3, eventTs: lastWeek }]);
 
-    const timestamps = screen.getAllByTestId('timestamp');
+    const headers = screen.getAllByTestId('audit-log-day-header');
 
-    expect(timestamps).toHaveLength(2);
-    expect(timestamps[0]).toHaveTextContent(
+    expect(headers).toHaveLength(2);
+    expect(headers[0]).toHaveTextContent(`label.today · ${formatDate(NOW)}`);
+    expect(headers[1]).toHaveTextContent(formatDate(lastWeek));
+    expect(headers[1]).not.toHaveTextContent('label.today');
+  });
+
+  it('should show the entity type and the exact date-time with the relative time', () => {
+    renderLogs(mockLogs);
+
+    expect(screen.getAllByTestId('entity-type-badge')[0]).toHaveTextContent(
+      'Glossary'
+    );
+    expect(screen.getAllByTestId('timestamp')[0]).toHaveTextContent(
       `${formatDateTime(mockLogs[0].eventTs)} · ${getRelativeTime(
         mockLogs[0].eventTs
       )}`
     );
   });
 
-  it('should show the column path and old → new values instead of the summary', () => {
-    const logs: AuditLogEntry[] = [
-      {
-        id: 1,
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'table',
-        entityFQN: 'sample_data.ecommerce_db.shopify.dim_customer',
-        summary: 'Added tags: PII.Sensitive, Updated description: new',
-        changeEvent: mockChangeEvent({
-          eventType: EventType.EntityUpdated,
-          entityType: 'table',
-          entity: {
-            id: 'table-1',
-            name: 'dim_customer',
-            fullyQualifiedName: 'sample_data.ecommerce_db.shopify.dim_customer',
-          },
-          changeDescription: {
-            fieldsAdded: [
-              {
-                name: 'columns.customer_id.tags',
-                newValue: JSON.stringify([
-                  { tagFQN: 'PII.Sensitive', name: 'Sensitive' },
-                ]),
-              },
-            ],
-            fieldsUpdated: [
-              {
-                name: 'columns.customer_id.dataType',
-                oldValue: 'INT',
-                newValue: 'BIGINT',
-              },
-            ],
-            fieldsDeleted: [],
-          },
-        }),
-      },
-    ];
+  it('should show the bot badge and the impersonating user', () => {
+    renderLogs([
+      updateLog(
+        { fieldsAdded: [{ name: 'description', newValue: 'x' }] },
+        { userName: 'ingestion-bot', actorType: 'BOT', impersonatedBy: 'jane' }
+      ),
+    ]);
 
-    renderWithRouter(<AuditLogList isLoading={false} logs={logs} />);
-
-    const description = screen.getByTestId('description-content');
-
-    expect(description).toHaveTextContent('Columns › customer_id › Tags');
-    expect(description).toHaveTextContent(
-      'Columns › customer_id › Data Type: INT → BIGINT'
-    );
-    expect(screen.getByRole('link', { name: 'Sensitive' })).toHaveAttribute(
+    expect(screen.getByTestId('bot-badge')).toHaveTextContent('label.bot');
+    expect(screen.getByTestId('impersonated-by')).toHaveTextContent('jane');
+    expect(screen.getByRole('link', { name: 'jane' })).toHaveAttribute(
       'href',
-      '/tags/PII.Sensitive'
+      '/users/jane'
     );
-    expect(description).not.toHaveTextContent('Added tags: PII.Sensitive');
+  });
+
+  it('should show the summary for events without field changes', () => {
+    renderLogs([mockLogs[0]]);
+
+    expect(screen.getByTestId('description-content')).toHaveTextContent(
+      'Created glossary: AuditDemoGlossary'
+    );
+    expect(screen.queryByTestId('change-row')).not.toBeInTheDocument();
+    // The entity name is its FQN, so the FQN is not repeated beside it.
+    expect(screen.getByTestId('affected-entity')).toHaveTextContent(
+      'AuditDemoGlossary'
+    );
+    expect(screen.queryByTestId('affected-entity-fqn')).not.toBeInTheDocument();
+  });
+
+  it('should show the affected asset with its link and FQN, and the column path', () => {
+    renderLogs([
+      updateLog({
+        fieldsAdded: [
+          {
+            name: 'columns.customer_id.tags',
+            newValue: JSON.stringify([
+              { tagFQN: 'PII.Sensitive', name: 'Sensitive' },
+            ]),
+          },
+        ],
+      }),
+    ]);
+
     expect(screen.getByRole('link', { name: 'dim_customer' })).toHaveAttribute(
       'href',
       '/table/sample_data.ecommerce_db.shopify.dim_customer'
@@ -265,702 +245,341 @@ describe('AuditLogList', () => {
     expect(screen.getByTestId('affected-entity-fqn')).toHaveTextContent(
       '(sample_data.ecommerce_db.shopify.dim_customer)'
     );
-  });
-
-  it('should render tag links when tags are added', () => {
-    const logsWithTags: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'table',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityUpdated,
-          entityType: 'table',
-          changeDescription: {
-            fieldsAdded: [
-              {
-                name: 'tags',
-                newValue: JSON.stringify([
-                  { tagFQN: 'PII.Sensitive', name: 'Sensitive' },
-                ]),
-              },
-            ],
-            fieldsUpdated: [],
-            fieldsDeleted: [],
-          },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
-
-    renderWithRouter(<AuditLogList isLoading={false} logs={logsWithTags} />);
-
-    const tagLink = screen.getByRole('link', { name: 'Sensitive' });
-
-    expect(tagLink).toHaveAttribute('href', '/tags/PII.Sensitive');
-  });
-
-  it('should render data product links when data products are added', () => {
-    const logsWithDataProduct: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'table',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityUpdated,
-          entityType: 'table',
-          changeDescription: {
-            fieldsAdded: [
-              {
-                name: 'dataProducts',
-                newValue: JSON.stringify([
-                  {
-                    fullyQualifiedName: 'sales-dp',
-                    name: 'Sales Data Product',
-                    displayName: 'Sales Data Product',
-                  },
-                ]),
-              },
-            ],
-            fieldsUpdated: [],
-            fieldsDeleted: [],
-          },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
-
-    renderWithRouter(
-      <AuditLogList isLoading={false} logs={logsWithDataProduct} />
+    expect(screen.getByTestId('change-action')).toHaveTextContent(
+      'label.added'
     );
-
-    const dpLink = screen.getByRole('link', { name: 'Sales Data Product' });
-
-    expect(dpLink).toHaveAttribute('href', '/dataProduct/sales-dp');
+    expect(screen.getByTestId('change-field-path')).toHaveTextContent(
+      'Columns › customer_id › Tags'
+    );
+    expect(
+      screen.getByRole('link', { name: 'PII › Sensitive' })
+    ).toHaveAttribute('href', '/tags/PII.Sensitive');
+    expect(screen.getByTestId('description-content')).not.toHaveTextContent(
+      'Server summary'
+    );
   });
 
-  it('should render domain links when domain is updated', () => {
-    const logsWithDomain: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'table',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityUpdated,
-          entityType: 'table',
-          changeDescription: {
-            fieldsAdded: [
+  it('should link glossary terms, tiers and entity references to their pages', () => {
+    renderLogs([
+      updateLog({
+        fieldsAdded: [
+          {
+            name: 'tags',
+            newValue: JSON.stringify([
+              { tagFQN: 'Tier.Tier1', name: 'Tier1' },
               {
-                name: 'domain',
-                newValue: JSON.stringify({
-                  fullyQualifiedName: 'Engineering',
-                  name: 'Engineering',
-                  displayName: 'Engineering Domain',
-                }),
+                tagFQN: 'Business.Revenue',
+                name: 'Revenue',
+                source: 'Glossary',
               },
-            ],
-            fieldsUpdated: [],
-            fieldsDeleted: [],
+            ]),
           },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
+          {
+            name: 'dataProducts',
+            newValue: JSON.stringify([
+              {
+                type: 'dataProduct',
+                name: 'sales-dp',
+                fullyQualifiedName: 'sales-dp',
+                displayName: 'Sales',
+              },
+            ]),
+          },
+          {
+            name: 'domains',
+            newValue: JSON.stringify([
+              {
+                type: 'domain',
+                name: 'Engineering',
+                fullyQualifiedName: 'Engineering',
+              },
+            ]),
+          },
+        ],
+      }),
+    ]);
 
-    renderWithRouter(<AuditLogList isLoading={false} logs={logsWithDomain} />);
-
-    const domainLink = screen.getByRole('link', { name: 'Engineering Domain' });
-
-    expect(domainLink).toHaveAttribute('href', '/domain/Engineering');
+    expect(screen.getByRole('link', { name: 'Tier1' })).toHaveAttribute(
+      'href',
+      '/tags/Tier.Tier1'
+    );
+    expect(
+      screen.getByRole('link', { name: 'Business › Revenue' })
+    ).toHaveAttribute('href', '/glossary/Business.Revenue');
+    expect(screen.getByRole('link', { name: /Sales/ })).toHaveAttribute(
+      'href',
+      '/dataProduct/sales-dp'
+    );
+    expect(screen.getByRole('link', { name: /Engineering/ })).toHaveAttribute(
+      'href',
+      '/domain/Engineering'
+    );
   });
 
-  it('should render owner links when owner is added', () => {
-    const logsWithOwner: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'table',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityUpdated,
-          entityType: 'table',
-          changeDescription: {
-            fieldsAdded: [
-              {
-                name: 'owner',
-                newValue: JSON.stringify({
-                  fullyQualifiedName: 'john_doe',
-                  name: 'john_doe',
-                  displayName: 'John Doe',
-                }),
-              },
-            ],
-            fieldsUpdated: [],
-            fieldsDeleted: [],
+  it('should show added and removed owners as linked chips with their kind', () => {
+    renderLogs([
+      updateLog({
+        fieldsAdded: [
+          {
+            name: 'owners',
+            newValue: JSON.stringify([
+              { type: 'user', name: 'admin', fullyQualifiedName: 'admin' },
+            ]),
           },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
-
-    renderWithRouter(<AuditLogList isLoading={false} logs={logsWithOwner} />);
-
-    const ownerLink = screen.getByRole('link', { name: 'John Doe' });
-
-    expect(ownerLink).toHaveAttribute('href', '/users/john_doe');
-  });
-
-  it('should render profile picture for owner field changes', () => {
-    const logsWithOwner: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'table',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityUpdated,
-          entityType: 'table',
-          changeDescription: {
-            fieldsAdded: [
+        ],
+        fieldsDeleted: [
+          {
+            name: 'owners',
+            oldValue: JSON.stringify([
               {
-                name: 'owner',
-                newValue: JSON.stringify({
-                  fullyQualifiedName: 'john_doe',
-                  name: 'john_doe',
-                  displayName: 'John Doe',
-                }),
+                type: 'team',
+                name: 'Engineering',
+                fullyQualifiedName: 'Engineering',
+                displayName: 'Engineering Team',
               },
-            ],
-            fieldsUpdated: [],
-            fieldsDeleted: [],
+            ]),
           },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
+        ],
+      }),
+    ]);
 
-    renderWithRouter(<AuditLogList isLoading={false} logs={logsWithOwner} />);
+    const actions = screen.getAllByTestId('change-action');
 
-    const profilePictures = screen.getAllByTestId('profile-picture');
+    expect(actions[0]).toHaveTextContent('label.added');
+    expect(actions[1]).toHaveTextContent('label.removed');
 
-    expect(profilePictures.length).toBeGreaterThanOrEqual(2);
-  });
+    const [addedOwner, removedOwner] = screen.getAllByTestId('change-ref');
 
-  it('should render teams links when teams are added', () => {
-    const logsWithTeams: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'user',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityUpdated,
-          entityType: 'user',
-          changeDescription: {
-            fieldsAdded: [
-              {
-                name: 'teams',
-                newValue: JSON.stringify([
-                  {
-                    fullyQualifiedName: 'Engineering',
-                    name: 'Engineering',
-                    displayName: 'Engineering Team',
-                  },
-                ]),
-              },
-            ],
-            fieldsUpdated: [],
-            fieldsDeleted: [],
-          },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
-
-    renderWithRouter(<AuditLogList isLoading={false} logs={logsWithTeams} />);
-
-    const teamLink = screen.getByRole('link', { name: 'Engineering Team' });
-
-    expect(teamLink).toHaveAttribute(
+    expect(addedOwner).toHaveTextContent('adminUser');
+    expect(addedOwner).toHaveAttribute('href', '/users/admin');
+    expect(removedOwner).toHaveTextContent('Engineering TeamTeam');
+    expect(removedOwner).toHaveAttribute(
       'href',
       '/settings/members/teams/Engineering'
     );
+    expect(removedOwner).toHaveClass('tw:line-through');
   });
 
-  it('should display summary when available', () => {
-    const logsWithSummary: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityCreated,
-        userName: 'admin',
-        entityType: 'table',
-        summary: 'Created table orders with 5 columns',
-      },
-    ];
+  it('should show an updated value as struck-through before and highlighted after', () => {
+    renderLogs([
+      updateLog({
+        fieldsUpdated: [
+          {
+            name: 'columns.customer_id.description',
+            oldValue: '<p>The ID of the customer.</p>',
+            newValue: 'Unique customer identifier.',
+          },
+        ],
+      }),
+    ]);
 
-    renderWithRouter(<AuditLogList isLoading={false} logs={logsWithSummary} />);
+    expect(screen.getByTestId('change-field-path')).toHaveTextContent(
+      'Columns › customer_id › Description'
+    );
+    expect(screen.getByText('The ID of the customer.').tagName).toBe('DEL');
+    expect(screen.getByText('Unique customer identifier.').tagName).toBe('INS');
+    expect(screen.getByText('label.before')).toBeInTheDocument();
+    expect(screen.getByText('label.after')).toBeInTheDocument();
+  });
+
+  it('should keep false as a real new value and unquote quoted column names', () => {
+    renderLogs([
+      updateLog({
+        fieldsUpdated: [
+          { name: 'disabled', oldValue: true, newValue: false },
+          {
+            name: 'columns."order.id".dataType',
+            oldValue: 'INT',
+            newValue: 'BIGINT',
+          },
+        ],
+      }),
+    ]);
+
+    const [disabledRow, dataTypeRow] = screen.getAllByTestId('change-row');
+
+    expect(disabledRow).toHaveTextContent('Disabled');
+    expect(screen.getByText('true').tagName).toBe('DEL');
+    expect(screen.getByText('false').tagName).toBe('INS');
+    expect(dataTypeRow).toHaveTextContent('Columns › order.id › Data Type');
+  });
+
+  it('should render a list of objects as a table with status pills and formatted times', () => {
+    const resultTime = 1795564824021;
+    renderLogs([
+      updateLog({
+        fieldsUpdated: [
+          {
+            name: 'testCaseResultSummary',
+            newValue: JSON.stringify([
+              {
+                status: 'Aborted',
+                timestamp: resultTime,
+                testCaseName: 'orders_row_count',
+              },
+            ]),
+          },
+        ],
+      }),
+    ]);
+
+    const table = screen.getByTestId('change-table');
 
     expect(
-      screen.getByText('Created table orders with 5 columns')
-    ).toBeInTheDocument();
+      screen.getAllByRole('columnheader').map((th) => th.textContent)
+    ).toEqual(['Status', 'Timestamp', 'Test Case Name']);
+    expect(table).toHaveTextContent('Aborted');
+    expect(table).toHaveTextContent(formatDateTime(resultTime));
+    expect(table).toHaveTextContent('orders_row_count');
+  });
+
+  it('should cap table rows and say how many are hidden', () => {
+    const rows = Array.from({ length: 7 }, (_, index) => ({
+      name: `row-${index}`,
+    }));
+    renderLogs([
+      updateLog({
+        fieldsAdded: [{ name: 'results', newValue: JSON.stringify(rows) }],
+      }),
+    ]);
+
+    expect(screen.getAllByRole('row')).toHaveLength(6);
+    expect(screen.getByText('label.plus-count-more')).toBeInTheDocument();
+  });
+
+  it('should render an object as key-value rows', () => {
+    renderLogs([
+      updateLog({
+        fieldsUpdated: [
+          {
+            name: 'pipelineStatus',
+            newValue: JSON.stringify({
+              runId: 'b7f39045-3277-417e-98e8-dbac25cf4544',
+              config: {},
+              pipelineState: 'success',
+            }),
+          },
+        ],
+      }),
+    ]);
+
+    const keyValue = screen.getByTestId('change-key-value');
+
+    expect(keyValue).toHaveTextContent('Run Id');
+    expect(
+      screen.getByText('b7f39045-3277-417e-98e8-dbac25cf4544')
+    ).toHaveClass('tw:font-mono');
+    expect(keyValue).toHaveTextContent('Config--');
+    expect(keyValue).toHaveTextContent('Pipeline Statesuccess');
+  });
+
+  it('should fall back to the summary when the only change is the deleted flag', () => {
+    renderLogs([
+      updateLog(
+        {
+          fieldsUpdated: [{ name: 'deleted', oldValue: false, newValue: true }],
+        },
+        {
+          eventType: EventType.EntitySoftDeleted,
+          summary: 'Soft deleted table: svc.db.schema.orders',
+        }
+      ),
+    ]);
+
+    expect(screen.getByTestId('event-type')).toHaveTextContent(
+      'label.soft-deleted'
+    );
+    expect(screen.getByTestId('description-content')).toHaveTextContent(
+      'Soft deleted table: svc.db.schema.orders'
+    );
+    expect(screen.queryByTestId('change-row')).not.toBeInTheDocument();
   });
 
   it('should not repeat the actor as the affected entity on login events', () => {
-    const logs: AuditLogEntry[] = [
+    renderLogs([
       {
         id: 1,
-        eventTs: Date.now(),
+        eventTs: NOW,
         eventType: EventType.UserLogin,
         userName: 'admin',
         entityType: 'user',
         entityFQN: 'admin',
         summary: 'User logged in',
       },
-    ];
+    ]);
 
-    renderWithRouter(<AuditLogList isLoading={false} logs={logs} />);
-
+    expect(screen.getByTestId('event-type')).toHaveTextContent(
+      'label.logged-in'
+    );
     expect(screen.getByText('User logged in')).toBeInTheDocument();
     expect(screen.queryByTestId('affected-entity')).not.toBeInTheDocument();
   });
 
-  it('should fall back to the summary when the only change is the deleted flag', () => {
-    const logs: AuditLogEntry[] = [
-      {
-        id: 1,
-        eventTs: Date.now(),
-        eventType: EventType.EntitySoftDeleted,
-        userName: 'admin',
-        entityType: 'table',
-        entityFQN: 'svc.db.schema.orders',
-        summary: 'Soft deleted table: svc.db.schema.orders',
-        changeEvent: mockChangeEvent({
-          eventType: EventType.EntitySoftDeleted,
-          entityType: 'table',
-          changeDescription: {
-            fieldsAdded: [],
-            fieldsUpdated: [
-              { name: 'deleted', oldValue: false, newValue: true },
-            ],
-            fieldsDeleted: [],
-          },
-        }),
-      },
-    ];
+  it('should link a user entity to its profile', () => {
+    renderLogs([
+      updateLog(
+        { fieldsAdded: [{ name: 'displayName', newValue: 'John Doe' }] },
+        {
+          entityType: 'user',
+          entityFQN: 'john_doe',
+          changeEvent: mockChangeEvent({
+            entityType: 'user',
+            entity: {
+              id: 'u-1',
+              name: 'john_doe',
+              displayName: 'John Doe',
+              fullyQualifiedName: 'john_doe',
+            },
+            changeDescription: {
+              fieldsAdded: [{ name: 'displayName', newValue: 'John Doe' }],
+              fieldsUpdated: [],
+              fieldsDeleted: [],
+            },
+          }),
+        }
+      ),
+    ]);
 
-    renderWithRouter(<AuditLogList isLoading={false} logs={logs} />);
-
-    expect(
-      screen.getByText('Soft deleted table: svc.db.schema.orders')
-    ).toBeInTheDocument();
-    expect(screen.queryByTestId('affected-entity')).not.toBeInTheDocument();
-  });
-
-  it('should show false as a real new value and unquote quoted column names', () => {
-    const logs: AuditLogEntry[] = [
-      {
-        id: 1,
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'table',
-        changeEvent: mockChangeEvent({
-          eventType: EventType.EntityUpdated,
-          entityType: 'table',
-          changeDescription: {
-            fieldsAdded: [],
-            fieldsUpdated: [
-              { name: 'disabled', oldValue: true, newValue: false },
-              {
-                name: 'columns."order.id".dataType',
-                oldValue: 'INT',
-                newValue: 'BIGINT',
-              },
-            ],
-            fieldsDeleted: [],
-          },
-        }),
-      },
-    ];
-
-    renderWithRouter(<AuditLogList isLoading={false} logs={logs} />);
-
-    const description = screen.getByTestId('description-content');
-
-    expect(description).toHaveTextContent('Disabled: true → false');
-    expect(description).toHaveTextContent(
-      'Columns › order.id › Data Type: INT → BIGINT'
+    expect(screen.getByTestId('affected-entity')).toContainElement(
+      screen.getAllByRole('link', { name: 'John Doe' })[0]
     );
+    expect(
+      screen.getAllByRole('link', { name: 'John Doe' })[0]
+    ).toHaveAttribute('href', '/users/john_doe');
   });
 
   it('should display System for logs without userName', () => {
-    const systemLogs: AuditLogEntry[] = [
+    renderLogs([
       {
         id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
+        eventTs: NOW,
         eventType: EventType.EntityUpdated,
         entityType: 'table',
       },
-    ];
+    ]);
 
-    renderWithRouter(<AuditLogList isLoading={false} logs={systemLogs} />);
-
-    const profilePictures = screen.getAllByTestId('profile-picture');
-
-    expect(profilePictures[0]).toHaveTextContent('label.system');
-  });
-
-  it('should render multiple field changes', () => {
-    const logsWithMultipleChanges: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'table',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityUpdated,
-          entityType: 'table',
-          changeDescription: {
-            fieldsAdded: [
-              {
-                name: 'tags',
-                newValue: JSON.stringify([
-                  { tagFQN: 'PII.Sensitive', name: 'Sensitive' },
-                ]),
-              },
-            ],
-            fieldsUpdated: [
-              {
-                name: 'description',
-                oldValue: 'Old description',
-                newValue: 'New description',
-              },
-            ],
-            fieldsDeleted: [],
-          },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
-
-    renderWithRouter(
-      <AuditLogList isLoading={false} logs={logsWithMultipleChanges} />
-    );
-
-    const listItem = screen.getByTestId('audit-log-list-item');
-
-    expect(listItem.textContent).toMatch(/Tags/i);
-    expect(listItem.textContent).toMatch(/Description/i);
-  });
-
-  it('should render field deletions', () => {
-    const logsWithDeletions: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'table',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityUpdated,
-          entityType: 'table',
-          changeDescription: {
-            fieldsAdded: [],
-            fieldsUpdated: [],
-            fieldsDeleted: [
-              {
-                name: 'tags',
-                oldValue: JSON.stringify([
-                  { tagFQN: 'PII.Sensitive', name: 'Sensitive' },
-                ]),
-              },
-            ],
-          },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
-
-    renderWithRouter(
-      <AuditLogList isLoading={false} logs={logsWithDeletions} />
-    );
-
-    expect(screen.getByText(/Tags/i)).toBeInTheDocument();
-  });
-
-  it('should render reviewers links when reviewers are added', () => {
-    const logsWithReviewers: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'glossaryTerm',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityUpdated,
-          entityType: 'glossaryTerm',
-          changeDescription: {
-            fieldsAdded: [
-              {
-                name: 'reviewers',
-                newValue: JSON.stringify([
-                  {
-                    fullyQualifiedName: 'jane_doe',
-                    name: 'jane_doe',
-                    displayName: 'Jane Doe',
-                  },
-                ]),
-              },
-            ],
-            fieldsUpdated: [],
-            fieldsDeleted: [],
-          },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
-
-    renderWithRouter(
-      <AuditLogList isLoading={false} logs={logsWithReviewers} />
-    );
-
-    const reviewerLink = screen.getByRole('link', { name: 'Jane Doe' });
-
-    expect(reviewerLink).toHaveAttribute('href', '/users/jane_doe');
-  });
-
-  it('should render experts links when experts are added', () => {
-    const logsWithExperts: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'domain',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityUpdated,
-          entityType: 'domain',
-          changeDescription: {
-            fieldsAdded: [
-              {
-                name: 'experts',
-                newValue: JSON.stringify([
-                  {
-                    fullyQualifiedName: 'expert_user',
-                    name: 'expert_user',
-                    displayName: 'Expert User',
-                  },
-                ]),
-              },
-            ],
-            fieldsUpdated: [],
-            fieldsDeleted: [],
-          },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
-
-    renderWithRouter(<AuditLogList isLoading={false} logs={logsWithExperts} />);
-
-    const expertLink = screen.getByRole('link', { name: 'Expert User' });
-
-    expect(expertLink).toHaveAttribute('href', '/users/expert_user');
-  });
-
-  it('should render profile pictures for reviewers', () => {
-    const logsWithReviewers: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'glossaryTerm',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityUpdated,
-          entityType: 'glossaryTerm',
-          changeDescription: {
-            fieldsAdded: [
-              {
-                name: 'reviewers',
-                newValue: JSON.stringify([
-                  {
-                    fullyQualifiedName: 'reviewer1',
-                    name: 'reviewer1',
-                    displayName: 'Reviewer One',
-                  },
-                ]),
-              },
-            ],
-            fieldsUpdated: [],
-            fieldsDeleted: [],
-          },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
-
-    renderWithRouter(
-      <AuditLogList isLoading={false} logs={logsWithReviewers} />
-    );
-
-    const profilePictures = screen.getAllByTestId('profile-picture');
-
-    expect(profilePictures.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('should render field updates with old and new values', () => {
-    const logsWithUpdates: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'table',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityUpdated,
-          entityType: 'table',
-          changeDescription: {
-            fieldsAdded: [],
-            fieldsUpdated: [
-              {
-                name: 'owner',
-                oldValue: JSON.stringify({
-                  fullyQualifiedName: 'old_owner',
-                  name: 'old_owner',
-                  displayName: 'Old Owner',
-                }),
-                newValue: JSON.stringify({
-                  fullyQualifiedName: 'new_owner',
-                  name: 'new_owner',
-                  displayName: 'New Owner',
-                }),
-              },
-            ],
-            fieldsDeleted: [],
-          },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
-
-    renderWithRouter(<AuditLogList isLoading={false} logs={logsWithUpdates} />);
-
-    expect(screen.getByRole('link', { name: 'Old Owner' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'New Owner' })).toBeInTheDocument();
-  });
-
-  it('should render entity link for table entity type', () => {
-    const logsWithTable: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityCreated,
-        userName: 'admin',
-        entityType: 'table',
-        entityFQN: 'sample_data.ecommerce_db.shopify.orders',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityCreated,
-          entityType: 'table',
-          entityFullyQualifiedName: 'sample_data.ecommerce_db.shopify.orders',
-          entity: {
-            id: 'table-1',
-            name: 'orders',
-            displayName: 'Orders Table',
-            fullyQualifiedName: 'sample_data.ecommerce_db.shopify.orders',
-          },
-          changeDescription: {
-            fieldsAdded: [],
-            fieldsUpdated: [],
-            fieldsDeleted: [],
-          },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
-
-    renderWithRouter(<AuditLogList isLoading={false} logs={logsWithTable} />);
-
-    const entityLink = screen.getByRole('link', { name: 'Orders Table' });
-
-    expect(entityLink).toHaveAttribute(
-      'href',
-      '/table/sample_data.ecommerce_db.shopify.orders'
+    expect(screen.getByTestId('profile-picture')).toHaveTextContent(
+      'label.system'
     );
   });
 
-  it('should render user entity link', () => {
-    const logsWithUser: AuditLogEntry[] = [
-      {
-        id: 1,
-        changeEventId: 'event-1',
-        eventTs: Date.now(),
-        eventType: EventType.EntityUpdated,
-        userName: 'admin',
-        entityType: 'user',
-        changeEvent: mockChangeEvent({
-          id: 'ce-1',
-          eventType: EventType.EntityUpdated,
-          entityType: 'user',
-          entity: {
-            id: 'user-1',
-            name: 'john_doe',
-            displayName: 'John Doe',
-            fullyQualifiedName: 'john_doe',
-          },
-          changeDescription: {
-            fieldsAdded: [],
-            fieldsUpdated: [],
-            fieldsDeleted: [],
-          },
-          timestamp: Date.now(),
-        }),
-      },
-    ];
+  it('should open the raw event JSON from View JSON', async () => {
+    const rawEventJson = JSON.stringify({
+      id: 'evt-1',
+      eventType: 'entityUpdated',
+    });
+    renderLogs([
+      updateLog(
+        { fieldsAdded: [{ name: 'description', newValue: 'x' }] },
+        { rawEventJson }
+      ),
+    ]);
 
-    renderWithRouter(<AuditLogList isLoading={false} logs={logsWithUser} />);
+    fireEvent.click(screen.getByTestId('view-json-button'));
 
-    const entityLink = screen.getByRole('link', { name: 'John Doe' });
+    const editor = await screen.findByTestId('schema-editor');
 
-    expect(entityLink).toHaveAttribute('href', '/users/john_doe');
+    expect(editor).toHaveTextContent('"id": "evt-1"');
+    expect(editor).toHaveTextContent('"eventType": "entityUpdated"');
   });
 });

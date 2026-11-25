@@ -11,41 +11,37 @@
  *  limitations under the License.
  */
 
-import { Box, Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { NoSearch } from '@openmetadata/ui-core-components/icons';
-import { compact, isNil, startCase } from 'lodash';
 import {
-  FC,
-  isValidElement,
-  lazy,
-  ReactNode,
-  Suspense,
-  useCallback,
-  useMemo,
-} from 'react';
+  Badge,
+  Box,
+  Button,
+  Card,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Skeleton,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { NoSearch } from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import { startCase } from 'lodash';
+import { FC, lazy, ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { CSMode } from '../../enums/codemirror.enum';
 import { EntityType } from '../../enums/entity.enum';
 import {
-  ChangeDescription,
-  FieldChange,
-} from '../../generated/type/changeEvent';
-import { getTextFromHtmlString } from '../../utils/BlockEditorPureUtils';
-import {
+  formatDate,
   formatDateTime,
   getRelativeTime,
 } from '../../utils/date-time/DateTimeUtils';
+import { getEntityIcon } from '../../utils/EntityIconUtils';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import Fqn from '../../utils/Fqn';
-import {
-  getDomainPath,
-  getTagPath,
-  getTeamsWithFqnPath,
-  getUserPath,
-} from '../../utils/RouterUtils';
+import { getUserPath } from '../../utils/RouterUtils';
 import { getSettingsLink } from '../../utils/SettingsModalLinkUtils';
-import { isValidJSONString } from '../../utils/StringUtils';
+import { withSuspenseFallback } from '../AppRouter/withSuspenseFallback';
 import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from '../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NoSearchResultsPlaceholder from '../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
@@ -54,180 +50,36 @@ import {
   AuditLogListItemProps,
   AuditLogListProps,
 } from './AuditLogList.interface';
+import {
+  AuditLogDayGroup,
+  ChangeRef,
+  ChangeRow,
+  ChangeValue,
+  CHANGE_ACTION_BADGES,
+  EVENT_TYPE_BADGES,
+  formatCellValue,
+  getAuditLogJson,
+  getChangeRefLink,
+  getChangeRows,
+  groupLogsByDay,
+  isAuthEvent,
+  isToday,
+} from './AuditLogList.utils';
 
-const RichTextEditorPreviewerV1 = lazy(
-  () => import('../common/RichTextEditor/RichTextEditorPreviewerV1')
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../Database/SchemaEditor/SchemaEditor'))
 );
 
-const getFieldLabel = (name?: string) => {
-  if (!name) {
-    return '';
-  }
-  // Keep the full path so a column-level change names its column: `columns.customer_id.tags`
-  // reads "Columns › customer_id › Tags". Inner segments are entity names, so they stay verbatim
-  // apart from FQN quoting (`columns."order.id".tags`).
-  const parts = Fqn.split(name).map((part) => Fqn.unquoteName(part));
-  if (parts.length === 1) {
-    return startCase(parts[0]);
-  }
-  const [first, ...rest] = parts;
-  const last = rest.pop();
+const JSON_EDITOR_MODE = { name: CSMode.JAVASCRIPT, json: true };
 
-  return [startCase(first), ...rest, startCase(last)].join(' › ');
-};
+const REF_BADGE_COLORS = {
+  tier: 'purple',
+  tag: 'blue',
+  entity: 'gray',
+} as const;
 
-const parseValue = (value: unknown): unknown => {
-  if (value === null || value === undefined) {
-    return value;
-  }
-  if (typeof value === 'string') {
-    if (isValidJSONString(value)) {
-      try {
-        return JSON.parse(value);
-      } catch {
-        return value;
-      }
-    }
-
-    return value;
-  }
-
-  return value;
-};
-
-const formatObjectChangeValue = (parsed: object): string => {
-  const maybeEntity = parsed as { displayName?: string; name?: string };
-  if (maybeEntity.displayName || maybeEntity.name) {
-    return maybeEntity.displayName ?? maybeEntity.name ?? '';
-  }
-
-  return JSON.stringify(parsed);
-};
-
-const formatChangeValue = (value: unknown): string => {
-  const parsed = parseValue(value);
-  if (parsed === null || parsed === undefined) {
-    return '';
-  }
-  if (Array.isArray(parsed)) {
-    return compact(parsed.map((item) => formatChangeValue(item))).join(', ');
-  }
-  if (typeof parsed === 'string') {
-    const asText = getTextFromHtmlString(parsed);
-
-    return asText || parsed;
-  }
-  if (typeof parsed === 'object') {
-    return formatObjectChangeValue(parsed);
-  }
-
-  return String(parsed);
-};
-
-interface EntityInfo {
-  fqn: string;
-  name: string;
-  displayName?: string;
-}
-
-const extractEntityInfo = (value: unknown): EntityInfo[] => {
-  const parsed = parseValue(value);
-  if (!parsed) {
-    return [];
-  }
-
-  const items = Array.isArray(parsed) ? parsed : [parsed];
-
-  return compact(
-    items.map((item) => {
-      if (typeof item === 'object' && item !== null) {
-        const entity = item as {
-          fullyQualifiedName?: string;
-          tagFQN?: string;
-          fqn?: string;
-          name?: string;
-          displayName?: string;
-        };
-        const fqn =
-          entity.fullyQualifiedName ??
-          entity.tagFQN ??
-          entity.fqn ??
-          entity.name;
-        if (fqn) {
-          return {
-            fqn,
-            name: entity.name ?? Fqn.split(fqn).pop() ?? fqn,
-            displayName: entity.displayName,
-          };
-        }
-      }
-
-      return null;
-    })
-  );
-};
-
-const LINKABLE_FIELD_RESOLVERS: Record<string, (fqn: string) => string> = {
-  tags: getTagPath,
-  dataproducts: (fqn) => getEntityLinkFromType(fqn, EntityType.DATA_PRODUCT),
-  teams: (fqn) => getSettingsLink(getTeamsWithFqnPath(fqn)),
-  domain: getDomainPath,
-  owner: getUserPath,
-  reviewers: getUserPath,
-  experts: getUserPath,
-};
-
-const findLinkableFieldKey = (field: string): string | undefined =>
-  Object.keys(LINKABLE_FIELD_RESOLVERS).find(
-    (key) => field === key || field.endsWith(`.${key}`)
-  );
-
-const isDescriptionField = (fieldName: string): boolean =>
-  fieldName === 'description' || fieldName.endsWith('.description');
-
-const getEntityLinkForField = (
-  fieldName: string,
-  entityInfo: EntityInfo
-): string | null => {
-  const field = fieldName.toLowerCase();
-  const matchedKey = findLinkableFieldKey(field);
-
-  return matchedKey
-    ? LINKABLE_FIELD_RESOLVERS[matchedKey](entityInfo.fqn)
-    : null;
-};
-
-const renderEntityLinks = (
-  fieldName: string,
-  value: unknown,
-  keyPrefix: string
-): ReactNode[] => {
-  const entities = extractEntityInfo(value);
-  if (entities.length === 0) {
-    const plainValue = formatChangeValue(value);
-
-    return plainValue ? [plainValue] : [];
-  }
-
-  return entities.map((entity) => {
-    const link = getEntityLinkForField(fieldName, entity);
-    const label = entity.displayName ?? entity.name;
-    const entityKey = `${keyPrefix}-${entity.fqn ?? entity.name}`;
-
-    if (link) {
-      return (
-        <Link
-          className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
-          key={entityKey}
-          to={link}>
-          {label}
-        </Link>
-      );
-    }
-
-    return <span key={entityKey}>{label}</span>;
-  });
-};
+/** How a value is drawn: struck through when removed, red/green when it is one side of an update. */
+type ValueTone = 'plain' | 'removed' | 'before' | 'after';
 
 const resolveEntityType = (value?: string): EntityType | undefined => {
   if (!value) {
@@ -257,210 +109,440 @@ const resolveEntityLabel = (
   );
 };
 
-const getAuditLogDisplayInfo = (
-  log: AuditLogListItemProps['log'],
-  systemUserLabel: string
-) => {
-  const userName = log.userName || systemUserLabel;
-  const eventType = log.eventType ? startCase(log.eventType) : '';
+const getAuditLogDisplayInfo = (log: AuditLogListItemProps['log']) => {
   const entityType = log.entityType ?? log.changeEvent?.entityType;
   const entityFQN =
     log.entityFQN ??
     log.changeEvent?.entityFullyQualifiedName ??
     log.changeEvent?.entity?.fullyQualifiedName;
-  const entityLabel = resolveEntityLabel(log, entityFQN);
-  const normalizedType = resolveEntityType(entityType);
 
   return {
-    userName,
-    eventType,
     entityType,
     entityFQN,
-    entityLabel,
-    normalizedType,
-    timestamp: log.eventTs,
+    entityLabel: resolveEntityLabel(log, entityFQN),
+    normalizedType: resolveEntityType(entityType),
   };
 };
 
-const getUserEntityLink = (
+const getEntityHref = (
   log: AuditLogListItemProps['log'],
-  entityLabel?: string
-): ReactNode | null => {
-  const userNameForLink =
-    log.changeEvent?.entity?.name ??
-    log.changeEvent?.entity?.fullyQualifiedName ??
-    log.userName ??
-    entityLabel;
-  if (!userNameForLink) {
-    return null;
-  }
-
-  return (
-    <Link
-      className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
-      to={getSettingsLink(getUserPath(userNameForLink))}>
-      {entityLabel ?? userNameForLink}
-    </Link>
-  );
-};
-
-const getTypedEntityLink = (
-  entityFQN?: string,
   normalizedType?: EntityType,
-  entityLabel?: string
-): ReactNode | null => {
-  if (!normalizedType || !entityFQN) {
-    return null;
+  entityFQN?: string
+): string | undefined => {
+  if (normalizedType === EntityType.USER) {
+    const userName =
+      log.changeEvent?.entity?.name ??
+      log.changeEvent?.entity?.fullyQualifiedName ??
+      entityFQN ??
+      log.userName;
+
+    return userName ? getSettingsLink(getUserPath(userName)) : undefined;
   }
-  const link = getEntityLinkFromType(entityFQN, normalizedType);
-  if (!link) {
-    return null;
+  if (!normalizedType || !entityFQN) {
+    return undefined;
+  }
+
+  return getEntityLinkFromType(entityFQN, normalizedType) || undefined;
+};
+
+const ChangeRefList: FC<{ refs: ChangeRef[]; isRemoved: boolean }> = ({
+  refs,
+  isRemoved,
+}) => (
+  <Box direction="row" gap={2} wrap="wrap">
+    {refs.map((ref) => (
+      <Badge
+        className={classNames({ 'tw:line-through': isRemoved })}
+        color={REF_BADGE_COLORS[ref.refKind]}
+        data-testid="change-ref"
+        href={getChangeRefLink(ref)}
+        key={`${ref.refKind}-${ref.fqn}`}
+        size="md"
+        type="pill-color">
+        {ref.label}
+        {ref.entityType && (
+          <Typography
+            as="span"
+            className="tw:ml-1.5"
+            size="text-xs"
+            weight="semibold">
+            {startCase(ref.entityType)}
+          </Typography>
+        )}
+      </Badge>
+    ))}
+  </Box>
+);
+
+const CellContent: FC<{ name: string; value: unknown }> = ({ name, value }) => {
+  const cell = formatCellValue(name, value);
+
+  if (cell.color) {
+    return (
+      <Badge color={cell.color} size="sm" type="pill-color">
+        {cell.text}
+      </Badge>
+    );
   }
 
   return (
-    <Link
-      className="tw:text-fg-brand-primary tw:text-sm tw:hover:underline"
-      to={link}>
-      {entityLabel ?? entityFQN}
-    </Link>
+    <span
+      className={classNames('tw:text-sm tw:text-primary tw:break-words', {
+        'tw:font-mono tw:text-xs': cell.isMono,
+      })}>
+      {cell.text}
+    </span>
   );
 };
 
-interface AuditLogItemHeaderProps {
-  userLink: ReactNode;
-  eventType: string;
-  impersonatedBy?: string;
-}
+const ChangeValueTable: FC<{
+  value: Extract<ChangeValue, { type: 'table' }>;
+}> = ({ value }) => {
+  const { t } = useTranslation();
 
-const AuditLogItemHeader: FC<AuditLogItemHeaderProps> = ({
-  userLink,
-  eventType,
-  impersonatedBy,
+  return (
+    <Box direction="col" gap={1}>
+      <div className="tw:overflow-x-auto tw:rounded-md tw:border tw:border-secondary tw:bg-surface">
+        <table
+          className="tw:w-full tw:border-collapse"
+          data-testid="change-table">
+          <thead>
+            <tr className="tw:bg-secondary">
+              {value.columns.map((column) => (
+                <th
+                  className="tw:whitespace-nowrap tw:px-3 tw:py-2 tw:text-left tw:text-xs tw:font-semibold tw:text-tertiary"
+                  key={column}
+                  scope="col">
+                  {startCase(column)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {value.rows.map((row, rowIndex) => (
+              // Rows are untyped API objects with no stable id; their order is the change's order.
+              // eslint-disable-next-line react/no-array-index-key
+              <tr className="tw:border-t tw:border-secondary" key={rowIndex}>
+                {value.columns.map((column) => (
+                  <td
+                    className="tw:whitespace-nowrap tw:px-3 tw:py-2"
+                    key={column}>
+                    <CellContent name={column} value={row[column]} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {value.hiddenRowCount > 0 && (
+        <Typography className="tw:text-tertiary" size="text-xs">
+          {t('label.plus-count-more', { count: value.hiddenRowCount })}
+        </Typography>
+      )}
+    </Box>
+  );
+};
+
+const ChangeValueKeyValue: FC<{
+  value: Extract<ChangeValue, { type: 'keyValue' }>;
+}> = ({ value }) => (
+  <dl
+    className="tw:m-0 tw:divide-y tw:divide-secondary tw:rounded-md tw:border tw:border-secondary tw:bg-surface"
+    data-testid="change-key-value">
+    {value.entries.map(([key, entryValue]) => (
+      <div
+        className="tw:flex tw:items-baseline tw:gap-3 tw:px-3 tw:py-2"
+        key={key}>
+        <dt className="tw:w-35 tw:shrink-0 tw:text-xs tw:text-tertiary">
+          {startCase(key)}
+        </dt>
+        <dd className="tw:m-0 tw:min-w-0">
+          <CellContent name={key} value={entryValue} />
+        </dd>
+      </div>
+    ))}
+  </dl>
+);
+
+const ChangeTextValue: FC<{ text: string; tone: ValueTone }> = ({
+  text,
+  tone,
+}) => {
+  const className = 'tw:rounded tw:px-1 tw:box-decoration-clone';
+
+  if (tone === 'before' || tone === 'removed') {
+    return (
+      <del
+        className={classNames(
+          className,
+          'tw:bg-utility-error-50 tw:text-utility-error-700'
+        )}>
+        {text}
+      </del>
+    );
+  }
+  if (tone === 'after') {
+    return (
+      <ins
+        className={classNames(
+          className,
+          'tw:bg-utility-success-50 tw:text-utility-success-700 tw:no-underline'
+        )}>
+        {text}
+      </ins>
+    );
+  }
+
+  return <span>{text}</span>;
+};
+
+const ChangeValueView: FC<{ value: ChangeValue; tone: ValueTone }> = ({
+  value,
+  tone,
+}) => {
+  switch (value.type) {
+    case 'refs':
+      return (
+        <ChangeRefList
+          isRemoved={tone === 'removed' || tone === 'before'}
+          refs={value.refs}
+        />
+      );
+    case 'table':
+      return <ChangeValueTable value={value} />;
+    case 'keyValue':
+      return <ChangeValueKeyValue value={value} />;
+    default:
+      return (
+        // Long descriptions are clamped; the full text stays available in View JSON.
+        <div className="tw:line-clamp-4 tw:text-sm tw:leading-6 tw:text-primary tw:break-words">
+          <ChangeTextValue text={value.text} tone={tone} />
+        </div>
+      );
+  }
+};
+
+const BeforeAfterRow: FC<{
+  label: string;
+  value: ChangeValue;
+  tone: ValueTone;
+}> = ({ label, value, tone }) => (
+  <div className="tw:flex tw:items-start tw:gap-2">
+    <Typography
+      as="span"
+      className="tw:w-12 tw:shrink-0 tw:pt-0.5 tw:text-tertiary"
+      size="text-xs">
+      {label}
+    </Typography>
+    <div className="tw:min-w-0 tw:flex-1">
+      <ChangeValueView tone={tone} value={value} />
+    </div>
+  </div>
+);
+
+const ChangeRowView: FC<{ row: ChangeRow }> = ({ row }) => {
+  const { t } = useTranslation();
+  const badge = CHANGE_ACTION_BADGES[row.action];
+  // Before/After only when both sides exist; a one-sided update reads like an add or a removal.
+  const singleValue = row.newValue ?? row.oldValue;
+  const singleTone: ValueTone = row.newValue ? 'plain' : 'removed';
+
+  return (
+    <div
+      className="tw:flex tw:items-start tw:gap-3 tw:px-3.5 tw:py-3"
+      data-testid="change-row">
+      <Badge
+        className="tw:w-18 tw:shrink-0 tw:justify-center"
+        color={badge.color}
+        data-testid="change-action"
+        size="sm"
+        type="color">
+        {t(badge.labelKey)}
+      </Badge>
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={2}>
+        <Typography
+          className="tw:text-secondary"
+          data-testid="change-field-path"
+          size="text-sm"
+          title={row.name}
+          weight="semibold">
+          {row.path || t('label.field')}
+        </Typography>
+        {row.oldValue && row.newValue ? (
+          <Box direction="col" gap={1}>
+            <BeforeAfterRow
+              label={t('label.before')}
+              tone="before"
+              value={row.oldValue}
+            />
+            <BeforeAfterRow
+              label={t('label.after')}
+              tone="after"
+              value={row.newValue}
+            />
+          </Box>
+        ) : (
+          singleValue && (
+            <ChangeValueView tone={singleTone} value={singleValue} />
+          )
+        )}
+      </Box>
+    </div>
+  );
+};
+
+const AuditLogJsonDialog: FC<{ json: string; onClose: () => void }> = ({
+  json,
+  onClose,
 }) => {
   const { t } = useTranslation();
+
+  return (
+    <ModalOverlay
+      isDismissable
+      isOpen
+      onOpenChange={(open) => !open && onClose()}>
+      <Modal>
+        <Dialog dividers="scroll" onClose={onClose}>
+          <Dialog.Header title={t('label.view-json')} />
+          <Dialog.Content>
+            <div data-testid="audit-log-json">
+              <SchemaEditor readOnly mode={JSON_EDITOR_MODE} value={json} />
+            </div>
+          </Dialog.Content>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+};
+
+const AuditLogItemHeader: FC<{
+  log: AuditLogListItemProps['log'];
+  userName: string;
+  onViewJson: () => void;
+}> = ({ log, userName, onViewJson }) => {
+  const { t } = useTranslation();
+  const eventBadge = log.eventType
+    ? EVENT_TYPE_BADGES[log.eventType]
+    : undefined;
 
   return (
     <Box
       align="center"
       data-testid="item-header"
       direction="row"
-      gap={1}
+      gap={2}
+      justify="between"
       wrap="wrap">
-      {userLink}
-      <Typography className="tw:text-quaternary">–</Typography>
-      <Typography
-        className="tw:text-fg-brand-primary"
-        data-testid="event-type"
-        weight="medium">
-        {eventType}
-      </Typography>
-      {impersonatedBy && (
-        <>
-          <Typography className="tw:text-quaternary">–</Typography>
-          <Typography data-testid="impersonated-by">
-            {t('label.impersonated-by-with-colon')}
-          </Typography>{' '}
+      <Box align="center" direction="row" gap={2} wrap="wrap">
+        {log.userName ? (
           <Link
-            className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
-            to={getSettingsLink(getUserPath(impersonatedBy))}>
-            {impersonatedBy}
+            className="tw:text-md tw:font-semibold tw:text-primary tw:hover:underline"
+            to={getSettingsLink(getUserPath(log.userName))}>
+            {userName}
           </Link>
-        </>
-      )}
+        ) : (
+          <Typography size="text-md" weight="semibold">
+            {userName}
+          </Typography>
+        )}
+        {log.actorType === 'BOT' && (
+          <Badge color="gray" data-testid="bot-badge" size="sm" type="color">
+            {t('label.bot')}
+          </Badge>
+        )}
+        {log.eventType && (
+          <Badge
+            color={eventBadge?.color ?? 'gray'}
+            data-testid="event-type"
+            size="sm"
+            type="color">
+            {eventBadge ? t(eventBadge.labelKey) : startCase(log.eventType)}
+          </Badge>
+        )}
+      </Box>
+      <Button
+        color="link-color"
+        data-testid="view-json-button"
+        size="sm"
+        onClick={onViewJson}>
+        {t('label.view-json')}
+      </Button>
     </Box>
   );
 };
 
-interface AuditLogItemDescriptionProps {
-  descriptionNodes: ReactNode[];
-  eventType: string;
-  entityLink: ReactNode;
+const AuditLogItemEntity: FC<{
+  entityLabel: string;
   entityFQN?: string;
-  showEntity: boolean;
-}
-
-const AuditLogItemDescription: FC<AuditLogItemDescriptionProps> = ({
-  descriptionNodes,
-  eventType,
-  entityLink,
-  entityFQN,
-  showEntity,
-}) => (
-  <div data-testid="description-content">
-    {showEntity && (
-      <Box
-        align="center"
-        data-testid="affected-entity"
-        direction="row"
-        gap={1}
-        wrap="wrap">
-        {entityLink}
-        {entityFQN && (
-          <Typography
-            className="tw:text-tertiary"
-            data-testid="affected-entity-fqn"
-            size="text-xs">
-            ({entityFQN})
-          </Typography>
-        )}
-      </Box>
-    )}
-    {descriptionNodes.length > 0 ? (
-      <div>
-        {descriptionNodes.map((node, idx) => (
-          <div key={isValidElement(node) ? node.key : undefined}>
-            {node}
-            {idx < descriptionNodes.length - 1 && (
-              <span className="tw:text-quaternary">; </span>
-            )}
-          </div>
-        ))}
-      </div>
+  entityHref?: string;
+}> = ({ entityLabel, entityFQN, entityHref }) => (
+  <Box
+    align="baseline"
+    data-testid="affected-entity"
+    direction="row"
+    gap={2}
+    wrap="wrap">
+    {entityHref ? (
+      <Link
+        className="tw:text-md tw:font-semibold tw:text-brand-secondary tw:hover:underline"
+        to={entityHref}>
+        {entityLabel}
+      </Link>
     ) : (
-      <Box align="center" direction="row" gap={1}>
-        <Typography className="tw:text-tertiary" size="text-sm">
-          {eventType}
-        </Typography>
-        {entityLink}
-      </Box>
+      <Typography size="text-md" weight="semibold">
+        {entityLabel}
+      </Typography>
     )}
-  </div>
+    {entityFQN && entityFQN !== entityLabel && (
+      <Typography
+        className="tw:font-mono tw:break-all tw:text-tertiary"
+        data-testid="affected-entity-fqn"
+        size="text-xs">
+        ({entityFQN})
+      </Typography>
+    )}
+  </Box>
 );
 
-interface AuditLogItemMetaProps {
-  entityType?: string;
-  timestamp?: number;
-}
-
-const AuditLogItemMeta: FC<AuditLogItemMetaProps> = ({
+const AuditLogItemMeta: FC<{ entityType?: string; timestamp?: number }> = ({
   entityType,
   timestamp,
 }) => (
   <Box
     align="center"
-    className="tw:mt-1"
     data-testid="item-meta"
     direction="row"
-    gap={2}>
+    gap={3}
+    wrap="wrap">
     {entityType && (
       <Typography
-        className="tw:text-fg-brand-primary"
+        as="span"
+        className="tw:inline-flex tw:items-center tw:gap-1.5 tw:text-brand-secondary"
         data-testid="entity-type-badge"
-        size="text-xs">
+        size="text-sm"
+        weight="medium">
+        {getEntityIcon(entityType, 'tw:size-3.5 tw:text-brand-secondary')}
         {startCase(entityType)}
       </Typography>
     )}
     {entityType && timestamp && (
-      <Typography className="tw:text-quaternary" size="text-xs">
-        |
-      </Typography>
+      <span
+        aria-hidden="true"
+        className="tw:h-3.5 tw:border-l tw:border-secondary"
+      />
     )}
     {timestamp && (
       <Typography
-        className="tw:text-quaternary"
+        as="span"
+        className="tw:text-tertiary"
         data-testid="timestamp"
-        size="text-xs">
-        {`${formatDateTime(timestamp)} · ${getRelativeTime(timestamp)}`}
+        size="text-sm">
+        <time dateTime={new Date(timestamp).toISOString()}>
+          {formatDateTime(timestamp)}
+        </time>
+        {` · ${getRelativeTime(timestamp)}`}
       </Typography>
     )}
   </Box>
@@ -468,280 +550,123 @@ const AuditLogItemMeta: FC<AuditLogItemMetaProps> = ({
 
 const AuditLogListItem: FC<AuditLogListItemProps> = ({ log }) => {
   const { t } = useTranslation();
-
-  const {
-    userName,
-    eventType,
-    entityType,
-    entityFQN,
-    entityLabel,
-    normalizedType,
-    timestamp,
-  } = getAuditLogDisplayInfo(log, t('label.system'));
-
-  const isLinkableField = useCallback((fieldName?: string): boolean => {
-    if (!fieldName) {
-      return false;
-    }
-    const field = fieldName.toLowerCase();
-    const linkableFields = [
-      'tags',
-      'dataproducts',
-      'teams',
-      'domain',
-      'owner',
-      'reviewers',
-      'experts',
-    ];
-
-    return linkableFields.some((f) => field === f || field.endsWith(`.${f}`));
-  }, []);
-
-  const isUserField = useCallback((fieldName?: string): boolean => {
-    if (!fieldName) {
-      return false;
-    }
-    const field = fieldName.toLowerCase();
-    const userFields = ['owner', 'reviewers', 'experts'];
-
-    return userFields.some((f) => field === f || field.endsWith(`.${f}`));
-  }, []);
-
-  const renderChangeValue = useCallback(
-    (change: FieldChange, value: unknown, keyPrefix: string): ReactNode => {
-      // `false` and `0` are real values (e.g. disabled: true → false), only absence is skipped.
-      if (isNil(value) || value === '') {
-        return null;
-      }
-
-      const fieldName = change.name ?? '';
-
-      if (isLinkableField(fieldName)) {
-        const links = renderEntityLinks(fieldName, value, keyPrefix);
-        if (links.length > 0) {
-          const showProfilePic = isUserField(fieldName);
-
-          return (
-            <span className="tw:inline">
-              {links.map((link, idx) => {
-                const entities = extractEntityInfo(value);
-                const entity = entities[idx];
-
-                return (
-                  <span
-                    className="tw:inline-flex tw:items-center tw:gap-1"
-                    key={`${keyPrefix}-wrap-${entity?.fqn ?? entity?.name}`}>
-                    {showProfilePic && entity && (
-                      <ProfilePicture
-                        className="tw:align-middle"
-                        displayName={entity.displayName ?? entity.name}
-                        height="16"
-                        name={entity.name}
-                        width="16"
-                      />
-                    )}
-                    {link}
-                    {idx < links.length - 1 && ', '}
-                  </span>
-                );
-              })}
-            </span>
-          );
-        }
-      }
-
-      if (isDescriptionField(fieldName)) {
-        const markdown =
-          typeof value === 'string' ? value : formatChangeValue(value);
-
-        return (
-          <Suspense fallback={<span>{formatChangeValue(value)}</span>}>
-            <RichTextEditorPreviewerV1 markdown={markdown} />
-          </Suspense>
-        );
-      }
-
-      return <span>{formatChangeValue(value)}</span>;
-    },
-    [isLinkableField, isUserField]
+  const [isJsonOpen, setIsJsonOpen] = useState(false);
+  const { entityType, entityFQN, entityLabel, normalizedType } =
+    getAuditLogDisplayInfo(log);
+  const userName = log.userName || t('label.system');
+  const changeRows = useMemo(
+    () => getChangeRows(log.changeEvent?.changeDescription),
+    [log.changeEvent?.changeDescription]
   );
-
-  const getChangeDetails = useCallback(
-    (changeDescription?: ChangeDescription): ReactNode[] => {
-      if (!changeDescription) {
-        return [];
-      }
-
-      const details: ReactNode[] = [];
-      const addedLabel = startCase(t('label.added-lowercase'));
-      const updatedLabel = startCase(t('label.updated-lowercase'));
-      const removedLabel = startCase(t('label.removed-lowercase'));
-      const fallbackField = t('label.field', { defaultValue: 'field' });
-
-      (changeDescription.fieldsAdded ?? []).forEach((change) => {
-        const label = getFieldLabel(change.name);
-        const valueNode = renderChangeValue(
-          change,
-          change.newValue,
-          `added-${change.name}`
-        );
-
-        details.push(
-          <span key={`added-${change.name}`}>
-            <Typography as="span" className="tw:text-tertiary">
-              {addedLabel}
-            </Typography>{' '}
-            <Typography as="span" weight="medium">
-              {label || fallbackField}
-            </Typography>
-            {valueNode && <>: {valueNode}</>}
-          </span>
-        );
-      });
-
-      (changeDescription.fieldsUpdated ?? [])
-        .filter((change) => change.name !== 'deleted')
-        .forEach((change) => {
-          const label = getFieldLabel(change.name);
-          const oldValueNode = renderChangeValue(
-            change,
-            change.oldValue,
-            `updated-old-${change.name}`
-          );
-          const newValueNode = renderChangeValue(
-            change,
-            change.newValue,
-            `updated-new-${change.name}`
-          );
-          const hasValueChange = oldValueNode || newValueNode;
-
-          details.push(
-            <span key={`updated-${change.name}`}>
-              <Typography as="span" className="tw:text-tertiary">
-                {updatedLabel}
-              </Typography>{' '}
-              <Typography as="span" weight="medium">
-                {label || fallbackField}
-              </Typography>
-              {hasValueChange && (
-                <>
-                  : {oldValueNode}
-                  {oldValueNode && newValueNode && ' → '}
-                  {newValueNode}
-                </>
-              )}
-            </span>
-          );
-        });
-
-      (changeDescription.fieldsDeleted ?? []).forEach((change) => {
-        const label = getFieldLabel(change.name);
-        const valueNode = renderChangeValue(
-          change,
-          change.oldValue,
-          `deleted-${change.name}`
-        );
-
-        details.push(
-          <span key={`deleted-${change.name}`}>
-            <Typography as="span" className="tw:text-tertiary">
-              {removedLabel}
-            </Typography>{' '}
-            <Typography as="span" weight="medium">
-              {label || fallbackField}
-            </Typography>
-            {valueNode && <>: {valueNode}</>}
-          </span>
-        );
-      });
-
-      return details;
-    },
-    [t, renderChangeValue]
-  );
-
-  // The field changes carry the full path and old → new values; the server summary drops both,
-  // so it is only the fallback for events without field changes (create, delete, login).
-  const fieldChangeNodes = useMemo(
-    () => getChangeDetails(log.changeEvent?.changeDescription),
-    [log, getChangeDetails]
-  );
-  const descriptionNodes = useMemo((): ReactNode[] => {
-    if (fieldChangeNodes.length > 0) {
-      return fieldChangeNodes;
-    }
-
-    return log.summary ? [<span key="summary">{log.summary}</span>] : [];
-  }, [log.summary, fieldChangeNodes]);
-
-  const entityLink = useMemo(() => {
-    if (normalizedType === EntityType.USER) {
-      const userLinkNode = getUserEntityLink(log, entityLabel);
-      if (userLinkNode) {
-        return userLinkNode;
-      }
-    }
-
-    const typedLinkNode = getTypedEntityLink(
-      entityFQN,
-      normalizedType,
-      entityLabel
-    );
-    if (typedLinkNode) {
-      return typedLinkNode;
-    }
-
-    return (
-      <Typography size="text-sm">{entityLabel ?? entityFQN ?? '--'}</Typography>
-    );
-  }, [normalizedType, entityFQN, entityLabel, log]);
-
-  // Built per render: `getSettingsLink` reads the current mode and search.
-  const userLink = log.userName ? (
-    <Link
-      className="tw:font-semibold tw:text-fg-brand-primary tw:hover:underline"
-      to={getSettingsLink(getUserPath(log.userName))}>
-      {userName}
-    </Link>
-  ) : (
-    <Typography weight="semibold">{userName}</Typography>
-  );
+  // A login/logout's entity is the actor already shown in the header.
+  const showEntity = entityLabel && !isAuthEvent(log.eventType);
 
   return (
-    <Box
-      className="tw:p-4 tw:border-b tw:border-primary tw:transition-colors tw:hover:bg-secondary tw:last:border-b-0"
-      data-testid="audit-log-list-item"
-      direction="row"
-      gap={2}>
-      <div className="tw:shrink-0" data-testid="item-avatar">
-        <ProfilePicture
-          displayName={userName}
-          height="32"
-          name={log.userName || 'system'}
-          width="32"
+    <Card data-testid="audit-log-list-item">
+      <Card.Content className="tw:flex tw:items-start tw:gap-3.5">
+        <div className="tw:shrink-0" data-testid="item-avatar">
+          <ProfilePicture
+            displayName={userName}
+            height="36"
+            name={log.userName || 'system'}
+            width="36"
+          />
+        </div>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={3}>
+          <AuditLogItemHeader
+            log={log}
+            userName={userName}
+            onViewJson={() => setIsJsonOpen(true)}
+          />
+          {log.impersonatedBy && (
+            <Typography
+              className="tw:text-tertiary"
+              data-testid="impersonated-by"
+              size="text-sm">
+              {t('label.impersonated-by-with-colon')}{' '}
+              <Link
+                className="tw:font-semibold tw:text-secondary tw:hover:underline"
+                to={getSettingsLink(getUserPath(log.impersonatedBy))}>
+                {log.impersonatedBy}
+              </Link>
+            </Typography>
+          )}
+          {showEntity && (
+            <AuditLogItemEntity
+              entityFQN={entityFQN}
+              entityHref={getEntityHref(log, normalizedType, entityFQN)}
+              entityLabel={entityLabel}
+            />
+          )}
+          <div data-testid="description-content">
+            {changeRows.length > 0 ? (
+              <div className="tw:divide-y tw:divide-secondary tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary">
+                {changeRows.map((row) => (
+                  <ChangeRowView key={row.key} row={row} />
+                ))}
+              </div>
+            ) : (
+              <Typography size="text-sm">
+                {log.summary ?? startCase(log.eventType)}
+              </Typography>
+            )}
+          </div>
+          <AuditLogItemMeta entityType={entityType} timestamp={log.eventTs} />
+        </Box>
+      </Card.Content>
+      {isJsonOpen && (
+        <AuditLogJsonDialog
+          json={getAuditLogJson(log)}
+          onClose={() => setIsJsonOpen(false)}
         />
-      </div>
-      <Box
-        className="tw:flex-1 tw:min-w-0 tw:items-start"
-        direction="col"
-        gap={1}>
-        <AuditLogItemHeader
-          eventType={eventType}
-          impersonatedBy={log.impersonatedBy}
-          userLink={userLink}
-        />
-        <AuditLogItemDescription
-          descriptionNodes={descriptionNodes}
-          entityFQN={entityFQN === entityLabel ? undefined : entityFQN}
-          entityLink={entityLink}
-          eventType={eventType}
-          showEntity={fieldChangeNodes.length > 0}
-        />
-        <AuditLogItemMeta entityType={entityType} timestamp={timestamp} />
-      </Box>
-    </Box>
+      )}
+    </Card>
   );
 };
+
+const AuditLogDayHeader: FC<{ group: AuditLogDayGroup }> = ({ group }) => {
+  const { t } = useTranslation();
+  const date = formatDate(group.timestamp);
+
+  return (
+    <div
+      className="tw:flex tw:items-center tw:gap-3"
+      data-testid="audit-log-day-header">
+      <h2 className="tw:m-0 tw:text-xs tw:font-semibold tw:uppercase tw:tracking-wide tw:text-tertiary">
+        {isToday(group.timestamp) ? `${t('label.today')} · ${date}` : date}
+      </h2>
+      <span
+        aria-hidden="true"
+        className="tw:flex-1 tw:border-t tw:border-secondary"
+      />
+    </div>
+  );
+};
+
+const AuditLogListSkeleton: FC = () => (
+  <div
+    className="tw:flex tw:flex-col tw:gap-3 tw:p-4"
+    data-testid="audit-log-list-skeleton">
+    <Skeleton variant="text" width={200} />
+    {[1, 2, 3, 4, 5].map((i) => (
+      <Card key={i}>
+        <Card.Content className="tw:flex tw:gap-3.5">
+          <Skeleton
+            className="tw:shrink-0"
+            height={36}
+            variant="circular"
+            width={36}
+          />
+          <Box className="tw:flex-1" direction="col" gap={1}>
+            <Skeleton variant="text" width="60%" />
+            <Skeleton variant="text" width="100%" />
+            <Skeleton variant="text" width="75%" />
+          </Box>
+        </Card.Content>
+      </Card>
+    ))}
+  </div>
+);
 
 const AuditLogList: FC<AuditLogListProps> = ({
   logs,
@@ -751,36 +676,10 @@ const AuditLogList: FC<AuditLogListProps> = ({
   onClearFilters,
 }) => {
   const { t } = useTranslation();
+  const dayGroups = useMemo(() => groupLogsByDay(logs), [logs]);
 
   if (isLoading) {
-    return (
-      <div data-testid="audit-log-list-skeleton">
-        <div className="tw:px-4 tw:py-2 tw:bg-secondary tw:border-b tw:border-primary">
-          <Skeleton variant="text" width={200} />
-        </div>
-        <div>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Box
-              className="tw:p-4 tw:border-b tw:border-primary tw:last:border-b-0"
-              direction="row"
-              gap={3}
-              key={i}>
-              <Skeleton
-                className="tw:shrink-0"
-                height={32}
-                variant="circular"
-                width={32}
-              />
-              <Box className="tw:flex-1" direction="col" gap={1}>
-                <Skeleton variant="text" width="60%" />
-                <Skeleton variant="text" width="100%" />
-                <Skeleton variant="text" width="75%" />
-              </Box>
-            </Box>
-          ))}
-        </div>
-      </div>
-    );
+    return <AuditLogListSkeleton />;
   }
 
   if (logs.length === 0) {
@@ -797,7 +696,7 @@ const AuditLogList: FC<AuditLogListProps> = ({
         ]
       : undefined;
 
-    let emptyContent: React.ReactNode;
+    let emptyContent: ReactNode;
 
     if (hasActiveSearch) {
       emptyContent = (
@@ -834,15 +733,24 @@ const AuditLogList: FC<AuditLogListProps> = ({
   }
 
   return (
-    <div className="tw:w-full" data-testid="audit-log-list">
-      <div>
-        {logs.map((log, index) => (
-          <AuditLogListItem
-            key={log.id?.toString() ?? log.changeEventId ?? index.toString()}
-            log={log}
-          />
-        ))}
-      </div>
+    <div
+      className="tw:flex tw:w-full tw:flex-col tw:gap-4 tw:p-4"
+      data-testid="audit-log-list">
+      {dayGroups.map((group) => (
+        <section className="tw:flex tw:flex-col tw:gap-3" key={group.dayKey}>
+          <AuditLogDayHeader group={group} />
+          {group.logs.map((log, index) => (
+            <AuditLogListItem
+              key={
+                log.id?.toString() ??
+                log.changeEventId ??
+                `${group.dayKey}-${index}`
+              }
+              log={log}
+            />
+          ))}
+        </section>
+      ))}
     </div>
   );
 };
