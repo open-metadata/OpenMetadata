@@ -44,8 +44,4 @@ describePaginatedList({
         })
       )
     ),
-  knownIssues: {
-    duplicateFetchOnPageChange:
-      'NotificationListPage fetches on click and again from the URL effect',
-  },
 });
