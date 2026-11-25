@@ -16,7 +16,6 @@ import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ServiceCategory } from '../../../../enums/service.enum';
-import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
   getFilteredSchema,
   getSchemaWithSynthesizedAuthType,
@@ -78,8 +77,7 @@ const customFields: RegistryFieldsType = {
 
 const renderConnectionSchema = async (
   connectorType: string,
-  serviceCategory = ServiceCategory.DATABASE_SERVICES,
-  formData: Record<string, unknown> = {}
+  serviceCategory = ServiceCategory.DATABASE_SERVICES
 ) => {
   const connSch = await loadConnectionSchema(serviceCategory, connectorType);
   const connectionSchema = getSchemaWithSynthesizedAuthType(
@@ -105,7 +103,7 @@ const renderConnectionSchema = async (
       noHtml5Validate
       fields={customFields}
       formContext={{ handleFocus: jest.fn() }}
-      formData={formData}
+      formData={{}}
       idSeparator="/"
       schema={schemaWithoutDefaultFilterPatternFields}
       showErrorList={false}
@@ -191,55 +189,6 @@ const expectAwsCredentialLayout = (
 };
 
 describe('ConnectionConfigForm schema rendering', () => {
-  it('keeps the Looker chart lineage option disabled after saving and reloading', async () => {
-    const { onChange, unmount } = await renderConnectionSchema(
-      'Looker',
-      ServiceCategory.DASHBOARD_SERVICES
-    );
-    const fieldLabel = 'Include Explore-to-Chart Lineage';
-
-    fireEvent.click(
-      within(screen.getByTestId('connection-section-scope')).getByRole('button')
-    );
-
-    expect(screen.getByLabelText(fieldLabel)).toBeChecked();
-
-    fireEvent.click(screen.getByLabelText(fieldLabel));
-    const change = onChange.mock.lastCall?.[0];
-    const saved = formatFormDataForSubmit(change.formData);
-
-    expect(saved).toHaveProperty('includeChartLineage', false);
-
-    unmount();
-
-    await renderConnectionSchema(
-      'Looker',
-      ServiceCategory.DASHBOARD_SERVICES,
-      saved
-    );
-
-    fireEvent.click(
-      within(screen.getByTestId('connection-section-scope')).getByRole('button')
-    );
-
-    expect(screen.getByLabelText(fieldLabel)).not.toBeChecked();
-  });
-
-  it('omits the Looker chart lineage option from other dashboard connections', async () => {
-    await renderConnectionSchema(
-      'QuickSight',
-      ServiceCategory.DASHBOARD_SERVICES
-    );
-
-    fireEvent.click(
-      within(screen.getByTestId('connection-section-scope')).getByRole('button')
-    );
-
-    expect(
-      screen.queryByText('Include Explore-to-Chart Lineage')
-    ).not.toBeInTheDocument();
-  });
-
   it('preserves an empty CSV escape character when the Datalake field is cleared', async () => {
     const { container, onChange } = await renderConnectionSchema('Datalake');
 

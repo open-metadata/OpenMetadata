@@ -253,7 +253,6 @@ class LookerSource(DashboardServiceSource):
 
     config: WorkflowSource
     metadata: OpenMetadata
-    service_connection: LookerConnection
     client: Looker40SDK
     progress_mode = ProgressMode.MANUAL
 
@@ -1905,7 +1904,7 @@ class LookerSource(DashboardServiceSource):
 
         We build:
         - Explore (DataModel) -> Dashboard lineage
-        - Explore (DataModel) -> Chart lineage when enabled on the connection
+        - Explore (DataModel) -> Chart lineage, unless the pipeline disables direct chart lineage
 
         We look at:
         - chart.query
@@ -1938,7 +1937,7 @@ class LookerSource(DashboardServiceSource):
                             to_entity=dashboard_entity,
                         )
 
-            if self.service_connection.includeChartLineage is False:
+            if not self.include_direct_chart_lineage:
                 return
 
             # Yield Explore -> Chart lineage

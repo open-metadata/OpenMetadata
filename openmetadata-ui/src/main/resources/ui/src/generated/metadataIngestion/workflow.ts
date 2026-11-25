@@ -761,11 +761,6 @@ export interface AirflowConnectionObject {
      */
     hostPort?: string;
     /**
-     * Create direct lineage from Looker Explores to charts on future ingestion runs. Disable
-     * this option to keep Explore and chart lineage connected through the dashboard.
-     */
-    includeChartLineage?: boolean;
-    /**
      * Regex to exclude or include projects that matches the pattern.
      */
     projectFilterPattern?: FilterPattern;
@@ -6060,6 +6055,14 @@ export interface Pipeline {
      * Optional configuration to toggle the ingestion of data models.
      */
     includeDataModels?: boolean;
+    /**
+     * Optional configuration to toggle direct lineage from a chart's upstream sources to the
+     * chart, such as Looker Explore to Chart and Metabase Table to Chart. When disabled, the
+     * charts are not looked up for this lineage and no direct edges are written, while the
+     * lineage from those sources to the dashboard and the Dashboard to Chart lineage are still
+     * created.
+     */
+    includeDirectChartLineage?: boolean;
     /**
      * Optional Configuration to include/exclude draft dashboards. By default it will include
      * draft dashboards

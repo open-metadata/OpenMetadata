@@ -40,7 +40,6 @@ from metadata.ingestion.source.dashboard.looker.metadata import (
     LookerSource,
     build_datamodel_name,
 )
-from metadata.workflow.metadata import MetadataWorkflow
 
 MOCK_LOOKER_CONFIG = {
     "source": {
@@ -126,28 +125,15 @@ MOCK_LOOKER_DASHBOARD = LookerDashboard(
 def create_looker_source():
     with patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection"):
 
-        def create_source(connection_overrides, managed=False):
+        def create_source(source_config_overrides):
             config_dict = deepcopy(MOCK_LOOKER_CONFIG)
-            connection = config_dict["source"]["serviceConnection"]["config"]
-            connection.update(connection_overrides)
-            if managed:
-                service = MOCK_DASHBOARD_SERVICE.model_copy(
-                    update={"connection": DashboardConnection.model_validate({"config": connection})}
-                )
-                del config_dict["source"]["serviceConnection"]
-                with (
-                    patch.object(OpenMetadata, "log_server_version"),
-                    patch.object(OpenMetadata, "get_by_name", return_value=service),
-                ):
-                    source = MetadataWorkflow.create(config_dict).source
-            else:
-                config = OpenMetadataWorkflowConfig.model_validate(config_dict)
-                source = LookerSource.create(
-                    config_dict["source"],
-                    OpenMetadata(config.workflowConfig.openMetadataServerConfig),
-                )
-
-            source.context.get().__dict__["dashboard_service"] = config_dict["source"]["serviceName"]
+            config_dict["source"]["sourceConfig"]["config"].update(source_config_overrides)
+            config = OpenMetadataWorkflowConfig.model_validate(config_dict)
+            source = LookerSource.create(
+                config_dict["source"],
+                OpenMetadata(config.workflowConfig.openMetadataServerConfig),
+            )
+            source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
             source.context.get().__dict__["dashboard"] = "1"
             return source
 
@@ -229,21 +215,18 @@ class TestGetChartSourceMapping:
 
 
 class TestYieldDashboardLineageDetails:
-    @pytest.mark.parametrize("managed", [False, True], ids=["inline", "managed"])
     @pytest.mark.parametrize(
-        ("overrides", "expected_setting", "expected_chart_count"),
+        ("source_config", "expected_chart_lookups"),
         [
-            ({}, True, 2),
-            ({"includeChartLineage": True}, True, 2),
-            ({"includeChartLineage": False}, False, 0),
-            ({"includeChartLineage": None}, None, 2),
+            ({}, 2),
+            ({"includeDirectChartLineage": True}, 2),
+            ({"includeDirectChartLineage": False}, 0),
+            ({"includeDirectChartLineage": None}, 2),
         ],
         ids=["omitted", "enabled", "disabled", "null"],
     )
-    def test_chart_lineage_option(
-        self, create_looker_source, managed, overrides, expected_setting, expected_chart_count
-    ):
-        source = create_looker_source(overrides, managed=managed)
+    def test_direct_chart_lineage_option(self, create_looker_source, source_config, expected_chart_lookups):
+        source = create_looker_source(source_config)
         second_chart = Chart(
             id=uuid.uuid4(),
             name="chart_id2",
@@ -273,7 +256,7 @@ class TestYieldDashboardLineageDetails:
 
         assert not [result.left for result in results if result.left]
         expected_targets = [("dashboard", MOCK_DASHBOARD_ID)]
-        if expected_chart_count:
+        if expected_chart_lookups:
             expected_targets += [("chart", MOCK_CHART_ID), ("chart", second_chart.id.root)]
         assert [
             (
@@ -288,13 +271,11 @@ class TestYieldDashboardLineageDetails:
             ("dashboardDataModel", MOCK_EXPLORE_ID, entity_type, entity_id, LineageSource.DashboardLineage)
             for entity_type, entity_id in expected_targets
         ]
-        assert sum(call.kwargs["entity"] is Chart for call in get_by_name.call_args_list) == expected_chart_count
-        assert source.service_connection.includeChartLineage is expected_setting
+        assert sum(call.kwargs["entity"] is Chart for call in get_by_name.call_args_list) == expected_chart_lookups
 
-    @pytest.mark.parametrize("managed", [False, True], ids=["inline", "managed"])
-    def test_invalid_chart_lineage_option_is_rejected(self, create_looker_source, managed):
-        with pytest.raises(ValidationError, match="includeChartLineage"):
-            create_looker_source({"includeChartLineage": "not a boolean"}, managed=managed)
+    def test_invalid_direct_chart_lineage_option_is_rejected(self, create_looker_source):
+        with pytest.raises(ValidationError, match="includeDirectChartLineage"):
+            create_looker_source({"includeDirectChartLineage": "not a boolean"})
 
     def test_explore_to_dashboard_lineage_is_created(self, looker_source):
         with (
@@ -375,9 +356,9 @@ class TestYieldDashboardLineageDetails:
         lineage_results = [r for r in results if r and r.right]
         assert len(lineage_results) == 0
 
-    @pytest.mark.parametrize("include_chart_lineage", [True, False])
-    def test_no_dashboard_lineage_when_dashboard_not_found(self, create_looker_source, include_chart_lineage):
-        source = create_looker_source({"includeChartLineage": include_chart_lineage})
+    @pytest.mark.parametrize("include_direct_chart_lineage", [True, False])
+    def test_no_dashboard_lineage_when_dashboard_not_found(self, create_looker_source, include_direct_chart_lineage):
+        source = create_looker_source({"includeDirectChartLineage": include_direct_chart_lineage})
 
         def get_by_name_side_effect(entity, fqn):
             if entity is Dashboard:
@@ -396,7 +377,7 @@ class TestYieldDashboardLineageDetails:
         assert len(explore_to_dashboard) == 0
 
         explore_to_chart = [e for e in edges if e.toEntity.type == "chart"]
-        assert len(explore_to_chart) == (1 if include_chart_lineage else 0)
+        assert len(explore_to_chart) == (1 if include_direct_chart_lineage else 0)
 
     def test_explore_cached_takes_precedence_over_api(self, looker_source):
         cached_explore = DashboardDataModel(

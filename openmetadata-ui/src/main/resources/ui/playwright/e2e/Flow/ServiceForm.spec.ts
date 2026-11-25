@@ -27,7 +27,6 @@ import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServi
 import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
 import { expect, test } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
-import { createOrFetch, deleteFixtureEntity } from '../../utils/apiResponse';
 import {
   createNewPage,
   getAuthContext,
@@ -327,75 +326,6 @@ test.describe(
     });
 
     test.describe('Looker', () => {
-      test('persists the direct chart lineage setting when the connection is edited', async ({
-        browser,
-        page,
-      }) => {
-        // Allow time for the real recursive hard delete that cleans up the service.
-        test.slow();
-
-        const serviceName = `pw-looker-lineage-${uuid()}`;
-        const servicePath = '/api/v1/services/dashboardServices';
-        const { apiContext, afterAction } = await createNewPage(browser);
-
-        try {
-          const service = await createOrFetch<{ id: string }>(apiContext, {
-            label: 'Create Looker chart lineage service',
-            createPath: servicePath,
-            fqnSegments: [serviceName],
-            data: {
-              name: serviceName,
-              serviceType: 'Looker',
-              connection: {
-                config: {
-                  type: 'Looker',
-                  hostPort: lookerFormDetails.hostPort,
-                  clientId: lookerFormDetails.clientId,
-                  clientSecret: lookerFormDetails.clientSecret,
-                },
-              },
-            },
-          });
-          const fieldName = 'Include Explore-to-Chart Lineage';
-          const scopeSection = page.getByTestId('connection-section-scope');
-
-          await page.goto(
-            `/service/dashboardServices/${encodeURIComponent(
-              serviceName
-            )}/connection`,
-            { waitUntil: 'domcontentloaded' }
-          );
-          await page.getByTestId('edit-connection-button').click();
-          await waitForServiceConnectionForm(page);
-          await scopeSection.getByRole('button').click();
-          await expect(scopeSection.getByLabel(fieldName)).toBeChecked();
-          await scopeSection.getByText(fieldName, { exact: true }).click();
-
-          const patch = page.waitForResponse(
-            (response) =>
-              response.url().endsWith(`${servicePath}/${service.id}`) &&
-              response.request().method() === 'PATCH'
-          );
-
-          await page.getByTestId('next-button').click();
-          await page.getByRole('button', { name: 'Save', exact: true }).click();
-          expect((await patch).ok()).toBe(true);
-
-          await page.getByTestId('edit-connection-button').click();
-          await waitForServiceConnectionForm(page);
-          await scopeSection.getByRole('button').click();
-          await expect(scopeSection.getByLabel(fieldName)).not.toBeChecked();
-        } finally {
-          await deleteFixtureEntity(
-            apiContext,
-            `${servicePath}/name/${encodeURIComponent(
-              serviceName
-            )}?recursive=true&hardDelete=true`
-          );
-          await afterAction();
-        }
-      });
-
       test('Verify if string input inside oneOf config works properly', async ({
         page,
       }) => {

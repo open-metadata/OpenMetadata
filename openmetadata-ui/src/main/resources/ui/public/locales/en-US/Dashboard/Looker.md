@@ -43,17 +43,6 @@ URL to the Looker instance, e.g., `https://my-company.region.looker.com`
 
 $$
 
-$$section
-### Include Explore-to-Chart Lineage $(id="includeChartLineage")
-
-Enabled by default. Disable this setting to skip direct Explore-to-Chart edges in future ingestion runs. The Explore-to-Dashboard and Dashboard-to-Chart edges still connect the Explore to the chart through its dashboard.
-
-For a managed workflow, save the setting on the Looker service connection. Workflows without an inline connection use the saved setting. For a standalone workflow with an inline connection, set `source.serviceConnection.config.includeChartLineage` to `false`.
-
-With lineage override disabled, previously ingested direct edges remain until removed separately. When lineage override is enabled, the Dashboard-to-Chart write can replace existing dashboard lineage inputs for that chart. Enabling the setting again restores eligible direct edges on the next ingestion run.
-
-$$
-
 ### GitHub Credentials
 
 If we choose to inform the GitHub credentials to ingest LookML Views:

@@ -843,3 +843,66 @@ class TestMetabaseCrossDatabaseLineage:
             "mymssqlservice.salesdb.dbo.orders",
             "mymssqlservice.salesdb.dbo.localorders",
         }
+
+
+class TestMetabaseDirectChartLineage:
+    """`includeDirectChartLineage` decides whether a card's tables also get a Table -> Chart edge.
+    With it off, the chart is never looked up in the catalog and the Table -> Dashboard edge
+    is still drawn, for query-builder and native SQL cards alike."""
+
+    @staticmethod
+    def _source(source_config: dict) -> MetabaseSource:
+        config_dict = deepcopy(mock_config)
+        config_dict["source"]["sourceConfig"]["config"].update(source_config)
+        with (
+            patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection"),
+            patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection"),
+        ):
+            config = OpenMetadataWorkflowConfig.model_validate(config_dict)
+            source = MetabaseSource.create(
+                config_dict["source"],
+                OpenMetadata(config.workflowConfig.openMetadataServerConfig),
+            )
+        source.client = SimpleNamespace(
+            get_database=lambda *_: None,
+            get_table=lambda *_: MetabaseTable(schema="test_schema", display_name="test_table"),
+        )
+        source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+        source.charts_dict = {str(chart.id): chart for chart in MOCK_CHARTS}
+        return source
+
+    @pytest.mark.parametrize("card_id", ["1", "2"], ids=["query-builder", "native-sql"])
+    @pytest.mark.parametrize(
+        ("source_config", "draws_chart_lineage"),
+        [
+            ({}, True),
+            ({"includeDirectChartLineage": True}, True),
+            ({"includeDirectChartLineage": False}, False),
+            ({"includeDirectChartLineage": None}, True),
+        ],
+        ids=["omitted", "enabled", "disabled", "null"],
+    )
+    def test_direct_chart_lineage_option(self, card_id, source_config, draws_chart_lineage):
+        source = self._source(source_config)
+        catalog = {LineageDashboard: EXAMPLE_DASHBOARD, LineageChart: EXAMPLE_CHART}
+
+        def get_by_name(entity, fqn, **_kwargs):
+            return catalog[entity]
+
+        with (
+            patch.object(OpenMetadata, "get_by_name", side_effect=get_by_name) as lookups,
+            patch.object(OpenMetadata, "search_in_any_service", return_value=EXAMPLE_TABLE),
+        ):
+            results = list(
+                source.yield_dashboard_lineage_details(
+                    dashboard_details=MetabaseDashboardDetails(name="test_db", id="1", card_ids=[card_id]),
+                    db_service_prefix=None,
+                )
+            )
+
+        assert [result.left for result in results if result.left] == []
+        assert [result.right for result in results] == (
+            [EXPECTED_LINEAGE, EXPECTED_CHART_LINEAGE] if draws_chart_lineage else [EXPECTED_LINEAGE]
+        )
+        chart_lookups = [call for call in lookups.call_args_list if call.kwargs["entity"] is LineageChart]
+        assert len(chart_lookups) == (1 if draws_chart_lineage else 0)

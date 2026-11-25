@@ -477,6 +477,16 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         prefix_parts = (db_service_prefix or "").split(".")
         return prefix_parts + ([None] * (4 - len(prefix_parts)))
 
+    @property
+    def include_direct_chart_lineage(self) -> bool:
+        """
+        Whether a connector draws lineage straight from a chart's upstream sources to the chart,
+        on top of the lineage to its dashboard. The Dashboard -> Chart stage ignores it.
+
+        Only an explicit false turns it off, so an unset value keeps the schema's default of true.
+        """
+        return self.source_config.includeDirectChartLineage is not False
+
     def yield_dashboard_chart_lineage(self, _) -> Iterable[Either[OMetaLineageRequest]]:
         """
         One Dashboard -> Chart edge per chart the server holds under the dashboard, so the
